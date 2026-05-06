@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # FlashLearn PWD 📚✨
 
 **Interactive Bilingual Flashcard & Vocabulary Learning App for Persons with Disabilities (PWD) Students**
@@ -199,3 +200,6 @@ The project includes unit and widget tests covering:
 ## License
 
 This project was developed as a thesis/capstone project. All rights reserved.
+=======
+# pwd_flashcard_app
+>>>>>>> 4142e989aba439ddb243426dda27306a8f40bc21
