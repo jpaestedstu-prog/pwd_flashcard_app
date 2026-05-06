@@ -1,0 +1,268 @@
+rules_version = '2';
+
+// PHASE A — Anonymous-auth + owner-scoped writes.
+//
+// Every owner-scoped doc carries `owner_uid` (the writer's
+// FirebaseAuth.currentUser.uid). Reads stay open to any signed-in user
+// for now (teacher dashboards need to fetch student profiles); writes
+// are pinned to the owner.
+//
+// To deploy: enable Anonymous sign-in in the Firebase console
+// (Authentication → Sign-in method → Anonymous → Enable), then
+// `firebase deploy --only firestore:rules`.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // True when the existing doc has no owner_uid (legacy/migrated) and
+    // the incoming write stamps the requester as owner. Lets
+    // OwnerUidMigration claim pre-auth docs without weakening the rule
+    // for already-owned ones.
+    function claimingUnowned() {
+      return signedIn()
+        && (!('owner_uid' in resource.data) || resource.data.owner_uid == null)
+        && request.resource.data.owner_uid == request.auth.uid;
+    }
+
+    function ownsProfile(profileId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/profiles/$(profileId))
+        && get(/databases/$(database)/documents/profiles/$(profileId)).data.owner_uid == request.auth.uid;
+    }
+
+    function ownsClassroomTeacher(classroomId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/classrooms/$(classroomId))
+        && ownsProfile(
+          get(/databases/$(database)/documents/classrooms/$(classroomId)).data.teacher_id
+        );
+    }
+
+    function ownsHomeGroupOwner(groupId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/home_groups/$(groupId))
+        && ownsProfile(
+          get(/databases/$(database)/documents/home_groups/$(groupId)).data.owner_profile_id
+        );
+    }
+
+    // ─── Profiles ──────────────────────────────────────
+    // Reads are open to any signed-in user (educator dashboards need
+    // roster lookups). Writes are owner-scoped, with one extra rule:
+    // student / child profiles cannot mutate their own `learning_level`
+    // — only an educator override (run from the teacher / parent device,
+    // which writes from a different uid) may change it.
+    match /profiles/{profileId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow update: if (isOwner(resource.data.owner_uid)
+            && !(resource.data.role in [0, 3]
+              && request.resource.data.learning_level
+                != resource.data.learning_level))
+        || claimingUnowned();
+      allow delete: if isOwner(resource.data.owner_uid);
+    }
+
+    // ─── Progress ──────────────────────────────────────
+    match /progress/{profileId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow update: if isOwner(resource.data.owner_uid) || claimingUnowned();
+      allow delete: if isOwner(resource.data.owner_uid);
+    }
+
+    // ─── Custom flashcards ─────────────────────────────
+    match /custom_cards/{cardId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow update: if isOwner(resource.data.owner_uid) || claimingUnowned();
+      allow delete: if isOwner(resource.data.owner_uid);
+    }
+
+    // ─── Settings (per-device, doc id == uid) ──────────
+    match /settings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ─── Session analytics ─────────────────────────────
+    match /session_logs/{autoId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow update, delete: if isOwner(resource.data.owner_uid);
+    }
+
+    // ─── Achievements (subcollection of profileId) ─────
+    match /achievements/{profileId}/items/{itemId} {
+      allow read: if signedIn();
+      allow write: if ownsProfile(profileId);
+    }
+
+    // ─── Shop purchases (subcollection of profileId) ───
+    match /shop_purchases/{profileId}/items/{itemId} {
+      allow read: if signedIn();
+      allow write: if ownsProfile(profileId);
+    }
+
+    // ─── Shop equipped (per profile + item type) ───────
+    match /shop_equipped/{docId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow update: if isOwner(resource.data.owner_uid) || claimingUnowned();
+      allow delete: if isOwner(resource.data.owner_uid);
+    }
+
+    // ─── App state (tutorial flags, daily challenge, etc.) ─
+    match /app_state/{key} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow update: if isOwner(resource.data.owner_uid) || claimingUnowned();
+      allow delete: if isOwner(resource.data.owner_uid);
+    }
+
+    // ─── Classrooms ────────────────────────────────────
+    // Reads are open to any signed-in user so students can look up by
+    // code at join time. Writes are gated on the writer owning the
+    // teacher profile referenced by `teacher_id`.
+    match /classrooms/{classroomId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && ownsProfile(request.resource.data.teacher_id);
+      allow update, delete: if signedIn()
+        && ownsProfile(resource.data.teacher_id);
+    }
+
+    // ─── Classroom membership ──────────────────────────
+    // The teacher of the classroom may add/remove anyone; a profile
+    // owner may add/remove themselves (student-initiated join/leave).
+    match /classroom_members/{memberId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && (
+        ownsClassroomTeacher(request.resource.data.classroom_id)
+        || ownsProfile(request.resource.data.profile_id)
+      );
+      allow update: if signedIn() && (
+        ownsClassroomTeacher(resource.data.classroom_id)
+        || ownsProfile(resource.data.profile_id)
+      );
+      allow delete: if signedIn() && (
+        ownsClassroomTeacher(resource.data.classroom_id)
+        || ownsProfile(resource.data.profile_id)
+      );
+    }
+
+    // ─── Classroom audit log (immutable) ───────────────
+    // Reads: only the teacher who owns the classroom.
+    // Creates: any signed-in user, but they must stamp their own uid as
+    //   actor_uid (no impersonation). Append-only — no updates/deletes.
+    match /classroom_audit/{classroomId}/events/{eventId} {
+      allow read: if ownsClassroomTeacher(classroomId);
+      allow create: if signedIn()
+        && request.resource.data.actor_uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // ─── Progress audit log (server-written) ───────────
+    // Reads: the profile owner (so a kid can see if their last claim was
+    //   reverted) and any signed-in user (teachers triaging suspicious
+    //   accounts). Writes: server-only (validateProgressUpdate uses the
+    //   admin SDK, which bypasses rules).
+    match /progress_audit/{profileId}/events/{eventId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // ─── Rate-limit counters (server-only writes) ──────
+    // Owner can read their own counter for transparency; only the
+    // validateProgressUpdate function writes here.
+    match /rate_limits/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // ─── Parent-Teacher Notes ──────────────────────────
+    // Notes about a student, written by either parent or teacher.
+    // Reads: any signed-in user (until parent↔student linkage exists,
+    //   we can't tighten further without locking out educators who
+    //   should see notes about students in their classroom).
+    // Create: must stamp the writer's uid as author_uid (no impersonation).
+    // Update: only the original author may edit.
+    // Delete: only the original author may delete.
+    match /parent_teacher_notes/{studentId}/notes/{noteId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.author_uid == request.auth.uid;
+      allow update, delete: if isOwner(resource.data.author_uid);
+    }
+
+    // ─── Home Groups (parent-owned, parallel to classrooms) ──
+    // Reads are open so children can look up by code at join time.
+    // Writes are gated on the writer owning the parent profile that
+    // owns the group.
+    match /home_groups/{groupId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && ownsProfile(request.resource.data.owner_profile_id);
+      allow update, delete: if signedIn()
+        && ownsProfile(resource.data.owner_profile_id);
+    }
+
+    // ─── Home group membership ────────────────────────
+    // The owning parent may add/remove anyone; a profile owner may
+    // add/remove themselves (child-initiated join/leave).
+    match /home_group_members/{memberId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && (
+        ownsHomeGroupOwner(request.resource.data.home_group_id)
+        || ownsProfile(request.resource.data.profile_id)
+      );
+      allow update: if signedIn() && (
+        ownsHomeGroupOwner(resource.data.home_group_id)
+        || ownsProfile(resource.data.profile_id)
+      );
+      allow delete: if signedIn() && (
+        ownsHomeGroupOwner(resource.data.home_group_id)
+        || ownsProfile(resource.data.profile_id)
+      );
+    }
+
+    // ─── Live Classroom Session ────────────────────────
+    // Session doc: only the classroom's teacher may create/update; any
+    // signed-in user can read (students need to subscribe).
+    match /live_sessions/{classroomId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && ownsClassroomTeacher(classroomId)
+        && request.resource.data.teacher_uid == request.auth.uid;
+      allow update: if signedIn() && ownsClassroomTeacher(classroomId);
+      allow delete: if signedIn() && ownsClassroomTeacher(classroomId);
+
+      // Student responses to a pushed activity. Anyone signed in may
+      // read (teacher dashboard subscribes to the live count); a student
+      // may write their own response (owner_uid match), and the teacher
+      // may overwrite/clear if needed.
+      match /responses/{responseId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.owner_uid == request.auth.uid;
+        allow update: if signedIn() && (
+          isOwner(resource.data.owner_uid)
+          || ownsClassroomTeacher(classroomId)
+        );
+        allow delete: if signedIn() && ownsClassroomTeacher(classroomId);
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed \"s/path: '//\")",
+      "Bash(sed \"s/'$//\")",
+      "Bash(flutter analyze *)",
+      "Bash(cmd.exe /c \"where flutter\")",
+      "Bash(/c/src/flutter/bin/dart analyze *)",
+      "Bash(export PATH=\"$PATH:/c/Windows/System32:/c/Windows/System32/WindowsPowerShell/v1.0\")",
+      "Bash(\"/c/src/flutter/bin/flutter.bat\" analyze *)",
+      "Bash(export PATH=\"/c/Program Files/Git/cmd:$PATH\")",
+      "Bash(\"/c/src/flutter/bin/cache/dart-sdk/bin/dart.exe\" analyze *)",
+      "Bash(command -v flutter)",
+      "Bash(./node_modules/.bin/tsc --noEmit)"
+    ]
+  }
+}

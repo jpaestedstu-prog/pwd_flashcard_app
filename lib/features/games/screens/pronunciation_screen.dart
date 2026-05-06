@@ -1,0 +1,637 @@
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
+import '../../../core/accessibility/tts_service.dart';
+import '../../../core/accessibility/sound_service.dart';
+import '../../../core/accessibility/haptic_service.dart';
+import '../../../core/accessibility/stt_service.dart';
+import '../../../core/services/celebration_service.dart';
+import '../../../widgets/accessible_celebration_overlay.dart';
+import '../../../core/constants/flashcard_emojis.dart';
+import '../../../data/models/enums.dart';
+import '../../../data/models/models.dart';
+import '../../../data/local/seed_data.dart';
+import '../../../data/models/achievements.dart';
+import '../../../data/local/spaced_repetition_service.dart';
+import '../../../providers/app_providers.dart';
+import '../../../widgets/game_widgets.dart';
+import '../../../widgets/achievement_overlay.dart';
+import '../../../widgets/game_review_sheet.dart';
+import '../../../widgets/accessibility_visual_feedback.dart';
+import '../timed_game_mixin.dart';
+import '../../../l10n/app_localizations.dart';
+
+/// Pronunciation Practice — an audio-first game.
+///
+/// The app speaks a word using TTS, and the student must pick
+/// the correct match from visual choices (emoji + text).
+/// Supports English ➜ pick Filipino, and Filipino ➜ pick English rounds.
+class PronunciationScreen extends ConsumerStatefulWidget {
+  final GameDifficulty difficulty;
+  final List<FlashcardCategory> categories;
+  final bool timedMode;
+
+  const PronunciationScreen({
+    super.key,
+    this.difficulty = GameDifficulty.medium,
+    this.categories = const [],
+    this.timedMode = false,
+  });
+
+  @override
+  ConsumerState<PronunciationScreen> createState() =>
+      _PronunciationScreenState();
+}
+
+class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
+    with TimedGameMixin {
+  late List<_PronunciationRound> _rounds;
+  int _currentRound = 0;
+  int _score = 0;
+  int? _selectedIndex;
+  bool _answered = false;
+  bool _showResult = false;
+  bool _isListening = false;
+  String _voiceHint = '';
+  List<Achievement> _newAchievements = [];
+  final List<GameReviewItem> _reviewItems = [];
+  final _random = Random();
+
+  /// Difficulty-based configuration.
+  int get _totalRounds => switch (widget.difficulty) {
+    GameDifficulty.easy => 6,
+    GameDifficulty.medium => 10,
+    GameDifficulty.hard => 14,
+  };
+
+  int get _numChoices => switch (widget.difficulty) {
+    GameDifficulty.easy => 3,
+    GameDifficulty.medium => 4,
+    GameDifficulty.hard => 4,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _startGame();
+  }
+
+  void _startGame() {
+    var source = List.of(SeedData.allFlashcards);
+    if (widget.categories.isNotEmpty) {
+      source =
+          source.where((c) => widget.categories.contains(c.category)).toList();
+    }
+    source.shuffle(_random);
+    _generateRounds(source);
+    _currentRound = 0;
+    _score = 0;
+    _showResult = false;
+    _answered = false;
+    _selectedIndex = null;
+    _reviewItems.clear();
+    _newAchievements = [];
+    // Speak the first word after a short delay
+    WidgetsBinding.instance.addPostFrameCallback((_) => _speakCurrentWord());
+    startTimerIfNeeded(widget.timedMode);
+  }
+
+  @override
+  void dispose() {
+    disposeTimer();
+    super.dispose();
+  }
+
+  @override
+  void onTimeUp() {
+    _finishGame();
+  }
+
+  void _generateRounds(List<Flashcard> source) {
+    _rounds = [];
+    for (int i = 0; i < _totalRounds && i < source.length; i++) {
+      final correct = source[i];
+      final others =
+          source.where((c) => c.id != correct.id).toList()..shuffle(_random);
+      final choices = [correct, ...others.take(_numChoices - 1)]
+        ..shuffle(_random);
+
+      // Alternate between "hear English → pick Filipino"
+      // and "hear Filipino → pick English" for variety.
+      final isEnglishPrompt = i.isEven;
+
+      _rounds.add(_PronunciationRound(
+        correctCard: correct,
+        choices: choices,
+        correctIndex: choices.indexOf(correct),
+        isEnglishPrompt: isEnglishPrompt,
+      ));
+    }
+  }
+
+  Future<void> _speakCurrentWord() async {
+    final tts = ref.read(ttsServiceProvider);
+    final settings = ref.read(settingsProvider);
+    if (!settings.ttsEnabled) {
+      return;
+    }
+    final round = _rounds[_currentRound];
+    if (round.isEnglishPrompt) {
+      await tts.speakEnglish(round.correctCard.wordEnglish);
+    } else {
+      await tts.speakFilipino(round.correctCard.wordFilipino);
+    }
+  }
+
+  void _selectAnswer(int index) {
+    if (_answered) return;
+    final round = _rounds[_currentRound];
+    final isCorrect = index == round.correctIndex;
+    final sound = ref.read(soundServiceProvider);
+    final haptic = ref.read(hapticServiceProvider);
+
+    _reviewItems.add(GameReviewItem(
+      wordEnglish: round.correctCard.wordEnglish,
+      wordFilipino: round.correctCard.wordFilipino,
+      category: round.correctCard.category,
+      isCorrect: isCorrect,
+      userAnswer:
+          isCorrect ? null : round.choices[index].wordEnglish,
+    ));
+
+    setState(() {
+      _selectedIndex = index;
+      _answered = true;
+      if (isCorrect) _score++;
+    });
+
+    if (isCorrect) {
+      sound.playCorrect();
+      haptic.success();
+    } else {
+      sound.playWrong();
+      haptic.error();
+    }
+
+    // Auto-advance after delay
+    Future.delayed(const Duration(milliseconds: 1400), _nextRound);
+  }
+
+  /// Speech-to-text: student speaks the answer instead of tapping.
+  Future<void> _handleVoiceAnswer() async {
+    if (_answered || _isListening) return;
+    final stt = ref.read(sttServiceProvider);
+    if (!stt.isAvailable) {
+      await stt.init();
+      if (!stt.isAvailable) return;
+    }
+
+    final round = _rounds[_currentRound];
+    // Determine which language the student should say
+    final isEnglish = round.isEnglishPrompt; // prompt is English → answer is Filipino
+    final locale = isEnglish ? 'fil-PH' : 'en-US';
+    final expected = isEnglish
+        ? round.correctCard.wordFilipino
+        : round.correctCard.wordEnglish;
+
+    setState(() {
+      _isListening = true;
+      _voiceHint = 'Listening…';
+    });
+
+    await stt.startListening(
+      locale: locale,
+      onResult: (spoken, isFinal) {
+        if (!mounted || !isFinal) return;
+        if (SttService.isFuzzyMatch(spoken, expected)) {
+          setState(() {
+            _isListening = false;
+            _voiceHint = '';
+          });
+          _selectAnswer(round.correctIndex);
+        } else {
+          setState(() {
+            _isListening = false;
+            _voiceHint = 'Heard: "$spoken" — try again!';
+          });
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) setState(() => _voiceHint = '');
+          });
+        }
+      },
+    );
+  }
+
+  void _nextRound() {
+    if (!mounted) return;
+    if (_currentRound < _rounds.length - 1) {
+      setState(() {
+        _currentRound++;
+        _answered = false;
+        _selectedIndex = null;
+      });
+      _speakCurrentWord();
+    } else {
+      _finishGame();
+    }
+  }
+
+  void _finishGame() {
+    // Record progress
+    final categories = _rounds.map((r) => r.correctCard.category).toSet().toList();
+    ref.read(progressProvider.notifier).recordGameResult(
+      gameType: GameType.pronunciation,
+      score: _score,
+      total: _rounds.length,
+      starsEarned: _starsEarned,
+      categoriesPlayed: categories,
+    );
+    _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
+
+    // Spaced repetition
+    final profile = ref.read(profileProvider);
+    if (profile != null) {
+      final sr = <String, bool>{};
+      for (final r in _reviewItems) {
+        final card = _rounds
+            .map((rd) => rd.correctCard)
+            .where((c) => c.wordEnglish == r.wordEnglish)
+            .firstOrNull;
+        if (card != null) sr[card.id] = r.isCorrect;
+      }
+      SpacedRepetitionService.recordBatch(profileId: profile.id, results: sr);
+    }
+
+    AccessibleCelebrationOverlay.show(
+      context: context, ref: ref, type: CelebrationType.gameComplete,
+    );
+    setState(() => _showResult = true);
+  }
+
+  int get _starsEarned {
+    final pct = _score / _rounds.length;
+    if (pct >= 0.9) return 3;
+    if (pct >= 0.7) return 2;
+    if (pct >= 0.5) return 1;
+    return 0;
+  }
+
+  void _restart() => setState(() => _startGame());
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    // ─── Result Screen ──────────────────────
+    if (_showResult) {
+      return Stack(
+        children: [
+          CelebrationOverlay(
+            show: true,
+            child: Scaffold(
+              body: Center(
+                child: GameResultDialog(
+                  score: _score,
+                  total: _rounds.length,
+                  starsEarned: _starsEarned,
+                  onPlayAgain: _restart,
+                  onExit: () => context.go('/games'),
+                  onReview: () => showGameReview(
+                    context,
+                    items: _reviewItems,
+                    gameTitle: 'Pronunciation Practice',
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (_newAchievements.isNotEmpty)
+            AchievementUnlockedOverlay(
+              achievements: _newAchievements,
+              onDismiss: () => setState(() => _newAchievements = []),
+            ),
+        ],
+      );
+    }
+
+    final round = _rounds[_currentRound];
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded),
+          tooltip: 'Close',
+          onPressed: () => context.go('/games'),
+        ),
+        title: Text(
+          'Listen & Pick  •  ${_currentRound + 1}/${_rounds.length}',
+        ),
+        actions: [
+          if (isTimedMode)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GameTimerWidget(
+                remainingSeconds: remainingSeconds,
+                totalSeconds: totalTimerSeconds,
+                size: 44,
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.star_rounded,
+                        size: 20, color: AppColors.warning),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_score',
+                      style: AppTypography.labelLarge
+                          .copyWith(color: AppColors.warning),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            // ─── Progress Bar ────────────────
+            Semantics(
+              label: 'Round ${_currentRound + 1} of ${_rounds.length}, score $_score',
+              child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: (_currentRound + 1) / _rounds.length,
+                minHeight: 6,
+                backgroundColor: AppColors.infoLight.withValues(alpha: 0.3),
+                valueColor: const AlwaysStoppedAnimation(AppColors.info),
+              ),
+            ),
+            ),
+            const SizedBox(height: 28),
+
+            // ─── Prompt Area ─────────────────
+            Expanded(
+              flex: 3,
+              child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: round.correctCard.category.color
+                          .withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: round.correctCard.category.color
+                            .withValues(alpha: 0.3),
+                        width: 2,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Big speaker button
+                        Semantics(
+                          button: true,
+                          label: 'Play sound: tap to hear the ${round.isEnglishPrompt ? 'English' : 'Filipino'} word',
+                          child: GestureDetector(
+                          onTap: _speakCurrentWord,
+                          child: Container(
+                            width: context.responsiveSize(88),
+                            height: context.responsiveSize(88),
+                            decoration: BoxDecoration(
+                              gradient: AppColors.primaryGradient,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.3),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.volume_up_rounded,
+                              size: context.responsiveSize(44),
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          round.isEnglishPrompt
+                              ? AppLocalizations.of(context)!.listenEnglish
+                              : AppLocalizations.of(context)!.listenFilipino,
+                          style: AppTypography.titleMedium.copyWith(
+                            color: hc.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          round.isEnglishPrompt
+                              ? AppLocalizations.of(context)!.pickFilipino
+                              : AppLocalizations.of(context)!.pickEnglish,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: round.correctCard.category.darkColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Tap to replay hint
+                        Text(
+                          AppLocalizations.of(context)!.tapSpeakerReplay,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.textHint,
+                          ),
+                        ),
+                        // Voice answer mic button
+                        if (ref.watch(settingsProvider).speechToText) ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              GestureDetector(
+                                onTap: _answered ? null : _handleVoiceAnswer,
+                                child: MicrophoneWaveform(
+                                  isListening: _isListening,
+                                  size: 48,
+                                  color: _isListening
+                                      ? AppColors.error
+                                      : AppColors.accent,
+                                ),
+                              ),
+                              if (_voiceHint.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    _voiceHint,
+                                    style: AppTypography.labelSmall.copyWith(
+                                      color: _isListening ? AppColors.info : AppColors.error,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                  .animate(key: ValueKey(_currentRound))
+                  .fadeIn(duration: 300.ms)
+                  .slideX(begin: 0.1, end: 0),
+            ),
+            const SizedBox(height: 24),
+
+            // ─── Answer Choices ──────────────
+            Expanded(
+              flex: 4,
+              child: GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: _numChoices <= 3 ? 1.3 : 1.1,
+                ),
+                itemCount: round.choices.length,
+                itemBuilder: (context, index) {
+                  final choice = round.choices[index];
+                  final isSelected = _selectedIndex == index;
+                  final isCorrect = index == round.correctIndex;
+                  final showCorrect = _answered && isCorrect;
+                  final showWrong = _answered && isSelected && !isCorrect;
+
+                  Color bgColor = hc.surface;
+                  Color borderColor = AppColors.primary.withValues(alpha: 0.2);
+                  Color textColor = hc.textPrimary;
+
+                  if (showCorrect) {
+                    bgColor = AppColors.successLight;
+                    borderColor = AppColors.success;
+                    textColor = AppColors.successDark;
+                  } else if (showWrong) {
+                    bgColor = AppColors.errorLight;
+                    borderColor = AppColors.error;
+                    textColor = AppColors.errorDark;
+                  }
+
+                  // Show the answer language (opposite of prompt)
+                  final choiceText = round.isEnglishPrompt
+                      ? choice.wordFilipino
+                      : choice.wordEnglish;
+
+                  Widget card = Semantics(
+                    button: true,
+                    label: 'Answer choice: $choiceText${showCorrect ? ', correct answer' : showWrong ? ', wrong answer' : ''}',
+                    child: GestureDetector(
+                    onTap: () => _selectAnswer(index),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: borderColor, width: 2),
+                        boxShadow: AppColors.softShadow,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            FlashcardEmojis.forId(choice.id),
+                            style: const TextStyle(fontSize: 36),
+                          ),
+                          const SizedBox(height: 8),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              choiceText,
+                              style: AppTypography.titleSmall.copyWith(
+                                color: textColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ),
+                  );
+
+                  // Shake animation for wrong answer
+                  if (showWrong) {
+                    card = card
+                        .animate()
+                        .shakeX(hz: 6, amount: 4, duration: 400.ms);
+                  }
+                  // Scale up for correct
+                  if (showCorrect) {
+                    card = card
+                        .animate()
+                        .scale(
+                          begin: const Offset(1, 1),
+                          end: const Offset(1.05, 1.05),
+                          duration: 300.ms,
+                        )
+                        .then()
+                        .scale(
+                          begin: const Offset(1.05, 1.05),
+                          end: const Offset(1, 1),
+                          duration: 200.ms,
+                        );
+                  }
+
+                  return card
+                      .animate(key: ValueKey('$_currentRound-$index'))
+                      .fadeIn(duration: 300.ms, delay: (index * 80).ms)
+                      .slideY(begin: 0.1, end: 0);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────
+// Round data class
+// ────────────────────────────────────────
+
+class _PronunciationRound {
+  final Flashcard correctCard;
+  final List<Flashcard> choices;
+  final int correctIndex;
+
+  /// If true, TTS speaks English and the student picks the Filipino answer.
+  /// If false, TTS speaks Filipino and the student picks the English answer.
+  final bool isEnglishPrompt;
+
+  _PronunciationRound({
+    required this.correctCard,
+    required this.choices,
+    required this.correctIndex,
+    required this.isEnglishPrompt,
+  });
+}

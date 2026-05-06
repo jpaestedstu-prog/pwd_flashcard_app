@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(findstr /I \"rules firestore\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Maria Jusle\\\\Desktop\\\\2003-2004\\\\THESIS CAPSTONE\\\\part1 - Copy \\(4\\)\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Read(//c/Users/Maria Jusle/Desktop/2003-2004/THESIS CAPSTONE/**)",
+      "Bash(xargs wc *)",
+      "Bash(dart analyze *)",
+      "Bash(where flutter *)",
+      "Bash(where dart *)",
+      "Read(//c/Users/Maria Jusle/AppData/Local//**)",
+      "Read(//c//**)",
+      "Skill(schedule)",
+      "Skill(schedule:*)",
+      "Bash(dir \"c:\\\\Users\\\\Maria Jusle\\\\Desktop\\\\2003-2004\\\\THESIS CAPSTONE\\\\part1 - Copy \\(4\\)\")",
+      "Bash(cmd.exe /c \"flutter analyze lib\\\\\\\\features\\\\\\\\onboarding\\\\\\\\screens\\\\\\\\profile_selection_screen.dart lib\\\\\\\\features\\\\\\\\classroom\\\\\\\\screens\\\\\\\\join_class_screen.dart lib\\\\\\\\providers\\\\\\\\join_code_provider.dart lib\\\\\\\\navigation\\\\\\\\app_router.dart\")",
+      "Bash(/c/src/flutter/bin/flutter analyze *)",
+      "Bash(export PATH=\"/c/Windows/System32:/c/Program Files/Git/cmd:$PATH\")",
+      "Read(//c/Windows/System32/WindowsPowerShell/v1.0//**)",
+      "Read(//c/Program Files/**)",
+      "Bash(export PATH=\"/c/Windows/System32:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Program Files/Git/cmd:$PATH\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Maria Jusle\\\\Desktop\\\\2003-2004\\\\THESIS CAPSTONE\\\\part1 - Copy \\(4\\)\" -File -Recurse)",
+      "Bash(Select-Object -First 50)",
+      "Bash(Format-Table Name, FullName)",
+      "Read(//c/flutter/**)",
+      "Read(//c/src/flutter/bin/**)",
+      "Read(//c/Users/Maria Jusle/**)",
+      "Bash(/c/flutter/bin/flutter analyze *)"
+    ]
+  }
+}

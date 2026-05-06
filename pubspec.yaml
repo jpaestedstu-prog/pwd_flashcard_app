@@ -1,0 +1,99 @@
+name: pwdpwdpwd
+description: "Interactive Flashcard App for PWD Students"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+
+  # Navigation
+  go_router: ^14.8.1
+
+  # Local Storage
+  hive_flutter: ^1.1.0
+
+  # Animations
+  flutter_animate: ^4.5.2
+  confetti: ^0.8.0
+  shimmer: ^3.0.0
+  lottie: ^3.3.1
+
+  # UI
+  google_fonts: ^6.2.1
+  auto_size_text: ^3.0.0
+  percent_indicator: ^4.2.5
+  fl_chart: ^0.69.0
+  gap: ^3.0.1
+  flutter_staggered_animations: ^1.1.1
+
+  # Audio / TTS
+  flutter_tts: ^4.2.0
+  speech_to_text: ^7.0.0
+
+  # Video
+  video_player: ^2.9.3
+
+  # Utilities
+  uuid: ^4.5.1
+  equatable: ^2.0.7
+  audioplayers: ^6.5.1
+  pdf: ^3.11.3
+  printing: ^5.14.2
+  path_provider: ^2.1.5
+  share_plus: ^10.1.4
+  file_picker: ^8.3.7
+
+  # Notifications
+  flutter_local_notifications: ^19.0.0
+  timezone: ^0.10.0
+
+  # Cloud Sync (Firebase)
+  firebase_core: ^3.6.0
+  cloud_firestore: ^5.4.4
+  firebase_auth: ^5.3.1
+  connectivity_plus: ^6.1.4
+
+  # Cryptography (PIN hashing)
+  crypto: ^3.0.3
+
+  intl: any
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  mocktail: ^1.0.4
+
+flutter:
+  generate: true
+  uses-material-design: true
+
+  assets:
+    - assets/images/categories/
+    - assets/images/flashcards/
+    - assets/images/onboarding/
+    - assets/images/games/
+    - assets/animations/
+    - assets/sounds/
+    - assets/videos/fsl/Animals/
+    - assets/videos/fsl/Colors & Shapes/
+    - assets/videos/fsl/Numbers/
+    - assets/videos/fsl/Body Parts/
+    - assets/videos/fsl/Food & Drinks/
+    - assets/videos/fsl/Family & Greetings/
+    - assets/videos/fsl/Clothing/
+    - assets/videos/fsl/Weather/
+    - assets/videos/fsl/Classroom/
+    - assets/videos/fsl/Transportation/
+    - assets/videos/fsl/Emotions/
+    - assets/videos/fsl/Days & Time/
+    - google_fonts/

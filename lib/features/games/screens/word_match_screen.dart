@@ -1,0 +1,479 @@
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
+import '../../../data/models/enums.dart';
+import '../../../data/models/models.dart';
+import '../../../data/local/seed_data.dart';
+import '../../../providers/app_providers.dart';
+import '../../../widgets/game_widgets.dart';
+import '../../../widgets/achievement_overlay.dart';
+import '../../../widgets/game_review_sheet.dart';
+import '../../../widgets/lottie_celebration_overlay.dart';
+import '../../../widgets/accessible_celebration_overlay.dart';
+import '../../../core/accessibility/sound_service.dart';
+import '../../../core/accessibility/haptic_service.dart';
+import '../../../core/services/celebration_service.dart';
+import '../../../data/models/achievements.dart';
+import '../../../data/local/spaced_repetition_service.dart';
+import '../../../widgets/flashcard_image.dart';
+import '../timed_game_mixin.dart';
+import '../../../l10n/app_localizations.dart';
+
+class WordMatchScreen extends ConsumerStatefulWidget {
+  final GameDifficulty difficulty;
+  final List<FlashcardCategory> categories;
+  final bool timedMode;
+  const WordMatchScreen({
+    super.key,
+    this.difficulty = GameDifficulty.medium,
+    this.categories = const [],
+    this.timedMode = false,
+  });
+
+  @override
+  ConsumerState<WordMatchScreen> createState() => _WordMatchScreenState();
+}
+
+class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
+    with TimedGameMixin {
+  late List<Flashcard> _allCards;
+  late List<_WordMatchRound> _rounds;
+  int _currentRound = 0;
+  int _score = 0;
+  int? _selectedIndex;
+  bool _answered = false;
+  bool _showResult = false;
+  List<Achievement> _newAchievements = [];
+  final List<GameReviewItem> _reviewItems = [];
+  final _random = Random();
+
+  /// Difficulty-based config
+  int get _totalRounds => switch (widget.difficulty) {
+    GameDifficulty.easy => 6,
+    GameDifficulty.medium => 10,
+    GameDifficulty.hard => 14,
+  };
+
+  int get _numChoices => switch (widget.difficulty) {
+    GameDifficulty.easy => 3,
+    GameDifficulty.medium => 4,
+    GameDifficulty.hard => 4,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    var source = List.of(SeedData.allFlashcards);
+    if (widget.categories.isNotEmpty) {
+      source = source.where((c) => widget.categories.contains(c.category)).toList();
+    }
+    _allCards = source..shuffle();
+    _generateRounds();
+    startTimerIfNeeded(widget.timedMode);
+  }
+
+  @override
+  void dispose() {
+    disposeTimer();
+    super.dispose();
+  }
+
+  @override
+  void onTimeUp() {
+    _saveProgress();
+    final celebType = _starsEarned >= 3
+        ? CelebrationType.perfectScore
+        : CelebrationType.gameComplete;
+    AccessibleCelebrationOverlay.show(context: context, ref: ref, type: celebType);
+    ref.read(hapticServiceProvider).gameComplete();
+    setState(() => _showResult = true);
+  }
+
+  void _generateRounds() {
+    _rounds = [];
+    final shuffled = List.of(_allCards)..shuffle(_random);
+    for (int i = 0; i < _totalRounds && i < shuffled.length; i++) {
+      final correct = shuffled[i];
+      final others = _allCards.where((c) => c.id != correct.id).toList()
+        ..shuffle(_random);
+      final choices = [correct, ...others.take(_numChoices - 1)]..shuffle(_random);
+      _rounds.add(_WordMatchRound(
+        correctCard: correct,
+        choices: choices,
+        correctIndex: choices.indexOf(correct),
+      ));
+    }
+  }
+
+  void _selectAnswer(int index) {
+    if (_answered) return;
+    final sound = ref.read(soundServiceProvider);
+    final haptic = ref.read(hapticServiceProvider);
+    // Tactile + audio confirmation that the tap registered, *before* the
+    // success/error pattern fires. Without this, fast taps feel inert
+    // until ~150 ms later when the answer is judged.
+    haptic.lightTap();
+    sound.playTap();
+    setState(() {
+      _selectedIndex = index;
+      _answered = true;
+      final round = _rounds[_currentRound];
+      final isCorrect = index == round.correctIndex;
+      _reviewItems.add(GameReviewItem(
+        wordEnglish: round.correctCard.wordEnglish,
+        wordFilipino: round.correctCard.wordFilipino,
+        category: round.correctCard.category,
+        isCorrect: isCorrect,
+        userAnswer: isCorrect ? null : round.choices[index].wordEnglish,
+      ));
+      if (isCorrect) {
+        _score++;
+        sound.playCorrect();
+        haptic.success();
+      } else {
+        sound.playWrong();
+        haptic.error();
+      }
+    });
+
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      if (_currentRound < _rounds.length - 1) {
+        setState(() {
+          _currentRound++;
+          _selectedIndex = null;
+          _answered = false;
+        });
+      } else {
+        _saveProgress();
+        final celebType = _starsEarned >= 3
+            ? CelebrationType.perfectScore
+            : CelebrationType.gameComplete;
+        AccessibleCelebrationOverlay.show(context: context, ref: ref, type: celebType);
+        ref.read(hapticServiceProvider).gameComplete();
+        setState(() => _showResult = true);
+      }
+    });
+  }
+
+  void _restart() {
+    setState(() {
+      _currentRound = 0;
+      _score = 0;
+      _selectedIndex = null;
+      _answered = false;
+      _showResult = false;
+      _reviewItems.clear();
+      _allCards.shuffle();
+      _generateRounds();
+      startTimerIfNeeded(widget.timedMode);
+    });
+  }
+
+  int get _starsEarned {
+    final pct = _score / _rounds.length;
+    if (pct >= 0.9) return 3;
+    if (pct >= 0.7) return 2;
+    if (pct >= 0.5) return 1;
+    return 0;
+  }
+
+  void _saveProgress() {
+    final categories = _rounds
+        .map((r) => r.correctCard.category)
+        .toSet()
+        .toList();
+    ref.read(progressProvider.notifier).recordGameResult(
+      gameType: GameType.wordMatch,
+      score: _score,
+      total: _rounds.length,
+      starsEarned: _starsEarned,
+      categoriesPlayed: categories,
+    );
+    _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
+
+    // Record per-word accuracy for spaced repetition
+    final profile = ref.read(profileProvider);
+    if (profile != null) {
+      final srResults = <String, bool>{};
+      for (final r in _reviewItems) {
+        final card = _allCards.where((c) => c.wordEnglish == r.wordEnglish).firstOrNull;
+        if (card != null) srResults[card.id] = r.isCorrect;
+      }
+      SpacedRepetitionService.recordBatch(profileId: profile.id, results: srResults);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    if (_showResult) {
+      final celebration = ref.read(celebrationServiceProvider);
+      final celebType = _starsEarned >= 3
+          ? CelebrationType.perfectScore
+          : CelebrationType.gameComplete;
+      return LottieCelebrationOverlay(
+        show: true,
+        lottieAsset: celebration.lottieAssetFor(celebType),
+        child: Stack(
+        children: [
+          CelebrationOverlay(
+            show: true,
+            child: Scaffold(
+              body: Center(
+                child: GameResultDialog(
+                  score: _score,
+                  total: _rounds.length,
+                  starsEarned: _starsEarned,
+                  onPlayAgain: _restart,
+                  onExit: () => context.go('/games'),
+                  onReview: () => showGameReview(
+                    context,
+                    items: _reviewItems,
+                    gameTitle: 'Word Match',
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (_newAchievements.isNotEmpty)
+            AchievementUnlockedOverlay(
+              achievements: _newAchievements,
+              onDismiss: () => setState(() => _newAchievements = []),
+            ),
+        ],
+      ),
+      );
+    }
+
+    final round = _rounds[_currentRound];
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded),
+          tooltip: 'Close',
+          onPressed: () => context.go('/games'),
+        ),
+        title: Text('Word Match  •  ${_currentRound + 1}/${_rounds.length}'),
+        actions: [
+          if (isTimedMode)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GameTimerWidget(
+                remainingSeconds: remainingSeconds,
+                totalSeconds: totalTimerSeconds,
+                size: 44,
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.star_rounded,
+                        size: 20, color: AppColors.warning),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_score',
+                      style: AppTypography.labelLarge
+                          .copyWith(color: AppColors.warning),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            // ─── Progress bar ─────────────────────
+            Semantics(
+              label: 'Round ${_currentRound + 1} of ${_rounds.length}',
+              child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: (_currentRound + 1) / _rounds.length,
+                minHeight: 6,
+                backgroundColor: AppColors.primaryLight.withValues(alpha: 0.3),
+                valueColor:
+                    const AlwaysStoppedAnimation(AppColors.primary),
+              ),
+            ),
+            ),
+            const SizedBox(height: 28),
+
+            // ─── Question Image Area ──────────────
+            Expanded(
+              flex: 3,
+              child: Semantics(
+                label: 'Question: What is the English word for ${round.correctCard.wordFilipino}?',
+                child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: round.correctCard.category.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: round.correctCard.category.color.withValues(alpha: 0.3),
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    FlashcardImage(
+                      card: round.correctCard,
+                      size: 56,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      AppLocalizations.of(context)!.whatIsThisWord,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: hc.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      round.correctCard.wordFilipino,
+                      style: AppTypography.headlineMedium.copyWith(
+                        color: round.correctCard.category.darkColor,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              )
+                  .animate(key: ValueKey(_currentRound))
+                  .fadeIn(duration: 300.ms)
+                  .slideX(begin: 0.1, end: 0),
+            ),
+            const SizedBox(height: 24),
+
+            // ─── Answer Choices ───────────────────
+            Expanded(
+              flex: 3,
+              child: GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: context.isLargeTablet ? 4 : 2,
+                  mainAxisSpacing: context.gridSpacing * 0.75,
+                  crossAxisSpacing: context.gridSpacing * 0.75,
+                  childAspectRatio: context.isLargeTablet ? 2.2 : 2.5,
+                ),
+                itemCount: round.choices.length,
+                itemBuilder: (context, index) {
+                  final choice = round.choices[index];
+                  final isSelected = _selectedIndex == index;
+                  final isCorrect = index == round.correctIndex;
+                  final showCorrect = _answered && isCorrect;
+                  final showWrong = _answered && isSelected && !isCorrect;
+
+                  Color bgColor = hc.surface;
+                  Color borderColor = AppColors.primary.withValues(alpha: 0.2);
+                  Color textColor = hc.textPrimary;
+
+                  if (showCorrect) {
+                    bgColor = AppColors.successLight;
+                    borderColor = AppColors.success;
+                    textColor = AppColors.successDark;
+                  } else if (showWrong) {
+                    bgColor = AppColors.errorLight;
+                    borderColor = AppColors.error;
+                    textColor = AppColors.errorDark;
+                  }
+
+                  Widget card = Semantics(
+                    button: true,
+                    label: 'Answer choice: ${choice.wordEnglish}'
+                        '${showCorrect ? ', correct answer' : ''}'
+                        '${showWrong ? ', wrong answer' : ''}',
+                    child: GestureDetector(
+                      onTap: () => _selectAnswer(index),
+                      child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: borderColor, width: 2),
+                        boxShadow: AppColors.softShadow,
+                      ),
+                      child: Center(
+                        child: Text(
+                          choice.wordEnglish,
+                          style: AppTypography.titleMedium.copyWith(
+                            color: textColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                    ),
+                  );
+
+                  // Shake animation for wrong answer
+                  if (showWrong) {
+                    card = card
+                        .animate()
+                        .shakeX(hz: 6, amount: 4, duration: 400.ms);
+                  }
+                  // Scale up for correct
+                  if (showCorrect) {
+                    card = card
+                        .animate()
+                        .scale(
+                          begin: const Offset(1, 1),
+                          end: const Offset(1.05, 1.05),
+                          duration: 300.ms,
+                        )
+                        .then()
+                        .scale(
+                          begin: const Offset(1.05, 1.05),
+                          end: const Offset(1, 1),
+                          duration: 200.ms,
+                        );
+                  }
+
+                  return card
+                      .animate(key: ValueKey('$_currentRound-$index'))
+                      .fadeIn(
+                        duration: 300.ms,
+                        delay: (index * 80).ms,
+                      )
+                      .slideY(begin: 0.1, end: 0);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WordMatchRound {
+  final Flashcard correctCard;
+  final List<Flashcard> choices;
+  final int correctIndex;
+
+  _WordMatchRound({
+    required this.correctCard,
+    required this.choices,
+    required this.correctIndex,
+  });
+}

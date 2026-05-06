@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "905710485263",
+    "project_id": "pwd-flashcard",
+    "storage_bucket": "pwd-flashcard.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:905710485263:android:0ba72d9f961c6a6c8fc87a",
+        "android_client_info": {
+          "package_name": "com.example.pwdpwdpwd"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxDwf2oqp6Y0HW_VSxcqt4ZTYDWGgCnxg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
