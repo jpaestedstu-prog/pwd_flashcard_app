@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../models/active_time_log.dart';
+import '../models/child_alarm.dart';
+import '../models/child_time_limit.dart';
 import '../models/models.dart';
 import '../models/enums.dart';
 import '../models/classroom.dart';
@@ -25,6 +28,9 @@ class HiveService {
   static const String _membersBox = 'classroom_members';
   static const String _homeGroupsBox = 'home_groups';
   static const String _homeGroupMembersBox = 'home_group_members';
+  static const String _childAlarmsBox = 'child_alarms';
+  static const String _childTimeLimitsBox = 'child_time_limits';
+  static const String _activeTimeLogsBox = 'active_time_logs';
 
   /// Initialize Hive and open all boxes
   static Future<void> init() async {
@@ -38,6 +44,9 @@ class HiveService {
     await Hive.openBox(_membersBox);
     await Hive.openBox(_homeGroupsBox);
     await Hive.openBox(_homeGroupMembersBox);
+    await Hive.openBox(_childAlarmsBox);
+    await Hive.openBox(_childTimeLimitsBox);
+    await Hive.openBox(_activeTimeLogsBox);
     // Open the sync queue box for offline change tracking
     await SyncQueueStorage.init();
     // One-shot migration to per-student note keys. Idempotent.
@@ -214,6 +223,13 @@ class HiveService {
 
   static Future<void> setActiveProfileId(String id) async {
     await _profileBox.put('activeProfileId', id);
+  }
+
+  /// Clear the active profile id — used when the educator evicts the
+  /// learner from a class / home group so the next app launch lands on
+  /// the role-selection screen instead of an orphaned profile.
+  static Future<void> clearActiveProfileId() async {
+    await _profileBox.delete('activeProfileId');
   }
 
   static bool get hasProfiles => getProfiles().isNotEmpty;
@@ -759,6 +775,199 @@ class HiveService {
     return result;
   }
 
+  // ─── Child Alarms (per-child, set by parent/teacher) ──
+
+  static Box get _alarmsBox => Hive.box(_childAlarmsBox);
+
+  static Future<void> cacheChildAlarm(ChildAlarm a) async {
+    await _alarmsBox.put(a.id, a.toJson());
+  }
+
+  static Future<void> deleteChildAlarmLocal(String alarmId) async {
+    await _alarmsBox.delete(alarmId);
+  }
+
+  /// Look up a single alarm by id. Returns null if not cached locally.
+  /// Used by the alarm-tap handler — Firestore may not have streamed
+  /// yet when the OS launches the app from a notification.
+  static ChildAlarm? getChildAlarmById(String alarmId) {
+    final raw = _alarmsBox.get(alarmId);
+    if (raw == null) return null;
+    try {
+      return ChildAlarm.fromJson(Map<String, dynamic>.from(raw as Map));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// All cached alarms targeting [childProfileId]. Used by the child's
+  /// device on cold start before the Firestore stream lands.
+  static List<ChildAlarm> getChildAlarmsForChild(String childProfileId) {
+    final result = <ChildAlarm>[];
+    for (final key in _alarmsBox.keys) {
+      final raw = _alarmsBox.get(key);
+      if (raw is Map && raw['child_profile_id'] == childProfileId) {
+        try {
+          result.add(ChildAlarm.fromJson(Map<String, dynamic>.from(raw)));
+        } catch (_) {
+          continue;
+        }
+      }
+    }
+    return result;
+  }
+
+  // ─── Child Time Limits ────────────────────────────────
+
+  static Box get _limitsBox => Hive.box(_childTimeLimitsBox);
+
+  static Future<void> cacheChildTimeLimit(ChildTimeLimit l) async {
+    await _limitsBox.put(l.childProfileId, l.toJson());
+  }
+
+  static Future<void> deleteChildTimeLimitLocal(String childProfileId) async {
+    await _limitsBox.delete(childProfileId);
+  }
+
+  /// Cached limit for [childProfileId], or null if none has been set.
+  static ChildTimeLimit? getChildTimeLimit(String childProfileId) {
+    final raw = _limitsBox.get(childProfileId);
+    if (raw == null) return null;
+    try {
+      return ChildTimeLimit.fromJson(Map<String, dynamic>.from(raw as Map));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ─── PIN Unlock Grace (local, per child) ──────────────
+  //
+  // The lock screen's PIN unlock cannot write to Firestore as the
+  // educator-setter from the child's device (Firestore rules require the
+  // writer to own the setter profile). The grace is therefore stored
+  // locally and treated as authoritative by [lockStateProvider]. A
+  // best-effort Firestore mirror still runs from the lock screen so the
+  // educator can audit usage when their own device happens to own the
+  // setter — but the rule rejection no longer leaks to the user.
+
+  static String _pinGraceKey(String childProfileId) =>
+      'pin_grace:$childProfileId';
+
+  /// Persist a PIN unlock grace window for [childProfileId]. ISO-8601 so
+  /// the value survives Hive's typed-box round trip without a custom
+  /// adapter.
+  static Future<void> setPinUnlockGrace(
+      String childProfileId, DateTime until) async {
+    await _settBox.put(_pinGraceKey(childProfileId), until.toIso8601String());
+  }
+
+  /// Read the active grace (or null if never set / unparseable). Note:
+  /// expired graces are still returned — the caller compares against
+  /// `DateTime.now()` so the lock provider's recompute logic stays in
+  /// one place.
+  static DateTime? getPinUnlockGrace(String childProfileId) {
+    final raw = _settBox.get(_pinGraceKey(childProfileId));
+    if (raw is! String || raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  /// Drop the grace (e.g. on sign-out or when a learner picks a new
+  /// child profile on the device).
+  static Future<void> clearPinUnlockGrace(String childProfileId) async {
+    await _settBox.delete(_pinGraceKey(childProfileId));
+  }
+
+  // ─── Active Time Logs (foreground-minute counter) ─────
+
+  static Box get _timeLogsBox => Hive.box(_activeTimeLogsBox);
+
+  /// Read today's (or [dayKey]'s) counter for [profileId]. Returns a
+  /// zero-valued log if nothing has been written yet so the caller can
+  /// just compare `.minutesUsed` without null checks.
+  static ActiveTimeLog getActiveTimeLog(String profileId, String dayKey) {
+    final docId = '${profileId}_$dayKey';
+    final raw = _timeLogsBox.get(docId);
+    if (raw == null) {
+      return ActiveTimeLog(
+        profileId: profileId,
+        dayKey: dayKey,
+        lastIncrementAt: DateTime.fromMillisecondsSinceEpoch(0),
+      );
+    }
+    try {
+      return ActiveTimeLog.fromJson(Map<String, dynamic>.from(raw as Map));
+    } catch (_) {
+      return ActiveTimeLog(
+        profileId: profileId,
+        dayKey: dayKey,
+        lastIncrementAt: DateTime.fromMillisecondsSinceEpoch(0),
+      );
+    }
+  }
+
+  static Future<void> saveActiveTimeLog(ActiveTimeLog log) async {
+    await _timeLogsBox.put(log.docId, log.toJson());
+  }
+
+  /// Increment today's foreground-minute counter for [profileId].
+  /// Idempotent within the same wall-clock minute (caller passes the
+  /// minute as part of [dayKey] / [now]).
+  static Future<ActiveTimeLog> incrementActiveTime({
+    required String profileId,
+    required String dayKey,
+    required DateTime now,
+  }) async {
+    final current = getActiveTimeLog(profileId, dayKey);
+    final updated = current.copyWith(
+      minutesUsed: current.minutesUsed + 1,
+      lastIncrementAt: now,
+    );
+    await saveActiveTimeLog(updated);
+    return updated;
+  }
+
+  /// Find every parent/teacher profile linked to [childProfileId] via
+  /// either a classroom or a home group. The lock screen tries each in
+  /// turn so the first matching PIN dismisses the lock.
+  ///
+  /// Offline fallback for `unlockingEducatorsProvider`. Local-only —
+  /// the cross-device case goes through Firestore.
+  static List<UserProfile> getEducatorsLinkedToChild(String childProfileId) {
+    final result = <UserProfile>[];
+    final seen = <String>{};
+
+    UserProfile? lookup(String? id) {
+      if (id == null) return null;
+      return getProfileById(id);
+    }
+
+    // Classroom path: classroom_members → classroom → teacher_id
+    for (final key in _memberBox.keys) {
+      if (!key.toString().endsWith('_$childProfileId')) continue;
+      final raw = _memberBox.get(key);
+      if (raw is! Map) continue;
+      final classroomId = raw['classroom_id'] as String?;
+      if (classroomId == null) continue;
+      final classroom = getCachedClassroom(classroomId);
+      final teacher = lookup(classroom?.teacherId);
+      if (teacher != null && seen.add(teacher.id)) result.add(teacher);
+    }
+
+    // Home-group path: home_group_members → home_group → owner_profile_id
+    for (final key in _hgMemberBox.keys) {
+      if (!key.toString().endsWith(':$childProfileId')) continue;
+      final raw = _hgMemberBox.get(key);
+      if (raw is! Map) continue;
+      final groupId = raw['home_group_id'] as String?;
+      if (groupId == null) continue;
+      final group = getCachedHomeGroup(groupId);
+      final parent = lookup(group?.ownerProfileId);
+      if (parent != null && seen.add(parent.id)) result.add(parent);
+    }
+
+    return result;
+  }
+
   // ─── Reset All Data ────────────────────────────────────
 
   static Future<void> clearAllData() async {
@@ -772,6 +981,9 @@ class HiveService {
     await _memberBox.clear();
     await _hgBox.clear();
     await _hgMemberBox.clear();
+    await _alarmsBox.clear();
+    await _limitsBox.clear();
+    await _timeLogsBox.clear();
   }
 
   // ─── Shop / Purchases ──────────────────────────────────

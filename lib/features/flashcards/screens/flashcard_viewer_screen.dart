@@ -1,11 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
+import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
@@ -473,29 +475,13 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
 
   /// Builds the FSL video asset path from the card's category and English word.
   /// Example: assets/videos/fsl/Animals/dog.mp4
-  String _fslVideoPath(Flashcard card) {
-    final categoryFolder = card.category.label;
-    final fileName = card.wordEnglish.toLowerCase();
-    return 'assets/videos/fsl/$categoryFolder/$fileName.mp4';
-  }
-
-  /// Checks whether the asset exists at build-time bundle.
-  Future<bool> _assetExists(String path) async {
-    try {
-      await rootBundle.load(path);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
   void _showFslVideo(Flashcard card) async {
-    final videoPath = _fslVideoPath(card);
-    final exists = await _assetExists(videoPath);
+    // Ensure the catalog is hydrated, then check registration synchronously.
+    final availability = await FslAssetsService.load();
 
     if (!mounted) return;
 
-    if (!exists) {
+    if (!availability.hasVideo(card)) {
       // No video available for this word — show a friendly message
       showModalBottomSheet(
         context: context,
@@ -573,10 +559,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => _FslVideoSheet(
-        videoPath: videoPath,
-        wordEnglish: card.wordEnglish,
-      ),
+      builder: (context) => _FslVideoSheet(card: card),
     );
   }
 }
@@ -1143,20 +1126,17 @@ class _ActionButton extends StatelessWidget {
 
 // ─── FSL Video Bottom Sheet ───────────────────────────
 class _FslVideoSheet extends StatefulWidget {
-  final String videoPath;
-  final String wordEnglish;
+  final Flashcard card;
 
-  const _FslVideoSheet({
-    required this.videoPath,
-    required this.wordEnglish,
-  });
+  const _FslVideoSheet({required this.card});
 
   @override
   State<_FslVideoSheet> createState() => _FslVideoSheetState();
 }
 
 class _FslVideoSheetState extends State<_FslVideoSheet> {
-  late VideoPlayerController _controller;
+  VideoPlayerController? _controller;
+  File? _videoFile;
   bool _initialized = false;
   bool _hasError = false;
   double _playbackSpeed = 1.0;
@@ -1166,21 +1146,32 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.asset(widget.videoPath)
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() => _initialized = true);
-          _controller.setLooping(true);
-          _controller.play();
-        }
-      }).catchError((_) {
-        if (mounted) setState(() => _hasError = true);
-      });
+    _loadAndInit();
+  }
+
+  Future<void> _loadAndInit() async {
+    try {
+      final file = await FslAssetsService.cachedFileFor(widget.card);
+      if (!mounted) return;
+      _videoFile = file;
+      final controller = VideoPlayerController.file(file);
+      _controller = controller;
+      await controller.initialize();
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+      controller.setLooping(true);
+      controller.play();
+      setState(() => _initialized = true);
+    } catch (_) {
+      if (mounted) setState(() => _hasError = true);
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -1220,7 +1211,7 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
               ),
               const SizedBox(width: 8),
               Text(
-                'FSL — ${widget.wordEnglish}',
+                'FSL — ${widget.card.wordEnglish}',
                 style: AppTypography.titleLarge,
               ),
             ],
@@ -1231,7 +1222,7 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
             borderRadius: BorderRadius.circular(16),
             child: AspectRatio(
               aspectRatio: _initialized
-                  ? _controller.value.aspectRatio
+                  ? _controller!.value.aspectRatio
                   : 16 / 9,
               child: _hasError
                   ? Container(
@@ -1249,16 +1240,16 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
                       ? GestureDetector(
                           onTap: () {
                             setState(() {
-                              _controller.value.isPlaying
-                                  ? _controller.pause()
-                                  : _controller.play();
+                              _controller!.value.isPlaying
+                                  ? _controller!.pause()
+                                  : _controller!.play();
                             });
                           },
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              VideoPlayer(_controller),
-                              if (!_controller.value.isPlaying)
+                              VideoPlayer(_controller!),
+                              if (!_controller!.value.isPlaying)
                                 Container(
                                   width: 56,
                                   height: 56,
@@ -1278,20 +1269,23 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
                                 bottom: 8,
                                 child: GestureDetector(
                                   onTap: () async {
-                                    final wasPlaying = _controller.value.isPlaying;
-                                    final pos = _controller.value.position;
-                                    _controller.pause();
+                                    final controller = _controller;
+                                    final file = _videoFile;
+                                    if (controller == null || file == null) return;
+                                    final wasPlaying = controller.value.isPlaying;
+                                    final pos = controller.value.position;
+                                    controller.pause();
                                     final returnPos = await openFslFullscreenPlayer(
                                       context,
-                                      videoPath: widget.videoPath,
-                                      wordEnglish: widget.wordEnglish,
+                                      videoFile: file,
+                                      wordEnglish: widget.card.wordEnglish,
                                       startPosition: pos,
                                     );
                                     if (returnPos != null && mounted) {
-                                      _controller.seekTo(returnPos);
+                                      controller.seekTo(returnPos);
                                     }
                                     if (wasPlaying && mounted) {
-                                      _controller.play();
+                                      controller.play();
                                     }
                                   },
                                   child: Container(
@@ -1351,7 +1345,7 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
                   child: GestureDetector(
                     onTap: () {
                       setState(() => _playbackSpeed = speed);
-                      _controller.setPlaybackSpeed(speed);
+                      _controller!.setPlaybackSpeed(speed);
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -1386,8 +1380,8 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    _controller.seekTo(Duration.zero);
-                    _controller.play();
+                    _controller!.seekTo(Duration.zero);
+                    _controller!.play();
                   },
                   icon: const Icon(Icons.replay_rounded),
                   label: Text(AppLocalizations.of(context)!.replay),

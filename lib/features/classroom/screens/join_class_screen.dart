@@ -3,13 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../providers/app_providers.dart';
+import '../../../features/onboarding/screens/post_join_setup_screen.dart';
 import '../../../providers/join_code_provider.dart';
 
-/// Student-side screen: enter a 6-character classroom code + name to join.
+/// Student-side screen: enter a 6-character classroom code.
 ///
-/// If a profile is already active and is a guest (`isGuestPlayer == true`),
-/// joining upgrades that profile in place — keeping the UUID and progress.
+/// This is step 1 of the join flow. On success it routes to the
+/// [PostJoinSetupScreen] where the student picks a name, avatar, birth
+/// date, and optional PIN — no profile is written until that step
+/// completes, so a back-button cancel here leaves nothing behind.
 class JoinClassScreen extends ConsumerStatefulWidget {
   const JoinClassScreen({super.key});
 
@@ -20,39 +22,37 @@ class JoinClassScreen extends ConsumerStatefulWidget {
 class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
   final _formKey = GlobalKey<FormState>();
   final _codeController = TextEditingController();
-  final _nameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Reset any leftover state from a previous attempt so the failure
+    // banner from a prior wrong code doesn't linger.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(joinCodeProvider.notifier).reset();
+    });
+  }
 
   @override
   void dispose() {
     _codeController.dispose();
-    _nameController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final activeProfile = ref.read(profileProvider);
-    final upgradingPlayer =
-        activeProfile != null && activeProfile.isGuestPlayer;
+    final classroom = await ref
+        .read(joinCodeProvider.notifier)
+        .validateCode(_codeController.text.trim().toUpperCase());
 
-    await ref.read(joinCodeProvider.notifier).joinByCode(
-          code: _codeController.text.trim().toUpperCase(),
-          name: _nameController.text.trim(),
-          existingProfile: upgradingPlayer ? activeProfile : null,
-        );
+    if (!mounted || classroom == null) return;
+    context.push('/post-join-setup', extra: ClassJoinContext(classroom));
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(joinCodeProvider);
-
-    ref.listen<JoinCodeState>(joinCodeProvider, (prev, next) {
-      if (next is JoinCodeSuccess && mounted) {
-        context.go('/home');
-      }
-    });
-
     final isLoading = state is JoinCodeLoading;
     final failure = state is JoinCodeFailure ? state : null;
 
@@ -104,20 +104,6 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // ─── Name ──────────────────────────────
-                TextFormField(
-                  controller: _nameController,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Your name',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) => (v == null || v.trim().length < 2)
-                      ? 'Please enter your name'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-
                 // ─── Error ─────────────────────────────
                 if (failure != null)
                   Container(
@@ -139,7 +125,7 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
-                      isLoading ? 'Joining…' : 'Join class',
+                      isLoading ? 'Checking…' : 'Join class',
                       style: const TextStyle(fontSize: 16),
                     ),
                   ),

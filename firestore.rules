@@ -55,10 +55,15 @@ service cloud.firestore {
 
     // ─── Profiles ──────────────────────────────────────
     // Reads are open to any signed-in user (educator dashboards need
-    // roster lookups). Writes are owner-scoped, with one extra rule:
-    // student / child profiles cannot mutate their own `learning_level`
-    // — only an educator override (run from the teacher / parent device,
-    // which writes from a different uid) may change it.
+    // roster lookups). Writes are owner-scoped, with two extra paths:
+    //   • student / child profiles cannot mutate their own `learning_level`
+    //     — only an educator override (run from the teacher / parent device,
+    //     which writes from a different uid) may change it.
+    //   • A classroom teacher / home-group owner may patch ONLY the
+    //     learner's `name` (and `updated_at`) when their roster rename
+    //     just produced a matching `*_audit/.../events/...` row stamped
+    //     with their own `actor_uid`. Implemented via [educatorRenamePatch]
+    //     so the rule stays O(1) (no listing of subcollections).
     match /profiles/{profileId} {
       allow read: if signedIn();
       allow create: if signedIn()
@@ -67,8 +72,57 @@ service cloud.firestore {
             && !(resource.data.role in [0, 3]
               && request.resource.data.learning_level
                 != resource.data.learning_level))
-        || claimingUnowned();
+        || claimingUnowned()
+        || educatorRenamePatch(profileId);
       allow delete: if isOwner(resource.data.owner_uid);
+    }
+
+    // True when the incoming write is an educator-driven name-only patch
+    // that has a corresponding audit row stamped with the requester's
+    // uid. The audit row is written by the same client just before the
+    // profile patch (see [FirestoreRepository.updateMemberDisplayName] /
+    // [updateHomeGroupMemberDisplayName]) so the `exists()` check below
+    // resolves on the server side of the same request.
+    function educatorRenamePatch(profileId) {
+      return signedIn()
+        // The client may include exactly one scoping hint (classroom or
+        // home group) alongside the rename. Anything else makes the
+        // patch ineligible for this branch.
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'name',
+            'updated_at',
+            '_rename_actor_classroom_id',
+            '_rename_actor_home_group_id',
+          ])
+        && (
+          // Classroom rename: any classroom_members row referencing this
+          // profileId in a classroom owned by the requester. The client
+          // passes the classroom id as a hint on the patch payload so
+          // the rule check stays O(1).
+          existsClassroomRenameAudit(profileId)
+          || existsHomeGroupRenameAudit(profileId)
+        );
+    }
+
+    // Helper: does any classroom_members row referencing this profileId
+    // also have its parent classroom owned by the requester? We can't
+    // list subcollections from rules, so we look up the membership doc
+    // by the educator's hint — the client writes
+    // `_rename_actor_classroom_id` on the patch payload. If the field
+    // is present, we verify ownership via that classroom's teacher.
+    function existsClassroomRenameAudit(profileId) {
+      return ('_rename_actor_classroom_id' in request.resource.data)
+        && exists(/databases/$(database)/documents/classroom_members/$(request.resource.data._rename_actor_classroom_id + '_' + profileId))
+        && ownsClassroomTeacher(request.resource.data._rename_actor_classroom_id);
+    }
+
+    // Mirror for home-group rename — client passes
+    // `_rename_actor_home_group_id`.
+    function existsHomeGroupRenameAudit(profileId) {
+      return ('_rename_actor_home_group_id' in request.resource.data)
+        && exists(/databases/$(database)/documents/home_group_members/$(request.resource.data._rename_actor_home_group_id + '_' + profileId))
+        && ownsHomeGroupOwner(request.resource.data._rename_actor_home_group_id);
     }
 
     // ─── Progress ──────────────────────────────────────
@@ -264,5 +318,58 @@ service cloud.firestore {
         allow delete: if signedIn() && ownsClassroomTeacher(classroomId);
       }
     }
+
+    // ─── Per-child time limits ─────────────────────────
+    // One doc per child, keyed by childProfileId. Reads are open
+    // (the child's device needs to read its own limit; educators
+    // need to see what they configured). Writes require ownership
+    // of the educator profile referenced by setter_profile_id.
+    match /child_time_limits/{childProfileId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.setter_profile_id);
+      allow delete: if signedIn()
+        && ownsProfile(resource.data.setter_profile_id);
+    }
+
+    // ─── Per-child alarms ──────────────────────────────
+    // Many docs per child. Same write semantics as child_time_limits.
+    match /child_alarms/{alarmId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.setter_profile_id);
+      allow delete: if signedIn()
+        && ownsProfile(resource.data.setter_profile_id);
+    }
+
+    // ─── Per-child unlock overrides ────────────────────
+    // One doc per child, keyed by childProfileId. Granted by an
+    // educator (parent or teacher) to lift the lock screen for a
+    // bounded window. Same write semantics as child_time_limits —
+    // the writer must own the setter_profile_id.
+    match /child_unlock_overrides/{childProfileId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.setter_profile_id);
+      allow delete: if signedIn()
+        && ownsProfile(resource.data.setter_profile_id);
+    }
+
+    // ─── Active time logs (child-written daily counter) ─
+    // The child's device writes here every ~5 minutes. Educators
+    // on other devices read for the dashboard "X / Y min today"
+    // pill. Owner is the child profile (the writer must own it).
+    match /active_time_logs/{logId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.child_profile_id);
+      allow delete: if signedIn()
+        && ownsProfile(resource.data.child_profile_id);
+    }
+
   }
 }

@@ -11,8 +11,30 @@ import '../core/theme/semantic_colors.dart';
 /// AppSnackBar.error(context, message: 'Something went wrong');
 /// AppSnackBar.warning(context, message: 'No internet connection');
 /// ```
+///
+/// For async flows — capture once before the await, show after:
+/// ```dart
+/// final bar = AppSnackBar.captureFor(context);
+/// final ok = await someFuture();
+/// if (!mounted) return;
+/// bar.success('Saved!');  // safe: no BuildContext used post-await
+/// ```
 class AppSnackBar {
   AppSnackBar._();
+
+  /// Snapshot the ScaffoldMessenger and ColorScheme for [context] so the
+  /// snackbar can be shown safely after an `await`, even if the widget that
+  /// originally provided [context] has been unmounted.
+  ///
+  /// The caller is still responsible for checking `mounted` before doing
+  /// anything else with the original context (e.g. `Navigator.pop`).
+  static CapturedAppSnackBar captureFor(BuildContext context) {
+    return CapturedAppSnackBar._(
+      messenger: ScaffoldMessenger.of(context),
+      semanticColors: SemanticColors.of(context),
+      inverseSurface: Theme.of(context).colorScheme.inverseSurface,
+    );
+  }
 
   /// Show a themed snackbar with the app's standard styling.
   static void show(
@@ -24,8 +46,26 @@ class AppSnackBar {
     SnackBarAction? action,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
+    _showOn(
+      ScaffoldMessenger.of(context),
+      message: message,
+      backgroundColor: backgroundColor ?? colorScheme.inverseSurface,
+      icon: icon,
+      duration: duration,
+      action: action,
+    );
+  }
+
+  static void _showOn(
+    ScaffoldMessengerState messenger, {
+    required String message,
+    required Color backgroundColor,
+    IconData? icon,
+    Duration duration = const Duration(seconds: 3),
+    SnackBarAction? action,
+  }) {
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -44,7 +84,7 @@ class AppSnackBar {
             ),
           ],
         ),
-        backgroundColor: backgroundColor ?? colorScheme.inverseSurface,
+        backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -94,4 +134,56 @@ class AppSnackBar {
       icon: Icons.info_rounded,
     );
   }
+}
+
+/// Async-safe snackbar handle returned by [AppSnackBar.captureFor].
+///
+/// Holds a reference to the [ScaffoldMessengerState] that was alive when
+/// [AppSnackBar.captureFor] was called, so the snackbar can be shown after
+/// an `await` without touching a potentially-deactivated [BuildContext].
+class CapturedAppSnackBar {
+  final ScaffoldMessengerState _messenger;
+  final SemanticColors _semanticColors;
+  final Color _inverseSurface;
+
+  const CapturedAppSnackBar._({
+    required ScaffoldMessengerState messenger,
+    required SemanticColors semanticColors,
+    required Color inverseSurface,
+  })  : _messenger = messenger,
+        _semanticColors = semanticColors,
+        _inverseSurface = inverseSurface;
+
+  void show(String message, {Color? backgroundColor, IconData? icon}) {
+    AppSnackBar._showOn(
+      _messenger,
+      message: message,
+      backgroundColor: backgroundColor ?? _inverseSurface,
+      icon: icon,
+    );
+  }
+
+  void success(String message) => show(
+        message,
+        backgroundColor: _semanticColors.success,
+        icon: Icons.check_circle_rounded,
+      );
+
+  void error(String message) => show(
+        message,
+        backgroundColor: _semanticColors.error,
+        icon: Icons.error_rounded,
+      );
+
+  void warning(String message) => show(
+        message,
+        backgroundColor: _semanticColors.warning,
+        icon: Icons.warning_rounded,
+      );
+
+  void info(String message) => show(
+        message,
+        backgroundColor: _semanticColors.info,
+        icon: Icons.info_rounded,
+      );
 }

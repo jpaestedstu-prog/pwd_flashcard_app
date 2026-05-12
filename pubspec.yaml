@@ -63,6 +63,9 @@ dependencies:
   firebase_auth: ^5.3.1
   connectivity_plus: ^6.1.4
 
+  # FSL video caching (GitHub Releases → on-device cache)
+  flutter_cache_manager: ^3.4.1
+
   # Cryptography (PIN hashing)
   crypto: ^3.0.3
 
@@ -84,16 +87,9 @@ flutter:
     - assets/images/games/
     - assets/animations/
     - assets/sounds/
-    - assets/videos/fsl/Animals/
-    - assets/videos/fsl/Colors & Shapes/
-    - assets/videos/fsl/Numbers/
-    - assets/videos/fsl/Body Parts/
-    - assets/videos/fsl/Food & Drinks/
-    - assets/videos/fsl/Family & Greetings/
-    - assets/videos/fsl/Clothing/
-    - assets/videos/fsl/Weather/
-    - assets/videos/fsl/Classroom/
-    - assets/videos/fsl/Transportation/
-    - assets/videos/fsl/Emotions/
-    - assets/videos/fsl/Days & Time/
+    # FSL video URLs live in a bundled JSON manifest. The video files
+    # themselves are hosted on GitHub Releases and cached on-device via
+    # flutter_cache_manager — see FslAssetsService. Bundling the videos
+    # directly would balloon the APK by ~hundreds of MB.
+    - assets/data/
     - google_fonts/

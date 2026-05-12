@@ -102,14 +102,14 @@ class AppTypography {
   );
 
   static TextStyle labelMedium = GoogleFonts.quicksand(
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.5,
     height: 1.4,
   );
 
   static TextStyle labelSmall = GoogleFonts.quicksand(
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.5,
     height: 1.4,
@@ -157,7 +157,7 @@ class AppTypography {
   );
 
   static TextStyle buttonText = GoogleFonts.quicksand(
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: FontWeight.w700,
     letterSpacing: 0.5,
     height: 1.4,
@@ -233,6 +233,6 @@ class AppTypography {
       gameScore.copyWith(fontSize: _scaled(context, 48));
 
   static TextStyle scaledButtonText(BuildContext context) =>
-      buttonText.copyWith(fontSize: _scaled(context, 18));
+      buttonText.copyWith(fontSize: _scaled(context, 16));
 
 }

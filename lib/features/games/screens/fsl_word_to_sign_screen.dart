@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,10 +60,12 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen> {
 
   /// One controller per choice in the current round
   List<VideoPlayerController> _choiceControllers = [];
+  List<File?> _choiceFiles = [];
   List<bool> _choiceReady = [];
 
   /// Pre-initialized controllers for the next round (ready to swap in)
   List<VideoPlayerController> _nextControllers = [];
+  List<File?> _nextFiles = [];
   List<bool> _nextReady = [];
   bool _nextPrefetched = false;
 
@@ -139,8 +143,10 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen> {
         c.dispose();
       }
       _choiceControllers = _nextControllers;
+      _choiceFiles = _nextFiles;
       _choiceReady = _nextReady;
       _nextControllers = [];
+      _nextFiles = [];
       _nextReady = [];
       _nextPrefetched = false;
       if (mounted) setState(() {});
@@ -152,34 +158,56 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen> {
       c.dispose();
     }
     _choiceControllers = [];
+    _choiceFiles = [];
     _choiceReady = [];
 
     if (_currentRound >= _rounds.length) return;
 
-    _choiceControllers = _initControllersForRound(_currentRound);
+    final round = _rounds[_currentRound];
+    final files = await _resolveFilesForRound(round);
+    if (!mounted) return;
+    _choiceFiles = files;
+    _choiceControllers = [
+      for (final f in files)
+        if (f != null)
+          VideoPlayerController.file(f)
+        else
+          // Placeholder when a video failed to resolve — kept in the list so
+          // indices line up with `round.choices`. Will be flagged as not-ready.
+          VideoPlayerController.networkUrl(Uri.parse('about:blank')),
+    ];
     _choiceReady = List.filled(_choiceControllers.length, false);
 
-    await _initializeControllers(_choiceControllers, _choiceReady);
-    // Single batched setState after all controllers are ready
+    await _initializeControllers(_choiceControllers, _choiceFiles, _choiceReady);
     if (mounted) setState(() {});
   }
 
-  /// Creates VideoPlayerControllers for a given round index (does NOT init)
-  List<VideoPlayerController> _initControllersForRound(int roundIndex) {
-    final round = _rounds[roundIndex];
-    return [
-      for (final choice in round.choices)
-        VideoPlayerController.asset(_fslVideoPath(choice)),
-    ];
+  /// Resolves the cached video file for every choice in [round], in parallel.
+  /// Returns nulls for any choice whose video isn't registered or couldn't be
+  /// fetched — the caller renders a "not ready" placeholder for those.
+  Future<List<File?>> _resolveFilesForRound(_FslRound round) async {
+    return Future.wait(
+      round.choices.map((choice) async {
+        try {
+          return await FslAssetsService.cachedFileFor(choice);
+        } catch (_) {
+          return null;
+        }
+      }),
+    );
   }
 
-  /// Initializes, loops, mutes, and plays a list of controllers in parallel.
+  /// Initializes, loops, mutes, and plays the controllers whose file
+  /// resolved successfully (in parallel). Controllers without a file stay
+  /// unready and the UI shows a placeholder for them.
   Future<void> _initializeControllers(
     List<VideoPlayerController> controllers,
+    List<File?> files,
     List<bool> readyFlags,
   ) async {
     await Future.wait(
       List.generate(controllers.length, (i) async {
+        if (files[i] == null) return;
         try {
           await controllers[i].initialize();
           controllers[i].setLooping(true);
@@ -194,7 +222,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen> {
   }
 
   /// Pre-initialize the next round's video controllers in the background.
-  void _prefetchNextRound() {
+  Future<void> _prefetchNextRound() async {
     final nextIndex = _currentRound + 1;
     if (nextIndex >= _rounds.length) return;
 
@@ -202,19 +230,23 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen> {
     for (final c in _nextControllers) {
       c.dispose();
     }
-    _nextControllers = _initControllersForRound(nextIndex);
+    final round = _rounds[nextIndex];
+    final files = await _resolveFilesForRound(round);
+    if (!mounted) return;
+    _nextFiles = files;
+    _nextControllers = [
+      for (final f in files)
+        if (f != null)
+          VideoPlayerController.file(f)
+        else
+          VideoPlayerController.networkUrl(Uri.parse('about:blank')),
+    ];
     _nextReady = List.filled(_nextControllers.length, false);
     _nextPrefetched = false;
 
-    _initializeControllers(_nextControllers, _nextReady).then((_) {
+    _initializeControllers(_nextControllers, _nextFiles, _nextReady).then((_) {
       _nextPrefetched = true;
     });
-  }
-
-  String _fslVideoPath(Flashcard card) {
-    final categoryFolder = card.category.label;
-    final fileName = card.wordEnglish.toLowerCase();
-    return 'assets/videos/fsl/$categoryFolder/$fileName.mp4';
   }
 
   @override
@@ -574,12 +606,16 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen> {
                                             child: GestureDetector(
                                               onTap: () async {
                                                 final ctrl = _choiceControllers[index];
+                                                final file = index < _choiceFiles.length
+                                                    ? _choiceFiles[index]
+                                                    : null;
+                                                if (file == null) return;
                                                 final wasPlaying = ctrl.value.isPlaying;
                                                 final pos = ctrl.value.position;
                                                 ctrl.pause();
                                                 final returnPos = await openFslFullscreenPlayer(
                                                   context,
-                                                  videoPath: _fslVideoPath(choice),
+                                                  videoFile: file,
                                                   wordEnglish: choice.wordEnglish,
                                                   wordFilipino: choice.wordFilipino,
                                                   startPosition: pos,

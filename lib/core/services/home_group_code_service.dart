@@ -59,6 +59,20 @@ class HomeGroupCodeService {
     if (normalized.isEmpty) return null;
 
     if (FirebaseService.isConfigured) {
+      // Mirror JoinCodeService.findByCode: the home_groups read rule
+      // requires a signed-in user, so make sure auth is ready before the
+      // query — otherwise the failure surfaces as a misleading "rules"
+      // error when the real cause is anonymous auth not being enabled.
+      final uid = await FirebaseService.ensureSignedIn();
+      if (uid == null) {
+        throw const JoinCodeException(
+          JoinCodeError.network,
+          "Couldn't sign in to look up the group code. In the Firebase "
+          'console, open Authentication → Sign-in method and enable '
+          'Anonymous sign-in, then try again.',
+        );
+      }
+
       try {
         final snap = await FirebaseService.db
             .collection(_collection)
@@ -76,8 +90,11 @@ class HomeGroupCodeService {
         if (e.code == 'permission-denied') {
           throw const JoinCodeException(
             JoinCodeError.network,
-            'Firestore denied access. Update your security rules to allow '
-            'reads on the home_groups collection.',
+            'Firestore denied access on /home_groups even though you are '
+            'signed in. The deployed security rules need to allow reads '
+            'for signed-in users on the home_groups collection. See '
+            'firestore.rules and run `firebase deploy --only '
+            'firestore:rules`.',
           );
         }
         throw JoinCodeException(

@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,6 +58,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen> {
   final _random = Random();
 
   VideoPlayerController? _videoController;
+  File? _currentVideoFile;
   bool _videoReady = false;
 
   static const int _numChoices = 4;
@@ -118,27 +121,34 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen> {
 
   Future<void> _prepareVideo() async {
     _videoController?.dispose();
+    _videoController = null;
+    _currentVideoFile = null;
     _videoReady = false;
 
     if (_currentRound >= _rounds.length) return;
     final card = _rounds[_currentRound].correctCard;
-    final path = _fslVideoPath(card);
 
-    _videoController = VideoPlayerController.asset(path);
     try {
-      await _videoController!.initialize();
-      _videoController!.setLooping(true);
-      _videoController!.play();
-      if (mounted) setState(() => _videoReady = true);
+      final file = await FslAssetsService.cachedFileFor(card);
+      if (!mounted) return;
+      _currentVideoFile = file;
+      final controller = VideoPlayerController.file(file);
+      _videoController = controller;
+      await controller.initialize();
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+      controller.setLooping(true);
+      controller.play();
+      setState(() => _videoReady = true);
+      // Warm the next round's video while the user is answering this one.
+      if (_currentRound + 1 < _rounds.length) {
+        FslAssetsService.prefetch(_rounds[_currentRound + 1].correctCard);
+      }
     } catch (_) {
       if (mounted) setState(() => _videoReady = false);
     }
-  }
-
-  String _fslVideoPath(Flashcard card) {
-    final categoryFolder = card.category.label;
-    final fileName = card.wordEnglish.toLowerCase();
-    return 'assets/videos/fsl/$categoryFolder/$fileName.mp4';
   }
 
   @override
@@ -456,20 +466,25 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen> {
                                           child: GestureDetector(
                                             onTap: () async {
                                               final round = _rounds[_currentRound];
-                                              final wasPlaying = _videoController!.value.isPlaying;
-                                              final pos = _videoController!.value.position;
-                                              _videoController!.pause();
+                                              final controller = _videoController;
+                                              final file = _currentVideoFile;
+                                              if (controller == null || file == null) {
+                                                return;
+                                              }
+                                              final wasPlaying = controller.value.isPlaying;
+                                              final pos = controller.value.position;
+                                              controller.pause();
                                               final returnPos = await openFslFullscreenPlayer(
                                                 context,
-                                                videoPath: _fslVideoPath(round.correctCard),
+                                                videoFile: file,
                                                 wordEnglish: round.correctCard.wordEnglish,
                                                 startPosition: pos,
                                               );
                                               if (returnPos != null && mounted) {
-                                                _videoController!.seekTo(returnPos);
+                                                controller.seekTo(returnPos);
                                               }
                                               if (wasPlaying && mounted) {
-                                                _videoController!.play();
+                                                controller.play();
                                               }
                                             },
                                             child: Container(

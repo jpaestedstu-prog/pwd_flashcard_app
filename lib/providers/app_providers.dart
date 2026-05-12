@@ -12,6 +12,7 @@ import '../data/local/seed_data.dart';
 import '../data/remote/firestore_repository.dart';
 import '../core/services/firebase_service.dart';
 import '../core/services/fsl_assets_service.dart';
+import '../core/services/profile_sync_listener.dart';
 import '../core/services/progress_sync_listener.dart';
 import '../core/services/session_tracker.dart';
 import '../core/services/adaptive_difficulty_service.dart';
@@ -36,10 +37,11 @@ final repositoryProvider = Provider<DataRepository>((ref) {
   return const LocalRepository();
 });
 
-// ─── FSL Asset Availability ────────────────────────────
-/// Reports which FSL videos are bundled with this build, so the games and
+// ─── FSL Video Catalog Availability ────────────────────
+/// Reports which FSL videos are registered in Firebase, so the games and
 /// the FSL category picker can hide content that isn't ready yet.
-/// Memoised — the asset manifest is parsed once per app launch.
+/// Memoised — the Firestore `fsl_videos` collection is read once per app
+/// launch (and served from offline cache on subsequent cold starts).
 final fslAvailabilityProvider = FutureProvider<FslAvailability>((ref) {
   return FslAssetsService.load();
 });
@@ -118,7 +120,20 @@ class ProfileNotifier extends Notifier<UserProfile?> {
   UserProfile? _savedEducatorProfile;
 
   @override
-  UserProfile? build() => _loadActiveProfile();
+  UserProfile? build() {
+    // Re-emit the active profile when its remote `profiles/{id}.name`
+    // is hydrated by the [ProfileSyncListener]. Keeps an educator's
+    // rename visible on the learner's device without a relaunch.
+    ref.listen(profileRemoteChangesProvider, (_, next) {
+      final updatedId = next.value;
+      if (updatedId == null) return;
+      final current = state;
+      if (current == null || current.id != updatedId) return;
+      final fresh = HiveService.getProfileById(updatedId);
+      if (fresh != null) state = fresh;
+    });
+    return _loadActiveProfile();
+  }
 
   UserProfile? _loadActiveProfile() {
     final activeId = HiveService.getActiveProfileId();
@@ -141,6 +156,9 @@ class ProfileNotifier extends Notifier<UserProfile?> {
     // Re-read from Hive so we pick up the auto-stamped ownerUid that
     // LocalRepository.saveProfile wrote on our behalf.
     state = HiveService.getProfileById(profile.id) ?? profile;
+    // Subscribe the freshly-saved profile to the remote-name listener
+    // so a teacher / parent rename pushes here without a relaunch.
+    ref.read(profileSyncListenerProvider)?.watch(profile.id);
   }
 
   /// Temporarily switch to a student profile while preserving the
@@ -175,6 +193,24 @@ class ProfileNotifier extends Notifier<UserProfile?> {
 
   void clearProfile() {
     _savedEducatorProfile = null;
+    state = null;
+  }
+
+  /// Handle the learner being removed from a classroom or home group by
+  /// the educator. Clears the linkage on the local profile, signs the
+  /// device out of this active profile, and lets the [MembershipEvictionGate]
+  /// route to the eviction-notice screen.
+  ///
+  /// Idempotent — safe to call once, twice, or while there is no
+  /// active profile (no-op).
+  Future<void> handleEviction({required bool wasClassroom}) async {
+    final p = state;
+    if (p == null) return;
+    final cleared = wasClassroom
+        ? p.copyWith(classroomId: () => null)
+        : p.copyWith(homeGroupId: () => null);
+    await HiveService.saveProfile(cleared);
+    await HiveService.clearActiveProfileId();
     state = null;
   }
 }
@@ -462,33 +498,66 @@ final allProfilesWithProgressProvider =
 
 // ─── Educator Roster Provider (Firestore-backed) ───────
 //
-// Aggregates every student across every classroom owned by [teacherId].
-// Used by the educator-side Students / Analytics / Reports screens which
-// run on devices that don't have those students in their local Hive.
+// Aggregates every child linked to [educatorProfileId] — through both
+// classroom enrollments (teacher-side) and home-group memberships
+// (parent-side). Used by the educator-side Students / Analytics /
+// Reports screens and the Parent Dashboard, which run on devices that
+// don't have those children in their local Hive.
 //
 // Falls back to local Hive when Firebase isn't configured so single-device
 // demos still render something.
+//
+// The parameter is named `educatorProfileId` because it now feeds both
+// teachers and parents; the legacy `teacherId` callsites still work since
+// the binding is positional.
 final educatorRosterProvider =
     FutureProvider.family<List<(UserProfile, LearningProgress)>, String>(
-        (ref, teacherId) async {
+        (ref, educatorProfileId) async {
   if (!FirebaseService.isConfigured) {
+    // Offline branch: union classroom + home-group children from local Hive.
+    // We also keep the previous "all student profiles" fallback so a single-
+    // device demo (no rosters set up) still shows something.
+    final homeGroupChildIds = HiveService.getHomeGroupsByOwner(educatorProfileId)
+        .expand((g) => HiveService.getHomeGroupMembers(g.id))
+        .map((m) => m.profileId)
+        .toSet();
     return ref.watch(allProfilesWithProgressProvider)
-        .where((p) => p.$1.role == UserRole.student && !p.$1.isGuestPlayer)
+        .where((p) =>
+            (p.$1.role == UserRole.student ||
+                    p.$1.role == UserRole.child) &&
+                !p.$1.isGuestPlayer ||
+            homeGroupChildIds.contains(p.$1.id))
         .toList();
   }
   const remote = FirestoreRepository();
-  final classrooms = await remote.getClassroomsByTeacher(teacherId);
   final aggregated = <(UserProfile, LearningProgress)>[];
   final seen = <String>{};
+
+  // Classroom-side roster (teachers)
+  final classrooms = await remote.getClassroomsByTeacher(educatorProfileId);
   for (final c in classrooms) {
     final pairs = await remote.getStudentsWithProgressByClassroom(c.id);
     for (final pair in pairs) {
-      // De-dup in case a student is somehow listed under two classrooms.
+      // De-dup in case a child is listed under two classrooms.
       if (seen.add(pair.$1.id)) {
         aggregated.add(pair);
       }
     }
   }
+
+  // Home-group-side roster (parents) — same de-dup set so a child who
+  // appears in BOTH a classroom and a home group is counted once.
+  final homeGroups =
+      await remote.getHomeGroupsByOwnerProfileId(educatorProfileId);
+  for (final g in homeGroups) {
+    final pairs = await remote.getChildrenWithProgressByHomeGroup(g.id);
+    for (final pair in pairs) {
+      if (seen.add(pair.$1.id)) {
+        aggregated.add(pair);
+      }
+    }
+  }
+
   return aggregated;
 });
 
@@ -677,6 +746,24 @@ final progressSyncListenerProvider = Provider<ProgressSyncListener?>((ref) {
 /// when another device updates a student's stars/streak.
 final progressRemoteChangesProvider = StreamProvider<String>((ref) {
   final listener = ref.watch(progressSyncListenerProvider);
+  if (listener == null) return const Stream<String>.empty();
+  return listener.changes;
+});
+
+/// Singleton [ProfileSyncListener] that hydrates Hive from Firestore
+/// `profiles/{id}` snapshots — used to pick up educator-driven name
+/// patches (Manage Classes > Rename, Home Group > Rename) on the
+/// learner's own device. Overridden in main.dart once the user is
+/// signed in.
+final profileSyncListenerProvider = Provider<ProfileSyncListener?>((ref) {
+  return null;
+});
+
+/// Stream of profileIds whose `profiles/{id}.name` was just refreshed
+/// from the server. [ProfileNotifier] listens to this so the active
+/// profile rebuilds with the new name immediately.
+final profileRemoteChangesProvider = StreamProvider<String>((ref) {
+  final listener = ref.watch(profileSyncListenerProvider);
   if (listener == null) return const Stream<String>.empty();
   return listener.changes;
 });

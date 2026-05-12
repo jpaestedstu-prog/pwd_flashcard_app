@@ -99,6 +99,11 @@ class FirebaseService {
   /// the UI banner and logs so the developer can act on it.
   static String? lastInitError;
 
+  /// The most recent [FirebaseOptions] passed to [init]. Used by
+  /// [retryInit] so callers don't have to re-import the generated
+  /// `firebase_options.dart` from feature widgets.
+  static FirebaseOptions? _lastUsedOptions;
+
   /// Initialise Firebase. Safe to call multiple times.
   ///
   /// Pass [options] from `DefaultFirebaseOptions.currentPlatform`
@@ -115,6 +120,7 @@ class FirebaseService {
   /// the reason. The app continues offline-only.
   static Future<void> init({FirebaseOptions? options}) async {
     if (_initialised) return;
+    _lastUsedOptions = options ?? _lastUsedOptions;
     try {
       if (options != null) {
         await Firebase.initializeApp(options: options);
@@ -175,5 +181,41 @@ class FirebaseService {
             'Authentication → Sign-in method → Anonymous → Enable.');
       }
     }
+  }
+
+  /// Ensures an anonymous Firebase Auth session exists *right now*, then
+  /// returns the resolved uid (or null if it still couldn't be obtained).
+  ///
+  /// Use this before any Firestore read whose security rule starts with
+  /// `if signedIn()`. If the app's startup `signInAnonymously()` raced
+  /// with the user's tap (or failed silently because Anonymous auth is
+  /// disabled in the console), this is the surface that surfaces the
+  /// real cause instead of a generic permission-denied error downstream.
+  static Future<String?> ensureSignedIn() async {
+    if (!_initialised) return null;
+    final existing = FirebaseAuth.instance.currentUser?.uid;
+    if (existing != null) return existing;
+    await signInAnonymously();
+    return FirebaseAuth.instance.currentUser?.uid;
+  }
+
+  /// Re-attempt Firebase initialisation after a previous failure.
+  ///
+  /// Called by the CloudRetryBanner when the user taps "Retry now" — the
+  /// previous fail-paths (no network, options not generated yet, console
+  /// project rotated) often clear themselves between launches but require
+  /// a re-init to take effect. Reuses the last [FirebaseOptions] passed to
+  /// [init] so feature widgets don't have to import the generated
+  /// `firebase_options.dart`.
+  ///
+  /// Returns whether Firebase is configured after the retry. The caller
+  /// should rebuild any provider that gates on [isConfigured].
+  static Future<bool> retryInit() async {
+    if (_initialised) return true;
+    await init(options: _lastUsedOptions);
+    if (_initialised) {
+      await signInAnonymously();
+    }
+    return _initialised;
   }
 }

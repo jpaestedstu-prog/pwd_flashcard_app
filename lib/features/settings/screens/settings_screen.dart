@@ -722,8 +722,11 @@ class _SetPinDialogState extends State<_SetPinDialog> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(_error!,
-                  style: const TextStyle(color: AppColors.error, fontSize: 13)),
+              child: Text(
+                _error!,
+                style:
+                    AppTypography.labelSmall.copyWith(color: AppColors.error),
+              ),
             ),
         ],
       ),

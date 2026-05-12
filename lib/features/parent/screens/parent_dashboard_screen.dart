@@ -9,7 +9,9 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
+import '../../../providers/active_time_provider.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/child_time_limit_provider.dart';
 import '../../../providers/parent_provider.dart';
 import '../../notifications/services/alert_service.dart';
 import '../widgets/child_detail_sheet.dart';
@@ -109,6 +111,11 @@ class _ParentDashboardScreenState
                   ),
                 ),
             ],
+          ),
+          IconButton(
+            icon: Icon(Icons.family_restroom_rounded, color: hc.textSecondary),
+            tooltip: 'Manage Home Groups',
+            onPressed: () => context.push('/home-group-manage'),
           ),
           IconButton(
             icon: Icon(Icons.refresh_rounded, color: hc.textSecondary),
@@ -381,7 +388,6 @@ class _FamilyStatsCard extends StatelessWidget {
                       '${snapshot.activeChildren} of ${snapshot.totalChildren} children active',
                       style: AppTypography.labelSmall.copyWith(
                         color: hc.textSecondary,
-                        fontSize: 10,
                       ),
                     ),
                   ],
@@ -475,7 +481,7 @@ class _FamilyStatTile extends StatelessWidget {
                     .copyWith(fontWeight: FontWeight.w800)),
             Text(label,
                 style: AppTypography.labelSmall
-                    .copyWith(color: HCColor.of(context).textSecondary, fontSize: 10)),
+                    .copyWith(color: HCColor.of(context).textSecondary)),
           ],
         ),
       )
@@ -494,7 +500,7 @@ class _FamilyStatTile extends StatelessWidget {
 
 // ─── Child Card ──────────────────────────────────────
 
-class _ChildCard extends StatelessWidget {
+class _ChildCard extends ConsumerWidget {
   final ChildSummary child;
   final HCColor hc;
   final VoidCallback onTap;
@@ -508,10 +514,25 @@ class _ChildCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final accuracy = (child.averageAccuracy * 100).round();
     final weekChange = child.weekOverWeekChange;
     final accentColor = child.isRecentlyActive ? AppColors.success : AppColors.primary;
+
+    // ── Today's minutes used vs configured limit ──
+    final minutesToday = ref.watch(activeTimeProvider(child.profileId));
+    final limit = ref.watch(childTimeLimitProvider(child.profileId)).valueOrNull;
+    final showPill = limit != null &&
+        limit.dailyLimitEnabled &&
+        limit.dailyLimitMinutes > 0;
+    final ratio = showPill
+        ? (minutesToday / limit.dailyLimitMinutes).clamp(0.0, 2.0)
+        : 0.0;
+    final pillColor = ratio >= 1.0
+        ? AppColors.error
+        : ratio >= 0.8
+            ? AppColors.warning
+            : AppColors.success;
 
     return GestureDetector(
       onTap: onTap,
@@ -652,7 +673,6 @@ class _ChildCard extends StatelessWidget {
                                 child.disabilityType.label,
                                 style: AppTypography.labelSmall.copyWith(
                                   color: hc.textSecondary,
-                                  fontSize: 10,
                                 ),
                               ),
                             ],
@@ -796,13 +816,65 @@ class _ChildCard extends StatelessWidget {
                           color: weekChange >= 0
                               ? AppColors.success
                               : AppColors.error,
-                          fontSize: 11,
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
+                if (showPill) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: pillColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: pillColor.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.hourglass_top_rounded,
+                            size: 12, color: pillColor),
+                        const SizedBox(width: 3),
+                        Text(
+                          '$minutesToday/${limit.dailyLimitMinutes}m',
+                          style: AppTypography.labelSmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: pillColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                IconButton(
+                  icon: const Icon(Icons.timer_outlined,
+                      size: 20, color: AppColors.primary),
+                  tooltip: 'Time limits',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => context.push(
+                    '/child-time-limits/${child.profileId}'
+                    '?name=${Uri.encodeQueryComponent(child.name)}',
+                  ),
+                ),
+                const SizedBox(width: 6),
+                IconButton(
+                  icon: const Icon(Icons.alarm_rounded,
+                      size: 20, color: AppColors.primary),
+                  tooltip: 'Alarms',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => context.push(
+                    '/child-alarms/${child.profileId}'
+                    '?name=${Uri.encodeQueryComponent(child.name)}',
+                  ),
+                ),
+                const SizedBox(width: 6),
                 IconButton(
                   icon: const Icon(Icons.timeline_rounded,
                       size: 20, color: AppColors.primary),
@@ -917,6 +989,12 @@ class _EmptyState extends StatelessWidget {
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
             ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => context.push('/home-group-manage'),
+            icon: const Icon(Icons.family_restroom_rounded),
+            label: const Text('Manage Home Groups'),
           ),
         ],
       ),

@@ -443,7 +443,6 @@ class _DetailStatTile extends StatelessWidget {
                     label,
                     style: AppTypography.labelSmall.copyWith(
                       color: HCColor.of(context).textSecondary,
-                      fontSize: 11,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -463,7 +462,6 @@ class _DetailStatTile extends StatelessWidget {
               subtitle,
               style: AppTypography.labelSmall.copyWith(
                 color: HCColor.of(context).textSecondary,
-                fontSize: 10,
               ),
             ),
             if (progress != null) ...[
@@ -664,7 +662,6 @@ class _RecentGameRow extends StatelessWidget {
                   timeAgo,
                   style: AppTypography.labelSmall.copyWith(
                     color: hc.textHint,
-                    fontSize: 10,
                   ),
                 ),
               ],

@@ -272,7 +272,6 @@ class _StudentCard extends StatelessWidget {
                                   child: Text(
                                     tag,
                                     style: AppTypography.labelSmall.copyWith(
-                                      fontSize: 10,
                                       color: AppColors.primary,
                                     ),
                                   ),

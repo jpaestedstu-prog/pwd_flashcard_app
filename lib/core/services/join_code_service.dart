@@ -101,6 +101,21 @@ class JoinCodeService {
     if (normalized.isEmpty) return null;
 
     if (FirebaseService.isConfigured) {
+      // Firestore rules require a signed-in user to read /classrooms.
+      // The startup sign-in can race with a fast tap (or fail silently if
+      // Anonymous auth is disabled in the Firebase console), so make sure
+      // we have a uid before issuing the query — otherwise we'd surface
+      // the read failure as "rules problem" when the real cause is auth.
+      final uid = await FirebaseService.ensureSignedIn();
+      if (uid == null) {
+        throw const JoinCodeException(
+          JoinCodeError.network,
+          "Couldn't sign in to look up the class code. In the Firebase "
+          'console, open Authentication → Sign-in method and enable '
+          'Anonymous sign-in, then try again.',
+        );
+      }
+
       try {
         final snap = await FirebaseService.db
             .collection('classrooms')
@@ -117,14 +132,17 @@ class JoinCodeService {
         // Code not found remotely — the local cache shouldn't override that.
         return null;
       } on FirebaseException catch (e) {
-        // Permission errors typically mean Firestore security rules are
-        // blocking the read. Surface that instead of a generic network
-        // error so the developer knows where to look.
+        // We already confirmed the user is signed in above, so
+        // permission-denied here genuinely points at the deployed
+        // security rules — surface that and the deploy command.
         if (e.code == 'permission-denied') {
           throw const JoinCodeException(
             JoinCodeError.network,
-            'Firestore denied access. Update your security rules to allow '
-            'reads on the classrooms collection.',
+            'Firestore denied access on /classrooms even though you are '
+            'signed in. The deployed security rules need to allow reads '
+            'for signed-in users on the classrooms collection. See '
+            'firestore.rules and run `firebase deploy --only '
+            'firestore:rules`.',
           );
         }
         throw JoinCodeException(

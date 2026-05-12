@@ -13,6 +13,24 @@ class ErrorHandler {
   static const String _boxName = 'error_logs';
   static const int _maxLogEntries = 200;
 
+  /// Sources whose errors must be logged (Hive + console) but **not**
+  /// surfaced to [errorStream] — the user-facing snackbar shouldn't fire
+  /// for known-noisy paths such as the post-join lifecycle wiring or the
+  /// alarm scheduler's plugin init. Genuine user-actionable errors keep
+  /// raising inline failures (per-feature snackbars, the join failure
+  /// banner) so we don't lose visibility on real problems.
+  static const Set<String> _silentSources = {
+    'applyLifecycle:silent',
+    'AlarmScheduler:silent',
+    'completeJoin:setProfileSilent',
+    'ChildTimeLimitStream:silent',
+    'ChildAlarmStream:silent',
+    'ChildUnlockOverrideStream:silent',
+    'LockEnforcerGate:silent',
+    'OnAlarmFired:silent',
+    'PinUnlockGrace:silent',
+  };
+
   static final _errorStreamController =
       StreamController<AppError>.broadcast();
 
@@ -99,8 +117,12 @@ class ErrorHandler {
       debugPrint('└─────────────────────────────────────────');
     }
 
-    // Persist to Hive
+    // Persist to Hive — keep diagnostics intact even for silent sources.
     _persistError(appError);
+
+    // Silent sources: logged but never surfaced to the global snackbar.
+    // See [_silentSources] for the rationale.
+    if (_silentSources.contains(source)) return;
 
     // Broadcast to any listening UI
     if (!_errorStreamController.isClosed) {

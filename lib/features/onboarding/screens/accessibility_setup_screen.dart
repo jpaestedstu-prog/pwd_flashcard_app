@@ -685,7 +685,6 @@ class _DisabilityCard extends StatelessWidget {
                         color: isSelected
                             ? Colors.white.withValues(alpha: 0.85)
                             : HCColor.of(context).textSecondary,
-                        fontSize: 12,
                       ),
                     ),
                   ],

@@ -4,16 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/join_code_service.dart';
-import '../../../providers/app_providers.dart';
+import '../../../features/onboarding/screens/post_join_setup_screen.dart';
 import '../../../providers/home_group_join_provider.dart';
 
-/// Child-side screen: enter a 6-character home-group code + name to join
-/// the family unit set up by a parent.
+/// Child-side screen: enter a 6-character home-group code.
 ///
-/// Mirrors the student `JoinClassScreen` UI so children get the same
-/// familiar form, just labelled for the family context. If a Player-mode
-/// profile is already active, joining upgrades that profile in place
-/// (preserving the UUID and any local progress).
+/// Step 1 of the join flow. The name / avatar / birth date / PIN are
+/// collected on the next screen ([PostJoinSetupScreen]), so a back-button
+/// cancel here leaves no partial profile in Firestore or Hive.
 class JoinHomeGroupScreen extends ConsumerStatefulWidget {
   const JoinHomeGroupScreen({super.key});
 
@@ -25,61 +23,35 @@ class JoinHomeGroupScreen extends ConsumerStatefulWidget {
 class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _codeController = TextEditingController();
-  final _nameController = TextEditingController();
-  DateTime? _birthDate;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(homeGroupJoinProvider.notifier).reset();
+    });
+  }
 
   @override
   void dispose() {
     _codeController.dispose();
-    _nameController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickBirthDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _birthDate ?? DateTime(now.year - 7, now.month, now.day),
-      firstDate: DateTime(now.year - 17),
-      lastDate: DateTime(now.year - 3),
-      helpText: 'Pick the child\'s birthday',
-    );
-    if (picked != null) {
-      setState(() => _birthDate = picked);
-    }
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_birthDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please pick a birthday.')),
-      );
-      return;
-    }
 
-    final activeProfile = ref.read(profileProvider);
-    final upgradingPlayer =
-        activeProfile != null && activeProfile.isPlayerMode;
+    final group = await ref
+        .read(homeGroupJoinProvider.notifier)
+        .validateCode(_codeController.text.trim().toUpperCase());
 
-    await ref.read(homeGroupJoinProvider.notifier).joinByCode(
-          code: _codeController.text.trim().toUpperCase(),
-          name: _nameController.text.trim(),
-          birthDate: _birthDate,
-          existingProfile: upgradingPlayer ? activeProfile : null,
-        );
+    if (!mounted || group == null) return;
+    context.push('/post-join-setup', extra: HomeGroupJoinContext(group));
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(homeGroupJoinProvider);
-
-    ref.listen<HomeGroupJoinState>(homeGroupJoinProvider, (prev, next) {
-      if (next is HomeGroupJoinSuccess && mounted) {
-        context.go('/home');
-      }
-    });
-
     final isLoading = state is HomeGroupJoinLoading;
     final failure = state is HomeGroupJoinFailure ? state : null;
 
@@ -131,30 +103,6 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                TextFormField(
-                  controller: _nameController,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Your name',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) => (v == null || v.trim().length < 2)
-                      ? 'Please enter your name'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-
-                OutlinedButton.icon(
-                  onPressed: _pickBirthDate,
-                  icon: const Icon(Icons.cake_outlined),
-                  label: Text(
-                    _birthDate == null
-                        ? 'Pick birthday'
-                        : 'Birthday: ${_birthDate!.year}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}',
-                  ),
-                ),
-                const SizedBox(height: 16),
-
                 if (failure != null)
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -174,7 +122,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
-                      isLoading ? 'Joining…' : 'Join group',
+                      isLoading ? 'Checking…' : 'Join group',
                       style: const TextStyle(fontSize: 16),
                     ),
                   ),

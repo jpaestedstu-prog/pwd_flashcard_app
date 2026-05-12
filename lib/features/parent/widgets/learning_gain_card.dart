@@ -321,7 +321,6 @@ class _LegendDot extends StatelessWidget {
           label,
           style: AppTypography.labelSmall.copyWith(
             color: HCColor.of(context).textSecondary,
-            fontSize: 10,
           ),
         ),
       ],

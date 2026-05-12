@@ -8,6 +8,8 @@ import '../features/onboarding/screens/splash_screen.dart';
 import '../features/onboarding/screens/profile_selection_screen.dart';
 import '../features/onboarding/screens/profile_switcher_screen.dart';
 import '../features/onboarding/screens/accessibility_setup_screen.dart';
+import '../features/onboarding/screens/post_join_setup_screen.dart';
+import '../features/onboarding/screens/membership_removed_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/home/screens/educator_home_screen.dart';
 import '../features/flashcards/screens/deck_list_screen.dart';
@@ -49,7 +51,10 @@ import '../features/flashcards/screens/fsl_dictionary_screen.dart';
 import '../features/communication_board/screens/communication_board_screen.dart';
 import '../features/communication_board/screens/board_template_builder_screen.dart';
 import '../features/daily_challenge/screens/daily_challenge_screen.dart';
+import '../features/parent/screens/child_alarms_screen.dart';
+import '../features/parent/screens/child_time_limits_screen.dart';
 import '../features/parent/screens/parent_dashboard_screen.dart';
+import '../features/parent/screens/time_up_lock_screen.dart';
 import '../features/reports/screens/weekly_report_screen.dart';
 import '../features/progress/screens/adaptive_analytics_screen.dart';
 import '../features/games/screens/multiplayer_quiz_screen.dart';
@@ -110,6 +115,7 @@ import '../features/word_of_day/screens/word_of_day_screen.dart';
 import '../features/focus_mode/screens/focus_mode_screen.dart';
 import '../features/parent_teacher_notes/screens/parent_teacher_notes_screen.dart';
 import '../core/services/engagement_tracker.dart';
+import '../providers/lock_state_provider.dart';
 import 'app_page_transitions.dart';
 import 'bottom_nav_shell.dart';
 
@@ -198,6 +204,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isViewingAsStudent =
           ref.read(profileProvider.notifier).isViewingAsStudent;
 
+      // ── Lock-state redirect ──────────────────────────────
+      // Active learner with a non-null LockReason → force the
+      // Time-Up lock screen. The lock screen route itself is
+      // exempt (otherwise we'd loop). Educators viewing a student
+      // dashboard are exempt too — they're not subject to the
+      // student's limits.
+      final isLearner =
+          (role == UserRole.student || role == UserRole.child) &&
+              !profile.isGuestPlayer;
+      if (isLearner &&
+          !isViewingAsStudent &&
+          location != '/time-up-lock') {
+        final reason = ref.read(lockStateProvider(profile.id));
+        if (reason != null) return '/time-up-lock';
+      }
+
       // Player guard: hard block on anything that needs Firestore reads
       // beyond the player's own session.
       if (role == UserRole.player && !isViewingAsStudent) {
@@ -208,11 +230,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Child guard: must be enrolled in a home group before reaching
-      // the home shell. Allow /splash, /profile, and the join screen
-      // through so the child can complete onboarding.
+      // the home shell. Allow /splash, /profile, and the join screens
+      // (including the post-join setup step) through so the child can
+      // complete onboarding.
       if (role == UserRole.child && !isViewingAsStudent) {
         if (profile.homeGroupId == null &&
             !location.startsWith('/join-home-group') &&
+            !location.startsWith('/post-join-setup') &&
             !location.startsWith('/splash') &&
             !location.startsWith('/profile') &&
             !location.startsWith('/accessibility-setup') &&
@@ -410,6 +434,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
+      // Post-join profile setup (Name / Avatar / Birth Date / PIN) shown
+      // after a Student or Child has validated a join code. Receives a
+      // [JoinContext] via `extra` to know which classroom or home group
+      // the new profile should be linked to.
+      GoRoute(
+        path: '/post-join-setup',
+        pageBuilder: (context, state) {
+          final ctx = state.extra as JoinContext;
+          return AppPageTransitions.slideRight(
+            key: state.pageKey,
+            child: PostJoinSetupScreen(joinContext: ctx),
+          );
+        },
+      ),
       // Onboarding Tutorial (first-time walkthrough)
       GoRoute(
         path: '/onboarding-tutorial',
@@ -425,6 +463,36 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const ProfileImportExportScreen(),
         ),
+      ),
+      // Time-Up Lock — full-screen, kiosk-style, no bottom nav.
+      // Pushed by [LockEnforcerGate] / router redirect when the active
+      // child profile's [lockStateProvider] returns a non-null reason.
+      // Dismissed by entering the parent/teacher PIN.
+      GoRoute(
+        path: '/time-up-lock',
+        pageBuilder: (context, state) => AppPageTransitions.fade(
+          key: state.pageKey,
+          child: const TimeUpLockScreen(),
+        ),
+      ),
+      // Membership Removed — full-screen, no bottom nav. Pushed by
+      // [MembershipEvictionGate] when the educator deletes the learner's
+      // classroom or home-group membership doc. Profile is already
+      // cleared by then so the router redirect is a no-op (`profile ==
+      // null` short-circuits at the top of the redirect).
+      GoRoute(
+        path: '/membership-removed',
+        pageBuilder: (context, state) {
+          final fromKind = state.uri.queryParameters['from'] ?? 'class';
+          final fromName = state.uri.queryParameters['name'];
+          return AppPageTransitions.fade(
+            key: state.pageKey,
+            child: MembershipRemovedScreen(
+              fromKind: fromKind,
+              fromName: fromName,
+            ),
+          );
+        },
       ),
       // Main Shell with Bottom Nav
       ShellRoute(
@@ -811,6 +879,30 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
           child: const HomeGroupManagementScreen(),
+        ),
+      ),
+      // Per-child time-limit editor (parent/teacher → one of their children).
+      // Path param is the child's profile id; optional `name` query
+      // parameter pre-fills the AppBar title.
+      GoRoute(
+        path: '/child-time-limits/:profileId',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: ChildTimeLimitsScreen(
+            childProfileId: state.pathParameters['profileId']!,
+            childDisplayName: state.uri.queryParameters['name'],
+          ),
+        ),
+      ),
+      // Per-child alarms editor.
+      GoRoute(
+        path: '/child-alarms/:profileId',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: ChildAlarmsScreen(
+            childProfileId: state.pathParameters['profileId']!,
+            childDisplayName: state.uri.queryParameters['name'],
+          ),
         ),
       ),
       // Leaderboard

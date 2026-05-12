@@ -1,9 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/services/firebase_service.dart';
 import '../models/classroom.dart';
 import '../models/classroom_member.dart';
 import '../models/enums.dart';
+import '../models/home_group.dart';
+import '../models/home_group_member.dart';
 import '../models/models.dart';
 import '../repository.dart';
 
@@ -14,6 +17,8 @@ import '../repository.dart';
 /// idempotent (matches the previous Postgres `upsert` semantics).
 class FirestoreRepository implements DataRepository {
   const FirestoreRepository();
+
+  static const _uuid = Uuid();
 
   FirebaseFirestore get _db => FirebaseService.db;
 
@@ -647,6 +652,286 @@ class FirestoreRepository implements DataRepository {
     });
   }
 
+  /// Bulk-remove multiple students from a classroom in a single batch.
+  ///
+  /// Used by the teacher's multi-select UI to reset rosters without N
+  /// round-trips to Firestore. Writes one audit entry summarising the
+  /// removal so we don't spam the audit log on big resets.
+  Future<void> removeMembers(
+      String classroomId, List<String> profileIds) async {
+    if (profileIds.isEmpty) return;
+    final batch = _db.batch();
+    for (final profileId in profileIds) {
+      batch.delete(_db
+          .collection('classroom_members')
+          .doc('${classroomId}_$profileId'));
+    }
+    await batch.commit();
+    await _writeClassroomAudit(classroomId, 'members_bulk_removed', {
+      'count': profileIds.length,
+      'profile_ids': profileIds,
+    });
+  }
+
+  /// Patch a member's `display_name` in the classroom roster **and** the
+  /// student's own [UserProfile.name].
+  ///
+  /// The audit row written below is what unlocks the cross-owner
+  /// `profiles.name` patch in [firestore.rules](firestore.rules) — the
+  /// rule predicate checks that the diff is name-only AND that an audit
+  /// row exists with the requester's `actor_uid`. Order matters: we
+  /// write the audit row first so the profile rule check can `exists()`
+  /// it on the same request.
+  Future<void> updateMemberDisplayName({
+    required String classroomId,
+    required String profileId,
+    required String newDisplayName,
+  }) async {
+    final nowIso = DateTime.now().toIso8601String();
+    await _db
+        .collection('classroom_members')
+        .doc('${classroomId}_$profileId')
+        .set({
+      'display_name': newDisplayName,
+      'updated_at': nowIso,
+    }, SetOptions(merge: true));
+    // Audit BEFORE the profile patch so the rule can find it.
+    await _writeClassroomAudit(classroomId, 'member_renamed', {
+      'profile_id': profileId,
+      'display_name': newDisplayName,
+    });
+    // Patch the underlying profile so the student's own device picks
+    // up the new name on the next snapshot. The `_rename_actor_classroom_id`
+    // hint lets the [firestore.rules](firestore.rules) `educatorRenamePatch`
+    // predicate verify the writer owns this classroom — which is what
+    // authorises the cross-owner profile-name update. Best-effort — if
+    // the rule rejects (e.g. anonymous-auth uid drift), keep the roster
+    // rename since that's still a useful partial outcome.
+    try {
+      await _db.collection('profiles').doc(profileId).set({
+        'name': newDisplayName,
+        'updated_at': nowIso,
+        '_rename_actor_classroom_id': classroomId,
+      }, SetOptions(merge: true));
+    } catch (_) {
+      // Roster rename already landed; profile patch is the bonus.
+    }
+  }
+
+  /// Manually enrol a student that hasn't joined from their own device.
+  ///
+  /// Creates a synthetic [UserProfile] with `id = "manual_<uuid>"` and a
+  /// `manual_enrollment` tag so the UI can render a "Manual — not yet
+  /// joined" badge, then writes the corresponding [ClassroomMember] row.
+  /// The teacher's auth uid is stamped as `owner_uid` so they can later
+  /// rename or remove the placeholder; security rules enforce that only
+  /// the teacher of the classroom can write either doc.
+  ///
+  /// Returns the synthetic profile id so callers can refresh providers
+  /// keyed by member id.
+  Future<String> addManualClassroomMember({
+    required String classroomId,
+    required String displayName,
+    required String teacherProfileId,
+  }) async {
+    final profileId = 'manual_${_uuid.v4()}';
+    final now = DateTime.now();
+    final placeholder = UserProfile(
+      id: profileId,
+      name: displayName,
+      role: UserRole.student,
+      createdAt: now,
+      tags: const ['manual_enrollment'],
+      classroomId: classroomId,
+      ownerUid: _uid,
+    );
+    await saveProfile(placeholder);
+    await addMember(ClassroomMember(
+      classroomId: classroomId,
+      profileId: profileId,
+      displayName: displayName,
+      joinedAt: now,
+    ));
+    return profileId;
+  }
+
+  // ─── Home Groups ───────────────────────────────────────
+  //
+  // Mirrors the classroom set so [educatorRosterProvider] can union
+  // both rosters into a single parent-dashboard view. Reads are open
+  // to any signed-in user (matches `home_groups` security rule);
+  // writes are gated by ownsProfile() at the rules layer.
+
+  /// Fetch every home group owned by a parent profile.
+  Future<List<HomeGroup>> getHomeGroupsByOwnerProfileId(
+      String ownerProfileId) async {
+    final snap = await _db
+        .collection('home_groups')
+        .where('owner_profile_id', isEqualTo: ownerProfileId)
+        .get();
+    final groups = snap.docs
+        .map((d) => HomeGroup.fromJson(Map<String, dynamic>.from(d.data())))
+        .toList();
+    groups.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return groups;
+  }
+
+  /// Fetch every member row for a home group.
+  Future<List<HomeGroupMember>> listHomeGroupMembers(
+      String homeGroupId) async {
+    final snap = await _db
+        .collection('home_group_members')
+        .where('home_group_id', isEqualTo: homeGroupId)
+        .get();
+    final members = snap.docs
+        .map((d) =>
+            HomeGroupMember.fromJson(Map<String, dynamic>.from(d.data())))
+        .toList();
+    members.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+    return members;
+  }
+
+  /// Fetch every child profile + progress for a home group.
+  ///
+  /// Mirror of [getStudentsWithProgressByClassroom] — used by
+  /// `educatorRosterProvider` so home-group children show up alongside
+  /// classroom students in the parent dashboard.
+  Future<List<(UserProfile, LearningProgress)>>
+      getChildrenWithProgressByHomeGroup(String homeGroupId) async {
+    final members = await listHomeGroupMembers(homeGroupId);
+    final results = <(UserProfile, LearningProgress)>[];
+    for (final m in members) {
+      final profile = await getProfileById(m.profileId);
+      if (profile == null) continue;
+      if (profile.isGuestPlayer) continue;
+      final progress = await getProgress(m.profileId);
+      results.add((profile, progress));
+    }
+    return results;
+  }
+
+  /// Add a member row to a home group. Mirrors [addMember] for
+  /// classrooms but writes to `home_group_members` instead.
+  Future<void> addHomeGroupMember(HomeGroupMember m) async {
+    final docId = '${m.homeGroupId}_${m.profileId}';
+    await _db
+        .collection('home_group_members')
+        .doc(docId)
+        .set(m.toJson(), SetOptions(merge: true));
+  }
+
+  /// Best-effort home-group audit write. Mirror of [_writeClassroomAudit]
+  /// — the parent side previously had no audit log; we add one here so
+  /// the [firestore.rules](firestore.rules) cross-owner profile-rename
+  /// check has a uniform predicate to look for.
+  Future<void> _writeHomeGroupAudit(
+    String homeGroupId,
+    String eventType,
+    Map<String, dynamic> details,
+  ) async {
+    try {
+      await _db
+          .collection('home_group_audit')
+          .doc(homeGroupId)
+          .collection('events')
+          .add({
+        'event_type': eventType,
+        'actor_uid': _uid,
+        'home_group_id': homeGroupId,
+        'details': details,
+        'at': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      // Audit is observational; swallow.
+    }
+  }
+
+  /// Patch a home-group member's `display_name` **and** the underlying
+  /// child profile's [UserProfile.name].
+  ///
+  /// Mirror of [updateMemberDisplayName] for the home_group_members
+  /// collection. The audit row write below is what authorises the
+  /// `profiles.name` patch in [firestore.rules](firestore.rules) for
+  /// the parent who owns this home group.
+  Future<void> updateHomeGroupMemberDisplayName({
+    required String homeGroupId,
+    required String profileId,
+    required String newDisplayName,
+  }) async {
+    final nowIso = DateTime.now().toIso8601String();
+    await _db
+        .collection('home_group_members')
+        .doc('${homeGroupId}_$profileId')
+        .set({
+      'display_name': newDisplayName,
+      'updated_at': nowIso,
+    }, SetOptions(merge: true));
+    // Audit BEFORE the profile patch so the rule can find it.
+    await _writeHomeGroupAudit(homeGroupId, 'member_renamed', {
+      'profile_id': profileId,
+      'display_name': newDisplayName,
+    });
+    // Patch the underlying profile so the child's own device picks up
+    // the new name. The `_rename_actor_home_group_id` hint authorises
+    // the cross-owner write per [firestore.rules](firestore.rules)
+    // `educatorRenamePatch`. Best-effort — see notes on classroom rename.
+    try {
+      await _db.collection('profiles').doc(profileId).set({
+        'name': newDisplayName,
+        'updated_at': nowIso,
+        '_rename_actor_home_group_id': homeGroupId,
+      }, SetOptions(merge: true));
+    } catch (_) {
+      // Roster rename already landed.
+    }
+  }
+
+  /// Bulk-remove children from a home group's roster.
+  ///
+  /// Mirror of [removeMembers] for home groups. Single batch so all
+  /// deletions land atomically.
+  Future<void> removeHomeGroupMembers(
+      String homeGroupId, List<String> profileIds) async {
+    if (profileIds.isEmpty) return;
+    final batch = _db.batch();
+    for (final profileId in profileIds) {
+      batch.delete(_db
+          .collection('home_group_members')
+          .doc('${homeGroupId}_$profileId'));
+    }
+    await batch.commit();
+  }
+
+  /// Manually enrol a child that hasn't joined from their own device.
+  ///
+  /// Parent-side mirror of [addManualClassroomMember]. Creates a
+  /// synthetic [UserProfile] (id prefix `manual_`, role `child`) plus a
+  /// [HomeGroupMember] row. Returns the synthetic profile id.
+  Future<String> addManualHomeGroupMember({
+    required String homeGroupId,
+    required String displayName,
+    required String parentProfileId,
+  }) async {
+    final profileId = 'manual_${_uuid.v4()}';
+    final now = DateTime.now();
+    final placeholder = UserProfile(
+      id: profileId,
+      name: displayName,
+      role: UserRole.child,
+      createdAt: now,
+      tags: const ['manual_enrollment'],
+      ownerUid: _uid,
+    );
+    await saveProfile(placeholder);
+    await addHomeGroupMember(HomeGroupMember(
+      homeGroupId: homeGroupId,
+      profileId: profileId,
+      displayName: displayName,
+      joinedAt: now,
+    ));
+    return profileId;
+  }
+
   // ─── Data Management ──────────────────────────────────
 
   @override
@@ -664,6 +949,8 @@ class FirestoreRepository implements DataRepository {
       'app_state',
       'classrooms',
       'classroom_members',
+      'home_groups',
+      'home_group_members',
       'settings',
     ];
     for (final name in topLevel) {

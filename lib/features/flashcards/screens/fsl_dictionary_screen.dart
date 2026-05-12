@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
+import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
@@ -35,6 +38,11 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
     final hc = HCColor.of(context);
     final allCards = SeedData.allFlashcards;
     final profileId = ref.watch(profileProvider)?.id;
+    // Catalog is hydrated by the FutureProvider; null while the first
+    // Firestore read is in-flight (rare — usually cached). Treat that as
+    // "no videos yet" for the badge, but the sheet still resolves on tap.
+    final availability =
+        ref.watch(fslAvailabilityProvider).asData?.value;
 
     // Filter by category and search
     var filtered = allCards.where((c) {
@@ -169,6 +177,7 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                       return _FslWordCard(
                         card: card,
                         profileId: profileId,
+                        hasVideo: availability?.hasVideo(card) ?? false,
                       )
                           .animate()
                           .fadeIn(
@@ -185,53 +194,28 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
   }
 }
 
-class _FslWordCard extends StatefulWidget {
+class _FslWordCard extends StatelessWidget {
   final Flashcard card;
   final String? profileId;
+  final bool hasVideo;
 
-  const _FslWordCard({required this.card, this.profileId});
-
-  @override
-  State<_FslWordCard> createState() => _FslWordCardState();
-}
-
-class _FslWordCardState extends State<_FslWordCard> {
-  bool? _hasVideo;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkVideo();
-  }
-
-  Future<void> _checkVideo() async {
-    final path = _fslVideoPath(widget.card);
-    try {
-      await rootBundle.load(path);
-      if (mounted) setState(() => _hasVideo = true);
-    } catch (_) {
-      if (mounted) setState(() => _hasVideo = false);
-    }
-  }
-
-  String _fslVideoPath(Flashcard card) {
-    final categoryFolder = card.category.label;
-    final fileName = card.wordEnglish.toLowerCase();
-    return 'assets/videos/fsl/$categoryFolder/$fileName.mp4';
-  }
+  const _FslWordCard({
+    required this.card,
+    required this.hasVideo,
+    this.profileId,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final card = widget.card;
-    final hasVid = _hasVideo == true;
+    final hasVid = hasVideo;
 
     return GestureDetector(
       onTap: () {
         if (hasVid) {
           // Record view
-          if (widget.profileId != null) {
+          if (profileId != null) {
             HiveService.recordFslVideoView(
-              widget.profileId!,
+              profileId!,
               card.category.label,
               card.wordEnglish,
             );
@@ -241,11 +225,7 @@ class _FslWordCardState extends State<_FslWordCard> {
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
-            builder: (context) => _DictionaryVideoSheet(
-              videoPath: _fslVideoPath(card),
-              wordEnglish: card.wordEnglish,
-              wordFilipino: card.wordFilipino,
-            ),
+            builder: (context) => _DictionaryVideoSheet(card: card),
           );
         } else {
           AppSnackBar.info(context, message: 'No FSL video available yet for "${card.wordEnglish}"');
@@ -305,22 +285,17 @@ class _FslWordCardState extends State<_FslWordCard> {
 // ─── Video Sheet (self-contained, with speed controls) ──────
 
 class _DictionaryVideoSheet extends StatefulWidget {
-  final String videoPath;
-  final String wordEnglish;
-  final String wordFilipino;
+  final Flashcard card;
 
-  const _DictionaryVideoSheet({
-    required this.videoPath,
-    required this.wordEnglish,
-    required this.wordFilipino,
-  });
+  const _DictionaryVideoSheet({required this.card});
 
   @override
   State<_DictionaryVideoSheet> createState() => _DictionaryVideoSheetState();
 }
 
 class _DictionaryVideoSheetState extends State<_DictionaryVideoSheet> {
-  late VideoPlayerController _controller;
+  VideoPlayerController? _controller;
+  File? _videoFile;
   bool _initialized = false;
   bool _hasError = false;
   double _playbackSpeed = 1.0;
@@ -330,21 +305,32 @@ class _DictionaryVideoSheetState extends State<_DictionaryVideoSheet> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.asset(widget.videoPath)
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() => _initialized = true);
-          _controller.setLooping(true);
-          _controller.play();
-        }
-      }).catchError((_) {
-        if (mounted) setState(() => _hasError = true);
-      });
+    _loadAndInit();
+  }
+
+  Future<void> _loadAndInit() async {
+    try {
+      final file = await FslAssetsService.cachedFileFor(widget.card);
+      if (!mounted) return;
+      _videoFile = file;
+      final controller = VideoPlayerController.file(file);
+      _controller = controller;
+      await controller.initialize();
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+      controller.setLooping(true);
+      controller.play();
+      setState(() => _initialized = true);
+    } catch (_) {
+      if (mounted) setState(() => _hasError = true);
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -382,11 +368,11 @@ class _DictionaryVideoSheetState extends State<_DictionaryVideoSheet> {
               Column(
                 children: [
                   Text(
-                    widget.wordEnglish,
+                    widget.card.wordEnglish,
                     style: AppTypography.titleLarge,
                   ),
                   Text(
-                    widget.wordFilipino,
+                    widget.card.wordFilipino,
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textSecondary,
                     ),
@@ -401,7 +387,7 @@ class _DictionaryVideoSheetState extends State<_DictionaryVideoSheet> {
             borderRadius: BorderRadius.circular(16),
             child: AspectRatio(
               aspectRatio:
-                  _initialized ? _controller.value.aspectRatio : 16 / 9,
+                  _initialized ? _controller!.value.aspectRatio : 16 / 9,
               child: _hasError
                   ? Container(
                       color: hc.surfaceVariant,
@@ -415,16 +401,16 @@ class _DictionaryVideoSheetState extends State<_DictionaryVideoSheet> {
                       ? GestureDetector(
                           onTap: () {
                             setState(() {
-                              _controller.value.isPlaying
-                                  ? _controller.pause()
-                                  : _controller.play();
+                              _controller!.value.isPlaying
+                                  ? _controller!.pause()
+                                  : _controller!.play();
                             });
                           },
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              VideoPlayer(_controller),
-                              if (!_controller.value.isPlaying)
+                              VideoPlayer(_controller!),
+                              if (!_controller!.value.isPlaying)
                                 Container(
                                   width: 56, height: 56,
                                   decoration: BoxDecoration(
@@ -440,21 +426,24 @@ class _DictionaryVideoSheetState extends State<_DictionaryVideoSheet> {
                                 bottom: 8,
                                 child: GestureDetector(
                                   onTap: () async {
-                                    final wasPlaying = _controller.value.isPlaying;
-                                    final pos = _controller.value.position;
-                                    _controller.pause();
+                                    final controller = _controller;
+                                    final file = _videoFile;
+                                    if (controller == null || file == null) return;
+                                    final wasPlaying = controller.value.isPlaying;
+                                    final pos = controller.value.position;
+                                    controller.pause();
                                     final returnPos = await openFslFullscreenPlayer(
                                       context,
-                                      videoPath: widget.videoPath,
-                                      wordEnglish: widget.wordEnglish,
-                                      wordFilipino: widget.wordFilipino,
+                                      videoFile: file,
+                                      wordEnglish: widget.card.wordEnglish,
+                                      wordFilipino: widget.card.wordFilipino,
                                       startPosition: pos,
                                     );
                                     if (returnPos != null && mounted) {
-                                      _controller.seekTo(returnPos);
+                                      controller.seekTo(returnPos);
                                     }
                                     if (wasPlaying && mounted) {
-                                      _controller.play();
+                                      controller.play();
                                     }
                                   },
                                   child: Container(
@@ -515,7 +504,7 @@ class _DictionaryVideoSheetState extends State<_DictionaryVideoSheet> {
                   child: GestureDetector(
                     onTap: () {
                       setState(() => _playbackSpeed = speed);
-                      _controller.setPlaybackSpeed(speed);
+                      _controller!.setPlaybackSpeed(speed);
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -550,8 +539,8 @@ class _DictionaryVideoSheetState extends State<_DictionaryVideoSheet> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    _controller.seekTo(Duration.zero);
-                    _controller.play();
+                    _controller!.seekTo(Duration.zero);
+                    _controller!.play();
                   },
                   icon: const Icon(Icons.replay_rounded),
                   label: Text(AppLocalizations.of(context)!.replay),

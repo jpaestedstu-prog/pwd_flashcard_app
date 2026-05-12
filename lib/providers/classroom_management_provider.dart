@@ -138,6 +138,11 @@ class ClassroomManagementNotifier
   }
 
   /// Remove [profileId] from [classroom]'s roster.
+  ///
+  /// Cascades to this teacher's own `child_time_limits/{profileId}` and
+  /// `child_alarms` (where the teacher is the setter) so the learner
+  /// stops being controlled by an educator they no longer report to.
+  /// Other educators' policies are left intact — they may still apply.
   Future<void> removeStudent(Classroom classroom, String profileId) async {
     if (!FirebaseService.isConfigured) return;
     await FirebaseService.db
@@ -145,6 +150,118 @@ class ClassroomManagementNotifier
         .doc('${classroom.id}_$profileId')
         .delete();
     await HiveService.removeMemberLocal(classroom.id, profileId);
+    await _cascadeEducatorPoliciesForProfile(profileId);
+  }
+
+  /// Bulk-remove students from [classroom]'s roster.
+  ///
+  /// Uses a single Firestore batch so all deletions land atomically.
+  /// Used by the multi-select UI on the Manage Classes screen.
+  Future<void> removeStudents(
+      Classroom classroom, List<String> profileIds) async {
+    if (!FirebaseService.isConfigured) return;
+    if (profileIds.isEmpty) return;
+    await const FirestoreRepository()
+        .removeMembers(classroom.id, profileIds);
+    for (final id in profileIds) {
+      await HiveService.removeMemberLocal(classroom.id, id);
+      await _cascadeEducatorPoliciesForProfile(id);
+    }
+  }
+
+  /// Drop this educator's time-limit + alarm rules for the given
+  /// learner. Best-effort — failures don't block the membership
+  /// removal that the user asked for. Other educators' rules are
+  /// left untouched (their `setter_profile_id` doesn't match `arg`).
+  Future<void> _cascadeEducatorPoliciesForProfile(String profileId) async {
+    final teacherId = arg;
+    final db = FirebaseService.db;
+    try {
+      // Drop the time limit only if THIS teacher set it.
+      final limitDoc = await db
+          .collection('child_time_limits')
+          .doc(profileId)
+          .get();
+      if (limitDoc.exists &&
+          (limitDoc.data()?['setter_profile_id'] as String?) == teacherId) {
+        await limitDoc.reference.delete();
+      }
+    } catch (_) {
+      // Non-blocking.
+    }
+    try {
+      // Drop alarms set by THIS teacher targeting this learner.
+      final alarms = await db
+          .collection('child_alarms')
+          .where('child_profile_id', isEqualTo: profileId)
+          .where('setter_profile_id', isEqualTo: teacherId)
+          .get();
+      if (alarms.docs.isNotEmpty) {
+        final batch = db.batch();
+        for (final d in alarms.docs) {
+          batch.delete(d.reference);
+        }
+        await batch.commit();
+      }
+    } catch (_) {
+      // Non-blocking.
+    }
+    try {
+      // Drop the unlock override only if THIS teacher set it. Other
+      // educators' overrides survive — they may still apply to the
+      // learner from a different group/classroom.
+      final overrideDoc = await db
+          .collection('child_unlock_overrides')
+          .doc(profileId)
+          .get();
+      if (overrideDoc.exists &&
+          (overrideDoc.data()?['setter_profile_id'] as String?) ==
+              teacherId) {
+        await overrideDoc.reference.delete();
+      }
+    } catch (_) {
+      // Non-blocking.
+    }
+  }
+
+  /// Rename how a student appears in [classroom]'s roster.
+  ///
+  /// Patches only the [ClassroomMember.displayName] field — the underlying
+  /// [UserProfile.name] is untouched. Use this to dedupe collisions like
+  /// "Maria" / "Maria (2)" without rewriting the student's profile.
+  Future<void> renameMember(
+      Classroom classroom, String profileId, String newDisplayName) async {
+    if (!FirebaseService.isConfigured) return;
+    final trimmed = newDisplayName.trim();
+    if (trimmed.isEmpty) return;
+    await const FirestoreRepository().updateMemberDisplayName(
+      classroomId: classroom.id,
+      profileId: profileId,
+      newDisplayName: trimmed,
+    );
+  }
+
+  /// Manually enrol a student that hasn't joined from their own device.
+  ///
+  /// Creates a placeholder [UserProfile] (id prefix `manual_`) plus a
+  /// matching [ClassroomMember] row. Returns the synthetic profile id.
+  /// The UI flags these placeholders with a "Manual — not yet joined"
+  /// badge based on the id prefix.
+  Future<String> addManualStudent(
+      Classroom classroom, String displayName) async {
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
+    final trimmed = displayName.trim();
+    if (trimmed.isEmpty) {
+      throw Exception('Student name is required.');
+    }
+    return const FirestoreRepository().addManualClassroomMember(
+      classroomId: classroom.id,
+      displayName: trimmed,
+      teacherProfileId: arg,
+    );
   }
 
   Future<void> refresh() async {

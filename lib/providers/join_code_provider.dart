@@ -1,16 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
 import '../core/services/firebase_service.dart';
 import '../core/services/join_code_service.dart';
+import '../core/utils/error_handler.dart';
 import '../data/local/hive_service.dart';
 import '../data/models/classroom.dart';
 import '../data/models/classroom_member.dart';
-import '../data/models/enums.dart';
 import '../data/models/models.dart';
 import 'app_providers.dart';
 
 /// State machine for the student-side "join a class" flow.
+///
+/// The flow is split into two steps:
+///   1. [JoinCodeNotifier.validateCode] looks up the classroom by code.
+///      Emits [JoinCodeValidated] on success — the UI then navigates to
+///      the post-join setup screen so the student can pick an avatar,
+///      birth date, and PIN.
+///   2. [JoinCodeNotifier.completeJoin] is called from the setup screen
+///      with the fully-built [UserProfile]. It writes the profile +
+///      membership to Firestore + Hive and emits [JoinCodeSuccess].
 sealed class JoinCodeState {
   const JoinCodeState();
 }
@@ -21,6 +29,14 @@ class JoinCodeIdle extends JoinCodeState {
 
 class JoinCodeLoading extends JoinCodeState {
   const JoinCodeLoading();
+}
+
+/// Emitted when the code resolves to a real classroom — but before the
+/// profile has been created. The setup screen consumes this to know which
+/// classroom to attach the new profile to.
+class JoinCodeValidated extends JoinCodeState {
+  final Classroom classroom;
+  const JoinCodeValidated({required this.classroom});
 }
 
 class JoinCodeSuccess extends JoinCodeState {
@@ -39,8 +55,6 @@ class JoinCodeFailure extends JoinCodeState {
 /// (no sync queue, no replay delay) so the teacher sees the new student
 /// in the Firebase Console as soon as the join completes.
 class JoinCodeNotifier extends Notifier<JoinCodeState> {
-  static const _uuid = Uuid();
-
   @override
   JoinCodeState build() => const JoinCodeIdle();
 
@@ -48,12 +62,14 @@ class JoinCodeNotifier extends Notifier<JoinCodeState> {
     state = const JoinCodeIdle();
   }
 
-  /// Join (or upgrade an existing player profile into) the class with [code].
-  Future<void> joinByCode({
-    required String code,
-    required String name,
-    UserProfile? existingProfile,
-  }) async {
+  /// Look up the classroom for [code] without creating any profile yet.
+  ///
+  /// Returns the [Classroom] on success and emits [JoinCodeValidated];
+  /// returns `null` and emits [JoinCodeFailure] otherwise. Splitting the
+  /// flow this way lets the next screen collect avatar / birth-date / PIN
+  /// before any Firestore write happens, so a back-button cancel never
+  /// leaves a partial profile behind.
+  Future<Classroom?> validateCode(String code) async {
     state = const JoinCodeLoading();
 
     if (!FirebaseService.isConfigured) {
@@ -62,7 +78,7 @@ class JoinCodeNotifier extends Notifier<JoinCodeState> {
         message:
             'Cloud sync isn\'t connected. Restart the app or check Firebase setup.\n${FirebaseService.lastInitError ?? ""}',
       );
-      return;
+      return null;
     }
 
     final Classroom? classroom;
@@ -70,13 +86,13 @@ class JoinCodeNotifier extends Notifier<JoinCodeState> {
       classroom = await JoinCodeService.findByCode(code);
     } on JoinCodeException catch (e) {
       state = JoinCodeFailure(error: e.error, message: e.message);
-      return;
+      return null;
     } catch (e) {
       state = JoinCodeFailure(
         error: JoinCodeError.unknown,
         message: e.toString(),
       );
-      return;
+      return null;
     }
 
     if (classroom == null) {
@@ -84,72 +100,93 @@ class JoinCodeNotifier extends Notifier<JoinCodeState> {
         error: JoinCodeError.notFound,
         message: 'No class found with that code.',
       );
-      return;
+      return null;
     }
 
-    final displayName = name.trim().isEmpty ? 'Student' : name.trim();
-    // Stamp the device's anonymous-auth uid so the new strict
-    // profiles/{id} create rule (`owner_uid == request.auth.uid`)
-    // accepts the write. Without this, the join silently fails.
-    final ownerUid = FirebaseService.currentUid;
+    state = JoinCodeValidated(classroom: classroom);
+    return classroom;
+  }
 
-    final profile = existingProfile != null
-        ? existingProfile.copyWith(
-            name: displayName,
-            classroomId: () => classroom!.id,
-            isGuestPlayer: false,
-            ownerUid: () => existingProfile.ownerUid ?? ownerUid,
-          )
-        : UserProfile(
-            id: _uuid.v4(),
-            name: displayName,
-            role: UserRole.student,
-            createdAt: DateTime.now(),
-            classroomId: classroom.id,
-            ownerUid: ownerUid,
-          );
+  /// Persist [profile] (already enriched with name / avatar / birth date /
+  /// optional PIN by the post-join setup screen) and link it to [classroom].
+  ///
+  /// Stamps `owner_uid` with the device's anonymous-auth uid so the strict
+  /// `profiles/{id}` create rule (`owner_uid == request.auth.uid`) accepts
+  /// the write — without this, the join silently fails. If [profile]
+  /// already carries an `ownerUid` (e.g. an upgrading Player), the existing
+  /// value wins so we never reassign ownership.
+  Future<bool> completeJoin({
+    required UserProfile profile,
+    required Classroom classroom,
+  }) async {
+    state = const JoinCodeLoading();
+
+    final ownerUid = FirebaseService.currentUid;
+    final stampedProfile = profile.ownerUid == null
+        ? profile.copyWith(ownerUid: () => ownerUid)
+        : profile;
 
     try {
       // Write profile to Firestore.
-      await FirebaseService.db.collection('profiles').doc(profile.id).set({
-        'id': profile.id,
-        'name': profile.name,
-        'role': profile.role.index,
-        'avatar_index': profile.avatarIndex,
-        'created_at': profile.createdAt.toIso8601String(),
-        'disability_type': profile.disabilityType.index,
-        'classroom_id': profile.classroomId,
-        'is_guest_player': profile.isGuestPlayer,
-        'owner_uid': profile.ownerUid,
+      await FirebaseService.db
+          .collection('profiles')
+          .doc(stampedProfile.id)
+          .set({
+        'id': stampedProfile.id,
+        'name': stampedProfile.name,
+        'role': stampedProfile.role.index,
+        'avatar_index': stampedProfile.avatarIndex,
+        'created_at': stampedProfile.createdAt.toIso8601String(),
+        'disability_type': stampedProfile.disabilityType.index,
+        'classroom_id': stampedProfile.classroomId,
+        'birth_date': stampedProfile.birthDate?.toIso8601String(),
+        'grade_level': stampedProfile.gradeLevel?.index,
+        'learning_level': stampedProfile.learningLevel?.index,
+        'pin_hash': stampedProfile.pinHash,
+        'pin_salt': stampedProfile.pinSalt,
+        'pin_hash_algorithm': stampedProfile.pinHashAlgorithm,
+        'is_guest_player': stampedProfile.isGuestPlayer,
+        'owner_uid': stampedProfile.ownerUid,
       });
 
       // Write classroom membership to Firestore. The rule allows this
-      // because `ownsProfile(profile_id)` now resolves true (the profile
+      // because `ownsProfile(profile_id)` resolves true (the profile
       // doc above has owner_uid matching this device's uid).
       final member = ClassroomMember(
         classroomId: classroom.id,
-        profileId: profile.id,
-        displayName: displayName,
+        profileId: stampedProfile.id,
+        displayName: stampedProfile.name,
         joinedAt: DateTime.now(),
       );
       await FirebaseService.db
           .collection('classroom_members')
-          .doc('${classroom.id}_${profile.id}')
+          .doc('${classroom.id}_${stampedProfile.id}')
           .set(member.toJson());
 
       // Mirror to local Hive so the student can use the app offline.
-      await HiveService.saveProfile(profile);
+      await HiveService.saveProfile(stampedProfile);
       await HiveService.addMemberLocal(member);
-      await ref.read(profileProvider.notifier).setProfile(profile);
     } catch (e) {
       state = JoinCodeFailure(
         error: JoinCodeError.unknown,
         message: 'Could not save: $e',
       );
-      return;
+      return false;
     }
 
-    state = JoinCodeSuccess(classroom: classroom, profile: profile);
+    // setProfile flips the active profile, which triggers downstream
+    // listeners (LockEnforcerGate, AlarmScheduler.init, etc). All the
+    // important writes already succeeded above, so a hiccup here must
+    // not turn the join into a failure or surface as the global
+    // "Something went wrong" snackbar — log silently and continue.
+    try {
+      await ref.read(profileProvider.notifier).setProfile(stampedProfile);
+    } catch (e, s) {
+      ErrorHandler.report(e, s, 'completeJoin:setProfileSilent');
+    }
+
+    state = JoinCodeSuccess(classroom: classroom, profile: stampedProfile);
+    return true;
   }
 }
 

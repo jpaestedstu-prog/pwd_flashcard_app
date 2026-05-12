@@ -832,11 +832,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             child: Row(
               children: [
                 Icon(
-                  profile.role == UserRole.student
-                      ? Icons.school_rounded
-                      : profile.role == UserRole.teacher
-                          ? Icons.cast_for_education_rounded
-                          : Icons.family_restroom_rounded,
+                  profile.role.icon,
                   color: hc.textSecondary,
                 ),
                 const SizedBox(width: 12),

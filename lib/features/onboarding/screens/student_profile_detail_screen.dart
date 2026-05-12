@@ -403,7 +403,6 @@ class _CategoryProgressSection extends StatelessWidget {
                       style: AppTypography.labelSmall.copyWith(
                         fontWeight: FontWeight.w800,
                         color: AppColors.primary,
-                        fontSize: 12,
                       ),
                     ),
                   ],

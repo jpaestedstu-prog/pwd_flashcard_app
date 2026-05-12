@@ -541,7 +541,6 @@ class _MasterySection extends StatelessWidget {
                   'Mastery',
                   style: AppTypography.labelSmall.copyWith(
                     color: HCColor.of(context).textSecondary,
-                    fontSize: 10,
                   ),
                 ),
               ],

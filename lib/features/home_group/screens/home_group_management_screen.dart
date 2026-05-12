@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/services/firebase_service.dart';
 import '../../../data/models/home_group.dart';
+import '../../../data/models/home_group_member.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/home_group_provider.dart';
+import '../../classroom/widgets/cloud_retry_banner.dart';
+import '../../parent/services/child_unlock_override_service.dart';
 
 /// Parent-facing screen to create, rename, regenerate, or delete home
 /// groups, and to view each group's members. Mirrors the teacher's
@@ -37,45 +42,57 @@ class HomeGroupManagementScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: groupsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (groups) {
-          if (groups.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.family_restroom_rounded, size: 56),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'No home groups yet.\nCreate one to invite your child.',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Create home group'),
-                      onPressed: () =>
-                          _showCreateDialog(context, ref, profile.id),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: groups.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (_, i) => _HomeGroupCard(
-              group: groups[i],
-              parentProfileId: profile.id,
+      body: Column(
+        children: [
+          if (!FirebaseService.isConfigured)
+            CloudRetryBanner(
+              onRetrySucceeded: () => ref
+                  .read(homeGroupManagementProvider(profile.id).notifier)
+                  .refresh(),
             ),
-          );
-        },
+          Expanded(
+            child: groupsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Error: $e')),
+              data: (groups) {
+                if (groups.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.family_restroom_rounded, size: 56),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'No home groups yet.\nCreate one to invite your child.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.add_rounded),
+                            label: const Text('Create home group'),
+                            onPressed: () =>
+                                _showCreateDialog(context, ref, profile.id),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: groups.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (_, i) => _HomeGroupCard(
+                    group: groups[i],
+                    parentProfileId: profile.id,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -133,8 +150,6 @@ class _HomeGroupCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final membersAsync = ref.watch(homeGroupMembersProvider(group.id));
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -156,6 +171,9 @@ class _HomeGroupCard extends ConsumerWidget {
                     PopupMenuItem(value: 'rename', child: Text('Rename')),
                     PopupMenuItem(
                         value: 'regen', child: Text('New code')),
+                    PopupMenuItem(
+                        value: 'add_child',
+                        child: Text('Add child manually')),
                     PopupMenuItem(
                         value: 'delete', child: Text('Delete group')),
                   ],
@@ -200,39 +218,9 @@ class _HomeGroupCard extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             // ─── Member roster ─────────────────────────
-            membersAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: LinearProgressIndicator(),
-              ),
-              error: (e, _) =>
-                  Text('Roster error: $e', style: const TextStyle(color: Colors.red)),
-              data: (members) {
-                if (members.isEmpty) {
-                  return Text(
-                    'No children have joined yet.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  );
-                }
-                return Column(
-                  children: members
-                      .map((m) => ListTile(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(Icons.child_care_rounded),
-                            title: Text(m.displayName),
-                            subtitle: Text(
-                                'Joined ${_formatDate(m.joinedAt)}'),
-                            trailing: IconButton(
-                              tooltip: 'Remove',
-                              icon: const Icon(Icons.close, size: 20),
-                              onPressed: () => _confirmRemove(
-                                  context, ref, m.profileId, m.displayName),
-                            ),
-                          ))
-                      .toList(),
-                );
-              },
+            _HomeGroupMembersSection(
+              group: group,
+              parentProfileId: parentProfileId,
             ),
           ],
         ),
@@ -284,6 +272,62 @@ class _HomeGroupCard extends ConsumerWidget {
             SnackBar(content: Text('Could not regenerate: $e')),
           );
         }
+      case 'add_child':
+        final controller = TextEditingController();
+        final name = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Add child manually'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Child display name',
+                    hintText: 'e.g. Anna',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'A placeholder profile is created so the child appears in '
+                  'your dashboard right away. They can later join from their '
+                  'own device using this group\'s code.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () =>
+                    Navigator.of(ctx).pop(controller.text.trim()),
+                child: const Text('Add'),
+              ),
+            ],
+          ),
+        );
+        if (name == null || name.isEmpty) return;
+        try {
+          await notifier.addManualChild(group, name);
+          // ignore: unused_result
+          ref.refresh(homeGroupMembersProvider(group.id));
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Added $name')),
+          );
+        } catch (e) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not add child: $e')),
+          );
+        }
       case 'delete':
         final confirm = await showDialog<bool>(
           context: context,
@@ -311,15 +355,209 @@ class _HomeGroupCard extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmRemove(BuildContext context, WidgetRef ref,
-      String childProfileId, String displayName) async {
+  // Member-level actions live on [_HomeGroupMembersSection] so it can
+  // own the multi-select state.
+}
+
+/// Roster + per-member actions for one home group.
+///
+/// Owns the long-press selection state: while [_selected] is non-empty,
+/// member rows render with checkboxes and a "Remove (N) / Cancel" bar
+/// replaces the per-row popup menu. Mirrors [_ClassMembersSection].
+class _HomeGroupMembersSection extends ConsumerStatefulWidget {
+  final HomeGroup group;
+  final String parentProfileId;
+
+  const _HomeGroupMembersSection({
+    required this.group,
+    required this.parentProfileId,
+  });
+
+  @override
+  ConsumerState<_HomeGroupMembersSection> createState() =>
+      _HomeGroupMembersSectionState();
+}
+
+class _HomeGroupMembersSectionState
+    extends ConsumerState<_HomeGroupMembersSection> {
+  final Set<String> _selected = {};
+
+  bool get _selectionMode => _selected.isNotEmpty;
+
+  void _toggle(String profileId) {
+    setState(() {
+      if (!_selected.add(profileId)) _selected.remove(profileId);
+    });
+  }
+
+  void _clearSelection() {
+    setState(_selected.clear);
+  }
+
+  String _formatDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final membersAsync =
+        ref.watch(homeGroupMembersProvider(widget.group.id));
+
+    return membersAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: LinearProgressIndicator(),
+      ),
+      error: (e, _) => Text('Roster error: $e',
+          style: const TextStyle(color: Colors.red)),
+      data: (members) {
+        if (members.isEmpty) {
+          return Text(
+            'No children have joined yet.',
+            style: Theme.of(context).textTheme.bodySmall,
+          );
+        }
+        // Drop selections for members that no longer exist.
+        final liveIds = members.map((m) => m.profileId).toSet();
+        _selected.removeWhere((id) => !liveIds.contains(id));
+
+        return Column(
+          children: [
+            if (_selectionMode)
+              Container(
+                color: Colors.orange.shade50,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 6),
+                child: Row(
+                  children: [
+                    Text('${_selected.length} selected'),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: _clearSelection,
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      onPressed: _bulkRemove,
+                      icon: const Icon(Icons.delete, size: 16),
+                      label: Text('Remove (${_selected.length})'),
+                    ),
+                  ],
+                ),
+              ),
+            for (final m in members)
+              _HomeGroupMemberRow(
+                member: m,
+                selected: _selected.contains(m.profileId),
+                selectionMode: _selectionMode,
+                joinedAtLabel: 'Joined ${_formatDate(m.joinedAt)}',
+                onLongPress: () => _toggle(m.profileId),
+                onTapInSelection: () => _toggle(m.profileId),
+                onRename: () => _renameMember(m),
+                onUnlock: () => _unlockMember(m),
+                onRemove: () => _removeOne(m),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _renameMember(HomeGroupMember m) async {
+    final controller = TextEditingController(text: m.displayName);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rename in roster'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Display name in this group',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "This will rename the child in your roster and on their device.",
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (newName == null || newName.isEmpty || newName == m.displayName) return;
+    try {
+      await ref
+          .read(homeGroupManagementProvider(widget.parentProfileId).notifier)
+          .renameMember(widget.group, m.profileId, newName);
+      // ignore: unused_result
+      ref.refresh(homeGroupMembersProvider(widget.group.id));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not rename: $e')),
+      );
+    }
+  }
+
+  /// Show the duration picker and write a `child_unlock_overrides` doc
+  /// for [m]. The child's [lockStateProvider] watches that doc and
+  /// short-circuits to "not locked" while the override is in the future,
+  /// so the lock screen on their device dismisses within seconds.
+  Future<void> _unlockMember(HomeGroupMember m) async {
+    final parent = ref.read(profileProvider);
+    if (parent == null) return;
+    final picked = await _pickUnlockDuration(context, m.displayName);
+    if (picked == null) return;
+    try {
+      await const ChildUnlockOverrideService().setUnlockFor(
+        childProfileId: m.profileId,
+        duration: picked,
+        setter: parent,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '${m.displayName} unlocked for ${_formatUnlockDuration(picked)}.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not unlock: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeOne(HomeGroupMember m) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Remove $displayName?'),
+        title: Text('Remove ${m.displayName}?'),
         content: const Text(
-            'They\'ll be unenrolled from this group. Their profile and '
-            'progress are kept on their device.'),
+            "They'll be unenrolled from this group. Their profile and "
+            "progress are kept on their device."),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -334,13 +572,175 @@ class _HomeGroupCard extends ConsumerWidget {
     );
     if (confirm != true) return;
     await ref
-        .read(homeGroupManagementProvider(parentProfileId).notifier)
-        .removeChild(group, childProfileId);
-    // Force the members provider to re-fetch.
+        .read(homeGroupManagementProvider(widget.parentProfileId).notifier)
+        .removeChild(widget.group, m.profileId);
     // ignore: unused_result
-    ref.refresh(homeGroupMembersProvider(group.id));
+    ref.refresh(homeGroupMembersProvider(widget.group.id));
   }
 
-  String _formatDate(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  Future<void> _bulkRemove() async {
+    final n = _selected.length;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Remove $n child${n == 1 ? "" : "ren"}?'),
+        content: const Text(
+            'Their profiles and progress are kept on their devices; they '
+            'just lose this home-group linkage.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final ids = _selected.toList();
+    try {
+      await ref
+          .read(homeGroupManagementProvider(widget.parentProfileId).notifier)
+          .removeChildren(widget.group, ids);
+      _clearSelection();
+      // ignore: unused_result
+      ref.refresh(homeGroupMembersProvider(widget.group.id));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not remove: $e')),
+      );
+    }
+  }
+}
+
+/// One row in the home-group roster.
+class _HomeGroupMemberRow extends StatelessWidget {
+  final HomeGroupMember member;
+  final bool selected;
+  final bool selectionMode;
+  final String joinedAtLabel;
+  final VoidCallback onLongPress;
+  final VoidCallback onTapInSelection;
+  final VoidCallback onRename;
+  final VoidCallback onUnlock;
+  final VoidCallback onRemove;
+
+  const _HomeGroupMemberRow({
+    required this.member,
+    required this.selected,
+    required this.selectionMode,
+    required this.joinedAtLabel,
+    required this.onLongPress,
+    required this.onTapInSelection,
+    required this.onRename,
+    required this.onUnlock,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      selected: selected,
+      onLongPress: onLongPress,
+      onTap: selectionMode ? onTapInSelection : null,
+      leading: const Icon(Icons.child_care_rounded),
+      title: Text(member.displayName),
+      subtitle: member.profileId.startsWith('manual_')
+          ? Text(
+              'Manual — not yet joined',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.orange.shade800,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          : Text(joinedAtLabel),
+      trailing: selectionMode
+          ? Checkbox(
+              value: selected,
+              onChanged: (_) => onTapInSelection(),
+            )
+          : PopupMenuButton<String>(
+              tooltip: 'Member actions',
+              onSelected: (action) {
+                switch (action) {
+                  case 'rename':
+                    onRename();
+                  case 'time_limits':
+                    GoRouter.of(context).push(
+                      '/child-time-limits/${member.profileId}'
+                      '?name=${Uri.encodeQueryComponent(member.displayName)}',
+                    );
+                  case 'alarms':
+                    GoRouter.of(context).push(
+                      '/child-alarms/${member.profileId}'
+                      '?name=${Uri.encodeQueryComponent(member.displayName)}',
+                    );
+                  case 'unlock':
+                    onUnlock();
+                  case 'remove':
+                    onRemove();
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'rename', child: Text('Rename')),
+                PopupMenuItem(
+                    value: 'time_limits', child: Text('Time limits')),
+                PopupMenuItem(value: 'alarms', child: Text('Alarms')),
+                PopupMenuItem(value: 'unlock', child: Text('Unlock screen')),
+                PopupMenuItem(
+                    value: 'remove', child: Text('Remove from group')),
+              ],
+            ),
+    );
+  }
+}
+
+/// Show a duration picker for "Unlock screen". Mirror of the helper in
+/// `classroom_management_screen.dart` — kept file-private so neither
+/// screen has to depend on the other.
+Future<Duration?> _pickUnlockDuration(
+    BuildContext context, String memberName) {
+  return showDialog<Duration>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text('Unlock $memberName'),
+      content: const Text(
+          'How long should the lock screen stay off? The screen will '
+          'lock again automatically when this window expires.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, const Duration(minutes: 15)),
+          child: const Text('15 min'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, const Duration(minutes: 30)),
+          child: const Text('30 min'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, const Duration(minutes: 60)),
+          child: const Text('1 hour'),
+        ),
+      ],
+    ),
+  );
+}
+
+String _formatUnlockDuration(Duration d) {
+  if (d.inHours >= 1) {
+    final h = d.inHours;
+    return h == 1 ? '1 hour' : '$h hours';
+  }
+  return '${d.inMinutes} minutes';
 }

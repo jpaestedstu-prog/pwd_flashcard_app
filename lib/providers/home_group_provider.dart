@@ -137,6 +137,11 @@ class HomeGroupManagementNotifier
   }
 
   /// Remove [profileId] from [group]'s roster.
+  ///
+  /// Cascades to this parent's own `child_time_limits/{profileId}` and
+  /// `child_alarms` (where this parent is the setter) so the child
+  /// stops being controlled by a parent they no longer belong to.
+  /// Other educators' policies are left intact.
   Future<void> removeChild(HomeGroup group, String profileId) async {
     if (!FirebaseService.isConfigured) return;
     await FirebaseService.db
@@ -144,6 +149,105 @@ class HomeGroupManagementNotifier
         .doc('${group.id}_$profileId')
         .delete();
     await HiveService.removeHomeGroupMemberLocal(group.id, profileId);
+    await _cascadeEducatorPoliciesForProfile(profileId);
+  }
+
+  /// Bulk-remove children from [group]'s roster.
+  ///
+  /// Mirrors [ClassroomManagementNotifier.removeStudents]. Used by the
+  /// multi-select UI on the Manage Home Groups screen.
+  Future<void> removeChildren(
+      HomeGroup group, List<String> profileIds) async {
+    if (!FirebaseService.isConfigured) return;
+    if (profileIds.isEmpty) return;
+    await const FirestoreRepository()
+        .removeHomeGroupMembers(group.id, profileIds);
+    for (final id in profileIds) {
+      await HiveService.removeHomeGroupMemberLocal(group.id, id);
+      await _cascadeEducatorPoliciesForProfile(id);
+    }
+  }
+
+  /// Drop this parent's time-limit + alarm rules for the given child.
+  /// Best-effort — failures don't block the membership removal. Mirror
+  /// of [ClassroomManagementNotifier._cascadeEducatorPoliciesForProfile].
+  Future<void> _cascadeEducatorPoliciesForProfile(String profileId) async {
+    final parentId = arg;
+    final db = FirebaseService.db;
+    try {
+      final limitDoc = await db
+          .collection('child_time_limits')
+          .doc(profileId)
+          .get();
+      if (limitDoc.exists &&
+          (limitDoc.data()?['setter_profile_id'] as String?) == parentId) {
+        await limitDoc.reference.delete();
+      }
+    } catch (_) {
+      // Non-blocking.
+    }
+    try {
+      final alarms = await db
+          .collection('child_alarms')
+          .where('child_profile_id', isEqualTo: profileId)
+          .where('setter_profile_id', isEqualTo: parentId)
+          .get();
+      if (alarms.docs.isNotEmpty) {
+        final batch = db.batch();
+        for (final d in alarms.docs) {
+          batch.delete(d.reference);
+        }
+        await batch.commit();
+      }
+    } catch (_) {
+      // Non-blocking.
+    }
+    try {
+      // Drop the unlock override only if THIS parent set it.
+      final overrideDoc = await db
+          .collection('child_unlock_overrides')
+          .doc(profileId)
+          .get();
+      if (overrideDoc.exists &&
+          (overrideDoc.data()?['setter_profile_id'] as String?) == parentId) {
+        await overrideDoc.reference.delete();
+      }
+    } catch (_) {
+      // Non-blocking.
+    }
+  }
+
+  /// Rename how a child appears in [group]'s roster.
+  Future<void> renameMember(
+      HomeGroup group, String profileId, String newDisplayName) async {
+    if (!FirebaseService.isConfigured) return;
+    final trimmed = newDisplayName.trim();
+    if (trimmed.isEmpty) return;
+    await const FirestoreRepository().updateHomeGroupMemberDisplayName(
+      homeGroupId: group.id,
+      profileId: profileId,
+      newDisplayName: trimmed,
+    );
+  }
+
+  /// Manually enrol a child that hasn't joined from their own device.
+  ///
+  /// Parent-side mirror of [ClassroomManagementNotifier.addManualStudent].
+  /// Returns the synthetic profile id (prefix `manual_`).
+  Future<String> addManualChild(HomeGroup group, String displayName) async {
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
+    final trimmed = displayName.trim();
+    if (trimmed.isEmpty) {
+      throw Exception('Child name is required.');
+    }
+    return const FirestoreRepository().addManualHomeGroupMember(
+      homeGroupId: group.id,
+      displayName: trimmed,
+      parentProfileId: arg,
+    );
   }
 
   Future<void> refresh() async {

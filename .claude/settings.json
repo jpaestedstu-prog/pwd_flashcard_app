@@ -26,7 +26,37 @@
       "Read(//c/flutter/**)",
       "Read(//c/src/flutter/bin/**)",
       "Read(//c/Users/Maria Jusle/**)",
-      "Bash(/c/flutter/bin/flutter analyze *)"
+      "Bash(/c/flutter/bin/flutter analyze *)",
+      "Bash(xargs grep -l \"home.group\\\\|homegroup\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Maria Jusle\\\\Desktop\\\\2003-2004\\\\THESIS CAPSTONE\\\\part1 - Copy \\(4\\)\" -Recurse -Directory)",
+      "Bash(mkdir -p \"C:/Users/Maria Jusle/.claude/plans\" 2>/dev/null; ls \"C:/Users/Maria Jusle/.claude/plans/\" 2>/dev/null | head)",
+      "Bash(which flutter; ls ~/flutter 2>/dev/null; ls /c/flutter 2>/dev/null; ls \"/c/src/flutter\" 2>/dev/null; echo \"---\"; find / -name \"flutter\" -type f 2>/dev/null | head -5)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Maria Jusle\\\\Desktop\\\\2003-2004\\\\THESIS CAPSTONE\\\\part1 - Copy \\(4\\)\" -Recurse -Depth 2)",
+      "Bash(which flutter *)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(xargs grep -l \"class.*User\\\\|class.*Profile\")",
+      "Bash(Get-ChildItem -Recurse -Name -Include *.yaml, *.yml, *.dart)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Maria Jusle\\\\Desktop\\\\2003-2004\\\\THESIS CAPSTONE\\\\part1 - Copy \\(4\\)\" -Recurse -Filter \"*.dart\" -ErrorAction SilentlyContinue)",
+      "Bash(cmd.exe /c \"flutter --version\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Maria Jusle\\\\Desktop\\\\2003-2004\\\\THESIS CAPSTONE\\\\part1 - Copy \\(4\\)\" -Directory)",
+      "Bash(xargs grep -l \"teacher.*profile\\\\|parent.*profile\")",
+      "Bash(\"C:/src/flutter/bin/flutter.bat\" analyze *)",
+      "Bash(PATH='__TRACKED_VAR__:/c/Program Files/Git/cmd:/c/Program Files/Git/bin' C:/src/flutter/bin/flutter.bat analyze lib/core/theme/app_typography.dart lib/features/classroom/screens/classroom_management_screen.dart lib/features/settings/screens/settings_screen.dart lib/features/parent/widgets/child_detail_sheet.dart lib/features/parent/widgets/weekly_overview_card.dart lib/features/parent/widgets/learning_gain_card.dart)",
+      "Bash(cmd //c \"set PATH=C:\\\\Program Files\\\\Git\\\\cmd;C:\\\\src\\\\flutter\\\\bin;C:\\\\Windows\\\\System32;%PATH% && flutter analyze lib/core/theme/app_typography.dart lib/features/classroom/screens/classroom_management_screen.dart lib/features/settings/screens/settings_screen.dart lib/features/parent/widgets/child_detail_sheet.dart lib/features/parent/widgets/weekly_overview_card.dart lib/features/parent/widgets/learning_gain_card.dart\")",
+      "Bash(PATH='/c/Windows/System32:/c/Program Files/Git/cmd:/c/src/flutter/bin:__TRACKED_VAR__' /c/src/flutter/bin/flutter.bat analyze lib/core/theme/app_typography.dart lib/features/classroom/screens/classroom_management_screen.dart lib/features/settings/screens/settings_screen.dart lib/features/parent/widgets/child_detail_sheet.dart lib/features/parent/widgets/weekly_overview_card.dart lib/features/parent/widgets/learning_gain_card.dart)",
+      "Bash(PATH='/c/Windows/System32:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Program Files/Git/cmd:/c/src/flutter/bin:__TRACKED_VAR__' /c/src/flutter/bin/flutter.bat analyze lib/core/theme/app_typography.dart lib/features/classroom/screens/classroom_management_screen.dart lib/features/settings/screens/settings_screen.dart lib/features/parent/widgets/child_detail_sheet.dart lib/features/parent/widgets/weekly_overview_card.dart lib/features/parent/widgets/learning_gain_card.dart)",
+      "Bash(PATH='/c/Windows/System32:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Program Files/Git/cmd:/c/src/flutter/bin:__TRACKED_VAR__' /c/src/flutter/bin/flutter.bat analyze lib/features/settings/screens/edit_profile_screen.dart lib/features/parent/screens/parent_dashboard_screen.dart lib/features/parent/screens/child_time_limits_screen.dart lib/features/parent/screens/child_alarms_screen.dart lib/features/onboarding/screens/student_profile_detail_screen.dart lib/features/onboarding/screens/accessibility_setup_screen.dart lib/features/onboarding/screens/post_join_setup_screen.dart lib/features/onboarding/screens/profile_selection_screen.dart lib/features/settings/screens/dashboard_screen.dart lib/features/settings/screens/multi_student_dashboard_screen.dart)",
+      "PowerShell(flutter pub get 2>&1)",
+      "PowerShell(flutter analyze 2>&1)",
+      "Bash(curl -sI \"https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__dog.mp4\")",
+      "Bash(curl -s \"https://api.github.com/repos/jpaestedstu-prog/pwd-fsl-videos\")",
+      "Bash(curl -s \"https://api.github.com/repos/jpaestedstu-prog/pwd-fsl-videos/releases/tags/v1\")",
+      "Bash(curl -s \"https://api.github.com/repos/jpaestedstu-prog/pwd-fsl-videos/releases\")",
+      "Bash(gh --version)",
+      "Bash(gh auth *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Maria Jusle\\.claude\\plans"
     ]
   }
 }

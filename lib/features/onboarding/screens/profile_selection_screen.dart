@@ -10,7 +10,6 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/avatar_data.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
-import '../../../data/models/shop_data.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/local/local_repository.dart';
 import '../../../l10n/app_localizations.dart';
@@ -385,6 +384,7 @@ class _ProfileSelectionScreenState
                             onTap: _pickBirthDate,
                             child: AbsorbPointer(
                               child: TextFormField(
+                                key: ValueKey(_selectedBirthDate),
                                 style: AppTypography.bodyLarge,
                                 decoration: InputDecoration(
                                   hintText: 'Tap to select birth date',
@@ -408,11 +408,9 @@ class _ProfileSelectionScreenState
                                         )
                                       : null,
                                 ),
-                                controller: TextEditingController(
-                                  text: _selectedBirthDate != null
-                                      ? '${_selectedBirthDate!.month}/${_selectedBirthDate!.day}/${_selectedBirthDate!.year}'
-                                      : '',
-                                ),
+                                initialValue: _selectedBirthDate != null
+                                    ? '${_selectedBirthDate!.month}/${_selectedBirthDate!.day}/${_selectedBirthDate!.year}'
+                                    : '',
                                 validator: (value) {
                                   if (_selectedBirthDate == null) {
                                     return 'Please select a birth date';
@@ -542,72 +540,6 @@ class _ProfileSelectionScreenState
                             );
                           }).toList(),
                         ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
-
-                        const SizedBox(height: 20),
-
-                        // ─── Premium Avatars Preview ────
-                        Text(
-                          'Premium Avatars',
-                          style: AppTypography.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Earn stars in games to unlock special avatars!',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: HCColor.of(context).textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: ShopData.byType(ShopItemType.avatar).map((item) {
-                            return Semantics(
-                              label: '${item.name} premium avatar, locked, ${item.cost} stars',
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 250),
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.grey.withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    Text(
-                                      item.emoji,
-                                      style: const TextStyle(fontSize: 26),
-                                    ),
-                                    Positioned(
-                                      bottom: 2,
-                                      right: 2,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 4, vertical: 1),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.accent,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          '${item.cost}⭐',
-                                          style: const TextStyle(
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
 
                         const SizedBox(height: 28),
 

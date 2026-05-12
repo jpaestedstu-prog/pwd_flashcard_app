@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# FSL admin tooling — intermediate files (publish script uses gh CLI, no
+# secrets needed; manifest at assets/data/fsl_video_manifest.json IS checked in)
+build/fsl_mp4/
+build/fsl_release/
