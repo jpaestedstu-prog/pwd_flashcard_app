@@ -1,8 +1,8 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../data/local/seed_data.dart';
-import '../../../data/local/spaced_repetition_service.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -105,9 +105,39 @@ class AssessmentService {
     return LearningGainReport(preTest: pre, postTest: post);
   }
 
+  // ─── Pre-Test Template Persistence ─────────────────────
+
+  static const String _preTestTemplatePrefix = 'pretest_template_';
+
+  /// Persist a generated pre-test so its post-test can mirror it exactly.
+  /// Keyed by the assessment id, which the saved [AssessmentResult] also
+  /// references, letting [generateStandardAssessment] look it back up.
+  static Future<void> _savePreTestTemplate(Assessment assessment) async {
+    await _box.put(
+      '$_preTestTemplatePrefix${assessment.id}',
+      assessment.toJson(),
+    );
+  }
+
+  /// Load the stored pre-test template for [assessmentId], or null if absent.
+  static Assessment? getPreTestTemplate(String assessmentId) {
+    final raw = _box.get('$_preTestTemplatePrefix$assessmentId');
+    if (raw == null) return null;
+    return Assessment.fromJson(Map<String, dynamic>.from(raw as Map));
+  }
+
   // ─── Auto-Generate Assessments ─────────────────────────
 
-  /// Generate a pre-test or post-test assessment from seed data
+  /// Generate a pre-test or post-test assessment from seed data.
+  ///
+  /// Pre-tests draw a random vocabulary sample and are persisted as the
+  /// student's instrument (see [_savePreTestTemplate]). Post-tests are built
+  /// as a **parallel form** of that same pre-test — identical items, with only
+  /// the question order and per-question choice order re-randomized — so that
+  /// [LearningGainReport] compares like with like instead of comparing a
+  /// random pre-test against a post-test biased toward already-studied words.
+  /// If no pre-test template is available (legacy data, or no pre-test taken),
+  /// the post-test falls back to a fresh random sample.
   static Assessment generateStandardAssessment({
     required String profileId,
     required AssessmentType type,
@@ -115,44 +145,89 @@ class AssessmentService {
     GameDifficulty difficulty = GameDifficulty.medium,
     int questionCount = 15,
   }) {
-    final cats = categories.isEmpty ? FlashcardCategory.values.toList() : categories;
+    // Post-test: replay the student's completed pre-test as a parallel form.
+    if (type == AssessmentType.postTest) {
+      final pre = getLatestPreTest(profileId);
+      final template =
+          pre != null ? getPreTestTemplate(pre.assessmentId) : null;
+      if (template != null) {
+        return _buildParallelForm(template);
+      }
+      // No template — fall through to a fresh sample so nothing breaks.
+    }
+
+    final cats =
+        categories.isEmpty ? FlashcardCategory.values.toList() : categories;
     final allCards = <Flashcard>[];
     for (final cat in cats) {
       allCards.addAll(SeedData.getByCategory(cat));
     }
 
-    // For post-tests, prioritize words the student has seen
-    List<Flashcard> selectedCards;
-    if (type == AssessmentType.postTest) {
-      final accuracies = SpacedRepetitionService.getWordAccuracies(profileId);
-      final seen = allCards.where((c) => accuracies.containsKey(c.id)).toList();
-      final unseen = allCards.where((c) => !accuracies.containsKey(c.id)).toList();
-      selectedCards = [...seen, ...unseen];
-    } else {
-      selectedCards = List.from(allCards)..shuffle(Random());
-    }
-
-    final count = min(questionCount, selectedCards.length);
-    selectedCards = selectedCards.take(count).toList();
+    final rng = Random();
+    final selectedCards = (List.of(allCards)..shuffle(rng))
+        .take(min(questionCount, allCards.length))
+        .toList();
 
     final questions = <AssessmentQuestion>[];
-    final rng = Random();
-
     for (final card in selectedCards) {
       final format = _randomFormat(difficulty, rng);
-      final question = _generateQuestion(card, allCards, format, rng);
-      questions.add(question);
+      questions.add(_generateQuestion(card, allCards, format, rng));
     }
 
-    return Assessment(
+    final assessment = Assessment(
       id: _uuid.v4(),
-      title: '${type.label} — ${cats.length == FlashcardCategory.values.length ? "All Categories" : cats.map((c) => c.label).join(", ")}',
+      title:
+          '${type.label} — ${cats.length == FlashcardCategory.values.length ? "All Categories" : cats.map((c) => c.label).join(", ")}',
       description: type.description,
       type: type,
       questions: questions,
       categories: cats,
       difficulty: difficulty,
       timeLimitMinutes: difficulty == GameDifficulty.hard ? 10 : null,
+      createdBy: 'system',
+      createdAt: DateTime.now(),
+    );
+
+    // Persist the pre-test so its post-test can mirror it exactly.
+    if (type == AssessmentType.preTest) {
+      unawaited(_savePreTestTemplate(assessment));
+    }
+
+    return assessment;
+  }
+
+  /// Builds a post-test that is a parallel form of [preTemplate]: the exact
+  /// same items (question ids, prompts, correct answers, distractors) with the
+  /// question order and each question's choice order re-randomized to blunt
+  /// rote recall. Keeping question ids lets pre/post items be matched 1:1 for
+  /// later item analysis.
+  static Assessment _buildParallelForm(Assessment preTemplate) {
+    final rng = Random();
+    final questions = preTemplate.questions
+        .map((q) => AssessmentQuestion(
+              id: q.id,
+              questionText: q.questionText,
+              correctAnswer: q.correctAnswer,
+              choices: List.of(q.choices)..shuffle(rng),
+              format: q.format,
+              category: q.category,
+              imageAsset: q.imageAsset,
+              hint: q.hint,
+            ))
+        .toList()
+      ..shuffle(rng);
+
+    final cats = preTemplate.categories;
+    return Assessment(
+      id: _uuid.v4(),
+      title:
+          '${AssessmentType.postTest.label} — ${cats.length == FlashcardCategory.values.length ? "All Categories" : cats.map((c) => c.label).join(", ")}',
+      description: AssessmentType.postTest.description,
+      type: AssessmentType.postTest,
+      questions: questions,
+      categories: cats,
+      difficulty: preTemplate.difficulty,
+      timeLimitMinutes: preTemplate.timeLimitMinutes,
       createdBy: 'system',
       createdAt: DateTime.now(),
     );
