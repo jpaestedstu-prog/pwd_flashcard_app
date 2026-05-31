@@ -7,12 +7,12 @@ import '../../data/models/enums.dart';
 import '../../data/local/hive_service.dart';
 import '../../data/local/spaced_repetition_service.dart';
 import '../../features/assessment/services/assessment_service.dart';
-import '../../features/assessment/models/assessment_models.dart';
 import '../../features/survey/services/survey_service.dart';
 import '../../features/experiment/models/experiment_models.dart';
 import '../../features/experiment/services/experiment_service.dart';
 import '../services/adaptive_difficulty_service.dart';
 import '../services/engagement_tracker.dart';
+import 'research_export_rows.dart';
 
 /// Generates anonymized, cross-student research data exports for thesis
 /// analysis. Unlike [CsvExportService] (single-student), this aggregates
@@ -345,59 +345,25 @@ class ResearchExportService {
     List<(UserProfile, LearningProgress)> students,
     Map<String, String> idMap,
   ) {
-    final buf = StringBuffer();
-    buf.writeln(
-      'student_id,group_label,experiment_enabled,'
-      'assessment_type,score,total_questions,'
-      'percentage,duration_seconds,completed_at,'
-      'learning_gain,normalized_gain',
-    );
+    // Denormalize the experiment group onto every row so a treatment-vs-
+    // control test runs straight off this file, with no manual JOIN against
+    // experiment_groups.csv by student_id. learning_gain is the raw post−pre
+    // percentage-point change; normalized_gain is Hake's g (blank when the
+    // pre-test is perfect). Row formatting lives in ResearchExportRows.
+    final buf = StringBuffer()
+      ..writeln(ResearchExportRows.assessmentResultsHeader);
 
     for (final (profile, _) in students) {
-      final sid = idMap[profile.id]!;
-      final results = AssessmentService.getResults(profile.id);
-
-      // Denormalize the experiment group onto every row so a treatment-vs-
-      // control test runs straight off this file, with no manual JOIN against
-      // experiment_groups.csv by student_id.
       final config = ExperimentService.getConfig(profile.id);
-      final groupLabel = _esc(config.groupLabel);
-      final expEnabled = config.enabled ? 1 : 0;
-
-      // Get learning gain if both pre and post exist. learning_gain is the raw
-      // post−pre percentage-point change; normalized_gain is Hake's g, a
-      // ceiling-corrected decimal in (−∞, 1] (blank when pre-test is perfect).
-      final gainReport = AssessmentService.getLearningGainReport(profile.id);
-      final gainValue = gainReport != null
-          ? (gainReport.improvement * 100).round().toString()
-          : '';
-      final normGain = gainReport?.normalizedGain;
-      final normGainValue =
-          normGain != null ? normGain.toStringAsFixed(3) : '';
-
-      for (final r in results) {
-        final pct =
-            r.totalQuestions > 0
-                ? (r.score / r.totalQuestions * 100).round()
-                : 0;
-        // Only attach learning-gain metrics to the post-test row.
-        final isPost = r.type == AssessmentType.postTest;
-        final gain = isPost ? gainValue : '';
-        final ng = isPost ? normGainValue : '';
-
-        buf.writeln(
-          '$sid,'
-          '$groupLabel,'
-          '$expEnabled,'
-          '${r.type.name},'
-          '${r.score},'
-          '${r.totalQuestions},'
-          '$pct,'
-          '${r.durationSeconds},'
-          '${r.completedAt.toIso8601String()},'
-          '$gain,'
-          '$ng',
-        );
+      final rows = ResearchExportRows.assessmentResultRows(
+        studentId: idMap[profile.id]!,
+        groupLabel: config.groupLabel,
+        experimentEnabled: config.enabled,
+        results: AssessmentService.getResults(profile.id),
+        gain: AssessmentService.getLearningGainReport(profile.id),
+      );
+      for (final row in rows) {
+        buf.writeln(row);
       }
     }
     return buf.toString();
@@ -414,34 +380,17 @@ class ResearchExportService {
     List<(UserProfile, LearningProgress)> students,
     Map<String, String> idMap,
   ) {
-    final buf = StringBuffer();
-    buf.writeln(
-      'student_id,group_label,assessment_type,assessment_id,'
-      'completed_at,question_id,is_correct,response_time_ms,given_answer',
-    );
+    final buf = StringBuffer()
+      ..writeln(ResearchExportRows.itemResponsesHeader);
 
     for (final (profile, _) in students) {
-      final sid = idMap[profile.id]!;
-      final groupLabel =
-          _esc(ExperimentService.getConfig(profile.id).groupLabel);
-      final results = AssessmentService.getResults(profile.id);
-
-      for (final r in results) {
-        final completedAt = r.completedAt.toIso8601String();
-        final assessmentType = r.type.name;
-        for (final a in r.answers) {
-          buf.writeln(
-            '$sid,'
-            '$groupLabel,'
-            '$assessmentType,'
-            '${r.assessmentId},'
-            '$completedAt,'
-            '${a.questionId},'
-            '${a.isCorrect ? 1 : 0},'
-            '${a.responseTimeMs},'
-            '${_esc(a.givenAnswer)}',
-          );
-        }
+      final rows = ResearchExportRows.itemResponseRows(
+        studentId: idMap[profile.id]!,
+        groupLabel: ExperimentService.getConfig(profile.id).groupLabel,
+        results: AssessmentService.getResults(profile.id),
+      );
+      for (final row in rows) {
+        buf.writeln(row);
       }
     }
     return buf.toString();
@@ -746,10 +695,5 @@ class ResearchExportService {
     return XFile(file.path);
   }
 
-  static String _esc(String value) {
-    if (value.contains(',') || value.contains('"') || value.contains('\n')) {
-      return '"${value.replaceAll('"', '""')}"';
-    }
-    return value;
-  }
+  static String _esc(String value) => ResearchExportRows.esc(value);
 }
