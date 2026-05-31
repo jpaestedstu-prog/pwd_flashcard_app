@@ -341,27 +341,33 @@ class ResearchExportService {
     buf.writeln(
       'student_id,assessment_type,score,total_questions,'
       'percentage,duration_seconds,completed_at,'
-      'learning_gain',
+      'learning_gain,normalized_gain',
     );
 
     for (final (profile, _) in students) {
       final sid = idMap[profile.id]!;
       final results = AssessmentService.getResults(profile.id);
 
-      // Get learning gain if both pre and post exist
+      // Get learning gain if both pre and post exist. learning_gain is the raw
+      // post−pre percentage-point change; normalized_gain is Hake's g, a
+      // ceiling-corrected decimal in (−∞, 1] (blank when pre-test is perfect).
       final gainReport = AssessmentService.getLearningGainReport(profile.id);
       final gainValue = gainReport != null
-          ? (gainReport.improvement * 100).round()
+          ? (gainReport.improvement * 100).round().toString()
           : '';
+      final normGain = gainReport?.normalizedGain;
+      final normGainValue =
+          normGain != null ? normGain.toStringAsFixed(3) : '';
 
       for (final r in results) {
         final pct =
             r.totalQuestions > 0
                 ? (r.score / r.totalQuestions * 100).round()
                 : 0;
-        // Only attach learning gain to the post-test row
-        final gain =
-            r.type == AssessmentType.postTest ? gainValue : '';
+        // Only attach learning-gain metrics to the post-test row.
+        final isPost = r.type == AssessmentType.postTest;
+        final gain = isPost ? gainValue : '';
+        final ng = isPost ? normGainValue : '';
 
         buf.writeln(
           '$sid,'
@@ -371,7 +377,8 @@ class ResearchExportService {
           '$pct,'
           '${r.durationSeconds},'
           '${r.completedAt.toIso8601String()},'
-          '$gain',
+          '$gain,'
+          '$ng',
         );
       }
     }
@@ -574,6 +581,7 @@ class ResearchExportService {
 
     // Pre/post test gains
     final learningGains = <double>[];
+    final normalizedGains = <double>[];
 
     for (final (profile, progress) in students) {
       totalGames += progress.recentScores.length;
@@ -616,6 +624,8 @@ class ResearchExportService {
       final gain = AssessmentService.getLearningGainReport(profile.id);
       if (gain != null) {
         learningGains.add(gain.improvement);
+        final ng = gain.normalizedGain;
+        if (ng != null) normalizedGains.add(ng);
       }
     }
 
@@ -630,6 +640,9 @@ class ResearchExportService {
 
     final avgGain = learningGains.isNotEmpty
         ? learningGains.reduce((a, b) => a + b) / learningGains.length
+        : null;
+    final avgNormGain = normalizedGains.isNotEmpty
+        ? normalizedGains.reduce((a, b) => a + b) / normalizedGains.length
         : null;
 
     final summary = {
@@ -649,6 +662,10 @@ class ResearchExportService {
       'students_with_learning_gain': learningGains.length,
       'average_learning_gain_pct':
           avgGain != null ? (avgGain * 100).round() : null,
+      'students_with_normalized_gain': normalizedGains.length,
+      'average_normalized_gain': avgNormGain != null
+          ? double.parse(avgNormGain.toStringAsFixed(3))
+          : null,
     };
 
     const encoder = JsonEncoder.withIndent('  ');
