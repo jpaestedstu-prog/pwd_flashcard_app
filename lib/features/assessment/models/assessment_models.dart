@@ -303,6 +303,19 @@ class LearningGainReport {
   double get improvementPercent =>
       preTestPercentage > 0 ? improvement / preTestPercentage : improvement;
 
+  /// Hake's normalized gain: `(post - pre) / (1 - pre)`.
+  ///
+  /// Controls for ceiling effects — a student starting near the top can only
+  /// gain a small raw amount, so [improvement] understates their learning.
+  /// Returns null when the pre-test is already perfect (pre == 100%), where
+  /// the metric is undefined (division by zero). May be negative if the score
+  /// dropped.
+  double? get normalizedGain {
+    final headroom = 1.0 - preTestPercentage;
+    if (headroom <= 0) return null;
+    return improvement / headroom;
+  }
+
   bool get hasImproved => improvement > 0;
 
   String get summary {
