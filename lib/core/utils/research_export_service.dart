@@ -24,7 +24,9 @@ import '../services/engagement_tracker.dart';
 /// 3. `session_patterns.csv`   – session logs across all students
 /// 4. `category_mastery.csv`   – per-category progress per student
 /// 5. `word_accuracy.csv`      – per-word spaced-repetition data
-/// 6. `assessment_results.csv` – pre/post test & learning gains
+/// 6. `assessment_results.csv` – pre/post test, learning & normalized gains
+/// 6b. `item_responses.csv`    – per-question correctness & response time
+///     (item difficulty/discrimination, Cronbach's α)
 /// 7. `mood_data.csv`          – mood entries correlated with activity
 /// 8. `adaptive_difficulty.csv` – per-game difficulty adjustments over time
 /// 9. `summary_stats.json`     – high-level aggregates for quick analysis
@@ -92,6 +94,12 @@ class ResearchExportService {
       exportDir,
       'assessment_results.csv',
       _buildAssessmentResults(students, idMap),
+    ));
+
+    files.add(await _writeFile(
+      exportDir,
+      'item_responses.csv',
+      _buildItemResponses(students, idMap),
     ));
 
     files.add(await _writeFile(
@@ -390,6 +398,50 @@ class ResearchExportService {
           '$gain,'
           '$ng',
         );
+      }
+    }
+    return buf.toString();
+  }
+
+  // ─── File 6b: Item-Level Responses ──────────────────────
+
+  /// One row per answered question across every assessment result, keyed by
+  /// question_id. Because pre- and post-tests now share question ids (parallel
+  /// forms), items can be matched 1:1 across tests. Enables item difficulty
+  /// (proportion correct), discrimination, and internal-consistency
+  /// reliability (Cronbach's α) — pivot to a student × item correctness matrix.
+  static String _buildItemResponses(
+    List<(UserProfile, LearningProgress)> students,
+    Map<String, String> idMap,
+  ) {
+    final buf = StringBuffer();
+    buf.writeln(
+      'student_id,group_label,assessment_type,assessment_id,'
+      'completed_at,question_id,is_correct,response_time_ms,given_answer',
+    );
+
+    for (final (profile, _) in students) {
+      final sid = idMap[profile.id]!;
+      final groupLabel =
+          _esc(ExperimentService.getConfig(profile.id).groupLabel);
+      final results = AssessmentService.getResults(profile.id);
+
+      for (final r in results) {
+        final completedAt = r.completedAt.toIso8601String();
+        final assessmentType = r.type.name;
+        for (final a in r.answers) {
+          buf.writeln(
+            '$sid,'
+            '$groupLabel,'
+            '$assessmentType,'
+            '${r.assessmentId},'
+            '$completedAt,'
+            '${a.questionId},'
+            '${a.isCorrect ? 1 : 0},'
+            '${a.responseTimeMs},'
+            '${_esc(a.givenAnswer)}',
+          );
+        }
       }
     }
     return buf.toString();
