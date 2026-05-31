@@ -339,7 +339,8 @@ class ResearchExportService {
   ) {
     final buf = StringBuffer();
     buf.writeln(
-      'student_id,assessment_type,score,total_questions,'
+      'student_id,group_label,experiment_enabled,'
+      'assessment_type,score,total_questions,'
       'percentage,duration_seconds,completed_at,'
       'learning_gain,normalized_gain',
     );
@@ -347,6 +348,13 @@ class ResearchExportService {
     for (final (profile, _) in students) {
       final sid = idMap[profile.id]!;
       final results = AssessmentService.getResults(profile.id);
+
+      // Denormalize the experiment group onto every row so a treatment-vs-
+      // control test runs straight off this file, with no manual JOIN against
+      // experiment_groups.csv by student_id.
+      final config = ExperimentService.getConfig(profile.id);
+      final groupLabel = _esc(config.groupLabel);
+      final expEnabled = config.enabled ? 1 : 0;
 
       // Get learning gain if both pre and post exist. learning_gain is the raw
       // post−pre percentage-point change; normalized_gain is Hake's g, a
@@ -371,6 +379,8 @@ class ResearchExportService {
 
         buf.writeln(
           '$sid,'
+          '$groupLabel,'
+          '$expEnabled,'
           '${r.type.name},'
           '${r.score},'
           '${r.totalQuestions},'
