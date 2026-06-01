@@ -495,7 +495,7 @@ class ResearchExportService {
     final buf = StringBuffer();
     final featureNames = GamificationFeature.values.map((f) => f.name);
     buf.writeln(
-      'student_id,experiment_enabled,group_label,'
+      'student_id,experiment_enabled,group_label,assigned_at,'
       'disabled_count,${featureNames.join(",")}',
     );
 
@@ -509,6 +509,7 @@ class ResearchExportService {
         '$sid,'
         '${config.enabled ? 1 : 0},'
         '${config.groupLabel},'
+        '${config.assignedAt?.toIso8601String() ?? ''},'
         '${config.disabledFeatures.length},'
         '${featureStatuses.join(",")}',
       );

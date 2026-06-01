@@ -103,22 +103,30 @@ class ExperimentConfig {
   /// it should be hidden from the student's UI.
   final Set<GamificationFeature> disabledFeatures;
 
+  /// When the student was assigned to their current group. Null in normal
+  /// (non-experiment) mode. Recorded for treatment fidelity — it documents
+  /// when assignment happened so a mid-study change is detectable.
+  final DateTime? assignedAt;
+
   const ExperimentConfig({
     this.enabled = false,
     this.groupLabel = 'treatment',
     this.disabledFeatures = const {},
+    this.assignedAt,
   });
 
-  /// Quick preset: full gamification (treatment group).
-  factory ExperimentConfig.treatment() => const ExperimentConfig(
+  /// Quick preset: full gamification (treatment group). Stamps [assignedAt].
+  factory ExperimentConfig.treatment() => ExperimentConfig(
         enabled: true,
+        assignedAt: DateTime.now(),
       );
 
-  /// Quick preset: no gamification (control group).
+  /// Quick preset: no gamification (control group). Stamps [assignedAt].
   factory ExperimentConfig.control() => ExperimentConfig(
         enabled: true,
         groupLabel: 'control',
         disabledFeatures: GamificationFeature.values.toSet(),
+        assignedAt: DateTime.now(),
       );
 
   /// Check if a specific gamification feature is active.
@@ -132,6 +140,7 @@ class ExperimentConfig {
         'groupLabel': groupLabel,
         'disabledFeatures':
             disabledFeatures.map((f) => f.index).toList(),
+        'assignedAt': assignedAt?.toIso8601String(),
       };
 
   factory ExperimentConfig.fromJson(Map<String, dynamic> json) {
@@ -144,6 +153,9 @@ class ExperimentConfig {
           .where((i) => i >= 0 && i < GamificationFeature.values.length)
           .map((i) => GamificationFeature.values[i])
           .toSet(),
+      assignedAt: json['assignedAt'] != null
+          ? DateTime.tryParse(json['assignedAt'] as String)
+          : null,
     );
   }
 
@@ -151,11 +163,13 @@ class ExperimentConfig {
     bool? enabled,
     String? groupLabel,
     Set<GamificationFeature>? disabledFeatures,
+    DateTime? assignedAt,
   }) {
     return ExperimentConfig(
       enabled: enabled ?? this.enabled,
       groupLabel: groupLabel ?? this.groupLabel,
       disabledFeatures: disabledFeatures ?? this.disabledFeatures,
+      assignedAt: assignedAt ?? this.assignedAt,
     );
   }
 }
