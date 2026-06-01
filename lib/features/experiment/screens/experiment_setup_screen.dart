@@ -330,7 +330,10 @@ class _ExperimentSetupScreenState
           style: AppTypography.titleSmall
               .copyWith(fontWeight: FontWeight.bold),
         ),
-        subtitle: Row(
+        subtitle: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(
@@ -347,8 +350,7 @@ class _ExperimentSetupScreenState
                 ),
               ),
             ),
-            if (config.enabled) ...[
-              const SizedBox(width: 8),
+            if (config.enabled)
               Text(
                 '${GamificationFeature.values.length - config.disabledFeatures.length}'
                 '/${GamificationFeature.values.length} features',
@@ -356,7 +358,14 @@ class _ExperimentSetupScreenState
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-            ],
+            if (config.enabled && config.assignedAt != null)
+              Text(
+                '${isFilipino ? 'Na-assign' : 'Assigned'} '
+                '${config.assignedAt!.toIso8601String().split('T').first}',
+                style: AppTypography.labelSmall.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
           ],
         ),
         children: [
