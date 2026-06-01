@@ -99,6 +99,12 @@ class ChildHomeScreen extends ConsumerWidget {
                       color: const Color(0xFFA5D6A7),
                       onTap: () => context.push('/sticker-album'),
                     ),
+                    _ChildTile(
+                      emoji: '😊',
+                      label: 'How was it?',
+                      color: const Color(0xFFFFCC80),
+                      onTap: () => context.push('/smileyometer'),
+                    ),
                   ],
                 ),
               ),

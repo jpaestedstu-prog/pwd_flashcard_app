@@ -362,6 +362,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     _learningGainBanner(context),
                     _showcaseBanner(context),
                     _goalsBanner(context),
+                    _smileyometerBanner(context),
                   ].map((banner) => SliverToBoxAdapter(
                         child: Padding(
                           padding: EdgeInsets.fromLTRB(padding, 10, padding, 0),
@@ -764,6 +765,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       gradientColors: const [Color(0xFFFF8F00), Color(0xFFFFA726)],
       onTap: () => context.push('/goals'),
       semanticLabel: 'Open My Goals. Set and track your learning goals.',
+    );
+  }
+
+  Widget _smileyometerBanner(BuildContext context) {
+    return FeatureBanner(
+      emoji: '😊',
+      title: 'How was it?',
+      subtitle: 'Tell us how you feel about the app',
+      gradientColors: const [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+      onTap: () => context.push('/smileyometer'),
+      semanticLabel: 'Open feedback. Tell us how you feel about the app.',
     );
   }
 }

@@ -104,6 +104,7 @@ import '../features/home_group/screens/home_group_management_screen.dart';
 import '../features/settings/screens/profile_import_export_screen.dart';
 import '../features/survey/screens/sus_survey_screen.dart';
 import '../features/survey/screens/survey_results_screen.dart';
+import '../features/survey/screens/smileyometer_screen.dart';
 import '../features/experiment/screens/experiment_setup_screen.dart';
 import '../features/gamification/screens/gamification_dashboard_screen.dart';
 import '../features/word_of_day/screens/word_of_day_screen.dart';
@@ -1246,6 +1247,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
           child: const SusSurveyScreen(),
+        ),
+      ),
+      // ─── Student Smileyometer (learner feedback) ───────
+      GoRoute(
+        path: '/smileyometer',
+        pageBuilder: (context, state) => AppPageTransitions.slideUp(
+          key: state.pageKey,
+          child: const SmileyometerScreen(),
         ),
       ),
       GoRoute(

@@ -119,6 +119,22 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
 
     return Column(
       children: [
+        // Teacher-administered framing: the SUS is completed by the
+        // teacher/facilitator, not the student (see docs/sus_methodology.md).
+        Padding(
+          padding: EdgeInsets.fromLTRB(padding, 12, padding, 0),
+          child: Text(
+            isFilipino
+                ? 'Para sa guro/tagapagpadaloy: i-rate ang kakayahang-gamit ng '
+                    'app habang ginagamit mo ito kasama ang iyong mga mag-aaral.'
+                : 'For the teacher/facilitator: rate the usability of the app '
+                    'as you use it with your students.',
+            style: AppTypography.bodySmall.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
         // Progress indicator
         Padding(
           padding: EdgeInsets.symmetric(horizontal: padding, vertical: 8),

@@ -78,6 +78,12 @@ class PlayerHomeScreen extends ConsumerWidget {
                 icon: const Icon(Icons.style_rounded),
                 label: const Text('Browse flashcards'),
               ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/smileyometer'),
+                icon: const Icon(Icons.emoji_emotions_outlined),
+                label: const Text('How was it?'),
+              ),
 
               const Spacer(),
 
