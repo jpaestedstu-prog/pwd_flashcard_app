@@ -1,4 +1,6 @@
 import '../../features/assessment/models/assessment_models.dart';
+import '../../features/survey/models/survey_models.dart';
+import '../../features/survey/models/smileyometer_models.dart';
 
 /// Pure CSV header/row builders for [ResearchExportService].
 ///
@@ -97,6 +99,71 @@ class ResearchExportRows {
           '${esc(a.givenAnswer)}',
         );
       }
+    }
+    return rows;
+  }
+
+  // ─── sus_survey_results.csv (teacher-administered) ──────
+
+  static const String susSurveyHeader =
+      'respondent_id,respondent_role,survey_date,'
+      'q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,'
+      'sus_score,grade_label,feedback_length';
+
+  /// Rows for one respondent's SUS submissions. The SUS is the validated
+  /// usability instrument, completed by the teacher/facilitator — hence
+  /// [respondentId]/[respondentRole] rather than a student id.
+  static List<String> susSurveyRows({
+    required String respondentId,
+    required String respondentRole,
+    required List<SusSurveyResult> results,
+  }) {
+    final roleCell = esc(respondentRole);
+    final rows = <String>[];
+    for (final r in results) {
+      final resp = r.responses;
+      final answers = resp.length >= 10
+          ? resp.sublist(0, 10).join(',')
+          : List.filled(10, '').join(',');
+      rows.add(
+        '$respondentId,'
+        '$roleCell,'
+        '${r.completedAt.toIso8601String()},'
+        '$answers,'
+        '${r.susScore.toStringAsFixed(1)},'
+        '${esc(r.gradeLabel)},'
+        '${r.feedback?.length ?? 0}',
+      );
+    }
+    return rows;
+  }
+
+  // ─── student_experience.csv (learner Smileyometer) ──────
+
+  static const String smileyometerHeader =
+      'student_id,group_label,completed_at,q1,q2,q3,mean_rating';
+
+  /// Rows for one learner's Smileyometer submissions (3 face ratings, 1–3),
+  /// reported descriptively — not a usability score.
+  static List<String> smileyometerRows({
+    required String studentId,
+    required String groupLabel,
+    required List<SmileyometerResult> results,
+  }) {
+    final groupCell = esc(groupLabel);
+    final rows = <String>[];
+    for (final r in results) {
+      final ratings = [
+        for (var i = 0; i < 3; i++)
+          i < r.ratings.length ? r.ratings[i].toString() : '',
+      ].join(',');
+      rows.add(
+        '$studentId,'
+        '$groupCell,'
+        '${r.completedAt.toIso8601String()},'
+        '$ratings,'
+        '${r.meanRating.toStringAsFixed(2)}',
+      );
     }
     return rows;
   }

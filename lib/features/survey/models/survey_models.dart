@@ -142,7 +142,7 @@ class SusQuestions {
   ];
 
   static const List<String> scaleLabelsFilipino = [
-    'Hindi Sang-ayon',
+    'Lubos na Hindi Sang-ayon',
     'Hindi Sang-ayon',
     'Neutral',
     'Sang-ayon',
