@@ -19,15 +19,16 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/experiment_provider.dart';
 import '../../../features/experiment/models/experiment_models.dart';
 import '../../../widgets/shared_widgets.dart';
-import '../../../widgets/game_widgets.dart';
 import '../../../widgets/tutorial_overlay.dart';
 import '../../../widgets/connectivity_indicator.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/enhanced_category_card.dart';
 import '../../../widgets/animated_mascot_buddy.dart';
 import '../../../widgets/seasonal_decorations.dart';
+import '../../../widgets/profile_avatar.dart';
 import '../../../core/constants/flashcard_emojis.dart';
 import '../../assessment/services/assessment_service.dart';
+import '../widgets/home_tile.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -38,7 +39,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _showTutorial = false;
-  Set<String> _collapsedCategories = {};
 
   @override
   void initState() {
@@ -53,10 +53,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // Only show login reward if tutorial is not showing
           _showLoginRewardIfNeeded(profile.id);
         }
-        setState(() {
-          _collapsedCategories =
-              HiveService.getCollapsedCategories(profile.id);
-        });
       }
     });
   }
@@ -89,20 +85,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _toggleCategory(String label) {
-    final profile = ref.read(profileProvider);
-    setState(() {
-      if (_collapsedCategories.contains(label)) {
-        _collapsedCategories.remove(label);
-      } else {
-        _collapsedCategories.add(label);
-      }
-    });
-    if (profile != null) {
-      HiveService.saveCollapsedCategories(profile.id, _collapsedCategories);
-    }
-  }
-
   void _completeTutorial() {
     final profile = ref.read(profileProvider);
     if (profile != null) {
@@ -132,6 +114,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
                     child: Row(
                       children: [
+                        ProfileAvatar(profile: profile, radius: 24),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,6 +206,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
 
+                // ─── Live Class CTA: join the live activity ─
+                // Shown when the learner belongs to a classroom or home group,
+                // so they can jump into a teacher/parent-run live session and
+                // raise their hand.
+                if (profile != null &&
+                    !profile.isGuestPlayer &&
+                    (profile.classroomId != null ||
+                        profile.homeGroupId != null))
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding:
+                          EdgeInsets.fromLTRB(padding, 0, padding, 16),
+                      child: _LiveClassCta(
+                        onTap: () => context.push('/live-session'),
+                      ).animate().fadeIn(duration: 400.ms, delay: 180.ms),
+                    ),
+                  ),
+
                 // ─── XP & Level Bar ───────────────────
                 SliverToBoxAdapter(
                   child: Padding(
@@ -248,7 +250,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: Ink(
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [Color(0xFF7C4DFF), Color(0xFF448AFF)],
+                                colors: [
+                                  AppColors.playerAccent,
+                                  AppColors.playerAccentLight,
+                                ],
                               ),
                               borderRadius: BorderRadius.circular(16),
                             ),
@@ -315,142 +320,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
 
                 // ═══════════════════════════════════════
-                // ─── 📚 Learning & Study ───────────────
+                // ─── ▶ Play & Learn (core game hub) ────
                 // ═══════════════════════════════════════
-                SliverToBoxAdapter(
-                  child: _CategoryHeader(
-                    icon: Icons.auto_stories_rounded,
-                    label: 'Learning & Study',
-                    color: AppColors.sectionLearning,
-                    padding: padding,
-                    isExpanded: !_collapsedCategories.contains('Learning & Study'),
-                    onTap: () => _toggleCategory('Learning & Study'),
-                  ),
+                _sectionHeaderSliver(
+                  context,
+                  padding: padding,
+                  title: 'Play & Learn',
+                  icon: Icons.sports_esports_rounded,
+                  color: AppColors.playerAccent,
                 ),
-                if (!_collapsedCategories.contains('Learning & Study'))
-                  ...[
-                    const _SmartReviewBanner(),
-                    _learningPathsBanner(context),
-                    _guidedPracticeBanner(context),
-                    _hardWordsBanner(context),
-                    _recommendationsBanner(context),
-                  ].map((banner) => SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(padding, 10, padding, 0),
-                          child: banner
-                              .animate()
-                              .fadeIn(duration: 400.ms, delay: 250.ms),
-                        ),
-                      )),
+                _tileGridSliver(
+                  context,
+                  padding: padding,
+                  columns: _coreColumns(context),
+                  extent: context.hubTileHeight(),
+                  tiles: _coreTiles(context),
+                ),
 
                 // ═══════════════════════════════════════
-                // ─── 📝 Assessment & Progress ──────────
+                // ─── More tools, grouped & organized ───
                 // ═══════════════════════════════════════
-                SliverToBoxAdapter(
-                  child: _CategoryHeader(
-                    icon: Icons.trending_up_rounded,
-                    label: 'Assessment & Progress',
-                    color: AppColors.sectionAssessment,
-                    padding: padding,
-                    isExpanded: !_collapsedCategories.contains('Assessment & Progress'),
-                    onTap: () => _toggleCategory('Assessment & Progress'),
-                  ),
-                ),
-                if (!_collapsedCategories.contains('Assessment & Progress'))
-                  ...[
-                    _assessmentBanner(context),
-                    _learningGainBanner(context),
-                    _showcaseBanner(context),
-                    _goalsBanner(context),
-                  ].map((banner) => SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(padding, 10, padding, 0),
-                          child: banner
-                              .animate()
-                              .fadeIn(duration: 400.ms, delay: 250.ms),
-                        ),
-                      )),
-
-                // ═══════════════════════════════════════
-                // ─── 🗣️ Communication & Language ──────
-                // ═══════════════════════════════════════
-                SliverToBoxAdapter(
-                  child: _CategoryHeader(
-                    icon: Icons.record_voice_over_rounded,
-                    label: 'Communication & Language',
-                    color: AppColors.sectionCommunication,
-                    padding: padding,
-                    isExpanded: !_collapsedCategories.contains('Communication & Language'),
-                    onTap: () => _toggleCategory('Communication & Language'),
-                  ),
-                ),
-                if (!_collapsedCategories.contains('Communication & Language'))
-                  ...[
-                    _fslDictionaryBanner(context),
-                    _communicationBoardBanner(context),
-                    _aiTutorBanner(context),
-                  ].map((banner) => SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(padding, 10, padding, 0),
-                          child: banner
-                              .animate()
-                              .fadeIn(duration: 400.ms, delay: 250.ms),
-                        ),
-                      )),
-
-                // ═══════════════════════════════════════
-                // ─── 🤝 Social & Collaboration ────────
-                // ═══════════════════════════════════════
-                SliverToBoxAdapter(
-                  child: _CategoryHeader(
-                    icon: Icons.people_rounded,
-                    label: 'Social & Collaboration',
-                    color: AppColors.sectionSocial,
-                    padding: padding,
-                    isExpanded: !_collapsedCategories.contains('Social & Collaboration'),
-                    onTap: () => _toggleCategory('Social & Collaboration'),
-                  ),
-                ),
-                if (!_collapsedCategories.contains('Social & Collaboration'))
-                  ...[
-                    _messagingBanner(context),
-                    _peerCollabBanner(context),
-                  ].map((banner) => SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(padding, 10, padding, 0),
-                          child: banner
-                              .animate()
-                              .fadeIn(duration: 400.ms, delay: 250.ms),
-                        ),
-                      )),
-
-                // ═══════════════════════════════════════
-                // ─── 📓 Personal & Wellbeing ──────────
-                // ═══════════════════════════════════════
-                SliverToBoxAdapter(
-                  child: _CategoryHeader(
-                    icon: Icons.self_improvement_rounded,
-                    label: 'Personal & Wellbeing',
-                    color: AppColors.sectionWellbeing,
-                    padding: padding,
-                    isExpanded: !_collapsedCategories.contains('Personal & Wellbeing'),
-                    onTap: () => _toggleCategory('Personal & Wellbeing'),
-                  ),
-                ),
-                if (!_collapsedCategories.contains('Personal & Wellbeing'))
-                  ...[
-                    _moodCheckInBanner(context),
-                    if (ref.watch(gamificationFeatureProvider(GamificationFeature.stickers)))
-                      _stickerAlbumBanner(context),
-                    _notebookBanner(context),
-                  ].map((banner) => SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(padding, 10, padding, 0),
-                          child: banner
-                              .animate()
-                              .fadeIn(duration: 400.ms, delay: 250.ms),
-                        ),
-                      )),
+                ..._moreSections(context, padding),
 
                 // ─── Categories Header ────────────────
                 SliverToBoxAdapter(
@@ -468,10 +358,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   padding: EdgeInsets.symmetric(horizontal: padding),
                   sliver: SliverGrid(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: context.gridColumns,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: context.isTablet ? 2.2 : 2.0,
+                      crossAxisCount: _coreColumns(context),
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      // Fixed, text-scale-aware cell height instead of an aspect
+                      // ratio: the card fills the cell via Expanded/Flexible, so
+                      // it can never collapse or overflow at large font sizes.
+                      mainAxisExtent: context.hubTileHeight(),
                     ),
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final category = FlashcardCategory.values[index];
@@ -494,85 +387,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
 
-                // ─── Quick Games Header ───────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding, 28, padding, 4),
-                    child: SectionHeader(
-                      title: AppLocalizations.of(context)?.quickGames ?? 'Quick Games',
-                      onSeeAll: () => context.go('/games'),
-                    ),
-                  ),
-                ),
-
-                // ─── Quick Games Carousel ─────────────
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 140,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: EdgeInsets.symmetric(horizontal: padding),
-                      itemCount: GameType.values.where((g) => g != GameType.storyQuiz).length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 12),
-                      itemBuilder: (context, index) {
-                        // Cache the filtered list once instead of re-filtering per item
-                        final games = GameType.values.where((g) => g != GameType.storyQuiz).toList();
-                        final game = games[index];
-                        return _QuickGameCard(
-                              game: game,
-                              onTap: () async {
-                                // FSL Practice has its own hub
-                                if (game == GameType.fslPractice) {
-                                  context.go('/games/fsl-practice');
-                                  return;
-                                }
-                                final result = await showDifficultyPicker(
-                                  context,
-                                  game,
-                                );
-                                if (result == null || !context.mounted) {
-                                  return;
-                                }
-                                final categories = await showCategoryPicker(
-                                  context,
-                                );
-                                if (categories == null || !context.mounted) {
-                                  return;
-                                }
-                                final route = switch (game) {
-                                  GameType.wordMatch => '/games/word-match',
-                                  GameType.spellingBee => '/games/spelling-bee',
-                                  GameType.memoryMatch => '/games/memory-match',
-                                  GameType.dragAndDrop => '/games/drag-drop',
-                                  GameType.flashcardQuiz =>
-                                    '/games/flashcard-quiz',
-                                  GameType.pronunciation =>
-                                    '/games/pronunciation',
-                                  GameType.sentenceBuilder =>
-                                    '/games/sentence-builder',
-                                  GameType.tracing => '/games/tracing',
-                                  GameType.storyQuiz => '/stories',
-                                  GameType.fslPractice => '/games/fsl-practice',
-                                  GameType.jigsawPuzzle => '/games/jigsaw-puzzle',
-                                  GameType.pictureWord => '/games/picture-word',
-                                };
-                                final catParam = categories.isEmpty
-                                    ? ''
-                                    : '&categories=${categories.map((c) => c.index).join(',')}';
-                                final timedParam = result.timedMode ? '&timed=true' : '';
-                                context.go(
-                                  '$route?difficulty=${result.difficulty.name}$catParam$timedParam',
-                                );
-                              },
-                            )
-                            .animate()
-                            .fadeIn(duration: 350.ms)
-                            .slideX(begin: 0.1, end: 0);
-                      },
-                    ),
-                  ),
-                ),
-
                 const SliverToBoxAdapter(child: SizedBox(height: 40)),
               ],
             ),
@@ -592,179 +406,399 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _learningPathsBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '🗺️',
-      title: 'Learning Paths',
-      subtitle: 'Follow a structured curriculum',
-      gradientColors: const [AppColors.bannerLearningStart, AppColors.bannerLearningEnd],
-      onTap: () => context.push('/learning-paths'),
-      semanticLabel: 'Open Learning Paths. Follow a structured curriculum.',
-    );
-  }
-  Widget _fslDictionaryBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '🤟',
-      title: 'FSL Dictionary',
-      subtitle: 'Browse sign language videos',
-      gradientColors: const [AppColors.bannerFslStart, AppColors.bannerFslEnd],
-      onTap: () => context.push('/fsl-dictionary'),
-      semanticLabel: 'Open FSL Dictionary. Browse Filipino Sign Language videos.',
+  // ─── Game-hub helpers ─────────────────────────────────
+
+  /// Columns for the large "Play & Learn" tiles (and the vocabulary grid).
+  int _coreColumns(BuildContext context) => context.screenWidth >= 1200
+      ? 4
+      : context.screenWidth >= 600
+          ? 3
+          : 2;
+
+  /// Columns for the compact "More" tiles.
+  int _moreColumns(BuildContext context) => context.screenWidth >= 1200
+      ? 5
+      : context.screenWidth >= 600
+          ? 4
+          : 3;
+
+  /// A [SectionHeader] wrapped as a sliver.
+  Widget _sectionHeaderSliver(
+    BuildContext context, {
+    required double padding,
+    required String title,
+    IconData? icon,
+    Color? color,
+    VoidCallback? onSeeAll,
+    double top = 28,
+  }) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(padding, top, padding, 8),
+        child: SectionHeader(
+          title: title,
+          icon: icon,
+          color: color,
+          onSeeAll: onSeeAll,
+        ),
+      ),
     );
   }
 
-  Widget _communicationBoardBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '💬',
-      title: 'Communication Board',
-      subtitle: 'Tap tiles to build & speak sentences',
-      gradientColors: const [AppColors.bannerCommBoardStart, AppColors.bannerCommBoardEnd],
-      onTap: () => context.push('/communication-board'),
-      semanticLabel: 'Open Communication Board. Tap tiles to build and speak sentences.',
+  /// A fixed-height tile grid as a sliver. Uses `mainAxisExtent` so a tile's
+  /// height never depends on its width — overflow-proof at any tablet size or
+  /// font scale.
+  Widget _tileGridSliver(
+    BuildContext context, {
+    required double padding,
+    required int columns,
+    required double extent,
+    required List<Widget> tiles,
+  }) {
+    return SliverPadding(
+      padding: EdgeInsets.symmetric(horizontal: padding),
+      sliver: SliverGrid(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columns,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          mainAxisExtent: extent,
+        ),
+        delegate: SliverChildListDelegate(tiles),
+      ),
     );
   }
 
-  Widget _assessmentBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '📝',
-      title: 'Assessments',
-      subtitle: 'Pre & post tests to measure learning',
-      gradientColors: const [AppColors.bannerAssessmentStart, AppColors.bannerAssessmentEnd],
-      onTap: () => context.push('/assessment'),
-      semanticLabel: 'Open Assessments. Take pre and post tests to measure your learning.',
-    );
+  /// The six primary "Play & Learn" tiles.
+  List<Widget> _coreTiles(BuildContext context) {
+    final profile = ref.read(profileProvider);
+    final weak = profile != null
+        ? ReviewReminderService.countWordsToReview(profile.id)
+        : 0;
+    return [
+      HomeTile(
+        emoji: '🎮',
+        label: 'Games',
+        subtitle: 'Play & learn',
+        gradient: const [AppColors.playerAccent, AppColors.playerAccentLight],
+        onTap: () => context.go('/games'),
+      ),
+      HomeTile(
+        emoji: '📚',
+        label: 'Words',
+        subtitle: 'Flashcards',
+        gradient: const [
+          AppColors.bannerLearningStart,
+          AppColors.bannerLearningEnd
+        ],
+        onTap: () => context.go('/flashcards'),
+      ),
+      HomeTile(
+        emoji: '📖',
+        label: 'Stories',
+        subtitle: 'Read & answer',
+        gradient: const [
+          AppColors.bannerStickerStart,
+          AppColors.bannerStickerEnd
+        ],
+        onTap: () => context.go('/stories'),
+      ),
+      HomeTile(
+        emoji: '🤟',
+        label: 'FSL Practice',
+        subtitle: 'Sign language',
+        gradient: const [AppColors.bannerFslStart, AppColors.bannerFslEnd],
+        onTap: () => context.go('/games/fsl-practice'),
+      ),
+      HomeTile(
+        emoji: '🧠',
+        label: 'Smart Review',
+        subtitle: weak > 0 ? '$weak to practice' : 'Review words',
+        gradient: const [
+          AppColors.bannerSmartReviewStart,
+          AppColors.bannerSmartReviewEnd
+        ],
+        onTap: () => context.push('/smart-review'),
+      ),
+      HomeTile(
+        emoji: '🏆',
+        label: 'Progress',
+        subtitle: 'Your journey',
+        gradient: const [
+          AppColors.bannerLearningGainStart,
+          AppColors.bannerLearningGainEnd
+        ],
+        onTap: () => context.go('/progress'),
+      ),
+    ];
   }
 
-  Widget _showcaseBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '🎨',
-      title: 'My Portfolio',
-      subtitle: 'Showcase your best achievements',
-      gradientColors: const [AppColors.bannerShowcaseStart, AppColors.bannerShowcaseEnd],
-      onTap: () => context.push('/showcase'),
-      semanticLabel: 'Open Portfolio Showcase. View and share your learning achievements.',
-    );
-  }
+  /// The grouped, compact "More" sections — every remaining feature, organized
+  /// under the five original category labels. Returns a flat list of slivers
+  /// (a header + a compact tile grid per group) to spread into the main list.
+  List<Widget> _moreSections(BuildContext context, double padding) {
+    final columns = _moreColumns(context);
+    final extent = context.hubTileHeight(large: false);
+    final stickersOn =
+        ref.watch(gamificationFeatureProvider(GamificationFeature.stickers));
 
-  Widget _learningGainBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '📊',
-      title: 'Learning Gains',
-      subtitle: 'Track your pre vs post improvement',
-      gradientColors: const [Color(0xFF2E7D32), Color(0xFF66BB6A)],
-      onTap: () => context.push('/learning-gain'),
-      semanticLabel: 'Open Learning Gains. See how much you have improved from pre-test to post-test.',
-    );
-  }
+    HomeTile tile({
+      required String emoji,
+      required String label,
+      required List<Color> gradient,
+      required VoidCallback onTap,
+    }) =>
+        HomeTile(
+          emoji: emoji,
+          label: label,
+          gradient: gradient,
+          onTap: onTap,
+          compact: true,
+        );
 
-  Widget _recommendationsBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '🧠',
-      title: 'What to Study Next',
-      subtitle: 'Smart recommendations just for you',
-      gradientColors: const [Color(0xFF5C6BC0), Color(0xFF7E57C2)],
-      onTap: () => context.push('/recommendations'),
-      semanticLabel: 'Open Smart Recommendations. Get personalized suggestions on what to study next.',
-    );
-  }
+    return [
+      // ── Learning & Study ──
+      _sectionHeaderSliver(
+        context,
+        padding: padding,
+        title: 'Learning & Study',
+        icon: Icons.auto_stories_rounded,
+        color: AppColors.sectionLearning,
+      ),
+      _tileGridSliver(
+        context,
+        padding: padding,
+        columns: columns,
+        extent: extent,
+        tiles: [
+          tile(
+            emoji: '🗺️',
+            label: 'Learning Paths',
+            gradient: const [
+              AppColors.bannerLearningStart,
+              AppColors.bannerLearningEnd
+            ],
+            onTap: () => context.push('/learning-paths'),
+          ),
+          tile(
+            emoji: '✍️',
+            label: 'Guided Practice',
+            gradient: const [
+              AppColors.bannerGuidedStart,
+              AppColors.bannerGuidedEnd
+            ],
+            onTap: () => context.push('/guided-practice'),
+          ),
+          tile(
+            emoji: '🔥',
+            label: 'Hard Words',
+            gradient: const [
+              AppColors.bannerHardWordsStart,
+              AppColors.bannerHardWordsEnd
+            ],
+            onTap: () => context.push('/hard-words'),
+          ),
+          tile(
+            emoji: '🧭',
+            label: 'What to Study',
+            gradient: const [
+              AppColors.bannerRecommendStart,
+              AppColors.bannerRecommendEnd
+            ],
+            onTap: () => context.push('/recommendations'),
+          ),
+        ],
+      ),
 
-  Widget _moodCheckInBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '😊',
-      title: 'Mood Check-In',
-      subtitle: 'How are you feeling today?',
-      gradientColors: const [Color(0xFFF06292), Color(0xFFE91E63)],
-      onTap: () => context.push('/mood-check-in'),
-      semanticLabel: 'Open Mood Check-In. Track how you feel while learning.',
-    );
-  }
+      // ── Assessment & Progress ──
+      _sectionHeaderSliver(
+        context,
+        padding: padding,
+        title: 'Assessment & Progress',
+        icon: Icons.trending_up_rounded,
+        color: AppColors.sectionAssessment,
+      ),
+      _tileGridSliver(
+        context,
+        padding: padding,
+        columns: columns,
+        extent: extent,
+        tiles: [
+          tile(
+            emoji: '📝',
+            label: 'Assessments',
+            gradient: const [
+              AppColors.bannerAssessmentStart,
+              AppColors.bannerAssessmentEnd
+            ],
+            onTap: () => context.push('/assessment'),
+          ),
+          tile(
+            emoji: '📊',
+            label: 'Learning Gains',
+            gradient: const [
+              AppColors.bannerLearningGainStart,
+              AppColors.bannerLearningGainEnd
+            ],
+            onTap: () => context.push('/learning-gain'),
+          ),
+          tile(
+            emoji: '🎨',
+            label: 'My Portfolio',
+            gradient: const [
+              AppColors.bannerShowcaseStart,
+              AppColors.bannerShowcaseEnd
+            ],
+            onTap: () => context.push('/showcase'),
+          ),
+          tile(
+            emoji: '🎯',
+            label: 'My Goals',
+            gradient: const [
+              AppColors.bannerGoalsStart,
+              AppColors.bannerGoalsEnd
+            ],
+            onTap: () => context.push('/goals'),
+          ),
+          tile(
+            emoji: '😊',
+            label: 'How was it?',
+            gradient: const [
+              AppColors.bannerLearningStart,
+              AppColors.bannerLearningEnd
+            ],
+            onTap: () => context.push('/smileyometer'),
+          ),
+        ],
+      ),
 
-  Widget _stickerAlbumBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '🌟',
-      title: 'Sticker Album',
-      subtitle: 'Collect stickers as you learn',
-      gradientColors: const [Color(0xFFFFB74D), Color(0xFFF57C00)],
-      onTap: () => context.push('/sticker-album'),
-      semanticLabel: 'Open Sticker Album. Collect stickers as you learn.',
-    );
-  }
+      // ── Communication & Language ──
+      _sectionHeaderSliver(
+        context,
+        padding: padding,
+        title: 'Communication & Language',
+        icon: Icons.record_voice_over_rounded,
+        color: AppColors.sectionCommunication,
+      ),
+      _tileGridSliver(
+        context,
+        padding: padding,
+        columns: columns,
+        extent: extent,
+        tiles: [
+          tile(
+            emoji: '🤟',
+            label: 'FSL Dictionary',
+            gradient: const [AppColors.bannerFslStart, AppColors.bannerFslEnd],
+            onTap: () => context.push('/fsl-dictionary'),
+          ),
+          tile(
+            emoji: '💬',
+            label: 'Talk Board',
+            gradient: const [
+              AppColors.bannerCommBoardStart,
+              AppColors.bannerCommBoardEnd
+            ],
+            onTap: () => context.push('/communication-board'),
+          ),
+          tile(
+            emoji: '🤖',
+            label: 'AI Tutor',
+            gradient: const [
+              AppColors.bannerAiTutorStart,
+              AppColors.bannerAiTutorEnd
+            ],
+            onTap: () => context.push('/ai-tutor'),
+          ),
+        ],
+      ),
 
-  Widget _guidedPracticeBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '📝',
-      title: 'Guided Practice',
-      subtitle: 'Step-by-step vocabulary exercises',
-      gradientColors: const [Color(0xFF26A69A), Color(0xFF00897B)],
-      onTap: () => context.push('/guided-practice'),
-      semanticLabel: 'Open Guided Practice. Step-by-step vocabulary exercises.',
-    );
-  }
+      // ── Social & Collaboration ──
+      _sectionHeaderSliver(
+        context,
+        padding: padding,
+        title: 'Social & Collaboration',
+        icon: Icons.people_rounded,
+        color: AppColors.sectionSocial,
+      ),
+      _tileGridSliver(
+        context,
+        padding: padding,
+        columns: columns,
+        extent: extent,
+        tiles: [
+          tile(
+            emoji: '🎮',
+            label: 'Play Together',
+            gradient: const [
+              AppColors.playerAccent,
+              AppColors.playerAccentLight
+            ],
+            onTap: () => context.push('/multiplayer'),
+          ),
+          tile(
+            emoji: '💌',
+            label: 'Messages',
+            gradient: const [
+              AppColors.bannerMessagingStart,
+              AppColors.bannerMessagingEnd
+            ],
+            onTap: () => context.push('/messages'),
+          ),
+          tile(
+            emoji: '🤝',
+            label: 'Peer Collab',
+            gradient: const [
+              AppColors.bannerPeerStart,
+              AppColors.bannerPeerEnd
+            ],
+            onTap: () => context.push('/peer-collab'),
+          ),
+        ],
+      ),
 
-  Widget _aiTutorBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '🤖',
-      title: 'AI Tutor',
-      subtitle: 'Chat with your study helper',
-      gradientColors: const [Color(0xFF42A5F5), Color(0xFF1E88E5)],
-      onTap: () => context.push('/ai-tutor'),
-      semanticLabel: 'Open AI Tutor. Chat with your personal study helper.',
-    );
-  }
-
-  Widget _messagingBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '💬',
-      title: 'Messages',
-      subtitle: 'Send encouragement to others',
-      gradientColors: const [Color(0xFFAB47BC), Color(0xFF8E24AA)],
-      onTap: () => context.push('/messages'),
-      semanticLabel: 'Open Messages. Send encouragement to others.',
-    );
-  }
-
-  Widget _peerCollabBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '🤝',
-      title: 'Peer Collab',
-      subtitle: 'Learn together with a friend',
-      gradientColors: const [Color(0xFF66BB6A), Color(0xFF43A047)],
-      onTap: () => context.push('/peer-collab'),
-      semanticLabel: 'Open Peer Collaboration. Learn together with a friend.',
-    );
-  }
-
-  Widget _notebookBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '📓',
-      title: 'My Notebook',
-      subtitle: 'Write and organize study notes',
-      gradientColors: const [Color(0xFF8D6E63), Color(0xFF6D4C41)],
-      onTap: () => context.push('/notebook'),
-      semanticLabel: 'Open Notebook. Write and organize your study notes.',
-    );
-  }
-
-  Widget _hardWordsBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '🔥',
-      title: 'Hard Words',
-      subtitle: 'Practice words you struggle with',
-      gradientColors: const [Color(0xFFEF5350), Color(0xFFD32F2F)],
-      onTap: () => context.push('/hard-words'),
-      semanticLabel: 'Open Hard Words. Practice words you struggle with.',
-    );
-  }
-
-  Widget _goalsBanner(BuildContext context) {
-    return FeatureBanner(
-      emoji: '🎯',
-      title: 'My Goals',
-      subtitle: 'Set and track your learning goals',
-      gradientColors: const [Color(0xFFFF8F00), Color(0xFFFFA726)],
-      onTap: () => context.push('/goals'),
-      semanticLabel: 'Open My Goals. Set and track your learning goals.',
-    );
+      // ── Personal & Wellbeing ──
+      _sectionHeaderSliver(
+        context,
+        padding: padding,
+        title: 'Personal & Wellbeing',
+        icon: Icons.self_improvement_rounded,
+        color: AppColors.sectionWellbeing,
+      ),
+      _tileGridSliver(
+        context,
+        padding: padding,
+        columns: columns,
+        extent: extent,
+        tiles: [
+          tile(
+            emoji: '😊',
+            label: 'Mood Check-In',
+            gradient: const [AppColors.bannerMoodStart, AppColors.bannerMoodEnd],
+            onTap: () => context.push('/mood-check-in'),
+          ),
+          if (stickersOn)
+            tile(
+              emoji: '🌟',
+              label: 'Sticker Album',
+              gradient: const [
+                AppColors.bannerStickerStart,
+                AppColors.bannerStickerEnd
+              ],
+              onTap: () => context.push('/sticker-album'),
+            ),
+          tile(
+            emoji: '📓',
+            label: 'My Notebook',
+            gradient: const [
+              AppColors.bannerNotebookStart,
+              AppColors.bannerNotebookEnd
+            ],
+            onTap: () => context.push('/notebook'),
+          ),
+        ],
+      ),
+    ];
   }
 }
 
@@ -784,35 +818,40 @@ class _StatsBanner extends StatelessWidget {
         gradient: HCColor.of(context).primaryGradient,
         padding: const EdgeInsets.all(20),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _StatItem(
-              icon: Icons.local_fire_department_rounded,
-              value: '${progress.streakDays}',
-              label: AppLocalizations.of(context)?.dayStreak ?? 'Day Streak',
-              iconColor: AppColors.warning,
+            Expanded(
+              child: _StatItem(
+                icon: Icons.local_fire_department_rounded,
+                value: '${progress.streakDays}',
+                label: AppLocalizations.of(context)?.dayStreak ?? 'Day Streak',
+                iconColor: AppColors.warning,
+              ),
             ),
             Container(
               width: 1,
               height: 40,
               color: Colors.white.withValues(alpha: 0.3),
             ),
-            _StatItem(
-              icon: Icons.auto_stories_rounded,
-              value: '${progress.wordsLearned}',
-              label: AppLocalizations.of(context)?.words ?? 'Words',
-              iconColor: AppColors.accentLight,
+            Expanded(
+              child: _StatItem(
+                icon: Icons.auto_stories_rounded,
+                value: '${progress.wordsLearned}',
+                label: AppLocalizations.of(context)?.words ?? 'Words',
+                iconColor: AppColors.accentLight,
+              ),
             ),
             Container(
               width: 1,
               height: 40,
               color: Colors.white.withValues(alpha: 0.3),
             ),
-            _StatItem(
-              icon: Icons.star_rounded,
-              value: '${progress.totalStars}',
-              label: AppLocalizations.of(context)?.stars ?? 'Stars',
-              iconColor: AppColors.warning,
+            Expanded(
+              child: _StatItem(
+                icon: Icons.star_rounded,
+                value: '${progress.totalStars}',
+                label: AppLocalizations.of(context)?.stars ?? 'Stars',
+                iconColor: AppColors.warning,
+              ),
             ),
           ],
         ),
@@ -841,11 +880,17 @@ class _StatItem extends StatelessWidget {
       children: [
         Icon(icon, color: iconColor, size: 28),
         const SizedBox(height: 6),
-        Text(
-          value,
-          style: AppTypography.titleLarge.copyWith(
-            color: AppColors.textOnPrimary,
-            fontWeight: FontWeight.w900,
+        // Scale the value down rather than overflow when the number is large
+        // or the font scale is high.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: AppTypography.titleLarge.copyWith(
+              color: AppColors.textOnPrimary,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
         Text(
@@ -853,6 +898,9 @@ class _StatItem extends StatelessWidget {
           style: AppTypography.labelSmall.copyWith(
             color: AppColors.textOnPrimary.withValues(alpha: 0.8),
           ),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
@@ -875,13 +923,10 @@ class _XpLevelBar extends StatelessWidget {
       label:
           'Level ${level.level} ${level.title}, $xp XP, '
           '${next != null ? '${next.xpRequired - xp} XP to next level' : 'Max level reached'}',
-      child: Container(
+      child: AppCard(
+        color: HCColor.of(context).surface,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: HCColor.of(context).surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-        ),
+        borderRadius: 16,
         child: Row(
           children: [
             // Level badge
@@ -890,7 +935,10 @@ class _XpLevelBar extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF7C4DFF), Color(0xFFB388FF)],
+                  colors: [
+                    AppColors.playerAccent,
+                    AppColors.playerAccentPurpleLight,
+                  ],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -908,12 +956,17 @@ class _XpLevelBar extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        'Lv.${level.level} ${level.title}',
-                        style: AppTypography.titleSmall.copyWith(
-                          fontWeight: FontWeight.w800,
+                      Flexible(
+                        child: Text(
+                          'Lv.${level.level} ${level.title}',
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       const Spacer(),
                       Text(
                         next != null
@@ -933,7 +986,7 @@ class _XpLevelBar extends StatelessWidget {
                       minHeight: 6,
                       backgroundColor: AppColors.border,
                       valueColor: const AlwaysStoppedAnimation<Color>(
-                        Color(0xFF7C4DFF),
+                        AppColors.playerAccent,
                       ),
                     ),
                   ),
@@ -964,14 +1017,17 @@ class _DailyLoginRewardDialog extends StatelessWidget {
     final currentDayIndex = ((streakDay - 1) % 7);
 
     return AlertDialog(
+      scrollable: true,
       title: Row(
         children: [
           const Text('🎁', style: TextStyle(fontSize: 28)),
           const SizedBox(width: 8),
-          Text(
-            'Daily Reward!',
-            style: AppTypography.headlineSmall.copyWith(
-              fontWeight: FontWeight.w800,
+          Expanded(
+            child: Text(
+              'Daily Reward!',
+              style: AppTypography.headlineSmall.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
@@ -1123,6 +1179,9 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
     if (profile != null) {
       await DailyChallenge.markCompleted(profile.id, correct);
       if (!mounted) return;
+      // Completing the daily challenge is a learning activity — keep the
+      // streak alive regardless of whether the answer was correct.
+      ref.read(progressProvider.notifier).recordDailyActivity();
       if (correct) {
         ref.read(progressProvider.notifier).addStars(2);
       }
@@ -1368,12 +1427,11 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
   }
 
   Widget _buildCompletedBanner() {
-    return Container(
+    return AppCard(
+      elevation: 0,
+      color: Colors.white.withValues(alpha: 0.2),
+      borderRadius: 16,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Row(
         children: [
           const Icon(
@@ -1408,82 +1466,6 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
   }
 }
 
-// ─── Quick Game Card ──────────────────────────────────
-class _QuickGameCard extends StatelessWidget {
-  final GameType game;
-  final VoidCallback onTap;
-
-  const _QuickGameCard({required this.game, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final hc = HCColor.of(context);
-    final gColor = hc.gameColor(game);
-    return SizedBox(
-      width: 150,
-      child: AppCard(
-        onTap: onTap,
-        color: gColor.withValues(alpha: hc.hc ? 0.3 : 0.2),
-        borderRadius: 20,
-        semanticLabel: 'Play ${game.label} game',
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: gColor.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(game.icon, size: 28, color: gColor),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              game.label,
-              style: AppTypography.labelMedium.copyWith(
-                color: hc.textPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Smart Review Banner ──────────────────────────────
-class _SmartReviewBanner extends ConsumerWidget {
-  const _SmartReviewBanner();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(profileProvider);
-    final weakCount = profile != null
-        ? ReviewReminderService.countWordsToReview(profile.id)
-        : 0;
-
-    final subtitle = weakCount > 0
-        ? '$weakCount word${weakCount == 1 ? '' : 's'} need${weakCount == 1 ? 's' : ''} practice'
-        : 'Practice words you struggle with most';
-
-    return FeatureBanner(
-      emoji: '🧠',
-      title: 'Smart Review',
-      subtitle: subtitle,
-      gradientColors: const [Color(0xFF7C4DFF), Color(0xFF448AFF)],
-      onTap: () => context.push('/smart-review'),
-      semanticLabel: weakCount > 0
-          ? 'Start smart review. $weakCount words need practice.'
-          : 'Start smart review. Practice your weakest words.',
-    );
-  }
-}
-
 // ─── Pending Assignments Banner ────────────────────────
 class _PendingAssignmentsBanner extends StatelessWidget {
   final String? profileId;
@@ -1503,87 +1485,10 @@ class _PendingAssignmentsBanner extends StatelessWidget {
       title: hasOverdue ? 'Overdue Assignments' : 'Pending Assignments',
       subtitle: 'You have $count assessment${count > 1 ? 's' : ''} to complete',
       gradientColors: hasOverdue
-          ? const [Color(0xFFEF5350), Color(0xFFFF7043)]
-          : const [Color(0xFF42A5F5), Color(0xFF5C6BC0)],
+          ? const [AppColors.error, AppColors.sectionAssessment]
+          : const [AppColors.info, AppColors.sectionLearning],
       onTap: () => context.push('/assessment'),
       semanticLabel: '$count pending assessment${count > 1 ? 's' : ''} assigned to you',
-    );
-  }
-}
-
-// ───────────────────────────────────────────────
-//  Category Header used to group feature banners
-// ───────────────────────────────────────────────
-class _CategoryHeader extends StatelessWidget {
-  const _CategoryHeader({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.padding,
-    required this.isExpanded,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final double padding;
-  final bool isExpanded;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final hc = HCColor.of(context);
-    return Padding(
-      padding: EdgeInsets.fromLTRB(padding, 24, padding, 4),
-      child: Semantics(
-        button: true,
-        label: '${isExpanded ? "Collapse" : "Expand"} $label section',
-        child: GestureDetector(
-          onTap: onTap,
-          behavior: HitTestBehavior.opaque,
-          child: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 18, color: color),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: AppTypography.titleSmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: hc.textPrimary,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Divider(
-                  color: color.withValues(alpha: 0.25),
-                  thickness: 1.5,
-                ),
-              ),
-              const SizedBox(width: 6),
-              AnimatedRotation(
-                turns: isExpanded ? 0.0 : -0.25,
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                child: Icon(
-                  Icons.expand_more_rounded,
-                  size: 22,
-                  color: hc.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1591,55 +1496,98 @@ class _CategoryHeader extends StatelessWidget {
 /// CTA shown on the home screen when the active profile is a guest
 /// "Player Mode" learner. Tapping it opens the join-class flow which
 /// upgrades the existing profile in place — keeping its progress.
+class _LiveClassCta extends StatelessWidget {
+  final VoidCallback onTap;
+  const _LiveClassCta({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      color: const Color(0xFF4CAF50).withValues(alpha: 0.10),
+      borderRadius: 16,
+      padding: const EdgeInsets.all(16),
+      semanticLabel: 'Join the live class activity and raise your hand.',
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(
+              color: Color(0x1A4CAF50),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.live_tv_rounded, color: Color(0xFF2E7D32)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Join the class', style: AppTypography.titleMedium),
+                const SizedBox(height: 2),
+                Text(
+                  'Answer live questions for stars and raise your hand for help.',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: HCColor.of(context).textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.arrow_forward_ios_rounded,
+              size: 16, color: HCColor.of(context).textSecondary),
+        ],
+      ),
+    );
+  }
+}
+
 class _JoinClassCta extends StatelessWidget {
   final VoidCallback onJoin;
   const _JoinClassCta({required this.onJoin});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    return AppCard(
+      onTap: onJoin,
       color: AppColors.primary.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onJoin,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.school_rounded,
-                    color: AppColors.primary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Have a class code?',
-                        style: AppTypography.titleMedium),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Join a class to save your progress and let your teacher follow along.',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: HCColor.of(context).textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 16,
-                  color: HCColor.of(context).textSecondary),
-            ],
+      borderRadius: 16,
+      padding: const EdgeInsets.all(16),
+      semanticLabel: 'Have a class code? Join a class to save your progress.',
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.school_rounded,
+                color: AppColors.primary),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Have a class code?',
+                    style: AppTypography.titleMedium),
+                const SizedBox(height: 2),
+                Text(
+                  'Join a class to save your progress and let your teacher follow along.',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: HCColor.of(context).textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: HCColor.of(context).textSecondary),
+        ],
       ),
     );
   }

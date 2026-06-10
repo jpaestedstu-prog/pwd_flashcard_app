@@ -8,6 +8,8 @@ import '../../data/local/hive_service.dart';
 import '../../data/local/spaced_repetition_service.dart';
 import '../../features/assessment/services/assessment_service.dart';
 import '../../features/survey/services/survey_service.dart';
+import '../../features/survey/models/survey_models.dart';
+import '../../features/survey/services/smileyometer_service.dart';
 import '../../features/experiment/models/experiment_models.dart';
 import '../../features/experiment/services/experiment_service.dart';
 import '../services/adaptive_difficulty_service.dart';
@@ -29,7 +31,9 @@ import 'research_export_rows.dart';
 ///     (item difficulty/discrimination, Cronbach's α)
 /// 7. `mood_data.csv`          – mood entries correlated with activity
 /// 8. `adaptive_difficulty.csv` – per-game difficulty adjustments over time
-/// 9. `summary_stats.json`     – high-level aggregates for quick analysis
+/// 9. `sus_survey_results.csv` – teacher-administered SUS (respondent + role)
+/// 9b. `student_experience.csv` – learner Smileyometer (descriptive, 1–3)
+/// 10. `summary_stats.json`    – high-level aggregates for quick analysis
 class ResearchExportService {
   const ResearchExportService._();
 
@@ -118,6 +122,12 @@ class ResearchExportService {
       exportDir,
       'sus_survey_results.csv',
       _buildSusSurveyResults(students, idMap),
+    ));
+
+    files.add(await _writeFile(
+      exportDir,
+      'student_experience.csv',
+      _buildStudentExperience(students, idMap),
     ));
 
     files.add(await _writeFile(
@@ -461,26 +471,57 @@ class ResearchExportService {
     List<(UserProfile, LearningProgress)> students,
     Map<String, String> idMap,
   ) {
-    final buf = StringBuffer();
-    buf.writeln(
-      'student_id,survey_date,q1,q2,q3,q4,q5,'
-      'q6,q7,q8,q9,q10,sus_score,grade_label,feedback_length',
-    );
+    final buf = StringBuffer()..writeln(ResearchExportRows.susSurveyHeader);
 
+    // The SUS is the validated usability instrument, completed by the
+    // teacher/facilitator (not the student). Build a role + anonymized-id
+    // lookup across all profiles: students reuse their S-id; everyone else
+    // (teachers/parents) gets a T-id. respondent_role lets you filter.
+    final roleById = <String, String>{};
+    final anonById = <String, String>{...idMap};
+    var t = 0;
+    for (final (profile, _) in HiveService.getAllProfilesWithProgress()) {
+      roleById[profile.id] = profile.role.name;
+      anonById.putIfAbsent(profile.id, () {
+        t += 1;
+        return 'T${t.toString().padLeft(3, '0')}';
+      });
+    }
+
+    // Group SUS submissions by respondent.
+    final byRespondent = <String, List<SusSurveyResult>>{};
+    for (final r in SurveyService.getAllResults()) {
+      byRespondent.putIfAbsent(r.profileId, () => []).add(r);
+    }
+
+    for (final entry in byRespondent.entries) {
+      final rows = ResearchExportRows.susSurveyRows(
+        respondentId: anonById[entry.key] ?? entry.key,
+        respondentRole: roleById[entry.key] ?? 'unknown',
+        results: entry.value,
+      );
+      for (final row in rows) {
+        buf.writeln(row);
+      }
+    }
+    return buf.toString();
+  }
+
+  // ─── File 9b: Student Experience (Smileyometer) ─────────
+
+  static String _buildStudentExperience(
+    List<(UserProfile, LearningProgress)> students,
+    Map<String, String> idMap,
+  ) {
+    final buf = StringBuffer()..writeln(ResearchExportRows.smileyometerHeader);
     for (final (profile, _) in students) {
-      final sid = idMap[profile.id]!;
-      final results = SurveyService.getSurveyResults(profile.id);
-
-      for (final r in results) {
-        final resp = r.responses;
-        buf.writeln(
-          '$sid,'
-          '${r.completedAt.toIso8601String()},'
-          '${resp.length >= 10 ? resp.sublist(0, 10).join(",") : List.filled(10, "").join(",")},'
-          '${r.susScore.toStringAsFixed(1)},'
-          '${r.gradeLabel},'
-          '${r.feedback?.length ?? 0}',
-        );
+      final rows = ResearchExportRows.smileyometerRows(
+        studentId: idMap[profile.id]!,
+        groupLabel: ExperimentService.getConfig(profile.id).groupLabel,
+        results: SmileyometerService.getResults(profile.id),
+      );
+      for (final row in rows) {
+        buf.writeln(row);
       }
     }
     return buf.toString();

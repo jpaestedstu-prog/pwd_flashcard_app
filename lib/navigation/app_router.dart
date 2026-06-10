@@ -5,10 +5,12 @@ import '../data/models/enums.dart';
 import '../data/models/models.dart';
 import '../providers/app_providers.dart';
 import '../features/onboarding/screens/splash_screen.dart';
+import '../features/onboarding/screens/welcome_intro_screen.dart';
 import '../features/onboarding/screens/profile_selection_screen.dart';
 import '../features/onboarding/screens/profile_switcher_screen.dart';
 import '../features/onboarding/screens/accessibility_setup_screen.dart';
 import '../features/onboarding/screens/post_join_setup_screen.dart';
+import '../features/onboarding/screens/role_setup_screen.dart';
 import '../features/onboarding/screens/membership_removed_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/home/screens/educator_home_screen.dart';
@@ -44,8 +46,12 @@ import '../features/classroom/screens/classroom_management_screen.dart';
 import '../features/classroom/screens/join_class_screen.dart';
 import '../features/live_session/screens/live_session_screen.dart';
 import '../features/progress/screens/leaderboard_screen.dart';
+import '../features/progress/screens/leaderboard_config_screen.dart';
+import '../data/models/leaderboard.dart';
 import '../features/learning_paths/screens/learning_path_list_screen.dart';
+import '../features/learning_paths/screens/learning_world_screen.dart';
 import '../features/learning_paths/screens/lesson_screen.dart';
+import '../features/learning_paths/screens/lesson_trail_screen.dart';
 import '../features/progress/screens/detailed_analytics_screen.dart';
 import '../features/flashcards/screens/fsl_dictionary_screen.dart';
 import '../features/communication_board/screens/communication_board_screen.dart';
@@ -58,8 +64,10 @@ import '../features/parent/screens/time_up_lock_screen.dart';
 import '../features/reports/screens/weekly_report_screen.dart';
 import '../features/progress/screens/adaptive_analytics_screen.dart';
 import '../features/games/screens/multiplayer_quiz_screen.dart';
+import '../features/multiplayer/screens/multiplayer_lobby_screen.dart';
 import '../features/accessibility/screens/voice_guided_mode_screen.dart';
 import '../features/flashcards/screens/enhanced_create_flashcard_screen.dart';
+import '../features/flashcards/screens/deck_template_picker_screen.dart';
 import '../features/settings/screens/edit_profile_screen.dart';
 import '../features/parent/screens/parental_controls_screen.dart';
 import '../features/assessment/screens/assessment_hub_screen.dart';
@@ -109,11 +117,17 @@ import '../features/home_group/screens/home_group_management_screen.dart';
 import '../features/settings/screens/profile_import_export_screen.dart';
 import '../features/survey/screens/sus_survey_screen.dart';
 import '../features/survey/screens/survey_results_screen.dart';
+import '../features/survey/screens/smileyometer_screen.dart';
 import '../features/experiment/screens/experiment_setup_screen.dart';
 import '../features/gamification/screens/gamification_dashboard_screen.dart';
 import '../features/word_of_day/screens/word_of_day_screen.dart';
 import '../features/focus_mode/screens/focus_mode_screen.dart';
 import '../features/parent_teacher_notes/screens/parent_teacher_notes_screen.dart';
+import '../features/recovery/screens/recover_profile_screen.dart';
+import '../features/recovery/screens/show_recovery_code_screen.dart';
+import '../features/account/screens/backup_account_screen.dart';
+import '../features/reports/screens/export_report_screen.dart';
+import '../features/tv_cast/screens/tv_cast_screen.dart';
 import '../core/services/engagement_tracker.dart';
 import '../providers/lock_state_provider.dart';
 import 'app_page_transitions.dart';
@@ -145,6 +159,8 @@ const _educatorOnlyRoutes = [
   '/research-export',
   '/experiment-setup',
   '/parent-teacher-notes',
+  '/backup-account',
+  '/tv-cast',
 ];
 
 /// Routes only learners (student / child) may access.
@@ -168,11 +184,13 @@ const _playerBlockedRoutes = [
   '/leaderboard',
   '/messages',
   '/multiplayer-quiz',
+  '/multiplayer',
   '/live-session',
   '/assessment',
   '/parent-teacher-notes',
   '/research-export',
   '/showcase/share',
+  '/tv-cast',
 ];
 
 /// Engagement tracker that acts as a NavigatorObserver.
@@ -271,8 +289,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           if (controls.shopBlocked && location.startsWith('/shop')) {
             return '/home';
           }
+          // Covers both the legacy `/multiplayer-quiz` and the new
+          // `/multiplayer` lobby (the former starts with the latter).
           if (controls.multiplayerBlocked &&
-              location.startsWith('/multiplayer-quiz')) {
+              location.startsWith('/multiplayer')) {
             return '/home';
           }
           if (controls.messagingBlocked &&
@@ -380,20 +400,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const SplashScreen(),
         ),
       ),
+      // Welcome / intro carousel (one-time, first launch before role picker)
+      GoRoute(
+        path: '/welcome',
+        pageBuilder: (context, state) => AppPageTransitions.fade(
+          key: state.pageKey,
+          child: const WelcomeIntroScreen(),
+        ),
+      ),
       // Profile Selection
       GoRoute(
         path: '/profile',
         pageBuilder: (context, state) => AppPageTransitions.fade(
           key: state.pageKey,
           child: const ProfileSelectionScreen(),
-        ),
-      ),
-      // Create Student Profile (educator shortcut — skips role selection)
-      GoRoute(
-        path: '/create-student',
-        pageBuilder: (context, state) => AppPageTransitions.fade(
-          key: state.pageKey,
-          child: const ProfileSelectionScreen(forceRole: UserRole.student),
         ),
       ),
       // Profile Switcher (multiple profiles on device)
@@ -415,6 +435,31 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Student Profile Detail (full profile + progress)
       GoRoute(
         path: '/student-profile-detail',
+        redirect: (context, state) {
+          // Only educators may view a *different* student's profile; learners
+          // are bounced home so they can't deep-link into another learner.
+          final viewer = ref.read(profileProvider);
+          if (viewer == null) return null;
+          final target = state.extra;
+          if (target is! UserProfile) return '/home';
+          final isViewingAsStudent =
+              ref.read(profileProvider.notifier).isViewingAsStudent;
+          if (isViewingAsStudent) return null;
+          switch (viewer.role) {
+            case UserRole.teacher:
+            case UserRole.parent:
+              return null;
+            case UserRole.player:
+              return '/home';
+            case UserRole.child:
+              return target.homeGroupId == viewer.homeGroupId &&
+                      target.id == viewer.id
+                  ? null
+                  : '/home';
+            case UserRole.student:
+              return target.id == viewer.id ? null : '/home';
+          }
+        },
         pageBuilder: (context, state) {
           final profile = state.extra as UserProfile;
           return AppPageTransitions.slideRight(
@@ -445,6 +490,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           return AppPageTransitions.slideRight(
             key: state.pageKey,
             child: PostJoinSetupScreen(joinContext: ctx),
+          );
+        },
+      ),
+      // Role setup (Name / Avatar / PIN) for the three non-join roles:
+      // player, teacher, parent. The path parameter selects which role
+      // is being created; the screen has the same UX as PostJoinSetup
+      // minus the birth-date / grade-level fields.
+      GoRoute(
+        path: '/role-setup/:role',
+        pageBuilder: (context, state) {
+          final roleName = state.pathParameters['role'];
+          final role = switch (roleName) {
+            'player' => UserRole.player,
+            'teacher' => UserRole.teacher,
+            'parent' => UserRole.parent,
+            _ => UserRole.player,
+          };
+          return AppPageTransitions.slideRight(
+            key: state.pageKey,
+            child: RoleSetupScreen(role: role),
           );
         },
       ),
@@ -567,6 +632,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                     child: CreateFlashcardScreen(editCard: card),
                   );
                 },
+              ),
+              GoRoute(
+                path: 'templates',
+                pageBuilder: (context, state) => AppPageTransitions.slideUp(
+                  key: state.pageKey,
+                  child: const DeckTemplatePickerScreen(),
+                ),
               ),
             ],
           ),
@@ -913,6 +985,25 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const LeaderboardScreen(),
         ),
       ),
+      // Educator leaderboard settings for one class / home group. Scope is
+      // encoded as path id + `kind`/`name` query params so a deep-link /
+      // refresh can reconstruct it (no reliance on GoRouter `extra`).
+      GoRoute(
+        path: '/leaderboard-config/:scopeId',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['scopeId']!;
+          final isHomeGroup =
+              state.uri.queryParameters['kind'] == 'homeGroup';
+          final name = state.uri.queryParameters['name'];
+          final scope = isHomeGroup
+              ? LeaderboardScope.homeGroup(id, displayName: name)
+              : LeaderboardScope.classroom(id, displayName: name);
+          return AppPageTransitions.slideRight(
+            key: state.pageKey,
+            child: LeaderboardConfigScreen(scope: scope),
+          );
+        },
+      ),
       // Learning Paths
       GoRoute(
         path: '/learning-paths',
@@ -921,11 +1012,30 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const LearningPathListScreen(),
         ),
       ),
+      // Top-level "world of regions" map (additive — the card list above stays).
+      GoRoute(
+        path: '/learning-world',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const LearningWorldScreen(),
+        ),
+      ),
       GoRoute(
         path: '/learning-paths/:pathId',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
           child: LessonScreen(
+            pathId: state.pathParameters['pathId']!,
+          ),
+        ),
+      ),
+      // Game-like "adventure trail" view of the same path (additive — the
+      // timeline LessonScreen above stays the default).
+      GoRoute(
+        path: '/learning-paths/:pathId/trail',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: LessonTrailScreen(
             pathId: state.pathParameters['pathId']!,
           ),
         ),
@@ -1006,6 +1116,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const ParentDashboardScreen(),
         ),
       ),
+      // TV Cast — teacher/parent only. Full-screen, outside the bottom-nav
+      // shell so the QR card has room to breathe.
+      GoRoute(
+        path: '/tv-cast',
+        pageBuilder: (context, state) => AppPageTransitions.slideUp(
+          key: state.pageKey,
+          child: const TvCastScreen(),
+        ),
+      ),
       // Adaptive Analytics Dashboard
       GoRoute(
         path: '/adaptive-analytics',
@@ -1014,12 +1133,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const AdaptiveAnalyticsScreen(),
         ),
       ),
-      // Multiplayer Quiz
+      // Multiplayer Quiz (legacy same-device, awards stars)
       GoRoute(
         path: '/multiplayer-quiz',
         pageBuilder: (context, state) => AppPageTransitions.scaleUp(
           key: state.pageKey,
           child: const MultiplayerQuizScreen(),
+        ),
+      ),
+      // Play Together — star-free multiplayer lobby (online with friends +
+      // same-device pass-and-play). Full-screen, outside the bottom-nav shell.
+      GoRoute(
+        path: '/multiplayer',
+        pageBuilder: (context, state) => AppPageTransitions.scaleUp(
+          key: state.pageKey,
+          child: const MultiplayerLobbyScreen(),
         ),
       ),
       // Voice-Guided Mode
@@ -1340,6 +1468,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const SusSurveyScreen(),
         ),
       ),
+      // ─── Student Smileyometer (learner feedback) ───────
+      GoRoute(
+        path: '/smileyometer',
+        pageBuilder: (context, state) => AppPageTransitions.slideUp(
+          key: state.pageKey,
+          child: const SmileyometerScreen(),
+        ),
+      ),
       GoRoute(
         path: '/survey-results',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
@@ -1386,6 +1522,51 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const GamificationDashboardScreen(),
         ),
+      ),
+      // ─── Cross-device Profile Recovery ─────────────────
+      // Show the active recovery code for the signed-in profile.
+      // Reached from Settings → Backup & Recovery.
+      GoRoute(
+        path: '/recovery/show',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const ShowRecoveryCodeScreen(),
+        ),
+      ),
+      // Backup & Link Account — adds Firebase Auth email/password on
+      // top of the anonymous session so the device can be restored on
+      // a fresh install. Educator-only via [_educatorOnlyRoutes].
+      GoRoute(
+        path: '/backup-account',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const BackupAccountScreen(),
+        ),
+      ),
+      // Redeem a recovery code on a new device — reached from the
+      // profile-selection screen ("I have a recovery code") before any
+      // profile is active. Outside the BottomNavShell because there's
+      // no profile yet to gate the nav by.
+      GoRoute(
+        path: '/recovery/redeem',
+        pageBuilder: (context, state) => AppPageTransitions.slideUp(
+          key: state.pageKey,
+          child: const RecoverProfileScreen(),
+        ),
+      ),
+      // ─── CSV Progress Report Export (teacher) ──────────
+      // Reached from the Classroom Dashboard app bar. Optional
+      // `classroomId` query parameter preselects a classroom; the
+      // screen falls back to the first classroom otherwise.
+      GoRoute(
+        path: '/reports/export',
+        pageBuilder: (context, state) {
+          final classroomId = state.uri.queryParameters['classroomId'];
+          return AppPageTransitions.slideUp(
+            key: state.pageKey,
+            child: ExportReportScreen(initialClassroomId: classroomId),
+          );
+        },
       ),
     ],
   );
