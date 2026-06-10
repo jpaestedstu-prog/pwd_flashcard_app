@@ -122,6 +122,7 @@ import '../features/experiment/screens/experiment_setup_screen.dart';
 import '../features/gamification/screens/gamification_dashboard_screen.dart';
 import '../features/word_of_day/screens/word_of_day_screen.dart';
 import '../features/focus_mode/screens/focus_mode_screen.dart';
+import '../features/sign_interpreter/screens/sign_interpreter_screen.dart';
 import '../features/parent_teacher_notes/screens/parent_teacher_notes_screen.dart';
 import '../features/recovery/screens/recover_profile_screen.dart';
 import '../features/recovery/screens/show_recovery_code_screen.dart';
@@ -1505,6 +1506,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
           child: const FocusModeScreen(),
+        ),
+      ),
+      // ─── Speech → Sign Interpreter ──────────────────
+      GoRoute(
+        path: '/sign-interpreter',
+        pageBuilder: (context, state) => AppPageTransitions.slideUp(
+          key: state.pageKey,
+          child: const SignInterpreterScreen(),
         ),
       ),
       // ─── Parent-Teacher Notes ────────────────────────

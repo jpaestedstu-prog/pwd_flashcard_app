@@ -1,4 +1,5 @@
 import '../../features/assessment/models/assessment_models.dart';
+import '../../features/sign_interpreter/models/sign_interpreter_models.dart';
 import '../../features/survey/models/survey_models.dart';
 import '../../features/survey/models/smileyometer_models.dart';
 
@@ -101,6 +102,32 @@ class ResearchExportRows {
       }
     }
     return rows;
+  }
+
+  // ─── speech_to_sign_usage.csv ───────────────────────────
+
+  static const String speechToSignUsageHeader =
+      'student_id,timestamp,locale,source,'
+      'token_count,matched_count,unmatched_words,duration_ms';
+
+  /// One row per Speech→Sign session for one student. The unmatched-word
+  /// column is semicolon-joined so the CSV stays one-row-per-session; it
+  /// doubles as the priority list for which signs to record next.
+  static List<String> speechToSignUsageRows({
+    required String studentId,
+    required List<SignUsageEvent> events,
+  }) {
+    return [
+      for (final e in events)
+        '$studentId,'
+            '${e.timestamp.toIso8601String()},'
+            '${e.locale},'
+            '${e.source},'
+            '${e.tokenCount},'
+            '${e.matchedCount},'
+            '${esc(e.unmatchedWords.join(';'))},'
+            '${e.durationMs}',
+    ];
   }
 
   // ─── sus_survey_results.csv (teacher-administered) ──────
