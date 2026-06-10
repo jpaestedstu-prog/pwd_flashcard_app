@@ -6,6 +6,7 @@ import 'package:percent_indicator/linear_percent_indicator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/pro_surface.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../notifications/services/alert_service.dart';
@@ -116,19 +117,19 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
                     const SizedBox(height: 8),
                     Text(
                       isFilipino
-                          ? 'Gumawa ng mga student profile para makita ang analytics dito.'
-                          : 'Create student profiles to see analytics here.',
+                          ? 'Magbahagi ng class code para sumali ang mga estudyante. Lalabas dito ang analytics kapag aktibo na sila.'
+                          : 'Share your class code so students can join. Analytics will appear here once they\'re active.',
                       style: AppTypography.bodyMedium
                           .copyWith(color: hc.textSecondary),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
                     FilledButton.icon(
-                      onPressed: () => context.push('/create-student'),
-                      icon: const Icon(Icons.person_add_rounded),
+                      onPressed: () => context.push('/classroom-manage'),
+                      icon: const Icon(Icons.qr_code_2_rounded),
                       label: Text(isFilipino
-                          ? 'Gumawa ng Student Profile'
-                          : 'Create Student Profile'),
+                          ? 'Ibahagi ang Class Code'
+                          : 'Share Class Code'),
                     ),
                   ],
                 ),
@@ -231,146 +232,39 @@ class _OverviewCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cards = [
-      _StatCard(
-        icon: Icons.people_rounded,
-        label: isFilipino ? 'Estudyante' : 'Students',
-        value: '${analytics.totalStudents}',
-        sub: '${analytics.activeStudents} ${isFilipino ? 'aktibo' : 'active'}',
-        color: AppColors.primary,
-      ),
-      _StatCard(
-        icon: Icons.trending_up_rounded,
-        label: isFilipino ? 'Avg Accuracy' : 'Avg Accuracy',
-        value: '${(analytics.classAverageAccuracy * 100).round()}%',
-        color: analytics.classAverageAccuracy >= 0.7
-            ? AppColors.success
-            : AppColors.warning,
-        delay: 80,
-      ),
-      _StatCard(
-        icon: Icons.auto_stories_rounded,
-        label: isFilipino ? 'Salitang Natutunan' : 'Words Learned',
-        value: '${analytics.classWordsLearned}',
-        color: AppColors.secondary,
-        delay: 160,
-      ),
-      _StatCard(
-        icon: Icons.videogame_asset_rounded,
-        label: isFilipino ? 'Laro' : 'Games',
-        value: '${analytics.classGamesPlayed}',
-        color: AppColors.accent,
-        delay: 240,
-      ),
-    ];
-
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: cards,
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final String? sub;
-  final Color color;
-  final int delay;
-
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.sub,
-    required this.color,
-    this.delay = 0,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hc = HCColor.of(context);
-    final width = (MediaQuery.of(context).size.width - context.pagePadding * 2 - 10) / 2;
-
-    return Container(
-      width: width,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            color.withValues(alpha: 0.1),
-            color.withValues(alpha: 0.04),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    final accuracy = analytics.classAverageAccuracy;
+    // Professional dashboard kit instead of playful gradient cards: a
+    // structured, overflow-safe grid that reads as class analytics.
+    return ProStatGrid(
+      tiles: [
+        ProStatTile(
+          icon: Icons.people_rounded,
+          label: isFilipino ? 'Estudyante' : 'Students',
+          value: '${analytics.totalStudents}',
+          caption: '${analytics.activeStudents} ${isFilipino ? 'aktibo' : 'active'}',
+          accent: AppColors.primary,
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.2),
-                  blurRadius: 8,
-                ),
-              ],
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: AppTypography.headlineMedium.copyWith(
-              fontWeight: FontWeight.w800,
-              color: hc.textPrimary,
-            ),
-          ),
-          Text(label,
-              style:
-                  AppTypography.bodySmall.copyWith(color: hc.textSecondary)),
-          if (sub != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(sub!,
-                    style: AppTypography.bodySmall
-                        .copyWith(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
-              ),
-            ),
-        ],
-      ),
-    )
-        .animate()
-        .fadeIn(duration: 350.ms, delay: (100 + delay).ms)
-        .scale(
-          begin: const Offset(0.92, 0.92),
-          end: const Offset(1, 1),
-          delay: (100 + delay).ms,
-          duration: 350.ms,
-          curve: Curves.easeOutBack,
-        );
+        ProStatTile(
+          icon: Icons.trending_up_rounded,
+          label: 'Avg Accuracy',
+          value: '${(accuracy * 100).round()}%',
+          trend: accuracy >= 0.7 ? ProTrend.up : ProTrend.flat,
+          accent: accuracy >= 0.7 ? AppColors.success : AppColors.warning,
+        ),
+        ProStatTile(
+          icon: Icons.auto_stories_rounded,
+          label: isFilipino ? 'Salitang Natutunan' : 'Words Learned',
+          value: '${analytics.classWordsLearned}',
+          accent: AppColors.secondary,
+        ),
+        ProStatTile(
+          icon: Icons.videogame_asset_rounded,
+          label: isFilipino ? 'Laro' : 'Games',
+          value: '${analytics.classGamesPlayed}',
+          accent: AppColors.accent,
+        ),
+      ],
+    );
   }
 }
 
