@@ -11,6 +11,7 @@ import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../notifications/services/alert_service.dart';
 import '../models/teacher_analytics_models.dart';
+import '../widgets/knowledge_early_warning_card.dart';
 
 class TeacherAnalyticsScreen extends ConsumerWidget {
   const TeacherAnalyticsScreen({super.key});
@@ -161,6 +162,20 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
                             .fadeIn(duration: 400.ms, delay: 100.ms),
                       ),
                     ),
+
+                  // ─── Predictive Early Warning (Elo) ──────────
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding:
+                          EdgeInsets.fromLTRB(padding, 16, padding, 0),
+                      child: KnowledgeEarlyWarningCard(
+                        students: analytics.students,
+                        isFilipino: isFilipino,
+                      )
+                          .animate()
+                          .fadeIn(duration: 400.ms, delay: 120.ms),
+                    ),
+                  ),
 
                   // ─── Category Progress Chart ──────────
                   if (analytics.categoryAverages.isNotEmpty)

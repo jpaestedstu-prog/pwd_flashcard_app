@@ -15,6 +15,7 @@ import '../../features/experiment/services/experiment_service.dart';
 import '../../features/sign_interpreter/services/sign_usage_log_service.dart';
 import '../services/adaptive_difficulty_service.dart';
 import '../services/engagement_tracker.dart';
+import '../services/knowledge_tracing_service.dart';
 import 'research_export_rows.dart';
 
 /// Generates anonymized, cross-student research data exports for thesis
@@ -36,6 +37,8 @@ import 'research_export_rows.dart';
 /// 9b. `student_experience.csv` – learner Smileyometer (descriptive, 1–3)
 /// 9c. `speech_to_sign_usage.csv` – Speech→Sign interpreter sessions
 ///     (match rate + unmatched-word wishlist)
+/// 9d. `knowledge_state.csv`   – Elo knowledge tracing (ability θ, per-word
+///     difficulty β, predicted mastery, per-word trend)
 /// 10. `summary_stats.json`    – high-level aggregates for quick analysis
 class ResearchExportService {
   const ResearchExportService._();
@@ -149,6 +152,12 @@ class ResearchExportService {
       exportDir,
       'speech_to_sign_usage.csv',
       _buildSpeechToSignUsage(students, idMap),
+    ));
+
+    files.add(await _writeFile(
+      exportDir,
+      'knowledge_state.csv',
+      _buildKnowledgeState(students, idMap),
     ));
 
     files.add(await _writeFile(
@@ -617,6 +626,27 @@ class ResearchExportService {
         '$totalSessionMin,'
         '$avgSessionMin',
       );
+    }
+    return buf.toString();
+  }
+
+  // ─── File 14: Knowledge State (Elo) ─────────────────────
+
+  static String _buildKnowledgeState(
+    List<(UserProfile, LearningProgress)> students,
+    Map<String, String> idMap,
+  ) {
+    final buf = StringBuffer();
+    buf.writeln(ResearchExportRows.knowledgeStateHeader);
+    for (final (profile, _) in students) {
+      final summary = KnowledgeTracingService.summary(profile.id);
+      final rows = ResearchExportRows.knowledgeStateRows(
+        studentId: idMap[profile.id]!,
+        thetaGlobal: summary.thetaGlobal,
+        thetaByCategory: summary.thetaByCategory,
+        reports: KnowledgeTracingService.wordReports(profile.id),
+      );
+      rows.forEach(buf.writeln);
     }
     return buf.toString();
   }
