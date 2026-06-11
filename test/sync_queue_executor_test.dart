@@ -2,13 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pwdpwdpwd/core/services/sync_queue/sync_queue_models.dart';
 import 'package:pwdpwdpwd/core/services/sync_queue/sync_queue_service.dart';
+import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/data/remote/firestore_repository.dart';
 
 class _MockFirestoreRepo extends Mock implements FirestoreRepository {}
 
+class _FakeUserProfile extends Fake implements UserProfile {}
+
 void main() {
   late _MockFirestoreRepo remote;
   late SyncQueueService svc;
+
+  setUpAll(() {
+    registerFallbackValue(_FakeUserProfile());
+  });
 
   setUp(() {
     remote = _MockFirestoreRepo();

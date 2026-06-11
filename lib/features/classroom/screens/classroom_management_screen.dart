@@ -10,7 +10,9 @@ import '../../../data/models/classroom_member.dart';
 import '../../../features/parent/services/child_unlock_override_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/classroom_management_provider.dart';
+import '../widgets/cloud_aware_text_dialog.dart';
 import '../widgets/cloud_retry_banner.dart';
+import '../widgets/cloud_sync_error_view.dart';
 
 /// Teacher/parent screen: list classrooms, see join codes, manage members.
 ///
@@ -71,15 +73,11 @@ class ClassroomManagementScreen extends ConsumerWidget {
           Expanded(
             child: classroomsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    'Could not load classes:\n$e',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.bodyMedium,
-                  ),
-                ),
+              error: (e, _) => CloudSyncErrorView(
+                error: e,
+                onRetry: () async => ref
+                    .read(classroomManagementProvider(profile.id).notifier)
+                    .refresh(),
               ),
               data: (classrooms) {
                 if (classrooms.isEmpty) {
@@ -112,45 +110,21 @@ class ClassroomManagementScreen extends ConsumerWidget {
 
   Future<void> _create(
       BuildContext context, WidgetRef ref, String teacherId) async {
-    final controller = TextEditingController();
-    String? name;
-    try {
-      name = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Create class'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'Class name'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Create'),
-            ),
-          ],
-        ),
-      );
-    } finally {
-      controller.dispose();
-    }
-    if (name == null || name.isEmpty || !context.mounted) return;
-    try {
-      await ref
+    final created = await CloudAwareTextDialog.show(
+      context: context,
+      title: 'Create class',
+      inputLabel: 'Class name',
+      inputHint: 'e.g. Grade 3 - Math',
+      submitLabel: 'Create',
+      emptyError: 'Class name is required',
+      onSubmit: (name) => ref
           .read(classroomManagementProvider(teacherId).notifier)
-          .createClass(name);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not create class: $e')),
-        );
-      }
+          .createClass(name),
+    );
+    if (created == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Class created.')),
+      );
     }
   }
 }
@@ -230,9 +204,13 @@ class _ClassRow extends ConsumerWidget {
                   label: Text('Rename', style: AppTypography.labelLarge),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () => _addStudent(context, ref, classroom),
-                  icon: const Icon(Icons.person_add_alt_1, size: 16),
-                  label: Text('Add student', style: AppTypography.labelLarge),
+                  onPressed: () => context.push(
+                    '/leaderboard-config/${classroom.id}'
+                    '?kind=classroom'
+                    '&name=${Uri.encodeQueryComponent(classroom.name)}',
+                  ),
+                  icon: const Icon(Icons.leaderboard_rounded, size: 16),
+                  label: Text('Leaderboard', style: AppTypography.labelLarge),
                 ),
                 ElevatedButton.icon(
                   onPressed: () => _delete(context, ref, classroom),
@@ -304,44 +282,22 @@ class _ClassRow extends ConsumerWidget {
 
   Future<void> _rename(
       BuildContext context, WidgetRef ref, Classroom c) async {
-    final controller = TextEditingController(text: c.name);
-    String? newName;
-    try {
-      newName = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Rename class'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      );
-    } finally {
-      controller.dispose();
-    }
-    if (newName == null || newName.isEmpty || !context.mounted) return;
-    try {
-      await ref
+    final renamed = await CloudAwareTextDialog.show(
+      context: context,
+      title: 'Rename class',
+      inputLabel: 'Class name',
+      inputHint: '',
+      submitLabel: 'Save',
+      emptyError: 'Class name is required',
+      initialValue: c.name,
+      onSubmit: (name) => ref
           .read(classroomManagementProvider(teacherId).notifier)
-          .renameClass(c, newName);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not rename: $e')),
-        );
-      }
+          .renameClass(c, name),
+    );
+    if (renamed == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Class renamed.')),
+      );
     }
   }
 
@@ -375,75 +331,6 @@ class _ClassRow extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not delete: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _addStudent(
-      BuildContext context, WidgetRef ref, Classroom c) async {
-    final controller = TextEditingController();
-    String? name;
-    try {
-      name = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Add student manually'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: controller,
-                autofocus: true,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Student display name',
-                  hintText: 'e.g. Anna',
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'A placeholder profile is created so the student appears in '
-                'your roster, analytics, and reports right away. The student '
-                'can later join from their own device using the class code.',
-                style: AppTypography.bodySmall.copyWith(
-                  color: Colors.grey.shade700,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-      );
-    } finally {
-      controller.dispose();
-    }
-    if (name == null || name.isEmpty || !context.mounted) return;
-    try {
-      await ref
-          .read(classroomManagementProvider(teacherId).notifier)
-          .addManualStudent(c, name);
-      // ignore: unused_result
-      ref.refresh(classroomMembersProvider(c.id));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Added $name')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not add student: $e')),
         );
       }
     }
@@ -618,62 +505,24 @@ class _ClassMembersSectionState
   }
 
   Future<void> _renameMember(ClassroomMember m) async {
-    final controller = TextEditingController(text: m.displayName);
-    String? newName;
-    try {
-      newName = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Rename in roster'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: controller,
-                autofocus: true,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Display name in this class',
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "This will rename the student in your roster and on their device.",
-                style: AppTypography.bodySmall.copyWith(
-                  color: Colors.grey.shade700,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      );
-    } finally {
-      controller.dispose();
-    }
-    if (newName == null || newName.isEmpty || newName == m.displayName) return;
-    try {
-      await ref
+    final renamed = await CloudAwareTextDialog.show(
+      context: context,
+      title: 'Rename in roster',
+      inputLabel: 'Display name in this class',
+      inputHint: '',
+      submitLabel: 'Save',
+      emptyError: 'Display name is required',
+      initialValue: m.displayName,
+      helperText:
+          'This will rename the student in your roster and on their device.',
+      onSubmit: (name) => ref
           .read(classroomManagementProvider(widget.teacherId).notifier)
-          .renameMember(widget.classroom, m.profileId, newName);
-      // ignore: unused_result
-      ref.refresh(classroomMembersProvider(widget.classroom.id));
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not rename: $e')),
-        );
-      }
+          .renameMember(widget.classroom, m.profileId, name),
+    );
+    if (renamed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Student renamed.')),
+      );
     }
   }
 
@@ -682,8 +531,7 @@ class _ClassMembersSectionState
       await ref
           .read(classroomManagementProvider(widget.teacherId).notifier)
           .removeStudent(widget.classroom, m.profileId);
-      // ignore: unused_result
-      ref.refresh(classroomMembersProvider(widget.classroom.id));
+      // classroomMembersProvider is a Firestore stream — no manual refresh needed.
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -754,8 +602,7 @@ class _ClassMembersSectionState
           .read(classroomManagementProvider(widget.teacherId).notifier)
           .removeStudents(widget.classroom, ids);
       _clearSelection();
-      // ignore: unused_result
-      ref.refresh(classroomMembersProvider(widget.classroom.id));
+      // classroomMembersProvider is a Firestore stream — no manual refresh needed.
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -803,15 +650,6 @@ class _MemberRow extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
-      subtitle: member.profileId.startsWith('manual_')
-          ? Text(
-              'Manual — not yet joined',
-              style: AppTypography.labelSmall.copyWith(
-                color: Colors.orange.shade800,
-                fontStyle: FontStyle.italic,
-              ),
-            )
-          : null,
       trailing: selectionMode
           ? Checkbox(
               value: selected,

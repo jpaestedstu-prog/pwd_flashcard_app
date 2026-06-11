@@ -2,9 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/constants/avatar_data.dart';
 import '../core/services/firebase_service.dart';
 import '../data/local/hive_service.dart';
+import '../data/models/classroom.dart';
 import '../data/models/enums.dart';
 import '../data/models/models.dart';
 import '../data/remote/firestore_repository.dart';
+import 'classroom_management_provider.dart';
+import 'firestore_stream_helpers.dart';
+import 'wall_clock_provider.dart';
 
 /// Represents one student's real-time status in a classroom session.
 class StudentStatus {
@@ -200,14 +204,32 @@ final classroomScopedProvider = StateNotifierProvider.family<
 /// This is what the teacher's main dashboard should use — the students
 /// live on different devices, so Hive on the teacher's device can't see
 /// them. We fetch the rosters from Firestore directly.
+///
+/// Watches three live signals so it re-emits without polling:
+///   * [classroomsByTeacherStreamProvider] — a classroom is created /
+///     renamed / deleted.
+///   * [classroomMembersProvider] for each owned classroom — a student
+///     joins or leaves.
+///   * [wallClockTickerProvider] (10 s) — flips `StudentStatus.isActive`
+///     once the 2-minute idle threshold passes, without a Firestore round-
+///     trip.
 final teacherDashboardSnapshotProvider =
     FutureProvider.family<ClassroomSnapshot, String>(
         (ref, teacherId) async {
   if (!FirebaseService.isConfigured) {
     return ref.read(classroomProvider);
   }
+  // Re-evaluate isActive on each wall-clock tick.
+  ref.watch(wallClockTickerProvider);
+  // Re-run when the teacher's classroom list changes.
+  final classroomsAsync =
+      ref.watch(classroomsByTeacherStreamProvider(teacherId));
+  final classrooms = classroomsAsync.valueOrNull ?? const <Classroom>[];
+  // Re-run when any member doc in any of these classrooms changes.
+  for (final c in classrooms) {
+    ref.watch(classroomMembersProvider(c.id));
+  }
   const remote = FirestoreRepository();
-  final classrooms = await remote.getClassroomsByTeacher(teacherId);
   final allStatuses = <StudentStatus>[];
   for (final c in classrooms) {
     final pairs =
@@ -254,6 +276,10 @@ final teacherDashboardSnapshotProvider =
 /// from Firestore. This is what the teacher's dashboard should use when
 /// the students live on different devices.
 ///
+/// Watches [classroomMembersProvider] and [wallClockTickerProvider] so
+/// the snapshot re-emits on join / leave / idle-threshold crossings
+/// without a manual refresh.
+///
 /// When Firebase isn't configured, falls back to the local Hive snapshot
 /// so single-device demos still render something.
 final classroomFirestoreSnapshotProvider =
@@ -263,6 +289,10 @@ final classroomFirestoreSnapshotProvider =
     // Local fallback: rebuild the same shape from Hive.
     return ref.read(classroomScopedProvider(classroomId));
   }
+  // Re-evaluate isActive on each wall-clock tick.
+  ref.watch(wallClockTickerProvider);
+  // Re-run when this classroom's member list changes.
+  ref.watch(classroomMembersProvider(classroomId));
 
   const remote = FirestoreRepository();
   final pairs =

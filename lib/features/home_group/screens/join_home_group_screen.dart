@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/join_code_service.dart';
+import '../../../core/widgets/safe_scaffold.dart';
 import '../../../features/onboarding/screens/post_join_setup_screen.dart';
 import '../../../providers/home_group_join_provider.dart';
 
@@ -55,7 +56,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
     final isLoading = state is HomeGroupJoinLoading;
     final failure = state is HomeGroupJoinFailure ? state : null;
 
-    return Scaffold(
+    return SafeScaffold(
       appBar: AppBar(
         title: const Text('Join Home Group'),
         leading: IconButton(
@@ -68,15 +69,19 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
             }
           },
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.switch_account_rounded),
+            tooltip: 'Switch profile',
+            onPressed: () => context.go('/profile'),
+          ),
+        ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+      body: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
                 const Text(
                   'Enter the code your parent or guardian shared.',
                   style: TextStyle(fontSize: 16),
@@ -139,9 +144,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
                       ),
                     ),
                   ),
-              ],
-            ),
-          ),
+          ],
         ),
       ),
     );

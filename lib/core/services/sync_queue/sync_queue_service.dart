@@ -322,6 +322,7 @@ class SyncQueueService {
       reminderMinute: p['reminderMinute'] as int? ?? 0,
       voiceNavigation: p['voiceNavigation'] as bool? ?? false,
       adaptiveDifficulty: p['adaptiveDifficulty'] as bool? ?? true,
+      dyslexiaMode: p['dyslexiaMode'] as bool? ?? false,
     );
   }
 

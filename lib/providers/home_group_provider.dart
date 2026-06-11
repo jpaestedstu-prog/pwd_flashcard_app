@@ -1,12 +1,16 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/services/cloud_sync_exceptions.dart';
+import '../core/services/educator_policy_cascade.dart';
 import '../core/services/firebase_service.dart';
 import '../core/services/home_group_code_service.dart';
 import '../data/local/hive_service.dart';
 import '../data/models/home_group.dart';
 import '../data/models/home_group_member.dart';
 import '../data/remote/firestore_repository.dart';
+import 'firestore_stream_helpers.dart';
 
 /// Parent-facing state for the "Manage Home Groups" screen.
 ///
@@ -24,23 +28,30 @@ class HomeGroupManagementNotifier
   @override
   Future<List<HomeGroup>> build(String parentProfileId) async {
     if (parentProfileId.isEmpty) return const [];
-    if (!FirebaseService.isConfigured) {
-      return HiveService.getHomeGroupsByOwner(parentProfileId);
+    // Auth gate — mirror of [ClassroomManagementNotifier.build]. If the
+    // anonymous sign-in failed (Anonymous Auth disabled in the Firebase
+    // Console, offline first launch) we throw a typed exception the
+    // screen maps to setup-help copy rather than leaking the raw
+    // `permission-denied` Firestore code.
+    if (FirebaseService.isConfigured) {
+      final uid = await FirebaseService.ensureSignedIn();
+      if (uid == null) {
+        throw CloudAuthMissingException(FirebaseService.lastInitError);
+      }
     }
-
-    final snap = await FirebaseService.db
-        .collection('home_groups')
-        .where('owner_profile_id', isEqualTo: parentProfileId)
-        .get();
-    final groups = snap.docs
-        .map((d) => HomeGroup.fromJson(Map<String, dynamic>.from(d.data())))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    for (final g in groups) {
-      await HiveService.cacheHomeGroup(g);
-    }
-    return groups;
+    // Subscribe to live Firestore changes via the leaf stream provider.
+    // Mutation methods no longer need to optimistically rewrite `state`.
+    ref.listen<AsyncValue<List<HomeGroup>>>(
+      homeGroupsByOwnerStreamProvider(parentProfileId),
+      (_, next) {
+        next.when(
+          data: (list) => state = AsyncData(list),
+          loading: () {},
+          error: (e, s) => state = AsyncError(e, s),
+        );
+      },
+    );
+    return ref.read(homeGroupsByOwnerStreamProvider(parentProfileId).future);
   }
 
   /// Create a new home group with a unique join code.
@@ -49,18 +60,23 @@ class HomeGroupManagementNotifier
       throw Exception(
           'Cloud sync not connected. Restart the app or check Firebase setup.');
     }
+    // Auth must be resolved before any owner-scoped write — same
+    // rationale as [build]. Throws [CloudAuthMissingException] if the
+    // device never finished anonymous sign-in.
+    final uid = await FirebaseService.ensureSignedIn();
+    if (uid == null) {
+      throw CloudAuthMissingException(FirebaseService.lastInitError);
+    }
     final parentProfileId = arg;
 
     // Pre-flight: ensure the parent profile exists in Firestore so the
     // `ownsProfile(owner_profile_id)` security check passes on create.
+    // [FirestoreRepository.saveProfile] throws [OwnerUidMismatchException]
+    // when the profile belongs to a different uid — we let it propagate
+    // so the screen can surface the "Reset for this device" affordance.
     final parent = HiveService.getProfileById(parentProfileId);
     if (parent != null) {
-      try {
-        await const FirestoreRepository().saveProfile(parent);
-      } catch (e) {
-        throw Exception(
-            'Could not sync parent profile to cloud before creating group: $e');
-      }
+      await const FirestoreRepository().saveProfile(parent);
     }
 
     final code = await HomeGroupCodeService.generateUniqueCode();
@@ -79,36 +95,42 @@ class HomeGroupManagementNotifier
         .doc(group.id)
         .set(group.toJson());
     await HiveService.cacheHomeGroup(group);
-
-    state = AsyncData([group, ...?state.value]);
+    // No optimistic `state =`; snapshot listener in `build()` updates state.
     return group;
   }
 
   /// Generate a new code for [group]. Existing memberships survive.
   Future<HomeGroup> regenerateCode(HomeGroup group) async {
-    final updated = await HomeGroupCodeService.regenerateCode(group);
-    state = AsyncData([
-      for (final g in state.value ?? const <HomeGroup>[])
-        if (g.id == updated.id) updated else g,
-    ]);
-    return updated;
+    return HomeGroupCodeService.regenerateCode(group);
   }
 
   /// Rename [group] to [newName].
+  ///
+  /// Throws when cloud sync is offline or the name is empty so the
+  /// dialog can render a clear error instead of silently doing nothing.
+  /// Same-name calls are a defensive no-op (already guarded at the
+  /// dialog layer).
   Future<void> renameGroup(HomeGroup group, String newName) async {
-    if (!FirebaseService.isConfigured) return;
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
     final trimmed = newName.trim();
-    if (trimmed.isEmpty || trimmed == group.name) return;
+    if (trimmed.isEmpty) {
+      throw Exception('Group name is required.');
+    }
+    if (trimmed == group.name) return;
     final updated = group.copyWith(name: trimmed, updatedAt: DateTime.now());
+    // Sparse merge: only the fields that changed, so forward-compat
+    // fields on the doc aren't clobbered.
     await FirebaseService.db
         .collection('home_groups')
         .doc(updated.id)
-        .set(updated.toJson());
+        .set({
+      'name': updated.name,
+      'updated_at': updated.updatedAt.toIso8601String(),
+    }, SetOptions(merge: true));
     await HiveService.cacheHomeGroup(updated);
-    state = AsyncData([
-      for (final g in state.value ?? const <HomeGroup>[])
-        if (g.id == updated.id) updated else g,
-    ]);
   }
 
   /// Delete [group] and all its memberships.
@@ -129,11 +151,6 @@ class HomeGroupManagementNotifier
         .doc(group.id)
         .delete();
     await HiveService.deleteHomeGroupLocal(group.id);
-
-    state = AsyncData([
-      for (final g in state.value ?? const <HomeGroup>[])
-        if (g.id != group.id) g,
-    ]);
   }
 
   /// Remove [profileId] from [group]'s roster.
@@ -142,14 +159,23 @@ class HomeGroupManagementNotifier
   /// `child_alarms` (where this parent is the setter) so the child
   /// stops being controlled by a parent they no longer belong to.
   /// Other educators' policies are left intact.
+  ///
+  /// Throws when cloud sync is offline so the caller can surface a
+  /// clear error rather than silently doing nothing.
   Future<void> removeChild(HomeGroup group, String profileId) async {
-    if (!FirebaseService.isConfigured) return;
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
     await FirebaseService.db
         .collection('home_group_members')
         .doc('${group.id}_$profileId')
         .delete();
     await HiveService.removeHomeGroupMemberLocal(group.id, profileId);
-    await _cascadeEducatorPoliciesForProfile(profileId);
+    await EducatorPolicyCascade.dropPoliciesSetBy(
+      setterProfileId: arg,
+      childProfileId: profileId,
+    );
   }
 
   /// Bulk-remove children from [group]'s roster.
@@ -158,71 +184,36 @@ class HomeGroupManagementNotifier
   /// multi-select UI on the Manage Home Groups screen.
   Future<void> removeChildren(
       HomeGroup group, List<String> profileIds) async {
-    if (!FirebaseService.isConfigured) return;
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
     if (profileIds.isEmpty) return;
     await const FirestoreRepository()
         .removeHomeGroupMembers(group.id, profileIds);
     for (final id in profileIds) {
       await HiveService.removeHomeGroupMemberLocal(group.id, id);
-      await _cascadeEducatorPoliciesForProfile(id);
-    }
-  }
-
-  /// Drop this parent's time-limit + alarm rules for the given child.
-  /// Best-effort — failures don't block the membership removal. Mirror
-  /// of [ClassroomManagementNotifier._cascadeEducatorPoliciesForProfile].
-  Future<void> _cascadeEducatorPoliciesForProfile(String profileId) async {
-    final parentId = arg;
-    final db = FirebaseService.db;
-    try {
-      final limitDoc = await db
-          .collection('child_time_limits')
-          .doc(profileId)
-          .get();
-      if (limitDoc.exists &&
-          (limitDoc.data()?['setter_profile_id'] as String?) == parentId) {
-        await limitDoc.reference.delete();
-      }
-    } catch (_) {
-      // Non-blocking.
-    }
-    try {
-      final alarms = await db
-          .collection('child_alarms')
-          .where('child_profile_id', isEqualTo: profileId)
-          .where('setter_profile_id', isEqualTo: parentId)
-          .get();
-      if (alarms.docs.isNotEmpty) {
-        final batch = db.batch();
-        for (final d in alarms.docs) {
-          batch.delete(d.reference);
-        }
-        await batch.commit();
-      }
-    } catch (_) {
-      // Non-blocking.
-    }
-    try {
-      // Drop the unlock override only if THIS parent set it.
-      final overrideDoc = await db
-          .collection('child_unlock_overrides')
-          .doc(profileId)
-          .get();
-      if (overrideDoc.exists &&
-          (overrideDoc.data()?['setter_profile_id'] as String?) == parentId) {
-        await overrideDoc.reference.delete();
-      }
-    } catch (_) {
-      // Non-blocking.
+      await EducatorPolicyCascade.dropPoliciesSetBy(
+        setterProfileId: arg,
+        childProfileId: id,
+      );
     }
   }
 
   /// Rename how a child appears in [group]'s roster.
+  ///
+  /// Throws when cloud sync is offline or the name is empty so the
+  /// dialog can render a clear error instead of silently doing nothing.
   Future<void> renameMember(
       HomeGroup group, String profileId, String newDisplayName) async {
-    if (!FirebaseService.isConfigured) return;
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
     final trimmed = newDisplayName.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty) {
+      throw Exception('Display name is required.');
+    }
     await const FirestoreRepository().updateHomeGroupMemberDisplayName(
       homeGroupId: group.id,
       profileId: profileId,
@@ -230,29 +221,10 @@ class HomeGroupManagementNotifier
     );
   }
 
-  /// Manually enrol a child that hasn't joined from their own device.
-  ///
-  /// Parent-side mirror of [ClassroomManagementNotifier.addManualStudent].
-  /// Returns the synthetic profile id (prefix `manual_`).
-  Future<String> addManualChild(HomeGroup group, String displayName) async {
-    if (!FirebaseService.isConfigured) {
-      throw Exception(
-          'Cloud sync not connected. Restart the app or check Firebase setup.');
-    }
-    final trimmed = displayName.trim();
-    if (trimmed.isEmpty) {
-      throw Exception('Child name is required.');
-    }
-    return const FirestoreRepository().addManualHomeGroupMember(
-      homeGroupId: group.id,
-      displayName: trimmed,
-      parentProfileId: arg,
-    );
-  }
-
+  /// Manual refresh — cancels and resubscribes the underlying Firestore
+  /// stream. Kept as a safety net for the management screen's IconButton.
   Future<void> refresh() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() => build(arg));
+    ref.invalidate(homeGroupsByOwnerStreamProvider(arg));
   }
 }
 
@@ -261,21 +233,32 @@ final homeGroupManagementProvider = AsyncNotifierProviderFamily<
   HomeGroupManagementNotifier.new,
 );
 
-/// Lists members of a home group, reading directly from Firestore.
+/// Live members of a home group — Firestore `.snapshots()` subscription.
+///
+/// Mirrors [classroomMembersProvider]: emits a fresh list whenever a
+/// member doc is added / changed / deleted, so the parent's roster
+/// reflects child joins from another device within seconds.
 final homeGroupMembersProvider =
-    FutureProvider.family<List<HomeGroupMember>, String>(
-        (ref, homeGroupId) async {
-  if (!FirebaseService.isConfigured) {
-    return HiveService.getHomeGroupMembers(homeGroupId);
-  }
-  final snap = await FirebaseService.db
+    StreamProvider.family.autoDispose<List<HomeGroupMember>, String>(
+        (ref, homeGroupId) async* {
+  final cached = HiveService.getHomeGroupMembers(homeGroupId)
+    ..sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+  yield cached;
+  if (!FirebaseService.isConfigured) return;
+  yield* FirebaseService.db
       .collection('home_group_members')
       .where('home_group_id', isEqualTo: homeGroupId)
-      .get();
-  final members = snap.docs
-      .map((d) =>
-          HomeGroupMember.fromJson(Map<String, dynamic>.from(d.data())))
-      .toList()
-    ..sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
-  return members;
+      .snapshots()
+      .map((snap) {
+    final members = snap.docs
+        .map((d) =>
+            HomeGroupMember.fromJson(Map<String, dynamic>.from(d.data())))
+        .toList()
+      ..sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+    for (final m in members) {
+      // ignore: discarded_futures
+      HiveService.addHomeGroupMemberLocal(m);
+    }
+    return members;
+  });
 });

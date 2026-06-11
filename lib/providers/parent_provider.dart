@@ -1,10 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../data/local/hive_service.dart';
 import '../data/models/enums.dart';
 import '../data/models/models.dart';
 import '../core/constants/avatar_data.dart';
 import '../core/services/session_tracker.dart';
+import '../core/services/streak_service.dart';
 import 'app_providers.dart';
+import 'wall_clock_provider.dart';
 
 // ─── Child Summary Model ───────────────────────────────
 
@@ -92,9 +93,10 @@ class ChildSummary {
     return allCats.difference(attempted).toList();
   }
 
-  /// Whether the child has been active in the last 24 hours.
-  bool get isRecentlyActive =>
-      DateTime.now().difference(lastActivityDate).inHours < 24;
+  /// Whether the child has been active today (same calendar day), matching
+  /// how streaks are counted. Avoids the 24-hour-window bug where activity
+  /// at 11pm looked "inactive" by 1am the next calendar day.
+  bool get isRecentlyActive => StreakService.isActiveToday(lastActivityDate);
 
   /// Number of categories with mastery >= 80%.
   int get masteredCategories =>
@@ -134,103 +136,88 @@ class ParentDashboardSnapshot {
   }
 }
 
-// ─── Parent Dashboard Notifier ─────────────────────────
+// ─── Parent Dashboard Snapshot Provider ─────────────────
+//
+// Pure projection over [educatorRosterProvider] (the live, stream-backed
+// roster of every child a teacher / parent owns) plus [wallClockTickerProvider]
+// (so `isRecentlyActive` flips without a manual refresh as the 24h
+// threshold passes).
+//
+// To force a re-fetch, callers invalidate `educatorRosterProvider(profile.id)`
+// — this provider then rebuilds automatically.
 
-class ParentDashboardNotifier extends StateNotifier<ParentDashboardSnapshot> {
-  final Ref _ref;
+ParentDashboardSnapshot _buildSnapshot(
+    List<(UserProfile, LearningProgress)> profilesWithProgress) {
+  final children = profilesWithProgress
+      .where((pair) =>
+          pair.$1.role == UserRole.student && !pair.$1.isGuestPlayer)
+      .map((pair) {
+    final profile = pair.$1;
+    final progress = pair.$2;
 
-  ParentDashboardNotifier(this._ref)
-      : super(ParentDashboardSnapshot(
-          timestamp: DateTime.now(),
-          children: const [],
-        )) {
-    refresh();
-  }
-
-  /// Build the parent dashboard snapshot. When the active profile is a
-  /// teacher/parent and Firebase is configured, pulls students from
-  /// Firestore via [educatorRosterProvider] (cross-device). Otherwise
-  /// falls back to local Hive.
-  Future<void> refresh() async {
-    final active = _ref.read(profileProvider);
-    List<(UserProfile, LearningProgress)> profilesWithProgress;
-    if (active != null && active.role != UserRole.student) {
-      try {
-        profilesWithProgress =
-            await _ref.read(educatorRosterProvider(active.id).future);
-      } catch (_) {
-        profilesWithProgress = HiveService.getAllProfilesWithProgress();
-      }
-    } else {
-      profilesWithProgress = HiveService.getAllProfilesWithProgress();
+    double avgAccuracy = 0;
+    if (progress.recentScores.isNotEmpty) {
+      avgAccuracy = progress.recentScores
+              .map((s) => s.total > 0 ? s.score / s.total : 0.0)
+              .reduce((a, b) => a + b) /
+          progress.recentScores.length;
     }
 
-    final children = profilesWithProgress
-        .where((pair) =>
-            pair.$1.role == UserRole.student && !pair.$1.isGuestPlayer)
-        .map((pair) {
-      final profile = pair.$1;
-      final progress = pair.$2;
+    final studyThisWeek =
+        SessionTracker.totalStudyMinutes(profile.id, days: 7);
+    final studyLastWeekRaw =
+        SessionTracker.totalStudyMinutes(profile.id, days: 14) -
+            studyThisWeek;
+    final studyLastWeek = studyLastWeekRaw < 0 ? 0 : studyLastWeekRaw;
+    final totalSessions = SessionTracker.totalSessions(profile.id);
+    final dailyMinutes = SessionTracker.dailyStudyMinutes(profile.id);
 
-      // Compute average accuracy from recent scores
-      double avgAccuracy = 0;
-      if (progress.recentScores.isNotEmpty) {
-        avgAccuracy = progress.recentScores
-                .map((s) => s.total > 0 ? s.score / s.total : 0.0)
-                .reduce((a, b) => a + b) /
-            progress.recentScores.length;
-      }
-
-      // Study time analytics
-      final studyThisWeek =
-          SessionTracker.totalStudyMinutes(profile.id, days: 7);
-      final studyLastWeekRaw = SessionTracker.totalStudyMinutes(
-              profile.id, days: 14) -
-          studyThisWeek;
-      final studyLastWeek = studyLastWeekRaw < 0 ? 0 : studyLastWeekRaw;
-      final totalSessions =
-          SessionTracker.totalSessions(profile.id);
-      final dailyMinutes =
-          SessionTracker.dailyStudyMinutes(profile.id);
-
-      return ChildSummary(
-        profileId: profile.id,
-        name: profile.name,
-        avatarEmoji: AvatarData.getAvatar(profile.avatarIndex).emoji,
-        avatarIndex: profile.avatarIndex,
-        disabilityType: profile.disabilityType,
-        wordsLearned: progress.wordsLearned,
-        totalStars: progress.totalStars,
-        streakDays: progress.streakDays,
-        gamesPlayed: progress.recentScores.length,
-        averageAccuracy: avgAccuracy,
-        studyMinutesThisWeek: studyThisWeek,
-        studyMinutesLastWeek: studyLastWeek,
-        totalSessions: totalSessions,
-        dailyStudyMinutes: dailyMinutes,
-        categoryProgress: progress.categoryProgress,
-        recentScores: progress.recentScores,
-        lastActivityDate: progress.lastActivityDate,
-      );
-    }).toList();
-
-    // Sort: recently active first, then by name
-    children.sort((a, b) {
-      if (a.isRecentlyActive != b.isRecentlyActive) {
-        return a.isRecentlyActive ? -1 : 1;
-      }
-      return a.name.compareTo(b.name);
-    });
-
-    state = ParentDashboardSnapshot(
-      timestamp: DateTime.now(),
-      children: children,
+    return ChildSummary(
+      profileId: profile.id,
+      name: profile.name,
+      avatarEmoji: AvatarData.getAvatar(profile.avatarIndex).emoji,
+      avatarIndex: profile.avatarIndex,
+      disabilityType: profile.disabilityType,
+      wordsLearned: progress.wordsLearned,
+      totalStars: progress.totalStars,
+      streakDays: progress.streakDays,
+      gamesPlayed: progress.recentScores.length,
+      averageAccuracy: avgAccuracy,
+      studyMinutesThisWeek: studyThisWeek,
+      studyMinutesLastWeek: studyLastWeek,
+      totalSessions: totalSessions,
+      dailyStudyMinutes: dailyMinutes,
+      categoryProgress: progress.categoryProgress,
+      recentScores: progress.recentScores,
+      lastActivityDate: progress.lastActivityDate,
     );
-  }
+  }).toList();
+
+  children.sort((a, b) {
+    if (a.isRecentlyActive != b.isRecentlyActive) {
+      return a.isRecentlyActive ? -1 : 1;
+    }
+    return a.name.compareTo(b.name);
+  });
+
+  return ParentDashboardSnapshot(
+    timestamp: DateTime.now(),
+    children: children,
+  );
 }
 
-final parentDashboardProvider =
-    StateNotifierProvider<ParentDashboardNotifier, ParentDashboardSnapshot>(
-        (ref) {
-  return ParentDashboardNotifier(ref);
+final parentDashboardProvider = Provider<ParentDashboardSnapshot>((ref) {
+  // Force re-evaluation on the 10 s wall-clock tick so `isRecentlyActive`
+  // flips without waiting for the next Firestore push.
+  ref.watch(wallClockTickerProvider);
+  final active = ref.watch(profileProvider);
+  if (active == null) {
+    return ParentDashboardSnapshot(
+      timestamp: DateTime.now(),
+      children: const [],
+    );
+  }
+  final rosterAsync = ref.watch(educatorRosterProvider(active.id));
+  final profilesWithProgress = rosterAsync.valueOrNull ?? const [];
+  return _buildSnapshot(profilesWithProgress);
 });

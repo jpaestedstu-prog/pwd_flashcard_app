@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,11 +8,15 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/classroom_provider.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Real-time classroom monitoring screen for teachers.
 ///
-/// Shows all student profiles, their current activity, accuracy,
-/// and aggregate class statistics. Auto-refreshes every 30 seconds.
+/// Shows all student profiles, their current activity, accuracy, and
+/// aggregate class statistics. Updates live: the underlying
+/// [teacherDashboardSnapshotProvider] watches Firestore stream providers
+/// for classrooms + members and a 10 s wall-clock tick, so changes from
+/// any device surface within seconds without polling.
 class ClassroomDashboardScreen extends ConsumerStatefulWidget {
   const ClassroomDashboardScreen({super.key});
 
@@ -25,31 +27,14 @@ class ClassroomDashboardScreen extends ConsumerStatefulWidget {
 
 class _ClassroomDashboardScreenState
     extends ConsumerState<ClassroomDashboardScreen> {
-  Timer? _refreshTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    // Auto-refresh every 30 seconds.
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      _refresh();
-    });
-  }
-
+  /// Manual refresh — kept as a safety net for the IconButton.
   void _refresh() {
     final profile = ref.read(profileProvider);
     if (profile != null && profile.role != UserRole.student) {
-      // ignore: unused_result
-      ref.refresh(teacherDashboardSnapshotProvider(profile.id));
+      ref.invalidate(teacherDashboardSnapshotProvider(profile.id));
     } else {
       ref.read(classroomProvider.notifier).refresh();
     }
-  }
-
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    super.dispose();
   }
 
   @override
@@ -66,17 +51,19 @@ class _ClassroomDashboardScreenState
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(),
         title: Text(
           AppLocalizations.of(context)!.classroomView,
           style:
               AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
         ),
         actions: [
+          if (isEducator)
+            IconButton(
+              icon: const Icon(Icons.file_download_outlined),
+              tooltip: 'Export CSV report',
+              onPressed: () => context.push('/reports/export'),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh',

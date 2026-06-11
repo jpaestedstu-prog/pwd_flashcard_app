@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:uuid/uuid.dart';
 
+import '../../core/services/cloud_sync_exceptions.dart';
 import '../../core/services/firebase_service.dart';
 import '../models/classroom.dart';
 import '../models/classroom_member.dart';
@@ -17,8 +17,6 @@ import '../repository.dart';
 /// idempotent (matches the previous Postgres `upsert` semantics).
 class FirestoreRepository implements DataRepository {
   const FirestoreRepository();
-
-  static const _uuid = Uuid();
 
   FirebaseFirestore get _db => FirebaseService.db;
 
@@ -42,6 +40,26 @@ class FirestoreRepository implements DataRepository {
     // Player profiles never reach Firestore — defensive guard for callers
     // that bypass the LocalRepository queue.
     if (profile.isGuestPlayer) return;
+
+    // Fail fast on owner_uid drift. The Firestore rule on `profiles/{id}`
+    // checks `isOwner(resource.data.owner_uid)` for updates — if the
+    // existing doc's owner_uid doesn't match `request.auth.uid`, the
+    // server would reject this write with permission-denied. Surface a
+    // typed error instead so the Manage Classes / Manage Home Groups
+    // screen can offer "Reset for this device" rather than leaking
+    // raw FirebaseException text. Only triggered when both sides are
+    // non-null — `null → uid` is the normal first-claim path.
+    final currentUid = _uid;
+    if (profile.ownerUid != null &&
+        currentUid != null &&
+        profile.ownerUid != currentUid) {
+      throw OwnerUidMismatchException(
+        profileId: profile.id,
+        localOwnerUid: profile.ownerUid,
+        currentUid: currentUid,
+      );
+    }
+
     await _db.collection('profiles').doc(profile.id).set({
       'id': profile.id,
       'name': profile.name,
@@ -51,7 +69,8 @@ class FirestoreRepository implements DataRepository {
       'disability_type': profile.disabilityType.index,
       'classroom_id': profile.classroomId,
       'is_guest_player': profile.isGuestPlayer,
-      'owner_uid': profile.ownerUid ?? _uid,
+      'owner_uid': profile.ownerUid ?? currentUid,
+      'username': profile.username,
     }, SetOptions(merge: true));
   }
 
@@ -131,6 +150,7 @@ class FirestoreRepository implements DataRepository {
       classroomId: r['classroom_id'] as String?,
       isGuestPlayer: (r['is_guest_player'] as bool?) ?? false,
       ownerUid: r['owner_uid'] as String?,
+      username: r['username'] as String?,
     );
   }
 
@@ -139,6 +159,25 @@ class FirestoreRepository implements DataRepository {
     final doc = await _db.collection('profiles').doc(profileId).get();
     if (!doc.exists) return null;
     return _profileFromMap(doc.data()!);
+  }
+
+  /// Fetch every profile owned by the given uid. Used by the post-sign-in
+  /// rehydration path after a linked-account sign-in on a fresh install:
+  /// the linked-account uid is known, and we need its profiles to
+  /// repopulate local Hive from Firestore.
+  ///
+  /// Returns an empty list if the query fails (offline first-launch,
+  /// permission-denied because the uid hasn't yet been resolved).
+  Future<List<UserProfile>> getProfilesForOwner(String uid) async {
+    try {
+      final snap = await _db
+          .collection('profiles')
+          .where('owner_uid', isEqualTo: uid)
+          .get();
+      return snap.docs.map((d) => _profileFromMap(d.data())).toList();
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// Fetch every student profile + progress for a classroom.
@@ -209,6 +248,7 @@ class FirestoreRepository implements DataRepository {
       reminderMinute: r['reminder_minute'] as int? ?? 0,
       voiceNavigation: r['voice_navigation'] as bool? ?? false,
       adaptiveDifficulty: r['adaptive_difficulty'] as bool? ?? true,
+      dyslexiaMode: r['dyslexia_mode'] as bool? ?? false,
     );
   }
 
@@ -233,6 +273,7 @@ class FirestoreRepository implements DataRepository {
       'reminder_minute': s.reminderMinute,
       'voice_navigation': s.voiceNavigation,
       'adaptive_difficulty': s.adaptiveDifficulty,
+      'dyslexia_mode': s.dyslexiaMode,
     }, SetOptions(merge: true));
   }
 
@@ -251,6 +292,8 @@ class FirestoreRepository implements DataRepository {
     final catRaw = r['category_progress'] as Map<String, dynamic>? ?? {};
     final scoresRaw = r['recent_scores'] as List<dynamic>? ?? [];
     final wordsRaw = r['learned_word_ids'] as List<dynamic>? ?? [];
+    final storyIdsRaw = r['completed_story_ids'] as List<dynamic>? ?? [];
+    final storyStarsRaw = r['story_best_stars'] as Map<String, dynamic>? ?? {};
 
     return LearningProgress(
       profileId: profileId,
@@ -267,6 +310,10 @@ class FirestoreRepository implements DataRepository {
           .toList(),
       totalStars: (r['total_stars'] as int?) ?? 0,
       spentStars: (r['spent_stars'] as int?) ?? 0,
+      completedStoryIds:
+          Set<String>.from(storyIdsRaw.map((e) => e.toString())),
+      storyBestStars:
+          storyStarsRaw.map((k, v) => MapEntry(k, (v as num).toInt())),
     );
   }
 
@@ -282,6 +329,8 @@ class FirestoreRepository implements DataRepository {
       'recent_scores': p.recentScores.map((s) => s.toJson()).toList(),
       'total_stars': p.totalStars,
       'spent_stars': p.spentStars,
+      'completed_story_ids': p.completedStoryIds.toList(),
+      'story_best_stars': p.storyBestStars,
       'owner_uid': _uid,
     }, SetOptions(merge: true));
   }
@@ -718,43 +767,6 @@ class FirestoreRepository implements DataRepository {
     }
   }
 
-  /// Manually enrol a student that hasn't joined from their own device.
-  ///
-  /// Creates a synthetic [UserProfile] with `id = "manual_<uuid>"` and a
-  /// `manual_enrollment` tag so the UI can render a "Manual — not yet
-  /// joined" badge, then writes the corresponding [ClassroomMember] row.
-  /// The teacher's auth uid is stamped as `owner_uid` so they can later
-  /// rename or remove the placeholder; security rules enforce that only
-  /// the teacher of the classroom can write either doc.
-  ///
-  /// Returns the synthetic profile id so callers can refresh providers
-  /// keyed by member id.
-  Future<String> addManualClassroomMember({
-    required String classroomId,
-    required String displayName,
-    required String teacherProfileId,
-  }) async {
-    final profileId = 'manual_${_uuid.v4()}';
-    final now = DateTime.now();
-    final placeholder = UserProfile(
-      id: profileId,
-      name: displayName,
-      role: UserRole.student,
-      createdAt: now,
-      tags: const ['manual_enrollment'],
-      classroomId: classroomId,
-      ownerUid: _uid,
-    );
-    await saveProfile(placeholder);
-    await addMember(ClassroomMember(
-      classroomId: classroomId,
-      profileId: profileId,
-      displayName: displayName,
-      joinedAt: now,
-    ));
-    return profileId;
-  }
-
   // ─── Home Groups ───────────────────────────────────────
   //
   // Mirrors the classroom set so [educatorRosterProvider] can union
@@ -902,36 +914,6 @@ class FirestoreRepository implements DataRepository {
     await batch.commit();
   }
 
-  /// Manually enrol a child that hasn't joined from their own device.
-  ///
-  /// Parent-side mirror of [addManualClassroomMember]. Creates a
-  /// synthetic [UserProfile] (id prefix `manual_`, role `child`) plus a
-  /// [HomeGroupMember] row. Returns the synthetic profile id.
-  Future<String> addManualHomeGroupMember({
-    required String homeGroupId,
-    required String displayName,
-    required String parentProfileId,
-  }) async {
-    final profileId = 'manual_${_uuid.v4()}';
-    final now = DateTime.now();
-    final placeholder = UserProfile(
-      id: profileId,
-      name: displayName,
-      role: UserRole.child,
-      createdAt: now,
-      tags: const ['manual_enrollment'],
-      ownerUid: _uid,
-    );
-    await saveProfile(placeholder);
-    await addHomeGroupMember(HomeGroupMember(
-      homeGroupId: homeGroupId,
-      profileId: profileId,
-      displayName: displayName,
-      joinedAt: now,
-    ));
-    return profileId;
-  }
-
   // ─── Data Management ──────────────────────────────────
 
   @override
@@ -961,5 +943,133 @@ class FirestoreRepository implements DataRepository {
       }
       await batch.commit();
     }
+  }
+
+  // ─── Recovery (cross-device profile claim) ──────────────
+
+  /// Re-stamp owner_uid on all owner-scoped docs for [profileId] from the
+  /// old uid to the currently signed-in uid, then mark the recovery
+  /// [code] used. Carries the transient `_recovery_code` field on each
+  /// write so [firestore.rules]'s [claimingViaRecovery] predicate can
+  /// verify the new owner is presenting a valid code.
+  ///
+  /// Returns the recovered [UserProfile] (with `owner_uid` set to the
+  /// current device's uid) so the caller can persist it locally without
+  /// a second round trip. Throws on any rule rejection — the calling
+  /// screen should surface that as "couldn't restore on this device".
+  Future<UserProfile> claimProfileWithRecoveryCode({
+    required String code,
+    required String profileId,
+    required String oldOwnerUid,
+  }) async {
+    final newUid = _uid;
+    if (newUid == null) {
+      throw StateError(
+        'No signed-in uid — wait for FirebaseService.ensureSignedIn() '
+        'before claiming a profile.',
+      );
+    }
+
+    // Pull the current profile and progress docs so we can return a
+    // complete model after the claim. Reads at this point use the new
+    // uid but rules allow `signedIn()` reads on profiles/progress.
+    final profile = await getProfileById(profileId);
+    if (profile == null) {
+      throw StateError(
+        'Profile $profileId not found on Firestore. Cannot claim a '
+        'profile that no longer exists.',
+      );
+    }
+
+    // Find all docs we need to re-stamp.
+    final cardSnap = await _db
+        .collection('custom_cards')
+        .where('owner_uid', isEqualTo: oldOwnerUid)
+        .get();
+    final equippedSnap = await _db
+        .collection('shop_equipped')
+        .where('profile_id', isEqualTo: profileId)
+        .get();
+    final appStateIds = <String>[
+      'tutorial_seen_$profileId',
+      'daily_challenge_$profileId',
+      'daily_streak_$profileId',
+    ];
+
+    // One atomic batch so the rules' transient-field check fires once
+    // per doc. If any single write is rejected the whole batch fails —
+    // we'd rather see a clear permission-denied than a half-claimed
+    // profile.
+    final batch = _db.batch();
+
+    batch.set(
+      _db.collection('profiles').doc(profileId),
+      {
+        'owner_uid': newUid,
+        '_recovery_code': code,
+        'updated_at': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+
+    batch.set(
+      _db.collection('progress').doc(profileId),
+      {
+        'owner_uid': newUid,
+        '_recovery_code': code,
+      },
+      SetOptions(merge: true),
+    );
+
+    for (final id in appStateIds) {
+      // Only re-stamp if the doc actually exists for the old uid — we
+      // don't want to create empty placeholders for keys this profile
+      // never touched.
+      final existing = await _db.collection('app_state').doc(id).get();
+      if (!existing.exists) continue;
+      final data = existing.data() ?? const <String, dynamic>{};
+      if (data['owner_uid'] != oldOwnerUid) continue;
+      batch.set(
+        _db.collection('app_state').doc(id),
+        {
+          'owner_uid': newUid,
+          '_recovery_code': code,
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    for (final d in cardSnap.docs) {
+      batch.set(
+        d.reference,
+        {
+          'owner_uid': newUid,
+          '_recovery_code': code,
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    for (final d in equippedSnap.docs) {
+      batch.set(
+        d.reference,
+        {
+          'owner_uid': newUid,
+          '_recovery_code': code,
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    // Mark the code redeemed last so a partial failure leaves it
+    // claimable for a retry.
+    batch.update(_db.collection('recovery_codes').doc(code), {
+      'used_at': FieldValue.serverTimestamp(),
+      'redeemed_by_uid': newUid,
+    });
+
+    await batch.commit();
+
+    return profile.copyWith(ownerUid: () => newUid);
   }
 }

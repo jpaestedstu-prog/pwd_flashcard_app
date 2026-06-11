@@ -8,7 +8,9 @@ import '../../../data/models/home_group.dart';
 import '../../../data/models/home_group_member.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/home_group_provider.dart';
+import '../../classroom/widgets/cloud_aware_text_dialog.dart';
 import '../../classroom/widgets/cloud_retry_banner.dart';
+import '../../classroom/widgets/cloud_sync_error_view.dart';
 import '../../parent/services/child_unlock_override_service.dart';
 
 /// Parent-facing screen to create, rename, regenerate, or delete home
@@ -53,7 +55,12 @@ class HomeGroupManagementScreen extends ConsumerWidget {
           Expanded(
             child: groupsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => CloudSyncErrorView(
+                error: e,
+                onRetry: () async => ref
+                    .read(homeGroupManagementProvider(profile.id).notifier)
+                    .refresh(),
+              ),
               data: (groups) {
                 if (groups.isEmpty) {
                   return Center(
@@ -99,41 +106,20 @@ class HomeGroupManagementScreen extends ConsumerWidget {
 
   Future<void> _showCreateDialog(
       BuildContext context, WidgetRef ref, String parentProfileId) async {
-    final controller = TextEditingController();
-    final created = await showDialog<bool>(
+    final created = await CloudAwareTextDialog.show(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New home group'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Group name',
-            hintText: 'e.g. The Smith Family',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-    if (created != true) return;
-    try {
-      await ref
+      title: 'New home group',
+      inputLabel: 'Group name',
+      inputHint: 'e.g. The Smith Family',
+      submitLabel: 'Create',
+      emptyError: 'Group name is required',
+      onSubmit: (name) => ref
           .read(homeGroupManagementProvider(parentProfileId).notifier)
-          .createGroup(controller.text);
-    } catch (e) {
-      if (!context.mounted) return;
+          .createGroup(name),
+    );
+    if (created == true && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not create: $e')),
+        const SnackBar(content: Text('Home group created.')),
       );
     }
   }
@@ -172,8 +158,7 @@ class _HomeGroupCard extends ConsumerWidget {
                     PopupMenuItem(
                         value: 'regen', child: Text('New code')),
                     PopupMenuItem(
-                        value: 'add_child',
-                        child: Text('Add child manually')),
+                        value: 'leaderboard', child: Text('Leaderboard')),
                     PopupMenuItem(
                         value: 'delete', child: Text('Delete group')),
                   ],
@@ -234,30 +219,20 @@ class _HomeGroupCard extends ConsumerWidget {
         ref.read(homeGroupManagementProvider(parentProfileId).notifier);
     switch (action) {
       case 'rename':
-        final controller = TextEditingController(text: group.name);
-        final ok = await showDialog<bool>(
+        final renamed = await CloudAwareTextDialog.show(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Rename group'),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Save'),
-              ),
-            ],
-          ),
+          title: 'Rename group',
+          inputLabel: 'Group name',
+          inputHint: '',
+          submitLabel: 'Save',
+          emptyError: 'Group name is required',
+          initialValue: group.name,
+          onSubmit: (name) => notifier.renameGroup(group, name),
         );
-        if (ok == true) {
-          await notifier.renameGroup(group, controller.text);
+        if (renamed == true && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Group renamed.')),
+          );
         }
       case 'regen':
         try {
@@ -272,62 +247,12 @@ class _HomeGroupCard extends ConsumerWidget {
             SnackBar(content: Text('Could not regenerate: $e')),
           );
         }
-      case 'add_child':
-        final controller = TextEditingController();
-        final name = await showDialog<String>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Add child manually'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Child display name',
-                    hintText: 'e.g. Anna',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'A placeholder profile is created so the child appears in '
-                  'your dashboard right away. They can later join from their '
-                  'own device using this group\'s code.',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () =>
-                    Navigator.of(ctx).pop(controller.text.trim()),
-                child: const Text('Add'),
-              ),
-            ],
-          ),
+      case 'leaderboard':
+        context.push(
+          '/leaderboard-config/${group.id}'
+          '?kind=homeGroup'
+          '&name=${Uri.encodeQueryComponent(group.name)}',
         );
-        if (name == null || name.isEmpty) return;
-        try {
-          await notifier.addManualChild(group, name);
-          // ignore: unused_result
-          ref.refresh(homeGroupMembersProvider(group.id));
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Added $name')),
-          );
-        } catch (e) {
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not add child: $e')),
-          );
-        }
       case 'delete':
         final confirm = await showDialog<bool>(
           context: context,
@@ -466,54 +391,23 @@ class _HomeGroupMembersSectionState
   }
 
   Future<void> _renameMember(HomeGroupMember m) async {
-    final controller = TextEditingController(text: m.displayName);
-    final newName = await showDialog<String>(
+    final renamed = await CloudAwareTextDialog.show(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Rename in roster'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: controller,
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Display name in this group',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "This will rename the child in your roster and on their device.",
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    if (newName == null || newName.isEmpty || newName == m.displayName) return;
-    try {
-      await ref
+      title: 'Rename in roster',
+      inputLabel: 'Display name in this group',
+      inputHint: '',
+      submitLabel: 'Save',
+      emptyError: 'Display name is required',
+      initialValue: m.displayName,
+      helperText:
+          'This will rename the child in your roster and on their device.',
+      onSubmit: (name) => ref
           .read(homeGroupManagementProvider(widget.parentProfileId).notifier)
-          .renameMember(widget.group, m.profileId, newName);
-      // ignore: unused_result
-      ref.refresh(homeGroupMembersProvider(widget.group.id));
-    } catch (e) {
-      if (!mounted) return;
+          .renameMember(widget.group, m.profileId, name),
+    );
+    if (renamed == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not rename: $e')),
+        const SnackBar(content: Text('Child renamed.')),
       );
     }
   }
@@ -574,8 +468,7 @@ class _HomeGroupMembersSectionState
     await ref
         .read(homeGroupManagementProvider(widget.parentProfileId).notifier)
         .removeChild(widget.group, m.profileId);
-    // ignore: unused_result
-    ref.refresh(homeGroupMembersProvider(widget.group.id));
+    // homeGroupMembersProvider is a Firestore stream — no manual refresh needed.
   }
 
   Future<void> _bulkRemove() async {
@@ -607,8 +500,7 @@ class _HomeGroupMembersSectionState
           .read(homeGroupManagementProvider(widget.parentProfileId).notifier)
           .removeChildren(widget.group, ids);
       _clearSelection();
-      // ignore: unused_result
-      ref.refresh(homeGroupMembersProvider(widget.group.id));
+      // homeGroupMembersProvider is a Firestore stream — no manual refresh needed.
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -652,16 +544,7 @@ class _HomeGroupMemberRow extends StatelessWidget {
       onTap: selectionMode ? onTapInSelection : null,
       leading: const Icon(Icons.child_care_rounded),
       title: Text(member.displayName),
-      subtitle: member.profileId.startsWith('manual_')
-          ? Text(
-              'Manual — not yet joined',
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.orange.shade800,
-                fontStyle: FontStyle.italic,
-              ),
-            )
-          : Text(joinedAtLabel),
+      subtitle: Text(joinedAtLabel),
       trailing: selectionMode
           ? Checkbox(
               value: selected,

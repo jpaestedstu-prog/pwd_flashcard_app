@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/widgets/safe_scaffold.dart';
 import '../../../features/onboarding/screens/post_join_setup_screen.dart';
 import '../../../providers/join_code_provider.dart';
 
@@ -56,7 +57,7 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
     final isLoading = state is JoinCodeLoading;
     final failure = state is JoinCodeFailure ? state : null;
 
-    return Scaffold(
+    return SafeScaffold(
       appBar: AppBar(
         title: const Text('Join a Class'),
         leading: IconButton(
@@ -70,14 +71,11 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
           },
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+      body: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
                 const Text(
                   'Enter the code your teacher gave you.',
                   style: TextStyle(fontSize: 16),
@@ -130,9 +128,7 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
+          ],
         ),
       ),
     );
