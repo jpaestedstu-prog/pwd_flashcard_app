@@ -1,7 +1,5 @@
 {
-  "generated_at": "2026-05-14T13:23:10.670Z",
-  "release_tag": "v1",
-  "release_repo": "jpaestedstu-prog/pwd-fsl-videos",
+  "generated_at": "2026-05-29T05:58:27.217Z",
   "entries": [
     {
       "category": "Animals",
@@ -9,7 +7,7 @@
       "word_english": "Dog",
       "word_filipino": "Aso",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__dog.mp4",
-      "size_bytes": 8021208
+      "streamable_url": "https://streamable.com/p34d5t"
     },
     {
       "category": "Animals",
@@ -17,7 +15,7 @@
       "word_english": "Cat",
       "word_filipino": "Pusa",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__cat.mp4",
-      "size_bytes": 7912990
+      "streamable_url": "https://streamable.com/g6aiwu"
     },
     {
       "category": "Animals",
@@ -25,7 +23,7 @@
       "word_english": "Bird",
       "word_filipino": "Ibon",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__bird.mp4",
-      "size_bytes": 6909785
+      "streamable_url": "https://streamable.com/w526b8"
     },
     {
       "category": "Animals",
@@ -33,7 +31,7 @@
       "word_english": "Fish",
       "word_filipino": "Isda",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__fish.mp4",
-      "size_bytes": 8101137
+      "streamable_url": "https://streamable.com/2h8w38"
     },
     {
       "category": "Animals",
@@ -41,7 +39,7 @@
       "word_english": "Butterfly",
       "word_filipino": "Paru-paro",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__butterfly.mp4",
-      "size_bytes": 6841615
+      "streamable_url": "https://streamable.com/7k1jub"
     },
     {
       "category": "Animals",
@@ -49,7 +47,7 @@
       "word_english": "Horse",
       "word_filipino": "Kabayo",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__horse.mp4",
-      "size_bytes": 7721783
+      "streamable_url": "https://streamable.com/umv31p"
     },
     {
       "category": "Animals",
@@ -57,7 +55,7 @@
       "word_english": "Chicken",
       "word_filipino": "Manok",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__chicken.mp4",
-      "size_bytes": 7067728
+      "streamable_url": "https://streamable.com/18o35k"
     },
     {
       "category": "Animals",
@@ -65,7 +63,7 @@
       "word_english": "Pig",
       "word_filipino": "Baboy",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__pig.mp4",
-      "size_bytes": 7867863
+      "streamable_url": "https://streamable.com/9fs10e"
     },
     {
       "category": "Animals",
@@ -73,7 +71,7 @@
       "word_english": "Cow",
       "word_filipino": "Baka",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__cow.mp4",
-      "size_bytes": 8212715
+      "streamable_url": "https://streamable.com/93uuui"
     },
     {
       "category": "Animals",
@@ -81,7 +79,7 @@
       "word_english": "Frog",
       "word_filipino": "Palaka",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__frog.mp4",
-      "size_bytes": 8322766
+      "streamable_url": "https://streamable.com/v9c29h"
     },
     {
       "category": "Animals",
@@ -89,7 +87,7 @@
       "word_english": "Elephant",
       "word_filipino": "Elepante",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__elephant.mp4",
-      "size_bytes": 8104321
+      "streamable_url": "https://streamable.com/dakbam"
     },
     {
       "category": "Animals",
@@ -97,7 +95,7 @@
       "word_english": "Rabbit",
       "word_filipino": "Kuneho",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__rabbit.mp4",
-      "size_bytes": 7487348
+      "streamable_url": "https://streamable.com/53l9jd"
     },
     {
       "category": "Colors & Shapes",
@@ -105,7 +103,7 @@
       "word_english": "Red",
       "word_filipino": "Pula",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__red.mp4",
-      "size_bytes": 7282571
+      "streamable_url": "https://streamable.com/a17c60"
     },
     {
       "category": "Colors & Shapes",
@@ -113,7 +111,7 @@
       "word_english": "Blue",
       "word_filipino": "Asul",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__blue.mp4",
-      "size_bytes": 7767905
+      "streamable_url": "https://streamable.com/8599ax"
     },
     {
       "category": "Colors & Shapes",
@@ -121,7 +119,7 @@
       "word_english": "Yellow",
       "word_filipino": "Dilaw",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__yellow.mp4",
-      "size_bytes": 9635220
+      "streamable_url": "https://streamable.com/7sw04y"
     },
     {
       "category": "Colors & Shapes",
@@ -129,7 +127,7 @@
       "word_english": "Orange",
       "word_filipino": "Kahel",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__orange.mp4",
-      "size_bytes": 7996141
+      "streamable_url": "https://streamable.com/76xife"
     },
     {
       "category": "Colors & Shapes",
@@ -137,7 +135,7 @@
       "word_english": "Purple",
       "word_filipino": "Lila",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__purple.mp4",
-      "size_bytes": 7924862
+      "streamable_url": "https://streamable.com/927luk"
     },
     {
       "category": "Colors & Shapes",
@@ -145,7 +143,7 @@
       "word_english": "Circle",
       "word_filipino": "Bilog",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__circle.mp4",
-      "size_bytes": 8116090
+      "streamable_url": "https://streamable.com/msqnbg"
     },
     {
       "category": "Colors & Shapes",
@@ -153,7 +151,7 @@
       "word_english": "Square",
       "word_filipino": "Parisukat",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__square.mp4",
-      "size_bytes": 8418492
+      "streamable_url": "https://streamable.com/3e681g"
     },
     {
       "category": "Colors & Shapes",
@@ -161,7 +159,7 @@
       "word_english": "Triangle",
       "word_filipino": "Tatsulok",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__triangle.mp4",
-      "size_bytes": 7885613
+      "streamable_url": "https://streamable.com/phv9gm"
     },
     {
       "category": "Colors & Shapes",
@@ -169,7 +167,7 @@
       "word_english": "Star",
       "word_filipino": "Bituin",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__star.mp4",
-      "size_bytes": 7973808
+      "streamable_url": "https://streamable.com/c08mpx"
     },
     {
       "category": "Colors & Shapes",
@@ -177,7 +175,7 @@
       "word_english": "Heart",
       "word_filipino": "Puso",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__heart.mp4",
-      "size_bytes": 8319223
+      "streamable_url": "https://streamable.com/djgkqt"
     },
     {
       "category": "Colors & Shapes",
@@ -185,7 +183,7 @@
       "word_english": "White",
       "word_filipino": "Puti",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__white.mp4",
-      "size_bytes": 7128605
+      "streamable_url": "https://streamable.com/j2gba8"
     },
     {
       "category": "Numbers",
@@ -193,7 +191,7 @@
       "word_english": "One",
       "word_filipino": "Isa",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__one.mp4",
-      "size_bytes": 7712695
+      "streamable_url": "https://streamable.com/pasg1b"
     },
     {
       "category": "Numbers",
@@ -201,7 +199,7 @@
       "word_english": "Two",
       "word_filipino": "Dalawa",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__two.mp4",
-      "size_bytes": 6584491
+      "streamable_url": "https://streamable.com/vntfcg"
     },
     {
       "category": "Numbers",
@@ -209,7 +207,7 @@
       "word_english": "Three",
       "word_filipino": "Tatlo",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__three.mp4",
-      "size_bytes": 6776090
+      "streamable_url": "https://streamable.com/291kpo"
     },
     {
       "category": "Numbers",
@@ -217,7 +215,7 @@
       "word_english": "Four",
       "word_filipino": "Apat",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__four.mp4",
-      "size_bytes": 6955248
+      "streamable_url": "https://streamable.com/3tixdl"
     },
     {
       "category": "Numbers",
@@ -225,7 +223,7 @@
       "word_english": "Five",
       "word_filipino": "Lima",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__five.mp4",
-      "size_bytes": 7124992
+      "streamable_url": "https://streamable.com/ez151p"
     },
     {
       "category": "Numbers",
@@ -233,7 +231,7 @@
       "word_english": "Six",
       "word_filipino": "Anim",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__six.mp4",
-      "size_bytes": 6583637
+      "streamable_url": "https://streamable.com/0haf9r"
     },
     {
       "category": "Numbers",
@@ -241,7 +239,7 @@
       "word_english": "Seven",
       "word_filipino": "Pito",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__seven.mp4",
-      "size_bytes": 6562983
+      "streamable_url": "https://streamable.com/tpdnuq"
     },
     {
       "category": "Numbers",
@@ -249,7 +247,7 @@
       "word_english": "Eight",
       "word_filipino": "Walo",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__eight.mp4",
-      "size_bytes": 5941544
+      "streamable_url": "https://streamable.com/na83tw"
     },
     {
       "category": "Numbers",
@@ -257,7 +255,7 @@
       "word_english": "Nine",
       "word_filipino": "Siyam",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__nine.mp4",
-      "size_bytes": 6356497
+      "streamable_url": "https://streamable.com/89k1o0"
     },
     {
       "category": "Numbers",
@@ -265,7 +263,7 @@
       "word_english": "Ten",
       "word_filipino": "Sampu",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__ten.mp4",
-      "size_bytes": 7435260
+      "streamable_url": "https://streamable.com/8kikt4"
     },
     {
       "category": "Numbers",
@@ -273,7 +271,7 @@
       "word_english": "Twenty",
       "word_filipino": "Dalawampu",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__twenty.mp4",
-      "size_bytes": 7228720
+      "streamable_url": "https://streamable.com/iexlbl"
     },
     {
       "category": "Numbers",
@@ -281,7 +279,7 @@
       "word_english": "Hundred",
       "word_filipino": "Isang Daan",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__hundred.mp4",
-      "size_bytes": 7727389
+      "streamable_url": "https://streamable.com/mh56ut"
     },
     {
       "category": "Body Parts",
@@ -289,7 +287,7 @@
       "word_english": "Head",
       "word_filipino": "Ulo",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__head.mp4",
-      "size_bytes": 6915389
+      "streamable_url": "https://streamable.com/m7889g"
     },
     {
       "category": "Body Parts",
@@ -297,7 +295,7 @@
       "word_english": "Eyes",
       "word_filipino": "Mata",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__eyes.mp4",
-      "size_bytes": 7245028
+      "streamable_url": "https://streamable.com/xegs5l"
     },
     {
       "category": "Body Parts",
@@ -305,7 +303,7 @@
       "word_english": "Ears",
       "word_filipino": "Tenga",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__ears.mp4",
-      "size_bytes": 7385809
+      "streamable_url": "https://streamable.com/0aeqsl"
     },
     {
       "category": "Body Parts",
@@ -313,7 +311,7 @@
       "word_english": "Nose",
       "word_filipino": "Ilong",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__nose.mp4",
-      "size_bytes": 5797894
+      "streamable_url": "https://streamable.com/snmcim"
     },
     {
       "category": "Body Parts",
@@ -321,7 +319,7 @@
       "word_english": "Mouth",
       "word_filipino": "Bibig",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__mouth.mp4",
-      "size_bytes": 6611693
+      "streamable_url": "https://streamable.com/6ssn31"
     },
     {
       "category": "Body Parts",
@@ -329,7 +327,7 @@
       "word_english": "Hands",
       "word_filipino": "Kamay",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__hands.mp4",
-      "size_bytes": 8314320
+      "streamable_url": "https://streamable.com/2d79oz"
     },
     {
       "category": "Body Parts",
@@ -337,7 +335,7 @@
       "word_english": "Feet",
       "word_filipino": "Paa",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__feet.mp4",
-      "size_bytes": 7982142
+      "streamable_url": "https://streamable.com/cezk44"
     },
     {
       "category": "Body Parts",
@@ -345,7 +343,7 @@
       "word_english": "Fingers",
       "word_filipino": "Daliri",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__fingers.mp4",
-      "size_bytes": 7254801
+      "streamable_url": "https://streamable.com/y09f63"
     },
     {
       "category": "Body Parts",
@@ -353,7 +351,7 @@
       "word_english": "Hair",
       "word_filipino": "Buhok",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__hair.mp4",
-      "size_bytes": 8283521
+      "streamable_url": "https://streamable.com/p1zfi3"
     },
     {
       "category": "Body Parts",
@@ -361,7 +359,7 @@
       "word_english": "Teeth",
       "word_filipino": "Ngipin",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__teeth.mp4",
-      "size_bytes": 7643016
+      "streamable_url": "https://streamable.com/8jmw21"
     },
     {
       "category": "Body Parts",
@@ -369,7 +367,7 @@
       "word_english": "Shoulders",
       "word_filipino": "Balikat",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__shoulders.mp4",
-      "size_bytes": 7521032
+      "streamable_url": "https://streamable.com/el0z26"
     },
     {
       "category": "Body Parts",
@@ -377,7 +375,7 @@
       "word_english": "Knees",
       "word_filipino": "Tuhod",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__knees.mp4",
-      "size_bytes": 7307695
+      "streamable_url": "https://streamable.com/02go82"
     },
     {
       "category": "Food & Drinks",
@@ -385,7 +383,7 @@
       "word_english": "Rice",
       "word_filipino": "Kanin",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__rice.mp4",
-      "size_bytes": 8102459
+      "streamable_url": "https://streamable.com/tv1l61"
     },
     {
       "category": "Food & Drinks",
@@ -393,7 +391,7 @@
       "word_english": "Water",
       "word_filipino": "Tubig",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__water.mp4",
-      "size_bytes": 6630613
+      "streamable_url": "https://streamable.com/44zg2u"
     },
     {
       "category": "Food & Drinks",
@@ -401,7 +399,7 @@
       "word_english": "Bread",
       "word_filipino": "Tinapay",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__bread.mp4",
-      "size_bytes": 7318366
+      "streamable_url": "https://streamable.com/j5e7lu"
     },
     {
       "category": "Food & Drinks",
@@ -409,7 +407,7 @@
       "word_english": "Milk",
       "word_filipino": "Gatas",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__milk.mp4",
-      "size_bytes": 6063785
+      "streamable_url": "https://streamable.com/06x9ti"
     },
     {
       "category": "Food & Drinks",
@@ -417,7 +415,7 @@
       "word_english": "Apple",
       "word_filipino": "Mansanas",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__apple.mp4",
-      "size_bytes": 5933552
+      "streamable_url": "https://streamable.com/i42ru1"
     },
     {
       "category": "Food & Drinks",
@@ -425,7 +423,7 @@
       "word_english": "Banana",
       "word_filipino": "Saging",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__banana.mp4",
-      "size_bytes": 6922262
+      "streamable_url": "https://streamable.com/s0cmcm"
     },
     {
       "category": "Food & Drinks",
@@ -433,7 +431,7 @@
       "word_english": "Egg",
       "word_filipino": "Itlog",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__egg.mp4",
-      "size_bytes": 7104704
+      "streamable_url": "https://streamable.com/qbe1kv"
     },
     {
       "category": "Food & Drinks",
@@ -441,7 +439,7 @@
       "word_english": "Chicken",
       "word_filipino": "Manok",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__chicken.mp4",
-      "size_bytes": 7109043
+      "streamable_url": "https://streamable.com/1j7fi8"
     },
     {
       "category": "Food & Drinks",
@@ -449,7 +447,7 @@
       "word_english": "Juice",
       "word_filipino": "Katas",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__juice.mp4",
-      "size_bytes": 7703893
+      "streamable_url": "https://streamable.com/v5bmam"
     },
     {
       "category": "Food & Drinks",
@@ -457,7 +455,7 @@
       "word_english": "Vegetables",
       "word_filipino": "Gulay",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__vegetables.mp4",
-      "size_bytes": 7049953
+      "streamable_url": "https://streamable.com/yfrxa0"
     },
     {
       "category": "Food & Drinks",
@@ -465,7 +463,7 @@
       "word_english": "Soup",
       "word_filipino": "Sabaw",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__soup.mp4",
-      "size_bytes": 7660362
+      "streamable_url": "https://streamable.com/aynl1a"
     },
     {
       "category": "Food & Drinks",
@@ -473,7 +471,7 @@
       "word_english": "Candy",
       "word_filipino": "Kendi",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__candy.mp4",
-      "size_bytes": 6910850
+      "streamable_url": "https://streamable.com/ta6hfy"
     },
     {
       "category": "Family & Greetings",
@@ -481,7 +479,7 @@
       "word_english": "Mother",
       "word_filipino": "Nanay",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__mother.mp4",
-      "size_bytes": 6702843
+      "streamable_url": "https://streamable.com/vseyrd"
     },
     {
       "category": "Family & Greetings",
@@ -489,7 +487,7 @@
       "word_english": "Father",
       "word_filipino": "Tatay",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__father.mp4",
-      "size_bytes": 6446287
+      "streamable_url": "https://streamable.com/cidh6u"
     },
     {
       "category": "Family & Greetings",
@@ -497,7 +495,7 @@
       "word_english": "Brother",
       "word_filipino": "Kapatid na lalaki",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__brother.mp4",
-      "size_bytes": 6649248
+      "streamable_url": "https://streamable.com/1p34t0"
     },
     {
       "category": "Family & Greetings",
@@ -505,7 +503,7 @@
       "word_english": "Sister",
       "word_filipino": "Kapatid na babae",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__sister.mp4",
-      "size_bytes": 6395652
+      "streamable_url": "https://streamable.com/hp7gni"
     },
     {
       "category": "Family & Greetings",
@@ -513,7 +511,7 @@
       "word_english": "Grandmother",
       "word_filipino": "Lola",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__grandmother.mp4",
-      "size_bytes": 7052969
+      "streamable_url": "https://streamable.com/3hhusc"
     },
     {
       "category": "Family & Greetings",
@@ -521,7 +519,7 @@
       "word_english": "Grandfather",
       "word_filipino": "Lolo",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__grandfather.mp4",
-      "size_bytes": 7804356
+      "streamable_url": "https://streamable.com/mosm7t"
     },
     {
       "category": "Family & Greetings",
@@ -529,7 +527,7 @@
       "word_english": "Hello",
       "word_filipino": "Kumusta",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__hello.mp4",
-      "size_bytes": 6487613
+      "streamable_url": "https://streamable.com/t6c0n1"
     },
     {
       "category": "Family & Greetings",
@@ -537,7 +535,7 @@
       "word_english": "Thank You",
       "word_filipino": "Salamat",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__thank-you.mp4",
-      "size_bytes": 7484153
+      "streamable_url": "https://streamable.com/hzui7w"
     },
     {
       "category": "Family & Greetings",
@@ -545,7 +543,7 @@
       "word_english": "Please",
       "word_filipino": "Pakiusap",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__please.mp4",
-      "size_bytes": 7810243
+      "streamable_url": "https://streamable.com/3xi5xe"
     },
     {
       "category": "Family & Greetings",
@@ -553,7 +551,7 @@
       "word_english": "Sorry",
       "word_filipino": "Pasensya",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__sorry.mp4",
-      "size_bytes": 7231770
+      "streamable_url": "https://streamable.com/uln22u"
     },
     {
       "category": "Family & Greetings",
@@ -561,7 +559,7 @@
       "word_english": "Good Morning",
       "word_filipino": "Magandang Umaga",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__good-morning.mp4",
-      "size_bytes": 7704644
+      "streamable_url": "https://streamable.com/l5n191"
     },
     {
       "category": "Family & Greetings",
@@ -569,7 +567,7 @@
       "word_english": "Friend",
       "word_filipino": "Kaibigan",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__friend.mp4",
-      "size_bytes": 6836368
+      "streamable_url": "https://streamable.com/4xx8yr"
     },
     {
       "category": "Clothing",
@@ -577,7 +575,7 @@
       "word_english": "T-shirt",
       "word_filipino": "T-shirt",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__t-shirt.mp4",
-      "size_bytes": 7207173
+      "streamable_url": "https://streamable.com/m0kb92"
     },
     {
       "category": "Clothing",
@@ -585,7 +583,7 @@
       "word_english": "Pants",
       "word_filipino": "Pantalon",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__pants.mp4",
-      "size_bytes": 7051834
+      "streamable_url": "https://streamable.com/6kccg0"
     },
     {
       "category": "Clothing",
@@ -593,7 +591,7 @@
       "word_english": "Dress",
       "word_filipino": "Bestida",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__dress.mp4",
-      "size_bytes": 7591739
+      "streamable_url": "https://streamable.com/206o1w"
     },
     {
       "category": "Clothing",
@@ -601,7 +599,7 @@
       "word_english": "Socks",
       "word_filipino": "Medyas",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__socks.mp4",
-      "size_bytes": 7078115
+      "streamable_url": "https://streamable.com/25jepr"
     },
     {
       "category": "Clothing",
@@ -609,7 +607,7 @@
       "word_english": "Shoes",
       "word_filipino": "Sapatos",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__shoes.mp4",
-      "size_bytes": 6884192
+      "streamable_url": "https://streamable.com/urc638"
     },
     {
       "category": "Clothing",
@@ -617,7 +615,7 @@
       "word_english": "Cap",
       "word_filipino": "Sombrero",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__cap.mp4",
-      "size_bytes": 6192563
+      "streamable_url": "https://streamable.com/05edu2"
     },
     {
       "category": "Clothing",
@@ -625,7 +623,7 @@
       "word_english": "Jacket",
       "word_filipino": "Dyaket",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__jacket.mp4",
-      "size_bytes": 7506474
+      "streamable_url": "https://streamable.com/tlgdna"
     },
     {
       "category": "Clothing",
@@ -633,7 +631,7 @@
       "word_english": "Uniform",
       "word_filipino": "Uniporme",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__uniform.mp4",
-      "size_bytes": 7619398
+      "streamable_url": "https://streamable.com/pref7l"
     },
     {
       "category": "Clothing",
@@ -641,7 +639,7 @@
       "word_english": "Shorts",
       "word_filipino": "Shorts",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__shorts.mp4",
-      "size_bytes": 3657343
+      "streamable_url": "https://streamable.com/8qj7hz"
     },
     {
       "category": "Clothing",
@@ -649,7 +647,7 @@
       "word_english": "Gloves",
       "word_filipino": "Guwantes",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__gloves.mp4",
-      "size_bytes": 7548531
+      "streamable_url": "https://streamable.com/idf16l"
     },
     {
       "category": "Clothing",
@@ -657,7 +655,7 @@
       "word_english": "Glasses",
       "word_filipino": "Salamin sa mata",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__glasses.mp4",
-      "size_bytes": 7158178
+      "streamable_url": "https://streamable.com/pcoekm"
     },
     {
       "category": "Clothing",
@@ -665,7 +663,7 @@
       "word_english": "Backpack",
       "word_filipino": "Bag",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__backpack.mp4",
-      "size_bytes": 7336028
+      "streamable_url": "https://streamable.com/ohik9z"
     },
     {
       "category": "Weather",
@@ -673,7 +671,7 @@
       "word_english": "Sunny",
       "word_filipino": "Maaraw",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__sunny.mp4",
-      "size_bytes": 7171537
+      "streamable_url": "https://streamable.com/yxwsfq"
     },
     {
       "category": "Weather",
@@ -681,7 +679,7 @@
       "word_english": "Rainy",
       "word_filipino": "Maulan",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__rainy.mp4",
-      "size_bytes": 9247617
+      "streamable_url": "https://streamable.com/7z7p86"
     },
     {
       "category": "Weather",
@@ -689,7 +687,7 @@
       "word_english": "Cloudy",
       "word_filipino": "Maulap",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__cloudy.mp4",
-      "size_bytes": 7706527
+      "streamable_url": "https://streamable.com/72xkpt"
     },
     {
       "category": "Weather",
@@ -697,7 +695,7 @@
       "word_english": "Rainbow",
       "word_filipino": "Bahaghari",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__rainbow.mp4",
-      "size_bytes": 6793316
+      "streamable_url": "https://streamable.com/i7pg2b"
     },
     {
       "category": "Weather",
@@ -705,7 +703,7 @@
       "word_english": "Storm",
       "word_filipino": "Bagyo",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__storm.mp4",
-      "size_bytes": 8021214
+      "streamable_url": "https://streamable.com/9qdv5p"
     },
     {
       "category": "Weather",
@@ -713,7 +711,7 @@
       "word_english": "Windy",
       "word_filipino": "Mahangin",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__windy.mp4",
-      "size_bytes": 7873771
+      "streamable_url": "https://streamable.com/wbaky3"
     },
     {
       "category": "Weather",
@@ -721,7 +719,7 @@
       "word_english": "Hot",
       "word_filipino": "Mainit",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__hot.mp4",
-      "size_bytes": 7882345
+      "streamable_url": "https://streamable.com/igt3dy"
     },
     {
       "category": "Weather",
@@ -729,7 +727,7 @@
       "word_english": "Cold",
       "word_filipino": "Malamig",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__cold.mp4",
-      "size_bytes": 6872100
+      "streamable_url": "https://streamable.com/uea2a3"
     },
     {
       "category": "Weather",
@@ -737,7 +735,7 @@
       "word_english": "Flood",
       "word_filipino": "Baha",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__flood.mp4",
-      "size_bytes": 3945499
+      "streamable_url": "https://streamable.com/t0xn8h"
     },
     {
       "category": "Weather",
@@ -745,15 +743,7 @@
       "word_english": "Lightning",
       "word_filipino": "Kidlat",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__lightning.mp4",
-      "size_bytes": 7101626
-    },
-    {
-      "category": "Weather",
-      "slug": "partly cloudy",
-      "word_english": "Partly Cloudy",
-      "word_filipino": "Bahagyang Maulap",
-      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__partly-cloudy.mp4",
-      "size_bytes": 5337775
+      "streamable_url": "https://streamable.com/25tgqm"
     },
     {
       "category": "Weather",
@@ -761,7 +751,7 @@
       "word_english": "Night",
       "word_filipino": "Gabi",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__night.mp4",
-      "size_bytes": 8747832
+      "streamable_url": "https://streamable.com/yq5lii"
     },
     {
       "category": "Classroom",
@@ -769,7 +759,7 @@
       "word_english": "Book",
       "word_filipino": "Aklat",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__book.mp4",
-      "size_bytes": 5473699
+      "streamable_url": "https://streamable.com/0dpea4"
     },
     {
       "category": "Classroom",
@@ -777,7 +767,7 @@
       "word_english": "Pencil",
       "word_filipino": "Lapis",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__pencil.mp4",
-      "size_bytes": 6776071
+      "streamable_url": "https://streamable.com/gn1s75"
     },
     {
       "category": "Classroom",
@@ -785,7 +775,7 @@
       "word_english": "Notebook",
       "word_filipino": "Kuwaderno",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__notebook.mp4",
-      "size_bytes": 6023386
+      "streamable_url": "https://streamable.com/4o7wof"
     },
     {
       "category": "Classroom",
@@ -793,7 +783,7 @@
       "word_english": "Crayon",
       "word_filipino": "Krayola",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__crayon.mp4",
-      "size_bytes": 2847014
+      "streamable_url": "https://streamable.com/ljm1sy"
     },
     {
       "category": "Classroom",
@@ -801,7 +791,7 @@
       "word_english": "Ruler",
       "word_filipino": "Ruler",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__ruler.mp4",
-      "size_bytes": 6634227
+      "streamable_url": "https://streamable.com/ztz7or"
     },
     {
       "category": "Classroom",
@@ -809,7 +799,7 @@
       "word_english": "Scissors",
       "word_filipino": "Gunting",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__scissors.mp4",
-      "size_bytes": 6131171
+      "streamable_url": "https://streamable.com/vamlg2"
     },
     {
       "category": "Classroom",
@@ -817,7 +807,7 @@
       "word_english": "Pen",
       "word_filipino": "Bolpen",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__pen.mp4",
-      "size_bytes": 6480914
+      "streamable_url": "https://streamable.com/9v2q20"
     },
     {
       "category": "Classroom",
@@ -825,7 +815,7 @@
       "word_english": "Paint",
       "word_filipino": "Pintura",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__paint.mp4",
-      "size_bytes": 7106036
+      "streamable_url": "https://streamable.com/im4xn3"
     },
     {
       "category": "Classroom",
@@ -833,7 +823,7 @@
       "word_english": "Eraser",
       "word_filipino": "Pambura",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__eraser.mp4",
-      "size_bytes": 6254183
+      "streamable_url": "https://streamable.com/sfbb37"
     },
     {
       "category": "Classroom",
@@ -841,7 +831,7 @@
       "word_english": "Chair",
       "word_filipino": "Upuan",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__chair.mp4",
-      "size_bytes": 6548759
+      "streamable_url": "https://streamable.com/rmemnl"
     },
     {
       "category": "Classroom",
@@ -849,7 +839,7 @@
       "word_english": "School",
       "word_filipino": "Paaralan",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__school.mp4",
-      "size_bytes": 6701059
+      "streamable_url": "https://streamable.com/0m59zv"
     },
     {
       "category": "Classroom",
@@ -857,7 +847,7 @@
       "word_english": "Teacher",
       "word_filipino": "Guro",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__teacher.mp4",
-      "size_bytes": 6577953
+      "streamable_url": "https://streamable.com/zl38tb"
     },
     {
       "category": "Transportation",
@@ -865,7 +855,7 @@
       "word_english": "Car",
       "word_filipino": "Kotse",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__car.mp4",
-      "size_bytes": 7727234
+      "streamable_url": "https://streamable.com/0ugbio"
     },
     {
       "category": "Transportation",
@@ -873,7 +863,7 @@
       "word_english": "Bus",
       "word_filipino": "Bus",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__bus.mp4",
-      "size_bytes": 6077433
+      "streamable_url": "https://streamable.com/89hgbm"
     },
     {
       "category": "Transportation",
@@ -881,7 +871,7 @@
       "word_english": "Bicycle",
       "word_filipino": "Bisikleta",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__bicycle.mp4",
-      "size_bytes": 6510764
+      "streamable_url": "https://streamable.com/t91fmo"
     },
     {
       "category": "Transportation",
@@ -889,7 +879,7 @@
       "word_english": "Airplane",
       "word_filipino": "Eroplano",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__airplane.mp4",
-      "size_bytes": 5933552
+      "streamable_url": "https://streamable.com/ngn16e"
     },
     {
       "category": "Transportation",
@@ -897,7 +887,7 @@
       "word_english": "Ship",
       "word_filipino": "Barko",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__ship.mp4",
-      "size_bytes": 7722405
+      "streamable_url": "https://streamable.com/tnsfz9"
     },
     {
       "category": "Transportation",
@@ -905,7 +895,7 @@
       "word_english": "Train",
       "word_filipino": "Tren",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__train.mp4",
-      "size_bytes": 7548161
+      "streamable_url": "https://streamable.com/ytgmdf"
     },
     {
       "category": "Transportation",
@@ -913,7 +903,7 @@
       "word_english": "Motorcycle",
       "word_filipino": "Motorsiklo",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__motorcycle.mp4",
-      "size_bytes": 5625663
+      "streamable_url": "https://streamable.com/6iunom"
     },
     {
       "category": "Transportation",
@@ -921,7 +911,7 @@
       "word_english": "Helicopter",
       "word_filipino": "Helikopter",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__helicopter.mp4",
-      "size_bytes": 7011272
+      "streamable_url": "https://streamable.com/9bvsd0"
     },
     {
       "category": "Transportation",
@@ -929,7 +919,7 @@
       "word_english": "Taxi",
       "word_filipino": "Taksi",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__taxi.mp4",
-      "size_bytes": 6218992
+      "streamable_url": "https://streamable.com/se786u"
     },
     {
       "category": "Transportation",
@@ -937,7 +927,7 @@
       "word_english": "Boat",
       "word_filipino": "Bangka",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__boat.mp4",
-      "size_bytes": 7122400
+      "streamable_url": "https://streamable.com/hl2bs0"
     },
     {
       "category": "Transportation",
@@ -945,7 +935,7 @@
       "word_english": "Walk",
       "word_filipino": "Lakad",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__walk.mp4",
-      "size_bytes": 6750472
+      "streamable_url": "https://streamable.com/6vfddw"
     },
     {
       "category": "Transportation",
@@ -953,7 +943,7 @@
       "word_english": "Road",
       "word_filipino": "Daan",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__road.mp4",
-      "size_bytes": 6651974
+      "streamable_url": "https://streamable.com/qr49c6"
     },
     {
       "category": "Emotions",
@@ -961,7 +951,7 @@
       "word_english": "Happy",
       "word_filipino": "Masaya",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__happy.mp4",
-      "size_bytes": 7708371
+      "streamable_url": "https://streamable.com/8o6mff"
     },
     {
       "category": "Emotions",
@@ -969,7 +959,7 @@
       "word_english": "Sad",
       "word_filipino": "Malungkot",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__sad.mp4",
-      "size_bytes": 7225119
+      "streamable_url": "https://streamable.com/awkfmx"
     },
     {
       "category": "Emotions",
@@ -977,7 +967,7 @@
       "word_english": "Angry",
       "word_filipino": "Galit",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__angry.mp4",
-      "size_bytes": 6497418
+      "streamable_url": "https://streamable.com/nmfav3"
     },
     {
       "category": "Emotions",
@@ -985,7 +975,7 @@
       "word_english": "Scared",
       "word_filipino": "Takot",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__scared.mp4",
-      "size_bytes": 5871629
+      "streamable_url": "https://streamable.com/jgxcyn"
     },
     {
       "category": "Emotions",
@@ -993,7 +983,7 @@
       "word_english": "Surprised",
       "word_filipino": "Nagulat",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__surprised.mp4",
-      "size_bytes": 7301060
+      "streamable_url": "https://streamable.com/ftqdck"
     },
     {
       "category": "Emotions",
@@ -1001,7 +991,7 @@
       "word_english": "Loved",
       "word_filipino": "Minamahal",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__loved.mp4",
-      "size_bytes": 5852367
+      "streamable_url": "https://streamable.com/07kuuz"
     },
     {
       "category": "Emotions",
@@ -1009,7 +999,7 @@
       "word_english": "Sleepy",
       "word_filipino": "Inaantok",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__sleepy.mp4",
-      "size_bytes": 7161896
+      "streamable_url": "https://streamable.com/f7pji2"
     },
     {
       "category": "Emotions",
@@ -1017,7 +1007,7 @@
       "word_english": "Sick",
       "word_filipino": "May sakit",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__sick.mp4",
-      "size_bytes": 6846633
+      "streamable_url": "https://streamable.com/12l9ca"
     },
     {
       "category": "Emotions",
@@ -1025,7 +1015,7 @@
       "word_english": "Proud",
       "word_filipino": "Proud",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__proud.mp4",
-      "size_bytes": 7189363
+      "streamable_url": "https://streamable.com/kowxti"
     },
     {
       "category": "Emotions",
@@ -1033,7 +1023,7 @@
       "word_english": "Confused",
       "word_filipino": "Naguguluhan",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__confused.mp4",
-      "size_bytes": 8065980
+      "streamable_url": "https://streamable.com/kjjud0"
     },
     {
       "category": "Emotions",
@@ -1041,7 +1031,7 @@
       "word_english": "Excited",
       "word_filipino": "Nasasabik",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__excited.mp4",
-      "size_bytes": 7626221
+      "streamable_url": "https://streamable.com/jy1ffn"
     },
     {
       "category": "Emotions",
@@ -1049,7 +1039,7 @@
       "word_english": "Calm",
       "word_filipino": "Kalmado",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__calm.mp4",
-      "size_bytes": 6767501
+      "streamable_url": "https://streamable.com/avj27k"
     },
     {
       "category": "Days & Time",
@@ -1057,7 +1047,7 @@
       "word_english": "Monday",
       "word_filipino": "Lunes",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__monday.mp4",
-      "size_bytes": 6468243
+      "streamable_url": "https://streamable.com/4kxwus"
     },
     {
       "category": "Days & Time",
@@ -1065,7 +1055,7 @@
       "word_english": "Tuesday",
       "word_filipino": "Martes",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__tuesday.mp4",
-      "size_bytes": 6563174
+      "streamable_url": "https://streamable.com/hozkxi"
     },
     {
       "category": "Days & Time",
@@ -1073,7 +1063,7 @@
       "word_english": "Wednesday",
       "word_filipino": "Miyerkules",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__wednesday.mp4",
-      "size_bytes": 7616744
+      "streamable_url": "https://streamable.com/r0jgyg"
     },
     {
       "category": "Days & Time",
@@ -1081,7 +1071,7 @@
       "word_english": "Thursday",
       "word_filipino": "Huwebes",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__thursday.mp4",
-      "size_bytes": 6940670
+      "streamable_url": "https://streamable.com/x9c4z6"
     },
     {
       "category": "Days & Time",
@@ -1089,7 +1079,7 @@
       "word_english": "Friday",
       "word_filipino": "Biyernes",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__friday.mp4",
-      "size_bytes": 7040932
+      "streamable_url": "https://streamable.com/0lo5d3"
     },
     {
       "category": "Days & Time",
@@ -1097,7 +1087,7 @@
       "word_english": "Saturday",
       "word_filipino": "Sabado",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__saturday.mp4",
-      "size_bytes": 7568619
+      "streamable_url": "https://streamable.com/cyb7m1"
     },
     {
       "category": "Days & Time",
@@ -1105,7 +1095,7 @@
       "word_english": "Sunday",
       "word_filipino": "Linggo",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__sunday.mp4",
-      "size_bytes": 7917466
+      "streamable_url": "https://streamable.com/awa9si"
     },
     {
       "category": "Days & Time",
@@ -1113,7 +1103,7 @@
       "word_english": "Morning",
       "word_filipino": "Umaga",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__morning.mp4",
-      "size_bytes": 7130704
+      "streamable_url": "https://streamable.com/qox9z0"
     },
     {
       "category": "Days & Time",
@@ -1121,7 +1111,7 @@
       "word_english": "Afternoon",
       "word_filipino": "Hapon",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__afternoon.mp4",
-      "size_bytes": 7137221
+      "streamable_url": "https://streamable.com/rypf8o"
     },
     {
       "category": "Days & Time",
@@ -1129,7 +1119,7 @@
       "word_english": "Evening",
       "word_filipino": "Gabi",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__evening.mp4",
-      "size_bytes": 7529412
+      "streamable_url": "https://streamable.com/dg3o2a"
     },
     {
       "category": "Days & Time",
@@ -1137,7 +1127,7 @@
       "word_english": "Clock",
       "word_filipino": "Orasan",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__clock.mp4",
-      "size_bytes": 5747665
+      "streamable_url": "https://streamable.com/w1jo73"
     },
     {
       "category": "Days & Time",
@@ -1145,7 +1135,13 @@
       "word_english": "Today",
       "word_filipino": "Ngayon",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__today.mp4",
-      "size_bytes": 6810178
+      "streamable_url": "https://streamable.com/bqzw3x"
     }
-  ]
+  ],
+  "video_source": {
+    "primary": "github_release",
+    "fallback": "streamable",
+    "repo": "jpaestedstu-prog/pwd-fsl-videos",
+    "tag": "v1"
+  }
 }

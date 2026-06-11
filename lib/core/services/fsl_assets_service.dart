@@ -82,11 +82,6 @@ class FslAssetsService {
 
   static Future<FslAvailability>? _cache;
 
-  /// All entries parsed from the cloud manifest, in manifest order. Exposed
-  /// via [manifestEntries] for word-level consumers (Speech→Sign interpreter)
-  /// that need the full vocabulary rather than a seed [Flashcard].
-  static final List<FslManifestEntry> _manifestEntries = [];
-
   /// Card key → resolved bundled asset path (case-preserved).
   static final Map<String, String> _assetPathByKey = {};
 
@@ -118,14 +113,12 @@ class FslAssetsService {
   /// Used by tests; useful in production after a hot-reload.
   static void reset() {
     _cache = null;
-    _manifestEntries.clear();
     _assetPathByKey.clear();
     _downloadUrlByKey.clear();
     _streamableUrlByKey.clear();
   }
 
   static Future<FslAvailability> _resolve() async {
-    _manifestEntries.clear();
     _assetPathByKey.clear();
     _downloadUrlByKey.clear();
     _streamableUrlByKey.clear();
@@ -210,16 +203,6 @@ class FslAssetsService {
         if (directUrl.isNotEmpty) _downloadUrlByKey[key] = directUrl;
         final streamableUrl = (e['streamable_url'] as String?) ?? '';
         if (streamableUrl.isNotEmpty) _streamableUrlByKey[key] = streamableUrl;
-        if (category.isNotEmpty && slug.isNotEmpty) {
-          _manifestEntries.add(FslManifestEntry(
-            category: category,
-            slug: slug,
-            wordEnglish: (e['word_english'] as String?) ?? slug,
-            wordFilipino: (e['word_filipino'] as String?) ?? '',
-            downloadUrl: directUrl.isNotEmpty ? directUrl : null,
-            streamableUrl: streamableUrl.isNotEmpty ? streamableUrl : null,
-          ));
-        }
       }
     } catch (_) {
       // No manifest yet (first run, asset missing) — degrade gracefully.
@@ -270,83 +253,6 @@ class FslAssetsService {
   /// True if a video is bundled locally for [card].
   static bool hasVideo(Flashcard card) =>
       _assetPathByKey.containsKey(_keyFor(card));
-
-  // ─── Entry-level API (word-level consumers, e.g. Speech→Sign) ──────
-
-  /// Stable lookup key for a manifest entry — `<category>__<slug>`, matching
-  /// what [_loadCloudFallbackUrls] stores in the URL maps. For entries whose
-  /// slug equals the lowercased English word this coincides with the
-  /// [Flashcard] key, so downloads are shared with flashcard plays.
-  static String _entryKey(FslManifestEntry entry) =>
-      '${entry.category}__${entry.slug}';
-
-  /// All entries from the cloud manifest, in manifest order. Triggers the
-  /// initial manifest parse on first call.
-  static Future<List<FslManifestEntry>> manifestEntries() async {
-    await load();
-    return List.unmodifiable(_manifestEntries);
-  }
-
-  /// Resolves a manifest entry to a playable [VideoSource], or null when all
-  /// sources fail. Mirrors [videoSourceFor] but keyed by manifest entry
-  /// instead of seed [Flashcard].
-  static Future<VideoSource?> videoSourceForEntry(FslManifestEntry entry) async {
-    final localPath = _assetPathByKey[_entryKey(entry)];
-    if (localPath != null) return _AssetVideoSource(localPath);
-
-    final file = await cachedVideoFileForEntry(entry);
-    return file != null ? _FileVideoSource(file) : null;
-  }
-
-  /// Resolves the entry's video to an on-device cached [File], downloading on
-  /// first call. Same resolution chain as [cachedVideoFile]: disk cache →
-  /// direct `download_url` → Streamable.
-  static Future<File?> cachedVideoFileForEntry(FslManifestEntry entry) async {
-    final key = _entryKey(entry);
-
-    try {
-      final cached = await _videoCache.getFileFromCache(key);
-      if (cached != null) return cached.file;
-    } catch (_) {
-      // ignore and fall through to a fresh download
-    }
-
-    final directUrl = entry.downloadUrl;
-    if (directUrl != null) {
-      try {
-        return await _videoCache.getSingleFile(directUrl, key: key);
-      } catch (_) {
-        // fall through to Streamable
-      }
-    }
-
-    final streamableUrl = entry.streamableUrl;
-    if (streamableUrl != null) {
-      try {
-        final resolved = await _resolveStreamableDirectUrl(streamableUrl);
-        if (resolved != null) {
-          return await _videoCache.getSingleFile(resolved, key: key);
-        }
-      } catch (_) {
-        // give up
-      }
-    }
-
-    return null;
-  }
-
-  /// True if the entry's video can play without network — bundled or already
-  /// in the disk cache.
-  static Future<bool> isEntryCached(FslManifestEntry entry) async {
-    final key = _entryKey(entry);
-    if (_assetPathByKey.containsKey(key)) return true;
-    try {
-      final cached = await _videoCache.getFileFromCache(key);
-      return cached != null;
-    } catch (_) {
-      return false;
-    }
-  }
 
   /// True if any video source exists for the card — bundled, direct download,
   /// or Streamable. Use this to gate UI that triggers an async resolve.
@@ -525,28 +431,6 @@ class FslAssetsService {
     ).firstMatch(url);
     return match?.group(1);
   }
-}
-
-/// One row of `assets/data/fsl_video_manifest.json` — a word with at least
-/// one cloud video source. Unlike [Flashcard] this carries the manifest's own
-/// bilingual labels, so word-level features (Speech→Sign interpreter) can
-/// match and display vocabulary without going through [SeedData].
-class FslManifestEntry {
-  final String category;
-  final String slug;
-  final String wordEnglish;
-  final String wordFilipino;
-  final String? downloadUrl;
-  final String? streamableUrl;
-
-  const FslManifestEntry({
-    required this.category,
-    required this.slug,
-    required this.wordEnglish,
-    required this.wordFilipino,
-    this.downloadUrl,
-    this.streamableUrl,
-  });
 }
 
 /// A playable handle to an FSL video. Hides whether the video came from a

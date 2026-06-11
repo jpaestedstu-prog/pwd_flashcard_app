@@ -1,18 +1,18 @@
 import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:video_player/video_player.dart';
 
+import '../core/services/fsl_assets_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/constants/app_constants.dart';
 
 /// Opens the FSL fullscreen video player as a fullscreen dialog.
 ///
-/// [videoFile] — cached on-device file resolved by `FslAssetsService.cachedFileFor`.
+/// [videoSource] — playable source (bundled asset or downloaded file)
+/// resolved via [FslAssetsService.videoSourceFor].
 /// [wordEnglish] — primary subtitle label.
 /// [wordFilipino] — optional secondary subtitle label.
 /// [startPosition] — resume from this position (defaults to beginning).
@@ -21,7 +21,7 @@ import '../core/constants/app_constants.dart';
 /// sync their own controller.
 Future<Duration?> openFslFullscreenPlayer(
   BuildContext context, {
-  required File videoFile,
+  required VideoSource videoSource,
   required String wordEnglish,
   String wordFilipino = '',
   Duration? startPosition,
@@ -30,7 +30,7 @@ Future<Duration?> openFslFullscreenPlayer(
     PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) =>
           FslFullscreenPlayer(
-        videoFile: videoFile,
+        videoSource: videoSource,
         wordEnglish: wordEnglish,
         wordFilipino: wordFilipino,
         startPosition: startPosition,
@@ -48,14 +48,14 @@ Future<Duration?> openFslFullscreenPlayer(
 /// gesture controls, progress bar, auto-hiding controls, subtitle labels,
 /// speed selector, and visual-only status cues.
 class FslFullscreenPlayer extends StatefulWidget {
-  final File videoFile;
+  final VideoSource videoSource;
   final String wordEnglish;
   final String wordFilipino;
   final Duration? startPosition;
 
   const FslFullscreenPlayer({
     super.key,
-    required this.videoFile,
+    required this.videoSource,
     required this.wordEnglish,
     this.wordFilipino = '',
     this.startPosition,
@@ -121,7 +121,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
     // Immersive mode — hide system UI
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-    _controller = VideoPlayerController.file(widget.videoFile)
+    _controller = widget.videoSource.createController()
       ..initialize().then((_) {
         if (!mounted) return;
         setState(() => _initialized = true);
