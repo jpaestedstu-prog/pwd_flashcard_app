@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
+import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -160,7 +161,12 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
 
   void _generateRounds() {
     _rounds = [];
-    final shuffled = List.of(_cardsWithVideo)..shuffle(_random);
+    final shuffled = AdaptiveDifficultyService.pickGameCards(
+      profileId: ref.read(profileProvider)?.id,
+      cards: _cardsWithVideo,
+      count: _maxRounds,
+      random: _random,
+    );
     final count = min(_maxRounds, shuffled.length);
     for (int i = 0; i < count; i++) {
       final correct = shuffled[i];

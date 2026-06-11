@@ -7,6 +7,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/seed_data.dart';
+import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
@@ -67,8 +68,11 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
     if (widget.categories.isNotEmpty) {
       all = all.where((c) => widget.categories.contains(c.category)).toList();
     }
-    all.shuffle();
-    _flashcards = all.take(_totalItems).toList();
+    _flashcards = AdaptiveDifficultyService.pickGameCards(
+      profileId: ref.read(profileProvider)?.id,
+      cards: all,
+      count: _totalItems,
+    );
     _targets = _flashcards
         .map((f) => _DropTarget(
               id: f.id,

@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../data/local/seed_data.dart';
 import '../../data/local/spaced_repetition_service.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/models.dart';
@@ -26,15 +29,18 @@ class AdaptiveDifficultyService {
       return GameDifficulty.easy;
     }
 
-    // Filter by categories if provided
-    Iterable<WordAccuracy> relevantAccuracies;
+    // Filter to words belonging to the selected categories. Falls back to
+    // overall stats when the student has no attempts in those categories yet.
+    Iterable<WordAccuracy> relevantAccuracies = accuracies.values;
     if (categories.isNotEmpty) {
-      // We need flashcard data to know which words belong to which category,
-      // but we only have word IDs in accuracy data. Use overall stats instead
-      // when category-specific filtering isn't available.
-      relevantAccuracies = accuracies.values;
-    } else {
-      relevantAccuracies = accuracies.values;
+      final idsInCategories = SeedData.allFlashcards
+          .where((c) => categories.contains(c.category))
+          .map((c) => c.id)
+          .toSet();
+      final filtered = accuracies.values
+          .where((wa) => idsInCategories.contains(wa.wordId))
+          .toList();
+      if (filtered.isNotEmpty) relevantAccuracies = filtered;
     }
 
     // Calculate overall accuracy
@@ -78,28 +84,71 @@ class AdaptiveDifficultyService {
 
   /// Returns flashcards reordered to prioritize weak words first.
   /// This helps games focus on words the student struggles with.
+  ///
+  /// Without [random] the order is deterministic (weakest first) — right
+  /// for review lists. Pass [random] for a weighted shuffle instead: weak
+  /// and stale words still gravitate to the front, but every call produces
+  /// a different order so game rounds stay varied.
   static List<Flashcard> getAdaptiveWordOrder({
     required String profileId,
     required List<Flashcard> cards,
+    Random? random,
   }) {
     final accuracies = SpacedRepetitionService.getWordAccuracies(profileId);
 
-    if (accuracies.isEmpty) return cards;
+    if (accuracies.isEmpty) {
+      if (random == null) return cards;
+      return List.of(cards)..shuffle(random);
+    }
 
-    // Score each card: lower accuracy = higher priority
-    final scored = cards.map((card) {
-      final wa = accuracies[card.id];
-      if (wa == null) {
-        // Never seen → moderate priority
-        return (card, 0.7);
-      }
-      return (card, wa.priority);
+    // Score each card: lower accuracy + longer unseen = higher priority.
+    // Never-seen words get a moderate default so they keep showing up.
+    double priorityOf(Flashcard card) => accuracies[card.id]?.priority ?? 0.7;
+
+    if (random == null) {
+      final scored = cards.map((card) => (card, priorityOf(card))).toList();
+      // Sort descending by priority (weakest first)
+      scored.sort((a, b) => b.$2.compareTo(a.$2));
+      return scored.map((e) => e.$1).toList();
+    }
+
+    // Weighted shuffle (Efraimidis–Spirakis): each card draws a random key
+    // biased by its priority; sorting by key yields a priority-proportional
+    // order without ever fully starving well-known words.
+    final keyed = cards.map((card) {
+      final weight = max(priorityOf(card), 0.05);
+      final key = pow(random.nextDouble(), 1.0 / weight);
+      return (card, key);
     }).toList();
+    keyed.sort((a, b) => b.$2.compareTo(a.$2));
+    return keyed.map((e) => e.$1).toList();
+  }
 
-    // Sort descending by priority (weakest first)
-    scored.sort((a, b) => b.$2.compareTo(a.$2));
-
-    return scored.map((e) => e.$1).toList();
+  /// Selects the cards a game round should use: weak words are favored,
+  /// with enough randomness that consecutive rounds stay varied.
+  ///
+  /// Handles missing data gracefully — guests ([profileId] null) and brand
+  /// new students get a plain shuffle. Returns at most [count] cards, or
+  /// the full reordered pool when [count] is null.
+  static List<Flashcard> pickGameCards({
+    required String? profileId,
+    required List<Flashcard> cards,
+    int? count,
+    Random? random,
+  }) {
+    final rng = random ?? Random();
+    final List<Flashcard> ordered;
+    if (profileId == null) {
+      ordered = List.of(cards)..shuffle(rng);
+    } else {
+      ordered = getAdaptiveWordOrder(
+        profileId: profileId,
+        cards: cards,
+        random: rng,
+      );
+    }
+    if (count == null || count >= ordered.length) return ordered;
+    return ordered.take(count).toList();
   }
 
   /// Returns a difficulty icon string for display.
@@ -182,28 +231,77 @@ class AdaptiveDifficultyService {
   }
 
   /// Suggest difficulty scoped to a specific game type & optional category.
-  /// Falls back to the global suggestion if no override exists.
+  ///
+  /// Falls through progressively broader evidence:
+  /// 1. recent games of this exact type,
+  /// 2. the stored game-type override (covers history that aged out),
+  /// 3. recent games in the same vocabulary category (any game type),
+  /// 4. the stored category override,
+  /// 5. recent games overall,
+  /// 6. lifetime word accuracy ([suggestDifficulty]).
   static GameDifficulty suggestForGame({
     required String profileId,
     required GameType gameType,
     FlashcardCategory? category,
   }) {
-    // Check game-type override first
-    final gameOverrides = _getGameOverrides(profileId);
-    if (gameOverrides.containsKey(gameType.name)) {
-      return _difficultyFromName(gameOverrides[gameType.name]!);
-    }
+    final history = getHistory(profileId);
 
-    // Then category override
+    // Most specific: the student's recent rounds of this exact game.
+    final gameWindow =
+        history.where((h) => h.gameType == gameType.name).take(5).toList();
+    if (gameWindow.isNotEmpty) return _difficultyFromWindow(gameWindow);
+
+    final storedGame = _getGameOverrides(profileId)[gameType.name];
+    if (storedGame != null) return _difficultyFromName(storedGame);
+
+    // Next: how they fare in this vocabulary category across all games.
     if (category != null) {
-      final catOverrides = _getCategoryOverrides(profileId);
-      if (catOverrides.containsKey(category.name)) {
-        return _difficultyFromName(catOverrides[category.name]!);
-      }
+      final catWindow =
+          history.where((h) => h.category == category.name).take(5).toList();
+      if (catWindow.isNotEmpty) return _difficultyFromWindow(catWindow);
+
+      final storedCat = _getCategoryOverrides(profileId)[category.name];
+      if (storedCat != null) return _difficultyFromName(storedCat);
     }
 
-    // Fallback to global
+    // Then: recent performance across all games.
+    final recentAll = history.take(10).toList();
+    if (recentAll.isNotEmpty) return _difficultyFromWindow(recentAll);
+
+    // Finally: lifetime per-word accuracy from spaced repetition.
     return suggestDifficulty(profileId: profileId);
+  }
+
+  /// Game-aware version of [getSuggestionReason]: explains the suggestion
+  /// using the student's recent rounds of [gameType] when available.
+  static String getSuggestionReasonForGame({
+    required String profileId,
+    required GameType gameType,
+  }) {
+    final history = getHistory(profileId);
+    final gameWindow =
+        history.where((h) => h.gameType == gameType.name).take(5).toList();
+    final window = gameWindow.isNotEmpty ? gameWindow : history.take(10).toList();
+
+    if (window.isEmpty) {
+      // No game history yet — fall back to lifetime word stats.
+      return getSuggestionReason(profileId: profileId);
+    }
+
+    final avg =
+        window.map((e) => e.accuracy).reduce((a, b) => a + b) / window.length;
+    final pct = (avg * 100).round();
+    final scope = gameWindow.isNotEmpty
+        ? 'In ${gameType.label}, your recent accuracy is $pct%'
+        : 'Across your recent games, your accuracy is $pct%';
+
+    if (avg < 0.4) {
+      return '$scope. Let\'s practice with easier questions to build confidence!';
+    }
+    if (avg <= 0.7) {
+      return '$scope. A balanced challenge to keep you growing!';
+    }
+    return '$scope. You\'re doing great — time for a real challenge!';
   }
 
   /// Return the full difficulty history for a student (most recent first).
@@ -293,24 +391,37 @@ class AdaptiveDifficultyService {
     final history = getHistory(profileId);
 
     // Use the last 5 games of the same type for game-specific tuning
-    final gameHistory = history
+    final gameWindow = history
         .where((h) => h.gameType == gameType.name)
         .take(5)
         .toList();
+    if (gameWindow.isNotEmpty) return _difficultyFromWindow(gameWindow);
+
+    // Then recent games in the same vocabulary category
+    if (category != null) {
+      final catWindow = history
+          .where((h) => h.category == category.name)
+          .take(5)
+          .toList();
+      if (catWindow.isNotEmpty) return _difficultyFromWindow(catWindow);
+    }
 
     // Use overall recent 10 as fallback
-    final recentAll = history.take(10).toList();
+    return _difficultyFromWindow(history.take(10).toList());
+  }
 
-    final scores = gameHistory.isNotEmpty ? gameHistory : recentAll;
-
-    if (scores.isEmpty) return GameDifficulty.easy;
+  /// Shared sliding-window rule: streaks adjust fast, averages smoothly.
+  /// [window] must be sorted most recent first.
+  static GameDifficulty _difficultyFromWindow(
+      List<DifficultyHistoryEntry> window) {
+    if (window.isEmpty) return GameDifficulty.easy;
 
     final avgAcc =
-        scores.map((e) => e.accuracy).reduce((a, b) => a + b) /
-            scores.length;
+        window.map((e) => e.accuracy).reduce((a, b) => a + b) /
+            window.length;
 
     // Check for streaks of high/low performance (last 3 games)
-    final last3 = scores.take(3).toList();
+    final last3 = window.take(3).toList();
     final allHigh = last3.length == 3 && last3.every((e) => e.accuracy >= 0.85);
     final allLow = last3.length == 3 && last3.every((e) => e.accuracy < 0.4);
 

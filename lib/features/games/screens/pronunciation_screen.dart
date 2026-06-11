@@ -16,6 +16,7 @@ import '../../../core/constants/flashcard_emojis.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/seed_data.dart';
+import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../../providers/app_providers.dart';
@@ -90,8 +91,14 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
       source =
           source.where((c) => widget.categories.contains(c.category)).toList();
     }
-    source.shuffle(_random);
-    _generateRounds(source);
+    // Full adaptive reorder, no count cap: rounds take the weak words from
+    // the front while the whole pool stays available for distractors.
+    final ordered = AdaptiveDifficultyService.pickGameCards(
+      profileId: ref.read(profileProvider)?.id,
+      cards: source,
+      random: _random,
+    );
+    _generateRounds(ordered);
     _currentRound = 0;
     _score = 0;
     _showResult = false;

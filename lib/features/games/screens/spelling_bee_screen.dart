@@ -11,6 +11,7 @@ import '../../../data/models/enums.dart';
 import '../../../widgets/shimmer_loading.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/seed_data.dart';
+import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
@@ -83,8 +84,12 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     }
     // Exclude multi-word entries — spaces/hyphens produce invisible tiles
     source.removeWhere((c) => c.wordEnglish.contains(' ') || c.wordEnglish.contains('-'));
-    _cards = source..shuffle(_random);
-    _cards = _cards.take(_totalWords).toList();
+    _cards = AdaptiveDifficultyService.pickGameCards(
+      profileId: ref.read(profileProvider)?.id,
+      cards: source,
+      count: _totalWords,
+      random: _random,
+    );
     if (_cards.isEmpty) {
       // Schedule navigation back; build() will show a safe placeholder
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -333,8 +338,12 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
       }
       // Exclude multi-word entries — spaces/hyphens produce invisible tiles
       source.removeWhere((c) => c.wordEnglish.contains(' ') || c.wordEnglish.contains('-'));
-      _cards = source..shuffle(_random);
-      _cards = _cards.take(_totalWords).toList();
+      _cards = AdaptiveDifficultyService.pickGameCards(
+        profileId: ref.read(profileProvider)?.id,
+        cards: source,
+        count: _totalWords,
+        random: _random,
+      );
       if (_cards.isEmpty) return;
       _setupWord();
     });

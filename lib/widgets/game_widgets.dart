@@ -520,6 +520,7 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
               padding: const EdgeInsets.only(bottom: 12),
               child: _AutoDifficultyCard(
                 profileId: widget.profileId!,
+                gameType: widget.game,
                 onTap: (suggested) => Navigator.of(context).pop(
                   (difficulty: suggested, timedMode: _timedMode),
                 ),
@@ -654,23 +655,28 @@ class _DifficultyCardState extends State<_DifficultyCard> {
   }
 }
 
-/// Adaptive "Auto" difficulty card that suggests a level based on performance.
+/// Adaptive "Auto" difficulty card that suggests a level based on the
+/// student's recent performance in this specific game.
 class _AutoDifficultyCard extends StatelessWidget {
   final String profileId;
+  final GameType gameType;
   final void Function(GameDifficulty suggested) onTap;
 
   const _AutoDifficultyCard({
     required this.profileId,
+    required this.gameType,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final suggested = AdaptiveDifficultyService.suggestDifficulty(
+    final suggested = AdaptiveDifficultyService.suggestForGame(
       profileId: profileId,
+      gameType: gameType,
     );
-    final reason = AdaptiveDifficultyService.getSuggestionReason(
+    final reason = AdaptiveDifficultyService.getSuggestionReasonForGame(
       profileId: profileId,
+      gameType: gameType,
     );
     const autoColor = Color(0xFF7C4DFF);
 

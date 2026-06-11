@@ -7,6 +7,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/seed_data.dart';
+import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
@@ -73,8 +74,11 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
     if (widget.categories.isNotEmpty) {
       all = all.where((c) => widget.categories.contains(c.category)).toList();
     }
-    all.shuffle();
-    _cards = all.take(_totalCards).toList();
+    _cards = AdaptiveDifficultyService.pickGameCards(
+      profileId: ref.read(profileProvider)?.id,
+      cards: all,
+      count: _totalCards,
+    );
     _currentIndex = 0;
     _knowCount = 0;
     _learningCount = 0;

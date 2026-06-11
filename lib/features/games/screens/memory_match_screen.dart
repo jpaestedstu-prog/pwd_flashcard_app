@@ -9,6 +9,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/seed_data.dart';
+import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
@@ -119,8 +120,11 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
     if (widget.categories.isNotEmpty) {
       allCards = allCards.where((c) => widget.categories.contains(c.category)).toList();
     }
-    allCards.shuffle();
-    _sourceCards = allCards.take(_pairs).toList();
+    _sourceCards = AdaptiveDifficultyService.pickGameCards(
+      profileId: ref.read(profileProvider)?.id,
+      cards: allCards,
+      count: _pairs,
+    );
 
     _cards = [];
     for (final card in _sourceCards) {

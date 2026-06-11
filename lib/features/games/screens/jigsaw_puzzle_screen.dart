@@ -8,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/seed_data.dart';
+import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
@@ -94,8 +95,13 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
       source =
           source.where((c) => widget.categories.contains(c.category)).toList();
     }
-    _allCards = source..shuffle(_random);
-    _puzzleCards = _allCards.take(_totalPuzzles).toList();
+    _allCards = source;
+    _puzzleCards = AdaptiveDifficultyService.pickGameCards(
+      profileId: ref.read(profileProvider)?.id,
+      cards: _allCards,
+      count: _totalPuzzles,
+      random: _random,
+    );
     _initPuzzle();
     startTimerIfNeeded(widget.timedMode);
     initPause();
@@ -252,8 +258,12 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
       _showResult = false;
       _reviewItems.clear();
       _newAchievements = [];
-      _allCards.shuffle(_random);
-      _puzzleCards = _allCards.take(_totalPuzzles).toList();
+      _puzzleCards = AdaptiveDifficultyService.pickGameCards(
+        profileId: ref.read(profileProvider)?.id,
+        cards: _allCards,
+        count: _totalPuzzles,
+        random: _random,
+      );
       _initPuzzle();
       startTimerIfNeeded(widget.timedMode);
     });

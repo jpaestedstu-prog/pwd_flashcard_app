@@ -8,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/seed_data.dart';
+import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
@@ -103,8 +104,12 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
     if (widget.categories.isNotEmpty) {
       source = source.where((c) => widget.categories.contains(c.category)).toList();
     }
-    source.shuffle(_random);
-    _cards = source.take(_totalWords).toList();
+    _cards = AdaptiveDifficultyService.pickGameCards(
+      profileId: ref.read(profileProvider)?.id,
+      cards: source,
+      count: _totalWords,
+      random: _random,
+    );
     _generateChoices();
   }
 

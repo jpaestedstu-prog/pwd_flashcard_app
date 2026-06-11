@@ -9,6 +9,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/seed_data.dart';
+import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
@@ -106,7 +107,12 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
 
   void _generateRounds() {
     _rounds = [];
-    final shuffled = List.of(_allCards)..shuffle(_random);
+    final shuffled = AdaptiveDifficultyService.pickGameCards(
+      profileId: ref.read(profileProvider)?.id,
+      cards: _allCards,
+      count: _totalRounds,
+      random: _random,
+    );
     for (int i = 0; i < _totalRounds && i < shuffled.length; i++) {
       final correct = shuffled[i];
       final others = _allCards.where((c) => c.id != correct.id).toList()

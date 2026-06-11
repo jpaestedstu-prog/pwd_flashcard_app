@@ -134,7 +134,11 @@ class GameHubScreen extends ConsumerWidget {
       return;
     }
 
-    final result = await showDifficultyPicker(context, game);
+    final result = await showDifficultyPicker(
+      context,
+      game,
+      profileId: ref.read(profileProvider)?.id,
+    );
     if (result == null || !context.mounted) return;
 
     final categories = await showCategoryPicker(context);
