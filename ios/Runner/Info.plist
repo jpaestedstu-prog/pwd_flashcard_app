@@ -66,5 +66,14 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- TV Cast: required for iOS 14+ local-network permission prompt
+	     so the in-app HTTP server can accept connections from TVs on
+	     the same Wi-Fi. No data leaves the local network. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>FlashLearn casts flashcards, FSL videos, stories, and student progress to your TV over the local Wi-Fi network. No data leaves your network.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp</string>
+	</array>
 </dict>
 </plist>

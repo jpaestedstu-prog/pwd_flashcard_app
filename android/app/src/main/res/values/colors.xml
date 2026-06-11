@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background panel behind the adaptive launcher icon. Matches the
+         app's pastel background tone so the icon reads as part of the
+         FlashLearn brand on launchers that use circle/squircle masks. -->
+    <color name="ic_launcher_background">#F5F1FB</color>
+</resources>

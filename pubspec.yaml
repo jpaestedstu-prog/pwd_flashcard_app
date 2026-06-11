@@ -43,6 +43,12 @@ dependencies:
   # Video
   video_player: ^2.9.3
 
+  # Video / asset caching (used by core/services/fsl_assets_service.dart
+  # to download each FSL video on first play and serve it from disk
+  # thereafter — primary source is GitHub Releases, with Streamable as a
+  # runtime fallback; see assets/data/fsl_video_manifest.json)
+  flutter_cache_manager: ^3.4.1
+
   # Utilities
   uuid: ^4.5.1
   equatable: ^2.0.7
@@ -63,11 +69,23 @@ dependencies:
   firebase_auth: ^5.3.1
   connectivity_plus: ^6.1.4
 
-  # FSL video caching (GitHub Releases → on-device cache)
-  flutter_cache_manager: ^3.4.1
+  # Telemetry (Firebase free tier — unlimited on Spark plan).
+  # Opt-in only; parent-gated toggle in settings. Default OFF.
+  firebase_crashlytics: ^4.1.3
+  firebase_analytics: ^11.3.3
 
   # Cryptography (PIN hashing)
   crypto: ^3.0.3
+
+  # ─── TV Casting (universal local-network cast) ──────
+  # Pure-Dart HTTP server bundle. No native plugins — keeps the
+  # project free from Kotlin/KGP conflicts (Flutter 3.44 ships
+  # Kotlin 2.0.0 while many cast SDKs need 2.2.0+).
+  shelf: ^1.4.1
+  shelf_router: ^1.1.4
+  shelf_static: ^1.1.3
+  # QR code rendering (pure Dart CustomPainter).
+  qr_flutter: ^4.1.0
 
   intl: any
 dev_dependencies:
@@ -75,6 +93,9 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   mocktail: ^1.0.4
+  # Direct dev dep so tests can install a fake ConnectivityPlatform
+  # (already in the dependency graph via connectivity_plus).
+  connectivity_plus_platform_interface: ^2.1.0
 
 flutter:
   generate: true
@@ -87,9 +108,11 @@ flutter:
     - assets/images/games/
     - assets/animations/
     - assets/sounds/
-    # FSL video URLs live in a bundled JSON manifest. The video files
-    # themselves are hosted on GitHub Releases and cached on-device via
-    # flutter_cache_manager — see FslAssetsService. Bundling the videos
-    # directly would balloon the APK by ~hundreds of MB.
     - assets/data/
+    # TV-side static web assets (HTML/CSS/JS) served by the
+    # in-app shelf server for the TV Cast feature.
+    - assets/tv_cast/
+    # FSL videos are not bundled — FslAssetsService downloads each one on
+    # first play (GitHub Releases primary, Streamable fallback) and caches
+    # it on-device. See assets/data/fsl_video_manifest.json.
     - google_fonts/

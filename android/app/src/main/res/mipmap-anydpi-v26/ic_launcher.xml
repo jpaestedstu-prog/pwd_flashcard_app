@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive launcher icon for Android 8+ (we target 10+). The OS masks
+     the foreground+background into the launcher's shape (circle, squircle,
+     etc.), so the existing PNG is inset to keep its full design inside
+     the 66dp visible area of the 108dp adaptive canvas. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground>
+        <inset
+            android:drawable="@mipmap/ic_launcher"
+            android:inset="18%" />
+    </foreground>
+    <monochrome>
+        <inset
+            android:drawable="@mipmap/ic_launcher"
+            android:inset="18%" />
+    </monochrome>
+</adaptive-icon>

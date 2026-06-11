@@ -7,14 +7,28 @@
 # Keep plugin registrant
 -keep class io.flutter.plugins.GeneratedPluginRegistrant { *; }
 
-# Supabase / OkHttp / Gson (used by supabase_flutter)
+# OkHttp / Okio / annotations (transitively used by several plugins)
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn javax.annotation.**
 -keep class com.google.gson.** { *; }
 
-# Keep notification-related classes (flutter_local_notifications)
+# flutter_local_notifications + the WorkManager classes it reflects.
 -keep class com.dexterous.** { *; }
+-keep class androidx.work.** { *; }
+-keep class androidx.core.app.** { *; }
 
-# Prevent stripping of Hive adapters
--keep class * extends com.google.protobuf.GeneratedMessageLite { *; }
+# Firebase (Firestore, Auth, Crashlytics, Analytics). All are reflected
+# at startup by FirebaseApp.initializeApp; without these rules, a
+# release build will throw ClassNotFoundException on first launch.
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+
+# Hive — generated *Adapter classes are looked up by name at runtime.
+-keep class **.*Adapter { *; }
+-keepclassmembers class * extends hive.TypeAdapter { *; }
+
+# video_player → ExoPlayer
+-keep class com.google.android.exoplayer2.** { *; }
+-dontwarn com.google.android.exoplayer2.**

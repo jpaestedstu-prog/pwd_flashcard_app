@@ -1,18 +1,32 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Network — required for FSL video streaming from GitHub Releases and
-         for Firestore reads/writes. Debug builds inherit this from
-         debug/AndroidManifest.xml; release builds need it declared here. -->
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-
     <!-- Notification permissions -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
 
+    <!-- TV Cast: the app runs a local HTTP server so TVs on the same
+         Wi-Fi can poll it. INTERNET is required even for listening
+         sockets on most Android OEM builds. ACCESS_WIFI_STATE lets
+         us pick the right local IPv4 to show in the cast URL. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <!-- Explicit tablet support declaration. Defaults already cover
+         these on modern Android, but declaring them suppresses Play
+         Store warnings about "designed for phones" and makes the
+         intent visible to anyone auditing the manifest. -->
+    <supports-screens
+        android:smallScreens="true"
+        android:normalScreens="true"
+        android:largeScreens="true"
+        android:xlargeScreens="true"
+        android:resizeable="true"
+        android:anyDensity="true"/>
+
     <application
-        android:label="pwdpwdpwd"
+        android:label="FlashLearn PWD"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 

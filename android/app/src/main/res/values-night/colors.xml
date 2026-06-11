@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark variant of the adaptive-icon background. Matches the dark
+         theme's scaffold so the launcher icon doesn't flash white on
+         devices using a dark-themed launcher. -->
+    <color name="ic_launcher_background">#1E1E2A</color>
+</resources>
