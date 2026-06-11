@@ -1247,4 +1247,45 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get splashAlmostReady => 'Halos handa na!';
+
+  @override
+  String get wordHuntTitle => 'Word Hunt';
+
+  @override
+  String get wordHuntPointCamera => 'Itutok ang camera sa isang bagay!';
+
+  @override
+  String get wordHuntTapToLearn => 'Pindutin ang salita para matutunan ito!';
+
+  @override
+  String wordHuntISee(String label) {
+    return 'May nakikita ako… $label';
+  }
+
+  @override
+  String get wordHuntNoCamera =>
+      'Walang camera ang device na ito, kaya hindi magagamit ang Word Hunt.';
+
+  @override
+  String get wordHuntCameraDenied =>
+      'Kailangan ng Word Hunt ang camera para mahanap ang mga bagay sa paligid mo. Paki-payagan ang camera.';
+
+  @override
+  String get wordHuntCameraError =>
+      'Hindi masimulan ang camera. Pakisubukan muli.';
+
+  @override
+  String get wordHuntNewWord => 'May nahanap kang bagong salita! +1 ⭐';
+
+  @override
+  String get wordHuntGreatFind => 'May nahanap kang bagong salita! Galing!';
+
+  @override
+  String get wordHuntSpeakEnglish => 'Ingles';
+
+  @override
+  String get wordHuntSpeakFilipino => 'Filipino';
+
+  @override
+  String get wordHuntFlashcards => 'Flashcards';
 }

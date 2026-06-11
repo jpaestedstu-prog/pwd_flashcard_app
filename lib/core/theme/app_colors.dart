@@ -90,6 +90,8 @@ class AppColors {
   static const Color bannerGuidedEnd = Color(0xFF00897B);
   static const Color bannerAiTutorStart = Color(0xFF42A5F5);
   static const Color bannerAiTutorEnd = Color(0xFF1E88E5);
+  static const Color bannerWordHuntStart = Color(0xFFFF7043);
+  static const Color bannerWordHuntEnd = Color(0xFFF4511E);
   static const Color bannerMessagingStart = Color(0xFFAB47BC);
   static const Color bannerMessagingEnd = Color(0xFF8E24AA);
   static const Color bannerPeerStart = Color(0xFF66BB6A);

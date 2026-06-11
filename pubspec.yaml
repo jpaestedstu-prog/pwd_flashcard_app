@@ -43,6 +43,12 @@ dependencies:
   # Video
   video_player: ^2.9.3
 
+  # Camera + on-device object recognition (Word Hunt feature).
+  # google_mlkit_image_labeling bundles the base ML Kit model inside the
+  # APK, so labeling runs fully offline — no backend, no paid tier.
+  camera: ^0.11.0
+  google_mlkit_image_labeling: ^0.14.0
+
   # Video / asset caching (used by core/services/fsl_assets_service.dart
   # to download each FSL video on first play and serve it from disk
   # thereafter — primary source is GitHub Releases, with Streamable as a

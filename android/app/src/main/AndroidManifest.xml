@@ -13,6 +13,13 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <!-- Word Hunt: live camera object recognition. required="false" so
+         tablets without a camera can still install the app — the scan
+         screen shows a friendly fallback instead. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+
     <!-- Explicit tablet support declaration. Defaults already cover
          these on modern Android, but declaring them suppresses Play
          Store warnings about "designed for phones" and makes the

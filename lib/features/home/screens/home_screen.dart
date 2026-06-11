@@ -607,6 +607,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
             onTap: () => context.push('/recommendations'),
           ),
+          tile(
+            emoji: '📷',
+            label: 'Word Hunt',
+            gradient: const [
+              AppColors.bannerWordHuntStart,
+              AppColors.bannerWordHuntEnd
+            ],
+            onTap: () => context.push('/object-scan'),
+          ),
         ],
       ),
 

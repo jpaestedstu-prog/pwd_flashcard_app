@@ -1234,4 +1234,45 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get splashAlmostReady => 'Almost ready!';
+
+  @override
+  String get wordHuntTitle => 'Word Hunt';
+
+  @override
+  String get wordHuntPointCamera => 'Point your camera at an object!';
+
+  @override
+  String get wordHuntTapToLearn => 'Tap a word to learn it!';
+
+  @override
+  String wordHuntISee(String label) {
+    return 'I see… $label';
+  }
+
+  @override
+  String get wordHuntNoCamera =>
+      'This device has no camera, so Word Hunt can\'t run here.';
+
+  @override
+  String get wordHuntCameraDenied =>
+      'Word Hunt needs the camera to find objects around you. Please allow camera access.';
+
+  @override
+  String get wordHuntCameraError =>
+      'The camera couldn\'t start. Please try again.';
+
+  @override
+  String get wordHuntNewWord => 'New word found! +1 ⭐';
+
+  @override
+  String get wordHuntGreatFind => 'New word found! Great job!';
+
+  @override
+  String get wordHuntSpeakEnglish => 'English';
+
+  @override
+  String get wordHuntSpeakFilipino => 'Filipino';
+
+  @override
+  String get wordHuntFlashcards => 'Flashcards';
 }

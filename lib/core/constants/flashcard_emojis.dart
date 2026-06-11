@@ -39,6 +39,7 @@ class FlashcardEmojis {
     'c10': '⭐',  // Star
     'c11': '❤️',  // Heart
     'c12': '⚪',  // White
+    'c13': '🌸',  // Flower
 
     // ─── Numbers ────────────────────────────────────
     'n01': '1️⃣',  // One
@@ -81,6 +82,11 @@ class FlashcardEmojis {
     'f10': '🥦',  // Vegetables
     'f11': '🍲',  // Soup
     'f12': '🍬',  // Candy
+    'f13': '🍼',  // Bottle
+    'f14': '☕',  // Cup
+    'f15': '🥄',  // Spoon
+    'f16': '🍴',  // Fork
+    'f17': '🍛',  // Plate
 
     // ─── Family & Greetings ─────────────────────────
     'g01': '👩',  // Mother
@@ -137,6 +143,13 @@ class FlashcardEmojis {
     'cr10': '🪑',  // Chair
     'cr11': '🏫',  // School
     'cr12': '👩‍🏫',  // Teacher
+    'cr13': '🍽️',  // Table (table setting)
+    'cr14': '📄',  // Paper
+    'cr15': '⚽',  // Ball
+    'cr16': '🚪',  // Door
+    'cr17': '🪟',  // Window
+    'cr18': '📺',  // Television
+    'cr19': '📱',  // Phone
 
     // ─── Transportation ─────────────────────────────────
     't01': '🚗',  // Car

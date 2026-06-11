@@ -461,5 +461,18 @@
   "welcomeSlide3Body": "High-contrast, dyslexia-friendly, text-to-speech, and reduced-motion options are built in.",
   "splashLoadingResources": "Loading resources...",
   "splashPreparingCards": "Preparing your cards...",
-  "splashAlmostReady": "Almost ready!"
+  "splashAlmostReady": "Almost ready!",
+  "wordHuntTitle": "Word Hunt",
+  "wordHuntPointCamera": "Point your camera at an object!",
+  "wordHuntTapToLearn": "Tap a word to learn it!",
+  "wordHuntISee": "I see… {label}",
+  "@wordHuntISee": { "placeholders": { "label": { "type": "String" } } },
+  "wordHuntNoCamera": "This device has no camera, so Word Hunt can't run here.",
+  "wordHuntCameraDenied": "Word Hunt needs the camera to find objects around you. Please allow camera access.",
+  "wordHuntCameraError": "The camera couldn't start. Please try again.",
+  "wordHuntNewWord": "New word found! +1 ⭐",
+  "wordHuntGreatFind": "New word found! Great job!",
+  "wordHuntSpeakEnglish": "English",
+  "wordHuntSpeakFilipino": "Filipino",
+  "wordHuntFlashcards": "Flashcards"
 }

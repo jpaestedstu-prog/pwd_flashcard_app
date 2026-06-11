@@ -2365,6 +2365,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Almost ready!'**
   String get splashAlmostReady;
+
+  /// No description provided for @wordHuntTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Word Hunt'**
+  String get wordHuntTitle;
+
+  /// No description provided for @wordHuntPointCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Point your camera at an object!'**
+  String get wordHuntPointCamera;
+
+  /// No description provided for @wordHuntTapToLearn.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a word to learn it!'**
+  String get wordHuntTapToLearn;
+
+  /// No description provided for @wordHuntISee.
+  ///
+  /// In en, this message translates to:
+  /// **'I see… {label}'**
+  String wordHuntISee(String label);
+
+  /// No description provided for @wordHuntNoCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'This device has no camera, so Word Hunt can\'t run here.'**
+  String get wordHuntNoCamera;
+
+  /// No description provided for @wordHuntCameraDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Word Hunt needs the camera to find objects around you. Please allow camera access.'**
+  String get wordHuntCameraDenied;
+
+  /// No description provided for @wordHuntCameraError.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera couldn\'t start. Please try again.'**
+  String get wordHuntCameraError;
+
+  /// No description provided for @wordHuntNewWord.
+  ///
+  /// In en, this message translates to:
+  /// **'New word found! +1 ⭐'**
+  String get wordHuntNewWord;
+
+  /// No description provided for @wordHuntGreatFind.
+  ///
+  /// In en, this message translates to:
+  /// **'New word found! Great job!'**
+  String get wordHuntGreatFind;
+
+  /// No description provided for @wordHuntSpeakEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get wordHuntSpeakEnglish;
+
+  /// No description provided for @wordHuntSpeakFilipino.
+  ///
+  /// In en, this message translates to:
+  /// **'Filipino'**
+  String get wordHuntSpeakFilipino;
+
+  /// No description provided for @wordHuntFlashcards.
+  ///
+  /// In en, this message translates to:
+  /// **'Flashcards'**
+  String get wordHuntFlashcards;
 }
 
 class _AppLocalizationsDelegate

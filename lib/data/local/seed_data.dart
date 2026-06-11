@@ -1,8 +1,8 @@
 import '../models/enums.dart';
 import '../models/models.dart';
 
-/// Pre-loaded flashcard data for all 6 categories
-/// Each category has 12-15 words with English/Filipino pairs
+/// Pre-loaded flashcard data for all 12 categories
+/// Each category has 12-19 words with English/Filipino pairs
 class SeedData {
   SeedData._();
 
@@ -55,6 +55,8 @@ class SeedData {
     const Flashcard(id: 'c10', wordEnglish: 'Star', wordFilipino: 'Bituin', exampleSentence: 'The star is bright.', category: FlashcardCategory.colorsAndShapes),
     const Flashcard(id: 'c11', wordEnglish: 'Heart', wordFilipino: 'Puso', exampleSentence: 'I drew a heart.', category: FlashcardCategory.colorsAndShapes),
     const Flashcard(id: 'c12', wordEnglish: 'White', wordFilipino: 'Puti', exampleSentence: 'The cloud is white.', category: FlashcardCategory.colorsAndShapes),
+    // Everyday object the Word Hunt camera can recognize (ML Kit label).
+    const Flashcard(id: 'c13', wordEnglish: 'Flower', wordFilipino: 'Bulaklak', exampleSentence: 'The flower smells nice.', category: FlashcardCategory.colorsAndShapes),
   ];
 
   // â”€â”€â”€ Numbers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -103,6 +105,12 @@ class SeedData {
     const Flashcard(id: 'f10', wordEnglish: 'Vegetables', wordFilipino: 'Gulay', exampleSentence: 'Vegetables are healthy.', category: FlashcardCategory.foodAndDrinks),
     const Flashcard(id: 'f11', wordEnglish: 'Soup', wordFilipino: 'Sabaw', exampleSentence: 'The soup is warm.', category: FlashcardCategory.foodAndDrinks),
     const Flashcard(id: 'f12', wordEnglish: 'Candy', wordFilipino: 'Kendi', exampleSentence: 'The candy is sweet.', category: FlashcardCategory.foodAndDrinks),
+    // Everyday objects the Word Hunt camera can recognize (ML Kit labels).
+    const Flashcard(id: 'f13', wordEnglish: 'Bottle', wordFilipino: 'Bote', exampleSentence: 'The bottle is full of water.', category: FlashcardCategory.foodAndDrinks),
+    const Flashcard(id: 'f14', wordEnglish: 'Cup', wordFilipino: 'Tasa', exampleSentence: 'I drink milk from a cup.', category: FlashcardCategory.foodAndDrinks),
+    const Flashcard(id: 'f15', wordEnglish: 'Spoon', wordFilipino: 'Kutsara', exampleSentence: 'I eat soup with a spoon.', category: FlashcardCategory.foodAndDrinks),
+    const Flashcard(id: 'f16', wordEnglish: 'Fork', wordFilipino: 'Tinidor', exampleSentence: 'I use a fork to eat.', category: FlashcardCategory.foodAndDrinks),
+    const Flashcard(id: 'f17', wordEnglish: 'Plate', wordFilipino: 'Plato', exampleSentence: 'The food is on the plate.', category: FlashcardCategory.foodAndDrinks),
   ];
 
   // â”€â”€â”€ Family & Greetings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -167,6 +175,14 @@ class SeedData {
     const Flashcard(id: 'cr10', wordEnglish: 'Chair', wordFilipino: 'Upuan', exampleSentence: 'I sit on a chair.', category: FlashcardCategory.classroom),
     const Flashcard(id: 'cr11', wordEnglish: 'School', wordFilipino: 'Paaralan', exampleSentence: 'I go to school every day.', category: FlashcardCategory.classroom),
     const Flashcard(id: 'cr12', wordEnglish: 'Teacher', wordFilipino: 'Guro', exampleSentence: 'Our teacher is kind.', category: FlashcardCategory.classroom),
+    // Everyday objects the Word Hunt camera can recognize (ML Kit labels).
+    const Flashcard(id: 'cr13', wordEnglish: 'Table', wordFilipino: 'Mesa', exampleSentence: 'The book is on the table.', category: FlashcardCategory.classroom),
+    const Flashcard(id: 'cr14', wordEnglish: 'Paper', wordFilipino: 'Papel', exampleSentence: 'I write on the paper.', category: FlashcardCategory.classroom),
+    const Flashcard(id: 'cr15', wordEnglish: 'Ball', wordFilipino: 'Bola', exampleSentence: 'We play with a ball.', category: FlashcardCategory.classroom),
+    const Flashcard(id: 'cr16', wordEnglish: 'Door', wordFilipino: 'Pinto', exampleSentence: 'Please close the door.', category: FlashcardCategory.classroom),
+    const Flashcard(id: 'cr17', wordEnglish: 'Window', wordFilipino: 'Bintana', exampleSentence: 'I look out the window.', category: FlashcardCategory.classroom),
+    const Flashcard(id: 'cr18', wordEnglish: 'Television', wordFilipino: 'Telebisyon', exampleSentence: 'We watch television at home.', category: FlashcardCategory.classroom),
+    const Flashcard(id: 'cr19', wordEnglish: 'Phone', wordFilipino: 'Telepono', exampleSentence: 'My mother has a phone.', category: FlashcardCategory.classroom),
   ];
 
   // â”€â”€â”€ Transportation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

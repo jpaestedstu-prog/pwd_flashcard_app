@@ -154,20 +154,22 @@ void main() {
       }
     });
 
-    test('every new category has exactly 12 flashcards', () {
-      final newCats = [
-        FlashcardCategory.clothing,
-        FlashcardCategory.weather,
-        FlashcardCategory.classroom,
-        FlashcardCategory.transportation,
-        FlashcardCategory.emotions,
-        FlashcardCategory.daysAndTime,
-      ];
-      for (final cat in newCats) {
+    test('every new category has its expected flashcard count', () {
+      // Classroom grew to 19 with the Word Hunt object words (cr13–cr19).
+      final expectedCounts = {
+        FlashcardCategory.clothing: 12,
+        FlashcardCategory.weather: 12,
+        FlashcardCategory.classroom: 19,
+        FlashcardCategory.transportation: 12,
+        FlashcardCategory.emotions: 12,
+        FlashcardCategory.daysAndTime: 12,
+      };
+      expectedCounts.forEach((cat, expected) {
         final count =
             SeedData.allFlashcards.where((c) => c.category == cat).length;
-        expect(count, 12, reason: '${cat.label} should have 12 cards');
-      }
+        expect(count, expected,
+            reason: '${cat.label} should have $expected cards');
+      });
     });
 
     test('all flashcard IDs have emoji mappings', () {

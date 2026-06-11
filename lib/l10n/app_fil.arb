@@ -383,5 +383,17 @@
   "welcomeSlide3Body": "Mataas na contrast, pampabasa (dyslexia), text-to-speech, at reduced-motion na opsyon ay nakapaloob na.",
   "splashLoadingResources": "Niloload ang mga resource...",
   "splashPreparingCards": "Inihahanda ang iyong mga card...",
-  "splashAlmostReady": "Halos handa na!"
+  "splashAlmostReady": "Halos handa na!",
+  "wordHuntTitle": "Word Hunt",
+  "wordHuntPointCamera": "Itutok ang camera sa isang bagay!",
+  "wordHuntTapToLearn": "Pindutin ang salita para matutunan ito!",
+  "wordHuntISee": "May nakikita ako… {label}",
+  "wordHuntNoCamera": "Walang camera ang device na ito, kaya hindi magagamit ang Word Hunt.",
+  "wordHuntCameraDenied": "Kailangan ng Word Hunt ang camera para mahanap ang mga bagay sa paligid mo. Paki-payagan ang camera.",
+  "wordHuntCameraError": "Hindi masimulan ang camera. Pakisubukan muli.",
+  "wordHuntNewWord": "May nahanap kang bagong salita! +1 ⭐",
+  "wordHuntGreatFind": "May nahanap kang bagong salita! Galing!",
+  "wordHuntSpeakEnglish": "Ingles",
+  "wordHuntSpeakFilipino": "Filipino",
+  "wordHuntFlashcards": "Flashcards"
 }
