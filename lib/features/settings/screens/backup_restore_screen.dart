@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../providers/app_providers.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Screen for backing up and restoring all app data.
 class BackupRestoreScreen extends ConsumerStatefulWidget {
@@ -32,11 +33,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(fallbackRoute: '/settings'),
         title: const Text('Backup & Restore'),
       ),
       body: ListView(

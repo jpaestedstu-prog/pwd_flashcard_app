@@ -3,6 +3,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../data/repository.dart';
 import '../../data/local/local_repository.dart';
 import '../../data/remote/firestore_repository.dart';
+import 'firebase_service.dart';
 import '../utils/error_handler.dart';
 import 'sync_queue/sync_queue_service.dart';
 import 'sync_queue/sync_queue_storage.dart';
@@ -125,6 +126,63 @@ class SyncService {
       ErrorHandler.report(e, stack, 'SyncService');
     } finally {
       _syncing = false;
+    }
+  }
+
+  /// Pull all owner-scoped data for the currently signed-in uid back into
+  /// local Hive. Used by the linked-account sign-in flow on a fresh
+  /// install: after [FirebaseService.signInWithEmail] succeeds, the uid
+  /// switches to the linked account's uid and Hive is empty — this method
+  /// repopulates profiles, progress, achievements, purchases, and custom
+  /// cards from the Firestore documents stamped with that uid.
+  ///
+  /// Returns the number of profiles restored (0 on offline failure or
+  /// when there is no remote backup for this uid). Errors are logged via
+  /// [ErrorHandler] but never thrown — the caller should surface a
+  /// friendly message based on the return value.
+  Future<int> rehydrateFromCloud() async {
+    final remote = _remote;
+    if (remote is! FirestoreRepository) return 0;
+    final uid = FirebaseService.currentUid;
+    if (uid == null) return 0;
+
+    try {
+      final profiles = await remote.getProfilesForOwner(uid);
+      if (profiles.isEmpty) return 0;
+
+      for (final p in profiles) {
+        await _local.saveProfile(p);
+
+        final progress = await remote.getProgress(p.id);
+        await _local.saveProgress(progress);
+
+        final achievements = await remote.getUnlockedAchievements(p.id);
+        if (achievements.isNotEmpty) {
+          await _local.saveUnlockedAchievements(p.id, achievements);
+        }
+
+        final purchases = await remote.getPurchasedItems(p.id);
+        if (purchases.isNotEmpty) {
+          await _local.savePurchasedItems(p.id, purchases);
+        }
+      }
+
+      // Custom cards aren't scoped per-profile in the query; pull every
+      // card stamped with this uid in one shot.
+      final cards = await remote.getCustomCards();
+      for (final card in cards) {
+        await _local.saveCustomCard(card);
+      }
+
+      // After rehydration the local store matches the cloud — clear any
+      // residual queue entries from the pre-link anonymous session so we
+      // don't re-push stale ops to the new uid's namespace.
+      await SyncQueueStorage.clearAll();
+
+      return profiles.length;
+    } catch (e, stack) {
+      ErrorHandler.report(e, stack, 'SyncService.rehydrateFromCloud');
+      return 0;
     }
   }
 

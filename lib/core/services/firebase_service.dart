@@ -5,6 +5,34 @@ import 'package:flutter/foundation.dart';
 
 /// Firebase configuration & initialisation helper.
 ///
+/// **Free-tier (Spark plan) compatibility:** this app is designed to run
+/// fully on Firebase's free Spark plan — no Blaze required. The only
+/// Firebase products it uses are:
+///   • **Firestore** (free quota: 50K reads + 20K writes per day, plenty
+///     for a classroom-sized deployment)
+///   • **Anonymous Authentication** (always free, no quota)
+///
+/// Cloud Functions are NOT used and have been removed from this project,
+/// because deploying them requires Blaze. Server-side anti-cheat for the
+/// progress collection is therefore not present; client-side validation
+/// in [progress_sync_listener.dart] is the integrity layer. If you ever
+/// upgrade to Blaze and want to re-add server-side validation, restore
+/// the [functions/] folder from git history and re-add the
+/// `"functions"` block to [firebase.json].
+///
+/// **Setup checklist for the permission-denied error in Manage Classes:**
+///
+///   1. **Enable Anonymous Auth** — Firebase Console → Authentication →
+///      Sign-in method → Anonymous → Enable. Without this, every
+///      Firestore read fails with `permission-denied` because the rules
+///      require `request.auth != null`.
+///   2. **Deploy the rules** — `firebase deploy --only firestore:rules`
+///      from the project root. The default Firebase test-mode rules
+///      expire after 30 days and then deny everything.
+///   3. **One online launch per device** — the anonymous uid is created
+///      on the first successful contact with Firebase Auth. After that,
+///      it persists and the device can go offline indefinitely.
+///
 /// **Setup instructions:**
 ///
 /// 1. Create a Firebase project at https://console.firebase.google.com
@@ -197,6 +225,120 @@ class FirebaseService {
     if (existing != null) return existing;
     await signInAnonymously();
     return FirebaseAuth.instance.currentUser?.uid;
+  }
+
+  /// Whether the currently signed-in user has been upgraded from anonymous
+  /// to a permanent (email-linked) account. Used by the settings UI to
+  /// show "Linked to email@…" vs "Backup & Link Account".
+  static bool get hasLinkedAccount {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    if (user.isAnonymous) return false;
+    return user.email != null && user.email!.isNotEmpty;
+  }
+
+  /// Email of the linked permanent account, or null when running as
+  /// anonymous. Surfaced in settings ("Linked to alice@example.com").
+  static String? get linkedEmail =>
+      hasLinkedAccount ? FirebaseAuth.instance.currentUser?.email : null;
+
+  /// Link the current anonymous account to an email + password credential.
+  ///
+  /// Preserves the existing `User.uid`, so every `owner_uid`-stamped
+  /// Firestore document continues to work — no data migration needed.
+  /// After a successful link the user can sign back in on any device with
+  /// the same credential and recover their full profile from Firestore.
+  ///
+  /// Throws [FirebaseAuthException] for known auth errors (codes:
+  /// `email-already-in-use`, `weak-password`, `invalid-email`,
+  /// `provider-already-linked`, `network-request-failed`). Callers should
+  /// translate these to user-friendly messages.
+  ///
+  /// Requires [isConfigured] == true and a current anonymous session.
+  static Future<void> linkAnonymousToEmail({
+    required String email,
+    required String password,
+  }) async {
+    if (!_initialised) {
+      throw StateError('Firebase not initialised');
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw StateError('No current user to link');
+    }
+    if (!user.isAnonymous) {
+      throw StateError('Account is already linked to a permanent provider');
+    }
+    final credential = EmailAuthProvider.credential(
+      email: email.trim(),
+      password: password,
+    );
+    await user.linkWithCredential(credential);
+    if (kDebugMode) {
+      debugPrint('✓ FirebaseService: linked anonymous uid ${user.uid} '
+          'to email ${email.trim()}');
+    }
+  }
+
+  /// Sign in with an existing email/password account.
+  ///
+  /// This is the "restore on a new device" flow: the user installs the
+  /// app fresh, lands on the anonymous session created by [signInAnonymously],
+  /// then chooses "I already have an account" — which calls this method.
+  /// On success, `User.uid` switches to the linked account's uid, so the
+  /// caller MUST trigger a cloud-pull rehydration to repopulate Hive from
+  /// the Firestore documents stamped with that uid.
+  ///
+  /// Throws [FirebaseAuthException] for known auth errors (codes:
+  /// `user-not-found`, `wrong-password`, `invalid-email`, `user-disabled`,
+  /// `network-request-failed`).
+  static Future<void> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    if (!_initialised) {
+      throw StateError('Firebase not initialised');
+    }
+    await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
+    if (kDebugMode) {
+      debugPrint('✓ FirebaseService: signed in as '
+          '${FirebaseAuth.instance.currentUser?.uid}');
+    }
+  }
+
+  /// Send a password-reset email for the given address.
+  ///
+  /// Firebase Auth itself rate-limits these — there is no client-side
+  /// throttle needed. The user receives an email with a deep link to
+  /// Firebase's hosted reset page; no in-app handler required.
+  static Future<void> sendPasswordReset(String email) async {
+    if (!_initialised) {
+      throw StateError('Firebase not initialised');
+    }
+    await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
+  }
+
+  /// Sign the current user out and immediately establish a fresh anonymous
+  /// session so the app stays functional offline.
+  ///
+  /// Used when the user signs out of a linked account to "hand off" the
+  /// device — the local Hive data is intentionally NOT cleared here; the
+  /// caller is responsible for wiping local profiles if they want a clean
+  /// device. (See `HiveService.clearAllData()`.)
+  static Future<void> signOut() async {
+    if (!_initialised) return;
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (e, stack) {
+      if (kDebugMode) {
+        debugPrint('✗ FirebaseService.signOut failed: $e\n$stack');
+      }
+    }
+    // Restore the anonymous fallback so cloud writes can resume.
+    await signInAnonymously();
   }
 
   /// Re-attempt Firebase initialisation after a previous failure.
