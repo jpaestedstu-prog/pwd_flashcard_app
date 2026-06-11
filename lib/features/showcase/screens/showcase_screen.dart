@@ -11,6 +11,7 @@ import '../../../providers/app_providers.dart';
 import '../models/showcase_models.dart';
 import '../providers/showcase_provider.dart';
 import '../widgets/showcase_widgets.dart';
+import '../../../widgets/app_back_button.dart';
 
 class ShowcaseScreen extends ConsumerStatefulWidget {
   const ShowcaseScreen({super.key});
@@ -44,11 +45,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Text(
           'My Portfolio',
           style: AppTypography.titleMedium.copyWith(

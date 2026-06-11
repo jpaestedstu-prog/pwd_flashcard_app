@@ -1,11 +1,11 @@
-import 'dart:async';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/pro_surface.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
@@ -17,11 +17,18 @@ import '../../notifications/services/alert_service.dart';
 import '../widgets/child_detail_sheet.dart';
 import '../widgets/parent_recommendation_card.dart';
 import '../widgets/weekly_overview_card.dart';
+import '../../../widgets/animated_gradient_background.dart';
+import '../../../widgets/app_back_button.dart';
+import '../../../widgets/app_card.dart';
+import '../../../widgets/rich_empty_states.dart';
 
 /// Parent Dashboard — overview of all children's learning progress.
 ///
 /// Shows aggregate family stats, per-child cards with weekly trends,
-/// and actionable recommendations for parents.
+/// and actionable recommendations for parents. Live: the underlying
+/// [parentDashboardProvider] watches [educatorRosterProvider] (stream-
+/// backed) and a 10 s wall-clock tick, so changes from any device
+/// surface without polling.
 class ParentDashboardScreen extends ConsumerStatefulWidget {
   const ParentDashboardScreen({super.key});
 
@@ -32,33 +39,18 @@ class ParentDashboardScreen extends ConsumerStatefulWidget {
 
 class _ParentDashboardScreenState
     extends ConsumerState<ParentDashboardScreen> {
-  Timer? _refreshTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    // Auto-refresh every 60 seconds
-    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
-      ref.read(parentDashboardProvider.notifier).refresh();
-    });
-    // Refresh data when returning from a student dashboard (profile switch)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.listen(profileProvider, (_, _) {
-        ref.read(parentDashboardProvider.notifier).refresh();
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    super.dispose();
+  void _refresh() {
+    final active = ref.read(profileProvider);
+    if (active != null) {
+      ref.invalidate(educatorRosterProvider(active.id));
+    }
   }
 
   bool _hasUnreadAlerts() {
     try {
       return AlertService.getAlerts().where((a) => !a.isRead).isNotEmpty;
-    } catch (_) {
+    } on Exception catch (e) {
+      debugPrint('parent dashboard: alert read failed: $e');
       return false;
     }
   }
@@ -68,16 +60,14 @@ class _ParentDashboardScreenState
     final snapshot = ref.watch(parentDashboardProvider);
     final hc = HCColor.of(context);
 
-    return Scaffold(
-      backgroundColor: hc.background,
+    return AnimatedGradientBackground(
+      intensity: 0.25,
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(),
         title: Text(
           'Parent Dashboard',
           style: AppTypography.titleMedium.copyWith(
@@ -120,16 +110,24 @@ class _ParentDashboardScreenState
           IconButton(
             icon: Icon(Icons.refresh_rounded, color: hc.textSecondary),
             tooltip: 'Refresh',
-            onPressed: () =>
-                ref.read(parentDashboardProvider.notifier).refresh(),
+            onPressed: _refresh,
           ),
         ],
       ),
       body: snapshot.children.isEmpty
-          ? _EmptyState(hc: hc)
+          // Centre the empty state, but let it scroll instead of overflowing a
+          // short viewport at a large font scale.
+          ? LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: const _EmptyState(),
+                ),
+              ),
+            )
           : RefreshIndicator(
               onRefresh: () async {
-                ref.read(parentDashboardProvider.notifier).refresh();
+                _refresh();
               },
               child: Builder(builder: (context) {
                 final recommendations =
@@ -281,6 +279,7 @@ class _ParentDashboardScreenState
               );
               }),
             ),
+      ),
     );
   }
 
@@ -300,7 +299,12 @@ class _ParentDashboardScreenState
             try {
               allData =
                   await ref.read(educatorRosterProvider(active.id).future);
-            } catch (_) {}
+            } on FirebaseException catch (e) {
+              // Firestore unreachable / permission-denied — Hive
+              // fallback below still renders the last-known roster.
+              debugPrint('parent dashboard: roster fetch failed '
+                  '(${e.code}): ${e.message}');
+            }
           }
           if (allData.isEmpty) {
             allData = HiveService.getAllProfilesWithProgress();
@@ -334,167 +338,42 @@ class _FamilyStatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary.withValues(alpha: 0.18),
-            AppColors.secondary.withValues(alpha: 0.12),
-            AppColors.primary.withValues(alpha: 0.06),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border:
-            hc.hc ? Border.all(color: AppColors.hcPrimary, width: 2) : null,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.12),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
+    // Professional dashboard kit: a structured "Family Overview" panel with an
+    // overflow-safe stat grid, instead of the playful gradient card.
+    return ProPanel(
+      title: 'Family Overview',
+      subtitle:
+          '${snapshot.activeChildren} of ${snapshot.totalChildren} children active',
+      trailing: Icon(Icons.family_restroom_rounded, color: hc.primary),
+      child: ProStatGrid(
+        tiles: [
+          ProStatTile(
+            icon: Icons.school_rounded,
+            label: 'Words',
+            value: '${snapshot.totalWordsLearned}',
+            accent: AppColors.primary,
           ),
-          ...AppColors.cardShadow,
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: hc.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.family_restroom_rounded,
-                    color: hc.primary, size: 22),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Family Overview',
-                      style: AppTypography.titleSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: hc.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      '${snapshot.activeChildren} of ${snapshot.totalChildren} children active',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: hc.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          ProStatTile(
+            icon: Icons.star_rounded,
+            label: 'Stars',
+            value: '${snapshot.totalStarsEarned}',
+            accent: AppColors.warning,
           ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              _FamilyStatTile(
-                icon: Icons.school_rounded,
-                label: 'Words',
-                value: '${snapshot.totalWordsLearned}',
-                color: AppColors.primary,
-              ),
-              _FamilyStatTile(
-                icon: Icons.star_rounded,
-                label: 'Stars',
-                value: '${snapshot.totalStarsEarned}',
-                color: AppColors.warning,
-                delay: 80,
-              ),
-              _FamilyStatTile(
-                icon: Icons.timer_rounded,
-                label: 'Minutes',
-                value: '${snapshot.totalStudyMinutes}',
-                color: AppColors.success,
-                delay: 160,
-              ),
-              _FamilyStatTile(
-                icon: Icons.sports_esports_rounded,
-                label: 'Games',
-                value: '${snapshot.totalGamesPlayed}',
-                color: AppColors.info,
-                delay: 240,
-              ),
-            ],
+          ProStatTile(
+            icon: Icons.timer_rounded,
+            label: 'Minutes',
+            value: '${snapshot.totalStudyMinutes}',
+            accent: AppColors.success,
+          ),
+          ProStatTile(
+            icon: Icons.sports_esports_rounded,
+            label: 'Games',
+            value: '${snapshot.totalGamesPlayed}',
+            accent: AppColors.info,
           ),
         ],
       ),
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0);
-  }
-}
-
-class _FamilyStatTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-  final int delay;
-
-  const _FamilyStatTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-    this.delay = 0,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(height: 6),
-            Text(value,
-                style: AppTypography.titleMedium
-                    .copyWith(fontWeight: FontWeight.w800)),
-            Text(label,
-                style: AppTypography.labelSmall
-                    .copyWith(color: HCColor.of(context).textSecondary)),
-          ],
-        ),
-      )
-          .animate()
-          .fadeIn(duration: 350.ms, delay: (200 + delay).ms)
-          .scale(
-            begin: const Offset(0.9, 0.9),
-            end: const Offset(1, 1),
-            delay: (200 + delay).ms,
-            duration: 350.ms,
-            curve: Curves.easeOutBack,
-          ),
-    );
   }
 }
 
@@ -517,7 +396,6 @@ class _ChildCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final accuracy = (child.averageAccuracy * 100).round();
     final weekChange = child.weekOverWeekChange;
-    final accentColor = child.isRecentlyActive ? AppColors.success : AppColors.primary;
 
     // ── Today's minutes used vs configured limit ──
     final minutesToday = ref.watch(activeTimeProvider(child.profileId));
@@ -534,29 +412,14 @@ class _ChildCard extends ConsumerWidget {
             ? AppColors.warning
             : AppColors.success;
 
-    return GestureDetector(
+    return AppCard(
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: hc.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: child.isRecentlyActive
-                ? AppColors.success.withValues(alpha: 0.4)
-                : hc.border,
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: accentColor.withValues(alpha: 0.1),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
+      margin: const EdgeInsets.only(bottom: 14),
+      borderRadius: 20,
+      borderColor: child.isRecentlyActive
+          ? AppColors.success.withValues(alpha: 0.4)
+          : hc.border,
+      child: Column(
           children: [
             // Top row: avatar with accuracy ring, name, streak
             Row(
@@ -821,8 +684,18 @@ class _ChildCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                if (showPill) ...[
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Quick actions — a Wrap reflows them onto a new line so they never
+            // overflow on narrow tablets or at large font scales.
+            Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                if (showPill)
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 3),
@@ -849,8 +722,6 @@ class _ChildCard extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 6),
-                ],
                 IconButton(
                   icon: const Icon(Icons.timer_outlined,
                       size: 20, color: AppColors.primary),
@@ -862,7 +733,6 @@ class _ChildCard extends ConsumerWidget {
                     '?name=${Uri.encodeQueryComponent(child.name)}',
                   ),
                 ),
-                const SizedBox(width: 6),
                 IconButton(
                   icon: const Icon(Icons.alarm_rounded,
                       size: 20, color: AppColors.primary),
@@ -874,7 +744,6 @@ class _ChildCard extends ConsumerWidget {
                     '?name=${Uri.encodeQueryComponent(child.name)}',
                   ),
                 ),
-                const SizedBox(width: 6),
                 IconButton(
                   icon: const Icon(Icons.timeline_rounded,
                       size: 20, color: AppColors.primary),
@@ -882,17 +751,16 @@ class _ChildCard extends ConsumerWidget {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () => context.push(
-                    '/progress-timeline/${child.profileId}?name=${Uri.encodeComponent(child.name)}',
+                    '/progress-timeline/${child.profileId}'
+                    '?name=${Uri.encodeQueryComponent(child.name)}',
                   ),
                 ),
-                const SizedBox(width: 4),
                 Icon(Icons.chevron_right_rounded,
                     size: 20, color: hc.textHint),
               ],
             ),
           ],
         ),
-      ),
     )
         .animate()
         .fadeIn(duration: 350.ms, delay: (150 + index * 80).ms)
@@ -933,14 +801,21 @@ class _MiniStat extends StatelessWidget {
             child: Icon(icon, size: 14, color: color),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: AppTypography.labelMedium.copyWith(
-              fontWeight: FontWeight.w800,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: AppTypography.labelMedium.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           Text(
             label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AppTypography.labelSmall.copyWith(
               color: HCColor.of(context).textSecondary,
               fontSize: 9,
@@ -955,49 +830,18 @@ class _MiniStat extends StatelessWidget {
 // ─── Empty State ─────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  final HCColor hc;
-  const _EmptyState({required this.hc});
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.family_restroom_rounded,
-              size: 64, color: hc.textHint),
-          const SizedBox(height: 16),
-          Text(
-            'No student profiles found',
-            style: AppTypography.titleMedium.copyWith(
-              color: hc.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Create student profiles for your children\nto see their learning progress here.',
-            style: AppTypography.bodyMedium.copyWith(
-              color: hc.textHint,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () => context.push('/create-student'),
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Create Student Profile'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => context.push('/home-group-manage'),
-            icon: const Icon(Icons.family_restroom_rounded),
-            label: const Text('Manage Home Groups'),
-          ),
-        ],
-      ),
+    return RichEmptyState(
+      emoji: '👨‍👩‍👧',
+      title: 'No children yet',
+      description:
+          'Create a home group, then share the code with your child\'s device to start tracking progress.',
+      actionLabel: 'Share Home Group Code',
+      actionIcon: Icons.family_restroom_rounded,
+      onAction: () => context.push('/home-group-manage'),
     );
   }
 }
@@ -1096,7 +940,7 @@ List<ParentRecommendation> _generateRecommendations(
     // High mastery celebration
     if (child.masteredCategories >= 3) {
       recs.add(ParentRecommendation(
-        title: '${child.name} mastered ${ child.masteredCategories} categories!',
+        title: '${child.name} mastered ${child.masteredCategories} categories!',
         description:
             'Outstanding progress! ${child.name} has achieved 80%+ mastery in '
             '${child.masteredCategories} vocabulary categories.',

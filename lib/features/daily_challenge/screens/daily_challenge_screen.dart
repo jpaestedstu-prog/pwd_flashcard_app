@@ -15,6 +15,7 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/experiment_provider.dart';
 import '../../experiment/models/experiment_models.dart';
 import '../../../widgets/accessible_celebration_overlay.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Full-screen Daily Challenge with calendar, streak tracker, and quiz.
 class DailyChallengeScreen extends ConsumerStatefulWidget {
@@ -121,11 +122,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: const AppBackButton(),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(horizontal: padding, vertical: 8),

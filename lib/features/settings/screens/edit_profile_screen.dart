@@ -7,6 +7,7 @@ import '../../../core/constants/avatar_data.dart';
 import '../../../core/security/pin_credential_helper.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/shop_data.dart';
 import '../../../l10n/app_localizations.dart';
@@ -352,8 +353,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             alignment: WrapAlignment.center,
             spacing: 12,
             runSpacing: 12,
-            children: List.generate(AvatarData.avatars.length, (i) {
-              final av = AvatarData.avatars[i];
+            children: AvatarData.avatarsForRole(ref.read(profileProvider)?.role)
+                .map((entry) {
+              final i = entry.$1;
+              final av = entry.$2;
               final isSelected =
                   i == _selectedAvatar && _selectedPremiumAvatarId == null;
               return GestureDetector(
@@ -369,8 +372,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   button: true,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 56,
-                    height: 56,
+                    width: context.scaleIcon(56),
+                    height: context.scaleIcon(56),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? av.color.withValues(alpha: 0.3)
@@ -388,7 +391,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   ),
                 ),
               );
-            }),
+            }).toList(),
           ),
 
           const SizedBox(height: 20),
@@ -438,8 +441,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     button: true,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      width: 56,
-                      height: 56,
+                      width: context.scaleIcon(56),
+                      height: context.scaleIcon(56),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? item.color.withValues(alpha: 0.4)

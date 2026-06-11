@@ -13,6 +13,7 @@ import '../../../providers/app_providers.dart';
 import '../models/assessment_models.dart';
 import '../models/custom_quiz_models.dart';
 import '../providers/quiz_builder_provider.dart';
+import '../../../widgets/app_back_button.dart';
 
 class QuizBuilderScreen extends ConsumerStatefulWidget {
   const QuizBuilderScreen({super.key});
@@ -48,17 +49,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
     return Scaffold(
       backgroundColor: hc.background,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/assessment');
-            }
-          },
-        ),
+        leading: const AppBackButton(fallbackRoute: '/assessment-hub'),
         title: Text(
           'Quiz Builder',
           style: AppTypography.titleMedium.copyWith(

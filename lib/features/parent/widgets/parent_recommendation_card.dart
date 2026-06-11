@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/pro_surface.dart';
 import '../screens/parent_dashboard_screen.dart';
 
 /// Card displaying a parent recommendation with icon glow, gradient accent,
@@ -22,30 +23,11 @@ class ParentRecommendationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = recommendation.color;
 
-    return Container(
+    // Professional panel with a colour-coded left accent stripe, replacing the
+    // gradient tip card while keeping per-recommendation colour identity.
+    return ProPanel(
+      accent: color,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            color.withValues(alpha: 0.06),
-            hc.surface,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withValues(alpha: 0.25),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

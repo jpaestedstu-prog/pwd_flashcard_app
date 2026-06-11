@@ -44,7 +44,14 @@ class MoodHistoryScreen extends ConsumerWidget {
       ),
       body: SafeArea(
         child: moods.isEmpty
-            ? Center(
+            // Centre the empty state, but let it scroll instead of overflowing
+            // a short viewport at a large font scale.
+            ? LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -68,7 +75,10 @@ class MoodHistoryScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              )
+              ),
+                    ),
+                  ),
+                )
             : CustomScrollView(
                 slivers: [
                   // ─── Summary Cards ──────────

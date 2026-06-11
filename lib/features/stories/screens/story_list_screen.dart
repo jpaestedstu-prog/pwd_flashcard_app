@@ -2,16 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/hub_header.dart';
 import '../../../data/local/seed_stories.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
+import '../widgets/story_cover_card.dart';
 
-/// Lists all stories grouped by category.
-/// Stories unlock based on wordsLearned progress.
+/// Lists all stories grouped by category as a responsive grid of themed
+/// cover cards. Stories unlock based on wordsLearned progress, and each card
+/// shows the learner's read/quiz completion state.
+///
+/// The Child profile gets a simpler, larger "kid mode" layout (fewer columns,
+/// bigger cards, no metadata chips).
 class StoryListScreen extends ConsumerWidget {
   const StoryListScreen({super.key});
 
@@ -20,6 +25,19 @@ class StoryListScreen extends ConsumerWidget {
     final padding = context.pagePadding;
     final progress = ref.watch(progressProvider);
     final wordsLearned = progress.wordsLearned;
+    final kidMode = ref.watch(profileProvider)?.role == UserRole.child;
+
+    // 1 column on phones, 2–3 on tablets; kid mode caps at 1–2 so cards stay
+    // large and uncluttered.
+    final columns = kidMode ? (context.isTablet ? 2 : 1) : context.gridColumns;
+    // Fixed cell height (mainAxisExtent) that grows with the Font Size setting
+    // — never an aspect ratio, which is the pattern that avoids overflow.
+    final cardHeight = context.scaledHeightCapped(
+      kidMode
+          ? context.responsiveTier(phone: 220.0, tablet: 240.0, large: 260.0)
+          : context.responsiveTier(phone: 198.0, tablet: 210.0, large: 224.0),
+    );
+    final spacing = context.gridSpacing;
 
     return Scaffold(
       body: SafeArea(
@@ -27,49 +45,14 @@ class StoryListScreen extends ConsumerWidget {
           slivers: [
             // ─── Header ─────────────────────────────
             SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(padding, 20, padding, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.2),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(Icons.auto_stories_rounded, color: AppColors.primary, size: 22),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(AppLocalizations.of(context)!.stories, style: AppTypography.headlineLarge),
-                        ),
-                      ],
-                    )
-                        .animate()
-                        .fadeIn(duration: 400.ms)
-                        .slideX(begin: -0.05, end: 0),
-                    const SizedBox(height: 4),
-                    Text(
-                      AppLocalizations.of(context)!.readStoriesAndAnswer,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: HCColor.of(context).textSecondary,
-                      ),
-                    ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
-                  ],
-                ),
+              child: HubHeader(
+                leadingIcon: Icons.auto_stories_rounded,
+                title: AppLocalizations.of(context)!.stories,
+                subtitle: AppLocalizations.of(context)!.readStoriesAndAnswer,
               ),
             ),
 
-            // ─── Story Cards ────────────────────────
+            // ─── Story grid per category ────────────
             ...FlashcardCategory.values.map((category) {
               final stories = SeedStories.getByCategory(category);
               if (stories.isEmpty) return const SliverToBoxAdapter();
@@ -98,28 +81,46 @@ class StoryListScreen extends ConsumerWidget {
                             child: Icon(category.icon, color: category.color, size: 20),
                           ),
                           const SizedBox(width: 10),
-                          Text(category.label, style: AppTypography.titleMedium),
+                          Expanded(
+                            child: Text(category.label,
+                                style: AppTypography.titleMedium,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                          ),
                         ],
                       ).animate().fadeIn(duration: 300.ms),
                       const SizedBox(height: 12),
-                      // Story tiles
-                      ...stories.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final story = entry.value;
-                        final unlocked = _isUnlocked(story, wordsLearned);
-                        return _StoryCard(
-                          story: story,
-                          unlocked: unlocked,
-                          onTap: unlocked
-                              ? () => context.push('/stories/read/${story.id}')
-                              : null,
-                        )
-                            .animate()
-                            .fadeIn(
-                                duration: 400.ms,
-                                delay: (200 + index * 100).ms)
-                            .slideY(begin: 0.1, end: 0);
-                      }),
+                      // Story cover cards
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        itemCount: stories.length,
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          mainAxisExtent: cardHeight,
+                          crossAxisSpacing: spacing,
+                          mainAxisSpacing: spacing,
+                        ),
+                        itemBuilder: (context, index) {
+                          final story = stories[index];
+                          final unlocked = _isUnlocked(story, wordsLearned);
+                          return StoryCoverCard(
+                            story: story,
+                            unlocked: unlocked,
+                            read: progress.completedStoryIds.contains(story.id),
+                            stars: progress.storyBestStars[story.id] ?? 0,
+                            kidMode: kidMode,
+                            onTap: unlocked
+                                ? () => context.push('/stories/read/${story.id}')
+                                : null,
+                          )
+                              .animate()
+                              .fadeIn(duration: 350.ms, delay: (80 * index).ms)
+                              .slideY(begin: 0.08, end: 0);
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -145,162 +146,5 @@ class StoryListScreen extends ConsumerWidget {
       1 => wordsLearned >= 10,
       _ => wordsLearned >= 25,
     };
-  }
-}
-
-class _StoryCard extends StatefulWidget {
-  final Story story;
-  final bool unlocked;
-  final VoidCallback? onTap;
-
-  const _StoryCard({
-    required this.story,
-    required this.unlocked,
-    this.onTap,
-  });
-
-  @override
-  State<_StoryCard> createState() => _StoryCardState();
-}
-
-class _StoryCardState extends State<_StoryCard> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final hc = HCColor.of(context);
-    final story = widget.story;
-    final locked = !widget.unlocked;
-
-    return Semantics(
-      button: widget.unlocked,
-      label: locked
-          ? '${story.titleEn} — locked'
-          : '${story.titleEn} — tap to read',
-      child: GestureDetector(
-        onTapDown:
-            widget.unlocked ? (_) => setState(() => _pressed = true) : null,
-        onTapUp: widget.unlocked
-            ? (_) {
-                setState(() => _pressed = false);
-                widget.onTap?.call();
-              }
-            : null,
-        onTapCancel:
-            widget.unlocked ? () => setState(() => _pressed = false) : null,
-        child: AnimatedScale(
-          scale: _pressed ? 0.97 : 1.0,
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: locked
-                  ? null
-                  : LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        hc.surface,
-                        story.category.color.withValues(alpha: 0.04),
-                      ],
-                    ),
-              color: locked
-                  ? hc.surface.withValues(alpha: 0.5)
-                  : null,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: locked
-                    ? AppColors.border
-                    : story.category.color.withValues(alpha: 0.4),
-                width: 1.5,
-              ),
-              boxShadow: locked
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: story.category.color.withValues(alpha: 0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-            ),
-            child: Row(
-              children: [
-                // Emoji / Lock
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: locked
-                        ? AppColors.border.withValues(alpha: 0.3)
-                        : story.category.color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: locked
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: story.category.color.withValues(alpha: 0.2),
-                              blurRadius: 8,
-                            ),
-                          ],
-                  ),
-                  child: Center(
-                    child: locked
-                        ? Icon(Icons.lock_rounded,
-                            color: hc.textSecondary, size: 28)
-                        : Text(story.emoji,
-                            style: const TextStyle(fontSize: 28)),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                // Title & info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        story.titleEn,
-                        style: AppTypography.titleSmall.copyWith(
-                          color: locked
-                              ? hc.textSecondary
-                              : hc.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        story.titleFil,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: hc.textSecondary,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${story.sentencesEn.length} sentences · ${story.questions.length} questions',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: hc.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Arrow or lock hint
-                Icon(
-                  locked
-                      ? Icons.lock_outline_rounded
-                      : Icons.arrow_forward_ios_rounded,
-                  size: 20,
-                  color: locked
-                      ? hc.textSecondary.withValues(alpha: 0.4)
-                      : AppColors.primary,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

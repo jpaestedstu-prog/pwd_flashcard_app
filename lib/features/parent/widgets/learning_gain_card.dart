@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/pro_surface.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../features/assessment/services/assessment_service.dart';
 
@@ -33,13 +34,10 @@ class LearningGainCard extends StatelessWidget {
     final gainPercent = (report.improvement * 100).round();
     final gains = report.categoryGains;
 
-    return Container(
+    // Professional panel chrome for consistency with the other parent
+    // dashboard panels; the comparison bars stay as-is.
+    return ProPanel(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: hc.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: hc.border),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -374,13 +372,7 @@ class _NoDataCard extends StatelessWidget {
       actionLabel = 'Take pre-test';
     }
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: hc.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: hc.border),
-      ),
+    return ProPanel(
       child: Column(
         children: [
           Row(

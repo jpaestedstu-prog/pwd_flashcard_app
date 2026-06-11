@@ -2,7 +2,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -11,6 +10,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../providers/app_providers.dart';
 import '../models/showcase_models.dart';
 import '../providers/showcase_provider.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Screen that generates and previews a PDF portfolio summary for sharing
 class ShowcaseShareScreen extends ConsumerWidget {
@@ -28,11 +28,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Text(
           'Share Portfolio',
           style: AppTypography.titleMedium.copyWith(

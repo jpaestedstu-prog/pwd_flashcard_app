@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../core/constants/avatar_data.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -14,6 +15,7 @@ import '../../../data/local/hive_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/student_list_provider.dart';
 import '../../../widgets/student_filter_bar.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Multi-student dashboard for teachers and parents.
 ///
@@ -44,11 +46,7 @@ class MultiStudentDashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.go('/home'),
-        ),
+        leading: const AppBackButton(),
         title: Text(
           'All Students',
           style: AppTypography.titleMedium
@@ -134,7 +132,7 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(
             hasFilters ? Icons.search_off_rounded : Icons.person_off_rounded,
-            size: 64,
+            size: context.scaleIcon(64),
             color: AppColors.textHint,
           ),
           const SizedBox(height: 16),

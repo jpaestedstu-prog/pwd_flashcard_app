@@ -693,12 +693,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onTap: () => context.push('/fsl-dictionary'),
           ),
           tile(
-            emoji: '🗣️',
-            label: 'Speech to Sign',
-            gradient: const [AppColors.bannerFslStart, AppColors.bannerFslEnd],
-            onTap: () => context.push('/sign-interpreter'),
-          ),
-          tile(
             emoji: '💬',
             label: 'Talk Board',
             gradient: const [

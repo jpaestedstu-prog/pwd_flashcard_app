@@ -12,6 +12,7 @@ import '../../../widgets/shared_widgets.dart';
 import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
 import '../services/assessment_service.dart';
+import '../../../widgets/app_back_button.dart';
 
 class AssessmentHubScreen extends ConsumerWidget {
   const AssessmentHubScreen({super.key});
@@ -40,21 +41,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                 padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
                 child: Row(
                   children: [
-                    Semantics(
-                      button: true,
-                      label: 'Go back',
-                      child: IconButton(
-                        onPressed: () {
-                          if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go('/home');
-                          }
-                        },
-                        icon: Icon(Icons.arrow_back_rounded,
-                            color: hc.textPrimary),
-                      ),
-                    ),
+                    AppBackButton(color: hc.textPrimary),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(

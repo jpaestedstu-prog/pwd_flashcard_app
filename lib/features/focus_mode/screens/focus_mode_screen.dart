@@ -254,20 +254,38 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> {
     final timeStr =
         '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
 
+    // Timer ring scales by screen tier so it stays a focal point on
+    // tablets without dwarfing phones. Stroke width follows the same
+    // tier so the ring stays proportional.
+    final timerSize = context.responsiveTier<double>(
+      phone: 220,
+      tablet: 300,
+      large: 360,
+      xl: 420,
+      ultra: 480,
+    );
+    final strokeWidth = context.responsiveTier<double>(
+      phone: 12,
+      tablet: 14,
+      large: 16,
+      xl: 18,
+      ultra: 20,
+    );
+
     return Column(
       children: [
         SizedBox(
-          width: 220,
-          height: 220,
+          width: timerSize,
+          height: timerSize,
           child: Stack(
             alignment: Alignment.center,
             children: [
               SizedBox(
-                width: 220,
-                height: 220,
+                width: timerSize,
+                height: timerSize,
                 child: CircularProgressIndicator(
                   value: progress,
-                  strokeWidth: 12,
+                  strokeWidth: strokeWidth,
                   backgroundColor: hc.border,
                   valueColor: AlwaysStoppedAnimation(
                     _isCompleted ? hc.success : hc.primary,

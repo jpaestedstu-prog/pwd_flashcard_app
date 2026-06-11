@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/accessibility/haptic_service.dart' show hapticServiceProvider;
 import '../../../core/services/celebration_service.dart';
@@ -93,6 +94,11 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
       starsEarned: _starsEarned,
       categoriesPlayed: [_story!.category],
     );
+    // Track the best star score for this specific story (drives the ★ badge
+    // on the story card). Reaching the quiz also implies the story was read.
+    ref.read(progressProvider.notifier)
+      ..recordStoryRead(_story!.id)
+      ..recordStoryQuizStars(_story!.id, _starsEarned);
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
     AccessibleCelebrationOverlay.show(
       context: context, ref: ref, type: CelebrationType.gameComplete,
@@ -174,166 +180,202 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
         title: Text('Quiz: ${_story!.titleEn}'),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Progress
-              Semantics(
-                label:
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: context.maxContentWidth),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: context.pagePadding,
+                vertical: 16,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Progress (fixed at top)
+                  Semantics(
+                    label:
+                        'Question ${_currentQ + 1} of ${_story!.questions.length}',
+                    child: LinearProgressIndicator(
+                      value: (_currentQ + 1) / _story!.questions.length,
+                      backgroundColor: AppColors.border,
+                      color: _story!.category.color,
+                      minHeight: 6,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
                     'Question ${_currentQ + 1} of ${_story!.questions.length}',
-                child: LinearProgressIndicator(
-                  value: (_currentQ + 1) / _story!.questions.length,
-                  backgroundColor: AppColors.border,
-                  color: _story!.category.color,
-                  minHeight: 6,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Question ${_currentQ + 1} of ${_story!.questions.length}',
-                style: AppTypography.labelSmall
-                    .copyWith(color: hc.textSecondary),
-                textAlign: TextAlign.center,
-              ),
+                    style: AppTypography.labelSmall
+                        .copyWith(color: hc.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
 
-              const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
-              // Question
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: hc.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: hc.hc
-                      ? Border.all(color: AppColors.hcPrimary, width: 2)
-                      : null,
-                  boxShadow: AppColors.cardShadow,
-                ),
-                child: Text(
-                  questionText,
-                  style: AppTypography.headlineSmall
-                      .copyWith(fontWeight: FontWeight.w600),
-                  textAlign: TextAlign.center,
-                ),
-              )
-                  .animate()
-                  .fadeIn(duration: 300.ms)
-                  .slideY(begin: 0.05, end: 0),
-
-              const SizedBox(height: 28),
-
-              // Options
-              ...options.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final text = entry.value;
-                final isSelected = _selectedIndex == idx;
-                final isCorrect = idx == question.correctIndex;
-
-                  Color bgColor;
-                Color borderColor;
-                Color textColor = hc.textPrimary;
-
-                if (!_answered) {
-                  bgColor = hc.surface;
-                  borderColor = isSelected
-                      ? _story!.category.color
-                      : AppColors.border;
-                } else if (isCorrect) {
-                  bgColor = AppColors.success.withValues(alpha: 0.12);
-                  borderColor = AppColors.success;
-                  textColor = AppColors.success;
-                } else if (isSelected && !isCorrect) {
-                  bgColor = AppColors.error.withValues(alpha: 0.12);
-                  borderColor = AppColors.error;
-                  textColor = AppColors.error;
-                } else {
-                  bgColor = hc.surface;
-                  borderColor = AppColors.border;
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Semantics(
-                    label: text,
-                    selected: isSelected,
-                    child: InkWell(
-                      onTap: _answered ? null : () => _selectAnswer(idx),
-                      borderRadius: BorderRadius.circular(16),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 16),
-                        decoration: BoxDecoration(
-                          color: bgColor,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: borderColor, width: 2),
-                        ),
-                        child: Row(
-                          children: [
-                            // Option letter
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: borderColor.withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
+                  // ─── Question + options (scrolls when too tall) ──────────
+                  // Expanded + SingleChildScrollView keeps long questions and
+                  // 4-option sets (plus large Font Size settings) from ever
+                  // forcing a bottom RenderFlex overflow.
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Question
+                          Container(
+                            padding: EdgeInsets.all(
+                              context.responsiveTier(
+                                phone: 20.0,
+                                tablet: 24.0,
+                                large: 28.0,
                               ),
-                              child: Center(
-                                child: Text(
-                                  String.fromCharCode(65 + idx), // A, B, C
-                                  style: AppTypography.titleSmall
-                                      .copyWith(color: textColor),
+                            ),
+                            decoration: BoxDecoration(
+                              color: hc.surface,
+                              borderRadius: BorderRadius.circular(20),
+                              border: hc.hc
+                                  ? Border.all(color: AppColors.hcPrimary, width: 2)
+                                  : null,
+                              boxShadow: AppColors.cardShadow,
+                            ),
+                            child: Text(
+                              questionText,
+                              style: AppTypography.headlineSmall
+                                  .copyWith(fontWeight: FontWeight.w600),
+                              textAlign: TextAlign.center,
+                            ),
+                          )
+                              .animate()
+                              .fadeIn(duration: 300.ms)
+                              .slideY(begin: 0.05, end: 0),
+
+                          const SizedBox(height: 28),
+
+                          // Options
+                          ...options.asMap().entries.map((entry) {
+                            final idx = entry.key;
+                            final text = entry.value;
+                            final isSelected = _selectedIndex == idx;
+                            final isCorrect = idx == question.correctIndex;
+
+                            Color bgColor;
+                            Color borderColor;
+                            Color textColor = hc.textPrimary;
+
+                            if (!_answered) {
+                              bgColor = hc.surface;
+                              borderColor = isSelected
+                                  ? _story!.category.color
+                                  : AppColors.border;
+                            } else if (isCorrect) {
+                              bgColor = AppColors.success.withValues(alpha: 0.12);
+                              borderColor = AppColors.success;
+                              textColor = AppColors.success;
+                            } else if (isSelected && !isCorrect) {
+                              bgColor = AppColors.error.withValues(alpha: 0.12);
+                              borderColor = AppColors.error;
+                              textColor = AppColors.error;
+                            } else {
+                              bgColor = hc.surface;
+                              borderColor = AppColors.border;
+                            }
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Semantics(
+                                label: text,
+                                selected: isSelected,
+                                child: InkWell(
+                                  onTap: _answered ? null : () => _selectAnswer(idx),
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 250),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 16),
+                                    decoration: BoxDecoration(
+                                      color: bgColor,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: borderColor, width: 2),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // Option letter
+                                        Container(
+                                          width: context.scaleIcon(36),
+                                          height: context.scaleIcon(36),
+                                          decoration: BoxDecoration(
+                                            color: borderColor.withValues(alpha: 0.15),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              String.fromCharCode(65 + idx), // A, B, C
+                                              style: AppTypography.titleSmall
+                                                  .copyWith(color: textColor),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Text(
+                                            text,
+                                            style: AppTypography.bodyLarge
+                                                .copyWith(color: textColor),
+                                          ),
+                                        ),
+                                        if (_answered && isCorrect)
+                                          Icon(Icons.check_circle_rounded,
+                                              color: AppColors.success,
+                                              size: context.scaleIcon(24)),
+                                        if (_answered && isSelected && !isCorrect)
+                                          Icon(Icons.cancel_rounded,
+                                              color: AppColors.error,
+                                              size: context.scaleIcon(24)),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Text(
-                                text,
-                                style: AppTypography.bodyLarge
-                                    .copyWith(color: textColor),
-                              ),
-                            ),
-                            if (_answered && isCorrect)
-                              const Icon(Icons.check_circle_rounded,
-                                  color: AppColors.success, size: 24),
-                            if (_answered && isSelected && !isCorrect)
-                              const Icon(Icons.cancel_rounded,
-                                  color: AppColors.error, size: 24),
-                          ],
-                        ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 300.ms, delay: (100 * idx).ms)
+                                .slideX(begin: 0.03, end: 0);
+                          }),
+                        ],
                       ),
                     ),
                   ),
-                )
-                    .animate()
-                    .fadeIn(duration: 300.ms, delay: (100 * idx).ms)
-                    .slideX(begin: 0.03, end: 0);
-              }),
 
-              const Spacer(),
+                  const SizedBox(height: 16),
 
-              // Next / Finish button
-              if (_answered)
-                ElevatedButton.icon(
-                  onPressed: _next,
-                  icon: Icon(_isLastQuestion
-                      ? Icons.emoji_events_rounded
-                      : Icons.arrow_forward_rounded),
-                  label:
-                      Text(_isLastQuestion ? 'See Results' : 'Next Question'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _story!.category.color,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 52),
-                  ),
-                ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1, end: 0),
+                  // Next / Finish button (fixed at bottom)
+                  if (_answered)
+                    ElevatedButton.icon(
+                      onPressed: _next,
+                      icon: Icon(_isLastQuestion
+                          ? Icons.emoji_events_rounded
+                          : Icons.arrow_forward_rounded),
+                      label: Text(
+                        _isLastQuestion ? 'See Results' : 'Next Question',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _story!.category.color,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 52),
+                      ),
+                    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1, end: 0),
 
-              const SizedBox(height: 16),
-            ],
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
           ),
         ),
       ),

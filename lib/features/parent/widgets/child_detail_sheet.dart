@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/pro_surface.dart';
+import '../../../core/widgets/safe_scaffold.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
+import '../../../providers/app_providers.dart';
 import '../../../providers/parent_provider.dart';
+import '../../../features/progress/theme/progress_theme_provider.dart';
+import '../../../features/progress/theme/progress_layout_provider.dart';
+import '../../../features/progress/theme/progress_theme_picker.dart';
 import '../../../features/progress/widgets/charts/category_radar_chart.dart';
 import '../../../features/progress/widgets/charts/study_time_chart.dart';
+import '../../../features/progress/widgets/shared/progress_section_header.dart';
 import 'learning_gain_card.dart';
 
 /// Bottom sheet showing detailed progress for a single child.
-class ChildDetailSheet extends StatelessWidget {
+class ChildDetailSheet extends ConsumerWidget {
   final ChildSummary child;
   final VoidCallback? onViewFullDashboard;
 
@@ -21,8 +30,27 @@ class ChildDetailSheet extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final hc = HCColor.of(context);
+
+    // ─── Child's selectable skin + layout (yield to accessibility modes) ───
+    final theme = ref.watch(progressThemeForProvider(child.profileId));
+    final layout = ref.watch(progressLayoutForProvider(child.profileId));
+    final settings = ref.watch(settingsProvider);
+    final useTheme =
+        !(settings.highContrastMode || settings.dyslexiaMode);
+    final accent = useTheme ? theme.accent : AppColors.primary;
+    final cardSurface = useTheme ? theme.cardSurface(hc.surface) : hc.surface;
+
+    // Width-cap content on wide tablets (centered) + tier-aware side padding.
+    final maxW = context.maxContentWidth;
+    final sideInset = maxW.isFinite
+        ? ((context.screenWidth - maxW) / 2).clamp(0.0, double.infinity)
+        : 0.0;
+    final contentHPad = context.pagePadding + sideInset;
+
+    // Derive catalog totals so the "of X total" copy can't drift from seed data.
+    final totalWords = ref.watch(allFlashcardsProvider).length;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
@@ -37,23 +65,45 @@ class ChildDetailSheet extends StatelessWidget {
           ),
           child: ListView(
             controller: scrollController,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: contentHPad),
             children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 20),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: hc.border.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(2),
+              // Handle bar + theme picker
+              Row(
+                children: [
+                  const SizedBox(width: 40), // balances the trailing icon
+                  Expanded(
+                    child: Center(
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 12, bottom: 20),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: hc.border.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  IconButton(
+                    tooltip: 'Customize progress',
+                    icon: Icon(Icons.palette_rounded, color: accent),
+                    onPressed: () => showProgressCustomizeSheet(
+                      context,
+                      selectedThemeId: theme.id,
+                      selectedLayoutId: layout.id,
+                      onThemeSelected: (id) =>
+                          selectProgressThemeFor(ref, child.profileId, id),
+                      onLayoutSelected: (id) =>
+                          selectProgressLayoutFor(ref, child.profileId, id),
+                    ),
+                  ),
+                ],
               ),
 
               // ─── Header ───────────────────────────
-              Row(
+              OverflowGuard(
+                label: 'child-header',
+                child: Row(
                 children: [
                   // Avatar with accuracy ring
                   SizedBox(
@@ -72,7 +122,7 @@ class ChildDetailSheet extends StatelessWidget {
                             valueColor: AlwaysStoppedAnimation(
                               child.isRecentlyActive
                                   ? AppColors.success
-                                  : AppColors.primary,
+                                  : accent,
                             ),
                           ),
                         ),
@@ -80,8 +130,7 @@ class ChildDetailSheet extends StatelessWidget {
                           width: 50,
                           height: 50,
                           decoration: BoxDecoration(
-                            color: AppColors.primaryLight
-                                .withValues(alpha: 0.3),
+                            color: accent.withValues(alpha: 0.18),
                             shape: BoxShape.circle,
                           ),
                           child: Center(
@@ -99,6 +148,8 @@ class ChildDetailSheet extends StatelessWidget {
                       children: [
                         Text(
                           child.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: AppTypography.titleMedium.copyWith(
                             fontWeight: FontWeight.w800,
                             color: hc.textPrimary,
@@ -110,10 +161,14 @@ class ChildDetailSheet extends StatelessWidget {
                               Icon(child.disabilityType.icon,
                                   size: 14, color: hc.textSecondary),
                               const SizedBox(width: 4),
-                              Text(
-                                child.disabilityType.label,
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: hc.textSecondary,
+                              Flexible(
+                                child: Text(
+                                  child.disabilityType.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: hc.textSecondary,
+                                  ),
                                 ),
                               ),
                             ],
@@ -132,14 +187,18 @@ class ChildDetailSheet extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              child.isRecentlyActive
-                                  ? 'Active today'
-                                  : 'Last active ${_formatLastActive(child.lastActivityDate)}',
-                              style: AppTypography.labelSmall.copyWith(
-                                color: child.isRecentlyActive
-                                    ? AppColors.success
-                                    : hc.textSecondary,
+                            Flexible(
+                              child: Text(
+                                child.isRecentlyActive
+                                    ? 'Active today'
+                                    : 'Last active ${_formatLastActive(child.lastActivityDate)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: child.isRecentlyActive
+                                      ? AppColors.success
+                                      : hc.textSecondary,
+                                ),
                               ),
                             ),
                           ],
@@ -148,7 +207,13 @@ class ChildDetailSheet extends StatelessWidget {
                     ),
                   ),
                   if (child.streakDays > 0)
-                    Container(
+                    ConstrainedBox(
+                      // Cap the badge so it can't crowd out the name on a very
+                      // narrow split-screen at huge font; the inner text then
+                      // ellipsizes. Name keeps its Expanded priority otherwise.
+                      constraints: BoxConstraints(
+                          maxWidth: context.screenWidth * 0.42),
+                      child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
@@ -168,64 +233,69 @@ class ChildDetailSheet extends StatelessWidget {
                         children: [
                           const Text('🔥', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 4),
-                          Text(
-                            '${child.streakDays} day streak',
-                            style: AppTypography.labelSmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.warning,
+                          Flexible(
+                            child: Text(
+                              '${child.streakDays} day streak',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.labelSmall.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.warning,
+                              ),
                             ),
                           ),
                         ],
                       ),
+                      ),
                     ),
                 ],
+                ),
               ).animate().fadeIn(duration: 300.ms),
 
-              const SizedBox(height: 24),
+              SizedBox(height: layout.sectionGap),
 
               // ─── Quick Stats Grid ─────────────────
-              _QuickStatsGrid(child: child, hc: hc)
-                  .animate()
-                  .fadeIn(duration: 400.ms, delay: 100.ms),
+              _QuickStatsGrid(
+                child: child,
+                totalWords: totalWords,
+              ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
 
-              const SizedBox(height: 20),
+              SizedBox(height: layout.sectionGap),
 
               // ─── Study Time Chart ─────────────────
               StudyTimeChart(dailyMinutes: child.dailyStudyMinutes)
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 200.ms),
 
-              const SizedBox(height: 20),
+              SizedBox(height: layout.sectionGap),
 
               // ─── Category Progress ────────────────
               CategoryRadarChart(categoryProgress: child.categoryProgress)
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 300.ms),
 
-              const SizedBox(height: 20),
+              SizedBox(height: layout.sectionGap),
 
               // ─── Learning Gain (Pre vs Post) ──────
               LearningGainCard(profileId: child.profileId)
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 350.ms),
 
-              const SizedBox(height: 20),
+              SizedBox(height: layout.sectionGap),
 
               // ─── Strengths & Weaknesses ───────────
-              _StrengthsCard(child: child, hc: hc)
+              _StrengthsCard(child: child, hc: hc, surface: cardSurface)
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 400.ms),
 
-              const SizedBox(height: 20),
+              SizedBox(height: layout.sectionGap),
 
               // ─── Recent Games ─────────────────────
               if (child.recentScores.isNotEmpty) ...[
-                Text(
-                  'Recent Games',
-                  style: AppTypography.titleSmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: hc.textPrimary,
-                  ),
+                ProgressSectionHeader(
+                  title: 'Recent Games',
+                  icon: Icons.sports_esports_rounded,
+                  iconColor: accent,
                 ),
                 const SizedBox(height: 10),
                 ...child.recentScores
@@ -283,211 +353,75 @@ class ChildDetailSheet extends StatelessWidget {
 
 class _QuickStatsGrid extends StatelessWidget {
   final ChildSummary child;
-  final HCColor hc;
+  final int totalWords;
 
-  const _QuickStatsGrid({required this.child, required this.hc});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: hc.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: hc.border.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _DetailStatTile(
-                icon: Icons.school_rounded,
-                label: 'Words Learned',
-                value: '${child.wordsLearned}',
-                subtitle: 'of 144 total',
-                color: AppColors.primary,
-                progress: child.wordsLearned / 144,
-              ),
-              const SizedBox(width: 12),
-              _DetailStatTile(
-                icon: Icons.star_rounded,
-                label: 'Stars Earned',
-                value: '${child.totalStars}',
-                subtitle: '${child.totalStars - (child.totalStars - child.totalStars)} balance',
-                color: AppColors.warning,
-                delay: 60,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _DetailStatTile(
-                icon: Icons.percent_rounded,
-                label: 'Accuracy',
-                value: '${(child.averageAccuracy * 100).round()}%',
-                subtitle: child.averageAccuracy >= 0.7
-                    ? 'Great!'
-                    : child.averageAccuracy >= 0.4
-                        ? 'Good progress'
-                        : 'Needs practice',
-                color: AppColors.info,
-                progress: child.averageAccuracy,
-                delay: 120,
-              ),
-              const SizedBox(width: 12),
-              _DetailStatTile(
-                icon: Icons.category_rounded,
-                label: 'Categories',
-                value: '${child.masteredCategories}',
-                subtitle: 'mastered (≥80%)',
-                color: AppColors.secondary,
-                progress: child.masteredCategories / 12,
-                delay: 180,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _DetailStatTile(
-                icon: Icons.timer_rounded,
-                label: 'Study Time',
-                value: '${child.studyMinutesThisWeek}m',
-                subtitle: 'this week',
-                color: AppColors.success,
-                delay: 240,
-              ),
-              const SizedBox(width: 12),
-              _DetailStatTile(
-                icon: Icons.sports_esports_rounded,
-                label: 'Games Played',
-                value: '${child.gamesPlayed}',
-                subtitle: '${child.totalSessions} sessions',
-                color: AppColors.accent,
-                delay: 300,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailStatTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final String subtitle;
-  final Color color;
-  final double? progress;
-  final int delay;
-
-  const _DetailStatTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.subtitle,
-    required this.color,
-    this.progress,
-    this.delay = 0,
+  const _QuickStatsGrid({
+    required this.child,
+    required this.totalWords,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              color.withValues(alpha: 0.1),
-              color.withValues(alpha: 0.04),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    final accuracy = child.averageAccuracy;
+    // Professional dashboard kit: a structured, overflow-safe stat grid in a
+    // titled panel, replacing the fixed 2-per-row gradient tiles.
+    return ProPanel(
+      title: 'Quick Stats',
+      child: ProStatGrid(
+        tiles: [
+          ProStatTile(
+            icon: Icons.school_rounded,
+            label: 'Words Learned',
+            value: '${child.wordsLearned}',
+            caption: 'of $totalWords total',
+            accent: AppColors.primary,
           ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.15),
-                        blurRadius: 6,
-                      ),
-                    ],
-                  ),
-                  child: Icon(icon, size: 16, color: color),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: HCColor.of(context).textSecondary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: AppTypography.labelSmall.copyWith(
-                color: HCColor.of(context).textSecondary,
-              ),
-            ),
-            if (progress != null) ...[
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: LinearProgressIndicator(
-                  value: progress!.clamp(0.0, 1.0),
-                  backgroundColor: color.withValues(alpha: 0.12),
-                  valueColor: AlwaysStoppedAnimation(color),
-                  minHeight: 4,
-                ),
-              ),
-            ],
-          ],
-        ),
-      )
-          .animate()
-          .fadeIn(duration: 300.ms, delay: (150 + delay).ms)
-          .scale(
-            begin: const Offset(0.93, 0.93),
-            end: const Offset(1, 1),
-            delay: (150 + delay).ms,
-            duration: 300.ms,
-            curve: Curves.easeOutBack,
+          ProStatTile(
+            icon: Icons.star_rounded,
+            label: 'Stars Earned',
+            value: '${child.totalStars}',
+            caption: 'available',
+            accent: AppColors.warning,
           ),
+          ProStatTile(
+            icon: Icons.percent_rounded,
+            label: 'Accuracy',
+            value: '${(accuracy * 100).round()}%',
+            caption: accuracy >= 0.7
+                ? 'Great!'
+                : accuracy >= 0.4
+                    ? 'Good progress'
+                    : 'Needs practice',
+            trend: accuracy >= 0.7
+                ? ProTrend.up
+                : accuracy >= 0.4
+                    ? ProTrend.flat
+                    : ProTrend.down,
+            accent: AppColors.info,
+          ),
+          ProStatTile(
+            icon: Icons.category_rounded,
+            label: 'Categories',
+            value: '${child.masteredCategories}',
+            caption: 'mastered (≥80%)',
+            accent: AppColors.secondary,
+          ),
+          ProStatTile(
+            icon: Icons.timer_rounded,
+            label: 'Study Time',
+            value: '${child.studyMinutesThisWeek}m',
+            caption: 'this week',
+            accent: AppColors.success,
+          ),
+          ProStatTile(
+            icon: Icons.sports_esports_rounded,
+            label: 'Games Played',
+            value: '${child.gamesPlayed}',
+            caption: '${child.totalSessions} sessions',
+            accent: AppColors.accent,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -497,8 +431,13 @@ class _DetailStatTile extends StatelessWidget {
 class _StrengthsCard extends StatelessWidget {
   final ChildSummary child;
   final HCColor hc;
+  final Color surface;
 
-  const _StrengthsCard({required this.child, required this.hc});
+  const _StrengthsCard({
+    required this.child,
+    required this.hc,
+    required this.surface,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -509,7 +448,7 @@ class _StrengthsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: hc.surface,
+        color: surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: AppColors.cardShadow,
       ),
@@ -667,48 +606,54 @@ class _RecentGameRow extends StatelessWidget {
               ],
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${score.score}/${score.total}',
-                style: AppTypography.labelMedium,
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: pct >= 70
-                      ? AppColors.success.withValues(alpha: 0.15)
-                      : pct >= 40
-                          ? AppColors.warning.withValues(alpha: 0.15)
-                          : AppColors.error.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+          // Trailing metrics — a Wrap (inside Flexible) so the badges flow to
+          // a second line instead of overflowing at large font / narrow width.
+          Flexible(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  '${score.score}/${score.total}',
+                  style: AppTypography.labelMedium,
                 ),
-                child: Text(
-                  '$pct%',
-                  style: AppTypography.labelSmall.copyWith(
-                    fontWeight: FontWeight.w700,
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
                     color: pct >= 70
-                        ? AppColors.success
+                        ? AppColors.success.withValues(alpha: 0.15)
                         : pct >= 40
-                            ? AppColors.warning
-                            : AppColors.error,
+                            ? AppColors.warning.withValues(alpha: 0.15)
+                            : AppColors.error.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$pct%',
+                    style: AppTypography.labelSmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: pct >= 70
+                          ? AppColors.success
+                          : pct >= 40
+                              ? AppColors.warning
+                              : AppColors.error,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
-                  const SizedBox(width: 2),
-                  Text('${score.starsEarned}',
-                      style: AppTypography.labelSmall),
-                ],
-              ),
-            ],
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.star_rounded,
+                        size: 14, color: AppColors.warning),
+                    const SizedBox(width: 2),
+                    Text('${score.starsEarned}',
+                        style: AppTypography.labelSmall),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/security/pin_credential_helper.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/app_snack_bar.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/review_reminder_service.dart';
 import '../../../data/local/hive_service.dart';
@@ -17,6 +19,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../../widgets/animated_dialogs.dart';
+import '../../../widgets/app_back_button.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -27,18 +30,23 @@ class SettingsScreen extends ConsumerWidget {
     final profile = ref.watch(profileProvider);
     final settingsNotifier = ref.read(settingsProvider.notifier);
 
+    // Cap the form width on tablets so it doesn't sprawl across the
+    // full landscape viewport (1600+ dp). [maxContentWidth] returns
+    // `double.infinity` on phones so this is a no-op there.
+    final maxWidth = context.maxContentWidth;
+
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.go('/home'),
-        ),
+        leading: const AppBackButton(),
         title: Text(AppLocalizations.of(context)?.settings ?? 'Settings'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
           // ─── Profile Section ───────────────
           _SectionHeader(title: AppLocalizations.of(context)?.profile ?? 'Profile'),
           const SizedBox(height: 8),
@@ -70,43 +78,61 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              child: Row(
+              // Avatar + name on the first row; the action buttons sit in a
+              // Wrap below so they flow to a second line instead of pushing the
+              // row past its width on a narrow tablet / large font scale.
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ProfileAvatar(profile: profile, fontSize: 28),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          profile?.name ?? 'No profile',
-                          style: AppTypography.titleMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                  Row(
+                    children: [
+                      ProfileAvatar(profile: profile, fontSize: 28),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              profile?.name ?? 'No profile',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.titleMedium.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              profile?.role.label ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.bodySmall.copyWith(
+                                color: HCColor.of(context).textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          profile?.role.label ?? '',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: HCColor.of(context).textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  TextButton(
-                    onPressed: () => context.push('/edit-profile'),
-                    child: const Text('Edit'),
-                  ),
-                  TextButton(
-                    onPressed: () => context.go('/profile-switcher'),
-                    child: const Text('Switch'),
-                  ),
-                  const SizedBox(width: 4),
-                  TextButton(
-                    onPressed: () => _showSetPinDialog(context, ref, profile),
-                    child: Text(profile?.hasPinProtection == true
-                        ? '🔒 PIN'
-                        : '🔓 Set PIN'),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 4,
+                    children: [
+                      TextButton(
+                        onPressed: () => context.push('/edit-profile'),
+                        child: const Text('Edit'),
+                      ),
+                      TextButton(
+                        onPressed: () => context.go('/profile-switcher'),
+                        child: const Text('Switch'),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            _showSetPinDialog(context, ref, profile),
+                        child: Text(profile?.hasPinProtection == true
+                            ? '🔒 PIN'
+                            : '🔓 Set PIN'),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -141,6 +167,27 @@ class SettingsScreen extends ConsumerWidget {
               activeTrackColor: AppColors.primary,
               onChanged: (v) => settingsNotifier.update(
                 settings.copyWith(darkMode: v, highContrastMode: v ? false : settings.highContrastMode),
+              ),
+            ),
+          ),
+
+          // Dyslexia-friendly theme is an exclusive accessibility mode
+          // (cream surfaces + Lexend font + extra letter-spacing), so
+          // turning it on disables high-contrast and dark mode which
+          // would otherwise override its palette.
+          _SettingsTile(
+            icon: Icons.menu_book_rounded,
+            title: AppLocalizations.of(context)?.dyslexiaMode ?? 'Dyslexia-friendly',
+            subtitle: 'Cream background, Lexend font, wider letter spacing',
+            trailing: Switch.adaptive(
+              value: settings.dyslexiaMode,
+              activeTrackColor: AppColors.primary,
+              onChanged: (v) => settingsNotifier.update(
+                settings.copyWith(
+                  dyslexiaMode: v,
+                  highContrastMode: v ? false : settings.highContrastMode,
+                  darkMode: v ? false : settings.darkMode,
+                ),
               ),
             ),
           ),
@@ -445,6 +492,27 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           _SettingsTile(
+            icon: Icons.vpn_key_rounded,
+            title: 'Cloud Recovery Code',
+            subtitle: 'Restore this profile on a new device',
+            trailing: IconButton(
+              icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+              onPressed: () => context.push('/recovery/show'),
+            ),
+          ),
+
+          if (profile?.role == UserRole.teacher || profile?.role == UserRole.parent)
+            _SettingsTile(
+              icon: Icons.cloud_sync_rounded,
+              title: 'Backup & Link Account',
+              subtitle: 'Sign in with email to restore on any device',
+              trailing: IconButton(
+                icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+                onPressed: () => context.push('/backup-account'),
+              ),
+            ),
+
+          _SettingsTile(
             icon: Icons.cast_for_education_rounded,
             title: 'Classroom Mode',
             subtitle: 'Monitor all students in real time',
@@ -474,6 +542,9 @@ class SettingsScreen extends ConsumerWidget {
                 onPressed: () => context.push('/parental-controls'),
               ),
             ),
+
+          if (profile?.role == UserRole.teacher || profile?.role == UserRole.parent)
+            const _TelemetryToggle(),
 
           _SettingsTile(
             icon: Icons.replay_rounded,
@@ -529,7 +600,9 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           const SizedBox(height: 20),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -860,6 +933,51 @@ class _SettingsTile extends StatelessWidget {
           ),
           trailing,
         ],
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────
+// Telemetry Opt-In Toggle (Crashlytics + Analytics)
+// ────────────────────────────────────────
+//
+// Default OFF. Parent-gated (only mounted when the active profile is
+// teacher / parent — see the conditional in [SettingsScreen.build]).
+// When the user toggles this, [AnalyticsService.setOptIn] persists the
+// flag in Hive AND flips Firebase's live collection-enabled state so the
+// change takes effect without a restart.
+//
+// Ethics note: Because the user base includes children and PWD users,
+// the consent flow is explicit and parent-only. Document this in the
+// thesis methodology chapter.
+class _TelemetryToggle extends StatefulWidget {
+  const _TelemetryToggle();
+
+  @override
+  State<_TelemetryToggle> createState() => _TelemetryToggleState();
+}
+
+class _TelemetryToggleState extends State<_TelemetryToggle> {
+  late bool _enabled = AnalyticsService.isOptIn;
+
+  Future<void> _set(bool value) async {
+    setState(() => _enabled = value);
+    await AnalyticsService.setOptIn(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsTile(
+      icon: Icons.insights_rounded,
+      title: 'Help improve the app',
+      subtitle: _enabled
+          ? 'Sending anonymous crash & usage data to the research team'
+          : 'Off — no data leaves this device',
+      trailing: Switch.adaptive(
+        value: _enabled,
+        activeTrackColor: AppColors.primary,
+        onChanged: _set,
       ),
     );
   }

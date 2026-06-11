@@ -40,11 +40,17 @@ class _ParentalControlsScreenState
   }
 
   Future<void> _save() async {
-    await ParentalControlsService.saveControls(_controls);
-    if (mounted) {
-      AppSnackBar.success(context, message: 'Parental controls saved! \u2705');
-      context.pop();
+    try {
+      await ParentalControlsService.saveControls(_controls);
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackBar.error(context,
+          message: "Couldn't save parental controls: $e");
+      return;
     }
+    if (!mounted) return;
+    AppSnackBar.success(context, message: 'Parental controls saved! \u2705');
+    context.pop();
   }
 
   @override
@@ -73,18 +79,18 @@ class _ParentalControlsScreenState
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF5C6BC0).withValues(alpha: 0.12),
-                  const Color(0xFF5C6BC0).withValues(alpha: 0.05),
+                  AppColors.sectionLearning.withValues(alpha: 0.12),
+                  AppColors.sectionLearning.withValues(alpha: 0.05),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                  color: const Color(0xFF5C6BC0).withValues(alpha: 0.2)),
+                  color: AppColors.sectionLearning.withValues(alpha: 0.2)),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF5C6BC0).withValues(alpha: 0.08),
+                  color: AppColors.sectionLearning.withValues(alpha: 0.08),
                   blurRadius: 12,
                   offset: const Offset(0, 3),
                 ),
@@ -95,17 +101,17 @@ class _ParentalControlsScreenState
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF5C6BC0).withValues(alpha: 0.12),
+                    color: AppColors.sectionLearning.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF5C6BC0).withValues(alpha: 0.2),
+                        color: AppColors.sectionLearning.withValues(alpha: 0.2),
                         blurRadius: 8,
                       ),
                     ],
                   ),
                   child: const Icon(Icons.shield_rounded,
-                      color: Color(0xFF5C6BC0), size: 28),
+                      color: AppColors.sectionLearning, size: 28),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

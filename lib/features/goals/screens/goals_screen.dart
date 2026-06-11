@@ -11,6 +11,7 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/shared_widgets.dart';
 import '../models/goal_model.dart';
 import '../services/goal_service.dart';
+import '../../../widgets/app_back_button.dart';
 
 class GoalsScreen extends ConsumerStatefulWidget {
   const GoalsScreen({super.key});
@@ -42,10 +43,7 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                 padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
                 child: Row(
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_rounded),
-                    ),
+                    const AppBackButton(),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(

@@ -10,6 +10,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/app_providers.dart';
 import '../models/board_models.dart';
 import '../models/board_seed_data.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Lets teachers/parents build a custom communication board template
 /// by selecting tiles from the seed pool and arranging them in a grid.
@@ -68,7 +69,6 @@ class _BoardTemplateBuilderScreenState
 
   void _reorderTile(int oldIndex, int newIndex) {
     setState(() {
-      if (newIndex > oldIndex) newIndex--;
       final tile = _templateTiles.removeAt(oldIndex);
       _templateTiles.insert(newIndex, tile);
     });
@@ -138,11 +138,7 @@ class _BoardTemplateBuilderScreenState
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-          tooltip: 'Back',
-        ),
+        leading: const AppBackButton(),
         actions: [
           IconButton(
             icon: Icon(
@@ -214,7 +210,7 @@ class _BoardTemplateBuilderScreenState
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _templateTiles.length,
-                        onReorder: _reorderTile,
+                        onReorderItem: _reorderTile,
                         itemBuilder: (context, index) {
                           final tile = _templateTiles[index];
                           return ListTile(

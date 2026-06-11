@@ -11,6 +11,7 @@ import '../../../providers/app_providers.dart';
 import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
 import '../services/assessment_service.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Full analytics dashboard showing assessment history, score trends,
 /// pre/post comparisons, and category breakdowns over time.
@@ -39,14 +40,9 @@ class AssessmentResultsScreen extends ConsumerWidget {
                 padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
                 child: Row(
                   children: [
-                    Semantics(
-                      button: true,
-                      label: 'Go back',
-                      child: IconButton(
-                        onPressed: () => context.pop(),
-                        icon: Icon(Icons.arrow_back_rounded,
-                            color: hc.textPrimary),
-                      ),
+                    AppBackButton(
+                      fallbackRoute: '/assessment-hub',
+                      color: hc.textPrimary,
                     ),
                     const SizedBox(width: 8),
                     Expanded(

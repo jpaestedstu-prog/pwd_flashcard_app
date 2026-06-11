@@ -14,6 +14,7 @@ import '../../../widgets/shared_widgets.dart';
 import '../../../core/utils/csv_export_service.dart';
 import '../../../core/services/session_tracker.dart';
 import '../../../providers/app_providers.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Dashboard for Parent/Teacher roles — provides an overview of the
 /// student's learning progress, weak areas, and recommendations.
@@ -83,20 +84,12 @@ class DashboardScreen extends ConsumerWidget {
       },
       child: Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () async {
+        leading: AppBackButton(
+          onBeforePop: () async {
             if (isViewingAsStudent) {
               await ref.read(profileProvider.notifier).restoreEducatorProfile();
             }
-            if (context.mounted) {
-              if (GoRouter.of(context).canPop()) {
-                context.pop();
-              } else {
-                context.go('/home');
-              }
-            }
+            return true;
           },
         ),
         title: Text(

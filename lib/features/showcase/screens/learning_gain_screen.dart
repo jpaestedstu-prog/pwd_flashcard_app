@@ -11,6 +11,7 @@ import '../../assessment/models/assessment_models.dart';
 import '../../assessment/providers/assessment_provider.dart';
 import '../../assessment/services/assessment_service.dart';
 import '../widgets/learning_gain_widgets.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Dashboard visualizing pre-test vs post-test learning gains
 class LearningGainScreen extends ConsumerWidget {
@@ -57,11 +58,7 @@ class LearningGainScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Text(
           'Learning Gains',
           style: AppTypography.titleMedium.copyWith(

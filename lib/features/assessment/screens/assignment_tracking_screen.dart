@@ -7,6 +7,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../providers/app_providers.dart';
 import '../models/assessment_models.dart';
 import '../services/assessment_service.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Screen showing all assignments created by the current educator,
 /// with per-student completion tracking.
@@ -28,11 +29,7 @@ class AssignmentTrackingScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(fallbackRoute: '/assessment-hub'),
         title: Text(
           'Assignment Tracking',
           style: AppTypography.titleMedium.copyWith(

@@ -8,6 +8,7 @@ import '../../../widgets/rich_empty_states.dart';
 import '../../../data/models/enums.dart';
 import '../models/notebook_models.dart';
 import '../providers/notebook_provider.dart';
+import '../../../widgets/app_back_button.dart';
 
 class NotebookScreen extends ConsumerStatefulWidget {
   const NotebookScreen({super.key});
@@ -46,17 +47,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/home');
-            }
-          },
-        ),
+        leading: const AppBackButton(),
         title: Text(
           'My Notebook',
           style: AppTypography.titleMedium.copyWith(
@@ -143,7 +134,20 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
           // ─── Notes List ─────────────────────────────
           Expanded(
             child: notes.isEmpty
-                ? _EmptyState(hasFilter: _selectedCategory != null || _searchQuery.isNotEmpty)
+                // Centre the empty state, but let it scroll instead of
+                // overflowing a short viewport at a large font scale.
+                ? LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints:
+                            BoxConstraints(minHeight: constraints.maxHeight),
+                        child: _EmptyState(
+                          hasFilter: _selectedCategory != null ||
+                              _searchQuery.isNotEmpty,
+                        ),
+                      ),
+                    ),
+                  )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 8),

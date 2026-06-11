@@ -12,6 +12,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/app_providers.dart';
 import '../models/recommendation_models.dart';
 import '../providers/recommendation_provider.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Smart study recommendations screen that analyzes the student's data and
 /// presents personalized, actionable suggestions on what to study next.
@@ -42,12 +43,7 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
                 padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
                 child: Row(
                   children: [
-                    IconButton(
-                      onPressed: () => context.pop(),
-                      icon: Icon(Icons.arrow_back_rounded,
-                          color: hc.textPrimary),
-                      tooltip: 'Back',
-                    ),
+                    AppBackButton(color: hc.textPrimary),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Semantics(

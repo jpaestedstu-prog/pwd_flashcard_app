@@ -5,9 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/pro_surface.dart';
+import '../../../data/local/seed_data.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
+import '../../../widgets/animated_gradient_background.dart';
+import '../../../widgets/app_card.dart';
 import '../../../widgets/connectivity_indicator.dart';
+import '../../../widgets/rich_empty_states.dart';
 import '../../../providers/student_list_provider.dart';
 
 /// Home screen shown to teachers and parents.
@@ -50,12 +55,15 @@ class EducatorHomeScreen extends ConsumerWidget {
             .round()
         : 0;
 
-    return Scaffold(
-      body: SafeArea(
-        child: showRosterLoading
-            ? const Center(child: CircularProgressIndicator())
-            : CustomScrollView(
-                slivers: [
+    return AnimatedGradientBackground(
+      intensity: 0.25,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: showRosterLoading
+              ? const Center(child: CircularProgressIndicator())
+              : CustomScrollView(
+                  slivers: [
             // ─── Header ───────────────────────────
             SliverToBoxAdapter(
               child: Padding(
@@ -111,10 +119,20 @@ class EducatorHomeScreen extends ConsumerWidget {
                   totalStudents: totalStudents,
                   activeToday: activeToday,
                   avgWords: avgWords,
-                  hc: hc,
                 ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
               ),
             ),
+
+            // ─── Parent Dashboard CTA (parents only) ──
+            if (isParent)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
+                  child: _ParentDashboardCta(hc: hc)
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 175.ms),
+                ),
+              ),
 
             // ─── Quick Actions ────────────────────
             SliverToBoxAdapter(
@@ -138,6 +156,62 @@ class EducatorHomeScreen extends ConsumerWidget {
               ),
             ),
 
+            // ─── Cards ────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(padding, 24, padding, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      'Cards',
+                      style: AppTypography.titleMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: hc.textPrimary,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => context.push('/flashcards'),
+                      child: Text(
+                        'View All',
+                        style: AppTypography.labelMedium.copyWith(
+                          color: hc.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 132,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.symmetric(horizontal: padding),
+                  itemCount: _popularDeckCategories.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  itemBuilder: (context, i) {
+                    final category = _popularDeckCategories[i];
+                    final count = SeedData.getByCategory(category).length;
+                    return _DeckTile(
+                      category: category,
+                      cardCount: count,
+                      onTap: () => context.push(
+                        '/flashcards/viewer/${category.index}',
+                      ),
+                    )
+                        .animate()
+                        .fadeIn(
+                          duration: 300.ms,
+                          delay: (250 + i * 60).ms,
+                        )
+                        .slideX(begin: 0.1, end: 0);
+                  },
+                ),
+              ),
+            ),
+
             // ─── Recent Students ──────────────────
             if (students.isNotEmpty) ...[
               SliverToBoxAdapter(
@@ -148,14 +222,19 @@ class EducatorHomeScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            isParent ? 'Your Children' : 'Recent Students',
-                            style: AppTypography.titleMedium.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: hc.textPrimary,
+                          // Expanded + ellipsis so a long (or XL-scaled) title
+                          // can't push "View All" off-screen and overflow.
+                          Expanded(
+                            child: Text(
+                              isParent ? 'Your Children' : 'Recent Students',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.titleMedium.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: hc.textPrimary,
+                              ),
                             ),
                           ),
-                          const Spacer(),
                           TextButton(
                             onPressed: () => context.go('/multi-dashboard'),
                             child: Text(
@@ -176,7 +255,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                             _QuickFilterChip(
                               label: 'Needs Help',
                               icon: Icons.warning_amber_rounded,
-                              color: const Color(0xFFEF5350),
+                              color: AppColors.error,
                               onTap: () {
                                 final notifier = ref.read(studentFilterProvider.notifier);
                                 notifier.clearFilters();
@@ -192,7 +271,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                             _QuickFilterChip(
                               label: 'Inactive 7d+',
                               icon: Icons.schedule_rounded,
-                              color: const Color(0xFFFFA726),
+                              color: AppColors.warning,
                               onTap: () {
                                 final notifier = ref.read(studentFilterProvider.notifier);
                                 notifier.clearFilters();
@@ -204,7 +283,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                             _QuickFilterChip(
                               label: 'Active Today',
                               icon: Icons.local_fire_department_rounded,
-                              color: const Color(0xFF66BB6A),
+                              color: AppColors.success,
                               onTap: () {
                                 final notifier = ref.read(studentFilterProvider.notifier);
                                 notifier.clearFilters();
@@ -254,41 +333,26 @@ class EducatorHomeScreen extends ConsumerWidget {
             // ─── Empty State ──────────────────────
             if (students.isEmpty)
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(padding),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 40),
-                      const Text('📊', style: TextStyle(fontSize: 64)),
-                      const SizedBox(height: 16),
-                      Text(
-                        isParent
-                            ? 'No children profiles yet'
-                            : 'No student profiles yet',
-                        style: AppTypography.titleMedium
-                            .copyWith(color: hc.textSecondary),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Create student profiles to start tracking learning progress.',
-                        style: AppTypography.bodyMedium
-                            .copyWith(color: hc.textSecondary),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
-                      FilledButton.icon(
-                        onPressed: () => context.push('/create-student'),
-                        icon: const Icon(Icons.person_add_rounded),
-                        label: const Text('Create Student Profile'),
-                      ),
-                    ],
-                  ),
+                child: RichEmptyState(
+                  emoji: isParent ? '👨‍👩‍👧' : '📊',
+                  title: isParent ? 'No children yet' : 'No students yet',
+                  description: isParent
+                      ? 'Create a home group, then share the code with your child to join.'
+                      : 'Create a class, then share the code with your students to join.',
+                  actionLabel:
+                      isParent ? 'Share Home Group Code' : 'Share Class Code',
+                  actionIcon: isParent
+                      ? Icons.family_restroom_rounded
+                      : Icons.qr_code_2_rounded,
+                  onAction: () => context.push(
+                      isParent ? '/home-group-manage' : '/classroom-manage'),
                 ),
               ),
 
                   const SliverToBoxAdapter(child: SizedBox(height: 40)),
                 ],
               ),
+        ),
       ),
     );
   }
@@ -300,126 +364,42 @@ class _OverviewStats extends StatelessWidget {
   final int totalStudents;
   final int activeToday;
   final int avgWords;
-  final HCColor hc;
 
   const _OverviewStats({
     required this.totalStudents,
     required this.activeToday,
     required this.avgWords,
-    required this.hc,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatTile(
-            icon: Icons.people_rounded,
-            label: 'Students',
-            value: '$totalStudents',
-            color: const Color(0xFF5C6BC0),
-            hc: hc,
-          ),
+    // Professional surface kit: a structured, overflow-safe stat grid instead
+    // of the playful gradient cards used on the student surfaces. Reads as a
+    // dashboard, which suits responsible progress tracking.
+    return ProStatGrid(
+      tiles: [
+        ProStatTile(
+          icon: Icons.people_rounded,
+          label: 'Students',
+          value: '$totalStudents',
+          caption: 'enrolled',
+          accent: AppColors.sectionLearning,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatTile(
-            icon: Icons.local_fire_department_rounded,
-            label: 'Active Today',
-            value: '$activeToday',
-            color: const Color(0xFFEF5350),
-            hc: hc,
-          ),
+        ProStatTile(
+          icon: Icons.local_fire_department_rounded,
+          label: 'Active Today',
+          value: '$activeToday',
+          caption: 'in last 24h',
+          accent: AppColors.error,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatTile(
-            icon: Icons.auto_stories_rounded,
-            label: 'Avg Words',
-            value: '$avgWords',
-            color: const Color(0xFF26A69A),
-            hc: hc,
-          ),
+        ProStatTile(
+          icon: Icons.auto_stories_rounded,
+          label: 'Avg Words',
+          value: '$avgWords',
+          caption: 'per student',
+          accent: AppColors.sectionCommunication,
         ),
       ],
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-  final HCColor hc;
-
-  const _StatTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.hc,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.12),
-            color.withValues(alpha: 0.04),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: AppTypography.headlineSmall.copyWith(
-              fontWeight: FontWeight.w800,
-              color: hc.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: hc.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -434,104 +414,280 @@ class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isParent) {
+      return _buildParentChips(context);
+    }
+    return _buildTeacherChips(context);
+  }
+
+  Widget _buildParentChips(BuildContext context) {
     return Wrap(
       spacing: 12,
       runSpacing: 12,
       children: [
         _ActionChip(
-          icon: Icons.person_add_rounded,
-          label: 'Add Student',
-          color: const Color(0xFF43A047),
-          onTap: () => context.push('/create-student'),
-        ),
-        _ActionChip(
-          icon: Icons.people_rounded,
-          label: 'All Students',
-          color: const Color(0xFF5C6BC0),
-          onTap: () => context.push('/multi-dashboard'),
-        ),
-        _ActionChip(
-          icon: Icons.analytics_rounded,
-          label: 'Analytics',
-          color: const Color(0xFF26A69A),
-          onTap: () => context.push('/teacher-analytics'),
-        ),
-        _ActionChip(
-          icon: Icons.assessment_rounded,
-          label: 'Reports',
-          color: const Color(0xFFFFA726),
-          onTap: () => context.push('/weekly-reports'),
-        ),
-        _ActionChip(
-          icon: Icons.quiz_rounded,
-          label: 'Assessments',
-          color: const Color(0xFFEF5350),
-          onTap: () => context.push('/assessment'),
-        ),
-        _ActionChip(
-          icon: Icons.assignment_turned_in_rounded,
-          label: 'Assign Tasks',
-          color: const Color(0xFF66BB6A),
-          onTap: () => context.push('/assessment/assign'),
-        ),
-        _ActionChip(
-          icon: Icons.track_changes_rounded,
-          label: 'Track Progress',
-          color: const Color(0xFF29B6F6),
-          onTap: () => context.push('/assessment/tracking'),
-        ),
-        _ActionChip(
-          icon: Icons.print_rounded,
-          label: 'Worksheets',
-          color: const Color(0xFF7E57C2),
-          onTap: () => context.push('/worksheets'),
-        ),
-        if (isParent)
-          _ActionChip(
-            icon: Icons.family_restroom_rounded,
-            label: 'Family View',
-            color: const Color(0xFFEC407A),
-            onTap: () => context.push('/parent-dashboard'),
-          ),
-        if (!isParent)
-          _ActionChip(
-            icon: Icons.cast_for_education_rounded,
-            label: 'Classroom',
-            color: const Color(0xFFEC407A),
-            onTap: () => context.push('/classroom'),
-          ),
-        _ActionChip(
           icon: Icons.qr_code_2_rounded,
-          label: 'Manage Classes',
-          color: const Color(0xFF26A69A),
-          onTap: () => context.push('/classroom-manage'),
+          label: 'Share Code',
+          color: AppColors.success,
+          onTap: () => context.push('/home-group-manage'),
+        ),
+        _ActionChip(
+          icon: Icons.family_restroom_rounded,
+          label: 'Family View',
+          color: AppColors.accent,
+          onTap: () => context.push('/parent-dashboard'),
+        ),
+        _ActionChip(
+          icon: Icons.shield_rounded,
+          label: 'Parental Controls',
+          color: AppColors.sectionAssessment,
+          onTap: () => context.push('/parental-controls'),
+        ),
+        _ActionChip(
+          icon: Icons.style_rounded,
+          label: 'Cards',
+          color: AppColors.info,
+          onTap: () => context.push('/flashcards'),
+        ),
+        _ActionChip(
+          icon: Icons.tv_rounded,
+          label: 'TV Cast',
+          color: AppColors.primary,
+          onTap: () => context.push('/tv-cast'),
         ),
         _ActionChip(
           icon: Icons.message_rounded,
           label: 'Messages',
-          color: const Color(0xFF42A5F5),
+          color: AppColors.sectionSocial,
           onTap: () => context.push('/messages'),
         ),
-        // ─── Thesis Research Tools ────────────
         _ActionChip(
-          icon: Icons.science_rounded,
-          label: 'Experiment Setup',
-          color: const Color(0xFF8E24AA),
-          onTap: () => context.push('/experiment-setup'),
-        ),
-        _ActionChip(
-          icon: Icons.poll_rounded,
-          label: 'SUS Survey',
-          color: const Color(0xFF00897B),
-          onTap: () => context.push('/survey-results'),
-        ),
-        _ActionChip(
-          icon: Icons.file_download_rounded,
-          label: 'Research Export',
-          color: const Color(0xFF6D4C41),
-          onTap: () => context.push('/research-export'),
+          icon: Icons.assessment_rounded,
+          label: 'Reports',
+          color: AppColors.warning,
+          onTap: () => context.push('/weekly-reports'),
         ),
       ],
+    );
+  }
+
+  Widget _buildTeacherChips(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _GroupLabel(text: 'Classroom & Students', color: hc.textSecondary),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            _ActionChip(
+              icon: Icons.qr_code_2_rounded,
+              label: 'Share Code',
+              color: AppColors.success,
+              onTap: () => context.push('/classroom-manage'),
+            ),
+            _ActionChip(
+              icon: Icons.people_rounded,
+              label: 'All Students',
+              color: AppColors.sectionLearning,
+              onTap: () => context.push('/multi-dashboard'),
+            ),
+            _ActionChip(
+              icon: Icons.cast_for_education_rounded,
+              label: 'Classroom',
+              color: AppColors.accent,
+              onTap: () => context.push('/classroom'),
+            ),
+            _ActionChip(
+              icon: Icons.qr_code_2_rounded,
+              label: 'Manage Classes',
+              color: AppColors.sectionCommunication,
+              onTap: () => context.push('/classroom-manage'),
+            ),
+            _ActionChip(
+              icon: Icons.message_rounded,
+              label: 'Messages',
+              color: AppColors.sectionSocial,
+              onTap: () => context.push('/messages'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _GroupLabel(text: 'Content', color: hc.textSecondary),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            _ActionChip(
+              icon: Icons.style_rounded,
+              label: 'Cards',
+              color: AppColors.info,
+              onTap: () => context.push('/flashcards'),
+            ),
+            _ActionChip(
+              icon: Icons.tv_rounded,
+              label: 'TV Cast',
+              color: AppColors.primary,
+              onTap: () => context.push('/tv-cast'),
+            ),
+            _ActionChip(
+              icon: Icons.print_rounded,
+              label: 'Worksheets',
+              color: AppColors.sectionWellbeing,
+              onTap: () => context.push('/worksheets'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _GroupLabel(text: 'Assessments & Progress', color: hc.textSecondary),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            _ActionChip(
+              icon: Icons.analytics_rounded,
+              label: 'Analytics',
+              color: AppColors.sectionCommunication,
+              onTap: () => context.push('/teacher-analytics'),
+            ),
+            _ActionChip(
+              icon: Icons.assessment_rounded,
+              label: 'Reports',
+              color: AppColors.warning,
+              onTap: () => context.push('/weekly-reports'),
+            ),
+            _ActionChip(
+              icon: Icons.quiz_rounded,
+              label: 'Assessments',
+              color: AppColors.sectionAssessment,
+              onTap: () => context.push('/assessment'),
+            ),
+            _ActionChip(
+              icon: Icons.assignment_turned_in_rounded,
+              label: 'Assign Tasks',
+              color: AppColors.success,
+              onTap: () => context.push('/assessment/assign'),
+            ),
+            _ActionChip(
+              icon: Icons.track_changes_rounded,
+              label: 'Track Progress',
+              color: AppColors.info,
+              onTap: () => context.push('/assessment/tracking'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _GroupLabel(text: 'Research', color: hc.textSecondary),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            _ActionChip(
+              icon: Icons.science_rounded,
+              label: 'Experiment Setup',
+              color: AppColors.sectionWellbeing,
+              onTap: () => context.push('/experiment-setup'),
+            ),
+            _ActionChip(
+              icon: Icons.poll_rounded,
+              label: 'SUS Survey',
+              color: AppColors.sectionCommunication,
+              onTap: () => context.push('/survey-results'),
+            ),
+            _ActionChip(
+              icon: Icons.file_download_rounded,
+              label: 'Research Export',
+              color: AppColors.primaryDark,
+              onTap: () => context.push('/research-export'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Group Label for Quick Action sub-sections ─────────
+
+class _GroupLabel extends StatelessWidget {
+  final String text;
+  final Color color;
+
+  const _GroupLabel({required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text.toUpperCase(),
+      style: AppTypography.labelSmall.copyWith(
+        color: color,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.8,
+      ),
+    );
+  }
+}
+
+// ─── Parent Dashboard CTA (parents only) ───────────────
+
+class _ParentDashboardCta extends StatelessWidget {
+  final HCColor hc;
+
+  const _ParentDashboardCta({required this.hc});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: () => context.push('/parent-dashboard'),
+      borderRadius: 20,
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          AppColors.primary.withValues(alpha: 0.18),
+          AppColors.accent.withValues(alpha: 0.12),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: hc.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.dashboard_customize_rounded,
+                color: hc.primary, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Parent Dashboard',
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: hc.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Detailed insights, alerts, and recommendations',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: hc.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.arrow_forward_rounded, color: hc.primary),
+        ],
+      ),
     );
   }
 }
@@ -551,64 +707,46 @@ class _ActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.12),
-            color.withValues(alpha: 0.04),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+    return AppCard(
+      onTap: onTap,
+      borderRadius: 14,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      borderColor: color.withValues(alpha: 0.15),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          color.withValues(alpha: 0.12),
+          color.withValues(alpha: 0.04),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.2),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Icon(icon, size: 18, color: color),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: AppTypography.labelMedium.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w600,
-                  ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.2),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
+            child: Icon(icon, size: 18, color: color),
           ),
-        ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: AppTypography.labelMedium.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -645,89 +783,77 @@ class _StudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.12)),
+    return AppCard(
+      onTap: onTap,
+      borderRadius: 16,
+      padding: const EdgeInsets.all(14),
+      borderColor: AppColors.primary.withValues(alpha: 0.12),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          AppColors.primary.withValues(alpha: 0.06),
+          Colors.transparent,
+        ],
       ),
-      color: hc.surface,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.primary.withValues(alpha: 0.06),
-              Colors.transparent,
-            ],
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: CircleAvatar(
+              backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+              child: Text(
+                name.isNotEmpty ? name[0].toUpperCase() : '?',
+                style: AppTypography.titleMedium.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                    child: Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : '?',
-                      style: AppTypography.titleMedium.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: AppTypography.titleSmall.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: hc.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$wordsLearned words  •  🔥 $streak streak  •  ⭐ $stars',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: hc.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 Text(
-                  _timeAgo(lastActive),
-                  style: AppTypography.labelSmall.copyWith(
+                  name,
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: hc.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$wordsLearned words  •  🔥 $streak streak  •  ⭐ $stars',
+                  style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(width: 4),
-                Icon(Icons.chevron_right_rounded,
-                    color: hc.textSecondary, size: 20),
               ],
             ),
           ),
-        ),
+          Text(
+            _timeAgo(lastActive),
+            style: AppTypography.labelSmall.copyWith(
+              color: hc.textSecondary,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(Icons.chevron_right_rounded,
+              color: hc.textSecondary, size: 20),
+        ],
       ),
     );
   }
@@ -771,6 +897,106 @@ class _QuickFilterChip extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Cards Section ────────────────────────────────────
+
+const List<FlashcardCategory> _popularDeckCategories = [
+  FlashcardCategory.animals,
+  FlashcardCategory.colorsAndShapes,
+  FlashcardCategory.numbers,
+  FlashcardCategory.familyAndGreetings,
+];
+
+class _DeckTile extends StatelessWidget {
+  final FlashcardCategory category;
+  final int cardCount;
+  final VoidCallback onTap;
+
+  const _DeckTile({
+    required this.category,
+    required this.cardCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: '${category.label} deck, $cardCount cards',
+      child: SizedBox(
+        width: 128,
+        child: Card(
+          elevation: 3,
+          shadowColor: category.color.withValues(alpha: 0.35),
+          clipBehavior: Clip.antiAlias,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: InkWell(
+            onTap: onTap,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [category.darkColor, category.color],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Icon(
+                        category.icon,
+                        size: 22,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          category.label,
+                          style: AppTypography.labelLarge.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$cardCount cards',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/pro_surface.dart';
 import '../../../providers/parent_provider.dart';
 
 /// Shows a weekly summary card comparing study times across all children.
@@ -45,20 +46,10 @@ class WeeklyOverviewCard extends StatelessWidget {
     final avgPerChild =
         children.isEmpty ? 0 : (totalThisWeek / children.length).round();
 
-    return Container(
+    // Professional panel chrome (flat hairline, theme-aware) to match the
+    // other parent-dashboard panels; the bespoke bar chart stays as-is.
+    return ProPanel(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: hc.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: hc.border.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

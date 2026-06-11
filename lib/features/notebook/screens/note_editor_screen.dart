@@ -7,6 +7,7 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../data/models/enums.dart';
 import '../models/notebook_models.dart';
 import '../providers/notebook_provider.dart';
+import '../../../widgets/app_back_button.dart';
 
 class NoteEditorScreen extends ConsumerStatefulWidget {
   final NoteEntry? existingNote;
@@ -49,17 +50,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/notebook');
-            }
-          },
-        ),
+        leading: const AppBackButton(fallbackRoute: '/notebook'),
         title: Text(
           _isEditing ? 'Edit Note' : 'New Note',
           style: AppTypography.titleMedium.copyWith(

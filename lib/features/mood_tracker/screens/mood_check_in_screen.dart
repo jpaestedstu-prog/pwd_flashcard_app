@@ -109,9 +109,20 @@ class _MoodCheckInScreenState extends ConsumerState<MoodCheckInScreen> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
                         curve: Curves.easeOutCubic,
-                        width: context.isTablet ? 130 : 100,
+                        width: context.responsiveTier<double>(
+                          phone: 100,
+                          tablet: 130,
+                          large: 160,
+                          xl: 180,
+                          ultra: 200,
+                        ),
                         padding: EdgeInsets.symmetric(
-                          vertical: context.isTablet ? 18 : 14,
+                          vertical: context.responsiveTier<double>(
+                            phone: 14,
+                            tablet: 18,
+                            large: 22,
+                            xl: 26,
+                          ),
                           horizontal: 8,
                         ),
                         decoration: BoxDecoration(

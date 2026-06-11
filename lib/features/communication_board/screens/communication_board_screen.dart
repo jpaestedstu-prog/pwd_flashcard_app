@@ -9,6 +9,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/app_providers.dart';
 import '../models/board_models.dart';
 import '../models/board_seed_data.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// AAC Communication Board — tap picture tiles to build sentences,
 /// then press the speak button to hear them via TTS.
@@ -109,11 +110,7 @@ class _CommunicationBoardScreenState
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-          tooltip: 'Back',
-        ),
+        leading: const AppBackButton(),
         actions: [
           // Language toggle
           Semantics(

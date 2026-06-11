@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/accessibility/voice_navigation_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/accessibility_visual_feedback.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Full voice-guided navigation mode with a step-by-step guided tour
 /// and auto-reading of screen elements.
@@ -116,11 +116,7 @@ class _VoiceGuidedModeScreenState
     return Scaffold(
       backgroundColor: hc.background,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
-          tooltip: 'Go back',
-        ),
+        leading: const AppBackButton(),
         title: Text(
           'Voice-Guided Mode',
           style: AppTypography.titleMedium.copyWith(

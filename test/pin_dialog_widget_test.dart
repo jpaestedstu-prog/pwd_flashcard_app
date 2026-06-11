@@ -80,8 +80,12 @@ void main() {
   });
 
   group('PinCredentialHelper end-to-end via Hive', () {
-    testWidgets('saved profile verifies with correct PIN, rejects wrong PIN',
-        (tester) async {
+    // Plain test() rather than testWidgets(): the body only exercises
+    // PinAuthService/HiveService and awaits a real Hive write. Under
+    // testWidgets's FakeAsync zone those timers never fire and the test
+    // hangs until the 10-minute timeout.
+    test('saved profile verifies with correct PIN, rejects wrong PIN',
+        () async {
       final p = await _seedHashedProfile(pin: '1234');
       final loaded = HiveService.getProfileById(p.id)!;
 
