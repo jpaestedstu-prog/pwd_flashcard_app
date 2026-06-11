@@ -2,7 +2,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/services/session_tracker.dart';
@@ -10,6 +9,7 @@ import '../../../data/local/hive_service.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
 import '../widgets/charts/activity_heatmap.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Full-screen timeline view for a single student.
 ///
@@ -39,16 +39,13 @@ class ProgressTimelineScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: hc.background,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () async {
+        leading: AppBackButton(
+          fallbackRoute: '/progress',
+          onBeforePop: () async {
             if (ref.read(profileProvider.notifier).isViewingAsStudent) {
               await ref.read(profileProvider.notifier).restoreEducatorProfile();
             }
-            if (context.mounted) {
-              context.pop();
-            }
+            return true;
           },
         ),
         title: Text(

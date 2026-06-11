@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 import '../../../core/services/worksheet_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Screen that lets users pick a worksheet type, category and difficulty,
 /// then generates a printable/shareable PDF worksheet.
@@ -32,11 +32,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Text(
           'Printable Worksheets',
           style: AppTypography.titleMedium.copyWith(

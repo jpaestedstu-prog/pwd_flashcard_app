@@ -15,6 +15,7 @@ import '../widgets/charts/learning_line_chart.dart';
 import '../widgets/charts/spaced_repetition_heatmap.dart';
 import '../widgets/charts/star_pie_chart.dart';
 import '../widgets/charts/study_time_chart.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Enhanced analytics dashboard with adaptive difficulty history,
 /// spaced repetition heatmap, and comprehensive learning insights.
@@ -70,16 +71,13 @@ class AdaptiveAnalyticsScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () async {
+        leading: AppBackButton(
+          fallbackRoute: '/progress',
+          onBeforePop: () async {
             if (ref.read(profileProvider.notifier).isViewingAsStudent) {
               await ref.read(profileProvider.notifier).restoreEducatorProfile();
             }
-            if (context.mounted) {
-              context.pop();
-            }
+            return true;
           },
         ),
         title: Text(

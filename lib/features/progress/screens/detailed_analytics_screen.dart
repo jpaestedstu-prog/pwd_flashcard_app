@@ -14,6 +14,7 @@ import '../widgets/charts/learning_line_chart.dart';
 import '../widgets/charts/star_pie_chart.dart';
 import '../widgets/charts/study_time_chart.dart';
 import '../widgets/charts/activity_heatmap.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Full-page analytics dashboard with interactive fl_chart visuals.
 class DetailedAnalyticsScreen extends ConsumerWidget {
@@ -54,16 +55,13 @@ class DetailedAnalyticsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () async {
+        leading: AppBackButton(
+          fallbackRoute: '/progress',
+          onBeforePop: () async {
             if (ref.read(profileProvider.notifier).isViewingAsStudent) {
               await ref.read(profileProvider.notifier).restoreEducatorProfile();
             }
-            if (context.mounted) {
-              context.pop();
-            }
+            return true;
           },
         ),
         title: Text(

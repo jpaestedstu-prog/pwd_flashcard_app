@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/safe_scaffold.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/models/achievements.dart';
@@ -12,6 +14,12 @@ import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/experiment_provider.dart';
 import '../../../features/experiment/models/experiment_models.dart';
+import '../theme/progress_theme_provider.dart';
+import '../theme/progress_layout_provider.dart';
+import '../theme/progress_theme_picker.dart';
+import '../widgets/shared/progress_section_header.dart';
+import '../widgets/shared/category_progress_row.dart';
+import '../widgets/shared/progress_stat_grid.dart';
 
 class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
@@ -30,6 +38,39 @@ class ProgressScreen extends ConsumerWidget {
         ? (masteredWords / totalWords).clamp(0.0, 1.0)
         : 0.0;
 
+    // ─── Selectable skin + layout (yield to accessibility modes) ───
+    final theme = ref.watch(progressThemeProvider);
+    final layout = ref.watch(progressLayoutProvider);
+    final settings = ref.watch(settingsProvider);
+    final useTheme =
+        !(settings.highContrastMode || settings.dyslexiaMode);
+    // Subtle skin wash for neutral cards; null in accessibility modes so the
+    // plain HCColor surface is used.
+    final cardSurface =
+        useTheme ? theme.cardSurface(HCColor.of(context).surface) : null;
+
+    // Width-cap the content on wide tablets (center it) and use the
+    // tier-aware page padding on the sides — prevents edge-to-edge stretch
+    // on large screens and cramping on phones.
+    final maxW = context.maxContentWidth;
+    final sideInset = maxW.isFinite
+        ? ((context.screenWidth - maxW) / 2).clamp(0.0, double.infinity)
+        : 0.0;
+    final contentHPad = context.pagePadding + sideInset;
+    final headerGradient = useTheme
+        ? theme.gradient
+        : LinearGradient(
+            colors: [
+              AppColors.primary,
+              AppColors.primary.withValues(alpha: 0.85),
+              AppColors.secondary.withValues(alpha: 0.7),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
+    final headerTextColor = useTheme ? theme.onHeader : Colors.white;
+    final accent = useTheme ? theme.accent : HCColor.of(context).primary;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -37,67 +78,80 @@ class ProgressScreen extends ConsumerWidget {
           SliverAppBar(
             expandedHeight: 150,
             pinned: true,
+            actions: [
+              IconButton(
+                tooltip: 'Customize progress',
+                icon: Icon(Icons.palette_rounded, color: headerTextColor),
+                onPressed: () => showProgressCustomizeSheet(
+                  context,
+                  selectedThemeId: theme.id,
+                  selectedLayoutId: layout.id,
+                  onThemeSelected: (id) =>
+                      ref.read(progressThemeProvider.notifier).select(id),
+                  onLayoutSelected: (id) =>
+                      ref.read(progressLayoutProvider.notifier).select(id),
+                ),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: 16,
+                bottom: 16,
+                end: 56, // clear the palette action at large font scales
+              ),
               title: Text(
                 "${profile?.name ?? 'Learner'}'s Progress",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppTypography.titleMedium.copyWith(
-                  color: Colors.white,
+                  color: headerTextColor,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary,
-                      AppColors.primary.withValues(alpha: 0.85),
-                      AppColors.secondary.withValues(alpha: 0.7),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
+                decoration: BoxDecoration(gradient: headerGradient),
               ),
             ),
           ),
 
           SliverPadding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.fromLTRB(contentHPad, 20, contentHPad, 20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // ─── Top Stats Row ──────────────
-                Row(
-                      children: [
-                        _QuickStat(
-                          icon: Icons.local_fire_department_rounded,
-                          label: 'Streak',
-                          value: '$streak',
-                          suffix: 'days',
-                          color: AppColors.accent,
-                        ),
-                        const SizedBox(width: 12),
-                        _QuickStat(
-                          icon: Icons.star_rounded,
-                          label: 'Stars',
-                          value: '$totalStars',
-                          suffix: '',
-                          color: AppColors.warning,
-                        ),
-                        const SizedBox(width: 12),
-                        _QuickStat(
-                          icon: Icons.menu_book_rounded,
-                          label: 'Words',
-                          value: '$masteredWords',
-                          suffix: '/ $totalWords',
-                          color: AppColors.secondary,
-                        ),
-                      ],
+                // ─── Top Stats (responsive, overflow-safe grid) ──
+                OverflowGuard(
+                      label: 'progress-top-stats',
+                      child: ProgressStatGrid(
+                        layout: layout,
+                        stats: [
+                          ProgressStat(
+                            icon: Icons.local_fire_department_rounded,
+                            label: 'Streak',
+                            value: '$streak',
+                            suffix: 'days',
+                            color: AppColors.accent,
+                          ),
+                          ProgressStat(
+                            icon: Icons.star_rounded,
+                            label: 'Stars',
+                            value: '$totalStars',
+                            color: AppColors.warning,
+                          ),
+                          ProgressStat(
+                            icon: Icons.menu_book_rounded,
+                            label: 'Words',
+                            value: '$masteredWords',
+                            suffix: '/ $totalWords',
+                            color: AppColors.secondary,
+                          ),
+                        ],
+                      ),
                     )
                     .animate()
                     .fadeIn(duration: 400.ms)
                     .slideY(begin: -0.15, end: 0),
 
-                const SizedBox(height: 28),
+                SizedBox(height: layout.sectionGap),
 
                 // ─── Overall Mastery ─────────────
                 Semantics(
@@ -105,9 +159,23 @@ class ProgressScreen extends ConsumerWidget {
                           'Overall mastery: ${(masteryPct * 100).round()} percent. '
                           '$masteredWords out of $totalWords words learned.',
                       child: Center(
-                        child: CircularPercentIndicator(
-                          radius: 80,
-                          lineWidth: 14,
+                        child: Builder(builder: (context) {
+                          // Responsive, text-scaler-aware ring so it fits small
+                          // tablets in portrait/split-screen and grows (capped)
+                          // with the Font Size setting instead of clipping.
+                          final ringRadius = context.scaledHeightCapped(
+                            context.responsiveTier(
+                                  phone: 72.0,
+                                  tablet: 80.0,
+                                  large: 92.0,
+                                  xl: 100.0,
+                                ) *
+                                layout.heroScale,
+                            max: 1.3,
+                          );
+                          return CircularPercentIndicator(
+                          radius: ringRadius,
+                          lineWidth: ringRadius * 0.17,
                           percent: masteryPct.clamp(0.0, 1.0),
                           center: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -116,7 +184,7 @@ class ProgressScreen extends ConsumerWidget {
                                 '${(masteryPct * 100).round()}%',
                                 style: AppTypography.headlineMedium.copyWith(
                                   fontWeight: FontWeight.w900,
-                                  color: HCColor.of(context).primary,
+                                  color: accent,
                                 ),
                               ),
                               Text(
@@ -127,12 +195,15 @@ class ProgressScreen extends ConsumerWidget {
                               ),
                             ],
                           ),
-                          progressColor: HCColor.of(context).primary,
-                          backgroundColor: HCColor.of(context).primaryLight,
+                          progressColor: accent,
+                          backgroundColor: useTheme
+                              ? accent.withValues(alpha: 0.15)
+                              : HCColor.of(context).primaryLight,
                           circularStrokeCap: CircularStrokeCap.round,
                           animation: true,
                           animationDuration: 1000,
-                        ),
+                          );
+                        }),
                       ),
                     )
                     .animate()
@@ -142,7 +213,7 @@ class ProgressScreen extends ConsumerWidget {
                       end: const Offset(1, 1),
                     ),
 
-                const SizedBox(height: 32),
+                SizedBox(height: layout.sectionGap),
 
                 // ─── Leaderboard Button (gated by experiment config) ─────────
                 if (ref.watch(gamificationFeatureProvider(GamificationFeature.leaderboard)))
@@ -216,14 +287,13 @@ class ProgressScreen extends ConsumerWidget {
                     .fadeIn(duration: 400.ms, delay: 500.ms)
                     .slideY(begin: 0.1, end: 0),
 
-                const SizedBox(height: 32),
+                SizedBox(height: layout.sectionGap),
 
                 // ─── Category Progress ──────────
-                Text(
-                  AppLocalizations.of(context)!.categoryProgress,
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                ProgressSectionHeader(
+                  title: AppLocalizations.of(context)!.categoryProgress,
+                  icon: Icons.category_rounded,
+                  iconColor: accent,
                 ),
                 const SizedBox(height: 12),
 
@@ -238,13 +308,14 @@ class ProgressScreen extends ConsumerWidget {
 
                   return Padding(
                         padding: const EdgeInsets.only(bottom: 14),
-                        child: _CategoryProgressRow(
+                        child: CategoryProgressRow(
                           icon: cat.icon,
                           label: cat.label,
                           color: cat.color,
                           mastered: catMastered,
                           total: catCards.length,
                           percent: catPct,
+                          surface: cardSurface,
                         ),
                       )
                       .animate()
@@ -255,14 +326,13 @@ class ProgressScreen extends ConsumerWidget {
                       .slideX(begin: 0.1, end: 0);
                 }),
 
-                const SizedBox(height: 28),
+                SizedBox(height: layout.sectionGap),
 
                 // ─── Recent Games ─────────────
-                Text(
-                  AppLocalizations.of(context)!.recentGames,
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                ProgressSectionHeader(
+                  title: AppLocalizations.of(context)!.recentGames,
+                  icon: Icons.sports_esports_rounded,
+                  iconColor: accent,
                 ),
                 const SizedBox(height: 12),
                 if (progress.recentScores.isEmpty)
@@ -312,252 +382,68 @@ class ProgressScreen extends ConsumerWidget {
                             .slideX(begin: 0.1, end: 0);
                       }),
 
-                const SizedBox(height: 28),
+                SizedBox(height: layout.sectionGap),
 
                 // ─── Star Collection ─────────────
-                Text(
-                  AppLocalizations.of(context)!.starCollection,
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                ProgressSectionHeader(
+                  title: AppLocalizations.of(context)!.starCollection,
+                  icon: Icons.auto_awesome_rounded,
+                  iconColor: AppColors.warning,
                 ),
                 const SizedBox(height: 12),
                 _StarGrid(
                   totalStars: totalStars,
                 ).animate().fadeIn(duration: 400.ms, delay: 800.ms),
 
-                const SizedBox(height: 28),
+                SizedBox(height: layout.sectionGap),
 
                 // ─── Achievement Badges ──────────
-                Text(
-                  AppLocalizations.of(context)!.achievements,
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                ProgressSectionHeader(
+                  title: AppLocalizations.of(context)!.achievements,
+                  icon: Icons.emoji_events_rounded,
+                  iconColor: AppColors.warning,
                 ),
                 const SizedBox(height: 12),
-                _AchievementRow(
-                  achievements: Achievements.all,
-                  unlockedIds: Achievements.unlockedIds(progress),
-                ).animate().fadeIn(duration: 400.ms, delay: 900.ms),
+                Builder(builder: (context) {
+                  final unlockedIds = Achievements.unlockedIds(progress);
+                  if (unlockedIds.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: HCColor.of(context).surfaceLight,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.emoji_events_outlined,
+                            size: 32,
+                            color: HCColor.of(context).textHint,
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              'Keep learning to unlock your first badge!',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: HCColor.of(context).textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(duration: 400.ms, delay: 900.ms);
+                  }
+                  return _AchievementRow(
+                    achievements: Achievements.all,
+                    unlockedIds: unlockedIds,
+                  ).animate().fadeIn(duration: 400.ms, delay: 900.ms);
+                }),
 
                 const SizedBox(height: 40),
               ]),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ────────────────────────────────────────
-// Quick Stat Card
-// ────────────────────────────────────────
-class _QuickStat extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final String suffix;
-  final Color color;
-
-  const _QuickStat({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.suffix,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Semantics(
-        label: '$label: $value ${suffix.isNotEmpty ? suffix : ''}',
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                color.withValues(alpha: 0.12),
-                color.withValues(alpha: 0.04),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: color.withValues(alpha: 0.2)),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.1),
-                blurRadius: 12,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: AppTypography.titleLarge.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: color,
-                ),
-              ),
-              if (suffix.isNotEmpty)
-                Text(
-                  suffix,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: HCColor.of(context).textSecondary,
-                  ),
-                ),
-              Text(
-                label,
-                style: AppTypography.labelSmall.copyWith(
-                  color: HCColor.of(context).textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ────────────────────────────────────────
-// Category Progress Row
-// ────────────────────────────────────────
-class _CategoryProgressRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final int mastered;
-  final int total;
-  final double percent;
-
-  const _CategoryProgressRow({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.mastered,
-    required this.total,
-    required this.percent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label:
-          '$label category: $mastered of $total words mastered, ${(percent * 100).round()} percent',
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: HCColor.of(context).surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color.withValues(alpha: 0.12)),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        label,
-                        style: AppTypography.labelLarge.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        '$mastered / $total',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: HCColor.of(context).textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Stack(
-                      children: [
-                        LinearProgressIndicator(
-                          value: percent.clamp(0.0, 1.0),
-                          minHeight: 8,
-                          backgroundColor: HCColor.of(context).border,
-                          color: Colors.transparent,
-                        ),
-                        FractionallySizedBox(
-                          widthFactor: percent.clamp(0.0, 1.0),
-                          child: Container(
-                            height: 8,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  color,
-                                  color.withValues(alpha: 0.7),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: color.withValues(alpha: 0.3),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -659,7 +545,9 @@ class _AchievementRow extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               SizedBox(
-                width: 64,
+                // Grow the label box with the Font Size setting (capped) so the
+                // 2-line title doesn't clip at large scales.
+                width: context.scaleIcon(64).clamp(64.0, 96.0),
                 child: Text(
                   a.title,
                   style: AppTypography.labelSmall.copyWith(

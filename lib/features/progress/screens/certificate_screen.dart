@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -10,6 +9,7 @@ import '../../../core/services/certificate_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../providers/app_providers.dart';
+import '../../../widgets/app_back_button.dart';
 
 class CertificateScreen extends ConsumerWidget {
   const CertificateScreen({super.key});
@@ -83,17 +83,7 @@ class CertificateScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/progress');
-            }
-          },
-        ),
+        leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Text(
           'My Certificates',
           style: AppTypography.titleMedium.copyWith(
