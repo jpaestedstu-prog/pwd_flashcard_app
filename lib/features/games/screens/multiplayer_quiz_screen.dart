@@ -7,10 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
+import '../timed_game_mixin.dart';
+import '../game_pause_mixin.dart';
+import '../widgets/pause_overlay.dart';
 
 /// Turn-based multiplayer vocabulary quiz for two players on the same device.
 ///
@@ -31,7 +35,7 @@ class MultiplayerQuizScreen extends ConsumerStatefulWidget {
 
 class _MultiplayerQuizScreenState
     extends ConsumerState<MultiplayerQuizScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, TimedGameMixin, GamePauseMixin {
   // Game state
   _GamePhase _phase = _GamePhase.setup;
   final _player1Controller = TextEditingController(text: 'Player 1');
@@ -72,10 +76,13 @@ class _MultiplayerQuizScreenState
       vsync: this,
       duration: const Duration(milliseconds: 600),
     )..repeat(reverse: true);
+    initPause();
   }
 
   @override
   void dispose() {
+    disposePause();
+    disposeTimer();
     _player1Controller.dispose();
     _player2Controller.dispose();
     _roundTimer?.cancel();
@@ -85,30 +92,101 @@ class _MultiplayerQuizScreenState
   }
 
   @override
+  void onTimeUp() {
+    // Uses its own _roundTimer, not the mixin's countdown — never called.
+  }
+
+  @override
+  void onPause() {
+    _roundTimer?.cancel();
+    _roundTimer = null;
+  }
+
+  @override
+  void onResume() {
+    if (_phase != _GamePhase.playing) return;
+    if (_answered) return;
+    if (_roundTimer != null) return;
+    _roundTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _timeRemaining--);
+      if (_timeRemaining <= 0) {
+        timer.cancel();
+        _handleTimeout();
+      }
+    });
+  }
+
+  @override
+  Future<void> savePartialProgress() async {
+    if (_phase != _GamePhase.playing && _phase != _GamePhase.roundResult) {
+      return;
+    }
+    final profile = ref.read(profileProvider);
+    if (profile == null) return;
+    ref.read(progressProvider.notifier).recordGameResult(
+      gameType: GameType.flashcardQuiz,
+      score: _player1Score > _player2Score ? _player1Correct : _player2Correct,
+      total: _roundsPerPlayer,
+      starsEarned: 0,
+      categoriesPlayed: widget.categories,
+    );
+  }
+
+  bool get _isMidGame =>
+      _phase == _GamePhase.playing ||
+      _phase == _GamePhase.roundResult ||
+      _phase == _GamePhase.turnTransition;
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          child: switch (_phase) {
-            _GamePhase.setup => _buildSetup(),
-            _GamePhase.turnTransition => _buildTurnTransition(),
-            _GamePhase.playing => _buildPlaying(),
-            _GamePhase.roundResult => _buildRoundResult(),
-            _GamePhase.gameOver => _buildGameOver(),
-          },
+    return PopScope(
+      canPop: !_isMidGame,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _isMidGame) pauseGame();
+      },
+      child: Stack(children: [
+        Scaffold(
+          backgroundColor: AppColors.background,
+          body: SafeArea(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              child: switch (_phase) {
+                _GamePhase.setup => _buildSetup(),
+                _GamePhase.turnTransition => _buildTurnTransition(),
+                _GamePhase.playing => _buildPlaying(),
+                _GamePhase.roundResult => _buildRoundResult(),
+                _GamePhase.gameOver => _buildGameOver(),
+              },
+            ),
+          ),
         ),
-      ),
+        if (isPaused && _isMidGame)
+          PauseOverlay(
+            onResume: resumeGame,
+            onRestart: () {
+              resumeGame();
+              _rematch();
+            },
+            onQuit: () async {
+              await savePartialProgress();
+              if (context.mounted) context.go('/home');
+            },
+          ),
+      ]),
     );
   }
 
   // ─── Setup Phase ──────────────────────────────────────
 
   Widget _buildSetup() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
         children: [
           // Header
           Row(
@@ -129,7 +207,7 @@ class _MultiplayerQuizScreenState
             ],
           ),
 
-          const Spacer(),
+          const SizedBox(height: 32),
 
           // Player avatars
           Row(
@@ -203,7 +281,7 @@ class _MultiplayerQuizScreenState
             ),
           ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
 
-          const Spacer(),
+          const SizedBox(height: 40),
 
           // Start button
           SizedBox(
@@ -227,6 +305,7 @@ class _MultiplayerQuizScreenState
 
           const SizedBox(height: 24),
         ],
+        ),
       ),
     );
   }
@@ -299,32 +378,36 @@ class _MultiplayerQuizScreenState
     final color = isP1 ? AppColors.info : AppColors.error;
     final playerName = isP1 ? _player1Controller.text : _player2Controller.text;
 
-    return Padding(
+    return OverflowSafeBody(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
           // Top bar: player, round, timer
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${isP1 ? "🔵" : "🔴"} $playerName',
-                  style: AppTypography.labelMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: color,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${isP1 ? "🔵" : "🔴"} $playerName',
+                    style: AppTypography.labelMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
-              const Spacer(),
-              // Timer
+              const SizedBox(width: 12),
+              // Timer — capped scale so 2-digit values shrink to fit the circle.
               Container(
-                width: 50,
-                height: 50,
+                width: context.scaledHeightCapped(50),
+                height: context.scaledHeightCapped(50),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: _timeRemaining <= 3
@@ -338,20 +421,23 @@ class _MultiplayerQuizScreenState
                   ),
                 ),
                 alignment: Alignment.center,
-                child: Text(
-                  '$_timeRemaining',
-                  style: AppTypography.titleLarge.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: _timeRemaining <= 3
-                        ? AppColors.error
-                        : HCColor.of(context).textPrimary,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '$_timeRemaining',
+                    style: AppTypography.titleLarge.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: _timeRemaining <= 3
+                          ? AppColors.error
+                          : HCColor.of(context).textPrimary,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
 
-          const Spacer(),
+          const SizedBox(height: 20),
 
           // Question
           Container(
@@ -398,16 +484,26 @@ class _MultiplayerQuizScreenState
 
           const SizedBox(height: 24),
 
-          // Answer Options (2x2 grid)
-          Expanded(
-            flex: 2,
-            child: GridView.count(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 2.2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
+          // Answer Options (responsive grid).
+          // shrinkWrap + NeverScrollableScrollPhysics means the GridView sizes
+          // itself to its content — no Expanded needed (and Expanded would
+          // break the parent OverflowSafeBody's scroll wrapper at large scale).
+          // childAspectRatio shrinks as text scales up so cells stay tall
+          // enough to hold the scaled label text.
+          GridView.count(
+            crossAxisCount: context.responsiveTier<int>(
+              phone: 2,
+              tablet: 2,
+              large: 3,
+              xl: 4,
+            ),
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: (2.2 /
+                    MediaQuery.textScalerOf(context).scale(1.0))
+                .clamp(1.2, 2.2),
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
               children: List.generate(question.options.length, (idx) {
                 final option = question.options[idx];
                 final isCorrect = idx == question.correctIndex;
@@ -461,7 +557,6 @@ class _MultiplayerQuizScreenState
                 ).animate(delay: (100 * idx).ms).fadeIn().slideY(begin: 0.1);
               }),
             ),
-          ),
 
           // Score bar
           Container(
@@ -509,7 +604,7 @@ class _MultiplayerQuizScreenState
         children: [
           Icon(
             isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
-            size: 80,
+            size: context.scaleIcon(80),
             color: isCorrect ? AppColors.success : AppColors.error,
           ).animate().scale(
                 begin: const Offset(0, 0),
@@ -560,11 +655,12 @@ class _MultiplayerQuizScreenState
         ? AppColors.warning
         : (p1Wins ? AppColors.info : AppColors.error);
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
         children: [
-          const Spacer(),
+          const SizedBox(height: 32),
 
           Text(winnerEmoji, style: const TextStyle(fontSize: 72))
               .animate()
@@ -612,7 +708,7 @@ class _MultiplayerQuizScreenState
             ],
           ).animate(delay: 500.ms).fadeIn().slideY(begin: 0.15),
 
-          const Spacer(),
+          const SizedBox(height: 40),
 
           // Action buttons
           Row(
@@ -649,6 +745,7 @@ class _MultiplayerQuizScreenState
 
           const SizedBox(height: 24),
         ],
+        ),
       ),
     );
   }
