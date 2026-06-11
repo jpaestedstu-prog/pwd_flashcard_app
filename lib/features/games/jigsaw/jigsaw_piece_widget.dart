@@ -36,28 +36,34 @@ class JigsawPieceWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The visible portion of the full image for this piece:
-    // We translate the child so that only the (row, col) section shows.
+    // Each piece is laid out at its CORE size (pieceWidth × pieceHeight); the
+    // jigsaw tabs are drawn by the clipper and overflow outside that box. The
+    // OverflowBox lets the full-size source image render unconstrained (a plain
+    // SizedBox here would be squished by the tight piece-size constraints), so
+    // we can translate it and reveal just the (row, col) fragment — plus the
+    // tab strips that bleed into neighbours. This is seamless because every
+    // piece samples the same source image with complementary tab/blank edges.
     final offsetX = -col * pieceWidth;
     final offsetY = -row * pieceHeight;
 
-    // Extra space for the jigsaw tab bumps (18% outward)
-    final bumpW = pieceWidth * 0.18;
-    final bumpH = pieceHeight * 0.18;
-    final totalW = pieceWidth + bumpW * 2;
-    final totalH = pieceHeight + bumpH * 2;
-
     Widget piece = SizedBox(
-      width: totalW,
-      height: totalH,
+      width: pieceWidth,
+      height: pieceHeight,
       child: ClipPath(
         clipper: clipper,
-        child: Transform.translate(
-          offset: Offset(offsetX + bumpW, offsetY + bumpH),
-          child: SizedBox(
-            width: pieceWidth * cols,
-            height: pieceHeight * rows,
-            child: sourceImage,
+        child: OverflowBox(
+          minWidth: 0,
+          maxWidth: double.infinity,
+          minHeight: 0,
+          maxHeight: double.infinity,
+          alignment: Alignment.topLeft,
+          child: Transform.translate(
+            offset: Offset(offsetX, offsetY),
+            child: SizedBox(
+              width: pieceWidth * cols,
+              height: pieceHeight * rows,
+              child: sourceImage,
+            ),
           ),
         ),
       ),

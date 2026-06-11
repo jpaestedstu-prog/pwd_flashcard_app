@@ -9,7 +9,8 @@ import '../../core/constants/app_constants.dart';
 ///
 /// Override [onTimeUp] to handle what happens when time runs out.
 mixin TimedGameMixin<T extends StatefulWidget> on State<T> {
-  Timer? _countdownTimer;
+  @protected
+  Timer? countdownTimer;
   int _remainingSeconds = AppConstants.gameTimerSeconds;
   bool _timedModeActive = false;
 
@@ -28,11 +29,14 @@ mixin TimedGameMixin<T extends StatefulWidget> on State<T> {
   /// Call this from `initState` or `_startGame` with `timedMode` from the widget.
   void startTimerIfNeeded(bool timedMode) {
     _timedModeActive = timedMode;
-    _countdownTimer?.cancel();
+    countdownTimer?.cancel();
     _remainingSeconds = AppConstants.gameTimerSeconds;
     if (!timedMode) return;
+    _startTickerFromRemaining();
+  }
 
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+  void _startTickerFromRemaining() {
+    countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -47,8 +51,26 @@ mixin TimedGameMixin<T extends StatefulWidget> on State<T> {
     });
   }
 
+  /// Pause the countdown without losing the remaining seconds. Safe to call
+  /// when the timer isn't running (no-op).
+  @protected
+  void pauseTimer() {
+    countdownTimer?.cancel();
+    countdownTimer = null;
+  }
+
+  /// Resume a previously paused countdown from the remaining seconds. Only
+  /// restarts if the game was in timed mode and time is still on the clock.
+  @protected
+  void resumeTimer() {
+    if (!_timedModeActive) return;
+    if (countdownTimer != null) return;
+    if (_remainingSeconds <= 0) return;
+    _startTickerFromRemaining();
+  }
+
   /// Call this from `dispose`.
   void disposeTimer() {
-    _countdownTimer?.cancel();
+    countdownTimer?.cancel();
   }
 }

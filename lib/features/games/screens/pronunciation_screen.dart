@@ -24,6 +24,8 @@ import '../../../widgets/achievement_overlay.dart';
 import '../../../widgets/game_review_sheet.dart';
 import '../../../widgets/accessibility_visual_feedback.dart';
 import '../timed_game_mixin.dart';
+import '../game_pause_mixin.dart';
+import '../widgets/pause_overlay.dart';
 import '../../../l10n/app_localizations.dart';
 
 /// Pronunciation Practice — an audio-first game.
@@ -49,7 +51,7 @@ class PronunciationScreen extends ConsumerStatefulWidget {
 }
 
 class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
-    with TimedGameMixin {
+    with TimedGameMixin, GamePauseMixin {
   late List<_PronunciationRound> _rounds;
   int _currentRound = 0;
   int _score = 0;
@@ -79,6 +81,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
   void initState() {
     super.initState();
     _startGame();
+    initPause();
   }
 
   void _startGame() {
@@ -103,8 +106,26 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
 
   @override
   void dispose() {
+    disposePause();
     disposeTimer();
     super.dispose();
+  }
+
+  @override
+  void onPause() {
+    if (_isListening) {
+      final stt = ref.read(sttServiceProvider);
+      stt.stopListening();
+      _isListening = false;
+    }
+    final tts = ref.read(ttsServiceProvider);
+    tts.stop();
+  }
+
+  @override
+  Future<void> savePartialProgress() async {
+    if (_rounds.isEmpty) return;
+    _finishGame();
   }
 
   @override
@@ -320,17 +341,28 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
 
     final round = _rounds[_currentRound];
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) pauseGame();
+      },
+      child: Stack(children: [
+        Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Close',
-          onPressed: () => context.go('/games'),
+          onPressed: pauseGame,
         ),
         title: Text(
           'Listen & Pick  •  ${_currentRound + 1}/${_rounds.length}',
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pause_circle_outline_rounded),
+            tooltip: 'Pause',
+            onPressed: pauseGame,
+          ),
           if (isTimedMode)
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -400,7 +432,14 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                         width: 2,
                       ),
                     ),
-                    child: Column(
+                    // Keep the prompt centred when there's room, but scroll it
+                    // instead of overflowing on a short viewport / large font.
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight),
+                          child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         // Big speaker button
@@ -491,6 +530,9 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                           ),
                         ],
                       ],
+                          ),
+                        ),
+                      ),
                     ),
                   )
                   .animate(key: ValueKey(_currentRound))
@@ -505,10 +547,19 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
               child: GridView.builder(
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
+                  crossAxisCount: context.responsiveTier<int>(
+                    phone: 2,
+                    tablet: 2,
+                    large: 3,
+                    xl: 4,
+                  ),
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  childAspectRatio: _numChoices <= 3 ? 1.3 : 1.1,
+                  // Shrink aspect ratio as text scales up so cells stay
+                  // tall enough to hold scaled label text at XL font.
+                  childAspectRatio: ((_numChoices <= 3 ? 1.3 : 1.1) /
+                          MediaQuery.textScalerOf(context).scale(1.0))
+                      .clamp(0.7, 1.3),
                 ),
                 itemCount: round.choices.length,
                 itemBuilder: (context, index) {
@@ -611,6 +662,20 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
           ],
         ),
       ),
+    ),
+        if (isPaused)
+          PauseOverlay(
+            onResume: resumeGame,
+            onRestart: () {
+              resumeGame();
+              _restart();
+            },
+            onQuit: () async {
+              await savePartialProgress();
+              if (context.mounted) context.go('/games');
+            },
+          ),
+      ]),
     );
   }
 }

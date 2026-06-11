@@ -25,6 +25,8 @@ import '../../../data/local/spaced_repetition_service.dart';
 import '../../../core/constants/flashcard_emojis.dart';
 import '../../../widgets/accessibility_visual_feedback.dart';
 import '../timed_game_mixin.dart';
+import '../game_pause_mixin.dart';
+import '../widgets/pause_overlay.dart';
 import '../../../l10n/app_localizations.dart';
 
 class SpellingBeeScreen extends ConsumerStatefulWidget {
@@ -43,7 +45,7 @@ class SpellingBeeScreen extends ConsumerStatefulWidget {
 }
 
 class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
-    with TimedGameMixin {
+    with TimedGameMixin, GamePauseMixin {
   late List<Flashcard> _cards;
   int _currentIndex = 0;
   int _score = 0;
@@ -95,12 +97,20 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     }
     _setupWord();
     startTimerIfNeeded(widget.timedMode);
+    initPause();
   }
 
   @override
   void dispose() {
+    disposePause();
     disposeTimer();
     super.dispose();
+  }
+
+  @override
+  Future<void> savePartialProgress() async {
+    if (_cards.isEmpty) return;
+    _saveProgress();
   }
 
   @override
@@ -382,15 +392,26 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
 
     final card = _cards[_currentIndex];
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) pauseGame();
+      },
+      child: Stack(children: [
+        Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Close',
-          onPressed: () => context.go('/games'),
+          onPressed: pauseGame,
         ),
         title: Text('Spelling Bee  •  ${_currentIndex + 1}/${_cards.length}'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pause_circle_outline_rounded),
+            tooltip: 'Pause',
+            onPressed: pauseGame,
+          ),
           if (isTimedMode)
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -414,9 +435,10 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
           children: [
             // Progress bar
             ClipRRect(
@@ -542,7 +564,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                     curve: Curves.elasticOut),
               ),
 
-            const Spacer(),
+            const SizedBox(height: 28),
 
             // ─── Scrambled Letters ─────────────────
             Wrap(
@@ -619,11 +641,17 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                   ),
                   if (_voiceHint.isNotEmpty) ...[
                     const SizedBox(width: 8),
-                    Text(
-                      _voiceHint,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: _isListening ? AppColors.info : AppColors.error,
-                        fontWeight: FontWeight.w600,
+                    // Flexible + ellipsis so a long hint at XL font scale wraps
+                    // / truncates instead of overflowing next to the mic.
+                    Flexible(
+                      child: Text(
+                        _voiceHint,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: _isListening ? AppColors.info : AppColors.error,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -634,7 +662,22 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
             const SizedBox(height: 16),
           ],
         ),
+        ),
       ),
+    ),
+        if (isPaused)
+          PauseOverlay(
+            onResume: resumeGame,
+            onRestart: () {
+              resumeGame();
+              _restart();
+            },
+            onQuit: () async {
+              await savePartialProgress();
+              if (context.mounted) context.go('/games');
+            },
+          ),
+      ]),
     );
   }
 }

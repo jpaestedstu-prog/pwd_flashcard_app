@@ -18,7 +18,10 @@ import '../../../widgets/accessible_celebration_overlay.dart';
 import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../../widgets/flashcard_image.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../timed_game_mixin.dart';
+import '../game_pause_mixin.dart';
+import '../widgets/pause_overlay.dart';
 import '../../../l10n/app_localizations.dart';
 
 class FlashcardQuizScreen extends ConsumerStatefulWidget {
@@ -38,7 +41,7 @@ class FlashcardQuizScreen extends ConsumerStatefulWidget {
 }
 
 class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
-    with SingleTickerProviderStateMixin, TimedGameMixin {
+    with SingleTickerProviderStateMixin, TimedGameMixin, GamePauseMixin {
   /// Difficulty-based card count
   int get _totalCards => switch (widget.difficulty) {
     GameDifficulty.easy => 6,
@@ -62,6 +65,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
   void initState() {
     super.initState();
     _startGame();
+    initPause();
   }
 
   void _startGame() {
@@ -83,8 +87,15 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
 
   @override
   void dispose() {
+    disposePause();
     disposeTimer();
     super.dispose();
+  }
+
+  @override
+  Future<void> savePartialProgress() async {
+    if (_cards.isEmpty) return;
+    _saveProgress();
   }
 
   @override
@@ -96,17 +107,18 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
     setState(() => _showResult = true);
   }
 
-  void _onPanUpdate(DragUpdateDetails details) {
+  // Horizontal-only drag: the card tracks left/right (Tinder-style) and
+  // never moves vertically, keeping the swipe clean and unambiguous.
+  void _onDragUpdate(DragUpdateDetails details) {
     setState(() {
-      _dragOffset += details.delta;
+      _dragOffset += Offset(details.delta.dx, 0);
       _dragRotation = _dragOffset.dx * 0.001;
     });
   }
 
-  void _onPanEnd(DragEndDetails details) {
+  void _onDragEnd(DragEndDetails details) {
     if (_dragOffset.dx.abs() > 100) {
-      final isRight = _dragOffset.dx > 0;
-      _handleSwipe(isRight);
+      _handleSwipe(_dragOffset.dx > 0);
     } else {
       setState(() {
         _dragOffset = Offset.zero;
@@ -231,239 +243,129 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
     }
 
     final card = _cards[_currentIndex];
-    final swipeColor = _dragOffset.dx > 40
-        ? AppColors.success.withValues(alpha: 0.3)
-        : _dragOffset.dx < -40
-            ? AppColors.error.withValues(alpha: 0.3)
-            : Colors.transparent;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) pauseGame();
+      },
+      child: Stack(children: [
+        Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Close',
-          onPressed: () => context.go('/games'),
+          onPressed: pauseGame,
         ),
         title: Text('${_currentIndex + 1} / $_totalCards'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pause_circle_outline_rounded),
+            tooltip: 'Pause',
+            onPressed: pauseGame,
+          ),
           if (isTimedMode)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.only(right: 12),
               child: GameTimerWidget(
                 remainingSeconds: remainingSeconds,
                 totalSeconds: totalTimerSeconds,
                 size: 44,
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Row(
-              children: [
-                const Icon(Icons.check_circle, size: 16, color: AppColors.success),
-                const SizedBox(width: 4),
-                Text('$_knowCount',
-                    style: AppTypography.labelMedium
-                        .copyWith(color: AppColors.success)),
-                const SizedBox(width: 12),
-                const Icon(Icons.school_rounded, size: 16, color: AppColors.warning),
-                const SizedBox(width: 4),
-                Text('$_learningCount',
-                    style: AppTypography.labelMedium
-                        .copyWith(color: AppColors.warning)),
-              ],
-            ),
-          ),
         ],
       ),
       body: Column(
         children: [
-          // Progress bar
-          Semantics(
-            label: 'Card ${_currentIndex + 1} of $_totalCards, $_knowCount known, $_learningCount still learning',
-            child: LinearProgressIndicator(
-            value: (_currentIndex + 1) / _totalCards,
-            backgroundColor: AppColors.border,
-            color: AppColors.primary,
-            minHeight: 4,
-          ),
-          ),
-
-          const Spacer(),
-
-          // Swipe hints
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 24),
-                child: Text(AppLocalizations.of(context)!.stillLearningSwipe,
-                    style: AppTypography.labelSmall
-                        .copyWith(color: AppColors.error),
-                    textAlign: TextAlign.center),
+          // ─── Single status block: rounded progress + score chips ───
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Semantics(
+              label:
+                  'Card ${_currentIndex + 1} of $_totalCards, $_knowCount known, $_learningCount still learning',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: (_currentIndex + 1) / _totalCards,
+                  backgroundColor: AppColors.border,
+                  color: AppColors.primary,
+                  minHeight: 6,
+                ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(right: 24),
-                child: Text(AppLocalizations.of(context)!.iKnowThisSwipe,
-                    style: AppTypography.labelSmall
-                        .copyWith(color: AppColors.success),
-                    textAlign: TextAlign.center),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _StatChip(
+                icon: Icons.check_circle_rounded,
+                color: AppColors.success,
+                value: _knowCount,
+                semanticLabel: '$_knowCount known',
+              ),
+              const SizedBox(width: 12),
+              _StatChip(
+                icon: Icons.school_rounded,
+                color: AppColors.warning,
+                value: _learningCount,
+                semanticLabel: '$_learningCount still learning',
               ),
             ],
           ),
           const SizedBox(height: 16),
 
           // ─── Swipeable Card ───────────────────
-          Semantics(
-            label: 'Flashcard: ${card.wordEnglish}, ${card.wordFilipino}, category ${card.category.label}. Swipe right for I Know, left for Still Learning',
-            child: GestureDetector(
-            onPanUpdate: _onPanUpdate,
-            onPanEnd: _onPanEnd,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 100),
-              transform: Matrix4.identity()
-                ..storage[12] = _dragOffset.dx
-                ..storage[13] = _dragOffset.dy
-                ..rotateZ(_dragRotation),
-              transformAlignment: Alignment.center,
-              child: SizedBox(
-                width: 300,
-                height: 400,
-                child: Stack(
-                  children: [
-                    // Swipe color overlay
-                    Positioned.fill(
+          // ConstrainedBox + AspectRatio keep a stable card footprint; the
+          // card body sizes its words consistently (see [_QuizCard]) so every
+          // card looks the same regardless of content length.
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: context.responsive(phone: 320, tablet: 420),
+                  maxHeight: context.responsive(phone: 440, tablet: 560),
+                ),
+                child: AspectRatio(
+                  aspectRatio: 3 / 4,
+                  child: Semantics(
+                    label:
+                        'Flashcard: ${card.wordEnglish}, ${card.wordFilipino}, category ${card.category.label}. Swipe right for I Know, left for Still Learning',
+                    child: GestureDetector(
+                      onHorizontalDragUpdate: _onDragUpdate,
+                      onHorizontalDragEnd: _onDragEnd,
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        decoration: BoxDecoration(
-                          color: swipeColor,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
+                        duration: const Duration(milliseconds: 100),
+                        transform: Matrix4.identity()
+                          ..storage[12] = _dragOffset.dx
+                          ..rotateZ(_dragRotation),
+                        transformAlignment: Alignment.center,
+                        child: _QuizCard(card: card, dragX: _dragOffset.dx),
                       ),
                     ),
-                    // Card
-                    Card(
-                      elevation: 6,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        side: BorderSide(
-                          color:
-                              card.category.color.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Colors.white,
-                              card.category.color
-                                  .withValues(alpha: 0.08),
-                            ],
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Category badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: card.category.color
-                                    .withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(card.category.icon,
-                                      size: 16, color: card.category.color),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    card.category.label,
-                                    style: AppTypography.labelSmall.copyWith(
-                                      color: card.category.color,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Per-word image
-                            FlashcardImage(
-                              card: card,
-                              size: 48,
-                              borderRadius: 16,
-                            ),
-                            const SizedBox(height: 20),
-
-                            // English word
-                            Text(
-                              card.wordEnglish,
-                              style: AppTypography.headlineMedium.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: HCColor.of(context).textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Filipino word
-                            Text(
-                              card.wordFilipino,
-                              style: AppTypography.titleLarge.copyWith(
-                                color: card.category.color,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Example sentence
-                            if (card.exampleSentence != null)
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 24),
-                                child: Text(
-                                  '"${card.exampleSentence}"',
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: HCColor.of(context).textSecondary,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-          ),
 
-          const SizedBox(height: 32),
+          SizedBox(height: context.responsive(phone: 16, tablet: 24)),
 
-          // ─── Action Buttons ──────────────────
+          // ─── Action Buttons (carry the directional swipe hints) ──────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Still learning
                 _ActionButton(
                   icon: Icons.close_rounded,
-                  label: AppLocalizations.of(context)!.learning,
+                  label: AppLocalizations.of(context)!.stillLearningSwipe,
                   color: AppColors.error,
                   onTap: () => _handleSwipe(false),
                 ),
-                // Know it
                 _ActionButton(
                   icon: Icons.check_rounded,
-                  label: AppLocalizations.of(context)!.iKnow,
+                  label: AppLocalizations.of(context)!.iKnowThisSwipe,
                   color: AppColors.success,
                   onTap: () => _handleSwipe(true),
                 ),
@@ -471,9 +373,23 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
             ),
           ),
 
-          const Spacer(),
+          SizedBox(height: context.responsive(phone: 12, tablet: 20)),
         ],
       ),
+    ),
+        if (isPaused)
+          PauseOverlay(
+            onResume: resumeGame,
+            onRestart: () {
+              resumeGame();
+              setState(_startGame);
+            },
+            onQuit: () async {
+              await savePartialProgress();
+              if (context.mounted) context.go('/games');
+            },
+          ),
+      ]),
     );
   }
 }
@@ -502,23 +418,308 @@ class _ActionButton extends StatelessWidget {
       child: Semantics(
         button: true,
         label: '$label button',
-        child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.12),
-              border: Border.all(color: color, width: 2),
+        child: Builder(builder: (context) {
+          final size = context.responsiveSize(60);
+          return Column(
+            children: [
+              Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.12),
+                  border: Border.all(color: color, width: 2),
+                ),
+                child: Icon(icon, color: color, size: size * 0.5),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: AppTypography.labelSmall.copyWith(color: color),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────
+// Status chip (known / still-learning count)
+// ────────────────────────────────────────
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final int value;
+  final String semanticLabel;
+
+  const _StatChip({
+    required this.icon,
+    required this.color,
+    required this.value,
+    required this.semanticLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: semanticLabel,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 6),
+            Text(
+              '$value',
+              style: AppTypography.labelLarge.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-            child: Icon(icon, color: color, size: 30),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────
+// Quiz Card (front face + swipe stamps)
+// ────────────────────────────────────────
+class _QuizCard extends StatelessWidget {
+  final Flashcard card;
+  final double dragX;
+
+  const _QuizCard({required this.card, required this.dragX});
+
+  @override
+  Widget build(BuildContext context) {
+    final cat = card.category;
+    final swiping = dragX.abs() > 40;
+    // Card border tints toward the decision colour as you drag.
+    final borderColor = dragX > 40
+        ? AppColors.success
+        : dragX < -40
+            ? AppColors.error
+            : cat.color.withValues(alpha: 0.3);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Card(
+          elevation: 6,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(color: borderColor, width: swiping ? 2.5 : 1),
           ),
-          const SizedBox(height: 6),
-          Text(label,
-              style: AppTypography.labelSmall.copyWith(color: color)),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  HCColor.of(context).surface,
+                  cat.color.withValues(alpha: 0.08),
+                ],
+              ),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Category badge (fixed at top)
+                _CategoryBadge(category: cat),
+                const SizedBox(height: 12),
+                // Hero image (upper area) scales down to share the card.
+                Expanded(
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: FlashcardImage(
+                        card: card,
+                        size: context.responsive(phone: 104, tablet: 132),
+                        borderRadius: 18,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Word block (lower area). The width constraint keeps the
+                // example wrapping at the default font scale (so text stays a
+                // consistent size card-to-card), while the FittedBox scales the
+                // whole group down only when a large font scale would otherwise
+                // overflow the card — never truncating the word being learned.
+                Flexible(
+                  child: LayoutBuilder(
+                    builder: (context, c) => FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: c.maxWidth),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              card.wordEnglish,
+                              textAlign: TextAlign.center,
+                              style: AppTypography.headlineMedium.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: HCColor.of(context).textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              card.wordFilipino,
+                              textAlign: TextAlign.center,
+                              style: AppTypography.titleLarge.copyWith(
+                                color: cat.color,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (card.exampleSentence != null) ...[
+                              const SizedBox(height: 12),
+                              Text(
+                                '"${card.exampleSentence}"',
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: HCColor.of(context).textSecondary,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // On-card swipe stamps — visible decision feedback while dragging.
+        Positioned(
+          top: 18,
+          left: 18,
+          child: _SwipeStamp(
+            label: AppLocalizations.of(context)!.iKnow,
+            icon: Icons.check_rounded,
+            color: AppColors.success,
+            angle: -0.22,
+            opacity: (dragX / 90).clamp(0.0, 1.0),
+          ),
+        ),
+        Positioned(
+          top: 18,
+          right: 18,
+          child: _SwipeStamp(
+            label: AppLocalizations.of(context)!.learning,
+            icon: Icons.school_rounded,
+            color: AppColors.error,
+            angle: 0.22,
+            opacity: (-dragX / 90).clamp(0.0, 1.0),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ────────────────────────────────────────
+// Category Badge
+// ────────────────────────────────────────
+class _CategoryBadge extends StatelessWidget {
+  final FlashcardCategory category;
+
+  const _CategoryBadge({required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: category.color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(category.icon, size: 16, color: category.color),
+          const SizedBox(width: 6),
+          // Ellipsise a long category name at a large font scale rather than
+          // pushing the pill past the card's width.
+          Flexible(
+            child: Text(
+              category.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.labelSmall.copyWith(color: category.color),
+            ),
+          ),
         ],
       ),
+    );
+  }
+}
+
+// ────────────────────────────────────────
+// Swipe Stamp (fades in over the card while dragging)
+// ────────────────────────────────────────
+class _SwipeStamp extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final double angle;
+  final double opacity;
+
+  const _SwipeStamp({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.angle,
+    required this.opacity,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (opacity <= 0) return const SizedBox.shrink();
+    return Opacity(
+      opacity: opacity,
+      child: Transform.rotate(
+        angle: angle,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color, width: 3),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: AppTypography.labelLarge.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

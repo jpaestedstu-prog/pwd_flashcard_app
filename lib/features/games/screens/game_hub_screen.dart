@@ -14,6 +14,7 @@ import '../../../widgets/seasonal_decorations.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/shared_widgets.dart';
 import '../../../widgets/animated_gradient_background.dart';
+import '../../../widgets/tilt_3d.dart';
 
 class GameHubScreen extends ConsumerWidget {
   const GameHubScreen({super.key});
@@ -63,15 +64,35 @@ class GameHubScreen extends ConsumerWidget {
               ),
             ),
 
+            // ─── Play Together CTA (star-free multiplayer) ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
+                child: _PlayTogetherBanner(
+                  onTap: () => context.push('/multiplayer'),
+                ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
+              ),
+            ),
+
             // ─── Game Cards Grid ──────────────────
+            // 1 col on phones, 2 on tablets, 3 on XL/ultra tablets in
+            // landscape. Aspect ratio widens as columns grow so cards
+            // don't go tall-and-skinny on big screens. Aspect ratio is
+            // also divided by the text scaler so cells grow taller at
+            // Extra Large font (1.5×) — otherwise the label + 2-line
+            // description column overflows the card by ~10 px.
             SliverPadding(
               padding: EdgeInsets.all(padding),
               sliver: SliverGrid(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: context.isTablet ? 2 : 1,
+                  crossAxisCount: context.gridColumns,
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
-                  childAspectRatio: context.isTablet ? 2.0 : 2.5,
+                  childAspectRatio: ((context.isLargeTablet
+                              ? 1.8
+                              : (context.isTablet ? 2.0 : 2.5)) /
+                          MediaQuery.textScalerOf(context).scale(1.0))
+                      .clamp(1.1, 2.5),
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final game = games[index];
@@ -203,6 +224,73 @@ class _MotivationalTip extends StatelessWidget {
   }
 }
 
+// ─── Play Together Banner ─────────────────────────────
+class _PlayTogetherBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _PlayTogetherBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Play Together. Race a friend online or on this device, just for fun.',
+      child: AppCard(
+        onTap: onTap,
+        gradient: const LinearGradient(
+          colors: [AppColors.playerAccent, AppColors.playerAccentLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              alignment: Alignment.center,
+              child: const Text('🎮', style: TextStyle(fontSize: 28)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Play Together',
+                    style: AppTypography.titleMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Race a friend — just for fun!',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                color: Colors.white, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _GameCard extends StatefulWidget {
   final GameType game;
   final VoidCallback onTap;
@@ -214,24 +302,16 @@ class _GameCard extends StatefulWidget {
 }
 
 class _GameCardState extends State<_GameCard> {
-  bool _pressed = false;
-
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
       label: 'Play ${widget.game.label}. ${widget.game.description}',
       child: GestureDetector(
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) {
-          setState(() => _pressed = false);
-          widget.onTap();
-        },
-        onTapCancel: () => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: _pressed ? 0.96 : 1.0,
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
+        onTap: widget.onTap,
+        child: Pressable3D(
+          maxTilt: 0.05,
+          pressScale: 0.96,
           child: AppCard(
             gradient: LinearGradient(
               colors: [
@@ -258,6 +338,7 @@ class _GameCardState extends State<_GameCard> {
                 // Game info
                 Expanded(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -267,15 +348,19 @@ class _GameCardState extends State<_GameCard> {
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.game.description,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: Colors.white.withValues(alpha: 0.85),
-                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Flexible(
+                        child: Text(
+                          widget.game.description,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),

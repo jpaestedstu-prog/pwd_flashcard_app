@@ -22,6 +22,8 @@ import '../../../core/services/celebration_service.dart';
 import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../timed_game_mixin.dart';
+import '../game_pause_mixin.dart';
+import '../widgets/pause_overlay.dart';
 
 /// Picture-Word Association Game
 ///
@@ -46,7 +48,7 @@ class PictureWordScreen extends ConsumerStatefulWidget {
 }
 
 class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
-    with TimedGameMixin {
+    with TimedGameMixin, GamePauseMixin {
   late List<Flashcard> _allCards;
   late List<_PictureWordRound> _rounds;
   int _currentRound = 0;
@@ -81,12 +83,20 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
     _allCards = source..shuffle(_random);
     _generateRounds();
     startTimerIfNeeded(widget.timedMode);
+    initPause();
   }
 
   @override
   void dispose() {
+    disposePause();
     disposeTimer();
     super.dispose();
+  }
+
+  @override
+  Future<void> savePartialProgress() async {
+    if (_rounds.isEmpty) return;
+    _saveProgress();
   }
 
   @override
@@ -262,16 +272,27 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
   Widget _buildGameScreen(BuildContext context) {
     final round = _rounds[_currentRound];
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) pauseGame();
+      },
+      child: Stack(children: [
+        Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Close',
-          onPressed: () => context.go('/games'),
+          onPressed: pauseGame,
         ),
         title: Text(
             'Picture-Word  •  ${_currentRound + 1}/${_rounds.length}'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pause_circle_outline_rounded),
+            tooltip: 'Pause',
+            onPressed: pauseGame,
+          ),
           if (isTimedMode)
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -336,6 +357,20 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
           ],
         ),
       ),
+    ),
+        if (isPaused)
+          PauseOverlay(
+            onResume: resumeGame,
+            onRestart: () {
+              resumeGame();
+              _restart();
+            },
+            onQuit: () async {
+              await savePartialProgress();
+              if (context.mounted) context.go('/games');
+            },
+          ),
+      ]),
     );
   }
 
@@ -507,11 +542,20 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
             flex: 3,
             child: GridView.builder(
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: context.responsiveTier<int>(
+                  phone: 2,
+                  tablet: 2,
+                  large: 3,
+                  xl: 4,
+                ),
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 2.5,
+                // Shrink aspect ratio as text scales up so answer cells
+                // stay tall enough to hold scaled label text at XL font.
+                childAspectRatio: ((context.isLargeTablet ? 3.0 : 2.5) /
+                        MediaQuery.textScalerOf(context).scale(1.0))
+                    .clamp(1.4, 3.0),
               ),
               itemCount: round.choices.length,
               itemBuilder: (context, index) {

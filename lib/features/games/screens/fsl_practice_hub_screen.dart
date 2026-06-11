@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/game_widgets.dart';
 
@@ -30,7 +31,7 @@ class FslPracticeHubScreen extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: Padding(
+        child: OverflowSafeBody(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,9 +96,11 @@ class FslPracticeHubScreen extends StatelessWidget {
               const SizedBox(height: 40),
 
               // ─── Mode Cards ───
-              Expanded(
-                child: Column(
-                  children: [
+              // Plain Column (no Expanded) so OverflowSafeBody can scroll
+              // at large font scales without an unbounded-flex assertion.
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                     // Sign → Word mode
                     _FslModeCard(
                       icon: Icons.videocam_rounded,
@@ -123,7 +126,6 @@ class FslPracticeHubScreen extends StatelessWidget {
                         .slideY(begin: 0.15, end: 0),
                   ],
                 ),
-              ),
             ],
           ),
         ),
@@ -191,11 +193,9 @@ class _FslModeCardState extends State<_FslModeCard> {
       button: true,
       label: '${widget.title}. ${widget.subtitle}',
       child: GestureDetector(
+        onTap: widget.onTap,
         onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) {
-          setState(() => _pressed = false);
-          widget.onTap();
-        },
+        onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
         child: AnimatedScale(
           scale: _pressed ? 0.96 : 1.0,
@@ -219,56 +219,70 @@ class _FslModeCardState extends State<_FslModeCard> {
                 ),
               ],
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Icon(widget.icon, size: 36, color: Colors.white),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.title,
-                        style: AppTypography.titleLarge.copyWith(
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  Container(
+                    width: context.scaledHeightCapped(64),
+                    height: context.scaledHeightCapped(64),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: FittedBox(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Icon(
+                          widget.icon,
+                          size: 36,
                           color: Colors.white,
-                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.subtitle,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.title,
+                          style: AppTypography.titleLarge.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.subtitle,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    shape: BoxShape.circle,
+                  const SizedBox(width: 8),
+                  Container(
+                    width: context.scaledHeightCapped(44),
+                    height: context.scaledHeightCapped(44),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: context.scaleIcon(28),
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.play_arrow_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

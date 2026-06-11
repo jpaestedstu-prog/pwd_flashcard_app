@@ -19,6 +19,8 @@ import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../../core/constants/flashcard_emojis.dart';
 import '../timed_game_mixin.dart';
+import '../game_pause_mixin.dart';
+import '../widgets/pause_overlay.dart';
 import '../../../l10n/app_localizations.dart';
 
 class DragDropScreen extends ConsumerStatefulWidget {
@@ -37,7 +39,7 @@ class DragDropScreen extends ConsumerStatefulWidget {
 }
 
 class _DragDropScreenState extends ConsumerState<DragDropScreen>
-    with TickerProviderStateMixin, TimedGameMixin {
+    with TickerProviderStateMixin, TimedGameMixin, GamePauseMixin {
   /// Difficulty-based item count
   int get _totalItems => switch (widget.difficulty) {
     GameDifficulty.easy => 3,
@@ -57,6 +59,7 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
   void initState() {
     super.initState();
     _startGame();
+    initPause();
   }
 
   void _startGame() {
@@ -85,8 +88,15 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
 
   @override
   void dispose() {
+    disposePause();
     disposeTimer();
     super.dispose();
+  }
+
+  @override
+  Future<void> savePartialProgress() async {
+    if (_flashcards.isEmpty) return;
+    _saveProgress();
   }
 
   @override
@@ -208,15 +218,26 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
       );
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) pauseGame();
+      },
+      child: Stack(children: [
+        Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Close',
-          onPressed: () => context.go('/games'),
+          onPressed: pauseGame,
         ),
         title: Text(AppLocalizations.of(context)!.dragAndDrop),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pause_circle_outline_rounded),
+            tooltip: 'Pause',
+            onPressed: pauseGame,
+          ),
           if (isTimedMode)
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -240,11 +261,17 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
+        // Scroll the whole board so a short (landscape) viewport or large font
+        // scale never overflows — on a tablet it all fits without scrolling.
+        child: SingleChildScrollView(
         child: Column(
           children: [
             // Instructions
             Text(
               AppLocalizations.of(context)!.dragInstruction,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: AppTypography.bodyMedium
                   .copyWith(color: HCColor.of(context).textSecondary),
             )
@@ -314,28 +341,43 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
             const SizedBox(height: 12),
 
             // ─── Drop Targets (bottom list) ───────
-            Expanded(
-              child: ListView.separated(
-                itemCount: _targets.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final target = _targets[index];
-                  return _DropTargetRow(
-                    target: target,
-                    matchedWord: _matches[target.id],
-                    onAccept: (word) => _onAccept(target.id, word),
-                  )
-                      .animate()
-                      .fadeIn(
-                          duration: 400.ms,
-                          delay: Duration(milliseconds: 80 * index))
-                      .slideX(begin: 0.15, end: 0);
-                },
-              ),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _targets.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final target = _targets[index];
+                return _DropTargetRow(
+                  target: target,
+                  matchedWord: _matches[target.id],
+                  onAccept: (word) => _onAccept(target.id, word),
+                )
+                    .animate()
+                    .fadeIn(
+                        duration: 400.ms,
+                        delay: Duration(milliseconds: 80 * index))
+                    .slideX(begin: 0.15, end: 0);
+              },
             ),
           ],
         ),
+        ),
       ),
+    ),
+        if (isPaused)
+          PauseOverlay(
+            onResume: resumeGame,
+            onRestart: () {
+              resumeGame();
+              setState(_startGame);
+            },
+            onQuit: () async {
+              await savePartialProgress();
+              if (context.mounted) context.go('/games');
+            },
+          ),
+      ]),
     );
   }
 }

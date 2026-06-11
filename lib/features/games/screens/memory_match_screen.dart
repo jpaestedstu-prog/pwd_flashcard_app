@@ -21,6 +21,8 @@ import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../../core/constants/flashcard_emojis.dart';
 import '../timed_game_mixin.dart';
+import '../game_pause_mixin.dart';
+import '../widgets/pause_overlay.dart';
 import '../../../l10n/app_localizations.dart';
 
 class MemoryMatchScreen extends ConsumerStatefulWidget {
@@ -39,7 +41,7 @@ class MemoryMatchScreen extends ConsumerStatefulWidget {
 }
 
 class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
-    with TimedGameMixin {
+    with TimedGameMixin, GamePauseMixin {
   /// Difficulty-based pair count
   int get _pairs => switch (widget.difficulty) {
     GameDifficulty.easy => 4,   // 4×2 grid (8 cards)
@@ -71,13 +73,35 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
   void initState() {
     super.initState();
     _setupGame();
+    initPause();
   }
 
   @override
   void dispose() {
+    disposePause();
     _timer?.cancel();
     disposeTimer();
     super.dispose();
+  }
+
+  @override
+  void onPause() {
+    _timer?.cancel();
+  }
+
+  @override
+  void onResume() {
+    if (_showResult) return;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (mounted) setState(() => _elapsedSeconds++);
+    });
+  }
+
+  @override
+  Future<void> savePartialProgress() async {
+    if (_cards.isEmpty) return;
+    _saveProgress();
   }
 
   @override
@@ -290,15 +314,26 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
       );
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) pauseGame();
+      },
+      child: Stack(children: [
+        Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Close',
-          onPressed: () => context.go('/games'),
+          onPressed: pauseGame,
         ),
         title: Text(AppLocalizations.of(context)!.memoryMatch),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pause_circle_outline_rounded),
+            tooltip: 'Pause',
+            onPressed: pauseGame,
+          ),
           if (isTimedMode)
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -372,7 +407,9 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                   crossAxisCount: _gridColumns,
                   mainAxisSpacing: context.gridSpacing * 0.625,
                   crossAxisSpacing: context.gridSpacing * 0.625,
-                  childAspectRatio: 0.78,
+                  childAspectRatio: (0.78 /
+                          MediaQuery.textScalerOf(context).scale(1.0))
+                      .clamp(0.55, 0.95),
                 ),
                 itemCount: _cards.length,
                 itemBuilder: (context, index) {
@@ -387,6 +424,20 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
           ],
         ),
       ),
+    ),
+        if (isPaused)
+          PauseOverlay(
+            onResume: resumeGame,
+            onRestart: () {
+              resumeGame();
+              _restart();
+            },
+            onQuit: () async {
+              await savePartialProgress();
+              if (context.mounted) context.go('/games');
+            },
+          ),
+      ]),
     );
   }
 }
@@ -447,7 +498,7 @@ class _MemoryCardWidget extends StatelessWidget {
             transform: Matrix4.identity()
               ..setEntry(3, 2, 0.001)
               ..rotateY(angle),
-            child: isFront ? _buildBack() : _buildFront(context),
+            child: isFront ? _buildBack(context) : _buildFront(context),
           );
         },
       ),
@@ -455,7 +506,7 @@ class _MemoryCardWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildBack() {
+  Widget _buildBack(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
@@ -465,7 +516,7 @@ class _MemoryCardWidget extends StatelessWidget {
       child: Center(
         child: Icon(
           Icons.question_mark_rounded,
-          size: 32,
+          size: context.scaleIcon(32),
           color: Colors.white.withValues(alpha: 0.7),
         ),
       ),

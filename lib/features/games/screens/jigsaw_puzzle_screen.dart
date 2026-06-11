@@ -15,12 +15,17 @@ import '../../../widgets/game_review_sheet.dart';
 import '../../../widgets/lottie_celebration_overlay.dart';
 import '../../../widgets/accessible_celebration_overlay.dart';
 import '../../../widgets/flashcard_image.dart';
+import '../../../core/constants/flashcard_emojis.dart';
+import '../jigsaw/jigsaw_piece_widget.dart';
+import '../jigsaw/jigsaw_piece_clipper.dart';
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/accessibility/haptic_service.dart';
 import '../../../core/services/celebration_service.dart';
 import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../timed_game_mixin.dart';
+import '../game_pause_mixin.dart';
+import '../widgets/pause_overlay.dart';
 
 class JigsawPuzzleScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -40,7 +45,7 @@ class JigsawPuzzleScreen extends ConsumerStatefulWidget {
 }
 
 class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
-    with TimedGameMixin {
+    with TimedGameMixin, GamePauseMixin {
   late List<Flashcard> _allCards;
   late List<Flashcard> _puzzleCards;
   int _currentPuzzle = 0;
@@ -56,6 +61,11 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
   late List<bool> _placedPieces; // which pieces are in correct position
   int? _selectedPieceIndex; // index in shuffled list
   int? _selectedGridSlot; // index in grid (flattened)
+
+  /// Jigsaw tab/blank edge shapes for the current grid size (constant for the
+  /// whole game since difficulty is fixed). Indexed [row][col]; adjacent pieces
+  /// share matching tab/blank edges so they interlock visually.
+  late final List<List<JigsawPieceClipper>> _clipperGrid;
 
   /// Difficulty-based grid size
   int get _gridSize => switch (widget.difficulty) {
@@ -78,6 +88,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
   @override
   void initState() {
     super.initState();
+    _clipperGrid = JigsawPieceClipper.generateGrid(_gridSize, _gridSize);
     var source = List.of(SeedData.allFlashcards);
     if (widget.categories.isNotEmpty) {
       source =
@@ -87,12 +98,20 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
     _puzzleCards = _allCards.take(_totalPuzzles).toList();
     _initPuzzle();
     startTimerIfNeeded(widget.timedMode);
+    initPause();
   }
 
   @override
   void dispose() {
+    disposePause();
     disposeTimer();
     super.dispose();
+  }
+
+  @override
+  Future<void> savePartialProgress() async {
+    if (_puzzleCards.isEmpty) return;
+    _saveProgress();
   }
 
   @override
@@ -291,16 +310,27 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
   Widget _buildGameScreen(BuildContext context) {
     final card = _puzzleCards[_currentPuzzle];
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) pauseGame();
+      },
+      child: Stack(children: [
+        Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Close',
-          onPressed: () => context.go('/games'),
+          onPressed: pauseGame,
         ),
         title: Text(
             'Jigsaw Puzzle  •  ${_currentPuzzle + 1}/$_totalPuzzles'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pause_circle_outline_rounded),
+            tooltip: 'Pause',
+            onPressed: pauseGame,
+          ),
           if (isTimedMode)
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -400,7 +430,9 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: HCColor.of(context)
+                            .surface
+                            .withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -424,6 +456,14 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
               child: _buildPuzzleGrid(card),
             ),
             const SizedBox(height: 12),
+            Text(
+              'Tap a piece, then tap a grid slot',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.labelSmall
+                  .copyWith(color: HCColor.of(context).textSecondary),
+            ),
+            const SizedBox(height: 6),
 
             // ─── Piece Tray (unplaced pieces) ─────
             Expanded(
@@ -433,90 +473,147 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
           ],
         ),
       ),
+    ),
+        if (isPaused)
+          PauseOverlay(
+            onResume: resumeGame,
+            onRestart: () {
+              resumeGame();
+              _restart();
+            },
+            onQuit: () async {
+              await savePartialProgress();
+              if (context.mounted) context.go('/games');
+            },
+          ),
+      ]),
+    );
+  }
+
+  /// Builds the full square "picture" that gets sliced into pieces. Seed cards
+  /// have no photo (`imageAsset` is always null), so we fill the square
+  /// edge-to-edge with the category gradient + a large centred emoji — that way
+  /// every piece (corners included) carries distinguishable content.
+  Widget _buildPuzzlePanel(Flashcard card, double extent) {
+    final cat = card.category;
+    return SizedBox(
+      width: extent,
+      height: extent,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              cat.color.withValues(alpha: 0.9),
+              cat.darkColor.withValues(alpha: 0.9),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Text(
+            FlashcardEmojis.forId(card.id),
+            style: TextStyle(fontSize: extent * 0.52, height: 1.0),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildPuzzleGrid(Flashcard card) {
     return LayoutBuilder(builder: (context, constraints) {
-      final gridExtent =
-          min(constraints.maxWidth, constraints.maxHeight);
+      final gridExtent = min(constraints.maxWidth, constraints.maxHeight);
       final pieceW = gridExtent / _gridSize;
       final pieceH = gridExtent / _gridSize;
+      // One source panel, reused (an immutable config) by the faint guide and
+      // every placed piece so the fragments line up into the same image.
+      final panel = _buildPuzzlePanel(card, gridExtent);
 
       return Center(
         child: SizedBox(
           width: gridExtent,
           height: gridExtent,
           child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              // Background grid outline
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: card.category.color.withValues(alpha: 0.3),
-                    width: 2,
+              // ── Faint full-image guide (placement aid) ──
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Opacity(opacity: 0.15, child: panel),
                   ),
-                  color: card.category.color.withValues(alpha: 0.05),
                 ),
               ),
-              // Grid slots
+              // ── Rounded frame ──
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: card.category.color.withValues(alpha: 0.3),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // ── Empty-slot tap targets ──
               ...List.generate(_totalPieces, (index) {
+                if (_placedPieces[index]) return const SizedBox.shrink();
                 final r = index ~/ _gridSize;
                 final c = index % _gridSize;
-                final isPlaced = _placedPieces[index];
                 final isSelected = _selectedGridSlot == index;
-
                 return Positioned(
                   left: c * pieceW,
                   top: r * pieceH,
                   width: pieceW,
                   height: pieceH,
                   child: GestureDetector(
-                    onTap: isPlaced ? null : () => _selectGridSlot(index),
+                    onTap: () => _selectGridSlot(index),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.all(1),
                       decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
                         border: Border.all(
                           color: isSelected
                               ? AppColors.primary
-                              : card.category.color.withValues(alpha: 0.2),
+                              : card.category.color.withValues(alpha: 0.25),
                           width: isSelected ? 3 : 1,
                         ),
-                        color: isPlaced
-                            ? Colors.transparent
-                            : isSelected
-                                ? AppColors.primary.withValues(alpha: 0.1)
-                                : card.category.color
-                                    .withValues(alpha: 0.03),
+                        color: isSelected
+                            ? AppColors.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
                       ),
-                      child: isPlaced
-                          ? ClipRect(
-                              child: Align(
-                                alignment: Alignment(
-                                  -1.0 +
-                                      2.0 * c / (_gridSize - 1),
-                                  -1.0 +
-                                      2.0 * r / (_gridSize - 1),
-                                ),
-                                widthFactor: 1.0 / _gridSize,
-                                heightFactor: 1.0 / _gridSize,
-                                child: FlashcardImage(
-                                  card: card,
-                                  size: gridExtent * 0.5,
-                                ),
-                              ),
-                            )
-                          : Center(
-                              child: Text(
-                                '${r * _gridSize + c + 1}',
-                                style:
-                                    AppTypography.bodySmall.copyWith(
-                                  color: HCColor.of(context).textSecondary
-                                      .withValues(alpha: 0.4),
-                                ),
-                              ),
-                            ),
+                    ),
+                  ),
+                );
+              }),
+              // ── Placed pieces (assemble the picture) ──
+              ...List.generate(_totalPieces, (index) {
+                if (!_placedPieces[index]) return const SizedBox.shrink();
+                final r = index ~/ _gridSize;
+                final c = index % _gridSize;
+                return Positioned(
+                  // Core sits exactly in the slot; the piece's tabs overflow
+                  // into neighbours (the Stack uses Clip.none) like a real
+                  // jigsaw, and align seamlessly since every piece samples the
+                  // same source panel.
+                  left: c * pieceW,
+                  top: r * pieceH,
+                  child: IgnorePointer(
+                    child: JigsawPieceWidget(
+                      row: r,
+                      col: c,
+                      rows: _gridSize,
+                      cols: _gridSize,
+                      clipper: _clipperGrid[r][c],
+                      sourceImage: panel,
+                      pieceWidth: pieceW,
+                      pieceHeight: pieceH,
+                      isPlaced: true,
                     ),
                   ),
                 );
@@ -557,75 +654,69 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
           color: AppColors.primary.withValues(alpha: 0.15),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Tap a piece, then tap a grid slot',
-            style: AppTypography.labelSmall.copyWith(
-              color: HCColor.of(context).textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: unplacedIndices.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (context, i) {
-                final shuffledIdx = unplacedIndices[i];
-                final gridIdx = _shuffledPieceOrder[shuffledIdx];
-                final r = gridIdx ~/ _gridSize;
-                final c = gridIdx % _gridSize;
-                final isSelected = _selectedPieceIndex == shuffledIdx;
+      // Pieces only — the "tap a piece" instruction lives above the tray in
+      // the body so a short tray never has to host a fixed header that would
+      // squeeze (and overflow) the piece row.
+      child: LayoutBuilder(builder: (context, constraints) {
+              // Size each piece to the tray height. The widget adds 18% tab
+              // padding around the core, so total height ≈ core × 1.36.
+              // Cap at the available height (never a fixed 44 floor) so a short
+              // tray on a landscape phone / large font scale doesn't overflow.
+              final pieceExtent = min(constraints.maxHeight, 96.0);
+              final core = pieceExtent / 1.36;
+              final panel = _buildPuzzlePanel(card, core * _gridSize);
 
-                return GestureDetector(
-                  onTap: () => _selectPiece(shuffledIdx),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.primary.withValues(alpha: 0.15)
-                          : card.category.color
-                              .withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected
-                            ? AppColors.primary
-                            : card.category.color
-                                .withValues(alpha: 0.3),
-                        width: isSelected ? 3 : 1.5,
-                      ),
-                    ),
+              return ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: unplacedIndices.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (context, i) {
+                  final shuffledIdx = unplacedIndices[i];
+                  final gridIdx = _shuffledPieceOrder[shuffledIdx];
+                  final r = gridIdx ~/ _gridSize;
+                  final c = gridIdx % _gridSize;
+                  final isSelected = _selectedPieceIndex == shuffledIdx;
+
+                  // Item box reserves the tab margin (core × 1.36 ≈ pieceExtent)
+                  // so the overflowing tabs stay inside the tile's footprint.
+                  return SizedBox(
+                    width: pieceExtent,
+                    height: pieceExtent,
                     child: Center(
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: card.category.color
-                              .withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${r + 1},${c + 1}',
-                            style: AppTypography.labelMedium.copyWith(
-                              color: card.category.darkColor,
-                              fontWeight: FontWeight.w700,
-                            ),
+                      child: AnimatedScale(
+                        scale: isSelected ? 1.08 : 1.0,
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOut,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.5),
+                                      blurRadius: 14,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: JigsawPieceWidget(
+                            row: r,
+                            col: c,
+                            rows: _gridSize,
+                            cols: _gridSize,
+                            clipper: _clipperGrid[r][c],
+                            sourceImage: panel,
+                            pieceWidth: core,
+                            pieceHeight: core,
+                            onTap: () => _selectPiece(shuffledIdx),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+                  );
+                },
+              );
+            }),
     );
   }
 }

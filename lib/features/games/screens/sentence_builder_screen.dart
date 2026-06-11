@@ -20,6 +20,8 @@ import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../../core/constants/flashcard_emojis.dart';
 import '../timed_game_mixin.dart';
+import '../game_pause_mixin.dart';
+import '../widgets/pause_overlay.dart';
 
 class SentenceBuilderScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -39,7 +41,7 @@ class SentenceBuilderScreen extends ConsumerStatefulWidget {
 }
 
 class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
-    with TimedGameMixin {
+    with TimedGameMixin, GamePauseMixin {
   late List<Flashcard> _cards;
   int _currentIndex = 0;
   int _score = 0;
@@ -69,12 +71,20 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
     super.initState();
     _initCards();
     startTimerIfNeeded(widget.timedMode);
+    initPause();
   }
 
   @override
   void dispose() {
+    disposePause();
     disposeTimer();
     super.dispose();
+  }
+
+  @override
+  Future<void> savePartialProgress() async {
+    if (_cards.isEmpty) return;
+    _saveProgress();
   }
 
   @override
@@ -280,17 +290,28 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
     final card = _cards[_currentIndex];
     final sentenceWithBlank = _buildSentenceWithBlank(card);
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) pauseGame();
+      },
+      child: Stack(children: [
+        Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Close',
-          onPressed: () => context.go('/games'),
+          onPressed: pauseGame,
         ),
         title: Text(
           'Sentence Builder  •  ${_currentIndex + 1}/${_cards.length}',
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pause_circle_outline_rounded),
+            tooltip: 'Pause',
+            onPressed: pauseGame,
+          ),
           if (isTimedMode)
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -532,6 +553,20 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
           ],
         ),
       ),
+    ),
+        if (isPaused)
+          PauseOverlay(
+            onResume: resumeGame,
+            onRestart: () {
+              resumeGame();
+              _restart();
+            },
+            onQuit: () async {
+              await savePartialProgress();
+              if (context.mounted) context.go('/games');
+            },
+          ),
+      ]),
     );
   }
 

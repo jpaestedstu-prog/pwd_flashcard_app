@@ -22,6 +22,8 @@ import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../timed_game_mixin.dart';
+import '../game_pause_mixin.dart';
+import '../widgets/pause_overlay.dart';
 import '../../../l10n/app_localizations.dart';
 
 class WordMatchScreen extends ConsumerStatefulWidget {
@@ -40,7 +42,7 @@ class WordMatchScreen extends ConsumerStatefulWidget {
 }
 
 class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
-    with TimedGameMixin {
+    with TimedGameMixin, GamePauseMixin {
   late List<Flashcard> _allCards;
   late List<_WordMatchRound> _rounds;
   int _currentRound = 0;
@@ -75,12 +77,20 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
     _allCards = source..shuffle();
     _generateRounds();
     startTimerIfNeeded(widget.timedMode);
+    initPause();
   }
 
   @override
   void dispose() {
+    disposePause();
     disposeTimer();
     super.dispose();
+  }
+
+  @override
+  Future<void> savePartialProgress() async {
+    if (_rounds.isEmpty) return;
+    _saveProgress();
   }
 
   @override
@@ -253,15 +263,26 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
 
     final round = _rounds[_currentRound];
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) pauseGame();
+      },
+      child: Stack(children: [
+        Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Close',
-          onPressed: () => context.go('/games'),
+          onPressed: pauseGame,
         ),
         title: Text('Word Match  •  ${_currentRound + 1}/${_rounds.length}'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pause_circle_outline_rounded),
+            tooltip: 'Pause',
+            onPressed: pauseGame,
+          ),
           if (isTimedMode)
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -332,29 +353,39 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                     width: 2,
                   ),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FlashcardImage(
-                      card: round.correctCard,
-                      size: 56,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      AppLocalizations.of(context)!.whatIsThisWord,
-                      style: AppTypography.titleMedium.copyWith(
-                        color: hc.textSecondary,
+                // Scale the prompt down to fit a short (landscape) viewport or
+                // a large font scale rather than overflowing the flex region.
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FlashcardImage(
+                            card: round.correctCard,
+                            size: 56,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            AppLocalizations.of(context)!.whatIsThisWord,
+                            style: AppTypography.titleMedium.copyWith(
+                              color: hc.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            round.correctCard.wordFilipino,
+                            style: AppTypography.headlineMedium.copyWith(
+                              color: round.correctCard.category.darkColor,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      round.correctCard.wordFilipino,
-                      style: AppTypography.headlineMedium.copyWith(
-                        color: round.correctCard.category.darkColor,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
               )
@@ -373,7 +404,11 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                   crossAxisCount: context.isLargeTablet ? 4 : 2,
                   mainAxisSpacing: context.gridSpacing * 0.75,
                   crossAxisSpacing: context.gridSpacing * 0.75,
-                  childAspectRatio: context.isLargeTablet ? 2.2 : 2.5,
+                  // Shrink aspect ratio as text scales up so answer cells
+                  // stay tall enough to hold scaled label text at XL font.
+                  childAspectRatio: ((context.isLargeTablet ? 2.2 : 2.5) /
+                          MediaQuery.textScalerOf(context).scale(1.0))
+                      .clamp(1.2, 2.5),
                 ),
                 itemCount: round.choices.length,
                 itemBuilder: (context, index) {
@@ -412,14 +447,20 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                         border: Border.all(color: borderColor, width: 2),
                         boxShadow: AppColors.softShadow,
                       ),
-                      child: Center(
-                        child: Text(
-                          choice.wordEnglish,
-                          style: AppTypography.titleMedium.copyWith(
-                            color: textColor,
-                            fontWeight: FontWeight.w700,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              choice.wordEnglish,
+                              style: AppTypography.titleMedium.copyWith(
+                                color: textColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
@@ -462,6 +503,20 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
           ],
         ),
       ),
+    ),
+        if (isPaused)
+          PauseOverlay(
+            onResume: resumeGame,
+            onRestart: () {
+              resumeGame();
+              _restart();
+            },
+            onQuit: () async {
+              await savePartialProgress();
+              if (context.mounted) context.go('/games');
+            },
+          ),
+      ]),
     );
   }
 }

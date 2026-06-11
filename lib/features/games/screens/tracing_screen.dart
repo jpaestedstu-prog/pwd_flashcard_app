@@ -21,6 +21,8 @@ import '../../../data/local/spaced_repetition_service.dart';
 import '../../../core/constants/flashcard_emojis.dart';
 import '../../../core/constants/letter_paths.dart';
 import '../timed_game_mixin.dart';
+import '../game_pause_mixin.dart';
+import '../widgets/pause_overlay.dart';
 import '../../../l10n/app_localizations.dart';
 
 class TracingScreen extends ConsumerStatefulWidget {
@@ -40,7 +42,7 @@ class TracingScreen extends ConsumerStatefulWidget {
 }
 
 class _TracingScreenState extends ConsumerState<TracingScreen>
-    with TickerProviderStateMixin, TimedGameMixin {
+    with TickerProviderStateMixin, TimedGameMixin, GamePauseMixin {
   /// Difficulty-based item count
   int get _totalItems => switch (widget.difficulty) {
     GameDifficulty.easy => 3,
@@ -82,6 +84,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
   void initState() {
     super.initState();
     _startGame();
+    initPause();
   }
 
   void _startGame() {
@@ -121,8 +124,15 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
 
   @override
   void dispose() {
+    disposePause();
     disposeTimer();
     super.dispose();
+  }
+
+  @override
+  Future<void> savePartialProgress() async {
+    if (_flashcards.isEmpty) return;
+    _saveProgress();
   }
 
   @override
@@ -309,15 +319,26 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
       );
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) pauseGame();
+      },
+      child: Stack(children: [
+        Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Close',
-          onPressed: () => context.go('/games'),
+          onPressed: pauseGame,
         ),
         title: Text(AppLocalizations.of(context)!.tracing),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pause_circle_outline_rounded),
+            tooltip: 'Pause',
+            onPressed: pauseGame,
+          ),
           if (isTimedMode)
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -367,6 +388,20 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
           ],
         ),
       ),
+    ),
+        if (isPaused)
+          PauseOverlay(
+            onResume: resumeGame,
+            onRestart: () {
+              resumeGame();
+              setState(_startGame);
+            },
+            onQuit: () async {
+              await savePartialProgress();
+              if (context.mounted) context.go('/games');
+            },
+          ),
+      ]),
     );
   }
 
@@ -481,8 +516,13 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
   }
 
   Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    // OverflowBar lays Clear + Check side-by-side at normal scale and stacks
+    // them vertically at XL font scaling so neither overflows the screen.
+    return OverflowBar(
+      spacing: 16,
+      overflowSpacing: 8,
+      alignment: MainAxisAlignment.center,
+      overflowAlignment: OverflowBarAlignment.center,
       children: [
         // Clear button
         OutlinedButton.icon(
@@ -493,7 +533,6 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           ),
         ),
-        const SizedBox(width: 16),
         // Check button
         FilledButton.icon(
           onPressed: _wordCompleted
