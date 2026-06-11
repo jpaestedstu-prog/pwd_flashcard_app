@@ -31,6 +31,21 @@ service cloud.firestore {
         && request.resource.data.owner_uid == request.auth.uid;
     }
 
+    // True when the writer is presenting a valid, unused recovery code
+    // for [profileId] and is stamping themselves as the new owner. The
+    // client embeds `_recovery_code` on the patch payload so the rule
+    // can verify the matching `recovery_codes/{code}` doc references
+    // this profile and has not been redeemed yet. Used by the
+    // cross-device profile recovery flow.
+    function claimingViaRecovery(profileId) {
+      return signedIn()
+        && '_recovery_code' in request.resource.data
+        && exists(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code))
+        && get(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code)).data.profile_id == profileId
+        && get(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code)).data.used_at == null
+        && request.resource.data.owner_uid == request.auth.uid;
+    }
+
     function ownsProfile(profileId) {
       return signedIn()
         && exists(/databases/$(database)/documents/profiles/$(profileId))
@@ -53,6 +68,14 @@ service cloud.firestore {
         );
     }
 
+    // A live session is keyed by either a classroom id (teacher-hosted) or a
+    // home-group id (parent-hosted). The host is whoever owns the matching
+    // classroom or home group.
+    function ownsLiveSession(sessionKey) {
+      return ownsClassroomTeacher(sessionKey)
+        || ownsHomeGroupOwner(sessionKey);
+    }
+
     // ─── Profiles ──────────────────────────────────────
     // Reads are open to any signed-in user (educator dashboards need
     // roster lookups). Writes are owner-scoped, with two extra paths:
@@ -73,6 +96,7 @@ service cloud.firestore {
               && request.resource.data.learning_level
                 != resource.data.learning_level))
         || claimingUnowned()
+        || claimingViaRecovery(profileId)
         || educatorRenamePatch(profileId);
       allow delete: if isOwner(resource.data.owner_uid);
     }
@@ -130,16 +154,30 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid;
-      allow update: if isOwner(resource.data.owner_uid) || claimingUnowned();
+      allow update: if isOwner(resource.data.owner_uid)
+        || claimingUnowned()
+        || claimingViaRecovery(profileId);
       allow delete: if isOwner(resource.data.owner_uid);
     }
 
     // ─── Custom flashcards ─────────────────────────────
+    // Custom cards belong to a profile (via owner_uid). On recovery,
+    // the new uid re-stamps each card with itself; the `_recovery_code`
+    // hint lets the rule verify the recovering uid actually possesses
+    // a valid code for the profile that owns the card.
     match /custom_cards/{cardId} {
       allow read: if signedIn();
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid;
-      allow update: if isOwner(resource.data.owner_uid) || claimingUnowned();
+      allow update: if isOwner(resource.data.owner_uid)
+        || claimingUnowned()
+        || (
+          '_recovery_code' in request.resource.data
+          && exists(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code))
+          && get(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code)).data.profile_owner_uid == resource.data.owner_uid
+          && get(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code)).data.used_at == null
+          && request.resource.data.owner_uid == request.auth.uid
+        );
       allow delete: if isOwner(resource.data.owner_uid);
     }
 
@@ -169,20 +207,44 @@ service cloud.firestore {
     }
 
     // ─── Shop equipped (per profile + item type) ───────
+    // Equipped-item docs carry `profile_id`. The recovery branch accepts
+    // a write when the requester possesses a valid code for the profile
+    // referenced by `profile_id` on the doc.
     match /shop_equipped/{docId} {
       allow read: if signedIn();
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid;
-      allow update: if isOwner(resource.data.owner_uid) || claimingUnowned();
+      allow update: if isOwner(resource.data.owner_uid)
+        || claimingUnowned()
+        || (
+          '_recovery_code' in request.resource.data
+          && exists(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code))
+          && get(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code)).data.profile_id == resource.data.profile_id
+          && get(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code)).data.used_at == null
+          && request.resource.data.owner_uid == request.auth.uid
+        );
       allow delete: if isOwner(resource.data.owner_uid);
     }
 
     // ─── App state (tutorial flags, daily challenge, etc.) ─
+    // `app_state` doc ids embed the profile id (e.g.
+    // `tutorial_seen_{profileId}`, `daily_streak_{profileId}`). The
+    // recovery branch accepts a write when the doc's existing `owner_uid`
+    // matches the recovery code's `profile_owner_uid` — the same
+    // pre-condition we use on `custom_cards`.
     match /app_state/{key} {
       allow read: if signedIn();
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid;
-      allow update: if isOwner(resource.data.owner_uid) || claimingUnowned();
+      allow update: if isOwner(resource.data.owner_uid)
+        || claimingUnowned()
+        || (
+          '_recovery_code' in request.resource.data
+          && exists(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code))
+          && get(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code)).data.profile_owner_uid == resource.data.owner_uid
+          && get(/databases/$(database)/documents/recovery_codes/$(request.resource.data._recovery_code)).data.used_at == null
+          && request.resource.data.owner_uid == request.auth.uid
+        );
       allow delete: if isOwner(resource.data.owner_uid);
     }
 
@@ -231,16 +293,19 @@ service cloud.firestore {
     // ─── Progress audit log (server-written) ───────────
     // Reads: the profile owner (so a kid can see if their last claim was
     //   reverted) and any signed-in user (teachers triaging suspicious
-    //   accounts). Writes: server-only (validateProgressUpdate uses the
-    //   admin SDK, which bypasses rules).
+    //   accounts). Writes: blocked from clients. Historically a Cloud
+    //   Function would have written here, but Cloud Functions require
+    //   the Blaze plan — on the free Spark plan we ship without it.
+    //   The rule stays so clients can never forge audit rows.
     match /progress_audit/{profileId}/events/{eventId} {
       allow read: if signedIn();
       allow write: if false;
     }
 
     // ─── Rate-limit counters (server-only writes) ──────
-    // Owner can read their own counter for transparency; only the
-    // validateProgressUpdate function writes here.
+    // Owner can read their own counter for transparency. Writes are
+    // blocked from clients; only a Blaze-tier Cloud Function would be
+    // allowed to bump these (none is deployed in this free-tier setup).
     match /rate_limits/{uid} {
       allow read: if isOwner(uid);
       allow write: if false;
@@ -292,30 +357,49 @@ service cloud.firestore {
       );
     }
 
-    // ─── Live Classroom Session ────────────────────────
-    // Session doc: only the classroom's teacher may create/update; any
-    // signed-in user can read (students need to subscribe).
-    match /live_sessions/{classroomId} {
+    // ─── Live Classroom / Home-group Session ───────────
+    // Session doc keyed by classroom id (teacher) or home-group id (parent).
+    // Only the host (classroom teacher OR home-group owner) may create /
+    // update / end it; any signed-in user can read (learners subscribe).
+    match /live_sessions/{sessionKey} {
       allow read: if signedIn();
       allow create: if signedIn()
-        && ownsClassroomTeacher(classroomId)
-        && request.resource.data.teacher_uid == request.auth.uid;
-      allow update: if signedIn() && ownsClassroomTeacher(classroomId);
-      allow delete: if signedIn() && ownsClassroomTeacher(classroomId);
+        && ownsLiveSession(sessionKey)
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow update: if signedIn() && ownsLiveSession(sessionKey);
+      allow delete: if signedIn() && ownsLiveSession(sessionKey);
 
-      // Student responses to a pushed activity. Anyone signed in may
-      // read (teacher dashboard subscribes to the live count); a student
-      // may write their own response (owner_uid match), and the teacher
-      // may overwrite/clear if needed.
+      // Learner responses to a pushed activity. Anyone signed in may read
+      // (the host dashboard subscribes to the live count + scoreboard); a
+      // learner may write their own response (owner_uid match), and the
+      // host may overwrite/clear if needed.
       match /responses/{responseId} {
         allow read: if signedIn();
         allow create: if signedIn()
           && request.resource.data.owner_uid == request.auth.uid;
         allow update: if signedIn() && (
           isOwner(resource.data.owner_uid)
-          || ownsClassroomTeacher(classroomId)
+          || ownsLiveSession(sessionKey)
         );
-        allow delete: if signedIn() && ownsClassroomTeacher(classroomId);
+        allow delete: if signedIn() && ownsLiveSession(sessionKey);
+      }
+
+      // Raised hands. One doc per learner (id == profileId). A learner may
+      // raise / lower their own hand (owner_uid match); the host may clear
+      // any hand. Reads are open to signed-in users so the host dashboard
+      // and the TV bridge can subscribe.
+      match /hands/{profileId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.owner_uid == request.auth.uid;
+        allow update: if signedIn() && (
+          isOwner(resource.data.owner_uid)
+          || ownsLiveSession(sessionKey)
+        );
+        allow delete: if signedIn() && (
+          isOwner(resource.data.owner_uid)
+          || ownsLiveSession(sessionKey)
+        );
       }
     }
 
@@ -358,6 +442,33 @@ service cloud.firestore {
         && ownsProfile(resource.data.setter_profile_id);
     }
 
+    // ─── Leaderboard config (classroom) ───────────────
+    // One doc per classroom, id == classroomId. Holds the educator's
+    // leaderboard settings (visible / metric / hidden members / period /
+    // season). Members read (any signed-in user, so a student can honor
+    // the config on their own device); only the owning teacher writes.
+    // Mirrors the read-open / owner-write shape of child_time_limits.
+    match /leaderboard_config_classroom/{classroomId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsClassroomTeacher(classroomId);
+      allow delete: if signedIn()
+        && ownsClassroomTeacher(classroomId);
+    }
+
+    // ─── Leaderboard config (home group) ──────────────
+    // Parallel to the classroom config — one doc per home group, id ==
+    // homeGroupId. Only the owning parent writes.
+    match /leaderboard_config_homegroup/{groupId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsHomeGroupOwner(groupId);
+      allow delete: if signedIn()
+        && ownsHomeGroupOwner(groupId);
+    }
+
     // ─── Active time logs (child-written daily counter) ─
     // The child's device writes here every ~5 minutes. Educators
     // on other devices read for the dashboard "X / Y min today"
@@ -371,5 +482,174 @@ service cloud.firestore {
         && ownsProfile(resource.data.child_profile_id);
     }
 
+    // ─── Direct Messages (profile ↔ profile) ──────────
+    // Top-level collection — each doc represents one message between two
+    // profiles. The schema (see [CloudMessageRepository]):
+    //   sender_profile_id, recipient_profile_id, sender_uid,
+    //   sender_name, content, type, timestamp, is_read
+    //
+    // Visibility model:
+    //   • Read: any signed-in user. Threads are scoped client-side via
+    //     `where('sender_profile_id', ...)` / `where('recipient_profile_id', ...)`.
+    //     We deliberately don't tighten reads further because the
+    //     profile-↔-profile pairing already constrains what the client
+    //     queries, and many educator devices read on behalf of multiple
+    //     profiles they own. Tightening would require composite indexes
+    //     keyed on owner_uid + profile_id which the Spark console can't
+    //     auto-create without manual intervention. Acceptable for a
+    //     classroom-scoped pilot; revisit if the deployment grows.
+    //   • Create: writer must stamp their own uid as `sender_uid` and
+    //     must own the `sender_profile_id` (no impersonation).
+    //   • Update: ONLY the message recipient may patch `is_read`, and
+    //     ONLY `is_read` may change.
+    //   • Delete: the sender (owner of `sender_profile_id`) may delete.
+    match /messages/{messageId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.sender_uid == request.auth.uid
+        && ownsProfile(request.resource.data.sender_profile_id);
+      allow update: if signedIn()
+        && ownsProfile(resource.data.recipient_profile_id)
+        && request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['is_read']);
+      allow delete: if signedIn()
+        && ownsProfile(resource.data.sender_profile_id);
+    }
+
+    // ─── Profile directory (username → profileId lookup) ──
+    // Doc id is the lowercased username. Reads are open to any signed-in
+    // user (friend-add by username has to resolve the handle without
+    // already knowing whose profile it is). Writes require the caller to
+    // own the profile referenced by `profile_id` and to stamp themselves
+    // as `owner_uid`.
+    match /profile_directory/{username} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.profile_id);
+      allow delete: if signedIn() && isOwner(resource.data.owner_uid);
+    }
+
+    // ─── Friend requests (pending → accepted/rejected) ────
+    // Composite id `{fromProfileId}_{toProfileId}` makes resends
+    // idempotent at the Firestore level. Reads are open to any
+    // signed-in user — doc IDs are sorted-pair UUIDs (not enumerable)
+    // and the body holds only profile ids + status + the sender's own
+    // display name. This shape lets `sendRequest`'s pre-existence
+    // check work on docs that don't exist yet (where `resource` is
+    // null, so any `resource.data.*` reference would otherwise deny).
+    // Mirrors the open-read policy used by `messages/{id}` below.
+    // Only the sender may create (and must own from_profile_id and
+    // stamp from_owner_uid); the recipient or the sender may patch
+    // `status` (recipient accepts/rejects; sender cancels) — and ONLY
+    // `status` and `updated_at` may change. Sender may delete.
+    match /friend_requests/{requestId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.from_owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.from_profile_id)
+        && request.resource.data.status == 'pending';
+      allow update: if signedIn() && (
+          ownsProfile(resource.data.to_profile_id)
+          || ownsProfile(resource.data.from_profile_id)
+        )
+        && request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['status', 'updated_at']);
+      allow delete: if signedIn()
+        && ownsProfile(resource.data.from_profile_id);
+    }
+
+    // ─── Friendships (accepted, sorted-pair doc id) ───────
+    // Single doc per relationship (id is `{minId}_{maxId}` so the same
+    // pair always resolves to the same doc regardless of who initiated).
+    // Reads are open to any signed-in user — the doc id is an
+    // unguessable sorted UUID pair, and the body carries only profile
+    // ids + a timestamp. The open read also lets `sendRequest`'s
+    // pre-existence `get()` succeed for non-existent docs (where
+    // `resource == null` would otherwise deny). Create is gated on
+    // the writer owning at least one of the two profiles in the pair
+    // — typically the acceptor, who batches this create alongside the
+    // request status update.
+    match /friendships/{friendshipId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && (
+        ownsProfile(request.resource.data.profile_a)
+        || ownsProfile(request.resource.data.profile_b)
+      );
+      allow delete: if signedIn() && (
+        ownsProfile(resource.data.profile_a)
+        || ownsProfile(resource.data.profile_b)
+      );
+    }
+
+    // ─── Multiplayer game rooms ("Play Together") ─────────
+    // One doc per online match. The host writes the shared game content
+    // (questions / memory layout) into the room; both players race their
+    // own copy and write only their own `players/{profileId}` doc. Reads
+    // are open to any signed-in user (the invited friend discovers the
+    // room via a single-field `where('invited_profile_id', ==)` query, and
+    // both clients subscribe to live state) — the doc id is an unguessable
+    // UUID and the body carries no PII beyond display names. Star-free:
+    // nothing here touches progress/stars.
+    //   • Create: host must stamp their own uid as both host_uid and
+    //     owner_uid, and own host_profile_id (no impersonation).
+    //   • Update: the host, the invited friend (to join), or a joined
+    //     guest may update (status transitions + guest fields + cancel).
+    //   • Delete: host only (cleanup after the match).
+    match /game_rooms/{roomId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.host_uid == request.auth.uid
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.host_profile_id);
+      allow update: if signedIn() && (
+        ownsProfile(resource.data.host_profile_id)
+        || ownsProfile(resource.data.invited_profile_id)
+        || (resource.data.guest_profile_id != null
+            && ownsProfile(resource.data.guest_profile_id))
+      );
+      allow delete: if signedIn()
+        && ownsProfile(resource.data.host_profile_id);
+
+      // Live per-player score/progress. Each device writes only its own doc
+      // (owner_uid match); the host may delete any during cleanup. Reads are
+      // open so each client can watch the opponent's live progress.
+      match /players/{profileId} {
+        allow read: if signedIn();
+        allow create, update: if signedIn()
+          && request.resource.data.owner_uid == request.auth.uid;
+        allow delete: if signedIn() && (
+          isOwner(resource.data.owner_uid)
+          || ownsProfile(
+              get(/databases/$(database)/documents/game_rooms/$(roomId)).data.host_profile_id)
+        );
+      }
+    }
+
+    // ─── Recovery codes (cross-device profile restoration) ─
+    // One doc per code. The doc id IS the human-shareable code (e.g.
+    // `MNGO-BERY-7K`), giving O(1) lookup with no `where(...)` query.
+    // Reads are open to any signed-in user: redemption is a lookup-by-id
+    // happy path, and the caller must already know the code. Code data
+    // is hashed (`code_hash` + `code_salt`) so the doc id alone is not
+    // enough to "prove" possession — the hash check happens client-side
+    // post-lookup. Used in tandem with [claimingViaRecovery] on
+    // profiles / progress / custom_cards / shop_equipped / app_state.
+    match /recovery_codes/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.profile_owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.profile_id);
+      // Updates are restricted to marking the code redeemed
+      // (`used_at` + `redeemed_by_uid`). The code itself, profile_id,
+      // and hash cannot be mutated post-creation.
+      allow update: if signedIn()
+        && resource.data.used_at == null
+        && request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['used_at', 'redeemed_by_uid']);
+      // Owner may revoke; the redeeming party may not delete.
+      allow delete: if signedIn()
+        && resource.data.profile_owner_uid == request.auth.uid;
+    }
   }
 }
