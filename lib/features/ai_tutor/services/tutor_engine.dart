@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../../data/models/models.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/local/seed_data.dart';
+import '../../../data/local/spaced_repetition_service.dart';
 import '../models/tutor_models.dart';
 
 const _uuid = Uuid();
@@ -40,7 +41,8 @@ class TutorEngine {
   /// Analyze progress and generate a contextual response
   static TutorMessage analyzeAndRespond(
     LearningProgress progress,
-    String studentName, {
+    String studentName,
+    String profileId, {
     bool isFilipino = false,
   }) {
     // Check for weak categories
@@ -70,14 +72,15 @@ class TutorEngine {
       return _strongCategoryMessage(strongCategories, isFilipino: isFilipino);
     }
 
-    // Default: suggest a word of the day
-    return _wordOfTheDay(isFilipino: isFilipino);
+    // Default: offer today's personalized learning plan.
+    return offerLearningPlan(progress, profileId, isFilipino: isFilipino);
   }
 
   /// Generate a response to a student question
   static TutorMessage respondToQuestion(
     String question,
-    LearningProgress progress, {
+    LearningProgress progress,
+    String profileId, {
     bool isFilipino = false,
   }) {
     final lowerQ = question.toLowerCase();
@@ -102,6 +105,15 @@ class TutorEngine {
         lowerQ.contains('test') ||
         lowerQ.contains('pagsusulit')) {
       return _quickQuiz(isFilipino: isFilipino);
+    }
+
+    // Check for learning-plan / daily lesson requests
+    if (lowerQ.contains('plan') ||
+        lowerQ.contains('lesson') ||
+        lowerQ.contains('today') ||
+        lowerQ.contains('aralin') ||
+        lowerQ.contains('ngayon')) {
+      return offerLearningPlan(progress, profileId, isFilipino: isFilipino);
     }
 
     // Check for practice requests
@@ -259,6 +271,15 @@ class TutorEngine {
     }
 
     final card = allCards[_random.nextInt(allCards.length)];
+    return quizForWord(card, isFilipino: isFilipino);
+  }
+
+  /// Builds a multiple-choice quiz message for a specific [card]. The action
+  /// carries [wordId]/[categoryLabel] so a correct answer can be recorded
+  /// against spaced-repetition and progress tracking.
+  static TutorMessage quizForWord(Flashcard card,
+      {bool isFilipino = false, String? prefix}) {
+    final allCards = SeedData.allFlashcards;
     // Generate 3 wrong options
     final wrongOptions = allCards
         .where((c) => c.id != card.id)
@@ -266,20 +287,67 @@ class TutorEngine {
         .toSet()
         .toList()
       ..shuffle(_random);
-    final options = [card.wordFilipino, ...wrongOptions.take(3)]..shuffle(_random);
+    final options = [card.wordFilipino, ...wrongOptions.take(3)]
+      ..shuffle(_random);
 
+    final head = prefix ?? (isFilipino ? '❓ Mabilisang Quiz!' : '❓ Quick Quiz!');
     return TutorMessage(
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
       content: isFilipino
-          ? '❓ Mabilisang Quiz!\n\nAno ang Filipino ng "${card.wordEnglish}"?'
-          : '❓ Quick Quiz!\n\nWhat is the Filipino for "${card.wordEnglish}"?',
+          ? '$head\n\nAno ang Filipino ng "${card.wordEnglish}"?'
+          : '$head\n\nWhat is the Filipino for "${card.wordEnglish}"?',
       timestamp: DateTime.now(),
       action: TutorAction(
         type: TutorActionType.quickQuiz,
         question: card.wordEnglish,
         options: options,
         correctAnswer: card.wordFilipino,
+        wordId: card.id,
+        categoryLabel: card.category.label,
+      ),
+    );
+  }
+
+  /// Picks today's personalized learning plan — 3 flashcards prioritized by the
+  /// learner's spaced-repetition data (weakest / least-recently-seen first),
+  /// falling back to unseen words. Reuses [SpacedRepetitionService.getReviewWords].
+  static List<Flashcard> buildLearningPlan(
+    LearningProgress progress,
+    String profileId, {
+    int count = 3,
+  }) {
+    final allCards = SeedData.allFlashcards;
+    if (allCards.isEmpty) return const [];
+    return SpacedRepetitionService.getReviewWords(
+      profileId: profileId,
+      allCards: allCards,
+      count: count,
+    );
+  }
+
+  /// A message that invites the learner to start today's learning plan. The
+  /// [TutorActionType.startLesson] action carries the chosen [planWordIds].
+  static TutorMessage offerLearningPlan(
+    LearningProgress progress,
+    String profileId, {
+    bool isFilipino = false,
+  }) {
+    final plan = buildLearningPlan(progress, profileId);
+    if (plan.isEmpty) {
+      return _wordOfTheDay(isFilipino: isFilipino);
+    }
+    final preview = plan.map((c) => c.wordEnglish).join(', ');
+    return TutorMessage(
+      id: _uuid.v4(),
+      role: TutorMessageRole.tutor,
+      content: isFilipino
+          ? '🎯 Handa na ang iyong aralin ngayon! Mag-aaral tayo ng ${plan.length} salita: $preview.\n\nPindutin sa ibaba para magsimula — may bituin kang makukuha!'
+          : '🎯 Today\'s lesson is ready! We\'ll practice ${plan.length} words: $preview.\n\nTap below to start — you\'ll earn stars!',
+      timestamp: DateTime.now(),
+      action: TutorAction(
+        type: TutorActionType.startLesson,
+        planWordIds: plan.map((c) => c.id).toList(),
       ),
     );
   }
