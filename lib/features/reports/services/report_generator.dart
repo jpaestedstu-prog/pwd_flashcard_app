@@ -11,12 +11,22 @@ class ReportGenerator {
   ReportGenerator._();
 
   /// Load NotoSans fonts that support Unicode.
-  static Future<pw.ThemeData> _loadTheme() async {
-    final regularData = await rootBundle.load('google_fonts/NotoSans-Regular.ttf');
-    final boldData = await rootBundle.load('google_fonts/NotoSans-Bold.ttf');
-    final regular = pw.Font.ttf(regularData);
-    final bold = pw.Font.ttf(boldData);
-    return pw.ThemeData.withFont(base: regular, bold: bold);
+  ///
+  /// Returns `null` when the font assets cannot be loaded (e.g. a stripped
+  /// build or an OEM that fails the asset read) so that report generation
+  /// still succeeds with the bundled Helvetica fallback rather than throwing
+  /// and breaking the whole Preview / Share flow.
+  static Future<pw.ThemeData?> _loadTheme() async {
+    try {
+      final regularData =
+          await rootBundle.load('google_fonts/NotoSans-Regular.ttf');
+      final boldData = await rootBundle.load('google_fonts/NotoSans-Bold.ttf');
+      final regular = pw.Font.ttf(regularData);
+      final bold = pw.Font.ttf(boldData);
+      return pw.ThemeData.withFont(base: regular, bold: bold);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Generate a full weekly progress report PDF for one child.
@@ -563,15 +573,18 @@ class ReportGenerator {
     String subtitle,
     PdfColor sideColor,
   ) {
+    // NOTE: the `pdf` package forbids combining a non-uniform border (e.g.
+    // a left-only accent) with a borderRadius, and a stretch-aligned Row
+    // explodes under MultiPage's unbounded height. A rounded card with a
+    // uniform accent-coloured border keeps the design intent while being
+    // safe to render on every page layout.
     return pw.Container(
       margin: const pw.EdgeInsets.only(bottom: 8),
       padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
         color: PdfColors.grey50,
         borderRadius: pw.BorderRadius.circular(8),
-        border: pw.Border(
-          left: pw.BorderSide(color: sideColor, width: 4),
-        ),
+        border: pw.Border.all(color: sideColor, width: 1.5),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,

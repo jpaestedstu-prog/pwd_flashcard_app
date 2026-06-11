@@ -1,9 +1,6 @@
-import '../../features/ai_tutor/models/tutor_brain_models.dart';
 import '../../features/assessment/models/assessment_models.dart';
-import '../../features/sign_interpreter/models/sign_interpreter_models.dart';
 import '../../features/survey/models/survey_models.dart';
 import '../../features/survey/models/smileyometer_models.dart';
-import '../services/knowledge_tracing_service.dart';
 
 /// Pure CSV header/row builders for [ResearchExportService].
 ///
@@ -104,87 +101,6 @@ class ResearchExportRows {
       }
     }
     return rows;
-  }
-
-  // ─── speech_to_sign_usage.csv ───────────────────────────
-
-  static const String speechToSignUsageHeader =
-      'student_id,timestamp,locale,source,'
-      'token_count,matched_count,unmatched_words,duration_ms';
-
-  /// One row per Speech→Sign session for one student. The unmatched-word
-  /// column is semicolon-joined so the CSV stays one-row-per-session; it
-  /// doubles as the priority list for which signs to record next.
-  static List<String> speechToSignUsageRows({
-    required String studentId,
-    required List<SignUsageEvent> events,
-  }) {
-    return [
-      for (final e in events)
-        '$studentId,'
-            '${e.timestamp.toIso8601String()},'
-            '${e.locale},'
-            '${e.source},'
-            '${e.tokenCount},'
-            '${e.matchedCount},'
-            '${esc(e.unmatchedWords.join(';'))},'
-            '${e.durationMs}',
-    ];
-  }
-
-  // ─── tutor_interactions.csv ─────────────────────────────
-
-  static const String tutorInteractionsHeader =
-      'student_id,timestamp,trigger,brain,latency_ms,'
-      'fallback_reason,action_type';
-
-  /// One row per tutor-brain turn (rule AND llm) for one student — the
-  /// rule-vs-LLM engagement comparison joins on `brain`.
-  static List<String> tutorInteractionRows({
-    required String studentId,
-    required List<TutorInteractionEvent> events,
-  }) {
-    return [
-      for (final e in events)
-        '$studentId,'
-            '${e.timestamp.toIso8601String()},'
-            '${e.trigger.name},'
-            '${e.brain},'
-            '${e.latencyMs},'
-            '${e.fallbackReason ?? ''},'
-            '${e.actionType}',
-    ];
-  }
-
-  // ─── knowledge_state.csv ────────────────────────────────
-
-  static const String knowledgeStateHeader =
-      'student_id,word_id,category,theta_global,theta_category,'
-      'beta,p_correct,attempts,trend_slope,last_seen';
-
-  /// One row per Elo-tracked word for one student. `theta_category` is blank
-  /// for words outside the seed vocabulary (custom flashcards), which only
-  /// update the global ability estimate.
-  static List<String> knowledgeStateRows({
-    required String studentId,
-    required double thetaGlobal,
-    required Map<String, double> thetaByCategory,
-    required List<EloWordReport> reports,
-  }) {
-    final thetaGlobalCell = thetaGlobal.toStringAsFixed(3);
-    return [
-      for (final r in reports)
-        '$studentId,'
-            '${esc(r.wordId)},'
-            '${esc(r.category)},'
-            '$thetaGlobalCell,'
-            '${thetaByCategory[r.category]?.toStringAsFixed(3) ?? ''},'
-            '${r.beta.toStringAsFixed(3)},'
-            '${r.pCorrect.toStringAsFixed(3)},'
-            '${r.attempts},'
-            '${r.trendSlope.toStringAsFixed(3)},'
-            '${r.lastSeen.toIso8601String()}',
-    ];
   }
 
   // ─── sus_survey_results.csv (teacher-administered) ──────

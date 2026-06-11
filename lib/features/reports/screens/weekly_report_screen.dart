@@ -1,14 +1,19 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../providers/parent_provider.dart';
 import '../../../providers/app_providers.dart';
 import '../services/report_generator.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Screen for generating, previewing and sharing weekly progress reports.
 ///
@@ -34,16 +39,12 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () async {
+        leading: AppBackButton(
+          onBeforePop: () async {
             if (ref.read(profileProvider.notifier).isViewingAsStudent) {
               await ref.read(profileProvider.notifier).restoreEducatorProfile();
             }
-            if (context.mounted) {
-              context.pop();
-            }
+            return true;
           },
         ),
         title: Text(
@@ -202,10 +203,11 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
     try {
       final pdfBytes = await ReportGenerator.generateWeeklyReport(child);
       if (!mounted) return;
-
-      await Printing.sharePdf(
-        bytes: pdfBytes,
-        filename: 'weekly_report_${child.name.toLowerCase().replaceAll(' ', '_')}.pdf',
+      await sharePdfBytes(
+        context,
+        pdfBytes,
+        filename: 'weekly_report_${_safeFileName(child.name)}.pdf',
+        subject: 'Weekly Progress Report \u2014 ${child.name}',
       );
     } catch (e) {
       if (mounted) {
@@ -227,16 +229,11 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
 
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => Scaffold(
-            appBar: AppBar(
-              title: Text('Report Preview \u2014 ${child.name}'),
-            ),
-            body: PdfPreview(
-              build: (_) async => pdfBytes,
-              canChangeOrientation: false,
-              canChangePageFormat: false,
-              pdfFileName: 'weekly_report_${child.name.toLowerCase().replaceAll(' ', '_')}.pdf',
-            ),
+          builder: (_) => ReportPreviewScreen(
+            pdfBytes: pdfBytes,
+            title: 'Report Preview \u2014 ${child.name}',
+            filename: 'weekly_report_${_safeFileName(child.name)}.pdf',
+            shareSubject: 'Weekly Progress Report \u2014 ${child.name}',
           ),
         ),
       );
@@ -254,10 +251,11 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
     try {
       final pdfBytes = await ReportGenerator.generateFamilyReport(children);
       if (!mounted) return;
-
-      await Printing.sharePdf(
-        bytes: pdfBytes,
+      await sharePdfBytes(
+        context,
+        pdfBytes,
         filename: 'family_progress_report.pdf',
+        subject: 'Family Progress Report',
       );
     } catch (e) {
       if (mounted) {
@@ -266,6 +264,167 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
+  }
+}
+
+/// Sanitise a child's name into a safe, lower-case file stem.
+///
+/// Strips anything that isn't a letter, digit, dash or underscore so the
+/// generated filename is valid on every Android storage/file-provider
+/// backend (some OEM file managers reject spaces and punctuation).
+String _safeFileName(String name) {
+  final cleaned = name
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_+|_+$'), '');
+  return cleaned.isEmpty ? 'student' : cleaned;
+}
+
+/// Write [bytes] to the cache directory and open the system share sheet via
+/// `share_plus`.
+///
+/// We deliberately use `share_plus` (the same path the CSV export uses)
+/// rather than `Printing.sharePdf`: it resolves the foreground Activity
+/// itself and supplies the `sharePositionOrigin` anchor that tablets/iPads
+/// need for the share popover, so it works consistently across every Android
+/// version and OEM. If the file write fails for any reason we fall back to
+/// the in-memory `Printing.sharePdf` so the user is never left with a dead
+/// button.
+Future<void> sharePdfBytes(
+  BuildContext context,
+  Uint8List bytes, {
+  required String filename,
+  required String subject,
+}) async {
+  // Anchor for the iPad/tablet share popover (ignored on phones).
+  final box = context.findRenderObject() as RenderBox?;
+  final origin = (box != null && box.hasSize)
+      ? box.localToGlobal(Offset.zero) & box.size
+      : null;
+  try {
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/$filename');
+    await file.writeAsBytes(bytes, flush: true);
+    await Share.shareXFiles(
+      [XFile(file.path, mimeType: 'application/pdf', name: filename)],
+      subject: subject,
+      sharePositionOrigin: origin,
+    );
+  } catch (_) {
+    // Last-resort fallback \u2014 the printing plugin keeps everything in memory.
+    await Printing.sharePdf(bytes: bytes, filename: filename);
+  }
+}
+
+// \u2500\u2500\u2500 Report Preview Screen \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+/// Full-screen, render-resilient PDF preview.
+///
+/// `PdfPreview` rasterises pages through the platform renderer. On the odd
+/// OEM tablet that rasterisation can fail or come back blank \u2014 so we supply
+/// an [PdfPreview.onError] fallback that still lets the user share the
+/// report, and we put our own guaranteed Share action in the app bar
+/// (driven by [sharePdfBytes]) on top of the built-in toolbar.
+class ReportPreviewScreen extends StatelessWidget {
+  final Uint8List pdfBytes;
+  final String title;
+  final String filename;
+  final String shareSubject;
+
+  const ReportPreviewScreen({
+    super.key,
+    required this.pdfBytes,
+    required this.title,
+    required this.filename,
+    required this.shareSubject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    return Scaffold(
+      backgroundColor: hc.background,
+      appBar: AppBar(
+        leading: const AppBackButton(),
+        title: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Share PDF',
+            icon: const Icon(Icons.share_rounded),
+            onPressed: () => sharePdfBytes(
+              context,
+              pdfBytes,
+              filename: filename,
+              subject: shareSubject,
+            ),
+          ),
+        ],
+      ),
+      body: PdfPreview(
+        build: (_) async => pdfBytes,
+        canChangeOrientation: false,
+        canChangePageFormat: false,
+        // The built-in print action depends on a system print spooler that
+        // some tablets/Android Go builds omit; sharing is universal, so we
+        // surface sharing (default-on) and hide the print button to avoid a
+        // dead control.
+        allowPrinting: false,
+        pdfFileName: filename,
+        onError: (context, error) => _PreviewErrorFallback(
+          onShare: () => sharePdfBytes(
+            context,
+            pdfBytes,
+            filename: filename,
+            subject: shareSubject,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PreviewErrorFallback extends StatelessWidget {
+  final VoidCallback onShare;
+
+  const _PreviewErrorFallback({required this.onShare});
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.picture_as_pdf_rounded, size: 72, color: hc.textHint),
+            const SizedBox(height: 16),
+            Text(
+              'On-screen preview isn\'t available on this device.',
+              textAlign: TextAlign.center,
+              style: AppTypography.titleSmall.copyWith(color: hc.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'The report was generated successfully \u2014 tap below to open, '
+              'save, or send it as a PDF.',
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMedium.copyWith(color: hc.textHint),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: onShare,
+              icon: const Icon(Icons.share_rounded),
+              label: const Text('Share PDF'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

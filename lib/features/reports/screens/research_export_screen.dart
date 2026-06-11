@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
@@ -9,6 +8,7 @@ import '../../../core/utils/research_export_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../features/assessment/services/assessment_service.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Educator-only screen for exporting anonymized, cross-student research
 /// data — designed specifically for thesis analysis and academic reporting.
@@ -54,11 +54,7 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(),
         title: Text(
           'Research Data Export',
           style: AppTypography.titleMedium.copyWith(

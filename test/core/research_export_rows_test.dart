@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/core/utils/research_export_rows.dart';
 import 'package:pwdpwdpwd/features/assessment/models/assessment_models.dart';
+import 'package:pwdpwdpwd/features/survey/models/survey_models.dart';
+import 'package:pwdpwdpwd/features/survey/models/smileyometer_models.dart';
 
 AssessmentResult _res(
   AssessmentType type, {
@@ -144,6 +146,76 @@ void main() {
         results: [result],
       );
       expect(rows.single, contains('"yes, maybe"'));
+    });
+  });
+
+  group('ResearchExportRows.susSurveyRows', () {
+    test('header has 16 columns', () {
+      expect(ResearchExportRows.susSurveyHeader.split(',').length, 16);
+    });
+
+    test('formats a teacher SUS row with respondent role and score', () {
+      final sus = SusSurveyResult(
+        id: 's1',
+        profileId: 't1',
+        completedAt: DateTime(2026),
+        responses: const [5, 1, 5, 1, 5, 1, 5, 1, 5, 1], // perfect → SUS 100
+        feedback: 'great',
+      );
+      final rows = ResearchExportRows.susSurveyRows(
+        respondentId: 'T001',
+        respondentRole: 'teacher',
+        results: [sus],
+      );
+      expect(rows.length, 1);
+      final cells = rows.single.split(',');
+      expect(cells.length, 16);
+      expect(cells[0], 'T001');
+      expect(cells[1], 'teacher');
+      expect(cells.sublist(3, 13),
+          ['5', '1', '5', '1', '5', '1', '5', '1', '5', '1']);
+      expect(cells[13], '100.0'); // sus_score
+      expect(cells[15], '5'); // feedback_length ("great")
+    });
+  });
+
+  group('ResearchExportRows.smileyometerRows', () {
+    test('header has 7 columns', () {
+      expect(ResearchExportRows.smileyometerHeader.split(',').length, 7);
+    });
+
+    test('formats face ratings and mean (no-comma row is 7 columns)', () {
+      final s = SmileyometerResult(
+        id: '1',
+        profileId: 'p',
+        completedAt: DateTime(2026),
+        ratings: const [1, 2, 3],
+      );
+      final rows = ResearchExportRows.smileyometerRows(
+        studentId: 'S001',
+        groupLabel: 'treatment',
+        results: [s],
+      );
+      final cells = rows.single.split(',');
+      expect(cells.length, 7);
+      expect(cells.sublist(3, 6), ['1', '2', '3']); // q1..q3
+      expect(cells[6], '2.00'); // mean_rating
+    });
+
+    test('escapes a group label containing a comma', () {
+      final s = SmileyometerResult(
+        id: '1',
+        profileId: 'p',
+        completedAt: DateTime(2026),
+        ratings: const [3, 3, 3],
+      );
+      final rows = ResearchExportRows.smileyometerRows(
+        studentId: 'S001',
+        groupLabel: 'group,A',
+        results: [s],
+      );
+      expect(rows.single, contains('"group,A"'));
+      expect(rows.single.endsWith('3.00'), isTrue);
     });
   });
 }
