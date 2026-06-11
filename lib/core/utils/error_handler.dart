@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../services/analytics_service.dart';
 
 /// Centralized error handling service for FlashLearn PWD.
 ///
@@ -29,6 +30,7 @@ class ErrorHandler {
     'LockEnforcerGate:silent',
     'OnAlarmFired:silent',
     'PinUnlockGrace:silent',
+    'OverflowSilent',
   };
 
   static final _errorStreamController =
@@ -41,13 +43,29 @@ class ErrorHandler {
   static void init() {
     // 1. Catch Flutter framework errors (widget build errors, etc.)
     FlutterError.onError = (FlutterErrorDetails details) {
-      FlutterError.presentError(details); // still print red-screen in debug
+      // Layout overflow errors ("A RenderFlex overflowed by …") are
+      // recoverable incidents, not crashes. Suppress the yellow/black
+      // striped banner in release so end-users never see it; still print
+      // it in debug so the developer fixes the source.
+      final exception = details.exception;
+      final isOverflow = exception is FlutterError &&
+          exception.message.contains('overflowed by');
+      if (!isOverflow || kDebugMode) {
+        FlutterError.presentError(details);
+      }
       _handleError(
         details.exception,
         details.stack,
-        source: 'FlutterError',
+        source: isOverflow ? 'OverflowSilent' : 'FlutterError',
         context: details.context?.toString(),
       );
+      // Forward to Crashlytics with full FlutterErrorDetails so the
+      // remote report keeps the framework's context (widget tree, build
+      // phase). Internally gated by AnalyticsService.isOptIn — no-op
+      // until an educator explicitly enables telemetry.
+      if (!isOverflow) {
+        AnalyticsService.recordFlutterError(details);
+      }
     };
 
     // 2. Catch platform dispatcher errors (e.g. codec failures)
@@ -119,6 +137,18 @@ class ErrorHandler {
 
     // Persist to Hive — keep diagnostics intact even for silent sources.
     _persistError(appError);
+
+    // Forward to Crashlytics. Internally a no-op when the user has not
+    // opted in (which is the default), so this is privacy-safe. Silent
+    // sources still go to Crashlytics because they represent real
+    // problems we want to triage remotely — they're only silent for
+    // the user-facing snackbar.
+    AnalyticsService.recordError(
+      error,
+      stack,
+      source: source,
+      context: context,
+    );
 
     // Silent sources: logged but never surfaced to the global snackbar.
     // See [_silentSources] for the rationale.
