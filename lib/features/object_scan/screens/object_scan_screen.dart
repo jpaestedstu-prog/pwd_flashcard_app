@@ -42,6 +42,7 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
   late final ObjectLabeler _labeler;
   CameraController? _controller;
   _ScanStatus _status = _ScanStatus.initializing;
+  bool _initInFlight = false;
 
   bool _inferenceBusy = false;
   bool _sheetOpen = false;
@@ -62,25 +63,46 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
+    _controller = null;
     _labeler.close();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_status == _ScanStatus.noCamera) return;
+    final controller = _controller;
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
-      _controller?.dispose();
-      _controller = null;
-      _status = _ScanStatus.initializing;
-    } else if (state == AppLifecycleState.resumed && _controller == null) {
-      // Also retries after the user grants permission in system settings.
+      // Never touch a controller that is still initializing: the runtime
+      // permission dialog itself sends the app `inactive`, and disposing
+      // mid-initialize crashes the plugin with a null-check TypeError on
+      // first launch. Once the dialog closes, initialize() resumes.
+      if (controller != null && controller.value.isInitialized) {
+        controller.dispose();
+        _controller = null;
+        _status = _ScanStatus.initializing;
+      }
+    } else if (state == AppLifecycleState.resumed &&
+        controller == null &&
+        !_initInFlight &&
+        _status != _ScanStatus.noCamera) {
+      // Re-acquire after backgrounding; also retries after the user grants
+      // permission from system settings.
       _initCamera();
     }
   }
 
   Future<void> _initCamera() async {
+    if (_initInFlight) return;
+    _initInFlight = true;
+    try {
+      await _initCameraInner();
+    } finally {
+      _initInFlight = false;
+    }
+  }
+
+  Future<void> _initCameraInner() async {
     if (_status != _ScanStatus.initializing) {
       setState(() => _status = _ScanStatus.initializing);
     }
@@ -107,22 +129,32 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
       imageFormatGroup: ImageFormatGroup.nv21,
     );
     _controller = controller;
+    // After every await: if `_controller` no longer points at this
+    // controller, dispose()/the lifecycle handler already tore it down —
+    // this run is stale and must not dispose it a second time.
     try {
       await controller.initialize();
-      if (!mounted) {
-        controller.dispose();
-        return;
-      }
+      if (!mounted || !identical(_controller, controller)) return;
       await controller.startImageStream(_onFrame);
-      if (!mounted) return;
+      if (!mounted || !identical(_controller, controller)) return;
       setState(() => _status = _ScanStatus.ready);
     } on CameraException catch (e) {
+      if (!identical(_controller, controller)) return;
       _controller = null;
       controller.dispose();
       if (!mounted) return;
       setState(() => _status = e.code.startsWith('CameraAccess')
           ? _ScanStatus.permissionDenied
           : _ScanStatus.failed);
+    } catch (_) {
+      // Plugin internals can throw non-CameraException errors (e.g. when
+      // the platform side goes away mid-call); show the retry state
+      // instead of an unhandled exception.
+      if (!identical(_controller, controller)) return;
+      _controller = null;
+      controller.dispose();
+      if (!mounted) return;
+      setState(() => _status = _ScanStatus.failed);
     }
   }
 
