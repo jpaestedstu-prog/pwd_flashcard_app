@@ -74,3 +74,89 @@ enum LeaderboardPeriod {
     LeaderboardPeriod.thisMonth => 'This Month',
   };
 }
+
+/// Which roster a leaderboard is scoped to.
+enum LeaderboardScopeKind { classroom, homeGroup, none }
+
+/// Identifies the membership boundary a leaderboard is drawn from — the
+/// classroom a student joined, the home group a child joined, or `none`
+/// (the learner hasn't joined anything yet, so the screen shows a
+/// "join" prompt instead of a board).
+class LeaderboardScope {
+  final LeaderboardScopeKind kind;
+  final String? id; // classroomId or homeGroupId
+  final String? displayName; // class / group name for the header
+
+  const LeaderboardScope.classroom(this.id, {this.displayName})
+      : kind = LeaderboardScopeKind.classroom;
+  const LeaderboardScope.homeGroup(this.id, {this.displayName})
+      : kind = LeaderboardScopeKind.homeGroup;
+  const LeaderboardScope.none()
+      : kind = LeaderboardScopeKind.none,
+        id = null,
+        displayName = null;
+
+  bool get isReal => kind != LeaderboardScopeKind.none && id != null;
+
+  // Value equality so `FutureProvider.family` / `StreamProvider.family`
+  // memoise correctly (two scopes for the same class share one listener).
+  @override
+  bool operator ==(Object other) =>
+      other is LeaderboardScope && other.kind == kind && other.id == id;
+
+  @override
+  int get hashCode => Object.hash(kind, id);
+}
+
+/// Pure ranking/filter pipeline shared by the online leaderboard.
+///
+/// Lifted out of the old `LeaderboardNotifier.filtered()` so both the
+/// screen and any preview can rank a list the same way.
+///
+/// Order of operations:
+///   1. drop entries whose profileId is in [hiddenIds] (educator hid them),
+///   2. drop entries inactive since [seasonStartAt] (a "new season" reset)
+///      or outside the [period] window — both compare `lastActivity`,
+///   3. sort by [sort].
+///
+/// Note: `totalStars` / `wordsLearned` are lifetime cumulative, so the
+/// period / season filters act on *activity recency*, not on a per-period
+/// score reset. See the caveat surfaced in the educator config UI.
+List<LeaderboardEntry> applyLeaderboardFilters(
+  List<LeaderboardEntry> entries, {
+  LeaderboardSort sort = LeaderboardSort.byOverall,
+  LeaderboardPeriod period = LeaderboardPeriod.allTime,
+  Set<String> hiddenIds = const {},
+  DateTime? seasonStartAt,
+}) {
+  var list = entries.where((e) => !hiddenIds.contains(e.profileId)).toList();
+
+  // Period activity window.
+  DateTime? cutoff;
+  if (period != LeaderboardPeriod.allTime) {
+    final now = DateTime.now();
+    cutoff = switch (period) {
+      LeaderboardPeriod.thisWeek => now.subtract(const Duration(days: 7)),
+      LeaderboardPeriod.thisMonth => DateTime(now.year, now.month),
+      _ => null,
+    };
+  }
+  // Season reset: take the later of the two cutoffs so both constraints hold.
+  if (seasonStartAt != null) {
+    cutoff = (cutoff == null || seasonStartAt.isAfter(cutoff))
+        ? seasonStartAt
+        : cutoff;
+  }
+  if (cutoff != null) {
+    final c = cutoff;
+    list = list.where((e) => e.lastActivity.isAfter(c)).toList();
+  }
+
+  list.sort((a, b) => switch (sort) {
+        LeaderboardSort.byStars => b.totalStars.compareTo(a.totalStars),
+        LeaderboardSort.byWords => b.wordsLearned.compareTo(a.wordsLearned),
+        LeaderboardSort.byStreak => b.streakDays.compareTo(a.streakDays),
+        LeaderboardSort.byOverall => b.rankScore.compareTo(a.rankScore),
+      });
+  return list;
+}

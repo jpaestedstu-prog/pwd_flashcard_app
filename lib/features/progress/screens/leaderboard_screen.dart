@@ -4,12 +4,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
+import '../../../data/local/hive_service.dart';
+import '../../../data/models/enums.dart';
+import '../../../data/models/leaderboard.dart';
+import '../../../data/models/leaderboard_config.dart';
+import '../../../data/models/models.dart';
+import '../../../providers/app_providers.dart';
+import '../../../providers/firestore_stream_helpers.dart';
+import '../../../providers/online_leaderboard_provider.dart';
+import '../../../widgets/app_back_button.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../core/constants/avatar_data.dart';
-import '../../../data/models/leaderboard.dart';
-import '../../../l10n/app_localizations.dart';
-import '../../../providers/app_providers.dart';
 
+/// Membership-scoped leaderboard.
+///
+/// A learner sees the board for the class / home group they joined (and
+/// only if their teacher / parent enabled it). An educator sees and previews
+/// the board for the class / group they own — they configure it from the
+/// management screen. Nobody ever sees a global, cross-class board.
 class LeaderboardScreen extends ConsumerStatefulWidget {
   const LeaderboardScreen({super.key});
 
@@ -18,30 +31,380 @@ class LeaderboardScreen extends ConsumerStatefulWidget {
 }
 
 class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
+  // Local sort/period only used when no educator config exists.
   LeaderboardSort _sort = LeaderboardSort.byOverall;
   LeaderboardPeriod _period = LeaderboardPeriod.allTime;
 
-  @override
-  void initState() {
-    super.initState();
-    // Refresh on open
-    Future.microtask(
-        () => ref.read(leaderboardProvider.notifier).refresh());
-  }
+  // Educator's currently selected scope when they own more than one.
+  LeaderboardScope? _educatorSelected;
 
   @override
   Widget build(BuildContext context) {
-    final notifier = ref.read(leaderboardProvider.notifier);
-    final entries = notifier.filtered(sort: _sort, period: _period);
-    final currentProfile = ref.watch(profileProvider);
+    final profile = ref.watch(profileProvider);
+    if (profile == null) {
+      return _shell(child: const SizedBox.shrink());
+    }
+    if (profile.role.isEducator) {
+      return _buildEducator(profile);
+    }
+    return _buildLearner(profile);
+  }
 
+  // ─── Learner path ────────────────────────────────────────
+
+  Widget _buildLearner(UserProfile profile) {
+    LeaderboardScope? scope;
+    if (profile.classroomId != null && profile.classroomId!.isNotEmpty) {
+      scope = LeaderboardScope.classroom(
+        profile.classroomId,
+        displayName:
+            HiveService.getCachedClassroom(profile.classroomId!)?.name,
+      );
+    } else if (profile.homeGroupId != null &&
+        profile.homeGroupId!.isNotEmpty) {
+      scope = LeaderboardScope.homeGroup(
+        profile.homeGroupId,
+        displayName:
+            HiveService.getCachedHomeGroup(profile.homeGroupId!)?.name,
+      );
+    }
+
+    if (scope == null) {
+      return _shell(child: _joinPrompt(profile));
+    }
+    return _board(scope, viewer: profile, isEducator: false);
+  }
+
+  // ─── Educator path ───────────────────────────────────────
+
+  Widget _buildEducator(UserProfile profile) {
+    final isTeacher = profile.role == UserRole.teacher;
+    final List<LeaderboardScope> scopes;
+    final bool loading;
+    if (isTeacher) {
+      final async = ref.watch(classroomsByTeacherStreamProvider(profile.id));
+      loading = async.isLoading && !async.hasValue;
+      scopes = [
+        for (final c in async.valueOrNull ?? const [])
+          LeaderboardScope.classroom(c.id, displayName: c.name)
+      ];
+    } else {
+      final async = ref.watch(homeGroupsByOwnerStreamProvider(profile.id));
+      loading = async.isLoading && !async.hasValue;
+      scopes = [
+        for (final g in async.valueOrNull ?? const [])
+          LeaderboardScope.homeGroup(g.id, displayName: g.name)
+      ];
+    }
+
+    if (loading) {
+      return _shell(child: const Center(child: CircularProgressIndicator()));
+    }
+    if (scopes.isEmpty) {
+      return _shell(child: _educatorNoScopes(isTeacher));
+    }
+
+    final selected = (_educatorSelected != null &&
+            scopes.contains(_educatorSelected))
+        ? scopes.firstWhere((s) => s == _educatorSelected)
+        : scopes.first;
+
+    return _board(
+      selected,
+      viewer: profile,
+      isEducator: true,
+      educatorScopes: scopes,
+    );
+  }
+
+  // ─── The board itself ────────────────────────────────────
+
+  Widget _board(
+    LeaderboardScope scope, {
+    required UserProfile viewer,
+    required bool isEducator,
+    List<LeaderboardScope>? educatorScopes,
+  }) {
+    final entriesAsync = ref.watch(onlineLeaderboardProvider(scope));
+    final config = ref.watch(leaderboardConfigProvider(scope)).valueOrNull;
+
+    // Learners only see the board when the educator has enabled it.
+    final hiddenForLearner =
+        !isEducator && (config == null || !config.visible);
+
+    return _shell(
+      title: scope.displayName ?? 'Leaderboard',
+      child: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(onlineLeaderboardProvider(scope));
+          await ref.read(onlineLeaderboardProvider(scope).future);
+        },
+        child: entriesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => _errorState(scope),
+          data: (raw) {
+            if (hiddenForLearner) return _notEnabled();
+
+            final sort = config?.metric ?? _sort;
+            final period = config?.period ?? _period;
+            final entries = applyLeaderboardFilters(
+              raw,
+              sort: sort,
+              period: period,
+              hiddenIds: config?.hiddenMemberIds.toSet() ?? const {},
+              seasonStartAt: config?.seasonStartAt,
+            );
+
+            return _scrollBody(
+              scope: scope,
+              entries: entries,
+              viewer: viewer,
+              isEducator: isEducator,
+              educatorScopes: educatorScopes,
+              config: config,
+              sort: sort,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _scrollBody({
+    required LeaderboardScope scope,
+    required List<LeaderboardEntry> entries,
+    required UserProfile viewer,
+    required bool isEducator,
+    required List<LeaderboardScope>? educatorScopes,
+    required LeaderboardConfig? config,
+    required LeaderboardSort sort,
+  }) {
+    // Local sort/period chips appear only when no educator config governs
+    // the board (otherwise the educator's choice is authoritative).
+    final showLocalFilters = config == null;
+
+    return CustomScrollView(
+      // Always scrollable so RefreshIndicator works even on short lists.
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(
+          child: _header(scope, isEducator, educatorScopes, config),
+        ),
+        if (showLocalFilters)
+          SliverToBoxAdapter(
+            child: _buildFilters()
+                .animate()
+                .fadeIn(duration: 300.ms)
+                .slideY(begin: -0.08, end: 0),
+          ),
+        if (entries.length >= 3)
+          SliverToBoxAdapter(
+            child: _buildPodium(entries.take(3).toList(), sort, viewer.id)
+                .animate()
+                .fadeIn(duration: 500.ms, delay: 150.ms)
+                .scale(
+                  begin: const Offset(0.95, 0.95),
+                  end: const Offset(1, 1),
+                ),
+          ),
+        if (entries.isEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(top: 40),
+              child: RichEmptyState(
+                emoji: '🏅',
+                title: 'No rankings yet',
+                description:
+                    'Complete activities and games to appear on the leaderboard!',
+                accentColor: AppColors.primary,
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final entry = entries[index];
+                  final isMe = entry.profileId == viewer.id;
+                  return _LeaderboardTile(
+                    rank: index + 1,
+                    entry: entry,
+                    isCurrentUser: isMe,
+                    sortMode: sort,
+                  )
+                      .animate()
+                      .fadeIn(duration: 300.ms, delay: (index * 40).ms)
+                      .slideX(begin: 0.05, end: 0);
+                },
+                childCount: entries.length,
+              ),
+            ),
+          ),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+      ],
+    );
+  }
+
+  // ─── Header (scope name, educator scope picker, notices) ─
+
+  Widget _header(
+    LeaderboardScope scope,
+    bool isEducator,
+    List<LeaderboardScope>? educatorScopes,
+    LeaderboardConfig? config,
+  ) {
+    final hc = HCColor.of(context);
+    final notices = <Widget>[];
+
+    if (isEducator && (config == null || !config.visible)) {
+      notices.add(_noticeChip(
+        icon: Icons.visibility_off_rounded,
+        text: 'Hidden from members — enable in Leaderboard settings',
+        color: AppColors.warning,
+      ));
+    }
+    if (config?.seasonStartAt != null) {
+      notices.add(_noticeChip(
+        icon: Icons.flag_rounded,
+        text: 'Season active — ranking recent activity',
+        color: AppColors.info,
+      ));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Educator scope picker (only when they own more than one).
+          if (isEducator &&
+              educatorScopes != null &&
+              educatorScopes.length > 1)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final s in educatorScopes)
+                  ChoiceChip(
+                    label: Text(s.displayName ?? 'Group',
+                        overflow: TextOverflow.ellipsis),
+                    selected: s == scope,
+                    onSelected: (_) =>
+                        setState(() => _educatorSelected = s),
+                  ),
+              ],
+            ),
+          if (scope.displayName != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                scope.displayName!,
+                style:
+                    AppTypography.titleMedium.copyWith(color: hc.textPrimary),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          for (final n in notices)
+            Padding(padding: const EdgeInsets.only(top: 8), child: n),
+        ],
+      ),
+    );
+  }
+
+  Widget _noticeChip({
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              text,
+              style: AppTypography.bodySmall
+                  .copyWith(color: HCColor.of(context).textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Empty / disabled states ─────────────────────────────
+
+  Widget _joinPrompt(UserProfile profile) {
+    final isChild = profile.role == UserRole.child;
+    return RichEmptyState(
+      emoji: '🏅',
+      title: 'Join to see the leaderboard',
+      description: isChild
+          ? 'Join your family home group to see how you rank with everyone!'
+          : 'Join your class to see how you rank with your classmates!',
+      accentColor: AppColors.primary,
+      actionLabel: isChild ? 'Join a Home Group' : 'Join a Class',
+      actionIcon: Icons.group_add_rounded,
+      onAction: () =>
+          context.push(isChild ? '/join-home-group' : '/join-class'),
+    );
+  }
+
+  Widget _notEnabled() {
+    return const RichEmptyState(
+      emoji: '⏳',
+      title: 'Leaderboard not enabled yet',
+      description:
+          'Your teacher or parent hasn\'t turned on the leaderboard for your group yet. Check back soon!',
+      accentColor: AppColors.info,
+    );
+  }
+
+  Widget _educatorNoScopes(bool isTeacher) {
+    return RichEmptyState(
+      emoji: '👩‍🏫',
+      title: isTeacher ? 'No classes yet' : 'No home groups yet',
+      description: isTeacher
+          ? 'Create a class and invite students to start a leaderboard.'
+          : 'Create a home group and invite your children to start a leaderboard.',
+      accentColor: AppColors.primary,
+      actionLabel: isTeacher ? 'Manage Classes' : 'Manage Home Groups',
+      actionIcon: Icons.settings_rounded,
+      onAction: () => context.push(
+          isTeacher ? '/classroom-manage' : '/home-group-manage'),
+    );
+  }
+
+  Widget _errorState(LeaderboardScope scope) {
+    return RichEmptyState(
+      emoji: '⚠️',
+      title: 'Couldn\'t load the leaderboard',
+      description:
+          'Check your connection and try again. Your last-known rankings show when you\'re back online.',
+      accentColor: AppColors.error,
+      actionLabel: 'Retry',
+      actionIcon: Icons.refresh_rounded,
+      onAction: () => ref.invalidate(onlineLeaderboardProvider(scope)),
+    );
+  }
+
+  // ─── Scaffold shell ──────────────────────────────────────
+
+  Widget _shell({required Widget child, String title = 'Leaderboard'}) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -50,82 +413,29 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
               decoration: BoxDecoration(
                 color: AppColors.warning.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.warning.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                  ),
-                ],
               ),
-              child: const Icon(Icons.emoji_events_rounded, color: AppColors.warning, size: 20),
+              child: const Icon(Icons.emoji_events_rounded,
+                  color: AppColors.warning, size: 20),
             ),
             const SizedBox(width: 10),
-            Text(AppLocalizations.of(context)!.leaderboard),
+            Flexible(
+              child: Text(title,
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
           ],
         ),
       ),
-      body: Column(
-        children: [
-          // ─── Filters ──────────────────────────
-          _buildFilters()
-              .animate()
-              .fadeIn(duration: 300.ms)
-              .slideY(begin: -0.08, end: 0),
-          const SizedBox(height: 4),
-
-          // ─── Podium (top 3) ───────────────────
-          if (entries.length >= 3)
-            _buildPodium(entries.take(3).toList(), currentProfile?.id)
-                .animate()
-                .fadeIn(duration: 500.ms, delay: 150.ms)
-                .scale(
-                  begin: const Offset(0.95, 0.95),
-                  end: const Offset(1, 1),
-                ),
-
-          // ─── Full List ────────────────────────
-          Expanded(
-            child: entries.isEmpty
-                ? RichEmptyState(
-                    emoji: '🏅',
-                    title: AppLocalizations.of(context)!.noEntriesYet,
-                    description:
-                        'Complete activities and games to appear on the leaderboard!',
-                    accentColor: AppColors.primary,
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    itemCount: entries.length,
-                    itemBuilder: (context, index) {
-                      final entry = entries[index];
-                      final isMe =
-                          entry.profileId == currentProfile?.id;
-                      return _LeaderboardTile(
-                        rank: index + 1,
-                        entry: entry,
-                        isCurrentUser: isMe,
-                        sortMode: _sort,
-                      )
-                          .animate()
-                          .fadeIn(
-                              duration: 300.ms,
-                              delay: (200 + index * 60).ms)
-                          .slideX(begin: 0.05, end: 0);
-                    },
-                  ),
-          ),
-        ],
-      ),
+      body: child,
     );
   }
+
+  // ─── Filters (local; only when no config) ────────────────
 
   Widget _buildFilters() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          // Sort selector
           Expanded(
             child: _ChipSelector<LeaderboardSort>(
               label: 'Sort',
@@ -136,7 +446,6 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // Period selector
           Expanded(
             child: _ChipSelector<LeaderboardPeriod>(
               label: 'Period',
@@ -151,17 +460,26 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     );
   }
 
+  // ─── Podium (top 3) ──────────────────────────────────────
+
   Widget _buildPodium(
-      List<LeaderboardEntry> top3, String? currentProfileId) {
-    // Order: 2nd, 1st, 3rd
+    List<LeaderboardEntry> top3,
+    LeaderboardSort sort,
+    String? currentProfileId,
+  ) {
     final order = [top3[1], top3[0], top3[2]];
-    final heights = [80.0, 120.0, 60.0];
+    final screenH = MediaQuery.sizeOf(context).height;
+    final heights = <double>[
+      (screenH * 0.085).clamp(56.0, 110.0),
+      (screenH * 0.13).clamp(84.0, 180.0),
+      (screenH * 0.065).clamp(44.0, 90.0),
+    ];
     final medals = ['🥈', '🥇', '🥉'];
     final ranks = [2, 1, 3];
     final medalGlows = [
-      const Color(0xFFC0C0C0), // silver
-      const Color(0xFFFFD700), // gold
-      const Color(0xFFCD7F32), // bronze
+      const Color(0xFFC0C0C0),
+      const Color(0xFFFFD700),
+      const Color(0xFFCD7F32),
     ];
 
     return Padding(
@@ -178,7 +496,6 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Glowing medal
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
@@ -191,7 +508,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                     ],
                   ),
                   child: Text(medals[i],
-                      style: TextStyle(fontSize: i == 1 ? 30 : 24)),
+                      style: TextStyle(
+                          fontSize:
+                              context.responsiveSize(i == 1 ? 30 : 24))),
                 )
                     .animate(onPlay: (c) => c.repeat(reverse: true))
                     .scale(
@@ -201,10 +520,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                       curve: Curves.easeInOut,
                     ),
                 const SizedBox(height: 6),
-                // Avatar with glow ring
                 Container(
-                  width: i == 1 ? 52 : 44,
-                  height: i == 1 ? 52 : 44,
+                  width: context.responsiveSize(i == 1 ? 52 : 44),
+                  height: context.responsiveSize(i == 1 ? 52 : 44),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: isMe
@@ -225,7 +543,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   ),
                   child: Center(
                     child: Text(avatar.emoji,
-                        style: TextStyle(fontSize: i == 1 ? 26 : 22)),
+                        style: TextStyle(
+                            fontSize:
+                                context.responsiveSize(i == 1 ? 26 : 22))),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -233,7 +553,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   entry.profileName,
                   style: AppTypography.bodySmall.copyWith(
                     fontWeight: isMe ? FontWeight.bold : FontWeight.w600,
-                    color: isMe ? AppColors.primary : HCColor.of(context).textPrimary,
+                    color: isMe
+                        ? AppColors.primary
+                        : HCColor.of(context).textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -241,7 +563,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _statValue(entry),
+                  _statValue(entry, sort),
                   style: AppTypography.bodySmall.copyWith(
                     color: HCColor.of(context).textSecondary,
                     fontSize: 11,
@@ -249,7 +571,6 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                // Enhanced podium bar with gradient
                 Container(
                   height: heights[i],
                   decoration: BoxDecoration(
@@ -298,12 +619,13 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     );
   }
 
-  String _statValue(LeaderboardEntry entry) => switch (_sort) {
-    LeaderboardSort.byStars => '⭐ ${entry.totalStars}',
-    LeaderboardSort.byWords => '📖 ${entry.wordsLearned}',
-    LeaderboardSort.byStreak => '🔥 ${entry.streakDays}d',
-    LeaderboardSort.byOverall => '${entry.rankScore} pts',
-  };
+  String _statValue(LeaderboardEntry entry, LeaderboardSort sort) =>
+      switch (sort) {
+        LeaderboardSort.byStars => '⭐ ${entry.totalStars}',
+        LeaderboardSort.byWords => '📖 ${entry.wordsLearned}',
+        LeaderboardSort.byStreak => '🔥 ${entry.streakDays}d',
+        LeaderboardSort.byOverall => '${entry.rankScore} pts',
+      };
 }
 
 // ─── Reusable Chip Selector ──────────────────────────────
@@ -337,11 +659,15 @@ class _ChipSelector<T> extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '$label: ${labelOf(value)}',
-              style: AppTypography.bodySmall.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
+            Flexible(
+              child: Text(
+                '$label: ${labelOf(value)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
               ),
             ),
             const SizedBox(width: 4),
@@ -413,7 +739,6 @@ class _LeaderboardTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Rank badge — enhanced for top 3
           SizedBox(
             width: 36,
             child: isTopThree
@@ -455,8 +780,6 @@ class _LeaderboardTile extends StatelessWidget {
                   ),
           ),
           const SizedBox(width: 8),
-
-          // Avatar with ring
           Container(
             width: 40,
             height: 40,
@@ -488,8 +811,6 @@ class _LeaderboardTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-
-          // Name + subtitle
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -535,12 +856,13 @@ class _LeaderboardTile extends StatelessWidget {
                     color: HCColor.of(context).textSecondary,
                     fontSize: 11,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-
-          // Sort-specific stat badge
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
@@ -569,9 +891,9 @@ class _LeaderboardTile extends StatelessWidget {
   }
 
   String _sortStat() => switch (sortMode) {
-    LeaderboardSort.byStars => '${entry.totalStars} ⭐',
-    LeaderboardSort.byWords => '${entry.wordsLearned} words',
-    LeaderboardSort.byStreak => '${entry.streakDays} days',
-    LeaderboardSort.byOverall => '${entry.rankScore} pts',
-  };
+        LeaderboardSort.byStars => '${entry.totalStars} ⭐',
+        LeaderboardSort.byWords => '${entry.wordsLearned} words',
+        LeaderboardSort.byStreak => '${entry.streakDays} days',
+        LeaderboardSort.byOverall => '${entry.rankScore} pts',
+      };
 }
