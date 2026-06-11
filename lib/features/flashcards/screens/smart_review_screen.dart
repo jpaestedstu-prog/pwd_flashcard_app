@@ -14,6 +14,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/flashcard_image.dart';
+import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 
 /// Smart Review screen that uses spaced repetition to present
@@ -107,6 +108,8 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
         profileId: profile.id,
         results: _results,
       );
+      // Reviewing flashcards counts as a learning activity for the streak.
+      ref.read(progressProvider.notifier).recordDailyActivity();
     }
     if (mounted) {
       AccessibleCelebrationOverlay.show(
@@ -124,11 +127,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
     if (_reviewCards.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            tooltip: 'Go back',
-            onPressed: () => context.pop(),
-          ),
+          leading: const AppBackButton(fallbackRoute: '/flashcards'),
           title: Text(AppLocalizations.of(context)!.smartReview),
         ),
         body: Center(
@@ -193,10 +192,17 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            const Spacer(),
-
-            // ─── Card ──────────────────
-            Container(
+            // Center the card when there's room, but let it scroll instead of
+            // overflowing a short viewport / large font scale. The action
+            // buttons stay pinned below.
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(
+                      child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
@@ -313,8 +319,13 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                 .animate(key: ValueKey(_currentIndex))
                 .fadeIn(duration: 300.ms)
                 .slideX(begin: 0.05, end: 0),
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
-            const Spacer(),
+            const SizedBox(height: 16),
 
             // ─── Action Buttons ────────
             if (!_showAnswer)

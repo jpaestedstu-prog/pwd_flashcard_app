@@ -9,6 +9,7 @@ import '../../../data/local/spaced_repetition_service.dart';
 import '../../../data/models/models.dart';
 import '../../../data/models/enums.dart';
 import '../providers/hard_words_provider.dart';
+import '../../../widgets/app_back_button.dart';
 
 class HardWordsScreen extends ConsumerWidget {
   const HardWordsScreen({super.key});
@@ -22,17 +23,7 @@ class HardWordsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: hc.background,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/home');
-            }
-          },
-        ),
+        leading: const AppBackButton(),
         title: Text(
           'Hard Words',
           style: AppTypography.titleMedium.copyWith(
@@ -82,7 +73,17 @@ class HardWordsScreen extends ConsumerWidget {
           // ─── Hard Words List ────────────────────
           Expanded(
             child: hardWords.isEmpty
-                ? _EmptyState()
+                // Center the empty state, but let it scroll instead of
+                // overflowing on a short viewport at a large font scale.
+                ? LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints:
+                            BoxConstraints(minHeight: constraints.maxHeight),
+                        child: _EmptyState(),
+                      ),
+                    ),
+                  )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: hardWords.length,

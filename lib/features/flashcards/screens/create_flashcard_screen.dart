@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/safe_scaffold.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
+import '../../../widgets/app_back_button.dart';
 
 class CreateFlashcardScreen extends ConsumerStatefulWidget {
   final Flashcard? editCard;
@@ -81,22 +83,16 @@ class _CreateFlashcardScreenState
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return Scaffold(
+    return SafeScaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(fallbackRoute: '/flashcards'),
         title: Text(_isEditing ? 'Edit Flashcard' : 'Create Flashcard'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      body: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
               // Preview card
               _PreviewCard(
                 wordEn: _wordEnController.text,
@@ -223,7 +219,6 @@ class _CreateFlashcardScreenState
             ],
           ),
         ),
-      ),
     );
   }
 }

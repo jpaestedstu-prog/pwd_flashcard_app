@@ -48,8 +48,15 @@ class DeckListScreen extends ConsumerWidget {
                     ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
                     if (isTeacherOrParent) ...[
                       const SizedBox(height: 12),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
+                          _ActionChip(
+                            icon: Icons.auto_awesome_rounded,
+                            label: 'Browse templates',
+                            onTap: () => context.go('/flashcards/templates'),
+                          ),
                           _ActionChip(
                             icon: Icons.file_upload_rounded,
                             label: AppLocalizations.of(context)!.importLabel,
@@ -67,7 +74,6 @@ class DeckListScreen extends ConsumerWidget {
                               }
                             },
                           ),
-                          const SizedBox(width: 8),
                           _ActionChip(
                             icon: Icons.file_download_rounded,
                             label: AppLocalizations.of(context)!.exportLabel,
@@ -91,7 +97,11 @@ class DeckListScreen extends ConsumerWidget {
                   crossAxisCount: context.gridColumns,
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
-                  childAspectRatio: context.isTablet ? 1.6 : 1.4,
+                  // Cards grow taller with text scale so the icon + two
+                  // labels + stats row + progress bar can't overflow at XL.
+                  childAspectRatio: ((context.isTablet ? 1.6 : 1.4) /
+                          MediaQuery.textScalerOf(context).scale(1.0))
+                      .clamp(0.9, 1.7),
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final category = FlashcardCategory.values[index];
@@ -171,11 +181,9 @@ class _DeckCardState extends State<_DeckCard> {
           '${widget.cardCount} cards. '
           '${(widget.progress * 100).round()} percent complete.',
       child: GestureDetector(
+        onTap: widget.onTap,
         onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) {
-          setState(() => _pressed = false);
-          widget.onTap();
-        },
+        onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
         child: AnimatedScale(
           scale: _pressed ? 0.95 : 1.0,
@@ -252,56 +260,72 @@ class _DeckCardState extends State<_DeckCard> {
                         Expanded(
                           flex: 3,
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               // Frosted icon container
-                              Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.22),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.15),
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.08),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
+                              Flexible(
+                                child: Container(
+                                  width: context.scaleIcon(48),
+                                  height: context.scaleIcon(48),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.22),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.15),
+                                      width: 1.5,
                                     ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  widget.category.icon,
-                                  size: 28,
-                                  color: Colors.white,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color:
+                                            Colors.black.withValues(alpha: 0.08),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    widget.category.icon,
+                                    size: context.scaleIcon(24),
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                widget.category.label,
-                                style: AppTypography.titleLarge.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.2,
+                              const SizedBox(height: 6),
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    widget.category.label,
+                                    style: AppTypography.titleLarge.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.2,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                widget.category.labelFilipino,
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.75),
-                                  fontStyle: FontStyle.italic,
-                                  fontWeight: FontWeight.w500,
+                              const SizedBox(height: 2),
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    widget.category.labelFilipino,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.75),
+                                      fontStyle: FontStyle.italic,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -310,28 +334,40 @@ class _DeckCardState extends State<_DeckCard> {
                         Expanded(
                           flex: 2,
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               // Cards count + progress chip row
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.auto_stories_rounded,
-                                        size: 14,
-                                        color: Colors.white.withValues(alpha: 0.8),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${widget.cardCount} cards',
-                                        style: AppTypography.labelSmall.copyWith(
-                                          color: Colors.white.withValues(alpha: 0.9),
-                                          fontWeight: FontWeight.w600,
+                                  Flexible(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.auto_stories_rounded,
+                                          size: context.scaleIcon(14),
+                                          color: Colors.white
+                                              .withValues(alpha: 0.8),
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            '${widget.cardCount} cards',
+                                            style: AppTypography.labelSmall
+                                                .copyWith(
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.9),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                   // Progress chip
                                   Container(
@@ -349,7 +385,7 @@ class _DeckCardState extends State<_DeckCard> {
                                         if (isMastered) ...[
                                           Icon(
                                             Icons.check_circle_rounded,
-                                            size: 12,
+                                            size: context.scaleIcon(12),
                                             color: Colors.white.withValues(alpha: 0.9),
                                           ),
                                           const SizedBox(width: 3),
@@ -491,7 +527,7 @@ class _ActionChip extends StatelessWidget {
       button: true,
       label: '$label custom flashcards',
       child: ActionChip(
-        avatar: Icon(icon, size: 18, color: AppColors.primary),
+        avatar: Icon(icon, size: context.scaleIcon(18), color: AppColors.primary),
         label: Text(label,
             style: AppTypography.labelMedium
                 .copyWith(color: AppColors.primary)),

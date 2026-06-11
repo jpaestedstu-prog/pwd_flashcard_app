@@ -14,6 +14,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../widgets/app_snack_bar.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Enhanced flashcard creator with image attachment and voice recording.
 ///
@@ -135,8 +136,8 @@ class _EnhancedCreateFlashcardScreenState
           setState(() => _activeTarget = null);
         }
       },
-      localeId: target == _DictationTarget.filipino ? 'fil-PH' : 'en-US',
       listenOptions: stt.SpeechListenOptions(
+        localeId: target == _DictationTarget.filipino ? 'fil-PH' : 'en-US',
         listenMode: stt.ListenMode.dictation,
       ),
     );
@@ -187,11 +188,7 @@ class _EnhancedCreateFlashcardScreenState
     return Scaffold(
       backgroundColor: hc.background,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(fallbackRoute: '/flashcards'),
         title: Text(
           _isEditing ? 'Edit Flashcard' : 'Create Flashcard',
           style: AppTypography.titleMedium.copyWith(

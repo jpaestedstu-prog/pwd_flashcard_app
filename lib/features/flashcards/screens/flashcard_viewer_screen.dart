@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +8,10 @@ import 'package:video_player/video_player.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/app_snack_bar.dart';
+import '../../../widgets/app_back_button.dart';
+import '../../../widgets/app_action_bar.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/enums.dart';
@@ -21,6 +22,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../../../widgets/fsl_fullscreen_player.dart';
+import '../../../widgets/fsl_loading_overlay.dart';
 import '../../../widgets/shimmer_loading.dart';
 
 class FlashcardViewerScreen extends ConsumerStatefulWidget {
@@ -53,6 +55,11 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
   bool _autoPlay = false;
   Timer? _autoPlayTimer;
   bool _stepCompleted = false;
+
+  /// True while an FSL video is being resolved/downloaded for a card. Drives
+  /// the full-screen loading overlay and blocks repeat taps so only one video
+  /// loads at a time.
+  bool _isLoadingFsl = false;
 
   /// Whether this viewer was launched from a learning-path step.
   bool get _isLearningPathMode =>
@@ -133,7 +140,9 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
   void _markStepCompleteIfNeeded() {
     if (!_isLearningPathMode || _stepCompleted) return;
     _stepCompleted = true;
-    ref.read(learningPathProvider.notifier).completeStep(
+    ref
+        .read(learningPathProvider.notifier)
+        .completeStep(
           widget.learningPathId!,
           widget.learningStepIndex!,
           1.0,
@@ -172,10 +181,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
   void _editCard(Flashcard card) async {
     _stopAutoPlay();
     setState(() => _autoPlay = false);
-    final result = await context.push<bool>(
-      '/flashcards/create',
-      extra: card,
-    );
+    final result = await context.push<bool>('/flashcards/create', extra: card);
     if (result == true && mounted) {
       setState(() {
         _loadCards();
@@ -212,7 +218,10 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     if (confirmed == true && mounted) {
       await HiveService.deleteCustomCard(card.id);
       if (!mounted) return;
-      AppSnackBar.info(context, message: AppLocalizations.of(context)!.flashcardDeleted);
+      AppSnackBar.info(
+        context,
+        message: AppLocalizations.of(context)!.flashcardDeleted,
+      );
       setState(() {
         _loadCards();
         if (_cards.isEmpty) {
@@ -232,256 +241,281 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     // Watch settings for any dynamic theme changes
     ref.watch(settingsProvider);
 
-    return Scaffold(
-      backgroundColor: widget.category.color.withValues(alpha: 0.08),
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
-        title: Text(widget.category.label),
-        actions: [
-          // Auto-play toggle
-          IconButton(
-            icon: Icon(
-              _autoPlay
-                  ? Icons.pause_circle_rounded
-                  : Icons.play_circle_rounded,
-              color: _autoPlay ? AppColors.accent : HCColor.of(context).textSecondary,
-            ),
-            onPressed: _toggleAutoPlay,
-            tooltip: _autoPlay ? 'Pause auto-play' : 'Start auto-play',
-          ),
-          // Card counter
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: widget.category.color.withValues(alpha: 0.08),
+          appBar: AppBar(
+            leading: const AppBackButton(fallbackRoute: '/flashcards'),
+            title: Text(widget.category.label),
+            actions: [
+              // Auto-play toggle
+              IconButton(
+                icon: Icon(
+                  _autoPlay
+                      ? Icons.pause_circle_rounded
+                      : Icons.play_circle_rounded,
+                  color: _autoPlay
+                      ? AppColors.accent
+                      : HCColor.of(context).textSecondary,
                 ),
-                decoration: BoxDecoration(
-                  color: widget.category.color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${_currentIndex + 1} / ${_cards.length}',
-                  style: AppTypography.labelMedium.copyWith(
-                    color: widget.category.darkColor,
-                    fontWeight: FontWeight.w700,
+                onPressed: _toggleAutoPlay,
+                tooltip: _autoPlay ? 'Pause auto-play' : 'Start auto-play',
+              ),
+              // Card counter
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: widget.category.color.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_currentIndex + 1} / ${_cards.length}',
+                      style: AppTypography.labelMedium.copyWith(
+                        color: widget.category.darkColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // ─── Progress dots ──────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Row(
-              children: List.generate(_cards.length, (i) {
-                final isActive = i == _currentIndex;
-                final isPast = i < _currentIndex;
-                return Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    height: isActive ? 6 : 4,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      color: isActive
-                          ? widget.category.color
-                          : isPast
+          body: Column(
+            children: [
+              // ─── Progress dots ──────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: List.generate(_cards.length, (i) {
+                    final isActive = i == _currentIndex;
+                    final isPast = i < _currentIndex;
+                    return Expanded(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        height: isActive ? 6 : 4,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? widget.category.color
+                              : isPast
                               ? widget.category.color.withValues(alpha: 0.5)
                               : widget.category.color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(3),
-                      boxShadow: isActive
-                          ? [
-                              BoxShadow(
-                                color: widget.category.color.withValues(alpha: 0.4),
-                                blurRadius: 6,
-                              ),
-                            ]
-                          : [],
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
-
-          // ─── Card Area ──────────────────────────
-          Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: _cards.length,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentIndex = index;
-                  _isFlipped = false;
-                });
-              },
-              itemBuilder: (context, index) {
-                final card = _cards[index];
-                // When the user reaches the last card, mark step complete
-                if (_isLearningPathMode &&
-                    index == _cards.length - 1 &&
-                    _currentIndex == index) {
-                  _markStepCompleteIfNeeded();
-                }
-                return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
+                          borderRadius: BorderRadius.circular(3),
+                          boxShadow: isActive
+                              ? [
+                                  BoxShadow(
+                                    color: widget.category.color.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                    blurRadius: 6,
+                                  ),
+                                ]
+                              : [],
+                        ),
                       ),
-                      child: _FlipCard(
-                        card: card,
-                        category: widget.category,
-                        isFlipped: _isFlipped && index == _currentIndex,
-                        reducedMotion: ref.watch(settingsProvider
-                            .select((s) => s.reducedMotion)),
-                        onFlip: () {
-                          if (index == _currentIndex) {
-                            setState(() => _isFlipped = !_isFlipped);
-                          }
-                        },
-                        onSpeak: () => _speakEnglish(card.wordEnglish),
-                        onSpeakFilipino: () =>
-                            _speakFilipino(card.wordFilipino),
-                      ),
-                    )
-                    .animate()
-                    .scale(
-                      begin: const Offset(0.92, 0.92),
-                      end: const Offset(1, 1),
-                      duration: 400.ms,
-                      curve: Curves.easeOutBack,
-                    )
-                    .fadeIn(duration: 300.ms);
-              },
-            ),
-          ),
-
-          // ─── Bottom Action Bar ──────────────────
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            decoration: BoxDecoration(
-              color: HCColor.of(context).surface,
-              border: Border(
-                top: BorderSide(
-                  color: widget.category.color.withValues(alpha: 0.15),
+                    );
+                  }),
                 ),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 12,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Edit / Delete row for custom cards
-                if (_cards.isNotEmpty && _cards[_currentIndex].isCustom)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
+
+              // ─── Card Area ──────────────────────────
+              Expanded(
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: _cards.length,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                      _isFlipped = false;
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final card = _cards[index];
+                    // When the user reaches the last card, mark step complete
+                    if (_isLearningPathMode &&
+                        index == _cards.length - 1 &&
+                        _currentIndex == index) {
+                      _markStepCompleteIfNeeded();
+                    }
+                    return Padding(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
+                            horizontal: 24,
+                            vertical: 16,
                           ),
-                          decoration: BoxDecoration(
-                            color: AppColors.info.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            AppLocalizations.of(context)!.customCard,
-                            style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.info,
-                              fontWeight: FontWeight.w700,
+                          child: _FlipCard(
+                            card: card,
+                            category: widget.category,
+                            isFlipped: _isFlipped && index == _currentIndex,
+                            reducedMotion: ref.watch(
+                              settingsProvider.select((s) => s.reducedMotion),
                             ),
+                            onFlip: () {
+                              if (index == _currentIndex) {
+                                setState(() => _isFlipped = !_isFlipped);
+                              }
+                            },
+                            onSpeak: () => _speakEnglish(card.wordEnglish),
+                            onSpeakFilipino: () =>
+                                _speakFilipino(card.wordFilipino),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        _ActionButton(
-                          icon: Icons.edit_rounded,
-                          label: AppLocalizations.of(context)!.edit,
-                          color: AppColors.info,
-                          onTap: () => _editCard(_cards[_currentIndex]),
-                        ),
-                        const SizedBox(width: 8),
-                        _ActionButton(
-                          icon: Icons.delete_rounded,
-                          label: AppLocalizations.of(context)!.delete,
-                          color: AppColors.error,
-                          onTap: () => _deleteCard(_cards[_currentIndex]),
-                        ),
-                      ],
+                        )
+                        .animate()
+                        .scale(
+                          begin: const Offset(0.92, 0.92),
+                          end: const Offset(1, 1),
+                          duration: 400.ms,
+                          curve: Curves.easeOutBack,
+                        )
+                        .fadeIn(duration: 300.ms);
+                  },
+                ),
+              ),
+
+              // ─── Bottom Action Bar ──────────────────
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: HCColor.of(context).surface,
+                  border: Border(
+                    top: BorderSide(
+                      color: widget.category.color.withValues(alpha: 0.15),
                     ),
                   ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _ActionButton(
-                      icon: Icons.arrow_back_rounded,
-                      label: AppLocalizations.of(context)!.previous,
-                      onTap: _prevCard,
-                      enabled: _currentIndex > 0,
-                    ),
-                    _ActionButton(
-                      icon: Icons.volume_up_rounded,
-                      label: _isFlipped ? AppLocalizations.of(context)!.filipino : AppLocalizations.of(context)!.english,
-                      color: _isFlipped ? AppColors.secondary : AppColors.info,
-                      onTap: () => _isFlipped
-                          ? _speakFilipino(_cards[_currentIndex].wordFilipino)
-                          : _speakEnglish(_cards[_currentIndex].wordEnglish),
-                    ),
-                    _ActionButton(
-                      icon: Icons.sign_language_rounded,
-                      label: AppLocalizations.of(context)!.fsl,
-                      color: AppColors.secondary,
-                      onTap: () => _showFslVideo(_cards[_currentIndex]),
-                    ),
-                    _ActionButton(
-                      icon: Icons.flip_rounded,
-                      label: AppLocalizations.of(context)!.flip,
-                      color: AppColors.accent,
-                      onTap: () => setState(() => _isFlipped = !_isFlipped),
-                    ),
-                    _ActionButton(
-                      icon: Icons.arrow_forward_rounded,
-                      label: AppLocalizations.of(context)!.next,
-                      onTap: _nextCard,
-                      enabled: _currentIndex < _cards.length - 1,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, -4),
                     ),
                   ],
                 ),
-              ],
-            ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Edit / Delete row for custom cards
+                    if (_cards.isNotEmpty && _cards[_currentIndex].isCustom)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: AppActionBar(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.info.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                AppLocalizations.of(context)!.customCard,
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.info,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            _ActionButton(
+                              icon: Icons.edit_rounded,
+                              label: AppLocalizations.of(context)!.edit,
+                              color: AppColors.info,
+                              onTap: () => _editCard(_cards[_currentIndex]),
+                            ),
+                            _ActionButton(
+                              icon: Icons.delete_rounded,
+                              label: AppLocalizations.of(context)!.delete,
+                              color: AppColors.error,
+                              onTap: () => _deleteCard(_cards[_currentIndex]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    AppActionBar(
+                      alignment: WrapAlignment.spaceEvenly,
+                      children: [
+                        _ActionButton(
+                          icon: Icons.arrow_back_rounded,
+                          label: AppLocalizations.of(context)!.previous,
+                          onTap: _prevCard,
+                          enabled: _currentIndex > 0,
+                        ),
+                        _ActionButton(
+                          icon: Icons.volume_up_rounded,
+                          label: _isFlipped
+                              ? AppLocalizations.of(context)!.filipino
+                              : AppLocalizations.of(context)!.english,
+                          color: _isFlipped
+                              ? AppColors.secondary
+                              : AppColors.info,
+                          onTap: () => _isFlipped
+                              ? _speakFilipino(
+                                  _cards[_currentIndex].wordFilipino,
+                                )
+                              : _speakEnglish(
+                                  _cards[_currentIndex].wordEnglish,
+                                ),
+                        ),
+                        _ActionButton(
+                          icon: Icons.sign_language_rounded,
+                          label: AppLocalizations.of(context)!.fsl,
+                          color: AppColors.secondary,
+                          onTap: () => _showFslVideo(_cards[_currentIndex]),
+                        ),
+                        _ActionButton(
+                          icon: Icons.flip_rounded,
+                          label: AppLocalizations.of(context)!.flip,
+                          color: AppColors.accent,
+                          onTap: () => setState(() => _isFlipped = !_isFlipped),
+                        ),
+                        _ActionButton(
+                          icon: Icons.arrow_forward_rounded,
+                          label: AppLocalizations.of(context)!.next,
+                          onTap: _nextCard,
+                          enabled: _currentIndex < _cards.length - 1,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        if (_isLoadingFsl) const FslLoadingOverlay(),
+      ],
     );
   }
 
-  /// Builds the FSL video asset path from the card's category and English word.
-  /// Example: assets/videos/fsl/Animals/dog.mp4
   void _showFslVideo(Flashcard card) async {
-    // Ensure the catalog is hydrated, then check registration synchronously.
-    final availability = await FslAssetsService.load();
+    // Ignore taps while a video is already being resolved. This guards
+    // against multiple simultaneous downloads / stacked player sheets when
+    // the FSL button (on this or any other card) is tapped repeatedly.
+    if (_isLoadingFsl) return;
+    setState(() => _isLoadingFsl = true);
+
+    await FslAssetsService.load();
+    final videoSource = await FslAssetsService.videoSourceFor(card);
 
     if (!mounted) return;
+    // Source resolved — dismiss the loading overlay before presenting a
+    // sheet. The sheet then handles its own player-init loading UI, and its
+    // modal barrier blocks further taps while open.
+    setState(() => _isLoadingFsl = false);
 
-    if (!availability.hasVideo(card)) {
+    if (videoSource == null) {
       // No video available for this word — show a friendly message
       showModalBottomSheet(
         context: context,
@@ -502,7 +536,9 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                 width: 48,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: HCColor.of(context).textSecondary.withValues(alpha: 0.3),
+                  color: HCColor.of(
+                    context,
+                  ).textSecondary.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -514,14 +550,17 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                   color: AppColors.secondaryLight,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.sign_language_rounded,
-                  size: 40,
+                  size: context.scaleIcon(40),
                   color: AppColors.secondaryDark,
                 ),
               ),
               const SizedBox(height: 20),
-              Text(AppLocalizations.of(context)!.filipinoSignLanguage, style: AppTypography.titleLarge),
+              Text(
+                AppLocalizations.of(context)!.filipinoSignLanguage,
+                style: AppTypography.titleLarge,
+              ),
               const SizedBox(height: 8),
               Text(
                 'No FSL video available yet for "${card.wordEnglish}".',
@@ -559,7 +598,10 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => _FslVideoSheet(card: card),
+      builder: (context) => _FslVideoSheet(
+        videoSource: videoSource,
+        wordEnglish: card.wordEnglish,
+      ),
     );
   }
 }
@@ -627,7 +669,9 @@ class _FlipCard extends StatelessWidget {
                     // Edge glow during flip
                     if (flipProgress > 0.2)
                       BoxShadow(
-                        color: category.color.withValues(alpha: 0.15 * flipProgress),
+                        color: category.color.withValues(
+                          alpha: 0.15 * flipProgress,
+                        ),
                         blurRadius: 24 * flipProgress,
                         spreadRadius: 2 * flipProgress,
                       ),
@@ -662,7 +706,9 @@ class _FlipCard extends StatelessWidget {
                                   ),
                                   colors: [
                                     Colors.white.withValues(alpha: 0),
-                                    Colors.white.withValues(alpha: 0.12 * flipProgress),
+                                    Colors.white.withValues(
+                                      alpha: 0.12 * flipProgress,
+                                    ),
                                     Colors.white.withValues(alpha: 0),
                                   ],
                                   stops: const [0.0, 0.5, 1.0],
@@ -744,8 +790,14 @@ class _FlipCard extends StatelessWidget {
           ),
 
           // ── Main content ──
+          // Scale the face down to fit a short card / large font scale rather
+          // than overflowing the fixed card height.
           Center(
-            child: Column(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Category color strip
@@ -769,7 +821,10 @@ class _FlipCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 // Category badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: category.color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
@@ -780,7 +835,11 @@ class _FlipCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(category.icon, size: 14, color: category.darkColor),
+                      Icon(
+                        category.icon,
+                        size: context.scaleIcon(14),
+                        color: category.darkColor,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         category.label,
@@ -818,19 +877,25 @@ class _FlipCard extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.touch_app_rounded,
-                      size: 14,
-                      color: HCColor.of(context).textSecondary.withValues(alpha: 0.5),
+                      size: context.scaleIcon(14),
+                      color: HCColor.of(
+                        context,
+                      ).textSecondary.withValues(alpha: 0.5),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       AppLocalizations.of(context)!.tapToSeeMore,
                       style: AppTypography.bodySmall.copyWith(
-                        color: HCColor.of(context).textSecondary.withValues(alpha: 0.6),
+                        color: HCColor.of(
+                          context,
+                        ).textSecondary.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
                 ),
               ],
+                ),
+              ),
             ),
           ),
         ],
@@ -844,7 +909,10 @@ class _FlipCard extends StatelessWidget {
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [category.color.withValues(alpha: 0.10), HCColor.of(context).surface],
+          colors: [
+            category.color.withValues(alpha: 0.10),
+            HCColor.of(context).surface,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -865,12 +933,22 @@ class _FlipCard extends StatelessWidget {
               ),
             ),
           ),
-          Column(
+          // Center the details, but let them scroll instead of overflowing
+          // the fixed card height on a short card / large font scale.
+          LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints:
+                    BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Back label
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -886,7 +964,11 @@ class _FlipCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(category.icon, size: 14, color: category.darkColor),
+                    Icon(
+                      category.icon,
+                      size: context.scaleIcon(14),
+                      color: category.darkColor,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       AppLocalizations.of(context)!.details,
@@ -946,7 +1028,7 @@ class _FlipCard extends StatelessWidget {
                         children: [
                           Icon(
                             Icons.format_quote_rounded,
-                            size: 20,
+                            size: context.scaleIcon(20),
                             color: category.darkColor,
                           ),
                           const SizedBox(width: 8),
@@ -985,7 +1067,11 @@ class _FlipCard extends StatelessWidget {
                       ),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(category.icon, size: 14, color: Colors.white),
+                    child: Icon(
+                      category.icon,
+                      size: context.scaleIcon(14),
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -1003,19 +1089,26 @@ class _FlipCard extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.touch_app_rounded,
-                    size: 14,
-                    color: HCColor.of(context).textSecondary.withValues(alpha: 0.5),
+                    size: context.scaleIcon(14),
+                    color: HCColor.of(
+                      context,
+                    ).textSecondary.withValues(alpha: 0.5),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     AppLocalizations.of(context)!.tapToFlipBack,
                     style: AppTypography.bodySmall.copyWith(
-                      color: HCColor.of(context).textSecondary.withValues(alpha: 0.6),
+                      color: HCColor.of(
+                        context,
+                      ).textSecondary.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
               ),
             ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -1050,7 +1143,7 @@ class _MiniListenButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 18, color: color),
+              Icon(icon, size: context.scaleIcon(18), color: color),
               const SizedBox(width: 6),
               Text(
                 label,
@@ -1088,6 +1181,10 @@ class _ActionButton extends StatelessWidget {
     final c = enabled
         ? (color ?? AppColors.primary)
         : HCColor.of(context).textSecondary.withValues(alpha: 0.3);
+    // The tap target grows with the Font Size setting but stays capped so the
+    // strip never balloons; a 54dp base keeps it comfortably above the 48dp
+    // accessibility floor for child / motor-impaired users.
+    final box = context.scaledHeightCapped(54, max: 1.3);
     return Semantics(
       button: true,
       enabled: enabled,
@@ -1098,8 +1195,8 @@ class _ActionButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: box,
+              height: box,
               decoration: BoxDecoration(
                 color: c.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
@@ -1113,10 +1210,25 @@ class _ActionButton extends StatelessWidget {
                       ]
                     : [],
               ),
-              child: Icon(icon, color: c, size: 26),
+              // Icon scales with the box (which is itself text-scale aware) so
+              // it never clips, and never grows past the box at XL font sizes.
+              child: Icon(icon, color: c, size: box * 0.48),
             ),
             const SizedBox(height: 4),
-            Text(label, style: AppTypography.labelSmall.copyWith(color: c)),
+            // Fixed-width label that scales DOWN to fit (FittedBox) instead of
+            // wrapping or pushing the button wider than its cell — so the strip
+            // can never overflow horizontally at any font scale or translation.
+            SizedBox(
+              width: box + 24,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: AppTypography.labelSmall.copyWith(color: c),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1126,17 +1238,17 @@ class _ActionButton extends StatelessWidget {
 
 // ─── FSL Video Bottom Sheet ───────────────────────────
 class _FslVideoSheet extends StatefulWidget {
-  final Flashcard card;
+  final VideoSource videoSource;
+  final String wordEnglish;
 
-  const _FslVideoSheet({required this.card});
+  const _FslVideoSheet({required this.videoSource, required this.wordEnglish});
 
   @override
   State<_FslVideoSheet> createState() => _FslVideoSheetState();
 }
 
 class _FslVideoSheetState extends State<_FslVideoSheet> {
-  VideoPlayerController? _controller;
-  File? _videoFile;
+  late VideoPlayerController _controller;
   bool _initialized = false;
   bool _hasError = false;
   double _playbackSpeed = 1.0;
@@ -1146,32 +1258,23 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
   @override
   void initState() {
     super.initState();
-    _loadAndInit();
-  }
-
-  Future<void> _loadAndInit() async {
-    try {
-      final file = await FslAssetsService.cachedFileFor(widget.card);
-      if (!mounted) return;
-      _videoFile = file;
-      final controller = VideoPlayerController.file(file);
-      _controller = controller;
-      await controller.initialize();
-      if (!mounted) {
-        controller.dispose();
-        return;
-      }
-      controller.setLooping(true);
-      controller.play();
-      setState(() => _initialized = true);
-    } catch (_) {
-      if (mounted) setState(() => _hasError = true);
-    }
+    _controller = widget.videoSource.createController()
+      ..initialize()
+          .then((_) {
+            if (mounted) {
+              setState(() => _initialized = true);
+              _controller.setLooping(true);
+              _controller.play();
+            }
+          })
+          .catchError((_) {
+            if (mounted) setState(() => _hasError = true);
+          });
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -1204,14 +1307,14 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.sign_language_rounded,
                 color: AppColors.secondaryDark,
-                size: 24,
+                size: context.scaleIcon(24),
               ),
               const SizedBox(width: 8),
               Text(
-                'FSL — ${widget.card.wordEnglish}',
+                'FSL — ${widget.wordEnglish}',
                 style: AppTypography.titleLarge,
               ),
             ],
@@ -1222,7 +1325,7 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
             borderRadius: BorderRadius.circular(16),
             child: AspectRatio(
               aspectRatio: _initialized
-                  ? _controller!.value.aspectRatio
+                  ? _controller.value.aspectRatio
                   : 16 / 9,
               child: _hasError
                   ? Container(
@@ -1237,94 +1340,94 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
                       ),
                     )
                   : _initialized
-                      ? GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _controller!.value.isPlaying
-                                  ? _controller!.pause()
-                                  : _controller!.play();
-                            });
-                          },
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              VideoPlayer(_controller!),
-                              if (!_controller!.value.isPlaying)
-                                Container(
-                                  width: 56,
-                                  height: 56,
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.5),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.play_arrow_rounded,
-                                    color: Colors.white,
-                                    size: 36,
-                                  ),
-                                ),
-                              // Fullscreen button
-                              Positioned(
-                                right: 8,
-                                bottom: 8,
-                                child: GestureDetector(
-                                  onTap: () async {
-                                    final controller = _controller;
-                                    final file = _videoFile;
-                                    if (controller == null || file == null) return;
-                                    final wasPlaying = controller.value.isPlaying;
-                                    final pos = controller.value.position;
-                                    controller.pause();
-                                    final returnPos = await openFslFullscreenPlayer(
-                                      context,
-                                      videoFile: file,
-                                      wordEnglish: widget.card.wordEnglish,
-                                      startPosition: pos,
-                                    );
-                                    if (returnPos != null && mounted) {
-                                      controller.seekTo(returnPos);
-                                    }
-                                    if (wasPlaying && mounted) {
-                                      controller.play();
-                                    }
-                                  },
-                                  child: Container(
-                                    width: 36,
-                                    height: 36,
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.5),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.fullscreen_rounded,
-                                      color: Colors.white,
-                                      size: 22,
-                                    ),
-                                  ),
-                                ),
+                  ? GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _controller.value.isPlaying
+                              ? _controller.pause()
+                              : _controller.play();
+                        });
+                      },
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          VideoPlayer(_controller),
+                          if (!_controller.value.isPlaying)
+                            Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                shape: BoxShape.circle,
                               ),
-                            ],
-                          ),
-                        )
-                      : Container(
-                          color: AppColors.surfaceVariant,
-                          child: ShimmerLoading(
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.play_circle_outline_rounded,
-                                    size: 48,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const ShimmerBox(width: 100, height: 12),
-                                ],
+                              child: Icon(
+                                Icons.play_arrow_rounded,
+                                color: Colors.white,
+                                size: context.scaleIcon(36),
+                              ),
+                            ),
+                          // Fullscreen button
+                          Positioned(
+                            right: 8,
+                            bottom: 8,
+                            child: GestureDetector(
+                              onTap: () async {
+                                final wasPlaying = _controller.value.isPlaying;
+                                final pos = _controller.value.position;
+                                _controller.pause();
+                                final returnPos = await openFslFullscreenPlayer(
+                                  context,
+                                  videoSource: widget.videoSource,
+                                  wordEnglish: widget.wordEnglish,
+                                  startPosition: pos,
+                                );
+                                if (returnPos != null && mounted) {
+                                  _controller.seekTo(returnPos);
+                                }
+                                if (wasPlaying && mounted) {
+                                  _controller.play();
+                                }
+                              },
+                              child: Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.fullscreen_rounded,
+                                  color: Colors.white,
+                                  size: context.scaleIcon(22),
+                                ),
                               ),
                             ),
                           ),
+                        ],
+                      ),
+                    )
+                  : Container(
+                      color: AppColors.surfaceVariant,
+                      child: ShimmerLoading(
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.play_circle_outline_rounded,
+                                size: context.scaleIcon(48),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.3),
+                              ),
+                              const SizedBox(height: 8),
+                              const ShimmerBox(width: 100, height: 12),
+                            ],
+                          ),
                         ),
+                      ),
+                    ),
             ),
           ),
           const SizedBox(height: 12),
@@ -1332,11 +1435,18 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.speed_rounded, size: 18,
-                  color: hc.textSecondary),
+              Icon(
+                Icons.speed_rounded,
+                size: context.scaleIcon(18),
+                color: hc.textSecondary,
+              ),
               const SizedBox(width: 6),
-              Text(AppLocalizations.of(context)!.speed, style: AppTypography.labelSmall.copyWith(
-                  color: hc.textSecondary)),
+              Text(
+                AppLocalizations.of(context)!.speed,
+                style: AppTypography.labelSmall.copyWith(
+                  color: hc.textSecondary,
+                ),
+              ),
               const SizedBox(width: 4),
               ..._speeds.map((speed) {
                 final isActive = _playbackSpeed == speed;
@@ -1345,11 +1455,13 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
                   child: GestureDetector(
                     onTap: () {
                       setState(() => _playbackSpeed = speed);
-                      _controller!.setPlaybackSpeed(speed);
+                      _controller.setPlaybackSpeed(speed);
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: isActive
                             ? AppColors.secondary
@@ -1360,11 +1472,10 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
                         '${speed}x',
                         style: AppTypography.labelSmall.copyWith(
                           fontSize: 10,
-                          fontWeight:
-                              isActive ? FontWeight.w700 : FontWeight.w500,
-                          color: isActive
-                              ? Colors.white
-                              : hc.textSecondary,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: isActive ? Colors.white : hc.textSecondary,
                         ),
                       ),
                     ),
@@ -1374,25 +1485,22 @@ class _FslVideoSheetState extends State<_FslVideoSheet> {
             ],
           ),
           const SizedBox(height: 16),
-          // Replay & Close
-          Row(
+          // Replay & Close — equal-width cells that stack on a narrow width
+          // (or XL font scale) instead of overflowing horizontally.
+          AppActionBar(
+            equalWidth: true,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    _controller!.seekTo(Duration.zero);
-                    _controller!.play();
-                  },
-                  icon: const Icon(Icons.replay_rounded),
-                  label: Text(AppLocalizations.of(context)!.replay),
-                ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  _controller.seekTo(Duration.zero);
+                  _controller.play();
+                },
+                icon: const Icon(Icons.replay_rounded),
+                label: Text(AppLocalizations.of(context)!.replay),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(AppLocalizations.of(context)!.close),
-                ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(AppLocalizations.of(context)!.close),
               ),
             ],
           ),
