@@ -241,16 +241,15 @@ class _ProfileCard extends StatelessWidget {
                       (profile.age != null || profile.gradeLevel != null))
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Row(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           if (profile.age != null)
                             _InfoChip(
                               icon: Icons.cake_rounded,
                               label: '${profile.age} yrs',
                             ),
-                          if (profile.age != null &&
-                              profile.gradeLevel != null)
-                            const SizedBox(width: 8),
                           if (profile.gradeLevel != null)
                             _InfoChip(
                               icon: Icons.school_rounded,

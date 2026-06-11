@@ -1,30 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/avatar_data.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
+import '../../../providers/app_providers.dart';
+import '../../../features/progress/theme/progress_theme_provider.dart';
+import '../../../features/progress/theme/progress_layout_provider.dart';
+import '../../../features/progress/theme/progress_theme_picker.dart';
+import '../../../features/progress/widgets/shared/progress_section_header.dart';
+import '../../../features/progress/widgets/shared/progress_stat_grid.dart';
 
 /// Shows full profile information and learning progress for a student.
-class StudentProfileDetailScreen extends StatelessWidget {
+///
+/// Theme-aware like the other Progress surfaces: it reads this profile's
+/// selectable skin + layout template (and yields to accessibility modes), so
+/// a learner sees the same look here as on the main Progress dashboard.
+class StudentProfileDetailScreen extends ConsumerWidget {
   final UserProfile profile;
 
   const StudentProfileDetailScreen({super.key, required this.profile});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final avatar = AvatarData.getAvatar(profile.avatarIndex);
     final progress = HiveService.getProgress(profile.id);
     final achievements = HiveService.getUnlockedAchievements(profile.id);
 
+    // ─── This profile's skin + layout (yield to accessibility modes) ───
+    final theme = ref.watch(progressThemeForProvider(profile.id));
+    final layout = ref.watch(progressLayoutForProvider(profile.id));
+    final settings = ref.watch(settingsProvider);
+    final useTheme =
+        !(settings.highContrastMode || settings.dyslexiaMode);
+    final accent = useTheme ? theme.accent : AppColors.primary;
+    final cardSurface = useTheme
+        ? theme.cardSurface(HCColor.of(context).surface)
+        : HCColor.of(context).surface;
+
+    // Width-cap content on wide tablets (centered) + tier-aware page padding.
+    final maxW = context.maxContentWidth;
+    final sideInset = maxW.isFinite
+        ? ((context.screenWidth - maxW) / 2).clamp(0.0, double.infinity)
+        : 0.0;
+    final contentHPad = context.pagePadding + sideInset;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(profile.name),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.palette_rounded),
+            tooltip: 'Customize progress',
+            onPressed: () => showProgressCustomizeSheet(
+              context,
+              selectedThemeId: theme.id,
+              selectedLayoutId: layout.id,
+              onThemeSelected: (id) =>
+                  selectProgressThemeFor(ref, profile.id, id),
+              onLayoutSelected: (id) =>
+                  selectProgressLayoutFor(ref, profile.id, id),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.edit_rounded),
             tooltip: 'Edit Profile',
@@ -33,49 +76,97 @@ class StudentProfileDetailScreen extends StatelessWidget {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: contentHPad, vertical: 16),
         child: Column(
           children: [
             // ── Profile Header ──
-            _ProfileHeader(profile: profile, avatar: avatar, isDark: isDark)
+            _ProfileHeader(
+              profile: profile,
+              avatar: avatar,
+              isDark: isDark,
+              accent: accent,
+            )
                 .animate()
                 .fadeIn(duration: 400.ms)
                 .slideY(begin: 0.05, end: 0),
-            const SizedBox(height: 20),
+            SizedBox(height: layout.sectionGap),
 
-            // ── Quick Stats ──
-            _QuickStats(progress: progress, achievementCount: achievements.length)
+            // ── Quick Stats (responsive, overflow-safe grid) ──
+            ProgressStatGrid(
+              layout: layout,
+              stats: [
+                ProgressStat(
+                  icon: Icons.menu_book_rounded,
+                  value: '${progress.wordsLearned}',
+                  label: 'Words',
+                  color: AppColors.primary,
+                ),
+                ProgressStat(
+                  icon: Icons.local_fire_department_rounded,
+                  value: '${progress.streakDays}',
+                  label: 'Streak',
+                  color: AppColors.warning,
+                ),
+                ProgressStat(
+                  icon: Icons.star_rounded,
+                  value: '${progress.starBalance}',
+                  label: 'Stars',
+                  color: AppColors.accent,
+                ),
+                ProgressStat(
+                  icon: Icons.emoji_events_rounded,
+                  value: '${achievements.length}',
+                  label: 'Badges',
+                  color: const Color(0xFF7E57C2),
+                ),
+              ],
+            )
                 .animate()
                 .fadeIn(duration: 400.ms, delay: 100.ms)
                 .slideY(begin: 0.05, end: 0),
-            const SizedBox(height: 20),
+            SizedBox(height: layout.sectionGap),
 
             // ── Category Progress ──
             if (progress.categoryProgress.isNotEmpty) ...[
               const _SectionTitle(title: 'Category Progress'),
               const SizedBox(height: 8),
-              _CategoryProgressSection(categoryProgress: progress.categoryProgress, isDark: isDark)
+              _CategoryProgressSection(
+                categoryProgress: progress.categoryProgress,
+                isDark: isDark,
+                accent: accent,
+                surface: cardSurface,
+              )
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 200.ms)
                   .slideY(begin: 0.05, end: 0),
-              const SizedBox(height: 20),
+              SizedBox(height: layout.sectionGap),
             ],
 
             // ── Recent Scores ──
             if (progress.recentScores.isNotEmpty) ...[
               const _SectionTitle(title: 'Recent Game Scores'),
               const SizedBox(height: 8),
-              _RecentScoresSection(scores: progress.recentScores, isDark: isDark)
+              _RecentScoresSection(
+                scores: progress.recentScores,
+                isDark: isDark,
+                accent: accent,
+                surface: cardSurface,
+              )
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 300.ms)
                   .slideY(begin: 0.05, end: 0),
             ],
 
             // ── Profile Details ──
-            const SizedBox(height: 20),
+            SizedBox(height: layout.sectionGap),
             const _SectionTitle(title: 'Profile Details'),
             const SizedBox(height: 8),
-            _ProfileDetailsSection(profile: profile, isDark: isDark)
+            _ProfileDetailsSection(
+              profile: profile,
+              isDark: isDark,
+              accent: accent,
+              surface: cardSurface,
+            )
                 .animate()
                 .fadeIn(duration: 400.ms, delay: 400.ms)
                 .slideY(begin: 0.05, end: 0),
@@ -93,11 +184,13 @@ class _ProfileHeader extends StatelessWidget {
   final UserProfile profile;
   final AvatarOption avatar;
   final bool isDark;
+  final Color accent;
 
   const _ProfileHeader({
     required this.profile,
     required this.avatar,
     required this.isDark,
+    required this.accent,
   });
 
   @override
@@ -109,7 +202,7 @@ class _ProfileHeader extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             avatar.color.withValues(alpha: 0.3),
-            AppColors.primary.withValues(alpha: 0.1),
+            accent.withValues(alpha: 0.1),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -144,8 +237,10 @@ class _ProfileHeader extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               if (profile.age != null)
                 _HeaderChip(
@@ -153,13 +248,11 @@ class _ProfileHeader extends StatelessWidget {
                   label: '${profile.age} yrs old',
                   color: AppColors.accent,
                 ),
-              if (profile.age != null && profile.gradeLevel != null)
-                const SizedBox(width: 8),
               if (profile.gradeLevel != null)
                 _HeaderChip(
                   icon: Icons.school_rounded,
                   label: profile.gradeLevel!.label,
-                  color: AppColors.primary,
+                  color: accent,
                 ),
             ],
           ),
@@ -216,98 +309,6 @@ class _HeaderChip extends StatelessWidget {
   }
 }
 
-// ─── Quick Stats ─────────────────────────────────────────
-
-class _QuickStats extends StatelessWidget {
-  final LearningProgress progress;
-  final int achievementCount;
-
-  const _QuickStats({required this.progress, required this.achievementCount});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _StatCard(
-          icon: Icons.menu_book_rounded,
-          value: '${progress.wordsLearned}',
-          label: 'Words',
-          color: AppColors.primary,
-        ),
-        const SizedBox(width: 10),
-        _StatCard(
-          icon: Icons.local_fire_department_rounded,
-          value: '${progress.streakDays}',
-          label: 'Streak',
-          color: AppColors.warning,
-        ),
-        const SizedBox(width: 10),
-        _StatCard(
-          icon: Icons.star_rounded,
-          value: '${progress.starBalance}',
-          label: 'Stars',
-          color: AppColors.accent,
-        ),
-        const SizedBox(width: 10),
-        _StatCard(
-          icon: Icons.emoji_events_rounded,
-          value: '$achievementCount',
-          label: 'Badges',
-          color: const Color(0xFF7E57C2),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-
-  const _StatCard({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 22, color: color),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
-            ),
-            Text(
-              label,
-              style: AppTypography.bodySmall.copyWith(
-                color: color.withValues(alpha: 0.8),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ─── Section Title ───────────────────────────────────────
 
 class _SectionTitle extends StatelessWidget {
@@ -317,15 +318,9 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: AppTypography.titleMedium.copyWith(
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
+    // Delegates to the shared header so the student detail screen matches the
+    // Progress screen's section styling.
+    return ProgressSectionHeader(title: title);
   }
 }
 
@@ -334,10 +329,14 @@ class _SectionTitle extends StatelessWidget {
 class _CategoryProgressSection extends StatelessWidget {
   final Map<String, double> categoryProgress;
   final bool isDark;
+  final Color accent;
+  final Color surface;
 
   const _CategoryProgressSection({
     required this.categoryProgress,
     required this.isDark,
+    required this.accent,
+    required this.surface,
   });
 
   /// Resolve a progress key to a FlashcardCategory by matching .name or .label.
@@ -367,15 +366,15 @@ class _CategoryProgressSection extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppColors.primary.withValues(alpha: 0.12),
-                AppColors.accent.withValues(alpha: 0.08),
+                accent.withValues(alpha: 0.12),
+                accent.withValues(alpha: 0.06),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.15),
+              color: accent.withValues(alpha: 0.15),
             ),
           ),
           child: Row(
@@ -394,15 +393,15 @@ class _CategoryProgressSection extends StatelessWidget {
                         value: totalProgress.clamp(0.0, 1.0),
                         strokeWidth: 5,
                         strokeCap: StrokeCap.round,
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                        valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                        backgroundColor: accent.withValues(alpha: 0.15),
+                        valueColor: AlwaysStoppedAnimation(accent),
                       ),
                     ),
                     Text(
                       '${(totalProgress * 100).round()}%',
                       style: AppTypography.labelSmall.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
+                        color: accent,
                       ),
                     ),
                   ],
@@ -437,10 +436,10 @@ class _CategoryProgressSection extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: HCColor.of(context).surface,
+            color: surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: accent.withValues(alpha: 0.1),
             ),
             boxShadow: isDark ? null : AppColors.softShadow,
           ),
@@ -620,10 +619,14 @@ class _CategoryRow extends StatelessWidget {
 class _RecentScoresSection extends StatelessWidget {
   final List<GameScore> scores;
   final bool isDark;
+  final Color accent;
+  final Color surface;
 
   const _RecentScoresSection({
     required this.scores,
     required this.isDark,
+    required this.accent,
+    required this.surface,
   });
 
   @override
@@ -635,17 +638,17 @@ class _RecentScoresSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: HCColor.of(context).surface,
+        color: surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.1),
+          color: accent.withValues(alpha: 0.1),
         ),
         boxShadow: isDark ? null : AppColors.softShadow,
       ),
       child: Column(
         children: [
           for (int i = 0; i < display.length; i++) ...[
-            _ScoreRow(score: display[i]),
+            _ScoreRow(score: display[i], accent: accent),
             if (i < display.length - 1)
               Divider(
                 height: 20,
@@ -660,8 +663,9 @@ class _RecentScoresSection extends StatelessWidget {
 
 class _ScoreRow extends StatelessWidget {
   final GameScore score;
+  final Color accent;
 
-  const _ScoreRow({required this.score});
+  const _ScoreRow({required this.score, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -673,10 +677,10 @@ class _ScoreRow extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
+            color: accent.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.videogame_asset_rounded, size: 18, color: AppColors.primary),
+          child: Icon(Icons.videogame_asset_rounded, size: 18, color: accent),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -750,10 +754,14 @@ class _ScoreRow extends StatelessWidget {
 class _ProfileDetailsSection extends StatelessWidget {
   final UserProfile profile;
   final bool isDark;
+  final Color accent;
+  final Color surface;
 
   const _ProfileDetailsSection({
     required this.profile,
     required this.isDark,
+    required this.accent,
+    required this.surface,
   });
 
   @override
@@ -762,10 +770,10 @@ class _ProfileDetailsSection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: HCColor.of(context).surface,
+        color: surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.1),
+          color: accent.withValues(alpha: 0.1),
         ),
         boxShadow: isDark ? null : AppColors.softShadow,
       ),
@@ -775,6 +783,7 @@ class _ProfileDetailsSection extends StatelessWidget {
             icon: Icons.person_rounded,
             label: 'Role',
             value: profile.role.label,
+            accent: accent,
           ),
           if (profile.birthDate != null) ...[
             const _DetailDivider(),
@@ -782,6 +791,7 @@ class _ProfileDetailsSection extends StatelessWidget {
               icon: Icons.calendar_today_rounded,
               label: 'Birth Date',
               value: _formatDate(profile.birthDate!),
+              accent: accent,
             ),
           ],
           if (profile.section != null && profile.section!.isNotEmpty) ...[
@@ -790,6 +800,7 @@ class _ProfileDetailsSection extends StatelessWidget {
               icon: Icons.group_rounded,
               label: 'Section',
               value: profile.section!,
+              accent: accent,
             ),
           ],
           if (profile.disabilityType != DisabilityType.none) ...[
@@ -798,17 +809,19 @@ class _ProfileDetailsSection extends StatelessWidget {
               icon: profile.disabilityType.icon,
               label: 'Accessibility',
               value: profile.disabilityType.label,
+              accent: accent,
             ),
           ],
           if (profile.tags.isNotEmpty) ...[
             const _DetailDivider(),
-            _TagsRow(tags: profile.tags),
+            _TagsRow(tags: profile.tags, accent: accent),
           ],
           const _DetailDivider(),
           _DetailRow(
             icon: Icons.event_rounded,
             label: 'Created',
             value: _formatDate(profile.createdAt),
+            accent: accent,
           ),
         ],
       ),
@@ -828,8 +841,14 @@ class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final Color accent;
 
-  const _DetailRow({required this.icon, required this.label, required this.value});
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -837,7 +856,7 @@ class _DetailRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.primary),
+          Icon(icon, size: 18, color: accent),
           const SizedBox(width: 10),
           Text(
             label,
@@ -845,11 +864,18 @@ class _DetailRow extends StatelessWidget {
               color: HCColor.of(context).textSecondary,
             ),
           ),
-          const Spacer(),
-          Text(
-            value,
-            style: AppTypography.bodyMedium.copyWith(
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: 12),
+          // Expanded + end-aligned so a long value ellipsizes instead of
+          // overflowing the row at large font scales (e.g. long section names).
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -872,8 +898,9 @@ class _DetailDivider extends StatelessWidget {
 
 class _TagsRow extends StatelessWidget {
   final List<String> tags;
+  final Color accent;
 
-  const _TagsRow({required this.tags});
+  const _TagsRow({required this.tags, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -882,7 +909,7 @@ class _TagsRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.label_rounded, size: 18, color: AppColors.primary),
+          Icon(Icons.label_rounded, size: 18, color: accent),
           const SizedBox(width: 10),
           Text(
             'Tags',
@@ -899,13 +926,13 @@ class _TagsRow extends StatelessWidget {
               children: tags.map((tag) => Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   tag,
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.primary,
+                    color: accent,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

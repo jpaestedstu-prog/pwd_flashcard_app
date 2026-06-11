@@ -344,6 +344,33 @@ class _AccessibilitySetupScreenState
 
           const SizedBox(height: 24),
 
+          // For learners with no flagged needs we still surface the two
+          // optional comfort tweaks — dyslexia-friendly palette and
+          // reduced motion — since they're useful well beyond the
+          // disability presets and otherwise easy to miss.
+          if (type == DisabilityType.none) ...[
+            const _OptionalComfortTipsCard(
+              tips: [
+                _ComfortTip(
+                  emoji: '📝',
+                  title: 'Dyslexia-friendly',
+                  subtitle:
+                      'Cream background, Lexend font, wider letter spacing — easier reading for everyone.',
+                ),
+                _ComfortTip(
+                  emoji: '🎬',
+                  title: 'Reduced Motion',
+                  subtitle:
+                      'Less animation, instant page transitions — good for motion sensitivity or older devices.',
+                ),
+              ],
+            )
+                .animate()
+                .fadeIn(duration: 400.ms, delay: 350.ms)
+                .slideY(begin: 0.05, end: 0),
+            const SizedBox(height: 8),
+          ],
+
           // Settings changes list
           if (changes.isNotEmpty) ...[
             Container(
@@ -712,6 +739,104 @@ class _DisabilityCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Plain data record for an entry in [_OptionalComfortTipsCard]. Lives
+/// alongside the widget rather than in the model layer because nothing
+/// else consumes it.
+class _ComfortTip {
+  final String emoji;
+  final String title;
+  final String subtitle;
+
+  const _ComfortTip({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+  });
+}
+
+/// "Did you know?" card shown on the onboarding accessibility wizard
+/// when the learner picks "No Accessibility Needs". Surfaces optional
+/// comfort features (dyslexia-friendly, reduced motion) that aren't
+/// part of any preset but useful regardless.
+class _OptionalComfortTipsCard extends StatelessWidget {
+  final List<_ComfortTip> tips;
+
+  const _OptionalComfortTipsCard({required this.tips});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.lightbulb_outline_rounded,
+                  size: 20, color: AppColors.primaryDark),
+              const SizedBox(width: 8),
+              Text(
+                'Comfort tweaks you can try later',
+                style: AppTypography.labelLarge.copyWith(
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (var i = 0; i < tips.length; i++) ...[
+            _ComfortTipRow(tip: tips[i]),
+            if (i != tips.length - 1) const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ComfortTipRow extends StatelessWidget {
+  final _ComfortTip tip;
+
+  const _ComfortTipRow({required this.tip});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(tip.emoji, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                tip.title,
+                style: AppTypography.labelMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                tip.subtitle,
+                style: AppTypography.bodySmall.copyWith(
+                  color: HCColor.of(context).textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

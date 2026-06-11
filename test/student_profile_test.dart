@@ -4,50 +4,50 @@ import 'package:pwdpwdpwd/core/constants/avatar_data.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/data/models/shop_data.dart';
-import 'package:pwdpwdpwd/features/onboarding/screens/profile_selection_screen.dart';
+import 'package:pwdpwdpwd/core/services/learning_level_service.dart';
 
 void main() {
   group('suggestGradeLevelFromAge', () {
     test('age <= 5 suggests Kinder', () {
-      expect(suggestGradeLevelFromAge(3), GradeLevel.kinder);
-      expect(suggestGradeLevelFromAge(4), GradeLevel.kinder);
-      expect(suggestGradeLevelFromAge(5), GradeLevel.kinder);
+      expect(LearningLevelService.suggestGradeLevelFromAge(3), GradeLevel.kinder);
+      expect(LearningLevelService.suggestGradeLevelFromAge(4), GradeLevel.kinder);
+      expect(LearningLevelService.suggestGradeLevelFromAge(5), GradeLevel.kinder);
     });
 
     test('age 6 suggests Grade 1', () {
-      expect(suggestGradeLevelFromAge(6), GradeLevel.grade1);
+      expect(LearningLevelService.suggestGradeLevelFromAge(6), GradeLevel.grade1);
     });
 
     test('age 7 suggests Grade 2', () {
-      expect(suggestGradeLevelFromAge(7), GradeLevel.grade2);
+      expect(LearningLevelService.suggestGradeLevelFromAge(7), GradeLevel.grade2);
     });
 
     test('age 8 suggests Grade 3', () {
-      expect(suggestGradeLevelFromAge(8), GradeLevel.grade3);
+      expect(LearningLevelService.suggestGradeLevelFromAge(8), GradeLevel.grade3);
     });
 
     test('age 9 suggests Grade 4', () {
-      expect(suggestGradeLevelFromAge(9), GradeLevel.grade4);
+      expect(LearningLevelService.suggestGradeLevelFromAge(9), GradeLevel.grade4);
     });
 
     test('age 10 suggests Grade 5', () {
-      expect(suggestGradeLevelFromAge(10), GradeLevel.grade5);
+      expect(LearningLevelService.suggestGradeLevelFromAge(10), GradeLevel.grade5);
     });
 
     test('age 11 suggests Grade 6', () {
-      expect(suggestGradeLevelFromAge(11), GradeLevel.grade6);
+      expect(LearningLevelService.suggestGradeLevelFromAge(11), GradeLevel.grade6);
     });
 
     test('age 12-17 suggests High School', () {
-      expect(suggestGradeLevelFromAge(12), GradeLevel.highSchool);
-      expect(suggestGradeLevelFromAge(15), GradeLevel.highSchool);
-      expect(suggestGradeLevelFromAge(17), GradeLevel.highSchool);
+      expect(LearningLevelService.suggestGradeLevelFromAge(12), GradeLevel.highSchool);
+      expect(LearningLevelService.suggestGradeLevelFromAge(15), GradeLevel.highSchool);
+      expect(LearningLevelService.suggestGradeLevelFromAge(17), GradeLevel.highSchool);
     });
 
     test('age >= 18 suggests College', () {
-      expect(suggestGradeLevelFromAge(18), GradeLevel.college);
-      expect(suggestGradeLevelFromAge(22), GradeLevel.college);
-      expect(suggestGradeLevelFromAge(50), GradeLevel.college);
+      expect(LearningLevelService.suggestGradeLevelFromAge(18), GradeLevel.college);
+      expect(LearningLevelService.suggestGradeLevelFromAge(22), GradeLevel.college);
+      expect(LearningLevelService.suggestGradeLevelFromAge(50), GradeLevel.college);
     });
   });
 

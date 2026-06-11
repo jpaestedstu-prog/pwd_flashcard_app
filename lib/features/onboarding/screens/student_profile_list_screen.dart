@@ -103,14 +103,6 @@ class _StudentProfileListScreenState
               if (mounted) _refresh();
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.person_add_rounded),
-            tooltip: 'Create New Student',
-            onPressed: () async {
-              await context.push('/create-student');
-              if (mounted) _refresh();
-            },
-          ),
         ],
       ),
       body: FutureBuilder<List<UserProfile>>(
@@ -149,20 +141,22 @@ class _StudentProfileListScreenState
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Tap + to create a new student profile',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textHint,
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      'Students appear here after joining your class with a code.',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.textHint,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () async {
-                      await context.push('/create-student');
-                      if (mounted) _refresh();
-                    },
-                    icon: const Icon(Icons.person_add_rounded),
-                    label: const Text('Create Student'),
+                    onPressed: () => context.push('/classroom-manage'),
+                    icon: const Icon(Icons.qr_code_2_rounded),
+                    label: const Text('Share Class Code'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -279,16 +273,17 @@ class _StudentProfileCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Row(
+                // Wrap so age + grade chips never overflow horizontally on
+                // narrow tablets or at large font scales.
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
                     if (profile.age != null)
                       _DetailChip(
                         icon: Icons.cake_rounded,
                         label: '${profile.age} yrs old',
                       ),
-                    if (profile.age != null &&
-                        profile.gradeLevel != null)
-                      const SizedBox(width: 8),
                     if (profile.gradeLevel != null)
                       _DetailChip(
                         icon: Icons.school_rounded,

@@ -26,11 +26,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Timer? _navigationTimer;
   int _stageIndex = 0;
 
-  static const _stages = [
-    'Loading resources...',
-    'Preparing your cards...',
-    'Almost ready!',
-  ];
+  /// Number of staged loading messages (their text is localised in [build]).
+  static const _stageCount = 3;
 
   @override
   void initState() {
@@ -39,8 +36,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2800),
     )..addListener(() {
-        final newStage =
-            (_progressController.value * _stages.length).floor().clamp(0, _stages.length - 1);
+        final newStage = (_progressController.value * _stageCount)
+            .floor()
+            .clamp(0, _stageCount - 1);
         if (newStage != _stageIndex && mounted) {
           setState(() => _stageIndex = newStage);
         }
@@ -77,6 +75,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         context.go('/profile-switcher');
       } else if (profiles.isNotEmpty && activeId != null) {
         context.go('/home');
+      } else if (!HiveService.hasSeenWelcome()) {
+        // First launch, no profiles yet — show the welcome carousel once.
+        context.go('/welcome');
       } else {
         context.go('/profile');
       }
@@ -87,6 +88,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final stages = [
+      l10n?.splashLoadingResources ?? 'Loading resources...',
+      l10n?.splashPreparingCards ?? 'Preparing your cards...',
+      l10n?.splashAlmostReady ?? 'Almost ready!',
+    ];
 
     return Scaffold(
       body: Semantics(
@@ -248,7 +254,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 300),
                             child: Text(
-                              _stages[_stageIndex],
+                              stages[_stageIndex],
                               key: ValueKey(_stageIndex),
                               style: AppTypography.bodyMedium.copyWith(
                                 color: HCColor.of(context).textSecondary
