@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/local/learning_path_data.dart';
 import '../../../providers/app_providers.dart';
+import '../../../widgets/app_back_button.dart';
 import '../widgets/path_card.dart';
 
 class LearningPathListScreen extends ConsumerWidget {
@@ -19,13 +20,16 @@ class LearningPathListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.go('/home'),
-        ),
+        leading: const AppBackButton(),
         title: const Text('Learning Paths'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Adventure map',
+            icon: const Icon(Icons.map_rounded),
+            onPressed: () => context.push('/learning-world'),
+          ),
+        ],
       ),
       body: SafeArea(
         child: CustomScrollView(

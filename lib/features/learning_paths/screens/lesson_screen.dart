@@ -9,6 +9,8 @@ import '../../../data/local/learning_path_data.dart';
 import '../../../data/models/learning_path.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
+import '../../../widgets/app_back_button.dart';
+import '../lesson_step_launcher.dart';
 
 /// Detail screen for a single learning path showing all steps.
 class LessonScreen extends ConsumerWidget {
@@ -37,20 +39,23 @@ class LessonScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.go('/learning-paths'),
-        ),
+        leading: const AppBackButton(fallbackRoute: '/learning-paths'),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(path.emoji, style: const TextStyle(fontSize: 24)),
             const SizedBox(width: 8),
-            Text(path.title),
+            Flexible(child: Text(path.title, overflow: TextOverflow.ellipsis)),
           ],
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Adventure trail',
+            icon: const Icon(Icons.route_rounded),
+            onPressed: () => context.push('/learning-paths/${path.id}/trail'),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -85,9 +90,9 @@ class LessonScreen extends ConsumerWidget {
                   bestScore: bestScore,
                   categoryColor: categoryColor,
                   onStart: isCurrent
-                      ? () => _navigateToStep(context, step, path)
+                      ? () => launchLessonStep(context, step, path)
                       : isCompleted
-                          ? () => _navigateToStep(context, step, path)
+                          ? () => launchLessonStep(context, step, path)
                           : null,
                 )
                     .animate()
@@ -143,48 +148,6 @@ class LessonScreen extends ConsumerWidget {
     );
   }
 
-  void _navigateToStep(BuildContext context, LessonStep step, LearningPath path) {
-    final stepIndex = path.steps.indexOf(step);
-    final totalSteps = path.steps.length;
-
-    switch (step.type) {
-      case LessonStepType.flashcards:
-        context.push(
-          '/learning-path-viewer/${path.category.index}'
-          '?pathId=${path.id}&stepIndex=$stepIndex&totalSteps=$totalSteps',
-        );
-        break;
-      case LessonStepType.game:
-      case LessonStepType.quiz:
-        if (step.gameType != null) {
-          final gameRoute = switch (step.gameType!) {
-            GameType.wordMatch => 'word-match',
-            GameType.spellingBee => 'spelling-bee',
-            GameType.memoryMatch => 'memory-match',
-            GameType.dragAndDrop => 'drag-drop',
-            GameType.flashcardQuiz => 'flashcard-quiz',
-            GameType.pronunciation => 'pronunciation',
-            GameType.sentenceBuilder => 'sentence-builder',
-            GameType.storyQuiz => 'flashcard-quiz',
-            GameType.tracing => 'tracing',
-            GameType.fslPractice => 'fsl-practice',
-            GameType.jigsawPuzzle => 'jigsaw-puzzle',
-            GameType.pictureWord => 'picture-word',
-          };
-          final difficulty = step.gameDifficulty?.name ?? 'medium';
-          context.push(
-            '/games/$gameRoute?difficulty=$difficulty&categories=${path.category.index}',
-          );
-        }
-        break;
-      case LessonStepType.story:
-        context.push('/stories');
-        break;
-      case LessonStepType.smartReview:
-        context.push('/smart-review');
-        break;
-    }
-  }
 }
 
 // ────────────────────────────────────────
