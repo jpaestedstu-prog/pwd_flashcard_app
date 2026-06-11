@@ -8,13 +8,9 @@ import '../../../core/accessibility/haptic_service.dart' show hapticServiceProvi
 import '../../../core/accessibility/tts_service.dart' show ttsServiceProvider;
 import '../../../data/local/seed_data.dart';
 import '../../../data/local/spaced_repetition_service.dart';
-import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
-import '../models/tutor_brain_models.dart';
 import '../models/tutor_models.dart';
-import '../services/tutor_brain_router.dart';
-import '../services/tutor_brain_settings.dart';
 import '../services/tutor_engine.dart';
 import '../services/tutor_memory_service.dart';
 import '../widgets/tutor_chat.dart';
@@ -55,9 +51,6 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
 
   // Avatar mood.
   TutorAvatarState _avatarState = TutorAvatarState.idle;
-
-  // Why the last smart (LLM) reply fell back to the rule engine, if it did.
-  String? _smartFallback;
 
   late TutorPersona _persona;
   String get _profileId => ref.read(profileProvider)?.id ?? 'guest';
@@ -105,45 +98,18 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
         TutorEngine.greet(profile?.name ?? 'Learner', isFilipino: _isFilipino),
       );
     });
-    Future.delayed(const Duration(milliseconds: 1200), () async {
+    Future.delayed(const Duration(milliseconds: 1200), () {
       if (!mounted) return;
-      setState(() => _isTyping = true);
-      final result = await ref
-          .read(tutorBrainProvider)
-          .analyzeWithTelemetry(_buildContext());
-      if (!mounted) return;
-      setState(() {
-        _isTyping = false;
-        _smartFallback = result.fallbackReason;
-      });
-      _addTutorMessage(result.message);
+      final progress = ref.read(progressProvider);
+      _addTutorMessage(
+        TutorEngine.analyzeAndRespond(
+          progress,
+          profile?.name ?? 'Learner',
+          _profileId,
+          isFilipino: _isFilipino,
+        ),
+      );
     });
-  }
-
-  /// Snapshot handed to the tutor brain: progress, the recent turns, and the
-  /// due-review words that double as the LLM's quiz-word candidates.
-  TutorContext _buildContext({bool excludeLastMessage = false}) {
-    final history = excludeLastMessage && _messages.isNotEmpty
-        ? _messages.sublist(0, _messages.length - 1)
-        : _messages;
-    final recent = history.length > 6
-        ? history.sublist(history.length - 6)
-        : List<TutorMessage>.of(history);
-    final dueCards = SpacedRepetitionService.getReviewWords(
-      profileId: _profileId,
-      allCards: SeedData.allFlashcards,
-      count: 5,
-    );
-    return TutorContext(
-      profileId: _profileId,
-      studentName: ref.read(profileProvider)?.name ?? 'Learner',
-      isFilipino: _isFilipino,
-      progress: ref.read(progressProvider),
-      recentMessages: recent,
-      dueReviewWords: [
-        for (final c in dueCards) '${c.wordEnglish} (${c.wordFilipino})',
-      ],
-    );
   }
 
   // ─── Persistence ──────────────────────────────────────────────────────────
@@ -204,18 +170,16 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
     _textController.clear();
     _scrollToBottom();
 
-    Future.delayed(const Duration(milliseconds: 300), () async {
+    Future.delayed(const Duration(milliseconds: 800), () {
       if (!mounted) return;
-      // Exclude the question we just appended — it goes in as the prompt.
-      final result = await ref
-          .read(tutorBrainProvider)
-          .respondWithTelemetry(text, _buildContext(excludeLastMessage: true));
-      if (!mounted) return;
-      setState(() {
-        _isTyping = false;
-        _smartFallback = result.fallbackReason;
-      });
-      final response = result.message;
+      final progress = ref.read(progressProvider);
+      final response = TutorEngine.respondToQuestion(
+        text,
+        progress,
+        _profileId,
+        isFilipino: _isFilipino,
+      );
+      setState(() => _isTyping = false);
       if (response.action?.type == TutorActionType.startLesson) {
         _planWordIds = response.action!.planWordIds ?? const [];
       }
@@ -403,16 +367,6 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
-        actions: [
-          // Smart-replies config is educator business only.
-          if (profile?.role == UserRole.teacher ||
-              profile?.role == UserRole.parent)
-            IconButton(
-              icon: const Icon(Icons.auto_awesome_rounded),
-              tooltip: 'Smart replies settings',
-              onPressed: () => context.push('/ai-tutor/brain-settings'),
-            ),
-        ],
       ),
       body: SafeArea(
         child: Center(
@@ -462,33 +416,6 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
                   ),
                 ),
                 const Divider(height: 1),
-
-                // Smart-replies fallback notice (only when the feature is on
-                // but the last turn had to use the built-in buddy).
-                if (TutorBrainSettings.isEnabled &&
-                    _smartFallback != null &&
-                    _smartFallback != 'disabled')
-                  Container(
-                    width: double.infinity,
-                    color: AppColors.warning.withValues(alpha: 0.12),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
-                    child: Text(
-                      _smartFallback == 'offline'
-                          ? (isFilipino
-                              ? 'Offline — gumagamit ng built-in na buddy.'
-                              : 'Offline — using the built-in buddy.')
-                          : _smartFallback == 'daily_cap'
-                              ? (isFilipino
-                                  ? 'Naabot na ang daily limit ng smart replies.'
-                                  : 'Smart replies daily limit reached.')
-                              : (isFilipino
-                                  ? 'Hindi available ang smart replies ngayon.'
-                                  : 'Smart replies unavailable right now.'),
-                      style: const TextStyle(fontSize: 11),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
 
                 // Messages
                 Expanded(

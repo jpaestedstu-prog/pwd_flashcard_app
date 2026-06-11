@@ -91,7 +91,6 @@ import '../features/stickers/screens/sticker_album_screen.dart';
 import '../features/teacher_analytics/screens/teacher_analytics_screen.dart';
 import '../features/guided_practice/screens/guided_practice_screen.dart';
 import '../features/ai_tutor/screens/ai_tutor_screen.dart';
-import '../features/ai_tutor/screens/tutor_brain_settings_screen.dart';
 import '../features/messaging/screens/messaging_screen.dart';
 import '../features/peer_collaboration/screens/peer_collaboration_screen.dart';
 import '../features/progress/screens/worksheet_screen.dart';
@@ -123,7 +122,6 @@ import '../features/experiment/screens/experiment_setup_screen.dart';
 import '../features/gamification/screens/gamification_dashboard_screen.dart';
 import '../features/word_of_day/screens/word_of_day_screen.dart';
 import '../features/focus_mode/screens/focus_mode_screen.dart';
-import '../features/sign_interpreter/screens/sign_interpreter_screen.dart';
 import '../features/parent_teacher_notes/screens/parent_teacher_notes_screen.dart';
 import '../features/recovery/screens/recover_profile_screen.dart';
 import '../features/recovery/screens/show_recovery_code_screen.dart';
@@ -1341,13 +1339,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const AiTutorScreen(),
         ),
       ),
-      GoRoute(
-        path: '/ai-tutor/brain-settings',
-        pageBuilder: (context, state) => AppPageTransitions.slideUp(
-          key: state.pageKey,
-          child: const TutorBrainSettingsScreen(),
-        ),
-      ),
       // ─── Messaging ─────────────────────────────────
       GoRoute(
         path: '/messages',
@@ -1514,14 +1505,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
           child: const FocusModeScreen(),
-        ),
-      ),
-      // ─── Speech → Sign Interpreter ──────────────────
-      GoRoute(
-        path: '/sign-interpreter',
-        pageBuilder: (context, state) => AppPageTransitions.slideUp(
-          key: state.pageKey,
-          child: const SignInterpreterScreen(),
         ),
       ),
       // ─── Parent-Teacher Notes ────────────────────────

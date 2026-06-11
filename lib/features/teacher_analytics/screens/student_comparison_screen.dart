@@ -2,14 +2,15 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/pro_surface.dart';
 import '../../../core/constants/avatar_data.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../models/teacher_analytics_models.dart';
+import '../../../widgets/app_back_button.dart';
 
 /// Screen for teachers to compare 2–3 students side by side across
 /// key metrics: words learned, accuracy, streak, stars, categories.
@@ -53,11 +54,7 @@ class _StudentComparisonScreenState
     return Scaffold(
       backgroundColor: hc.background,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Go back',
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(),
         title: Text(
           'Compare Students',
           style: AppTypography.titleMedium.copyWith(
@@ -346,24 +343,15 @@ class _MetricsComparisonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: hc.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: hc.border),
-      ),
+    // Wrap the comparison bars in the professional panel chrome for
+    // consistency with the other educator surfaces. The per-student bars are a
+    // genuine comparison visual, so they stay as-is (the single-value pro tiles
+    // don't apply here).
+    return ProPanel(
+      title: 'Key Metrics',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Key Metrics',
-            style: AppTypography.titleSmall.copyWith(
-              fontWeight: FontWeight.w700,
-              color: hc.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 14),
           _MetricRow(
             metric: 'Words Learned',
             icon: Icons.school_rounded,
