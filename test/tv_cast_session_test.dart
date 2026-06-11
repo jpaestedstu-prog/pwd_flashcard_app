@@ -1,0 +1,267 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/features/live_session/models/live_session_models.dart';
+import 'package:pwdpwdpwd/features/tv_cast/models/tv_cast_session.dart';
+
+/// Guards the `/api/state` JSON contract that the TV-side `app.js` depends on.
+/// The TV maps `theme` → a `body.theme-*` class, so a missing/renamed field
+/// silently breaks theming on every connected TV.
+void main() {
+  group('TvCastSession theme contract', () {
+    test('defaults to the dark theme', () {
+      const session = TvCastSession();
+      expect(session.castTheme, CastTheme.dark);
+      expect(session.toApiJson()['theme'], 'dark');
+    });
+
+    test('toApiJson emits the enum name for each theme', () {
+      for (final theme in CastTheme.values) {
+        final json = TvCastSession(castTheme: theme).toApiJson();
+        expect(json['theme'], theme.name);
+      }
+    });
+
+    test('copyWith updates the theme and bumps nothing else', () {
+      const base = TvCastSession(mode: CastMode.fslVideo, slideIndex: 3);
+      final next = base.copyWith(castTheme: CastTheme.highContrast);
+      expect(next.castTheme, CastTheme.highContrast);
+      expect(next.mode, CastMode.fslVideo);
+      expect(next.slideIndex, 3);
+    });
+
+    test('copyWith without castTheme preserves the current theme', () {
+      const base = TvCastSession(castTheme: CastTheme.light);
+      final next = base.copyWith(slideIndex: 1);
+      expect(next.castTheme, CastTheme.light);
+    });
+  });
+
+  group('TvCastSession API payload shape', () {
+    test('always carries the keys the TV renderer reads', () {
+      final json = const TvCastSession(
+        mode: CastMode.flashcards,
+        revision: 7,
+      ).toApiJson();
+      expect(json['rev'], 7);
+      expect(json['mode'], 'flashcards');
+      expect(json.containsKey('theme'), isTrue);
+      expect(json.containsKey('isPaused'), isTrue);
+      expect(json.containsKey('away'), isTrue);
+      expect(json.containsKey('slideIndex'), isTrue);
+      expect(json.containsKey('videoSound'), isTrue);
+    });
+  });
+
+  group('TvCastSession away ("teacher is out")', () {
+    test('defaults to not away; toApiJson emits away:false', () {
+      const session = TvCastSession();
+      expect(session.isAway, isFalse);
+      expect(session.toApiJson()['away'], isFalse);
+    });
+
+    test('away flag flows through toApiJson', () {
+      expect(const TvCastSession(isAway: true).toApiJson()['away'], isTrue);
+    });
+
+    test('copyWith toggles away without disturbing the selected content', () {
+      const base = TvCastSession(mode: CastMode.story, storyPageIndex: 2);
+      final away = base.copyWith(isAway: true);
+      expect(away.isAway, isTrue);
+      expect(away.mode, CastMode.story);
+      expect(away.storyPageIndex, 2);
+    });
+
+    test('copyWith preserves away when not specified', () {
+      const base = TvCastSession(isAway: true);
+      expect(base.copyWith(slideIndex: 1).isAway, isTrue);
+    });
+  });
+
+  group('TvCastSession audio fields', () {
+    test('castAudioEnabled defaults on; tvVideoSound defaults off', () {
+      const session = TvCastSession();
+      expect(session.castAudioEnabled, isTrue);
+      expect(session.tvVideoSoundEnabled, isFalse);
+    });
+
+    test('videoSound in toApiJson tracks tvVideoSoundEnabled', () {
+      expect(const TvCastSession().toApiJson()['videoSound'], isFalse);
+      expect(
+        const TvCastSession(
+          tvVideoSoundEnabled: true,
+        ).toApiJson()['videoSound'],
+        isTrue,
+      );
+    });
+
+    test('castAudioEnabled is phone-only — never sent to the TV', () {
+      final json = const TvCastSession(castAudioEnabled: false).toApiJson();
+      expect(json.containsKey('castAudioEnabled'), isFalse);
+    });
+
+    test('copyWith preserves audio fields when not specified', () {
+      const base = TvCastSession(
+        castAudioEnabled: false,
+        tvVideoSoundEnabled: true,
+      );
+      final next = base.copyWith(slideIndex: 2);
+      expect(next.castAudioEnabled, isFalse);
+      expect(next.tvVideoSoundEnabled, isTrue);
+    });
+  });
+
+  group('TvCastSession display design', () {
+    test('toApiJson emits the enum name for every template', () {
+      for (final theme in CastTheme.values) {
+        expect(TvCastSession(castTheme: theme).toApiJson()['theme'], theme.name);
+      }
+    });
+
+    test('every template has a non-empty label + description for the picker',
+        () {
+      for (final theme in CastTheme.values) {
+        expect(theme.label, isNotEmpty);
+        expect(theme.description, isNotEmpty);
+      }
+    });
+
+    test('castTitle: empty by default, trimmed when set', () {
+      expect(const TvCastSession().toApiJson()['title'], '');
+      expect(
+        const TvCastSession(castTitle: '  Ms. Cruz  ').toApiJson()['title'],
+        'Ms. Cruz',
+      );
+      // Whitespace-only title is treated as empty.
+      expect(const TvCastSession(castTitle: '   ').toApiJson()['title'], '');
+    });
+
+    test('reducedMotion flows through toApiJson', () {
+      expect(const TvCastSession().toApiJson()['reducedMotion'], isFalse);
+      expect(
+        const TvCastSession(reducedMotion: true).toApiJson()['reducedMotion'],
+        isTrue,
+      );
+    });
+
+    test('seasonal block is present only for the seasonal template', () {
+      expect(const TvCastSession().toApiJson()['seasonal'], isNull);
+      expect(
+        const TvCastSession(castTheme: CastTheme.classroom)
+            .toApiJson()['seasonal'],
+        isNull,
+      );
+      final seasonal = const TvCastSession(
+        castTheme: CastTheme.seasonal,
+        seasonalEmoji: '🎃',
+        seasonalAccent: '#ff6f00',
+      ).toApiJson()['seasonal'] as Map;
+      expect(seasonal['emoji'], '🎃');
+      expect(seasonal['accent'], '#ff6f00');
+    });
+
+    test('copyWith clears title + seasonal via flags and keeps reducedMotion',
+        () {
+      const base = TvCastSession(
+        castTheme: CastTheme.seasonal,
+        castTitle: 'Grade 2',
+        seasonalEmoji: '🎄',
+        seasonalAccent: '#c62828',
+        reducedMotion: true,
+      );
+      final cleared = base.copyWith(clearCastTitle: true, clearSeasonal: true);
+      expect(cleared.castTitle, isNull);
+      expect(cleared.seasonalEmoji, isNull);
+      expect(cleared.seasonalAccent, isNull);
+      expect(cleared.reducedMotion, isTrue);
+    });
+  });
+
+  group('TvCastSession live block', () {
+    test('always present (empty) so the hands banner works in any mode', () {
+      final live = const TvCastSession().toApiJson()['live'] as Map;
+      expect(live['hands'], isEmpty);
+      expect(live['responded'], 0);
+      expect(live['board'], isEmpty);
+      expect(live['activity'], isNull);
+    });
+
+    test('raised hands serialize as names in every mode', () {
+      final session = TvCastSession(
+        mode: CastMode.flashcards,
+        raisedHands: [
+          RaisedHand(
+            profileId: 'p1',
+            profileName: 'Ana',
+            raisedAt: DateTime.parse('2026-05-31T10:00:00.000'),
+          ),
+        ],
+      );
+      final live = session.toApiJson()['live'] as Map;
+      expect(live['hands'], ['Ana']);
+    });
+
+    test('live mode emits the activity, responders, and board — but never '
+        'the correct answer', () {
+      final session = TvCastSession(
+        mode: CastMode.live,
+        liveResponders: 3,
+        liveActivity: LiveActivity.multipleChoice(
+          prompt: 'Pick the cat',
+          options: const ['Cat', 'Dog'],
+          correctIndex: 0,
+        ),
+        liveScoreboard: const [
+          LiveScoreRow(profileId: 'p1', name: 'Ana', stars: 5, correct: 2),
+        ],
+      );
+      final live = session.toApiJson()['live'] as Map;
+      final activity = live['activity'] as Map;
+      expect(activity['type'], 'multipleChoice');
+      expect(activity['prompt'], 'Pick the cat');
+      expect(activity['options'], ['Cat', 'Dog']);
+      expect(activity['isTrueFalse'], isFalse);
+      expect(activity.containsKey('correctIndex'), isFalse);
+      expect(activity.containsKey('correct_index'), isFalse);
+      expect(live['responded'], 3);
+      expect((live['board'] as List).first['stars'], 5);
+    });
+
+    test('copyWith clears the live activity + session via flags', () {
+      final base = TvCastSession(
+        mode: CastMode.live,
+        liveSessionKey: 'class1',
+        liveActivity: LiveActivity.trueFalse(statement: 's', correctValue: true),
+      );
+      final cleared =
+          base.copyWith(clearLiveActivity: true, clearLiveSession: true);
+      expect(cleared.liveActivity, isNull);
+      expect(cleared.liveSessionKey, isNull);
+    });
+  });
+
+  group('TvCastSession TV-speech routing (ttsOnTv)', () {
+    test('defaults: audio on + target TV → ttsOnTv true', () {
+      const session = TvCastSession();
+      expect(session.castAudioTarget, CastAudioTarget.tv);
+      expect(session.toApiJson()['ttsOnTv'], isTrue);
+    });
+
+    test('target phone → ttsOnTv false (phone speaks instead)', () {
+      const session = TvCastSession(castAudioTarget: CastAudioTarget.phone);
+      expect(session.toApiJson()['ttsOnTv'], isFalse);
+    });
+
+    test('audio off → ttsOnTv false even when target is TV (default)', () {
+      const session = TvCastSession(castAudioEnabled: false);
+      expect(session.castAudioTarget, CastAudioTarget.tv);
+      expect(session.toApiJson()['ttsOnTv'], isFalse);
+    });
+
+    test('copyWith preserves castAudioTarget when not specified', () {
+      const base = TvCastSession(castAudioTarget: CastAudioTarget.phone);
+      expect(
+        base.copyWith(slideIndex: 1).castAudioTarget,
+        CastAudioTarget.phone,
+      );
+    });
+  });
+}

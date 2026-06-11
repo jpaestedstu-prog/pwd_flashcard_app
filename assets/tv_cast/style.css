@@ -1,0 +1,937 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+}
+
+#stage {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6vh;
+}
+
+.splash-emoji {
+  font-size: 22vh;
+  line-height: 1;
+  margin-bottom: 4vh;
+}
+
+.splash h1 {
+  font-size: 8vh;
+  margin: 0 0 2vh 0;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.splash p {
+  font-size: 3.5vh;
+  margin: 0;
+  color: #94a3b8;
+}
+
+/* ─── Flashcard slide ──────────────────────────── */
+.slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 4vh;
+  box-sizing: border-box;
+}
+
+/* The card itself — a light "flashcard" surface floating on the themed
+   stage, mirroring the in-app Cards section. Stays light across every theme
+   (the high-contrast theme overrides it further down) so the words always sit
+   on a readable surface; category colours are applied inline by app.js. */
+.fcard {
+  position: relative;
+  z-index: 0; /* own stacking context so the decor / shine layers always sort */
+  box-sizing: border-box;
+  width: 64vw;
+  max-width: 1200px;
+  max-height: 90vh;
+  padding: 6vh 5vw 5vh;
+  background: #ffffff;
+  border-radius: 3.5vh;
+  box-shadow: 0 2vh 6vh rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  transform-origin: 50% 50%;
+  /* 3D flip-in entrance — the TV analog of the in-app flip card's
+     easeOutBack scale/rotate reveal. Self-perspective() keeps it to a single
+     element. Old browsers that can't parse the transform still fade in. */
+  animation: cardFlipIn 0.6s cubic-bezier(0.2, 0.7, 0.2, 1.02) both;
+}
+
+/* The real card content sits above the blobs and below the shine sweep. */
+.fcard-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* Category colour strip across the top edge (background set inline). */
+.fcard-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1.4vh;
+  z-index: 3; /* above the content + shine layers */
+}
+
+/* ── Decorative tinted corner blobs (behind the content) ──
+   The TV analog of the in-app card's soft corner circles. The pastel tint is
+   applied inline; they drift very slowly and are clipped to the card's rounded
+   corners by `.fcard { overflow: hidden }`. */
+.fcard-blob {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  opacity: 0.3;
+  animation: blobFloat 6s ease-in-out infinite;
+}
+
+.fcard-blob-tr { top: -8vh; right: -7vh; width: 26vh; height: 26vh; }
+
+.fcard-blob-bl {
+  bottom: -6vh;
+  left: -6vh;
+  width: 18vh;
+  height: 18vh;
+  animation-delay: -3s;
+}
+
+/* ── One-shot glossy light sweep ──
+   Mirrors the glossy highlight that slides across the in-app card during its
+   3D flip. Runs once, just after the card lands. The base transform parks it
+   off the left edge so reduced-motion / Calm (which null out `animation`)
+   never leave a bright band sitting on the card. */
+.fcard-shine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-160%) skewX(-12deg);
+  animation: cardShine 1.1s ease-out 0.45s both;
+}
+
+/* Category badge: emoji + label, tinted with the category colours inline. */
+.fcard-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 1vw;
+  padding: 1vh 2.4vw;
+  border-radius: 4vh;
+  font-size: 3vh;
+  font-weight: 800;
+  margin-bottom: 3vh;
+}
+
+.fcard-badge-ico { font-size: 3.2vh; line-height: 1; }
+
+/* The word's emoji inside a rounded, category-tinted tile (background inline). */
+.fcard-pic {
+  width: 30vh;
+  height: 30vh;
+  border-radius: 3vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 3.5vh;
+}
+
+.fcard-pic-emoji { font-size: 20vh; line-height: 1; }
+
+.fcard-word-en {
+  font-size: 9vh;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  text-align: center;
+}
+
+/* Colour set inline (the category's deep tone) to match the in-app card. */
+.fcard-word-fil {
+  font-size: 5vh;
+  font-weight: 700;
+  font-style: italic;
+  margin-top: 1vh;
+  text-align: center;
+}
+
+.fcard-example {
+  margin-top: 3vh;
+  font-size: 3.2vh;
+  font-style: italic;
+  color: #475569;
+  max-width: 50vw;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.fcard-example .quote { font-weight: 900; font-style: normal; }
+
+/* ── Staggered entrance for the card's inner content ──
+   Each element rises + fades in turn, echoing the in-app card's reveal, while
+   the word's emoji pops with a springy overshoot. Base styles stay fully
+   visible, so reduced-motion / Calm (which null out `animation`) show
+   everything immediately with no leftover hidden state. */
+.fcard-badge     { animation: cardRise 0.5s ease 0.10s both; }
+.fcard-pic       { animation: cardRise 0.5s ease 0.18s both; }
+.fcard-pic-emoji {
+  display: inline-block; /* transforms are ignored on plain inline spans */
+  animation: popIn 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28) 0.30s both;
+}
+.fcard-word-en   { animation: cardRise 0.5s ease 0.30s both; }
+.fcard-word-fil  { animation: cardRise 0.5s ease 0.40s both; }
+.fcard-example   { animation: cardRise 0.5s ease 0.50s both; }
+
+@keyframes cardFlipIn {
+  0% {
+    opacity: 0;
+    transform: perspective(1600px) rotateY(-24deg) translateY(3vh) scale(0.92);
+  }
+  60% { opacity: 1; }
+  100% {
+    opacity: 1;
+    transform: perspective(1600px) rotateY(0deg) translateY(0) scale(1);
+  }
+}
+
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(2.4vh); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.4); }
+  70%  { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(0, -1.4vh); }
+}
+
+@keyframes cardShine {
+  0%   { transform: translateX(-160%) skewX(-12deg); opacity: 0; }
+  12%  { opacity: 1; }
+  100% { transform: translateX(330%) skewX(-12deg); opacity: 0; }
+}
+
+/* ─── FSL video ────────────────────────────────── */
+.fsl-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2vh;
+  box-sizing: border-box;
+}
+
+/* Wraps the <video> so the loading spinner can sit exactly over it. */
+.fsl-video-box {
+  position: relative;
+  line-height: 0;
+}
+
+.fsl-wrap video {
+  max-width: 95vw;
+  max-height: 80vh;
+  background: #000;
+  border-radius: 1vh;
+  box-shadow: 0 0 4vh rgba(0,0,0,0.5);
+}
+
+/* Loading overlay — shown until the clip starts playing, hidden via JS. */
+.fsl-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.45);
+  border-radius: 1vh;
+}
+
+.fsl-loading-text {
+  margin-top: 2.5vh;
+  font-size: 3vh;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.spinner {
+  width: 9vh;
+  height: 9vh;
+  border: 0.9vh solid rgba(255,255,255,0.25);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.fsl-caption {
+  font-size: 5vh;
+  font-weight: 800;
+  margin-top: 2vh;
+}
+
+.fsl-caption .fil {
+  font-size: 3vh;
+  font-weight: 400;
+  font-style: italic;
+  color: #94a3b8;
+  margin-left: 1vw;
+}
+
+.fsl-missing {
+  font-size: 5vh;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.fsl-missing .emoji {
+  font-size: 18vh;
+  display: block;
+  margin-bottom: 2vh;
+}
+
+/* ─── Story page ───────────────────────────────── */
+.story {
+  width: 90vw;
+  max-width: 1600px;
+  padding: 4vh;
+  text-align: center;
+}
+
+.story-emoji {
+  font-size: 22vh;
+  line-height: 1;
+  margin-bottom: 3vh;
+}
+
+.story-title {
+  font-size: 6vh;
+  font-weight: 800;
+  margin: 0 0 2vh 0;
+}
+
+.story-text-en {
+  font-size: 5.5vh;
+  line-height: 1.4;
+  margin: 2vh 0 1vh 0;
+}
+
+.story-text-fil {
+  font-size: 3.5vh;
+  font-style: italic;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* ─── Progress leaderboard ─────────────────────── */
+.board {
+  width: 90vw;
+  max-width: 1600px;
+  padding: 4vh;
+}
+
+.board h2 {
+  font-size: 6vh;
+  margin: 0 0 3vh 0;
+  font-weight: 800;
+  text-align: center;
+}
+
+.board .row {
+  display: flex;
+  align-items: center;
+  padding: 1.6vh 2vw;
+  margin-bottom: 1.2vh;
+  background: #1e293b;
+  border-radius: 1.5vh;
+  font-size: 3.5vh;
+}
+
+.board .rank {
+  width: 6vw;
+  font-weight: 900;
+  color: #60a5fa;
+}
+
+.board .rank.top1 { color: #fbbf24; }
+.board .rank.top2 { color: #d1d5db; }
+.board .rank.top3 { color: #fb923c; }
+
+.board .name {
+  flex: 1;
+  font-weight: 700;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.board .stat {
+  margin-left: 2vw;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+.board .stat .v {
+  color: #f8fafc;
+  font-weight: 800;
+  margin-right: 0.5vw;
+}
+
+.board .empty {
+  text-align: center;
+  padding: 6vh;
+  color: #94a3b8;
+  font-size: 4vh;
+}
+
+/* ─── Footer pill (counter + paused) ───────────── */
+.footer-pill {
+  position: fixed;
+  right: 3vh;
+  bottom: 3vh;
+  padding: 1.5vh 3vh;
+  border-radius: 5vh;
+  background: rgba(0,0,0,0.55);
+  font-size: 2.4vh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.footer-pill .paused { color: #fbbf24; margin-left: 1vw; }
+
+/* ─── "Enable sound" hint (Web Speech gesture unlock) ─── */
+.sound-hint {
+  position: fixed;
+  left: 3vh;
+  bottom: 3vh;
+  padding: 1.5vh 3vh;
+  border-radius: 5vh;
+  background: rgba(0,0,0,0.65);
+  color: #ffffff;
+  font-size: 2.4vh;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hidden { display: none !important; }
+
+/* ─── Entrance animation (gracefully ignored by old browsers) ─── */
+.slide, .story, .fsl-wrap, .board {
+  animation: fadeIn 0.45s ease both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2.5vh); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ─── "Teacher is out" / reconnecting splash variants ───
+   Both reuse the .splash layout above; only small accents differ. */
+.splash.reconnect h1 { color: #fbbf24; }
+
+.pulse { animation: pulse 1.4s ease-in-out infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.92); }
+}
+
+/* ─── Live interactive activity ────────────────── */
+.live {
+  width: 92vw;
+  max-width: 1700px;
+  padding: 3vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: fadeIn 0.45s ease both;
+}
+
+.live-qnum {
+  font-size: 3vh;
+  font-weight: 800;
+  color: #60a5fa;
+  letter-spacing: 0.04em;
+  margin-bottom: 1.5vh;
+}
+
+.live-prompt {
+  font-size: 8vh;
+  font-weight: 900;
+  line-height: 1.1;
+  margin: 0 0 3vh 0;
+  letter-spacing: -0.02em;
+}
+
+.live-emoji {
+  font-size: 30vh;
+  line-height: 1;
+  margin: 0 0 1vh 0;
+}
+
+.live-sub {
+  font-size: 3.5vh;
+  color: #94a3b8;
+  margin-bottom: 3vh;
+}
+
+.live-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2vh;
+  width: 100%;
+}
+
+.live-opt {
+  background: #1e293b;
+  border: 0.3vh solid #334155;
+  border-radius: 1.5vh;
+  padding: 2vh 3vw;
+  font-size: 4.5vh;
+  font-weight: 700;
+  min-width: 28vw;
+}
+
+.live-responded {
+  margin-top: 3vh;
+  font-size: 3vh;
+  font-weight: 700;
+  color: #34d399;
+}
+
+.live-wait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.live-wait h1 { font-size: 7vh; margin: 0 0 1vh 0; font-weight: 800; }
+.live-wait p { font-size: 3.5vh; color: #94a3b8; margin: 0; }
+
+.live-board {
+  margin-top: 4vh;
+  width: 100%;
+}
+
+.live-board h2 {
+  font-size: 4vh;
+  margin: 0 0 2vh 0;
+  font-weight: 800;
+}
+
+.live-row {
+  display: flex;
+  align-items: center;
+  padding: 1.2vh 2vw;
+  margin-bottom: 1vh;
+  background: #1e293b;
+  border-radius: 1.2vh;
+  font-size: 3vh;
+}
+
+.live-row .rk { width: 5vw; font-weight: 900; color: #fbbf24; text-align: left; }
+.live-row .nm {
+  flex: 1;
+  text-align: left;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.live-row .sc { font-weight: 800; white-space: nowrap; }
+
+/* ─── Raised-hands banner (all modes) ──────────── */
+.hands-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.4vh;
+  padding: 1.6vh 3vh;
+  background: rgba(251, 191, 36, 0.95);
+  color: #1f2937;
+  z-index: 50;
+  animation: fadeIn 0.3s ease both;
+}
+
+.hands-banner .hand-title {
+  font-size: 3vh;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.hands-banner .hand-chip {
+  font-size: 2.8vh;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 4vh;
+  padding: 0.6vh 2vh;
+}
+
+.hand-chip::before { content: "✋ "; }
+
+/* ───────────────────────────────────────────────────────────────
+   THEMES
+   Colours are scoped per `body.theme-*` class with explicit values
+   (no CSS `var()`) so they work on old Tizen / webOS / Chromecast
+   browsers. `theme-dark` is the base (rules above); only `light` and
+   `highContrast` override here.
+   ─────────────────────────────────────────────────────────────── */
+
+/* ─── Light theme ──────────────────────────────── */
+body.theme-light {
+  background: #f8fafc;
+  color: #0f172a;
+}
+body.theme-light .splash p,
+body.theme-light .story-text-fil,
+body.theme-light .fsl-caption .fil,
+body.theme-light .fsl-missing,
+body.theme-light .fsl-loading-text { color: #475569; }
+body.theme-light .board .row { background: #e2e8f0; }
+body.theme-light .board .rank { color: #2563eb; }
+body.theme-light .board .name,
+body.theme-light .board .stat .v { color: #0f172a; }
+body.theme-light .board .stat { color: #475569; }
+body.theme-light .board .empty { color: #64748b; }
+body.theme-light .footer-pill {
+  background: rgba(15,23,42,0.08);
+  color: #0f172a;
+}
+body.theme-light .fsl-loading { background: rgba(255,255,255,0.55); }
+body.theme-light .spinner {
+  border-color: rgba(15,23,42,0.18);
+  border-top-color: #2563eb;
+}
+
+/* ─── High-contrast theme (accessibility) ──────── */
+body.theme-highContrast {
+  background: #000000;
+  color: #ffffff;
+}
+body.theme-highContrast .splash p { color: #ffff00; }
+body.theme-highContrast .splash.reconnect h1 { color: #ffff00; }
+body.theme-highContrast .story-text-fil,
+body.theme-highContrast .fsl-caption .fil { color: #ffff00; }
+body.theme-highContrast .fsl-missing,
+body.theme-highContrast .fsl-loading-text { color: #ffffff; }
+/* Bigger, bolder captions for low-vision viewers. */
+body.theme-highContrast .fsl-caption { font-size: 6vh; }
+body.theme-highContrast .fsl-wrap video {
+  border: 0.6vh solid #ffffff;
+  background: #000;
+}
+body.theme-highContrast .board .row {
+  background: #111111;
+  border: 0.3vh solid #ffffff;
+}
+body.theme-highContrast .board .rank { color: #ffff00; }
+body.theme-highContrast .board .rank.top1,
+body.theme-highContrast .board .rank.top2,
+body.theme-highContrast .board .rank.top3 { color: #ffff00; }
+body.theme-highContrast .board .name,
+body.theme-highContrast .board .stat,
+body.theme-highContrast .board .stat .v { color: #ffffff; }
+body.theme-highContrast .footer-pill,
+body.theme-highContrast .sound-hint {
+  background: #000000;
+  border: 0.3vh solid #ffffff;
+  color: #ffffff;
+}
+body.theme-highContrast .footer-pill .paused { color: #ffff00; }
+body.theme-highContrast .spinner {
+  border-color: rgba(255,255,255,0.3);
+  border-top-color: #ffff00;
+}
+/* Flashcard — force black/white/yellow over the inline category colours. */
+body.theme-highContrast .fcard {
+  background: #000000;
+  border: 0.4vh solid #ffffff;
+}
+body.theme-highContrast .fcard-accent { background: #ffff00 !important; }
+body.theme-highContrast .fcard-badge {
+  background: #000000 !important;
+  color: #ffff00 !important;
+  border: 0.3vh solid #ffff00;
+}
+body.theme-highContrast .fcard-pic {
+  background: #000000 !important;
+  border: 0.3vh solid #ffffff;
+}
+body.theme-highContrast .fcard-word-en { color: #ffffff; }
+body.theme-highContrast .fcard-word-fil { color: #ffff00 !important; }
+body.theme-highContrast .fcard-example { color: #ffffff; }
+body.theme-highContrast .fcard-example .quote { color: #ffff00 !important; }
+/* Drop the tinted blobs + glossy sheen — keep the strict black/white/yellow. */
+body.theme-highContrast .fcard-blob,
+body.theme-highContrast .fcard-shine { display: none; }
+
+/* ─── Live activity — light theme ──────────────── */
+body.theme-light .live-sub,
+body.theme-light .live-wait p { color: #475569; }
+body.theme-light .live-opt {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+body.theme-light .live-row { background: #e2e8f0; }
+body.theme-light .live-row .nm,
+body.theme-light .live-row .sc { color: #0f172a; }
+body.theme-light .live-responded { color: #059669; }
+
+/* ─── Live activity — high-contrast theme ──────── */
+body.theme-highContrast .live-prompt,
+body.theme-highContrast .live-wait h1 { color: #ffffff; }
+body.theme-highContrast .live-qnum,
+body.theme-highContrast .live-row .rk { color: #ffff00; }
+body.theme-highContrast .live-sub,
+body.theme-highContrast .live-wait p { color: #ffffff; }
+body.theme-highContrast .live-responded { color: #ffff00; }
+body.theme-highContrast .live-opt {
+  background: #000000;
+  border: 0.4vh solid #ffffff;
+  color: #ffffff;
+  font-size: 5vh;
+}
+body.theme-highContrast .live-row {
+  background: #111111;
+  border: 0.3vh solid #ffffff;
+}
+body.theme-highContrast .live-row .nm,
+body.theme-highContrast .live-row .sc { color: #ffffff; }
+body.theme-highContrast .hands-banner {
+  background: #000000;
+  color: #ffff00;
+  border-bottom: 0.4vh solid #ffff00;
+}
+body.theme-highContrast .hands-banner .hand-chip {
+  background: #000000;
+  border: 0.3vh solid #ffff00;
+  color: #ffffff;
+}
+
+/* ───────────────────────────────────────────────────────────────
+   BRANDING HEADER + DECORATION + REDUCED MOTION
+   ─────────────────────────────────────────────────────────────── */
+
+/* Optional "Show on TV" branding pill (top-left). Created lazily by app.js. */
+#cast-brand {
+  position: fixed;
+  top: 2.5vh;
+  left: 3vh;
+  z-index: 40;
+  padding: 1.2vh 2.6vh;
+  border-radius: 5vh;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  font-size: 2.6vh;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  max-width: 60vw;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Seasonal corner decoration emoji (top-right). */
+#cast-decoration {
+  position: fixed;
+  top: 2vh;
+  right: 3vh;
+  z-index: 40;
+  font-size: 9vh;
+  line-height: 1;
+  animation: floaty 3.5s ease-in-out infinite;
+}
+
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1.5vh); }
+}
+
+/* Honour the app's reduced-motion setting (and the Calm template). */
+body.reduce-motion *,
+body.theme-calm * {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* ───────────────────────────────────────────────────────────────
+   LIGHT-BACKGROUND TEMPLATES (classroom / playful / calm / seasonal)
+   Share a readable dark-on-light base, then each adds its own accent.
+   ─────────────────────────────────────────────────────────────── */
+body.theme-classroom,
+body.theme-playful,
+body.theme-calm,
+body.theme-seasonal {
+  background: #f8fafc;
+  color: #0f172a;
+}
+body.theme-classroom .splash p, body.theme-playful .splash p,
+body.theme-calm .splash p, body.theme-seasonal .splash p,
+body.theme-classroom .story-text-fil, body.theme-playful .story-text-fil,
+body.theme-calm .story-text-fil, body.theme-seasonal .story-text-fil,
+body.theme-classroom .fsl-caption .fil, body.theme-playful .fsl-caption .fil,
+body.theme-calm .fsl-caption .fil, body.theme-seasonal .fsl-caption .fil,
+body.theme-classroom .fsl-missing, body.theme-playful .fsl-missing,
+body.theme-calm .fsl-missing, body.theme-seasonal .fsl-missing,
+body.theme-classroom .fsl-loading-text, body.theme-playful .fsl-loading-text,
+body.theme-calm .fsl-loading-text, body.theme-seasonal .fsl-loading-text,
+body.theme-classroom .live-sub, body.theme-playful .live-sub,
+body.theme-calm .live-sub, body.theme-seasonal .live-sub,
+body.theme-classroom .live-wait p, body.theme-playful .live-wait p,
+body.theme-calm .live-wait p, body.theme-seasonal .live-wait p {
+  color: #475569;
+}
+body.theme-classroom .board .row, body.theme-playful .board .row,
+body.theme-calm .board .row, body.theme-seasonal .board .row,
+body.theme-classroom .live-row, body.theme-playful .live-row,
+body.theme-calm .live-row, body.theme-seasonal .live-row,
+body.theme-classroom .live-opt, body.theme-playful .live-opt,
+body.theme-calm .live-opt, body.theme-seasonal .live-opt {
+  background: #e8eef5;
+}
+body.theme-classroom .live-opt, body.theme-playful .live-opt,
+body.theme-calm .live-opt, body.theme-seasonal .live-opt {
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+body.theme-classroom .board .name, body.theme-playful .board .name,
+body.theme-calm .board .name, body.theme-seasonal .board .name,
+body.theme-classroom .board .stat .v, body.theme-playful .board .stat .v,
+body.theme-calm .board .stat .v, body.theme-seasonal .board .stat .v,
+body.theme-classroom .live-row .nm, body.theme-playful .live-row .nm,
+body.theme-calm .live-row .nm, body.theme-seasonal .live-row .nm,
+body.theme-classroom .live-row .sc, body.theme-playful .live-row .sc,
+body.theme-calm .live-row .sc, body.theme-seasonal .live-row .sc {
+  color: #0f172a;
+}
+body.theme-classroom .footer-pill, body.theme-playful .footer-pill,
+body.theme-calm .footer-pill, body.theme-seasonal .footer-pill {
+  background: rgba(15, 23, 42, 0.10);
+  color: #0f172a;
+}
+body.theme-classroom #cast-brand, body.theme-playful #cast-brand,
+body.theme-calm #cast-brand, body.theme-seasonal #cast-brand {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+/* ─── Classroom: crisp blue accents ────────────────── */
+body.theme-classroom .board .rank,
+body.theme-classroom .live-qnum { color: #1565c0; }
+body.theme-classroom .live-prompt { color: #0f172a; }
+body.theme-classroom .live-responded { color: #1565c0; }
+
+/* ─── Playful: vibrant, rounded, bouncy ────────────── */
+body.theme-playful { color: #3b0764; }
+body.theme-playful .live-prompt,
+body.theme-playful .story-title,
+body.theme-playful .live-wait h1 { color: #c2185b; }
+body.theme-playful .live-qnum,
+body.theme-playful .board .rank { color: #7b1fa2; }
+body.theme-playful .live-responded { color: #00897b; }
+body.theme-playful .live-emoji { font-size: 42vh; }
+/* Playful: rounder card + bigger picture, pink word — matches the kid look. */
+body.theme-playful .fcard { border-radius: 5.5vh; }
+body.theme-playful .fcard-pic { border-radius: 4.5vh; }
+body.theme-playful .fcard-pic-emoji { font-size: 23vh; }
+body.theme-playful .fcard-word-en { color: #c2185b; }
+body.theme-playful .live-opt,
+body.theme-playful .board .row,
+body.theme-playful .live-row { border-radius: 4vh; }
+body.theme-playful .story,
+body.theme-playful .live, body.theme-playful .board {
+  animation: bounceIn 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+/* Playful: the flashcard flips in with extra bounce + livelier blobs (the
+   .slide stays a plain fade so its scale doesn't compound with the flip). */
+body.theme-playful .fcard {
+  animation: cardFlipIn 0.62s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+body.theme-playful .fcard-blob { opacity: 0.42; }
+@keyframes bounceIn {
+  0%   { opacity: 0; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Calm: muted, roomy, still ────────────────────── */
+body.theme-calm { background: #eef1f4; color: #334155; }
+body.theme-calm .live-prompt,
+body.theme-calm .story-title { color: #334155; font-weight: 700; }
+body.theme-calm .live-qnum,
+body.theme-calm .board .rank { color: #00897b; }
+body.theme-calm .live-responded { color: #00897b; }
+body.theme-calm .slide, body.theme-calm .story,
+body.theme-calm .live { padding: 6vh; }
+body.theme-calm .live-options { gap: 3vh; }
+
+/* ─── Seasonal: festive frame; accent colour + emoji come from app.js ── */
+body.theme-seasonal { background: #fdf6fb; }
+body.theme-seasonal .live-qnum,
+body.theme-seasonal .board .rank,
+body.theme-seasonal .live-responded { color: #8e24aa; }
+body.theme-seasonal .live-prompt,
+body.theme-seasonal .story-title { color: #6a1b9a; }
+/* A thin festive frame; app.js recolours it inline from the event. */
+body.theme-seasonal #stage {
+  box-sizing: border-box;
+  border: 0.8vh solid #8e24aa;
+}
