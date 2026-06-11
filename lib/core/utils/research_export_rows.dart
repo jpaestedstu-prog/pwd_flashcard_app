@@ -1,3 +1,4 @@
+import '../../features/ai_tutor/models/tutor_brain_models.dart';
 import '../../features/assessment/models/assessment_models.dart';
 import '../../features/sign_interpreter/models/sign_interpreter_models.dart';
 import '../../features/survey/models/survey_models.dart';
@@ -128,6 +129,30 @@ class ResearchExportRows {
             '${e.matchedCount},'
             '${esc(e.unmatchedWords.join(';'))},'
             '${e.durationMs}',
+    ];
+  }
+
+  // ─── tutor_interactions.csv ─────────────────────────────
+
+  static const String tutorInteractionsHeader =
+      'student_id,timestamp,trigger,brain,latency_ms,'
+      'fallback_reason,action_type';
+
+  /// One row per tutor-brain turn (rule AND llm) for one student — the
+  /// rule-vs-LLM engagement comparison joins on `brain`.
+  static List<String> tutorInteractionRows({
+    required String studentId,
+    required List<TutorInteractionEvent> events,
+  }) {
+    return [
+      for (final e in events)
+        '$studentId,'
+            '${e.timestamp.toIso8601String()},'
+            '${e.trigger.name},'
+            '${e.brain},'
+            '${e.latencyMs},'
+            '${e.fallbackReason ?? ''},'
+            '${e.actionType}',
     ];
   }
 

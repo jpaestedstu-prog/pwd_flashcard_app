@@ -10,6 +10,7 @@ import '../../features/assessment/services/assessment_service.dart';
 import '../../features/survey/services/survey_service.dart';
 import '../../features/survey/models/survey_models.dart';
 import '../../features/survey/services/smileyometer_service.dart';
+import '../../features/ai_tutor/services/tutor_interaction_log.dart';
 import '../../features/experiment/models/experiment_models.dart';
 import '../../features/experiment/services/experiment_service.dart';
 import '../../features/sign_interpreter/services/sign_usage_log_service.dart';
@@ -39,6 +40,8 @@ import 'research_export_rows.dart';
 ///     (match rate + unmatched-word wishlist)
 /// 9d. `knowledge_state.csv`   – Elo knowledge tracing (ability θ, per-word
 ///     difficulty β, predicted mastery, per-word trend)
+/// 9e. `tutor_interactions.csv` – tutor-brain turns (rule vs LLM, latency,
+///     fallback reasons)
 /// 10. `summary_stats.json`    – high-level aggregates for quick analysis
 class ResearchExportService {
   const ResearchExportService._();
@@ -158,6 +161,12 @@ class ResearchExportService {
       exportDir,
       'knowledge_state.csv',
       _buildKnowledgeState(students, idMap),
+    ));
+
+    files.add(await _writeFile(
+      exportDir,
+      'tutor_interactions.csv',
+      _buildTutorInteractions(students, idMap),
     ));
 
     files.add(await _writeFile(
@@ -626,6 +635,24 @@ class ResearchExportService {
         '$totalSessionMin,'
         '$avgSessionMin',
       );
+    }
+    return buf.toString();
+  }
+
+  // ─── File 15: Tutor Interactions ────────────────────────
+
+  static String _buildTutorInteractions(
+    List<(UserProfile, LearningProgress)> students,
+    Map<String, String> idMap,
+  ) {
+    final buf = StringBuffer();
+    buf.writeln(ResearchExportRows.tutorInteractionsHeader);
+    for (final (profile, _) in students) {
+      final rows = ResearchExportRows.tutorInteractionRows(
+        studentId: idMap[profile.id]!,
+        events: TutorInteractionLog.getEvents(profile.id),
+      );
+      rows.forEach(buf.writeln);
     }
     return buf.toString();
   }
