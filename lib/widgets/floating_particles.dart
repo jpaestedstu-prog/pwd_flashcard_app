@@ -83,21 +83,30 @@ class _FloatingParticlesState extends ConsumerState<FloatingParticles>
   }
 
   _Particle _generateParticle({bool randomizeY = false}) {
-    final size =
-        widget.minSize + _random.nextDouble() * (widget.maxSize - widget.minSize);
+    // depth gives the field a 3D parallax layer effect: near particles
+    // (depth → 1) are larger, brighter and drift faster than far ones
+    // (depth → 0). The multipliers are baked in at spawn so the per-frame
+    // cost is unchanged.
+    final depth = _random.nextDouble();
+    final near = 0.55 + depth * 0.75;
+    final size = (widget.minSize +
+            _random.nextDouble() * (widget.maxSize - widget.minSize)) *
+        near;
     return _Particle(
       x: _random.nextDouble(),
       y: randomizeY ? _random.nextDouble() : 1.0 + _random.nextDouble() * 0.3,
       size: size,
-      opacity: 0.1 + _random.nextDouble() * (widget.maxOpacity - 0.1),
-      speedY: (0.015 + _random.nextDouble() * 0.025) * widget.speed,
-      speedX: (_random.nextDouble() - 0.5) * 0.008 * widget.speed,
+      opacity: (0.1 + _random.nextDouble() * (widget.maxOpacity - 0.1)) *
+          (0.5 + depth * 0.5),
+      speedY: (0.015 + _random.nextDouble() * 0.025) * widget.speed * near,
+      speedX: (_random.nextDouble() - 0.5) * 0.008 * widget.speed * near,
       wobblePhase: _random.nextDouble() * 2 * math.pi,
       wobbleAmplitude: 0.003 + _random.nextDouble() * 0.008,
       shape: _shapeForStyle(widget.style),
       rotation: _random.nextDouble() * 2 * math.pi,
       rotationSpeed:
           (_random.nextDouble() - 0.5) * 0.02 * widget.speed,
+      depth: depth,
     );
   }
 
@@ -236,6 +245,7 @@ class _Particle {
     required this.shape,
     required this.rotation,
     required this.rotationSpeed,
+    required this.depth,
   });
 
   final double x; // 0.0–1.0 normalized
@@ -249,6 +259,7 @@ class _Particle {
   final _ParticleShape shape;
   final double rotation;
   final double rotationSpeed;
+  final double depth; // 0 = far, 1 = near — paint order + parallax weight
 
   _Particle copyWith({
     double? x,
@@ -267,6 +278,7 @@ class _Particle {
         shape: shape,
         rotation: rotation ?? this.rotation,
         rotationSpeed: rotationSpeed,
+        depth: depth,
       );
 }
 
@@ -284,8 +296,12 @@ class _ParticlePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    for (int i = 0; i < particles.length; i++) {
-      final p = particles[i];
+    // Far particles paint first so near ones overlap them — the cheap
+    // painter's-algorithm version of a 3D depth sort.
+    final ordered = [...particles]
+      ..sort((a, b) => a.depth.compareTo(b.depth));
+    for (int i = 0; i < ordered.length; i++) {
+      final p = ordered[i];
       final color = colors[i % colors.length].withValues(alpha: p.opacity);
       final paint = Paint()..color = color;
       final center = Offset(p.x * size.width, p.y * size.height);

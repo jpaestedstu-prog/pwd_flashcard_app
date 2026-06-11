@@ -8,6 +8,7 @@ import '../../data/models/enums.dart';
 import '../../core/services/adaptive_difficulty_service.dart';
 import 'animated_dialogs.dart';
 import 'animated_score_reveal.dart';
+import 'tilt_3d.dart';
 
 // ─── Category Picker Bottom Sheet ───────────────────────
 
@@ -102,20 +103,12 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
         children: [
           // Fixed header
           Padding(
+            // The sheet wrapper already draws a drag handle, so the header
+            // starts at the title — no second handle, which also reclaims the
+            // vertical space a short viewport needs at large font scales.
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
             child: Column(
               children: [
-                // Drag handle
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: hc.textSecondary.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -131,7 +124,8 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.category_rounded, color: AppColors.primary, size: 22),
+                      child: Icon(Icons.category_rounded,
+                          color: AppColors.primary, size: context.scaleIcon(22)),
                     ),
                     const SizedBox(width: 10),
                     Text(
@@ -259,8 +253,6 @@ class _CategoryOptionCard extends StatefulWidget {
 }
 
 class _CategoryOptionCardState extends State<_CategoryOptionCard> {
-  bool _pressed = false;
-
   @override
   Widget build(BuildContext context) {
     final color = widget.color;
@@ -306,7 +298,7 @@ class _CategoryOptionCardState extends State<_CategoryOptionCard> {
             child: Center(
               child: Icon(
                 widget.icon,
-                size: 24,
+                size: context.scaleIcon(24),
                 color: selected ? color : color.withValues(alpha: 0.7),
               ),
             ),
@@ -353,20 +345,20 @@ class _CategoryOptionCardState extends State<_CategoryOptionCard> {
                   ? Icon(
                       Icons.check_circle_rounded,
                       key: const ValueKey('checked'),
-                      size: 26,
+                      size: context.scaleIcon(26),
                       color: color,
                     )
                   : Icon(
                       Icons.circle_outlined,
                       key: const ValueKey('unchecked'),
-                      size: 26,
+                      size: context.scaleIcon(26),
                       color: hc.textSecondary.withValues(alpha: 0.4),
                     ),
             )
           else
             Icon(
               Icons.lock_outline_rounded,
-              size: 22,
+              size: context.scaleIcon(22),
               color: hc.textSecondary.withValues(alpha: 0.5),
             ),
         ],
@@ -385,15 +377,9 @@ class _CategoryOptionCardState extends State<_CategoryOptionCard> {
     }
 
     return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 120),
+      onTap: widget.onTap,
+      child: Pressable3D(
+        maxTilt: 0.04,
         child: card,
       ),
     );
@@ -443,25 +429,19 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-      child: Column(
+      // The card list can be taller than a short (landscape) viewport at large
+      // font scales, so it must scroll inside the height-capped sheet rather
+      // than overflow. The sheet wrapper already draws a drag handle, so this
+      // body starts straight at the title.
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Drag handle
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: hc.textSecondary.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 20),
-
           // Title
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(widget.game.icon, size: 28, color: widget.game.color),
+              Icon(widget.game.icon, size: context.scaleIcon(28), color: widget.game.color),
               const SizedBox(width: 10),
               Text(
                 widget.game.label,
@@ -499,7 +479,7 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
                 Icon(
                   Icons.timer_rounded,
                   color: _timedMode ? AppColors.warning : AppColors.textHint,
-                  size: 24,
+                  size: context.scaleIcon(24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -569,6 +549,7 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
             );
           }),
         ],
+        ),
       ),
     );
   }
@@ -585,21 +566,13 @@ class _DifficultyCard extends StatefulWidget {
 }
 
 class _DifficultyCardState extends State<_DifficultyCard> {
-  bool _pressed = false;
-
   @override
   Widget build(BuildContext context) {
     final diff = widget.difficulty;
     return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 120),
+      onTap: widget.onTap,
+      child: Pressable3D(
+        maxTilt: 0.04,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
@@ -670,7 +643,7 @@ class _DifficultyCardState extends State<_DifficultyCard> {
               const SizedBox(width: 8),
               Icon(
                 Icons.arrow_forward_ios_rounded,
-                size: 18,
+                size: context.scaleIcon(18),
                 color: diff.color.withValues(alpha: 0.6),
               ),
             ],
@@ -782,7 +755,7 @@ class _AutoDifficultyCard extends StatelessWidget {
             const SizedBox(width: 8),
             Icon(
               Icons.auto_awesome_rounded,
-              size: 22,
+              size: context.scaleIcon(22),
               color: autoColor.withValues(alpha: 0.7),
             ),
           ],

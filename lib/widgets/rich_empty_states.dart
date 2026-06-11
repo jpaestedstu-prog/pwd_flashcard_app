@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import 'tilt_3d.dart';
 
 /// A visually rich empty state with animated illustration, decorative
 /// background elements, and an optional action button.
@@ -83,20 +84,17 @@ class RichEmptyState extends StatelessWidget {
                   ),
                   // Floating dots
                   ..._buildDots(accent, ringSize),
-                  // Emoji
-                  Text(
-                    emoji,
-                    style: TextStyle(fontSize: emojiSize),
-                  )
-                      .animate(
-                        onPlay: (c) => c.repeat(reverse: true),
-                      )
-                      .moveY(
-                        begin: 0,
-                        end: -6,
-                        duration: 2400.ms,
-                        curve: Curves.easeInOut,
-                      ),
+                  // Emoji — gentle 3D sway (replaces the flat bob, and
+                  // honours the reduced-motion setting).
+                  Float3D(
+                    period: const Duration(seconds: 6),
+                    tilt: 0.10,
+                    bob: 6,
+                    child: Text(
+                      emoji,
+                      style: TextStyle(fontSize: emojiSize),
+                    ),
+                  ),
                 ],
               ),
             )

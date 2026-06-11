@@ -74,6 +74,35 @@ class AppColors {
   static const Color bannerShowcaseStart = Color(0xFF6A1B9A);
   static const Color bannerShowcaseEnd = Color(0xFFAB47BC);
 
+  // ─── Banner Gradient Colors (Student Home) ─────────
+  static const Color playerAccent = Color(0xFF7C4DFF);
+  static const Color playerAccentLight = Color(0xFF448AFF);
+  static const Color playerAccentPurpleLight = Color(0xFFB388FF);
+  static const Color bannerLearningGainStart = Color(0xFF2E7D32);
+  static const Color bannerLearningGainEnd = Color(0xFF66BB6A);
+  static const Color bannerRecommendStart = Color(0xFF5C6BC0);
+  static const Color bannerRecommendEnd = Color(0xFF7E57C2);
+  static const Color bannerMoodStart = Color(0xFFF06292);
+  static const Color bannerMoodEnd = Color(0xFFE91E63);
+  static const Color bannerStickerStart = Color(0xFFFFB74D);
+  static const Color bannerStickerEnd = Color(0xFFF57C00);
+  static const Color bannerGuidedStart = Color(0xFF26A69A);
+  static const Color bannerGuidedEnd = Color(0xFF00897B);
+  static const Color bannerAiTutorStart = Color(0xFF42A5F5);
+  static const Color bannerAiTutorEnd = Color(0xFF1E88E5);
+  static const Color bannerMessagingStart = Color(0xFFAB47BC);
+  static const Color bannerMessagingEnd = Color(0xFF8E24AA);
+  static const Color bannerPeerStart = Color(0xFF66BB6A);
+  static const Color bannerPeerEnd = Color(0xFF43A047);
+  static const Color bannerNotebookStart = Color(0xFF8D6E63);
+  static const Color bannerNotebookEnd = Color(0xFF6D4C41);
+  static const Color bannerHardWordsStart = Color(0xFFEF5350);
+  static const Color bannerHardWordsEnd = Color(0xFFD32F2F);
+  static const Color bannerGoalsStart = Color(0xFFFF8F00);
+  static const Color bannerGoalsEnd = Color(0xFFFFA726);
+  static const Color bannerSmartReviewStart = Color(0xFF7C4DFF);
+  static const Color bannerSmartReviewEnd = Color(0xFF448AFF);
+
   // ─── Category Colors (unique pastel for each) ──────
   static const Color categoryAnimals = Color(0xFFFFCC80); // Peach orange
   static const Color categoryColors = Color(0xFFEF9A9A); // Soft red
@@ -176,6 +205,69 @@ class AppColors {
   static const Color hcGameDragDrop = Color(0xFFFFAB00);
   static const Color hcGameQuiz = Color(0xFFB388FF);
   static const Color hcGamePronunciation = Color(0xFF40C4FF);
+
+  // ─── Dyslexia-Friendly Palette ──────────────────────
+  // Per British Dyslexia Association style guide: cream background
+  // (avoid pure white glare), muted dark text (avoid pure black for
+  // less contrast halo), warm-tinted surfaces, calm blue accents.
+  static const Color dyslexiaBackground = Color(0xFFFAF0D7); // Warm cream
+  static const Color dyslexiaSurface = Color(0xFFFBF6E9);
+  static const Color dyslexiaCard = Color(0xFFFFFCF3);
+  static const Color dyslexiaSurfaceVariant = Color(0xFFEFE6CC);
+  static const Color dyslexiaPrimary = Color(0xFF2F5DAF); // Calm blue
+  static const Color dyslexiaPrimaryLight = Color(0xFFB6CDEC);
+  static const Color dyslexiaSecondary = Color(0xFF5A8A6A); // Sage green
+  static const Color dyslexiaSecondaryLight = Color(0xFFC7DBC8);
+  static const Color dyslexiaAccent = Color(0xFFC57A2A); // Warm amber
+  static const Color dyslexiaAccentLight = Color(0xFFF4D9B0);
+  static const Color dyslexiaText = Color(0xFF2C2C2C); // Soft black
+  static const Color dyslexiaTextSecondary = Color(0xFF5C5C5C);
+  static const Color dyslexiaBorder = Color(0xFFD9CDA9);
+
+  // ─── Dark Shop Theme Palettes ───────────────────────
+  // Each shop theme gets a dark variant so equipped users have a
+  // matched night-mode experience instead of being kicked back to
+  // the stock dark theme when they toggle dark mode.
+
+  // Ocean Dark — deep navy, glowing cyan
+  static const Color oceanDkBackground = Color(0xFF0A1929);
+  static const Color oceanDkSurface = Color(0xFF132F4C);
+  static const Color oceanDkCard = Color(0xFF173A5E);
+  static const Color oceanDkPrimary = Color(0xFF4FC3F7);
+  static const Color oceanDkPrimaryLight = Color(0xFF1976D2);
+  static const Color oceanDkSecondary = Color(0xFF4DD0E1);
+  static const Color oceanDkAccent = Color(0xFF80DEEA);
+  static const Color oceanDkBorder = Color(0xFF1E3A5F);
+
+  // Sunset Dark — deep plum, glowing coral
+  static const Color sunsetDkBackground = Color(0xFF1F0F1A);
+  static const Color sunsetDkSurface = Color(0xFF301823);
+  static const Color sunsetDkCard = Color(0xFF3A1F2C);
+  static const Color sunsetDkPrimary = Color(0xFFFFB74D);
+  static const Color sunsetDkPrimaryLight = Color(0xFFE65100);
+  static const Color sunsetDkSecondary = Color(0xFFF48FB1);
+  static const Color sunsetDkAccent = Color(0xFFFF8A65);
+  static const Color sunsetDkBorder = Color(0xFF4A2A3A);
+
+  // Forest Dark — deep forest, glowing leaf
+  static const Color forestDkBackground = Color(0xFF0F1A12);
+  static const Color forestDkSurface = Color(0xFF1B2A1F);
+  static const Color forestDkCard = Color(0xFF22332A);
+  static const Color forestDkPrimary = Color(0xFF81C784);
+  static const Color forestDkPrimaryLight = Color(0xFF2E7D32);
+  static const Color forestDkSecondary = Color(0xFFBCAAA4);
+  static const Color forestDkAccent = Color(0xFFA5D6A7);
+  static const Color forestDkBorder = Color(0xFF2D4434);
+
+  // Galaxy Dark — true cosmic black, glowing purple
+  static const Color galaxyDkBackground = Color(0xFF0A0E1A);
+  static const Color galaxyDkSurface = Color(0xFF161B2E);
+  static const Color galaxyDkCard = Color(0xFF1E2440);
+  static const Color galaxyDkPrimary = Color(0xFFB39DDB);
+  static const Color galaxyDkPrimaryLight = Color(0xFF5C6BC0);
+  static const Color galaxyDkSecondary = Color(0xFFCE93D8);
+  static const Color galaxyDkAccent = Color(0xFFE1BEE7);
+  static const Color galaxyDkBorder = Color(0xFF2A3258);
 }
 
 /// Helper to resolve colors based on the current high-contrast mode.

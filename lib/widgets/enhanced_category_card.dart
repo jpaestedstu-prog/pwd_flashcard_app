@@ -1,12 +1,13 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../core/utils/responsive_utils.dart';
 import '../data/models/enums.dart';
+import 'tilt_3d.dart';
 
 /// An enhanced category card with painted wave decorations, gradient background,
-/// subtle entrance animation, and a scale-on-press interaction.
+/// subtle entrance animation, and a 3D tilt-on-press interaction.
 ///
 /// Replaces the plain `_CategoryCard` in the home screen grid with richer
 /// visual design while preserving accessibility.
@@ -43,16 +44,12 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
       label: '${widget.category.label} flashcards, ${widget.wordCount} words, '
           '${(widget.progress * 100).round()} percent progress',
       child: GestureDetector(
+        onTap: widget.onTap,
         onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) {
-          setState(() => _pressed = false);
-          widget.onTap();
-        },
+        onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: _pressed ? 0.95 : 1.0,
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOut,
+        child: Pressable3D(
+          pressScale: 0.95,
           child: Card(
             elevation: _pressed ? 1 : 4,
             shadowColor: catColor.withValues(alpha: 0.3),
@@ -115,77 +112,121 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
                 ),
 
                 // ─── Content ────────────────────────
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      // Icon container with frosted look
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.22),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Icon(
-                          widget.category.icon,
-                          size: 30,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      // Text area
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.category.label,
-                              style: AppTypography.titleMedium.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.2,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.auto_stories_rounded,
-                                  size: 13,
-                                  color: Colors.white.withValues(alpha: 0.75),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${widget.wordCount} words',
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.85),
-                                    fontWeight: FontWeight.w600,
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        // Top section: icon + label + word count
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: Container(
+                                  width: context.scaleIcon(56),
+                                  height: context.scaleIcon(56),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.22),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.15),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    widget.category.icon,
+                                    size: context.scaleIcon(30),
+                                    color: Colors.white,
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            // Mini progress bar
-                            _MiniProgressBar(
-                              progress: widget.progress,
-                            ),
-                          ],
+                              ),
+                              const SizedBox(height: 8),
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    widget.category.label,
+                                    style: AppTypography.titleMedium.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.2,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Flexible(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.auto_stories_rounded,
+                                      size: context.scaleIcon(13),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.75),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        '${widget.wordCount} words',
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.85),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Circular progress indicator
-                      _GlowingProgress(
-                        progress: widget.progress,
-                      ),
-                    ],
+                        // Bottom section: progress pill + mini progress bar
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.22),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${(widget.progress * 100).round()}%',
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              _MiniProgressBar(
+                                progress: widget.progress,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -233,47 +274,6 @@ class _MiniProgressBar extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Circular progress with a soft outer glow.
-class _GlowingProgress extends StatelessWidget {
-  const _GlowingProgress({required this.progress});
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: progress > 0.5
-            ? [
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  blurRadius: 12,
-                  spreadRadius: 2,
-                ),
-              ]
-            : null,
-      ),
-      child: CircularPercentIndicator(
-        radius: 28,
-        percent: progress.clamp(0, 1),
-        center: Text(
-          '${(progress * 100).round()}%',
-          style: AppTypography.labelSmall.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 11,
-          ),
-        ),
-        progressColor: Colors.white,
-        backgroundColor: Colors.white.withValues(alpha: 0.2),
-        circularStrokeCap: CircularStrokeCap.round,
-        animation: true,
-        animationDuration: 800,
       ),
     );
   }

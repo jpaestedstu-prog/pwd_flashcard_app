@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
@@ -8,6 +9,23 @@ import 'semantic_colors.dart';
 class AppTheme {
   AppTheme._();
 
+  /// Shared icon-button styling applied to every theme.
+  ///
+  /// The Back / Menu / Close / Exit (and other) [IconButton]s used across the
+  /// app inherit only Flutter defaults otherwise (24px icon). This bumps the
+  /// icon to 26 — clearer for child students and low-vision users — and
+  /// guarantees a ≥48dp tap target via [MaterialTapTargetSize.padded] even if
+  /// a screen overrides padding/constraints. Colors are deliberately left to
+  /// inherit from each theme's `colorScheme`, so the high-contrast, dark and
+  /// dyslexia variants all stay correct without per-theme overrides.
+  static final IconButtonThemeData _iconButtonTheme = IconButtonThemeData(
+    style: IconButton.styleFrom(
+      iconSize: 26,
+      minimumSize: const Size(48, 48),
+      tapTargetSize: MaterialTapTargetSize.padded,
+    ),
+  );
+
   // ─── Standard (Pastel) Theme ─────────────────────────
   static final ThemeData _lightTheme = _buildLightTheme();
   static ThemeData get light => _lightTheme;
@@ -15,6 +33,16 @@ class AppTheme {
   static ThemeData _buildLightTheme() => ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
+
+    // Tap reliability: Tooltip's default longPress trigger joins the gesture
+    // arena and steals any press held >500ms (our students press slowly).
+    // Manual mode never registers the recognizer; mouse-hover tooltips and
+    // Semantics labels keep working.
+    tooltipTheme:
+        const TooltipThemeData(triggerMode: TooltipTriggerMode.manual),
+    // InkSparkle (M3 Android default) compiles a shader on the first tap —
+    // a 100-300ms hitch on low-end tablets that reads as a dead tap.
+    splashFactory: InkRipple.splashFactory,
 
     // Colors
     colorScheme: ColorScheme.light(
@@ -111,6 +139,9 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
     ),
+
+    // Icon Button — larger icon + guaranteed tap target (accessibility).
+    iconButtonTheme: _iconButtonTheme,
 
     // Navigation Bar (M3)
     navigationBarTheme: NavigationBarThemeData(
@@ -387,6 +418,10 @@ class AppTheme {
   static ThemeData _buildDarkTheme() => ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
+    // Tap reliability + first-tap jank: see _buildLightTheme.
+    tooltipTheme:
+        const TooltipThemeData(triggerMode: TooltipTriggerMode.manual),
+    splashFactory: InkRipple.splashFactory,
     colorScheme: const ColorScheme.dark(
       primary: _dkPrimary,
       primaryContainer: Color(0xFF3D2E5E),
@@ -458,6 +493,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
     ),
+    iconButtonTheme: _iconButtonTheme,
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: _dkAccent,
       foregroundColor: const Color(0xFF1A1A1A),
@@ -564,9 +600,169 @@ class AppTheme {
     extensions: const [SemanticColors.defaults],
   );
 
+  // ─── Dyslexia-Friendly Theme ─────────────────────────
+  //
+  // Cream background + Lexend font + generous spacing. Aligned with
+  // British Dyslexia Association style guide. Considered an
+  // accessibility theme, so it sits above shop themes in the cascade
+  // but below high-contrast.
+  static final ThemeData _dyslexiaTheme = _buildDyslexiaTheme();
+  static ThemeData get dyslexia => _dyslexiaTheme;
+
+  static ThemeData _buildDyslexiaTheme() => ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.light,
+        // Tap reliability + first-tap jank: see _buildLightTheme.
+        tooltipTheme:
+            const TooltipThemeData(triggerMode: TooltipTriggerMode.manual),
+        splashFactory: InkRipple.splashFactory,
+        colorScheme: const ColorScheme.light(
+          primary: AppColors.dyslexiaPrimary,
+          primaryContainer: AppColors.dyslexiaPrimaryLight,
+          secondary: AppColors.dyslexiaSecondary,
+          secondaryContainer: AppColors.dyslexiaSecondaryLight,
+          tertiary: AppColors.dyslexiaAccent,
+          tertiaryContainer: AppColors.dyslexiaAccentLight,
+          surface: AppColors.dyslexiaSurface,
+          surfaceContainerHighest: AppColors.dyslexiaSurfaceVariant,
+          outline: AppColors.dyslexiaBorder,
+          error: Color(0xFFB3463E),
+          onSecondary: Colors.white,
+          onSurface: AppColors.dyslexiaText,
+        ),
+        scaffoldBackgroundColor: AppColors.dyslexiaBackground,
+        textTheme: AppTypography.dyslexiaTextTheme,
+        appBarTheme: AppBarTheme(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          foregroundColor: AppColors.dyslexiaText,
+          titleTextStyle: AppTypography.dyslexiaTextTheme.titleLarge?.copyWith(
+            color: AppColors.dyslexiaText,
+          ),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shadowColor: AppColors.dyslexiaPrimary.withValues(alpha: 0.1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          clipBehavior: Clip.antiAlias,
+          color: AppColors.dyslexiaCard,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 2,
+            backgroundColor: AppColors.dyslexiaPrimary,
+            foregroundColor: Colors.white,
+            textStyle: AppTypography.dyslexiaTextTheme.labelLarge,
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+            minimumSize: const Size(56, 56),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.dyslexiaPrimary,
+            textStyle: AppTypography.dyslexiaTextTheme.labelLarge,
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+            minimumSize: const Size(56, 56),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            side: const BorderSide(color: AppColors.dyslexiaPrimary, width: 2),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.dyslexiaPrimary,
+            textStyle: AppTypography.dyslexiaTextTheme.labelLarge,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            minimumSize: const Size(56, 56),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.dyslexiaPrimary,
+            foregroundColor: Colors.white,
+            textStyle: AppTypography.dyslexiaTextTheme.labelLarge,
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+            minimumSize: const Size(56, 56),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          ),
+        ),
+        iconButtonTheme: _iconButtonTheme,
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: AppColors.dyslexiaAccent,
+          foregroundColor: Colors.white,
+          elevation: 4,
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: AppColors.dyslexiaSurface,
+          indicatorColor: AppColors.dyslexiaPrimaryLight,
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const IconThemeData(color: AppColors.dyslexiaPrimary, size: 24);
+            }
+            return const IconThemeData(color: AppColors.dyslexiaTextSecondary, size: 24);
+          }),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            final base = AppTypography.dyslexiaTextTheme.labelSmall;
+            if (states.contains(WidgetState.selected)) {
+              return base?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.dyslexiaPrimary,
+              );
+            }
+            return base?.copyWith(color: AppColors.dyslexiaTextSecondary);
+          }),
+          height: 80,
+          elevation: 0,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.dyslexiaSurfaceVariant,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.dyslexiaBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.dyslexiaPrimary, width: 2),
+          ),
+          hintStyle: AppTypography.dyslexiaTextTheme.bodyMedium?.copyWith(
+            color: AppColors.dyslexiaTextSecondary,
+          ),
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: AppColors.dyslexiaCard,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          elevation: 4,
+        ),
+        chipTheme: ChipThemeData(
+          backgroundColor: AppColors.dyslexiaSurfaceVariant,
+          selectedColor: AppColors.dyslexiaPrimary,
+          labelStyle: AppTypography.dyslexiaTextTheme.labelMedium?.copyWith(
+            color: AppColors.dyslexiaText,
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        dividerTheme: const DividerThemeData(
+          color: AppColors.dyslexiaBorder,
+          thickness: 1,
+          space: 24,
+        ),
+        extensions: const [SemanticColors.dyslexia],
+      );
+
   // ─── Shop Themes ─────────────────────────────────────
 
-  /// Lookup a shop theme by its item ID.
+  /// Lookup a shop theme by its item ID. Accepts both the light SKU
+  /// (`theme_ocean`) and the synthetic dark variant (`theme_ocean_dark`)
+  /// emitted by [shopThemeDark] — dark variants ship free with the
+  /// matching light theme purchase.
   /// Returns null for unknown IDs; caller should fall back to [light].
   static ThemeData? shopTheme(String? themeId) {
     return switch (themeId) {
@@ -574,6 +770,22 @@ class AppTheme {
       'theme_sunset' => _sunset,
       'theme_forest' => _forest,
       'theme_galaxy' => _galaxy,
+      'theme_ocean_dark' => _oceanDark,
+      'theme_sunset_dark' => _sunsetDark,
+      'theme_forest_dark' => _forestDark,
+      'theme_galaxy_dark' => _galaxyDark,
+      _ => null,
+    };
+  }
+
+  /// Lookup the dark variant of the equipped shop theme. Returns null
+  /// for non-shop themes so callers can fall through to [dark].
+  static ThemeData? shopThemeDark(String? themeId) {
+    return switch (themeId) {
+      'theme_ocean' || 'theme_ocean_dark' => _oceanDark,
+      'theme_sunset' || 'theme_sunset_dark' => _sunsetDark,
+      'theme_forest' || 'theme_forest_dark' => _forestDark,
+      'theme_galaxy' || 'theme_galaxy_dark' => _galaxyDark,
       _ => null,
     };
   }
@@ -771,5 +983,266 @@ class AppTheme {
         ),
       ),
     );
+  }
+
+  // ─── Dark Shop Themes ────────────────────────────────
+  // Each one mirrors the light shop theme but on a deep tinted
+  // background, with the light theme color as a glowing accent.
+
+  static final ThemeData _oceanDark = _buildShopThemeDark(
+    primary: AppColors.oceanDkPrimary,
+    primaryContainer: AppColors.oceanDkPrimaryLight,
+    secondary: AppColors.oceanDkSecondary,
+    accent: AppColors.oceanDkAccent,
+    background: AppColors.oceanDkBackground,
+    surface: AppColors.oceanDkSurface,
+    card: AppColors.oceanDkCard,
+    border: AppColors.oceanDkBorder,
+    semantic: SemanticColors.oceanDark,
+  );
+
+  static final ThemeData _sunsetDark = _buildShopThemeDark(
+    primary: AppColors.sunsetDkPrimary,
+    primaryContainer: AppColors.sunsetDkPrimaryLight,
+    secondary: AppColors.sunsetDkSecondary,
+    accent: AppColors.sunsetDkAccent,
+    background: AppColors.sunsetDkBackground,
+    surface: AppColors.sunsetDkSurface,
+    card: AppColors.sunsetDkCard,
+    border: AppColors.sunsetDkBorder,
+    semantic: SemanticColors.sunsetDark,
+  );
+
+  static final ThemeData _forestDark = _buildShopThemeDark(
+    primary: AppColors.forestDkPrimary,
+    primaryContainer: AppColors.forestDkPrimaryLight,
+    secondary: AppColors.forestDkSecondary,
+    accent: AppColors.forestDkAccent,
+    background: AppColors.forestDkBackground,
+    surface: AppColors.forestDkSurface,
+    card: AppColors.forestDkCard,
+    border: AppColors.forestDkBorder,
+    semantic: SemanticColors.forestDark,
+  );
+
+  static final ThemeData _galaxyDark = _buildShopThemeDark(
+    primary: AppColors.galaxyDkPrimary,
+    primaryContainer: AppColors.galaxyDkPrimaryLight,
+    secondary: AppColors.galaxyDkSecondary,
+    accent: AppColors.galaxyDkAccent,
+    background: AppColors.galaxyDkBackground,
+    surface: AppColors.galaxyDkSurface,
+    card: AppColors.galaxyDkCard,
+    border: AppColors.galaxyDkBorder,
+    semantic: SemanticColors.galaxyDark,
+  );
+
+  /// Builds a dark shop-theme variant. Mirrors the structure of the
+  /// stock dark theme but with a per-shop primary/accent palette.
+  static ThemeData _buildShopThemeDark({
+    required Color primary,
+    required Color primaryContainer,
+    required Color secondary,
+    required Color accent,
+    required Color background,
+    required Color surface,
+    required Color card,
+    required Color border,
+    required SemanticColors semantic,
+  }) {
+    const onPrimary = Color(0xFF1A1A1A);
+    const textOnDark = Color(0xFFE8E8F0);
+    const textSecondaryOnDark = Color(0xFFB0B0C8);
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      // Tap reliability + first-tap jank: see _buildLightTheme.
+      tooltipTheme:
+          const TooltipThemeData(triggerMode: TooltipTriggerMode.manual),
+      splashFactory: InkRipple.splashFactory,
+      colorScheme: ColorScheme.dark(
+        primary: primary,
+        primaryContainer: primaryContainer,
+        secondary: secondary,
+        tertiary: accent,
+        surface: surface,
+        onPrimary: onPrimary,
+        onSecondary: onPrimary,
+        onSurface: textOnDark,
+        outline: border,
+      ),
+      scaffoldBackgroundColor: background,
+      textTheme: AppTypography.textTheme,
+      appBarTheme: AppBarTheme(
+        elevation: 0,
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        foregroundColor: textOnDark,
+        titleTextStyle: AppTypography.titleLarge.copyWith(color: textOnDark),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 2,
+        shadowColor: Colors.black54,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        color: card,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          elevation: 2,
+          backgroundColor: primary,
+          foregroundColor: onPrimary,
+          textStyle: AppTypography.buttonText,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+          minimumSize: const Size(56, 56),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primary,
+          textStyle: AppTypography.buttonText,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+          minimumSize: const Size(56, 56),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          side: BorderSide(color: primary, width: 2),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: primary,
+          textStyle: AppTypography.buttonText,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          minimumSize: const Size(56, 56),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: onPrimary,
+          textStyle: AppTypography.buttonText,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+          minimumSize: const Size(56, 56),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
+      ),
+      iconButtonTheme: _iconButtonTheme,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: accent,
+        foregroundColor: onPrimary,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: surface,
+        indicatorColor: primary.withValues(alpha: 0.25),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(color: primary, size: 24);
+          }
+          return const IconThemeData(color: textSecondaryOnDark, size: 24);
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppTypography.labelSmall.copyWith(
+              fontWeight: FontWeight.w700,
+              color: primary,
+            );
+          }
+          return AppTypography.labelSmall.copyWith(color: textSecondaryOnDark);
+        }),
+        height: 80,
+        elevation: 0,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: card,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: primary, width: 2),
+        ),
+        hintStyle: AppTypography.bodyMedium.copyWith(color: textSecondaryOnDark),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        elevation: 8,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: card,
+        selectedColor: primary,
+        labelStyle: AppTypography.labelMedium.copyWith(color: textOnDark),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: border),
+        ),
+      ),
+      dividerTheme: DividerThemeData(color: border, thickness: 1, space: 24),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: primary,
+        linearTrackColor: border,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? primary
+              : textSecondaryOnDark,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? primary.withValues(alpha: 0.4)
+              : border,
+        ),
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: primary,
+        inactiveTrackColor: border,
+        thumbColor: primary,
+      ),
+      extensions: [semantic],
+    );
+  }
+
+  /// Replace a theme's page transitions with an instant fade — used
+  /// when `settings.reducedMotion` is on. Page transitions are the
+  /// last bit of in-app motion not covered by [Animate.defaultDuration],
+  /// so this closes the loop on the reduced-motion contract.
+  static ThemeData withReducedMotion(ThemeData theme) {
+    const instant = PageTransitionsTheme(builders: {
+      TargetPlatform.android: _NoAnimationTransitionBuilder(),
+      TargetPlatform.iOS: _NoAnimationTransitionBuilder(),
+      TargetPlatform.fuchsia: _NoAnimationTransitionBuilder(),
+      TargetPlatform.linux: _NoAnimationTransitionBuilder(),
+      TargetPlatform.macOS: _NoAnimationTransitionBuilder(),
+      TargetPlatform.windows: _NoAnimationTransitionBuilder(),
+    });
+    return theme.copyWith(pageTransitionsTheme: instant);
+  }
+}
+
+/// Page transition builder that returns the destination immediately,
+/// no slide/fade/scale. Required for the reduced-motion contract.
+class _NoAnimationTransitionBuilder extends PageTransitionsBuilder {
+  const _NoAnimationTransitionBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return child;
   }
 }

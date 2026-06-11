@@ -98,6 +98,67 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
     infoLight: Color(0xFFD1C4E9),
   );
 
+  /// Dyslexia-friendly palette — muted saturation so success/error
+  /// signals stand out on a warm cream surface without glare.
+  static const SemanticColors dyslexia = SemanticColors(
+    success: Color(0xFF5A8A6A),
+    successLight: Color(0xFFC7DBC8),
+    warning: Color(0xFFC57A2A),
+    warningLight: Color(0xFFF4D9B0),
+    error: Color(0xFFB3463E),
+    errorLight: Color(0xFFEAC7C4),
+    info: Color(0xFF2F5DAF),
+    infoLight: Color(0xFFB6CDEC),
+  );
+
+  /// Dark Ocean — bright cyans against navy.
+  static const SemanticColors oceanDark = SemanticColors(
+    success: Color(0xFF4DB6AC),
+    successLight: Color(0xFF1B4D47),
+    warning: Color(0xFF4DD0E1),
+    warningLight: Color(0xFF1B5560),
+    error: Color(0xFFEC407A),
+    errorLight: Color(0xFF5E1A36),
+    info: Color(0xFF42A5F5),
+    infoLight: Color(0xFF1A3A5C),
+  );
+
+  /// Dark Sunset — warm glow against plum.
+  static const SemanticColors sunsetDark = SemanticColors(
+    success: Color(0xFF9CCC65),
+    successLight: Color(0xFF3D5224),
+    warning: Color(0xFFFFB74D),
+    warningLight: Color(0xFF5E3A12),
+    error: Color(0xFFEF5350),
+    errorLight: Color(0xFF5E1F1D),
+    info: Color(0xFFFFA726),
+    infoLight: Color(0xFF5C3210),
+  );
+
+  /// Dark Forest — leaf-bright against deep forest.
+  static const SemanticColors forestDark = SemanticColors(
+    success: Color(0xFF81C784),
+    successLight: Color(0xFF1B5E20),
+    warning: Color(0xFFFFB74D),
+    warningLight: Color(0xFF5E3A12),
+    error: Color(0xFFE57373),
+    errorLight: Color(0xFF5E1F1D),
+    info: Color(0xFF4DB6AC),
+    infoLight: Color(0xFF1B4D47),
+  );
+
+  /// Dark Galaxy — vibrant magenta/violet against cosmic black.
+  static const SemanticColors galaxyDark = SemanticColors(
+    success: Color(0xFF4DD0E1),
+    successLight: Color(0xFF1B4D5E),
+    warning: Color(0xFFFFCA28),
+    warningLight: Color(0xFF5E4810),
+    error: Color(0xFFF06292),
+    errorLight: Color(0xFF5E2240),
+    info: Color(0xFFB39DDB),
+    infoLight: Color(0xFF2E1F5C),
+  );
+
   /// Convenience lookup that returns [defaults] if no extension is
   /// registered on the active theme.
   static SemanticColors of(BuildContext context) {

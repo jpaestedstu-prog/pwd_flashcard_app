@@ -244,6 +244,12 @@ class _GradientPainter extends CustomPainter {
 
   final Color backgroundColor;
 
+  /// Slow radius pulse, phase-shifted per blob — reads as blobs drifting
+  /// nearer/farther (a depth axis) rather than just sliding around the
+  /// plane. Periodic over a full cycle so the repeat wraps seamlessly.
+  double _breath(double phase) =>
+      1 + 0.08 * math.sin(progress * 2 * math.pi + phase);
+
   @override
   void paint(Canvas canvas, Size size) {
     // Draw scaffold background first
@@ -258,7 +264,7 @@ class _GradientPainter extends CustomPainter {
           size.width * (0.2 + 0.15 * math.sin(progress * 2 * math.pi)),
           size.height * (0.15 + 0.1 * math.cos(progress * 2 * math.pi)),
         ),
-        radius: size.width * 0.55,
+        radius: size.width * 0.55 * _breath(0),
         color: colors[0 % colors.length],
       ),
       _BlobConfig(
@@ -272,7 +278,7 @@ class _GradientPainter extends CustomPainter {
                   0.15 *
                       math.sin(progress * 2 * math.pi + math.pi * 0.7)),
         ),
-        radius: size.width * 0.5,
+        radius: size.width * 0.5 * _breath(math.pi * 0.6),
         color: colors[1 % colors.length],
       ),
       _BlobConfig(
@@ -285,7 +291,7 @@ class _GradientPainter extends CustomPainter {
                   0.12 *
                       math.cos(progress * 2 * math.pi + math.pi * 1.3)),
         ),
-        radius: size.width * 0.6,
+        radius: size.width * 0.6 * _breath(math.pi * 1.1),
         color: colors[2 % colors.length],
       ),
       _BlobConfig(
@@ -299,7 +305,7 @@ class _GradientPainter extends CustomPainter {
                   0.1 *
                       math.sin(progress * 2 * math.pi + math.pi * 0.3)),
         ),
-        radius: size.width * 0.45,
+        radius: size.width * 0.45 * _breath(math.pi * 1.7),
         color: colors[3 % colors.length],
       ),
     ];

@@ -80,47 +80,51 @@ class _ConnectivityBannerState extends State<ConnectivityBanner>
         // The actual app content
         widget.child,
 
-        // Animated offline banner
+        // Animated offline banner. Purely informational — IgnorePointer so
+        // it never eats taps aimed at AppBar controls underneath it.
         Positioned(
           top: 0,
           left: 0,
           right: 0,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: SafeArea(
-              bottom: false,
-              child: Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.warning,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.wifi_off_rounded,
-                        size: 20, color: HCColor.of(context).textPrimary),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'You\'re offline \u2014 everything still works!',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: HCColor.of(context).textPrimary,
+          child: IgnorePointer(
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: SafeArea(
+                bottom: false,
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.wifi_off_rounded,
+                          size: 20, color: HCColor.of(context).textPrimary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'You\'re offline \u2014 everything still works!',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: HCColor.of(context).textPrimary,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -47,137 +47,121 @@ class _GameReviewSheet extends StatelessWidget {
     final correct = items.where((i) => i.isCorrect).length;
     final wrong = items.length - correct;
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.7,
-      minChildSize: 0.4,
-      maxChildSize: 0.92,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: HCColor.of(context).surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
+    // Shown via [showAnimatedBottomSheet], which already height-caps the sheet
+    // (to a fraction of the viewport) and draws the drag handle. So this body
+    // is a fixed header + a flexible, scrolling list + a fixed close button —
+    // the list shrinks to its content but scrolls (never overflows) when the
+    // round has more words than fit a short viewport at a large font scale.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ─── Fixed Header ─────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
           child: Column(
             children: [
-              // ─── Fixed Header ─────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                child: Column(
-                  children: [
-                    // Drag handle
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: HCColor.of(context).textHint.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.15),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(Icons.rate_review_rounded, color: AppColors.primary, size: 20),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          '$gameTitle Review',
-                          style: AppTypography.headlineSmall.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.15),
+                          blurRadius: 8,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    // Summary badges
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _SummaryBadge(
-                          icon: Icons.check_circle_rounded,
-                          label: '$correct correct',
-                          color: AppColors.success,
-                        ),
-                        const SizedBox(width: 16),
-                        _SummaryBadge(
-                          icon: Icons.cancel_rounded,
-                          label: '$wrong wrong',
-                          color: wrong > 0 ? AppColors.error : AppColors.textHint,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Divider(color: HCColor.of(context).border),
-                  ],
-                ),
-              ),
-
-              // ─── Scrollable Word List ─────────
-              Expanded(
-                child: ListView.separated(
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    return _ReviewCard(item: item, index: index)
-                        .animate()
-                        .fadeIn(
-                          duration: 300.ms,
-                          delay: Duration(milliseconds: 40 * index),
-                        )
-                        .slideX(begin: 0.05, end: 0);
-                  },
-                ),
-              ),
-
-              // ─── Close Button ─────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
+                    child: const Icon(Icons.rate_review_rounded,
+                        color: AppColors.primary, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
                     child: Text(
-                      'Got It!',
-                      style: AppTypography.titleMedium.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
+                      '$gameTitle Review',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
+              const SizedBox(height: 8),
+              // Summary badges — a centered Wrap so the two pills drop to a
+              // second line instead of overflowing on a narrow sheet at a
+              // large font scale.
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  _SummaryBadge(
+                    icon: Icons.check_circle_rounded,
+                    label: '$correct correct',
+                    color: AppColors.success,
+                  ),
+                  _SummaryBadge(
+                    icon: Icons.cancel_rounded,
+                    label: '$wrong wrong',
+                    color: wrong > 0 ? AppColors.error : AppColors.textHint,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Divider(color: HCColor.of(context).border),
             ],
           ),
-        );
-      },
+        ),
+
+        // ─── Scrollable Word List ─────────
+        Flexible(
+          child: ListView.separated(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            itemCount: items.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return _ReviewCard(item: item, index: index)
+                  .animate()
+                  .fadeIn(
+                    duration: 300.ms,
+                    delay: Duration(milliseconds: 40 * index),
+                  )
+                  .slideX(begin: 0.05, end: 0);
+            },
+          ),
+        ),
+
+        // ─── Close Button ─────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: Text(
+                'Got It!',
+                style: AppTypography.titleMedium.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -316,12 +300,18 @@ class _ReviewCard extends StatelessWidget {
                           color: HCColor.of(context).textHint,
                         ),
                       ),
-                      Text(
-                        item.userAnswer!,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.error,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.lineThrough,
+                      // A long wrong answer must ellipsise, not push the row
+                      // past the card's width.
+                      Flexible(
+                        child: Text(
+                          item.userAnswer!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.lineThrough,
+                          ),
                         ),
                       ),
                     ],

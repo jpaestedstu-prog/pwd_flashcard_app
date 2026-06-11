@@ -48,11 +48,10 @@ class SttService {
       onResult: (result) {
         onResult(result.recognizedWords, result.finalResult);
       },
-      localeId: locale,
-      listenFor: const Duration(seconds: 8),
-      pauseFor: const Duration(seconds: 3),
       listenOptions: SpeechListenOptions(
-        
+        localeId: locale,
+        listenFor: const Duration(seconds: 8),
+        pauseFor: const Duration(seconds: 3),
       ),
     );
   }

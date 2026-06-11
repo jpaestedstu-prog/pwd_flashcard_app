@@ -6,6 +6,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/services/xp_level_service.dart';
+import 'tilt_3d.dart';
 import 'animated_gradient_background.dart';
 
 /// A full-screen celebration overlay that displays when the user levels up.
@@ -261,47 +262,56 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
                                   child: child,
                                 );
                               },
-                              child: Container(
-                                width: context.responsiveSize(140),
-                                height: context.responsiveSize(140),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      color,
-                                      color.withValues(alpha: 0.7),
+                              // Slow 3D wobble so the badge reads as a
+                              // turning medal rather than a flat disc.
+                              child: Float3D(
+                                period: const Duration(seconds: 4),
+                                tilt: 0.12,
+                                bob: 0,
+                                child: Container(
+                                  width: context.responsiveSize(140),
+                                  height: context.responsiveSize(140),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        color,
+                                        color.withValues(alpha: 0.7),
+                                      ],
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: color.withValues(alpha: 0.5),
+                                        blurRadius: 30,
+                                        spreadRadius: 5,
+                                      ),
+                                    ],
+                                    border: Border.all(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.6),
+                                      width: 4,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        lvl.emoji,
+                                        style: const TextStyle(fontSize: 40),
+                                      ),
+                                      Text(
+                                        'Lv. ${lvl.level}',
+                                        style:
+                                            AppTypography.titleLarge.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: color.withValues(alpha: 0.5),
-                                      blurRadius: 30,
-                                      spreadRadius: 5,
-                                    ),
-                                  ],
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.6),
-                                    width: 4,
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      lvl.emoji,
-                                      style: const TextStyle(fontSize: 40),
-                                    ),
-                                    Text(
-                                      'Lv. ${lvl.level}',
-                                      style:
-                                          AppTypography.titleLarge.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ],
                                 ),
                               ),
                             ),

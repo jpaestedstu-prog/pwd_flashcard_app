@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../core/utils/responsive_utils.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  Enhanced Streak Display
@@ -54,22 +55,22 @@ class EnhancedStreakHero extends StatelessWidget {
         children: [
           // ─── Flame + Ring Indicator ──────────
           SizedBox(
-            width: 120,
-            height: 120,
+            width: context.scaleIcon(120),
+            height: context.scaleIcon(120),
             child: Stack(
               alignment: Alignment.center,
               children: [
                 // Milestone progress ring
                 _AnimatedProgressRing(
                   progress: milestoneProgress.clamp(0.0, 1.0),
-                  size: 120,
+                  size: context.scaleIcon(120),
                   strokeWidth: 5,
                   color: Colors.white,
                 ),
                 // Floating ember particles
                 _EmberParticles(
                   tier: tier,
-                  size: 90,
+                  size: context.scaleIcon(90),
                 ),
                 // Pulsing flame
                 _PulsingFlame(tier: tier, streakDays: streakDays),

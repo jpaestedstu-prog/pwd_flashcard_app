@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/accessibility/haptic_service.dart';
 import '../core/accessibility/sound_service.dart';
+import 'tilt_3d.dart';
 
 /// Visual styling for an [AppButton]. Maps onto Material3's button family
 /// without the consumer having to remember which one they want.
@@ -29,7 +30,10 @@ enum AppButtonVariant {
 /// - Light haptic + tap sound on press, via the global accessibility
 ///   services. Disable by setting [hapticOnPress] / [soundOnPress] to false.
 /// - Optional leading icon, optional full-width sizing.
-/// - Built-in semantic label fallback (uses [label] when none is given).
+/// - A single screen-reader node: the Material button already exposes
+///   button semantics, and [semanticLabel] overrides the announced text
+///   through the label's own semantics — no wrapper node, so TalkBack
+///   users get exactly one focus stop per button.
 ///
 /// Heavy specialty buttons (FlashcardNavButton, GameStartButton,
 /// RewardFeedbackButton, DashboardActionButton) stay where they are —
@@ -130,7 +134,7 @@ class AppButton extends ConsumerWidget {
     }
 
     final iconWidget = icon == null ? null : Icon(icon, size: 20);
-    final labelWidget = Text(label);
+    final labelWidget = Text(label, semanticsLabel: semanticLabel);
     final button = switch (variant) {
       AppButtonVariant.primary => iconWidget == null
           ? FilledButton(
@@ -177,9 +181,10 @@ class AppButton extends ConsumerWidget {
     final sized =
         fullWidth ? SizedBox(width: double.infinity, child: button) : button;
 
-    return Semantics(
-      button: true,
-      label: semanticLabel ?? label,
+    return Pressable3D(
+      enabled: onPressed != null,
+      maxTilt: 0.05,
+      pressScale: 0.96,
       child: sized,
     );
   }

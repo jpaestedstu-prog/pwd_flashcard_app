@@ -93,7 +93,12 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
           '${widget.starsEarned} stars earned',
       child: Dialog(
         backgroundColor: Colors.transparent,
-        child: Card(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+            maxWidth: 520,
+          ),
+          child: Card(
           elevation: 12,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
@@ -106,7 +111,9 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
           child: Padding(
             padding: EdgeInsets.fromLTRB(
                 context.pagePadding, 32, context.pagePadding, 24),
-            child: Column(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 // ─── Score Gauge ──────────────────
@@ -172,12 +179,16 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                 const SizedBox(height: 16),
 
                 // ─── Message ──────────────────────
-                Text(
-                  tier.message,
-                  style: AppTypography.displaySmall.copyWith(
-                    color: hc.textPrimary,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    tier.message,
+                    style: AppTypography.displaySmall.copyWith(
+                      color: hc.textPrimary,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
                   ),
-                  textAlign: TextAlign.center,
                 )
                     .animate(delay: 1400.ms)
                     .fadeIn(duration: 400.ms)
@@ -186,13 +197,17 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                 const SizedBox(height: 6),
 
                 // ─── Encouragement ────────────────
-                Text(
-                  tier.encouragement,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: hc.textSecondary,
-                    fontStyle: FontStyle.italic,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    tier.encouragement,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: hc.textSecondary,
+                      fontStyle: FontStyle.italic,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
                   ),
-                  textAlign: TextAlign.center,
                 )
                     .animate(delay: 1600.ms)
                     .fadeIn(duration: 400.ms),
@@ -255,22 +270,23 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                 const SizedBox(height: 24),
 
                 // ─── Action Buttons ───────────────
-                Row(
+                // OverflowBar lays the buttons in a Row when there's width,
+                // and stacks them vertically when font scaling forces a wrap.
+                OverflowBar(
+                  spacing: 12,
+                  overflowSpacing: 8,
+                  alignment: MainAxisAlignment.center,
+                  overflowAlignment: OverflowBarAlignment.center,
                   children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: widget.onExit,
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        label: const Text('Exit'),
-                      ),
+                    OutlinedButton.icon(
+                      onPressed: widget.onExit,
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Exit'),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: widget.onPlayAgain,
-                        icon: const Icon(Icons.replay_rounded),
-                        label: const Text('Play Again'),
-                      ),
+                    ElevatedButton.icon(
+                      onPressed: widget.onPlayAgain,
+                      icon: const Icon(Icons.replay_rounded),
+                      label: const Text('Play Again'),
                     ),
                   ],
                 )
@@ -279,7 +295,9 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                     .slideY(begin: 0.15, end: 0),
               ],
             ),
+            ),
           ),
+        ),
         ),
       ),
     )
@@ -299,22 +317,30 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
       builder: (context, _) {
         final ease = Curves.easeOutCubic.transform(_scoreController.value);
         final displayPct = (percentage * ease).round();
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              tier.emoji,
-              style: const TextStyle(fontSize: 28),
-            ),
-            Text(
-              '$displayPct%',
-              style: AppTypography.titleLarge.copyWith(
-                fontWeight: FontWeight.w900,
-                color: tier.color,
-                fontSize: 22,
+        // Lock TextScaler to 1.0 inside the gauge — at 1.5x the hardcoded
+        // emoji/percent text would burst the painted circle. The percentage
+        // is duplicated in the bar below so accessibility isn't lost.
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: const TextScaler.linear(1.0),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                tier.emoji,
+                style: const TextStyle(fontSize: 28),
               ),
-            ),
-          ],
+              Text(
+                '$displayPct%',
+                style: AppTypography.titleLarge.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: tier.color,
+                  fontSize: 22,
+                ),
+              ),
+            ],
+          ),
         );
       },
     );

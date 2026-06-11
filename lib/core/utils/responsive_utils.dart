@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_spacing.dart';
+
 /// Responsive helpers optimized for Honor Pad X8a (1920×1200)
 /// but adaptive down to phone sizes.
 ///
@@ -69,6 +71,33 @@ extension ResponsiveExtension on BuildContext {
     return 160.0;
   }
 
+  /// Fixed height for a Home "game hub" tile, sized by screen tier AND the
+  /// active text scaler so tiles grow with the Font Size setting instead of
+  /// clipping their icon/label.
+  ///
+  /// Use this as a grid `mainAxisExtent` (NOT `childAspectRatio`): tile height
+  /// then never depends on tile width, which is exactly the failure mode that
+  /// caused RenderFlex overflow when an aspect ratio was divided by the text
+  /// scale. [large] tiles are the primary "Play & Learn" actions; the compact
+  /// size is for the secondary "More" grid.
+  double hubTileHeight({bool large = true}) {
+    final double base = large
+        ? (screenWidth >= 1200
+            ? 184.0
+            : screenWidth >= 600
+                ? 160.0
+                : 132.0)
+        : (screenWidth >= 1200
+            ? 128.0
+            : screenWidth >= 600
+                ? 114.0
+                : 100.0);
+    // Clamp the scaler so XL fonts enlarge tiles without runaway growth; the
+    // tile content also self-protects (FittedBox + ellipsis).
+    final scale = MediaQuery.textScalerOf(this).scale(1.0).clamp(1.0, 1.6);
+    return base * scale;
+  }
+
   /// Adaptive font size multiplier based on screen width
   double get fontScaleFactor {
     if (screenWidth >= 1600) return 1.25;
@@ -103,17 +132,74 @@ extension ResponsiveExtension on BuildContext {
     if (screenWidth >= 1200) return 20.0;
     return 16.0;
   }
+
+  /// Scale a base icon/avatar size by the currently-applied text scaler.
+  /// Mirrors how text grows with the Font Size setting (S/M/L/XL = 0.85x–1.5x).
+  double scaleIcon(double base) =>
+      base * MediaQuery.textScalerOf(this).scale(1.0);
+
+  /// Scale a container height by the text scaler so boxes holding scalable
+  /// text grow with the Font Size setting instead of clipping it.
+  double scaledHeight(double base) =>
+      base * MediaQuery.textScalerOf(this).scale(1.0);
+
+  /// Same as [scaledHeight] but clamped — for circular/fixed-aspect badges
+  /// that must not grow without bound (timer pills, play circles).
+  double scaledHeightCapped(double base, {double max = 1.5}) =>
+      base * MediaQuery.textScalerOf(this).scale(1.0).clamp(1.0, max);
 }
 
-/// Responsive spacing helper
+/// Wraps a body widget so it scrolls when the user's font scale would cause
+/// vertical overflow. At normal text scale (≤ 1.2x) the child is returned
+/// unchanged — zero rebuild/perf cost. At larger scales the child is placed
+/// in a [SingleChildScrollView] whose viewport is sized to at least the
+/// available height, so existing layouts that expect a finite parent still
+/// fill the screen.
+///
+/// **Important:** when wrapping a body that contains `Expanded`, convert those
+/// to `Flexible(fit: FlexFit.loose)` first — `Expanded` cannot live inside an
+/// unbounded vertical scroll view.
+class OverflowSafeBody extends StatelessWidget {
+  final Widget child;
+  final EdgeInsets? padding;
+
+  const OverflowSafeBody({super.key, required this.child, this.padding});
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = MediaQuery.textScalerOf(context).scale(1.0);
+    // Below this threshold the original layout fits; skip the scroll wrapper
+    // to avoid changing hit-testing/scroll behavior at normal font sizes.
+    if (scale < 1.25) {
+      return padding == null ? child : Padding(padding: padding!, child: child);
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          padding: padding ?? EdgeInsets.zero,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(child: child),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Deprecated spacing helper — kept as a thin alias so any lingering
+/// references keep compiling. Use [AppSpacing] (lib/core/theme/app_spacing.dart)
+/// as the single source of truth for spacing tokens.
+@Deprecated('Use AppSpacing from core/theme/app_spacing.dart instead.')
 class Spacing {
   Spacing._();
 
-  static const double xs = 4;
-  static const double sm = 8;
-  static const double md = 16;
-  static const double lg = 24;
-  static const double xl = 32;
-  static const double xxl = 48;
-  static const double xxxl = 64;
+  static const double xs = AppSpacing.xs;
+  static const double sm = AppSpacing.sm;
+  static const double md = AppSpacing.md;
+  static const double lg = AppSpacing.lg;
+  static const double xl = AppSpacing.xl;
+  static const double xxl = AppSpacing.xxl;
+  static const double xxxl = AppSpacing.xxxl;
 }

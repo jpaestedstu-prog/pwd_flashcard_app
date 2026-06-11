@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_colors.dart';
+import 'tilt_3d.dart';
 
 /// Project-wide card surface.
 ///
@@ -97,13 +98,18 @@ class AppCard extends StatelessWidget {
       return margin == null ? box : Padding(padding: margin!, child: box);
     }
 
-    // Wrap in Material so the ripple respects the rounded shape.
-    final tappable = Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        borderRadius: radius,
-        onTap: onTap,
-        child: Container(decoration: decoration, child: content),
+    // Wrap in Material so the ripple respects the rounded shape. Cards are
+    // large surfaces, so the 3D press tilt stays gentle.
+    final tappable = Pressable3D(
+      maxTilt: 0.035,
+      pressScale: 0.985,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: radius,
+          onTap: onTap,
+          child: Container(decoration: decoration, child: content),
+        ),
       ),
     );
     return margin == null ? tappable : Padding(padding: margin!, child: tappable);

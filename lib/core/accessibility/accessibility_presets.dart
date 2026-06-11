@@ -21,6 +21,10 @@ class AccessibilityPresets {
           fontScale: 1.4,
           highContrastMode: true,
           darkMode: false,
+          // High-contrast takes priority for visual disabilities; the
+          // dyslexia palette would override the bright accessible
+          // colours so we don't toggle it here even though the preset
+          // summary mentions it for visual+cognitive overlap.
           ttsEnabled: true,
           ttsSpeed: 0.4,
           voiceNavigation: true,
@@ -53,9 +57,20 @@ class AccessibilityPresets {
           fontScale: 1.2,
           soundEffects: true,
           voiceNavigation: false,
+          // Dyslexia palette (cream surfaces + Lexend font) is the
+          // single highest-impact change for cognitive-spectrum
+          // learners — pair it with adaptive difficulty + reduced
+          // motion. High-contrast is OFF so it doesn't override.
+          dyslexiaMode: true,
+          highContrastMode: false,
+          darkMode: false,
         ),
       DisabilityType.multiple => current.copyWith(
           fontScale: 1.3,
+          // For multi-disability profiles we default to high-contrast
+          // (bigger win for mixed visual/motor needs) and leave the
+          // dyslexia toggle for the user to switch on if reading is
+          // the bigger pain point — they are mutually exclusive.
           highContrastMode: true,
           ttsEnabled: true,
           ttsSpeed: 0.4,
@@ -77,7 +92,6 @@ class AccessibilityPresets {
           SettingChange('High Contrast', 'On', '🎨'),
           SettingChange('Text-to-Speech', 'On (Slow)', '🗣️'),
           SettingChange('Voice Navigation', 'On', '🧭'),
-          SettingChange('Dyslexia Font', 'On', '📝'),
         ],
       DisabilityType.hearing => const [
           SettingChange('Text-to-Speech', 'Off', '🔇'),
@@ -93,7 +107,7 @@ class AccessibilityPresets {
           SettingChange('Adaptive Difficulty', 'On', '🎯'),
         ],
       DisabilityType.cognitive => const [
-          SettingChange('Dyslexia Font', 'On', '📝'),
+          SettingChange('Dyslexia-friendly', 'On', '📝'),
           SettingChange('Adaptive Difficulty', 'On', '🎯'),
           SettingChange('Text-to-Speech', 'On (Very Slow)', '🗣️'),
           SettingChange('Reduced Motion', 'On', '🎬'),
@@ -104,7 +118,6 @@ class AccessibilityPresets {
           SettingChange('High Contrast', 'On', '🎨'),
           SettingChange('Text-to-Speech', 'On (Slow)', '🗣️'),
           SettingChange('Reduced Motion', 'On', '🎬'),
-          SettingChange('Dyslexia Font', 'On', '📝'),
           SettingChange('Voice Navigation', 'On', '🧭'),
         ],
       DisabilityType.none => const [],

@@ -62,11 +62,9 @@ class _AnimatedPressButtonState extends State<AnimatedPressButton>
     final radius = BorderRadius.circular(widget.borderRadius);
 
     return GestureDetector(
+      onTap: () => widget.onPressed?.call(),
       onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) {
-        _controller.reverse();
-        widget.onPressed?.call();
-      },
+      onTapUp: (_) => _controller.reverse(),
       onTapCancel: () => _controller.reverse(),
       child: AnimatedBuilder(
         animation: _scaleAnimation,
@@ -368,12 +366,16 @@ class FeatureBanner extends StatelessWidget {
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         subtitle,
                         style: AppTypography.bodySmall.copyWith(
                           color: Colors.white.withValues(alpha: 0.85),
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

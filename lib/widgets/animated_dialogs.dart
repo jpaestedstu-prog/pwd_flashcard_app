@@ -67,6 +67,10 @@ Future<bool?> showAnimatedConfirmDialog(
   return showAnimatedDialog<bool>(
     context,
     child: AlertDialog(
+      // Scroll the title + content together (and keep the actions pinned) so a
+      // long message at a large font scale on a short viewport scrolls instead
+      // of overflowing the dialog.
+      scrollable: true,
       title: Row(
         children: [
           if (emoji != null) ...[
@@ -110,6 +114,9 @@ Future<T?> showAnimatedAppDialog<T>(
   return showAnimatedDialog<T>(
     context,
     child: AlertDialog(
+      // Scroll title + content together so tall content at a large font scale
+      // on a short viewport scrolls instead of overflowing the dialog.
+      scrollable: true,
       title: Row(
         children: [
           if (emoji != null) ...[

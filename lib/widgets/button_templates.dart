@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import 'tilt_3d.dart';
 
 // ═══════════════════════════════════════════════════════════════════
 // 1. FLASHCARD NAVIGATION BUTTON
@@ -72,11 +73,9 @@ class _FlashcardNavButtonState extends State<FlashcardNavButton>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTap: () => widget.onPressed?.call(),
       onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) {
-        _controller.reverse();
-        widget.onPressed?.call();
-      },
+      onTapUp: (_) => _controller.reverse(),
       onTapCancel: () => _controller.reverse(),
       child: AnimatedBuilder(
         animation: _scale,
@@ -84,27 +83,40 @@ class _FlashcardNavButtonState extends State<FlashcardNavButton>
           scale: _scale.value,
           child: child,
         ),
-        child: Material(
-          color: widget.color,
-          borderRadius: BorderRadius.circular(20),
-          elevation: 4,
-          shadowColor: widget.color.withValues(alpha: 0.35),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(widget.icon, color: Colors.white, size: 26),
-                const SizedBox(width: 10),
-                Text(
-                  widget.label,
-                  style: AppTypography.buttonText.copyWith(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
+        // pressScale 1.0: this button already animates its own scale-up;
+        // Pressable3D only adds the perspective tilt toward the finger.
+        child: Pressable3D(
+          enabled: widget.onPressed != null,
+          maxTilt: 0.08,
+          pressScale: 1.0,
+          child: Material(
+            color: widget.color,
+            borderRadius: BorderRadius.circular(20),
+            elevation: 4,
+            shadowColor: widget.color.withValues(alpha: 0.35),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+              // FittedBox lets the icon+label shrink as one unit when the
+              // user's Font Size setting (XL = 1.5x) would otherwise push past
+              // the available width.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(widget.icon, color: Colors.white, size: 26),
+                    const SizedBox(width: 10),
+                    Text(
+                      widget.label,
+                      style: AppTypography.buttonText.copyWith(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -181,49 +193,62 @@ class _GameStartButtonState extends State<GameStartButton>
   Widget build(BuildContext context) {
     final grad = widget.gradient ?? _defaultGradient;
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) => Transform.scale(
-        scale: _bounce.value,
-        child: Container(
-          width: widget.width,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(40),
-            gradient: grad,
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFF9800).withValues(alpha: 0.45),
-                blurRadius: 16 + _glow.value,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _onTap,
-          borderRadius: BorderRadius.circular(40),
-          splashColor: Colors.white24,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 18),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(widget.icon, color: Colors.white, size: 32),
-                const SizedBox(width: 12),
-                Text(
-                  widget.label,
-                  style: AppTypography.buttonText.copyWith(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
+    // pressScale 1.0: the bounce animation already handles scale; the wrapper
+    // adds the held-down perspective tilt.
+    return Pressable3D(
+      enabled: widget.onPressed != null,
+      maxTilt: 0.05,
+      pressScale: 1.0,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) => Transform.scale(
+          scale: _bounce.value,
+          child: Container(
+            width: widget.width,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(40),
+              gradient: grad,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF9800).withValues(alpha: 0.45),
+                  blurRadius: 16 + _glow.value,
+                  offset: const Offset(0, 6),
                 ),
               ],
+            ),
+            child: child,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _onTap,
+            borderRadius: BorderRadius.circular(40),
+            splashColor: Colors.white24,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 18),
+              // FittedBox keeps the icon+label as a single unit that shrinks
+              // when font scaling (1.5x) would otherwise overflow the pill.
+              // Icon size stays 32 (no scaleIcon) to avoid double-scaling.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(widget.icon, color: Colors.white, size: 32),
+                    const SizedBox(width: 12),
+                    Text(
+                      widget.label,
+                      style: AppTypography.buttonText.copyWith(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -331,31 +356,38 @@ class _RewardFeedbackButtonState extends State<RewardFeedbackButton>
             children: [
               GestureDetector(
                 onTap: _onTap,
-                child: AnimatedBuilder(
-                  animation: _pressScale,
-                  builder: (context, child) => Transform.scale(
-                    scale: _pressScale.value,
-                    child: child,
-                  ),
-                  child: Container(
-                    width: widget.size,
-                    height: widget.size,
-                    decoration: BoxDecoration(
-                      shape: shape,
-                      borderRadius: radius,
-                      gradient: grad,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFD700).withValues(alpha: 0.4),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
+                // pressScale 1.0: the press controller already squashes to
+                // 0.88; the wrapper adds the perspective tilt.
+                child: Pressable3D(
+                  maxTilt: 0.09,
+                  pressScale: 1.0,
+                  child: AnimatedBuilder(
+                    animation: _pressScale,
+                    builder: (context, child) => Transform.scale(
+                      scale: _pressScale.value,
+                      child: child,
                     ),
-                    child: Icon(
-                      widget.icon,
-                      color: Colors.white,
-                      size: widget.size * 0.5,
+                    child: Container(
+                      width: widget.size,
+                      height: widget.size,
+                      decoration: BoxDecoration(
+                        shape: shape,
+                        borderRadius: radius,
+                        gradient: grad,
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                const Color(0xFFFFD700).withValues(alpha: 0.4),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        widget.icon,
+                        color: Colors.white,
+                        size: widget.size * 0.5,
+                      ),
                     ),
                   ),
                 ),
@@ -444,42 +476,48 @@ class DashboardActionButton extends StatelessWidget {
     final bgColor = color ?? AppColors.info.withValues(alpha: 0.12);
     final fgColor = iconColor ?? AppColors.info;
 
-    return SizedBox(
-      width: size,
-      child: Material(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          splashColor: fgColor.withValues(alpha: 0.15),
-          highlightColor: fgColor.withValues(alpha: 0.08),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: fgColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
+    // Pro-surface button: keep the 3D press subtle.
+    return Pressable3D(
+      enabled: onPressed != null,
+      maxTilt: 0.04,
+      pressScale: 0.98,
+      child: SizedBox(
+        width: size,
+        child: Material(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onPressed,
+            splashColor: fgColor.withValues(alpha: 0.15),
+            highlightColor: fgColor.withValues(alpha: 0.08),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: fgColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: fgColor, size: 24),
                   ),
-                  child: Icon(icon, color: fgColor, size: 24),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: HCColor.of(context).textPrimary,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 8),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: HCColor.of(context).textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

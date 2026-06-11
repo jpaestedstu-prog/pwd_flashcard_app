@@ -235,4 +235,46 @@ class AppTypography {
   static TextStyle scaledButtonText(BuildContext context) =>
       buttonText.copyWith(fontSize: _scaled(context, 16));
 
+  // ─── Dyslexia-Friendly Text Theme ─────────────────────
+  //
+  // Uses Lexend (NIH-backed reading-fluency font). Increased line height
+  // (1.6) and positive letter-spacing reduce letter crowding — the most
+  // common dyslexia-related reading friction.
+  //
+  // Per British Dyslexia Association guidance: avoid italics, prefer
+  // medium weights over bold-only emphasis, give body copy generous
+  // leading so lines don't blur together.
+  static const double _dyslexiaLineHeight = 1.6;
+  static const double _dyslexiaLetterSpacing = 0.6;
+
+  static TextStyle _dyslexiaFont({
+    required double fontSize,
+    required FontWeight fontWeight,
+    double? letterSpacing,
+  }) {
+    return GoogleFonts.lexend(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      letterSpacing: letterSpacing ?? _dyslexiaLetterSpacing,
+      height: _dyslexiaLineHeight,
+    );
+  }
+
+  static TextTheme get dyslexiaTextTheme => TextTheme(
+        displayLarge: _dyslexiaFont(fontSize: 40, fontWeight: FontWeight.w700),
+        displayMedium: _dyslexiaFont(fontSize: 34, fontWeight: FontWeight.w700),
+        displaySmall: _dyslexiaFont(fontSize: 28, fontWeight: FontWeight.w600),
+        headlineLarge: _dyslexiaFont(fontSize: 26, fontWeight: FontWeight.w600),
+        headlineMedium: _dyslexiaFont(fontSize: 22, fontWeight: FontWeight.w600),
+        headlineSmall: _dyslexiaFont(fontSize: 20, fontWeight: FontWeight.w600),
+        titleLarge: _dyslexiaFont(fontSize: 20, fontWeight: FontWeight.w600),
+        titleMedium: _dyslexiaFont(fontSize: 18, fontWeight: FontWeight.w500),
+        titleSmall: _dyslexiaFont(fontSize: 16, fontWeight: FontWeight.w500),
+        bodyLarge: _dyslexiaFont(fontSize: 18, fontWeight: FontWeight.w500),
+        bodyMedium: _dyslexiaFont(fontSize: 16, fontWeight: FontWeight.w500),
+        bodySmall: _dyslexiaFont(fontSize: 14, fontWeight: FontWeight.w500),
+        labelLarge: _dyslexiaFont(fontSize: 16, fontWeight: FontWeight.w600),
+        labelMedium: _dyslexiaFont(fontSize: 15, fontWeight: FontWeight.w500),
+        labelSmall: _dyslexiaFont(fontSize: 13, fontWeight: FontWeight.w500),
+      );
 }

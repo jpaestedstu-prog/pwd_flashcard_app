@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/error_handler.dart';
@@ -78,8 +79,13 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
 
 /// A friendly error widget to replace the default red error screen.
 /// Call [setupErrorWidget] in main() to install this globally.
+///
+/// In release builds we return a zero-size widget — a single broken tile
+/// shouldn't paint a giant red card on a user's tablet. In debug builds
+/// the friendly card still appears so developers see the problem.
 void setupErrorWidget() {
   ErrorWidget.builder = (FlutterErrorDetails details) {
+    if (kReleaseMode) return const SizedBox.shrink();
     return _FriendlyErrorWidget(details: details);
   };
 }
