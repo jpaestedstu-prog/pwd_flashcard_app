@@ -46,6 +46,25 @@ class LearningLevelService {
     return suggestLevelFromAge(years);
   }
 
+  /// Map age (in years) → [GradeLevel] using the Philippine K–12 age/grade
+  /// convention (Kinder at ≤5, Grade 1 at 6, … High School 12–17, College 18+).
+  ///
+  /// Used to seed a student's grade level when an educator creates the
+  /// profile. (Onboarding itself no longer collects grade level — learners
+  /// only supply a birth date, from which [suggestLevelFromBirthDate] derives
+  /// an adaptive [LearningLevel].)
+  static GradeLevel suggestGradeLevelFromAge(int years) {
+    if (years <= 5) return GradeLevel.kinder;
+    if (years == 6) return GradeLevel.grade1;
+    if (years == 7) return GradeLevel.grade2;
+    if (years == 8) return GradeLevel.grade3;
+    if (years == 9) return GradeLevel.grade4;
+    if (years == 10) return GradeLevel.grade5;
+    if (years == 11) return GradeLevel.grade6;
+    if (years <= 17) return GradeLevel.highSchool;
+    return GradeLevel.college;
+  }
+
   /// Considers promoting [profileId] one notch up. No-op when:
   /// - profile is missing or not a learner role,
   /// - already at [LearningLevel.advanced],

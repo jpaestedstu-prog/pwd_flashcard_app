@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'classroom_management_provider.dart';
+import 'firestore_stream_helpers.dart';
+import 'home_group_provider.dart';
 import '../data/models/achievements.dart';
 import '../data/models/models.dart';
 import '../data/models/enums.dart';
 import '../data/models/learning_path.dart';
 import '../data/models/shop_data.dart';
-import '../data/models/leaderboard.dart';
 import '../data/repository.dart';
 import '../data/local/local_repository.dart';
 import '../data/local/hive_service.dart';
@@ -12,9 +14,11 @@ import '../data/local/seed_data.dart';
 import '../data/remote/firestore_repository.dart';
 import '../core/services/firebase_service.dart';
 import '../core/services/fsl_assets_service.dart';
+import '../core/services/recovery_code_service.dart';
 import '../core/services/profile_sync_listener.dart';
 import '../core/services/progress_sync_listener.dart';
 import '../core/services/session_tracker.dart';
+import '../core/services/streak_service.dart';
 import '../core/services/adaptive_difficulty_service.dart';
 import '../core/services/sync_queue/sync_queue_models.dart';
 import '../core/services/sync_queue/sync_queue_service.dart';
@@ -37,11 +41,10 @@ final repositoryProvider = Provider<DataRepository>((ref) {
   return const LocalRepository();
 });
 
-// ─── FSL Video Catalog Availability ────────────────────
-/// Reports which FSL videos are registered in Firebase, so the games and
+// ─── FSL Asset Availability ────────────────────────────
+/// Reports which FSL videos are bundled with this build, so the games and
 /// the FSL category picker can hide content that isn't ready yet.
-/// Memoised — the Firestore `fsl_videos` collection is read once per app
-/// launch (and served from offline cache on subsequent cold starts).
+/// Memoised — the asset manifest is parsed once per app launch.
 final fslAvailabilityProvider = FutureProvider<FslAvailability>((ref) {
   return FslAssetsService.load();
 });
@@ -285,24 +288,50 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     HiveService.saveProgress(state);
   }
 
-  void updateStreak() {
+  /// Records that the learner did *some* learning activity today (finished a
+  /// game, completed the daily challenge, reviewed flashcards, …). Advances
+  /// the streak using calendar-day math via [StreakService] and always bumps
+  /// [lastActivityDate] so "active today" stays accurate.
+  ///
+  /// Streak math is gated by the experiment config: control groups with
+  /// streaks disabled keep [streakDays] at 0. Re-opening the app or doing
+  /// multiple activities the same day never decrements or double-counts.
+  /// A redundant cloud write is skipped when nothing changed the same day.
+  void recordDailyActivity() {
+    final streaksEnabled = ExperimentService.getConfig(profileId)
+        .isFeatureEnabled(GamificationFeature.streaks);
     final now = DateTime.now();
-    final lastDate = state.lastActivityDate;
-    final diff = now.difference(lastDate).inDays;
+    final newStreak = streaksEnabled
+        ? StreakService.nextStreak(
+            prevStreak: state.streakDays,
+            lastActivity: state.lastActivityDate,
+            now: now,
+          )
+        : state.streakDays;
 
-    int newStreak = state.streakDays;
-    if (diff == 1) {
-      newStreak++;
-    } else if (diff > 1) {
-      newStreak = 1;
-    }
+    final alreadyToday = StreakService.isActiveToday(
+      state.lastActivityDate,
+      now: now,
+    );
+    final streakUnchanged = newStreak == state.streakDays;
 
     state = state.copyWith(
       streakDays: newStreak,
       lastActivityDate: now,
     );
-    HiveService.saveProgress(state);
+
+    // If we already checked in today and the streak didn't move, only the
+    // timestamp changed — persist locally but skip the cloud write to save
+    // free-tier Firestore quota.
+    if (alreadyToday && streakUnchanged) {
+      HiveService.saveProgress(state);
+    } else {
+      _persistProgress();
+    }
   }
+
+  /// Backwards-compatible alias. Prefer [recordDailyActivity].
+  void updateStreak() => recordDailyActivity();
 
   /// Call this after any game finishes to persist score, stars, streak, and
   /// category progress all at once.
@@ -349,14 +378,17 @@ class ProgressNotifier extends Notifier<LearningProgress> {
       updated[key] = ((current * 0.7) + (gameProgress * 0.3)).clamp(0.0, 1.0);
     }
 
-    // Update streak (gated by experiment config)
+    // Update streak (gated by experiment config). Calendar-day math lives in
+    // StreakService so this path stays consistent with recordDailyActivity().
     final streaksEnabled = experimentConfig.isFeatureEnabled(GamificationFeature.streaks);
     final now = DateTime.now();
-    final diff = now.difference(state.lastActivityDate).inDays;
-    int newStreak = state.streakDays;
-    if (streaksEnabled && diff >= 1) {
-      newStreak = diff == 1 ? newStreak + 1 : 1;
-    }
+    final newStreak = streaksEnabled
+        ? StreakService.nextStreak(
+            prevStreak: state.streakDays,
+            lastActivity: state.lastActivityDate,
+            now: now,
+          )
+        : state.streakDays;
 
     // Track unique learned words
     final newLearnedIds = Set<String>.from(state.learnedWordIds)
@@ -397,6 +429,42 @@ class ProgressNotifier extends Notifier<LearningProgress> {
         durationSeconds: durationSeconds,
       );
     }
+  }
+
+  /// Persists [state] to Hive and, for classroom-linked students, to cloud.
+  /// Mirrors the offline-first sync rule used by [recordGameResult].
+  void _persistProgress() {
+    HiveService.saveProgress(state);
+    final activeProfile = ref.read(profileProvider);
+    if (activeProfile != null &&
+        !activeProfile.isGuestPlayer &&
+        activeProfile.classroomId != null) {
+      ref.read(repositoryProvider).saveProgress(state);
+    }
+  }
+
+  /// Marks a story as finished reading (learner reached the last sentence).
+  /// Drives the "Read ✓" badge on story cards. No-op if already recorded.
+  void recordStoryRead(String storyId) {
+    // Reading a story is a learning activity — keep the streak alive even on
+    // a re-read (which is otherwise a no-op below).
+    recordDailyActivity();
+    if (state.completedStoryIds.contains(storyId)) return;
+    state = state.copyWith(
+      completedStoryIds: {...state.completedStoryIds, storyId},
+    );
+    _persistProgress();
+  }
+
+  /// Records the best (highest) star score earned on a story's quiz.
+  /// Drives the ★ badge on story cards. No-op if [stars] doesn't improve it.
+  void recordStoryQuizStars(String storyId, int stars) {
+    final prev = state.storyBestStars[storyId] ?? 0;
+    if (stars <= prev) return;
+    state = state.copyWith(
+      storyBestStars: {...state.storyBestStars, storyId: stars},
+    );
+    _persistProgress();
   }
 
   /// Checks progress against all achievements, persists newly unlocked
@@ -529,12 +597,26 @@ final educatorRosterProvider =
             homeGroupChildIds.contains(p.$1.id))
         .toList();
   }
+  // Re-run reactively when the classroom / home-group list or any member
+  // roster changes. Mirrors the wiring on `teacherDashboardSnapshotProvider`.
+  final classroomsAsync =
+      ref.watch(classroomsByTeacherStreamProvider(educatorProfileId));
+  final homeGroupsAsync =
+      ref.watch(homeGroupsByOwnerStreamProvider(educatorProfileId));
+  final classrooms = classroomsAsync.valueOrNull ?? const [];
+  final homeGroups = homeGroupsAsync.valueOrNull ?? const [];
+  for (final c in classrooms) {
+    ref.watch(classroomMembersProvider(c.id));
+  }
+  for (final g in homeGroups) {
+    ref.watch(homeGroupMembersProvider(g.id));
+  }
+
   const remote = FirestoreRepository();
   final aggregated = <(UserProfile, LearningProgress)>[];
   final seen = <String>{};
 
   // Classroom-side roster (teachers)
-  final classrooms = await remote.getClassroomsByTeacher(educatorProfileId);
   for (final c in classrooms) {
     final pairs = await remote.getStudentsWithProgressByClassroom(c.id);
     for (final pair in pairs) {
@@ -547,8 +629,6 @@ final educatorRosterProvider =
 
   // Home-group-side roster (parents) — same de-dup set so a child who
   // appears in BOTH a classroom and a home group is counted once.
-  final homeGroups =
-      await remote.getHomeGroupsByOwnerProfileId(educatorProfileId);
   for (final g in homeGroups) {
     final pairs = await remote.getChildrenWithProgressByHomeGroup(g.id);
     for (final pair in pairs) {
@@ -571,81 +651,12 @@ final sessionTrackerProvider = Provider<SessionTracker?>((ref) {
   return tracker;
 });
 
-// ─── Leaderboard Provider ──────────────────────────────
-
-class LeaderboardNotifier extends Notifier<List<LeaderboardEntry>> {
-  @override
-  List<LeaderboardEntry> build() {
-    // Rebuild when progress changes so the leaderboard stays fresh
-    ref.watch(progressProvider);
-    return _buildEntries();
-  }
-
-  List<LeaderboardEntry> _buildEntries() {
-    final data = HiveService.getAllProfilesWithProgress();
-    final entries = data.map((record) {
-      final (profile, progress) = record;
-      return LeaderboardEntry(
-        profileId: profile.id,
-        profileName: profile.name,
-        avatarIndex: profile.avatarIndex,
-        totalStars: progress.totalStars,
-        wordsLearned: progress.wordsLearned,
-        streakDays: progress.streakDays,
-        gamesPlayed: progress.recentScores.length,
-        lastActivity: progress.lastActivityDate,
-      );
-    }).toList();
-    entries.sort((a, b) => b.rankScore.compareTo(a.rankScore));
-    return entries;
-  }
-
-  /// Rebuilds the leaderboard from all local profiles.
-  void refresh() {
-    state = _buildEntries();
-  }
-
-  /// Returns entries filtered by period and sorted by the given criteria.
-  List<LeaderboardEntry> filtered({
-    LeaderboardSort sort = LeaderboardSort.byOverall,
-    LeaderboardPeriod period = LeaderboardPeriod.allTime,
-  }) {
-    var entries = List.of(state);
-
-    // Time filter
-    if (period != LeaderboardPeriod.allTime) {
-      final now = DateTime.now();
-      final cutoff = switch (period) {
-        LeaderboardPeriod.thisWeek =>
-          now.subtract(const Duration(days: 7)),
-        LeaderboardPeriod.thisMonth =>
-          DateTime(now.year, now.month),
-        _ => DateTime(2000),
-      };
-      entries =
-          entries.where((e) => e.lastActivity.isAfter(cutoff)).toList();
-    }
-
-    // Sort
-    entries.sort((a, b) => switch (sort) {
-      LeaderboardSort.byStars =>
-        b.totalStars.compareTo(a.totalStars),
-      LeaderboardSort.byWords =>
-        b.wordsLearned.compareTo(a.wordsLearned),
-      LeaderboardSort.byStreak =>
-        b.streakDays.compareTo(a.streakDays),
-      LeaderboardSort.byOverall =>
-        b.rankScore.compareTo(a.rankScore),
-    });
-
-    return entries;
-  }
-}
-
-final leaderboardProvider =
-    NotifierProvider<LeaderboardNotifier, List<LeaderboardEntry>>(
-  LeaderboardNotifier.new,
-);
+// ─── Leaderboard ───────────────────────────────────────
+//
+// The global, device-local leaderboard was removed: it leaked every
+// profile on the tablet across class/home-group boundaries. The board is
+// now membership-scoped and online — see `onlineLeaderboardProvider` in
+// online_leaderboard_provider.dart.
 
 // ─── Learning Path Provider ────────────────────────────
 
@@ -851,4 +862,17 @@ class GoalsNotifier extends Notifier<List<LearningGoal>> {
 final goalsProvider =
     NotifierProvider<GoalsNotifier, List<LearningGoal>>(
   GoalsNotifier.new,
+);
+
+// ─── Recovery code (cross-device profile restoration) ────
+/// Returns the latest unused recovery code metadata for [profileId], or
+/// null if none has been issued. The [ShowRecoveryCodeScreen] watches
+/// this to decide between "Generate a recovery code" and "Your recovery
+/// code is ready" UI.
+///
+/// Caller `invalidate(recoveryCodeProvider(profileId))` after generating
+/// a new code so the screen re-reads the freshly-created doc.
+final recoveryCodeProvider =
+    FutureProvider.autoDispose.family<RecoveryCodeRecord?, String>(
+  (ref, profileId) => RecoveryCodeService.findActiveForProfile(profileId),
 );

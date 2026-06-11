@@ -143,6 +143,12 @@ class UserProfile {
   /// Stamped on save so security rules can verify the writer. Null on
   /// pre-auth profiles until [OwnerUidMigration] claims them.
   final String? ownerUid;
+  /// Public-facing handle used for the messaging "add friend by username"
+  /// flow. Auto-generated on first save (e.g. `maria-1947`) and unique
+  /// across the project — backed by the `profile_directory/{username}`
+  /// Firestore doc whose id IS the username. Null on legacy profiles
+  /// until `UsernameMigration` mints one on the next launch.
+  final String? username;
 
   const UserProfile({
     required this.id,
@@ -170,6 +176,7 @@ class UserProfile {
     this.learningLevelOverriddenBy,
     this.learningLevelOverriddenAt,
     this.ownerUid,
+    this.username,
   });
 
   /// Whether this profile requires a PIN to switch to. Covers both migrated
@@ -230,6 +237,7 @@ class UserProfile {
     String? Function()? learningLevelOverriddenBy,
     DateTime? Function()? learningLevelOverriddenAt,
     String? Function()? ownerUid,
+    String? Function()? username,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -268,6 +276,7 @@ class UserProfile {
           ? learningLevelOverriddenAt()
           : this.learningLevelOverriddenAt,
       ownerUid: ownerUid != null ? ownerUid() : this.ownerUid,
+      username: username != null ? username() : this.username,
     );
   }
 }
@@ -284,6 +293,12 @@ class LearningProgress {
   final int spentStars;
   /// Set of unique flashcard IDs the student has answered correctly.
   final Set<String> learnedWordIds;
+  /// IDs of stories the learner has finished reading (reached the last
+  /// sentence in the reader). Drives the "Read ✓" badge on story cards.
+  final Set<String> completedStoryIds;
+  /// Best star score (0–3) earned per story quiz, keyed by story ID.
+  /// Drives the ★ badge on story cards.
+  final Map<String, int> storyBestStars;
 
   const LearningProgress({
     required this.profileId,
@@ -295,6 +310,8 @@ class LearningProgress {
     this.totalStars = 0,
     this.spentStars = 0,
     this.learnedWordIds = const {},
+    this.completedStoryIds = const {},
+    this.storyBestStars = const {},
   });
 
   /// Available star balance (earned minus spent)
@@ -309,6 +326,8 @@ class LearningProgress {
     int? totalStars,
     int? spentStars,
     Set<String>? learnedWordIds,
+    Set<String>? completedStoryIds,
+    Map<String, int>? storyBestStars,
   }) {
     return LearningProgress(
       profileId: profileId,
@@ -320,6 +339,8 @@ class LearningProgress {
       totalStars: totalStars ?? this.totalStars,
       spentStars: spentStars ?? this.spentStars,
       learnedWordIds: learnedWordIds ?? this.learnedWordIds,
+      completedStoryIds: completedStoryIds ?? this.completedStoryIds,
+      storyBestStars: storyBestStars ?? this.storyBestStars,
     );
   }
 }
@@ -383,6 +404,7 @@ class AppSettings {
   final bool voiceNavigation;
   final bool adaptiveDifficulty;
   final bool vocabReviewEnabled;
+  final bool dyslexiaMode;
 
   const AppSettings({
     this.fontScale = 1.0,
@@ -400,6 +422,7 @@ class AppSettings {
     this.voiceNavigation = false,
     this.adaptiveDifficulty = true,
     this.vocabReviewEnabled = false,
+    this.dyslexiaMode = false,
   });
 
   AppSettings copyWith({
@@ -418,6 +441,7 @@ class AppSettings {
     bool? voiceNavigation,
     bool? adaptiveDifficulty,
     bool? vocabReviewEnabled,
+    bool? dyslexiaMode,
   }) {
     return AppSettings(
       fontScale: fontScale ?? this.fontScale,
@@ -435,6 +459,7 @@ class AppSettings {
       voiceNavigation: voiceNavigation ?? this.voiceNavigation,
       adaptiveDifficulty: adaptiveDifficulty ?? this.adaptiveDifficulty,
       vocabReviewEnabled: vocabReviewEnabled ?? this.vocabReviewEnabled,
+      dyslexiaMode: dyslexiaMode ?? this.dyslexiaMode,
     );
   }
 }

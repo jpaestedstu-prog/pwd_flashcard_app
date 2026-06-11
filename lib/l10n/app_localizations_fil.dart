@@ -63,6 +63,9 @@ class AppLocalizationsFil extends AppLocalizations {
   String get reducedMotion => 'Bawasan ang Galaw';
 
   @override
+  String get dyslexiaMode => 'Pampabasa (Dyslexia)';
+
+  @override
   String get textToSpeech => 'Text-to-Speech';
 
   @override
@@ -900,7 +903,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get createStudentMsg =>
-      'Gumawa ng mga profile ng mag-aaral para makita dito.\nBawat mag-aaral ay lalabas kasama ang kanilang progreso.';
+      'Lalabas dito ang mga estudyante pagkatapos nilang sumali gamit ang class code.\nIbahagi ang code mula sa Manage Classes para imbitahan sila.';
 
   @override
   String get switchProfile => 'Palitan';
@@ -1102,4 +1105,146 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get showRecoveryCode => 'Ipakita ang recovery code';
+
+  @override
+  String get setUpProfileTitle => 'I-set Up ang Profile';
+
+  @override
+  String get letsSetUpProfile => 'I-set up natin ang iyong profile';
+
+  @override
+  String get nameLabel => 'Pangalan';
+
+  @override
+  String get pleaseEnterName => 'Mangyaring maglagay ng pangalan';
+
+  @override
+  String get nameMinLength =>
+      'Ang pangalan ay dapat hindi bababa sa 2 karakter';
+
+  @override
+  String get ageOrBirthDate => 'Edad / Petsa ng Kapanganakan';
+
+  @override
+  String get tapToSelectBirthDate =>
+      'I-tap para pumili ng petsa ng kapanganakan';
+
+  @override
+  String get selectBirthDate => 'Pumili ng petsa ng kapanganakan';
+
+  @override
+  String get pleaseSelectBirthDate =>
+      'Mangyaring pumili ng petsa ng kapanganakan';
+
+  @override
+  String yearsOld(int count) {
+    return '$count taong gulang';
+  }
+
+  @override
+  String suggestedLevel(String level) {
+    return '✨ Iminumungkahing antas: $level';
+  }
+
+  @override
+  String get pinProtection => 'Proteksyon ng PIN';
+
+  @override
+  String get pinProtectionDescription =>
+      'Magdagdag ng 4-digit na PIN para protektahan ang profile na ito';
+
+  @override
+  String get enablePinLock => 'I-enable ang PIN lock';
+
+  @override
+  String get enterFourDigitPin => 'Maglagay ng 4-digit na PIN';
+
+  @override
+  String get pinDigitsOnly => 'Dapat puro numero lang ang PIN';
+
+  @override
+  String get iHaveRecoveryCode => 'May recovery code ako';
+
+  @override
+  String get saving => 'Sine-save…';
+
+  @override
+  String get rolePlayer => 'Manlalaro';
+
+  @override
+  String get roleStudent => 'Mag-aaral';
+
+  @override
+  String get roleChild => 'Bata';
+
+  @override
+  String get roleTeacher => 'Guro';
+
+  @override
+  String get roleParent => 'Magulang';
+
+  @override
+  String get rolePlayerTagline => 'Maglaro lang — walang itinatabing progreso';
+
+  @override
+  String get roleStudentTagline => 'Sumali gamit ang class code';
+
+  @override
+  String get roleChildTagline => 'Sumali gamit ang home-group code';
+
+  @override
+  String get roleTeacherTagline => 'Gusto kong tumulong';
+
+  @override
+  String get roleParentTagline => 'Gusto kong sumuporta';
+
+  @override
+  String get roleSetupPlayer =>
+      'Guest mode — itinatabi ang progreso sa device na ito lamang.';
+
+  @override
+  String get roleSetupTeacher =>
+      'I-set up ang iyong profile para pamahalaan ang mga mag-aaral.';
+
+  @override
+  String get roleSetupParent =>
+      'I-set up ang iyong profile para suportahan ang iyong anak.';
+
+  @override
+  String youJoined(String name) {
+    return 'Sumali ka sa $name.';
+  }
+
+  @override
+  String get getStarted => 'Magsimula';
+
+  @override
+  String get welcomeSlide1Title => 'Matuto ng Filipino Sign Language';
+
+  @override
+  String get welcomeSlide1Body =>
+      'Masayang flashcards, laro, at FSL videos para mapalawak ang bokabularyo araw-araw.';
+
+  @override
+  String get welcomeSlide2Title => 'Para sa bawat mag-aaral';
+
+  @override
+  String get welcomeSlide2Body =>
+      'Mga mag-aaral, bata, guro, at magulang — bawat isa ay may angkop na setup.';
+
+  @override
+  String get welcomeSlide3Title => 'Accessible mula sa disenyo';
+
+  @override
+  String get welcomeSlide3Body =>
+      'Mataas na contrast, pampabasa (dyslexia), text-to-speech, at reduced-motion na opsyon ay nakapaloob na.';
+
+  @override
+  String get splashLoadingResources => 'Niloload ang mga resource...';
+
+  @override
+  String get splashPreparingCards => 'Inihahanda ang iyong mga card...';
+
+  @override
+  String get splashAlmostReady => 'Halos handa na!';
 }

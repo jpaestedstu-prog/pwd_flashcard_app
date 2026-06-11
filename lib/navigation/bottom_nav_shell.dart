@@ -28,6 +28,7 @@ const _immersiveRoutePrefixes = [
   '/games/fsl-practice/word-to-sign',
   '/flashcards/viewer/',
   '/flashcards/create',
+  '/flashcards/templates',
 ];
 
 bool _isImmersiveRoute(String location) {
@@ -63,7 +64,33 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
   /// Tracks per-tab bounce animations triggered on tap.
   final Map<int, AnimationController> _bounceControllers = {};
 
-  static const _navHeight = 80.0;
+  /// Computes nav-bar dimensions from the *actual* icon + label + spacing
+  /// needs at the current text scale and screen tier. Single source of truth
+  /// for outer container, animated bar, pill, and item rendering — so the
+  /// bar can never disagree with what its content needs, at any scale.
+  _NavMetrics _computeMetrics(BuildContext context) {
+    final iconSel = context.scaleIcon(context.responsiveSize(26));
+    final iconUnsel = context.scaleIcon(context.responsiveSize(22));
+    final scale = MediaQuery.textScalerOf(context).scale(1.0);
+    // Label height for layout math (Text applies textScaler internally
+    // when rendering; we mirror it here so the height calculation matches).
+    final fontSel = context.responsiveSize(11.5) * scale;
+    final gap = (4.0 * scale).clamp(3.0, 8.0);
+    const dot = 5.0;
+    // Selected item is the tallest: icon + gap + textLineHeight + gap + dot.
+    // ~1.25 line-height fits Nunito at all weights without descender clipping.
+    final content = iconSel + gap + fontSel * 1.25 + gap + dot;
+    // 12dp vertical padding (6 top + 6 bottom) so content never touches edges.
+    final bar = content + 12;
+    return _NavMetrics(
+      bar: bar,
+      iconSelected: iconSel,
+      iconUnselected: iconUnsel,
+      gap: gap,
+      dot: dot,
+    );
+  }
+
   static const _animDuration = Duration(milliseconds: 300);
 
   @override
@@ -201,6 +228,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
           bottomNavigationBar: Builder(
             builder: (context) {
               final hc = HCColor.of(context);
+              final metrics = _computeMetrics(context);
               return AnimatedBuilder(
                 animation: _animController,
                 builder: (context, child) {
@@ -216,47 +244,54 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
                   );
                 },
                 child: RepaintBoundary(
-                  child: Container(
-                    height: _navHeight,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(28),
-                        topRight: Radius.circular(28),
-                      ),
-                      border: Border(
-                        top: BorderSide(
-                          color: hc.primary.withValues(alpha: 0.08),
+                  // SafeArea(top: false) lifts the bar above Android gesture-nav
+                  // insets on Android 10+ — Scaffold's bottomNavigationBar slot
+                  // does NOT auto-pad for the system gesture area.
+                  child: SafeArea(
+                    top: false,
+                    child: Container(
+                      height: metrics.bar,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(28),
+                          topRight: Radius.circular(28),
                         ),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: hc.primary.withValues(alpha: 0.08),
-                          blurRadius: 24,
-                          offset: const Offset(0, -6),
+                        border: Border(
+                          top: BorderSide(
+                            color: hc.primary.withValues(alpha: 0.08),
+                          ),
                         ),
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, -2),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(28),
-                        topRight: Radius.circular(28),
+                        boxShadow: [
+                          BoxShadow(
+                            color: hc.primary.withValues(alpha: 0.08),
+                            blurRadius: 24,
+                            offset: const Offset(0, -6),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, -2),
+                          ),
+                        ],
                       ),
-                      child: _AnimatedNavBar(
-                        currentIndex: currentIndex,
-                        items: _isEducator
-                            ? _educatorNavItems()
-                            : _isChild
-                                ? _childNavItems()
-                                : _studentNavItems(),
-                        onTap: (index) => _onTap(context, index),
-                        bounceControllers: _bounceControllers,
-                        vsync: this,
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(28),
+                          topRight: Radius.circular(28),
+                        ),
+                        child: _AnimatedNavBar(
+                          currentIndex: currentIndex,
+                          items: _isEducator
+                              ? _educatorNavItems()
+                              : _isChild
+                                  ? _childNavItems()
+                                  : _studentNavItems(),
+                          onTap: (index) => _onTap(context, index),
+                          bounceControllers: _bounceControllers,
+                          vsync: this,
+                          metrics: metrics,
+                        ),
                       ),
                     ),
                   ),
@@ -328,6 +363,25 @@ class _NavItem {
   });
 }
 
+/// Pre-computed nav-bar dimensions shared by the outer container, the
+/// animated bar, the pill, and each item — so the bar's height and the
+/// content laid out inside it can never disagree at any text scale.
+class _NavMetrics {
+  final double bar;
+  final double iconSelected;
+  final double iconUnselected;
+  final double gap;
+  final double dot;
+
+  const _NavMetrics({
+    required this.bar,
+    required this.iconSelected,
+    required this.iconUnselected,
+    required this.gap,
+    required this.dot,
+  });
+}
+
 // ─── Custom Animated Nav Bar ──────────────────────────
 
 class _AnimatedNavBar extends StatelessWidget {
@@ -336,6 +390,7 @@ class _AnimatedNavBar extends StatelessWidget {
   final ValueChanged<int> onTap;
   final Map<int, AnimationController> bounceControllers;
   final TickerProvider vsync;
+  final _NavMetrics metrics;
 
   const _AnimatedNavBar({
     required this.currentIndex,
@@ -343,22 +398,26 @@ class _AnimatedNavBar extends StatelessWidget {
     required this.onTap,
     required this.bounceControllers,
     required this.vsync,
+    required this.metrics,
   });
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final primaryColor = hc.primary;
-    final pillWidth = context.responsiveSize(60);
-    final pillHeight = context.responsiveSize(36);
-    final barHeight = context.responsiveSize(80);
+    // Pill scales with the selected icon so it always frames it cleanly,
+    // even at XL font scale where the icon is much larger than 26dp.
+    final pillWidth = metrics.iconSelected + context.responsiveSize(20);
+    final pillHeight = metrics.iconSelected + 10;
+    final barHeight = metrics.bar;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalWidth = constraints.maxWidth;
         final itemWidth = totalWidth / items.length;
         final pillLeft = currentIndex * itemWidth + (itemWidth - pillWidth) / 2;
-        // Vertically center the pill over the icon area (shifted slightly up)
+        // Vertically center the pill over the icon area (shifted slightly up
+        // so it sits behind the icon, not the label).
         final pillTop = (barHeight - pillHeight) / 2 - 6;
 
         return SizedBox(
@@ -399,8 +458,10 @@ class _AnimatedNavBar extends StatelessWidget {
                 ),
               ),
 
-              // Nav items row
+              // Nav items row — stretch makes each Expanded child fill the
+              // full barHeight, so items no longer need their own SizedBox.
               Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: List.generate(items.length, (index) {
                   final item = items[index];
                   final isSelected = index == currentIndex;
@@ -412,6 +473,7 @@ class _AnimatedNavBar extends StatelessWidget {
                       onTap: () => onTap(index),
                       bounceControllers: bounceControllers,
                       vsync: vsync,
+                      metrics: metrics,
                     ),
                   );
                 }),
@@ -431,6 +493,7 @@ class _AnimatedNavItem extends StatefulWidget {
   final VoidCallback onTap;
   final Map<int, AnimationController> bounceControllers;
   final TickerProvider vsync;
+  final _NavMetrics metrics;
 
   const _AnimatedNavItem({
     required this.item,
@@ -439,6 +502,7 @@ class _AnimatedNavItem extends StatefulWidget {
     required this.onTap,
     required this.bounceControllers,
     required this.vsync,
+    required this.metrics,
   });
 
   @override
@@ -470,6 +534,7 @@ class _AnimatedNavItemState extends State<_AnimatedNavItem> {
     final hc = HCColor.of(context);
     final primaryColor = hc.primary;
     final unselectedColor = hc.textSecondary;
+    final m = widget.metrics;
 
     return Semantics(
       button: true,
@@ -478,24 +543,30 @@ class _AnimatedNavItemState extends State<_AnimatedNavItem> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _handleTap,
-        child: SizedBox(
-          height: 80,
-          child: AnimatedBuilder(
-            animation: _bounceCtrl,
-            builder: (context, child) {
-              // Bounce: quick scale up then back
-              final t = _bounceCtrl.value;
-              final bounceScale =
-                  1.0 + 0.12 * Curves.elasticOut.transform(t) * (1 - t);
-              return Transform.scale(
-                scale: bounceScale,
-                child: child,
-              );
-            },
+        // The parent Row stretches each Expanded child to barHeight, so no
+        // explicit SizedBox here — the Column fills whatever height it gets.
+        child: AnimatedBuilder(
+          animation: _bounceCtrl,
+          builder: (context, child) {
+            // Bounce: quick scale up then back
+            final t = _bounceCtrl.value;
+            final bounceScale =
+                1.0 + 0.12 * Curves.elasticOut.transform(t) * (1 - t);
+            return Transform.scale(
+              scale: bounceScale,
+              child: child,
+            );
+          },
+          // 4dp horizontal padding keeps adjacent cells from kissing at XL
+          // scale; 6dp vertical matches the +12 budget in _computeMetrics.
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon with animated transitions
+                // Icon with animated transitions — size is pre-computed in
+                // _NavMetrics so the bar and the icon can never disagree.
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
                   switchInCurve: Curves.easeOutBack,
@@ -509,40 +580,53 @@ class _AnimatedNavItemState extends State<_AnimatedNavItem> {
                         : widget.item.icon,
                     key: ValueKey(widget.isSelected),
                     size: widget.isSelected
-                        ? context.responsiveSize(26)
-                        : context.responsiveSize(22),
+                        ? m.iconSelected
+                        : m.iconUnselected,
                     color: widget.isSelected
                         ? primaryColor
                         : unselectedColor,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: m.gap),
 
-                // Label with animated color & weight
-                AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 250),
-                  style: TextStyle(
-                    fontSize: widget.isSelected
-                        ? context.responsiveSize(11.5)
-                        : context.responsiveSize(10.5),
-                    fontWeight:
-                        widget.isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: widget.isSelected
-                        ? primaryColor
-                        : unselectedColor,
-                    fontFamily: 'Nunito',
-                    letterSpacing: widget.isSelected ? 0.2 : 0,
+                // Label — FittedBox + maxLines:1 + softWrap:false guarantees
+                // the label NEVER wraps (no vertical overflow) and NEVER
+                // overflows its cell horizontally (scales down to fit if the
+                // user's font scale would otherwise push it past the cell).
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 250),
+                      style: TextStyle(
+                        fontSize: widget.isSelected
+                            ? context.responsiveSize(11.5)
+                            : context.responsiveSize(10.5),
+                        fontWeight: widget.isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: widget.isSelected
+                            ? primaryColor
+                            : unselectedColor,
+                        fontFamily: 'Nunito',
+                        letterSpacing: widget.isSelected ? 0.2 : 0,
+                      ),
+                      child: Text(
+                        widget.item.label,
+                        maxLines: 1,
+                        softWrap: false,
+                      ),
+                    ),
                   ),
-                  child: Text(widget.item.label),
                 ),
 
                 // Active dot indicator
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutCubic,
-                  margin: const EdgeInsets.only(top: 4),
-                  width: widget.isSelected ? 5 : 0,
-                  height: widget.isSelected ? 5 : 0,
+                  margin: EdgeInsets.only(top: m.gap),
+                  width: widget.isSelected ? m.dot : 0,
+                  height: widget.isSelected ? m.dot : 0,
                   decoration: BoxDecoration(
                     color: primaryColor,
                     shape: BoxShape.circle,

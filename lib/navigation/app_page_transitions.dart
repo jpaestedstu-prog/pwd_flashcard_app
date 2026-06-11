@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 
 /// Animated page transitions for go_router, categorized by screen type.
@@ -18,7 +18,9 @@ import 'package:go_router/go_router.dart';
 class AppPageTransitions {
   AppPageTransitions._();
 
-  static const Duration _normal = Duration(milliseconds: 400);
+  // Snappy enough that the destination screen appears immediately after a
+  // tap, while still reading as a transition rather than a hard cut.
+  static const Duration _normal = Duration(milliseconds: 250);
 
   // ─── Fade (default shell tabs) ────────────────────────
   static CustomTransitionPage<void> fade({
@@ -28,6 +30,8 @@ class AppPageTransitions {
     return CustomTransitionPage(
       key: key,
       child: child,
+      transitionDuration: _normal,
+      reverseTransitionDuration: _normal,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         return FadeTransition(opacity: animation, child: child);
       },
@@ -61,31 +65,15 @@ class AppPageTransitions {
     );
   }
 
-  // ─── Slide Right (detail screens, drill-in) ───────────
-  static CustomTransitionPage<void> slideRight({
+  // ─── Slide Right (detail screens, drill-in) — iOS-style with built-in swipe-back ─
+  // Returns CupertinoPage so detail screens get native edge-swipe + finger-follow
+  // + snap-back on all platforms. The transition curve is similar to the
+  // previous Material slide; cross-platform users won't notice a regression.
+  static Page<void> slideRight({
     required LocalKey key,
     required Widget child,
   }) {
-    return CustomTransitionPage(
-      key: key,
-      child: child,
-      transitionDuration: _normal,
-      reverseTransitionDuration: _normal,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0.25, 0),
-            end: Offset.zero,
-          ).animate(curved),
-          child: FadeTransition(opacity: curved, child: child),
-        );
-      },
-    );
+    return CupertinoPage<void>(key: key, child: child);
   }
 
   // ─── Scale + Fade (games, interactive activities) ─────

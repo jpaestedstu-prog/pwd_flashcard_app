@@ -6,6 +6,8 @@ import '../models/classroom_member.dart';
 import '../remote/firestore_repository.dart';
 import '../repository.dart';
 import '../../core/services/firebase_service.dart';
+import '../../features/messaging/services/profile_directory_service.dart';
+import '../../features/messaging/services/username_generator.dart';
 import 'hive_service.dart';
 
 /// Local (on-device) implementation of [DataRepository] backed by Hive.
@@ -58,13 +60,48 @@ class LocalRepository implements DataRepository {
     // saved. Covers both new profile creation and the migration of pre-auth
     // profiles — every profile-save site flows through this method.
     final uid = FirebaseService.currentUid;
-    final stamped = (profile.ownerUid == null && uid != null)
+    var stamped = (profile.ownerUid == null && uid != null)
         ? profile.copyWith(ownerUid: () => uid)
         : profile;
+
+    // Mint a messaging handle if this profile doesn't have one yet. The
+    // generator checks the live `profile_directory` for collisions, so a
+    // resolved handle is safe to claim in the same save cycle. Skipped
+    // for player-mode profiles, which never reach the directory.
+    if ((stamped.username == null || stamped.username!.isEmpty) &&
+        !stamped.isGuestPlayer) {
+      try {
+        final handle =
+            await UsernameGenerator.generateUniqueHandle(stamped.name);
+        stamped = stamped.copyWith(username: () => handle);
+      } catch (e) {
+        // Directory lookup failed (offline / rules). Fall back to a
+        // local-only handle so the profile is still creatable; the
+        // username migration will reconcile on the next launch.
+        stamped = stamped.copyWith(
+            username: () => UsernameGenerator.generateHandle(stamped.name));
+        if (kDebugMode) {
+          debugPrint('LocalRepository.saveProfile: handle fallback ($e)');
+        }
+      }
+    }
+
     await HiveService.saveProfile(stamped);
     // Player-mode profiles never reach the cloud.
     if (stamped.isGuestPlayer) return;
+    // Only push profiles this device owns. A teacher/parent can view (and
+    // therefore locally cache) a class member's profile owned by another
+    // user; the security rules correctly deny non-owner writes, which
+    // otherwise surface as `permission-denied` noise on back-navigation.
+    // Cache such foreign profiles locally, but never remote-write them.
+    if (uid != null && stamped.ownerUid != null && stamped.ownerUid != uid) {
+      return;
+    }
     await _remoteWrite('saveProfile', () => _remote.saveProfile(stamped));
+    // Publish to the public messaging directory so other devices can
+    // resolve this profile by username or by id.
+    await _remoteWrite('profileDirectoryUpsert',
+        () => ProfileDirectoryService.instance.upsert(stamped));
   }
 
   @override

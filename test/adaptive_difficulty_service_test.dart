@@ -10,6 +10,12 @@ Future<void> _initHive() async {
   if (!Hive.isBoxOpen('progress')) {
     await Hive.openBox('progress');
   }
+  // recordGameResult fires LearningLevelService.maybePromote, which reads
+  // the profiles box via HiveService.getProfileById. Open it so the
+  // fire-and-forget promotion path doesn't throw a HiveError.
+  if (!Hive.isBoxOpen('profiles')) {
+    await Hive.openBox('profiles');
+  }
 }
 
 void main() {
@@ -22,6 +28,7 @@ void main() {
 
   setUp(() async {
     await box.clear();
+    await Hive.box('profiles').clear();
   });
 
   // ─── getDifficultyEmoji ────────────────────────────────────

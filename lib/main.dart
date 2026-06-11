@@ -11,9 +11,11 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'l10n/app_localizations.dart';
 import 'core/security/owner_uid_migration.dart';
 import 'core/security/pin_migration.dart';
+import 'core/security/username_migration.dart';
 import 'core/services/active_time_tracker.dart';
 import 'core/services/alarm_scheduler.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/analytics_service.dart';
 import 'core/services/firebase_service.dart';
 import 'core/services/profile_sync_listener.dart';
 import 'core/services/progress_sync_listener.dart';
@@ -39,6 +41,20 @@ import 'widgets/error_boundary.dart';
 import 'core/services/sync_queue/sync_queue_service.dart';
 import 'widgets/sync_status_widget.dart';
 
+SystemUiOverlayStyle _systemUiStyleFor({required bool isDark}) {
+  final iconBrightness = isDark ? Brightness.light : Brightness.dark;
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: iconBrightness,
+    statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: iconBrightness,
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarContrastEnforced: false,
+    systemStatusBarContrastEnforced: false,
+  );
+}
+
 void main() {
   // Wrap the entire startup in a guarded zone so that
   // ensureInitialized() and runApp() share the SAME zone.
@@ -54,9 +70,12 @@ void main() {
     // Flutter 3.x automatically targets the display's native refresh rate
     // (120 Hz on Honor Pad X8a) so no manual configuration is needed.
 
-    // Enable pointer-event resampling to align touch events with frame
-    // boundaries — reduces perceived input latency on high-Hz displays.
-    GestureBinding.instance.resamplingEnabled = true;
+    // Pointer-event resampling stays OFF (Flutter's default). When enabled,
+    // touch events are queued and replayed against the frame clock; on
+    // tablets whose input timestamps drift from that clock (or when a frame
+    // janks) the queue flushes late, so single taps feel dead and users end
+    // up tapping repeatedly. Direct dispatch keeps every tap immediate.
+    GestureBinding.instance.resamplingEnabled = false;
 
     // Increase decoded image cache for a 4 GB device with heavy flashcard
     // images. Default is 100 MB; we raise to 256 MB so scrolling large
@@ -69,19 +88,39 @@ void main() {
     // This avoids ANR on devices with slow or no internet.
     GoogleFonts.config.allowRuntimeFetching = false;
 
-    // Lock to portrait on tablets
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-
-    // Transparent status bar
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ),
+    // Orientation: allow landscape on tablets (≥600 dp shortest side),
+    // keep portrait-only on phones. The check uses the first view's
+    // physical size divided by its device pixel ratio so we don't need
+    // a MediaQuery (which requires a build context).
+    final firstView =
+        WidgetsBinding.instance.platformDispatcher.views.first;
+    final dpr = firstView.devicePixelRatio;
+    final logicalSize = firstView.physicalSize / dpr;
+    final shortestSide = logicalSize.shortestSide;
+    final isTabletForm = shortestSide >= 600;
+    await SystemChrome.setPreferredOrientations(
+      isTabletForm
+          ? const [
+              DeviceOrientation.portraitUp,
+              DeviceOrientation.portraitDown,
+              DeviceOrientation.landscapeLeft,
+              DeviceOrientation.landscapeRight,
+            ]
+          : const [
+              DeviceOrientation.portraitUp,
+              DeviceOrientation.portraitDown,
+            ],
     );
+
+    // Edge-to-edge: draw under status + nav bars. Android 15 (targetSdk
+    // 35+) enforces this anyway; setting it explicitly gives consistent
+    // behavior on Android 10+. We can't await this on older versions
+    // where it's a no-op, so fire-and-forget.
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+    // Transparent system bars at startup. Per-theme icon brightness is
+    // re-applied inside [FlashLearnApp.build] once we know the theme.
+    SystemChrome.setSystemUIOverlayStyle(_systemUiStyleFor(isDark: false));
 
     // Initialize Hive, Firebase, and Notifications in parallel
     // (they are independent of each other)
@@ -89,7 +128,7 @@ void main() {
       HiveService.init(),
       FirebaseService.init(options: DefaultFirebaseOptions.currentPlatform),
       NotificationService.init(
-        onNotificationTap: (payload) {
+        onNotificationTap: (payload) { 
           WidgetsBinding.instance.addPostFrameCallback((_) {
             final ctx = rootNavigatorKey.currentContext;
             if (ctx == null) return;
@@ -109,20 +148,15 @@ void main() {
     // Open the error logs box (after Hive.init)
     await Hive.openBox('error_logs');
 
-    // Sign in anonymously so every Firestore write carries an auth uid.
-    // Must run before OwnerUidMigration (which stamps that uid onto
-    // pre-auth profiles) and before any sync/queue activity.
-    await FirebaseService.signInAnonymously();
-
-    // Migrate any plaintext PINs to salted PBKDF2 hashes. Idempotent —
-    // a settings flag and per-profile guards prevent double-hashing.
+    // Migrate any plaintext PINs to salted PBKDF2 hashes before the first
+    // PIN-gated screen can be reached. Local-only and idempotent — a
+    // settings flag and per-profile guards prevent double-hashing.
     await PinMigration.runIfNeeded();
 
-    // Claim ownership of pre-auth profiles for this device's uid.
-    // Idempotent — a Hive flag prevents re-runs.
-    await OwnerUidMigration.runIfNeeded();
-
-    // Start offline-first sync service (after Firebase init)
+    // Build the sync plumbing now — constructors are I/O-free and the
+    // provider overrides below need the instances synchronously. The
+    // network side (listeners, queue drain) starts in the background
+    // chain after sign-in.
     SyncService? syncInstance;
     SyncQueueService? queueInstance;
     ProgressSyncListener? progressListener;
@@ -132,24 +166,59 @@ void main() {
         local: const LocalRepository(),
         remote: const FirestoreRepository(),
       );
-      syncInstance.startListening();
       queueInstance = syncInstance.queueService;
-
-      // Process any pending queue items if we're online at launch
-      queueInstance?.processQueue();
 
       // Bidirectional sync: subscribe to remote progress for every
       // profile on this device so updates from other devices land in
       // Hive and refresh the UI without a manual reload.
       progressListener = ProgressSyncListener();
-      progressListener.start();
 
       // Mirror listener for `profiles/{id}` — picks up educator-driven
       // name patches (Manage Classes > Rename, Home Group > Rename) so
       // the learner's own device shows the new name without a relaunch.
       profileListener = ProfileSyncListener();
-      profileListener.start();
     }
+
+    // Everything that may touch the network runs AFTER the first frame,
+    // behind the splash screen, so a slow or absent connection can never
+    // hold the app on the native splash. Order inside the chain matters:
+    // sign-in mints the auth uid that the migrations stamp onto local
+    // data and that Firestore security rules require for the listeners.
+    final sync = syncInstance;
+    final queue = queueInstance;
+    final progressSync = progressListener;
+    final profileSync = profileListener;
+    unawaited(() async {
+      try {
+        // Anonymous auth so every Firestore write carries an auth uid.
+        await FirebaseService.signInAnonymously();
+
+        // Opt-in telemetry (Crashlytics + Analytics). Reads the persisted
+        // opt-in flag from Hive — default OFF, so nothing is sent until an
+        // educator opts in via Settings → "Help improve the app".
+        await AnalyticsService.initialize();
+
+        // Claim ownership of pre-auth profiles for this device's uid.
+        // Skips without setting its done-flag when sign-in didn't
+        // complete, so it retries on the next boot.
+        await OwnerUidMigration.runIfNeeded();
+
+        // Mint a messaging handle for every legacy profile that doesn't
+        // have one yet. Idempotent (flag + per-profile null check).
+        await UsernameMigration.runIfNeeded();
+
+        // With auth in place, open the sync pipes: connectivity listener,
+        // pending-write drain, and the remote progress/profile mirrors.
+        sync?.startListening();
+        queue?.processQueue();
+        progressSync?.start();
+        profileSync?.start();
+      } catch (e, s) {
+        // Background startup must never pop the global error snackbar —
+        // every step retries on the next boot or on demand (ensureSignedIn).
+        ErrorHandler.report(e, s, 'startupBackground:silent');
+      }
+    }());
 
     runApp(ProviderScope(
       overrides: [
@@ -243,35 +312,44 @@ class FlashLearnApp extends ConsumerWidget {
     applyLifecycle(ref.read(profileProvider));
     ref.listen(profileProvider, (_, next) => applyLifecycle(next));
 
-    // Check for equipped shop theme (accessibility themes take priority)
+    // Check for equipped shop theme (acc essibility themes take priority)
     // Watch progress state to rebuild on changes, then read equipped item
     ref.watch(progressProvider);
     final equippedThemeId = ref.read(progressProvider.notifier).getEquippedItemId(
       ShopItemType.theme,
     );
 
-    // Choose theme based on settings — accessibility first, then shop theme
+    // Choose theme based on settings — accessibility first, then shop theme.
+    // Cascade order: high-contrast > dyslexia > (dark mode × shop theme) >
+    // dark mode > shop theme > light. The dark-mode × shop-theme combo
+    // matters because users who paid for a shop theme expect their palette
+    // to follow them into night mode instead of being kicked to stock dark.
     final ThemeData baseTheme;
     if (settings.highContrastMode) {
       baseTheme = AppTheme.highContrast;
+    } else if (settings.dyslexiaMode) {
+      baseTheme = AppTheme.dyslexia;
     } else if (settings.darkMode) {
-      baseTheme = AppTheme.dark;
+      baseTheme = AppTheme.shopThemeDark(equippedThemeId) ?? AppTheme.dark;
     } else {
       baseTheme = AppTheme.shopTheme(equippedThemeId) ?? AppTheme.light;
     }
 
-    // Adjust status bar icons for dark themes
+    // Adjust both status bar AND nav bar icons for dark themes. The
+    // nav bar piece matters under edge-to-edge — without it, light icons
+    // on a light Flutter background go invisible after a theme toggle.
     SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness:
-            (settings.darkMode || settings.highContrastMode)
-                ? Brightness.light
-                : Brightness.dark,
+      _systemUiStyleFor(
+        isDark: settings.darkMode || settings.highContrastMode,
       ),
     );
 
-    final theme = baseTheme;
+    // Reduced-motion contract: when on, strip page-route transitions too
+    // so navigation is instant (Animate.defaultDuration already covers
+    // in-screen flutter_animate calls).
+    final theme = settings.reducedMotion
+        ? AppTheme.withReducedMotion(baseTheme)
+        : baseTheme;
 
     // When reduced motion is enabled, set all flutter_animate durations to zero
     // so every .animate() call throughout the app becomes instant.
@@ -290,11 +368,16 @@ class FlashLearnApp extends ConsumerWidget {
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       builder: (context, child) {
-        // Apply global font scale from settings
+        // Apply global font scale from settings, multiplied against the
+        // OS scale, then clamp the product into a layout-safe range so
+        // extreme system font scales (some Android skins go to 2.0) don't
+        // overflow game/flashcard tiles.
         final mediaQuery = MediaQuery.of(context);
+        final systemScale = mediaQuery.textScaler.scale(1.0);
+        final combined = (systemScale * settings.fontScale).clamp(0.85, 1.5);
         return MediaQuery(
           data: mediaQuery.copyWith(
-            textScaler: TextScaler.linear(settings.fontScale),
+            textScaler: TextScaler.linear(combined),
           ),
           // Wrap in ErrorBoundary to show snackbar for global errors
           // and ConnectivityBanner for offline indicator. The
@@ -316,3 +399,10 @@ class FlashLearnApp extends ConsumerWidget {
     );
   }
 }
+
+// Scroll behavior intentionally stays at the MaterialScrollBehavior default.
+// A previous override added PointerDeviceKind.mouse to dragDevices, but the
+// drag slop for a mouse is 1 logical pixel — any click that moved ≥1px inside
+// a scrollable became a micro-drag that cancelled the tap, so buttons needed
+// several clicks. The default set (touch/stylus/trackpad/unknown) also keeps
+// Android Voice Access scrolling working; mouse users scroll with the wheel.

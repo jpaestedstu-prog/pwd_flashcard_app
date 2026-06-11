@@ -62,6 +62,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reducedMotion => 'Reduced Motion';
 
   @override
+  String get dyslexiaMode => 'Dyslexia-friendly';
+
+  @override
   String get textToSpeech => 'Text-to-Speech';
 
   @override
@@ -893,7 +896,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get createStudentMsg =>
-      'Create student profiles to see them here.\nEach student will appear with their progress.';
+      'Students appear here after joining your class with a code.\nShare the class code from Manage Classes to invite them.';
 
   @override
   String get switchProfile => 'Switch';
@@ -1094,4 +1097,141 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get showRecoveryCode => 'Show recovery code';
+
+  @override
+  String get setUpProfileTitle => 'Set Up Profile';
+
+  @override
+  String get letsSetUpProfile => 'Let\'s set up your profile';
+
+  @override
+  String get nameLabel => 'Name';
+
+  @override
+  String get pleaseEnterName => 'Please enter a name';
+
+  @override
+  String get nameMinLength => 'Name must be at least 2 characters';
+
+  @override
+  String get ageOrBirthDate => 'Age / Birth Date';
+
+  @override
+  String get tapToSelectBirthDate => 'Tap to select birth date';
+
+  @override
+  String get selectBirthDate => 'Select birth date';
+
+  @override
+  String get pleaseSelectBirthDate => 'Please select a birth date';
+
+  @override
+  String yearsOld(int count) {
+    return '$count yrs old';
+  }
+
+  @override
+  String suggestedLevel(String level) {
+    return '✨ Suggested level: $level';
+  }
+
+  @override
+  String get pinProtection => 'PIN Protection';
+
+  @override
+  String get pinProtectionDescription =>
+      'Add a 4-digit PIN to protect this profile';
+
+  @override
+  String get enablePinLock => 'Enable PIN lock';
+
+  @override
+  String get enterFourDigitPin => 'Enter 4-digit PIN';
+
+  @override
+  String get pinDigitsOnly => 'PIN must contain only digits';
+
+  @override
+  String get iHaveRecoveryCode => 'I have a recovery code';
+
+  @override
+  String get saving => 'Saving…';
+
+  @override
+  String get rolePlayer => 'Player';
+
+  @override
+  String get roleStudent => 'Student';
+
+  @override
+  String get roleChild => 'Child';
+
+  @override
+  String get roleTeacher => 'Teacher';
+
+  @override
+  String get roleParent => 'Parent';
+
+  @override
+  String get rolePlayerTagline => 'Just play — no progress saved';
+
+  @override
+  String get roleStudentTagline => 'Join with a class code';
+
+  @override
+  String get roleChildTagline => 'Join with a home-group code';
+
+  @override
+  String get roleTeacherTagline => 'I want to help';
+
+  @override
+  String get roleParentTagline => 'I want to support';
+
+  @override
+  String get roleSetupPlayer =>
+      'Guest mode — progress is saved on this device only.';
+
+  @override
+  String get roleSetupTeacher => 'Set up your profile to manage learners.';
+
+  @override
+  String get roleSetupParent => 'Set up your profile to support your child.';
+
+  @override
+  String youJoined(String name) {
+    return 'You joined $name.';
+  }
+
+  @override
+  String get getStarted => 'Get Started';
+
+  @override
+  String get welcomeSlide1Title => 'Learn Filipino Sign Language';
+
+  @override
+  String get welcomeSlide1Body =>
+      'Fun flashcards, games, and FSL videos to build vocabulary every day.';
+
+  @override
+  String get welcomeSlide2Title => 'Made for every learner';
+
+  @override
+  String get welcomeSlide2Body =>
+      'Students, children, teachers, and parents — each gets a setup that fits.';
+
+  @override
+  String get welcomeSlide3Title => 'Accessible by design';
+
+  @override
+  String get welcomeSlide3Body =>
+      'High-contrast, dyslexia-friendly, text-to-speech, and reduced-motion options are built in.';
+
+  @override
+  String get splashLoadingResources => 'Loading resources...';
+
+  @override
+  String get splashPreparingCards => 'Preparing your cards...';
+
+  @override
+  String get splashAlmostReady => 'Almost ready!';
 }

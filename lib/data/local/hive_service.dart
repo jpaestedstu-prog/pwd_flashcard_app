@@ -9,6 +9,8 @@ import '../models/classroom.dart';
 import '../models/classroom_member.dart';
 import '../models/home_group.dart';
 import '../models/home_group_member.dart';
+import '../models/leaderboard.dart';
+import '../models/leaderboard_config.dart';
 import '../../features/mood_tracker/models/mood_models.dart';
 import '../../features/messaging/models/messaging_models.dart';
 import '../../features/goals/models/goal_model.dart';
@@ -31,6 +33,10 @@ class HiveService {
   static const String _childAlarmsBox = 'child_alarms';
   static const String _childTimeLimitsBox = 'child_time_limits';
   static const String _activeTimeLogsBox = 'active_time_logs';
+  static const String _friendsCacheBox = 'friends_cache';
+  static const String _friendRequestsCacheBox = 'friend_requests_cache';
+  static const String _friendDirectoryCacheBox = 'friend_directory_cache';
+  static const String _leaderboardConfigBox = 'leaderboard_config';
 
   /// Initialize Hive and open all boxes
   static Future<void> init() async {
@@ -47,6 +53,10 @@ class HiveService {
     await Hive.openBox(_childAlarmsBox);
     await Hive.openBox(_childTimeLimitsBox);
     await Hive.openBox(_activeTimeLogsBox);
+    await Hive.openBox(_friendsCacheBox);
+    await Hive.openBox(_friendRequestsCacheBox);
+    await Hive.openBox(_friendDirectoryCacheBox);
+    await Hive.openBox(_leaderboardConfigBox);
     // Open the sync queue box for offline change tracking
     await SyncQueueStorage.init();
     // One-shot migration to per-student note keys. Idempotent.
@@ -95,6 +105,7 @@ class HiveService {
       'learningLevelOverriddenAt':
           profile.learningLevelOverriddenAt?.toIso8601String(),
       'ownerUid': profile.ownerUid,
+      'username': profile.username,
     });
     await _profileBox.put('profiles', profiles);
   }
@@ -214,6 +225,7 @@ class HiveService {
           ? DateTime.tryParse(data['learningLevelOverriddenAt'] as String)
           : null,
       ownerUid: data['ownerUid'] as String?,
+      username: data['username'] as String?,
     );
   }
 
@@ -271,6 +283,7 @@ class HiveService {
       voiceNavigation: _settBox.get('voiceNavigation', defaultValue: false),
       adaptiveDifficulty: _settBox.get('adaptiveDifficulty', defaultValue: true),
       vocabReviewEnabled: _settBox.get('vocabReviewEnabled', defaultValue: false),
+      dyslexiaMode: _settBox.get('dyslexiaMode', defaultValue: false),
     );
   }
 
@@ -290,6 +303,7 @@ class HiveService {
     await _settBox.put('voiceNavigation', settings.voiceNavigation);
     await _settBox.put('adaptiveDifficulty', settings.adaptiveDifficulty);
     await _settBox.put('vocabReviewEnabled', settings.vocabReviewEnabled);
+    await _settBox.put('dyslexiaMode', settings.dyslexiaMode);
   }
 
   /// Generic setting getter — read any key from the settings box.
@@ -356,6 +370,13 @@ class HiveService {
     // Restore unique learned word IDs
     final rawWordIds = map['learnedWordIds'] as List? ?? [];
     final wordIds = Set<String>.from(rawWordIds.map((e) => e.toString()));
+    // Restore per-story completion state
+    final rawStoryIds = map['completedStoryIds'] as List? ?? [];
+    final storyIds = Set<String>.from(rawStoryIds.map((e) => e.toString()));
+    final rawStoryStars = map['storyBestStars'] as Map? ?? {};
+    final storyStars = rawStoryStars.map(
+      (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+    );
 
     final progress = LearningProgress(
       profileId: profileId,
@@ -367,6 +388,8 @@ class HiveService {
       spentStars: map['spentStars'] ?? 0,
       categoryProgress: Map<String, double>.from(map['categoryProgress'] ?? {}),
       recentScores: scores,
+      completedStoryIds: storyIds,
+      storyBestStars: storyStars,
     );
 
     _progressCache[profileId] = progress;
@@ -392,6 +415,8 @@ class HiveService {
         'date': s.date.toIso8601String(),
         'durationSeconds': s.durationSeconds,
       }).toList(),
+      'completedStoryIds': progress.completedStoryIds.toList(),
+      'storyBestStars': progress.storyBestStars,
     });
   }
 
@@ -484,6 +509,19 @@ class HiveService {
     await _progBox.put('tutorial_$profileId', true);
   }
 
+  // ─── Welcome carousel (one-time, pre-profile) ─────────
+
+  /// Whether the one-time welcome/intro carousel has been shown. Stored in
+  /// the settings box (not per-profile) because it runs before any profile
+  /// exists, on the very first launch.
+  static bool hasSeenWelcome() {
+    return _settBox.get('hasSeenWelcome', defaultValue: false) as bool;
+  }
+
+  static Future<void> markWelcomeSeen() async {
+    await _settBox.put('hasSeenWelcome', true);
+  }
+
   // ─── Collapsed Categories ─────────────────────────────
 
   static Set<String> getCollapsedCategories(String profileId) {
@@ -497,6 +535,63 @@ class HiveService {
     Set<String> collapsed,
   ) async {
     await _progBox.put('collapsed_cats_$profileId', collapsed.toList());
+  }
+
+  // ─── Progress theme (per-profile cosmetic skin) ───────
+  //
+  // Each learner picks their own Progress dashboard skin. Stored per
+  // profile in the progress box (device-local cosmetic preference — no
+  // cloud write needed). Returns null when the profile hasn't chosen one,
+  // and the registry falls back to the default `classic` theme.
+  static String? getProgressThemeId(String profileId) {
+    return _progBox.get('progress_theme_$profileId') as String?;
+  }
+
+  static Future<void> saveProgressThemeId(
+      String profileId, String themeId) async {
+    await _progBox.put('progress_theme_$profileId', themeId);
+  }
+
+  // ─── Progress layout (per-profile density template) ───
+  //
+  // A second cosmetic preference orthogonal to the skin: it varies the
+  // spacing/density/hero-size of the Progress dashboard (Comfortable /
+  // Compact / Showcase) without changing what data is shown. Stored per
+  // profile alongside the skin; the registry falls back to the default
+  // `comfortable` template when null.
+  static String? getProgressLayoutId(String profileId) {
+    return _progBox.get('progress_layout_$profileId') as String?;
+  }
+
+  static Future<void> saveProgressLayoutId(
+      String profileId, String layoutId) async {
+    await _progBox.put('progress_layout_$profileId', layoutId);
+  }
+
+  // ─── Leaderboard config cache (offline-first) ─────────
+  //
+  // Mirrors the Firestore `leaderboard_config_*` docs into Hive so an
+  // offline tablet renders the last-known leaderboard settings instantly.
+  // Keyed `'${kind}_$scopeId'` so classroom and home-group configs never
+  // collide.
+  static Box get _lbConfigBox => Hive.box(_leaderboardConfigBox);
+
+  static LeaderboardConfig? getLeaderboardConfig(
+      LeaderboardScopeKind kind, String scopeId) {
+    final raw = _lbConfigBox.get('${kind.name}_$scopeId');
+    if (raw is Map) {
+      try {
+        return LeaderboardConfig.fromJson(Map<String, dynamic>.from(raw));
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  static Future<void> cacheLeaderboardConfig(
+      LeaderboardScopeKind kind, LeaderboardConfig config) async {
+    await _lbConfigBox.put('${kind.name}_${config.scopeId}', config.toJson());
   }
 
   /// Per-screen tutorial tracking (e.g. 'flashcard_viewer', 'game_hub', 'progress').
@@ -1214,6 +1309,61 @@ class HiveService {
   /// Get all profiles as raw maps (used by Messaging to enumerate users).
   static List<Map<String, dynamic>> getAllProfiles() {
     return getProfiles();
+  }
+
+  // ─── Friend caches (offline mirrors of Firestore) ─────
+  //
+  // Backing boxes are opened in [init]. Each cache is keyed by the
+  // profile id whose perspective the cache represents (e.g. the
+  // student's friend list is stored under their own profile id).
+
+  static Box get _friendsBox => Hive.box(_friendsCacheBox);
+  static Box get _friendReqBox => Hive.box(_friendRequestsCacheBox);
+  static Box get _dirCacheBox => Hive.box(_friendDirectoryCacheBox);
+
+  /// Replace the cached friends list for [profileId]. Storing the raw
+  /// JSON maps keeps the cache forward-compatible if [Friendship] grows
+  /// new fields.
+  static Future<void> saveFriendsCache(
+      String profileId, List<Map<String, dynamic>> friendsJson) async {
+    await _friendsBox.put(profileId, friendsJson);
+  }
+
+  static List<Map<String, dynamic>> getFriendsCache(String profileId) {
+    final raw = _friendsBox.get(profileId);
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  /// Replace the cached incoming-request list for [profileId].
+  static Future<void> saveFriendRequestsCache(
+      String profileId, List<Map<String, dynamic>> requestsJson) async {
+    await _friendReqBox.put(profileId, requestsJson);
+  }
+
+  static List<Map<String, dynamic>> getFriendRequestsCache(String profileId) {
+    final raw = _friendReqBox.get(profileId);
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  /// Cache a single directory entry by profile id so future name
+  /// resolutions skip the Firestore round-trip.
+  static Future<void> cacheDirectoryEntry(
+      String profileId, Map<String, dynamic> json) async {
+    await _dirCacheBox.put('by_id_$profileId', json);
+  }
+
+  static Map<String, dynamic>? getCachedDirectoryEntry(String profileId) {
+    final raw = _dirCacheBox.get('by_id_$profileId');
+    if (raw is! Map) return null;
+    return Map<String, dynamic>.from(raw);
   }
 
   // ─── Word of the Day ────────────────────────────────

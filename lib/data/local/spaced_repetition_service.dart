@@ -1,5 +1,4 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import '../../core/services/knowledge_tracing_service.dart';
 import '../models/models.dart';
 
 /// Per-word accuracy record used by the spaced repetition algorithm.
@@ -84,10 +83,6 @@ class SpacedRepetitionService {
   // ─── Recording ──────────────────────────────────────
 
   /// Record a single word attempt (correct or wrong) for spaced repetition.
-  ///
-  /// Every word-level flow in the app (games, tutor quizzes, flashcards,
-  /// guided practice) funnels through here, so this is also the single
-  /// choke point that feeds the Elo knowledge-tracing model.
   static Future<void> recordWordAttempt({
     required String profileId,
     required String wordId,
@@ -98,15 +93,6 @@ class SpacedRepetitionService {
         accs[wordId] ?? WordAccuracy(wordId: wordId, lastSeen: DateTime.now());
     accs[wordId] = existing.recordAttempt(wasCorrect);
     await _saveWordAccuracies(profileId, accs);
-    try {
-      await KnowledgeTracingService.recordAttempt(
-        profileId: profileId,
-        wordId: wordId,
-        wasCorrect: wasCorrect,
-      );
-    } catch (_) {
-      // Elo is a derived model — never let it break the primary SR write.
-    }
   }
 
   /// Batch record after a game (list of word IDs and whether each was correct).
@@ -122,14 +108,6 @@ class SpacedRepetitionService {
       accs[entry.key] = existing.recordAttempt(entry.value);
     }
     await _saveWordAccuracies(profileId, accs);
-    try {
-      await KnowledgeTracingService.recordBatch(
-        profileId: profileId,
-        results: results,
-      );
-    } catch (_) {
-      // Elo is a derived model — never let it break the primary SR write.
-    }
   }
 
   // ─── Smart Review ───────────────────────────────────
@@ -157,38 +135,6 @@ class SpacedRepetitionService {
     // Sort descending by priority (weakest first)
     scored.sort((a, b) => b.$2.compareTo(a.$2));
 
-    return scored.take(count).map((e) => e.$1).toList();
-  }
-
-  /// Elo-blended review list: combines the forgetting-curve [WordAccuracy]
-  /// priority (recency + raw accuracy) with the knowledge-tracing model's
-  /// predicted failure probability (1 − p). The blend keeps the proven
-  /// recency behaviour while letting the Elo estimate pull forward words
-  /// the student is *predicted* to miss even when raw accuracy looks okay.
-  ///
-  /// [getReviewWords] remains the default path; consumers opt in per call
-  /// so the two rankings can be compared in the study.
-  static List<Flashcard> getReviewWordsElo({
-    required String profileId,
-    required List<Flashcard> allCards,
-    int count = 10,
-    double eloWeight = 0.5,
-  }) {
-    final accs = getWordAccuracies(profileId);
-    final mastery = KnowledgeTracingService.masterySnapshot(profileId);
-    final srWeight = 1.0 - eloWeight;
-
-    final scored = allCards.map((card) {
-      // Normalize the ~0..2 priority into 0..1; unseen words keep the same
-      // moderate-high default as getReviewWords.
-      final wa = accs[card.id];
-      final srScore = ((wa?.priority ?? 0.8) / 2.0).clamp(0.0, 1.0);
-      // Unseen by Elo → neutral 0.5 failure probability.
-      final eloScore = 1.0 - (mastery[card.id] ?? 0.5);
-      return (card, srWeight * srScore + eloWeight * eloScore);
-    }).toList();
-
-    scored.sort((a, b) => b.$2.compareTo(a.$2));
     return scored.take(count).map((e) => e.$1).toList();
   }
 

@@ -200,6 +200,12 @@ abstract class AppLocalizations {
   /// **'Reduced Motion'**
   String get reducedMotion;
 
+  /// No description provided for @dyslexiaMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Dyslexia-friendly'**
+  String get dyslexiaMode;
+
   /// No description provided for @textToSpeech.
   ///
   /// In en, this message translates to:
@@ -1733,7 +1739,7 @@ abstract class AppLocalizations {
   /// No description provided for @createStudentMsg.
   ///
   /// In en, this message translates to:
-  /// **'Create student profiles to see them here.\nEach student will appear with their progress.'**
+  /// **'Students appear here after joining your class with a code.\nShare the class code from Manage Classes to invite them.'**
   String get createStudentMsg;
 
   /// No description provided for @switchProfile.
@@ -2107,6 +2113,258 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show recovery code'**
   String get showRecoveryCode;
+
+  /// No description provided for @setUpProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Up Profile'**
+  String get setUpProfileTitle;
+
+  /// No description provided for @letsSetUpProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s set up your profile'**
+  String get letsSetUpProfile;
+
+  /// No description provided for @nameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get nameLabel;
+
+  /// No description provided for @pleaseEnterName.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a name'**
+  String get pleaseEnterName;
+
+  /// No description provided for @nameMinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Name must be at least 2 characters'**
+  String get nameMinLength;
+
+  /// No description provided for @ageOrBirthDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Age / Birth Date'**
+  String get ageOrBirthDate;
+
+  /// No description provided for @tapToSelectBirthDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to select birth date'**
+  String get tapToSelectBirthDate;
+
+  /// No description provided for @selectBirthDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Select birth date'**
+  String get selectBirthDate;
+
+  /// No description provided for @pleaseSelectBirthDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a birth date'**
+  String get pleaseSelectBirthDate;
+
+  /// No description provided for @yearsOld.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} yrs old'**
+  String yearsOld(int count);
+
+  /// No description provided for @suggestedLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'✨ Suggested level: {level}'**
+  String suggestedLevel(String level);
+
+  /// No description provided for @pinProtection.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN Protection'**
+  String get pinProtection;
+
+  /// No description provided for @pinProtectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a 4-digit PIN to protect this profile'**
+  String get pinProtectionDescription;
+
+  /// No description provided for @enablePinLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable PIN lock'**
+  String get enablePinLock;
+
+  /// No description provided for @enterFourDigitPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter 4-digit PIN'**
+  String get enterFourDigitPin;
+
+  /// No description provided for @pinDigitsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN must contain only digits'**
+  String get pinDigitsOnly;
+
+  /// No description provided for @iHaveRecoveryCode.
+  ///
+  /// In en, this message translates to:
+  /// **'I have a recovery code'**
+  String get iHaveRecoveryCode;
+
+  /// No description provided for @saving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get saving;
+
+  /// No description provided for @rolePlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Player'**
+  String get rolePlayer;
+
+  /// No description provided for @roleStudent.
+  ///
+  /// In en, this message translates to:
+  /// **'Student'**
+  String get roleStudent;
+
+  /// No description provided for @roleChild.
+  ///
+  /// In en, this message translates to:
+  /// **'Child'**
+  String get roleChild;
+
+  /// No description provided for @roleTeacher.
+  ///
+  /// In en, this message translates to:
+  /// **'Teacher'**
+  String get roleTeacher;
+
+  /// No description provided for @roleParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent'**
+  String get roleParent;
+
+  /// No description provided for @rolePlayerTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Just play — no progress saved'**
+  String get rolePlayerTagline;
+
+  /// No description provided for @roleStudentTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Join with a class code'**
+  String get roleStudentTagline;
+
+  /// No description provided for @roleChildTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Join with a home-group code'**
+  String get roleChildTagline;
+
+  /// No description provided for @roleTeacherTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'I want to help'**
+  String get roleTeacherTagline;
+
+  /// No description provided for @roleParentTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'I want to support'**
+  String get roleParentTagline;
+
+  /// No description provided for @roleSetupPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest mode — progress is saved on this device only.'**
+  String get roleSetupPlayer;
+
+  /// No description provided for @roleSetupTeacher.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up your profile to manage learners.'**
+  String get roleSetupTeacher;
+
+  /// No description provided for @roleSetupParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up your profile to support your child.'**
+  String get roleSetupParent;
+
+  /// No description provided for @youJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'You joined {name}.'**
+  String youJoined(String name);
+
+  /// No description provided for @getStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Started'**
+  String get getStarted;
+
+  /// No description provided for @welcomeSlide1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Learn Filipino Sign Language'**
+  String get welcomeSlide1Title;
+
+  /// No description provided for @welcomeSlide1Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Fun flashcards, games, and FSL videos to build vocabulary every day.'**
+  String get welcomeSlide1Body;
+
+  /// No description provided for @welcomeSlide2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Made for every learner'**
+  String get welcomeSlide2Title;
+
+  /// No description provided for @welcomeSlide2Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Students, children, teachers, and parents — each gets a setup that fits.'**
+  String get welcomeSlide2Body;
+
+  /// No description provided for @welcomeSlide3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessible by design'**
+  String get welcomeSlide3Title;
+
+  /// No description provided for @welcomeSlide3Body.
+  ///
+  /// In en, this message translates to:
+  /// **'High-contrast, dyslexia-friendly, text-to-speech, and reduced-motion options are built in.'**
+  String get welcomeSlide3Body;
+
+  /// No description provided for @splashLoadingResources.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading resources...'**
+  String get splashLoadingResources;
+
+  /// No description provided for @splashPreparingCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your cards...'**
+  String get splashPreparingCards;
+
+  /// No description provided for @splashAlmostReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost ready!'**
+  String get splashAlmostReady;
 }
 
 class _AppLocalizationsDelegate
