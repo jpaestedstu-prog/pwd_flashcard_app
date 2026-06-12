@@ -44,7 +44,10 @@ void launchLessonStep(BuildContext context, LessonStep step, LearningPath path) 
       }
       break;
     case LessonStepType.story:
-      context.push('/stories');
+      // /stories is a bottom-nav shell tab: pushing it from a pushed page
+      // duplicates the shell page key and crashes the Navigator. Switch the
+      // tab instead.
+      context.go('/stories');
       break;
     case LessonStepType.smartReview:
       context.push('/smart-review');

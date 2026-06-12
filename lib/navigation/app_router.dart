@@ -652,6 +652,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'word-match',
+                // Root navigator: game screens are immersive (nav bar hidden)
+                // and get pushed from outside the shell (lesson steps, Word
+                // Hunt). Building them inside the shell navigator duplicates
+                // the shell page key and trips the Navigator's
+                // `!keyReservation.contains(key)` assertion.
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
                   child: WordMatchScreen(
@@ -663,6 +669,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'spelling-bee',
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
                   child: SpellingBeeScreen(
@@ -674,6 +681,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'memory-match',
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
                   child: MemoryMatchScreen(
@@ -685,6 +693,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'drag-drop',
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
                   child: DragDropScreen(
@@ -696,6 +705,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'flashcard-quiz',
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
                   child: FlashcardQuizScreen(
@@ -707,6 +717,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'pronunciation',
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
                   child: PronunciationScreen(
@@ -718,6 +729,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'sentence-builder',
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
                   child: SentenceBuilderScreen(
@@ -729,6 +741,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'tracing',
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
                   child: TracingScreen(
@@ -740,6 +753,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'jigsaw-puzzle',
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
                   child: JigsawPuzzleScreen(
@@ -751,6 +765,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'picture-word',
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
                   child: PictureWordScreen(
@@ -762,6 +777,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'fsl-practice',
+                // Root navigator like the other activities: lesson steps push
+                // this hub from outside the shell. Its bottom nav bar is
+                // traded for crash-free pushes from anywhere.
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
                   child: const FslPracticeHubScreen(),
@@ -769,6 +788,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'sign-to-word',
+                    parentNavigatorKey: rootNavigatorKey,
                     pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                       key: state.pageKey,
                       child: FslSignToWordScreen(
@@ -778,6 +798,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'word-to-sign',
+                    parentNavigatorKey: rootNavigatorKey,
                     pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                       key: state.pageKey,
                       child: FslWordToSignScreen(
