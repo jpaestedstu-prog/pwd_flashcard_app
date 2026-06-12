@@ -1242,12 +1242,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get wordHuntPointCamera => 'Point your camera at an object!';
 
   @override
-  String get wordHuntTapToLearn => 'Tap a word to learn it!';
+  String get wordHuntTakePhoto => 'Take a photo!';
 
   @override
-  String wordHuntISee(String label) {
-    return 'I see… $label';
-  }
+  String get wordHuntLooking => 'Looking at your photo…';
+
+  @override
+  String get wordHuntFoundWords => 'I found these words — tap one!';
+
+  @override
+  String get wordHuntNoneFound =>
+      'I couldn\'t find a word in this photo. Get closer and try again!';
+
+  @override
+  String get wordHuntRetake => 'New photo';
 
   @override
   String get wordHuntNoCamera =>

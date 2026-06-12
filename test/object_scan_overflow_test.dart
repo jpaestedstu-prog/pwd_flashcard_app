@@ -1,7 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pwdpwdpwd/data/local/seed_data.dart';
 import 'package:pwdpwdpwd/features/object_scan/models/object_scan_models.dart';
@@ -16,7 +15,7 @@ import 'support/screen_matrix.dart';
 /// test environment and camera-less tablet shows) can render in tests.
 class _FakeLabeler implements ObjectLabeler {
   @override
-  Future<List<RecognizedLabel>> labelImage(InputImage image) async => const [];
+  Future<List<RecognizedLabel>> labelPhoto(String filePath) async => const [];
 
   @override
   Future<void> close() async {}

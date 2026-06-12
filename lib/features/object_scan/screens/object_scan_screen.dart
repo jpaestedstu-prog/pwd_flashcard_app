@@ -1,10 +1,11 @@
+import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
-import '../../../core/constants/flashcard_emojis.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
@@ -13,11 +14,16 @@ import '../services/label_word_mapper.dart';
 import '../services/object_labeler.dart';
 import '../services/object_scan_discovery_service.dart';
 import '../widgets/discovered_word_sheet.dart';
+import '../widgets/photo_results_panel.dart';
 
 enum _ScanStatus { initializing, ready, noCamera, permissionDenied, failed }
 
-/// Word Hunt — points the camera at real objects and turns on-device
-/// ML Kit labels into tappable vocabulary words.
+/// Where the learner is in the photo flow: aiming, waiting for the shutter,
+/// or looking at a captured photo with its detected words.
+enum _CapturePhase { preview, capturing, reviewing }
+
+/// Word Hunt — take a photo of a real object and the bundled on-device
+/// ML Kit model turns it into tappable vocabulary words.
 ///
 /// [camerasLoader] and [labelerFactory] exist so widget tests can inject
 /// fakes; the real camera and labeler need platform channels.
@@ -37,19 +43,16 @@ class ObjectScanScreen extends ConsumerStatefulWidget {
 
 class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     with WidgetsBindingObserver {
-  static const _minInferenceGap = Duration(milliseconds: 400);
-
   late final ObjectLabeler _labeler;
   CameraController? _controller;
   _ScanStatus _status = _ScanStatus.initializing;
   bool _initInFlight = false;
 
-  bool _inferenceBusy = false;
+  _CapturePhase _phase = _CapturePhase.preview;
+  String? _photoPath;
+  bool _searching = false;
+  List<WordMatch> _photoMatches = const [];
   bool _sheetOpen = false;
-  DateTime? _lastInferenceAt;
-
-  List<WordMatch> _matches = const [];
-  String? _hintLabel;
 
   @override
   void initState() {
@@ -65,6 +68,7 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     _controller?.dispose();
     _controller = null;
     _labeler.close();
+    _deletePhoto();
     super.dispose();
   }
 
@@ -123,10 +127,11 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     );
     final controller = CameraController(
       camera,
-      ResolutionPreset.medium,
+      // High-resolution stills: the photo is both shown to the learner and
+      // fed to ML Kit, so clarity matters. CameraX falls back to the nearest
+      // supported size on devices that can't do 1080p.
+      ResolutionPreset.veryHigh,
       enableAudio: false,
-      // NV21 is what ML Kit consumes directly on Android.
-      imageFormatGroup: ImageFormatGroup.nv21,
     );
     _controller = controller;
     // After every await: if `_controller` no longer points at this
@@ -134,8 +139,6 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     // this run is stale and must not dispose it a second time.
     try {
       await controller.initialize();
-      if (!mounted || !identical(_controller, controller)) return;
-      await controller.startImageStream(_onFrame);
       if (!mounted || !identical(_controller, controller)) return;
       setState(() => _status = _ScanStatus.ready);
     } on CameraException catch (e) {
@@ -158,35 +161,65 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     }
   }
 
-  void _onFrame(CameraImage image) {
-    if (_inferenceBusy || _sheetOpen || !mounted) return;
-    final now = DateTime.now();
-    final last = _lastInferenceAt;
-    if (last != null && now.difference(last) < _minInferenceGap) return;
+  void _deletePhoto() {
+    final path = _photoPath;
+    _photoPath = null;
+    if (path != null) {
+      File(path).delete().ignore();
+    }
+  }
+
+  Future<void> _capturePhoto() async {
     final controller = _controller;
-    if (controller == null) return;
-    final input = inputImageFromCameraImage(
-      image,
-      camera: controller.description,
-      deviceOrientation: controller.value.deviceOrientation,
-    );
-    if (input == null) return;
-    _inferenceBusy = true;
-    _lastInferenceAt = now;
-    _labeler.labelImage(input).then((labels) {
-      if (!mounted || _sheetOpen) return;
-      final matches = LabelWordMapper.matchAll(labels);
-      RecognizedLabel? top;
-      for (final l in labels) {
-        if (top == null || l.confidence > top.confidence) top = l;
+    if (controller == null ||
+        !controller.value.isInitialized ||
+        _phase != _CapturePhase.preview) {
+      return;
+    }
+    ref.read(hapticServiceProvider).lightTap();
+    setState(() => _phase = _CapturePhase.capturing);
+    try {
+      final shot = await controller.takePicture();
+      if (!mounted) {
+        File(shot.path).delete().ignore();
+        return;
       }
+      _deletePhoto();
       setState(() {
-        _matches = matches.take(3).toList();
-        _hintLabel = matches.isEmpty ? top?.label : null;
+        _photoPath = shot.path;
+        _phase = _CapturePhase.reviewing;
+        _searching = true;
+        _photoMatches = const [];
       });
-    }).catchError((Object _) {
-      // A dropped frame is fine — the next one retries.
-    }).whenComplete(() => _inferenceBusy = false);
+      final labels = await _labeler.labelPhoto(shot.path);
+      if (!mounted) return;
+      setState(() {
+        _photoMatches = LabelWordMapper.matchAll(labels).take(3).toList();
+        _searching = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      _deletePhoto();
+      setState(() {
+        _phase = _CapturePhase.preview;
+        _searching = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.wordHuntCameraError),
+        ),
+      );
+    }
+  }
+
+  void _retake() {
+    ref.read(hapticServiceProvider).lightTap();
+    _deletePhoto();
+    setState(() {
+      _phase = _CapturePhase.preview;
+      _searching = false;
+      _photoMatches = const [];
+    });
   }
 
   Future<void> _openWord(WordMatch match) async {
@@ -218,12 +251,16 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final photoPath = _photoPath;
+    final showPhoto = _phase == _CapturePhase.reviewing && photoPath != null;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          if (_status == _ScanStatus.ready && _controller != null)
+          if (showPhoto)
+            _PhotoView(path: photoPath)
+          else if (_status == _ScanStatus.ready && _controller != null)
             _CameraCover(controller: _controller!)
           else
             _FallbackState(
@@ -236,7 +273,18 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
               children: [
                 _topBar(context, l10n),
                 const Spacer(),
-                if (_status == _ScanStatus.ready) _detectionPanel(l10n),
+                if (showPhoto)
+                  SingleChildScrollView(
+                    reverse: true,
+                    child: PhotoResultsPanel(
+                      matches: _photoMatches,
+                      searching: _searching,
+                      onWordTap: _openWord,
+                      onRetake: _retake,
+                    ),
+                  )
+                else if (_status == _ScanStatus.ready)
+                  _capturePanel(l10n),
               ],
             ),
           ),
@@ -284,45 +332,78 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     );
   }
 
-  Widget _detectionPanel(AppLocalizations l10n) {
-    final hint = _hintLabel;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black45,
-        borderRadius: BorderRadius.circular(24),
-      ),
+  /// Aiming hint + the big PWD-friendly shutter button.
+  Widget _capturePanel(AppLocalizations l10n) {
+    final capturing = _phase == _CapturePhase.capturing;
+    return Padding(
+      padding: const EdgeInsets.all(16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            _matches.isEmpty
-                ? (hint == null
-                    ? l10n.wordHuntPointCamera
-                    : l10n.wordHuntISee(hint))
-                : l10n.wordHuntTapToLearn,
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.black45,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              l10n.wordHuntPointCamera,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
           ),
-          if (_matches.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: Row(
-                key: ValueKey(_matches.map((m) => m.card.id).join(',')),
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (final match in _matches)
-                    Flexible(child: _WordChip(match: match, onTap: _openWord)),
-                ],
+          const SizedBox(height: 16),
+          Semantics(
+            button: true,
+            label: l10n.wordHuntTakePhoto,
+            child: Material(
+              color: Colors.white,
+              shape: const CircleBorder(),
+              elevation: 4,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: capturing ? null : _capturePhoto,
+                child: SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: capturing
+                      ? const Padding(
+                          padding: EdgeInsets.all(22),
+                          child: CircularProgressIndicator(
+                            color: AppColors.bannerWordHuntEnd,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.camera_alt_rounded,
+                          size: 40,
+                          color: AppColors.bannerWordHuntEnd,
+                        ),
+                ),
               ),
             ),
-          ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// The captured photo, full screen on black so the learner sees exactly
+/// what was analyzed.
+class _PhotoView extends StatelessWidget {
+  final String path;
+  const _PhotoView({required this.path});
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: Image.file(
+          File(path),
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stack) => const SizedBox.shrink(),
+        ),
       ),
     );
   }
@@ -349,60 +430,6 @@ class _CameraCover extends StatelessWidget {
         width: width,
         height: height,
         child: CameraPreview(controller),
-      ),
-    );
-  }
-}
-
-class _WordChip extends StatelessWidget {
-  final WordMatch match;
-  final void Function(WordMatch) onTap;
-  const _WordChip({required this.match, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final card = match.card;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => onTap(match),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  FlashcardEmojis.forId(card.id),
-                  style: const TextStyle(fontSize: 28),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  card.wordEnglish,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  card.wordFilipino,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

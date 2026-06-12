@@ -1255,12 +1255,21 @@ class AppLocalizationsFil extends AppLocalizations {
   String get wordHuntPointCamera => 'Itutok ang camera sa isang bagay!';
 
   @override
-  String get wordHuntTapToLearn => 'Pindutin ang salita para matutunan ito!';
+  String get wordHuntTakePhoto => 'Kumuha ng litrato!';
 
   @override
-  String wordHuntISee(String label) {
-    return 'May nakikita ako… $label';
-  }
+  String get wordHuntLooking => 'Tinitingnan ang iyong litrato…';
+
+  @override
+  String get wordHuntFoundWords =>
+      'May nahanap akong mga salita — pumili ng isa!';
+
+  @override
+  String get wordHuntNoneFound =>
+      'Walang nahanap na salita sa litrato. Lumapit pa at subukan muli!';
+
+  @override
+  String get wordHuntRetake => 'Bagong litrato';
 
   @override
   String get wordHuntNoCamera =>

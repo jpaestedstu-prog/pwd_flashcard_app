@@ -2378,17 +2378,35 @@ abstract class AppLocalizations {
   /// **'Point your camera at an object!'**
   String get wordHuntPointCamera;
 
-  /// No description provided for @wordHuntTapToLearn.
+  /// No description provided for @wordHuntTakePhoto.
   ///
   /// In en, this message translates to:
-  /// **'Tap a word to learn it!'**
-  String get wordHuntTapToLearn;
+  /// **'Take a photo!'**
+  String get wordHuntTakePhoto;
 
-  /// No description provided for @wordHuntISee.
+  /// No description provided for @wordHuntLooking.
   ///
   /// In en, this message translates to:
-  /// **'I see… {label}'**
-  String wordHuntISee(String label);
+  /// **'Looking at your photo…'**
+  String get wordHuntLooking;
+
+  /// No description provided for @wordHuntFoundWords.
+  ///
+  /// In en, this message translates to:
+  /// **'I found these words — tap one!'**
+  String get wordHuntFoundWords;
+
+  /// No description provided for @wordHuntNoneFound.
+  ///
+  /// In en, this message translates to:
+  /// **'I couldn\'t find a word in this photo. Get closer and try again!'**
+  String get wordHuntNoneFound;
+
+  /// No description provided for @wordHuntRetake.
+  ///
+  /// In en, this message translates to:
+  /// **'New photo'**
+  String get wordHuntRetake;
 
   /// No description provided for @wordHuntNoCamera.
   ///
