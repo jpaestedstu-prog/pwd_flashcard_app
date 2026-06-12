@@ -34,12 +34,17 @@ class FlashcardViewerScreen extends ConsumerStatefulWidget {
   final int? learningStepIndex;
   final int? learningTotalSteps;
 
+  /// Focus mode (Word Hunt): show only this one card instead of the whole
+  /// category deck. Falls back to the full deck if the id doesn't resolve.
+  final String? focusWordId;
+
   const FlashcardViewerScreen({
     super.key,
     required this.category,
     this.learningPathId,
     this.learningStepIndex,
     this.learningTotalSteps,
+    this.focusWordId,
   });
 
   @override
@@ -80,6 +85,11 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
         .where((c) => c.category == widget.category)
         .toList();
     _cards = [...seed, ...custom];
+    final focusId = widget.focusWordId;
+    if (focusId != null) {
+      final focused = _cards.where((c) => c.id == focusId).toList();
+      if (focused.isNotEmpty) _cards = focused;
+    }
   }
 
   @override
@@ -244,7 +254,14 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: widget.category.color.withValues(alpha: 0.08),
+          // Opaque blend: a translucent color here composites over black on
+          // root-level routes (e.g. opened from Word Hunt) and reads as
+          // unintended "dark mode". Blending onto the theme surface keeps
+          // the same tint and follows the real light/dark setting.
+          backgroundColor: Color.alphaBlend(
+            widget.category.color.withValues(alpha: 0.08),
+            Theme.of(context).colorScheme.surface,
+          ),
           appBar: AppBar(
             leading: const AppBackButton(fallbackRoute: '/flashcards'),
             title: Text(widget.category.label),

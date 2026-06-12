@@ -34,11 +34,18 @@ class SpellingBeeScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
   final List<FlashcardCategory> categories;
   final bool timedMode;
+
+  /// Focus mode (Word Hunt): play exactly one round with this seed word.
+  /// A correct answer earns exactly 1 star, and exits pop back to the
+  /// launcher instead of going to the games hub.
+  final String? focusWordId;
+
   const SpellingBeeScreen({
     super.key,
     this.difficulty = GameDifficulty.medium,
     this.categories = const [],
     this.timedMode = false,
+    this.focusWordId,
   });
 
   @override
@@ -75,21 +82,40 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     GameDifficulty.hard => 1,
   };
 
+  /// Resolved focus card when [SpellingBeeScreen.focusWordId] matches a
+  /// seed word; null runs the normal multi-round game.
+  Flashcard? _focusCard;
+  bool get _isFocusMode => _focusCard != null;
+
+  Flashcard? _resolveFocusCard() {
+    final id = widget.focusWordId;
+    if (id == null) return null;
+    for (final c in SeedData.allFlashcards) {
+      if (c.id == id) return c;
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
-    var source = List.of(SeedData.allFlashcards);
-    if (widget.categories.isNotEmpty) {
-      source = source.where((c) => widget.categories.contains(c.category)).toList();
+    _focusCard = _resolveFocusCard();
+    if (_isFocusMode) {
+      _cards = [_focusCard!];
+    } else {
+      var source = List.of(SeedData.allFlashcards);
+      if (widget.categories.isNotEmpty) {
+        source = source.where((c) => widget.categories.contains(c.category)).toList();
+      }
+      // Exclude multi-word entries — spaces/hyphens produce invisible tiles
+      source.removeWhere((c) => c.wordEnglish.contains(' ') || c.wordEnglish.contains('-'));
+      _cards = AdaptiveDifficultyService.pickGameCards(
+        profileId: ref.read(profileProvider)?.id,
+        cards: source,
+        count: _totalWords,
+        random: _random,
+      );
     }
-    // Exclude multi-word entries — spaces/hyphens produce invisible tiles
-    source.removeWhere((c) => c.wordEnglish.contains(' ') || c.wordEnglish.contains('-'));
-    _cards = AdaptiveDifficultyService.pickGameCards(
-      profileId: ref.read(profileProvider)?.id,
-      cards: source,
-      count: _totalWords,
-      random: _random,
-    );
     if (_cards.isEmpty) {
       // Schedule navigation back; build() will show a safe placeholder
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -332,18 +358,23 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
       _score = 0;
       _showResult = false;
       _reviewItems.clear();
-      var source = List.of(SeedData.allFlashcards);
-      if (widget.categories.isNotEmpty) {
-        source = source.where((c) => widget.categories.contains(c.category)).toList();
+      if (_isFocusMode) {
+        // Replay the same single word.
+        _cards = [_focusCard!];
+      } else {
+        var source = List.of(SeedData.allFlashcards);
+        if (widget.categories.isNotEmpty) {
+          source = source.where((c) => widget.categories.contains(c.category)).toList();
+        }
+        // Exclude multi-word entries — spaces/hyphens produce invisible tiles
+        source.removeWhere((c) => c.wordEnglish.contains(' ') || c.wordEnglish.contains('-'));
+        _cards = AdaptiveDifficultyService.pickGameCards(
+          profileId: ref.read(profileProvider)?.id,
+          cards: source,
+          count: _totalWords,
+          random: _random,
+        );
       }
-      // Exclude multi-word entries — spaces/hyphens produce invisible tiles
-      source.removeWhere((c) => c.wordEnglish.contains(' ') || c.wordEnglish.contains('-'));
-      _cards = AdaptiveDifficultyService.pickGameCards(
-        profileId: ref.read(profileProvider)?.id,
-        cards: source,
-        count: _totalWords,
-        random: _random,
-      );
       if (_cards.isEmpty) return;
       _setupWord();
     });
@@ -351,11 +382,23 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
   }
 
   int get _starsEarned {
+    // Focus mode is a single round: exactly 1 star for a correct answer.
+    if (_isFocusMode) return _score.clamp(0, 1);
     final pct = _score / _cards.length;
     if (pct >= 0.9) return 3;
     if (pct >= 0.7) return 2;
     if (pct >= 0.5) return 1;
     return 0;
+  }
+
+  /// Exits return to the launcher (Word Hunt sheet) in focus mode, the
+  /// games hub otherwise.
+  void _exitGame() {
+    if (_isFocusMode) {
+      context.pop();
+    } else {
+      context.go('/games');
+    }
   }
 
   @override
@@ -380,7 +423,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                   total: _cards.length,
                   starsEarned: _starsEarned,
                   onPlayAgain: _restart,
-                  onExit: () => context.go('/games'),
+                  onExit: _exitGame,
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
@@ -683,7 +726,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
             },
             onQuit: () async {
               await savePartialProgress();
-              if (context.mounted) context.go('/games');
+              if (context.mounted) _exitGame();
             },
           ),
       ]),

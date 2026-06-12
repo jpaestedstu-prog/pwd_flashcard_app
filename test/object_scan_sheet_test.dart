@@ -80,16 +80,19 @@ void main() {
         ),
         GoRoute(
           path: '/games/spelling-bee',
-          builder: (_, _) => const Text('route:spelling'),
+          builder: (_, state) => Text(
+              'route:spelling:${state.uri.queryParameters['word'] ?? 'none'}'),
         ),
         GoRoute(
           path: '/games/pronunciation',
-          builder: (_, _) => const Text('route:pronunciation'),
+          builder: (_, state) => Text(
+              'route:pronunciation:${state.uri.queryParameters['word'] ?? 'none'}'),
         ),
         GoRoute(
           path: '/learning-path-viewer/:category',
-          builder: (_, state) =>
-              Text('route:flashcards:${state.pathParameters['category']}'),
+          builder: (_, state) => Text(
+              'route:flashcards:${state.pathParameters['category']}'
+              ':${state.uri.queryParameters['word'] ?? 'none'}'),
         ),
       ],
     );
@@ -148,33 +151,44 @@ void main() {
     expect(progressStub.activities, 2);
   });
 
-  testWidgets('spelling button opens the spelling game for the word category',
+  testWidgets('spelling button opens a single-word spelling round',
       (tester) async {
     await pumpSheet(tester, card: _card('cr13'));
     await tester.tap(find.text('Spelling Bee'));
     await tester.pumpAndSettle();
-    expect(find.text('route:spelling'), findsOneWidget);
+    expect(find.text('route:spelling:cr13'), findsOneWidget);
     expect(progressStub.activities, 1);
   });
 
-  testWidgets('flashcards button opens the viewer for the word category',
+  testWidgets(
+      'hyphenated words fall back to a category spelling round '
+      '(letters cannot be scrambled)', (tester) async {
+    final tshirt = SeedData.allFlashcards
+        .firstWhere((c) => c.wordEnglish == 'T-shirt');
+    await pumpSheet(tester, card: tshirt);
+    await tester.tap(find.text('Spelling Bee'));
+    await tester.pumpAndSettle();
+    expect(find.text('route:spelling:none'), findsOneWidget);
+  });
+
+  testWidgets('flashcards button opens the viewer focused on the one card',
       (tester) async {
     final card = _card('f14'); // Cup → foodAndDrinks
     await pumpSheet(tester, card: card);
     await tester.tap(find.text('Flashcards'));
     await tester.pumpAndSettle();
     expect(
-      find.text('route:flashcards:${card.category.index}'),
+      find.text('route:flashcards:${card.category.index}:f14'),
       findsOneWidget,
     );
   });
 
-  testWidgets('pronunciation button opens pronunciation practice',
+  testWidgets('pronunciation button opens a single-word round',
       (tester) async {
     await pumpSheet(tester, card: _card('cr13'));
     await tester.tap(find.text('Pronunciation Practice'));
     await tester.pumpAndSettle();
-    expect(find.text('route:pronunciation'), findsOneWidget);
+    expect(find.text('route:pronunciation:cr13'), findsOneWidget);
   });
 
   testWidgets('FSL button is hidden for a word without a sign video',

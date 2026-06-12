@@ -676,6 +676,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
+                    focusWordId: _parseFocusWord(state),
                   ),
                 ),
               ),
@@ -724,6 +725,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
+                    focusWordId: _parseFocusWord(state),
                   ),
                 ),
               ),
@@ -1086,6 +1088,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               learningPathId: pathId,
               learningStepIndex: stepIndex,
               learningTotalSteps: totalSteps,
+              focusWordId: _parseFocusWord(state),
             ),
           );
         },
@@ -1625,4 +1628,12 @@ List<FlashcardCategory> _parseCategories(GoRouterState state) {
 /// Parses timed mode from the query parameter.
 bool _parseTimedMode(GoRouterState state) {
   return state.uri.queryParameters['timed'] == 'true';
+}
+
+/// Parses the Word Hunt focus word from the `word` query parameter.
+/// Screens resolve the id themselves and fall back to their normal
+/// multi-round/full-deck mode when it doesn't match a card.
+String? _parseFocusWord(GoRouterState state) {
+  final raw = state.uri.queryParameters['word'];
+  return (raw == null || raw.isEmpty) ? null : raw;
 }

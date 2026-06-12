@@ -82,7 +82,7 @@ class DiscoveredWordSheet extends ConsumerWidget {
               Text(
                 card.wordEnglish,
                 style: const TextStyle(
-                  fontSize: 28,
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
@@ -91,7 +91,7 @@ class DiscoveredWordSheet extends ConsumerWidget {
               Text(
                 card.wordFilipino,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 22,
                   color: AppColors.textSecondary,
                 ),
                 textAlign: TextAlign.center,
@@ -101,7 +101,7 @@ class DiscoveredWordSheet extends ConsumerWidget {
                 Text(
                   '${l10n.example}: ${card.exampleSentence}',
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 15,
                     fontStyle: FontStyle.italic,
                     color: AppColors.textSecondary,
                   ),
@@ -149,8 +149,15 @@ class DiscoveredWordSheet extends ConsumerWidget {
                       label: l10n.spellingBee,
                       onTap: () {
                         _recordActivity(ref);
+                        // Single-word round for this discovery. Words with
+                        // spaces/hyphens can't be letter-scrambled (mirrors
+                        // the game's own filter) — those fall back to a
+                        // category round instead.
+                        final spellable = !card.wordEnglish.contains(' ') &&
+                            !card.wordEnglish.contains('-');
                         context.push(
-                          '/games/spelling-bee?difficulty=easy&categories=$categoryIndex',
+                          '/games/spelling-bee?difficulty=easy&categories=$categoryIndex'
+                          '${spellable ? '&word=${card.id}' : ''}',
                         );
                       },
                     ),
@@ -162,7 +169,10 @@ class DiscoveredWordSheet extends ConsumerWidget {
                       label: l10n.wordHuntFlashcards,
                       onTap: () {
                         _recordActivity(ref);
-                        context.push('/learning-path-viewer/$categoryIndex');
+                        // Show just this word's card.
+                        context.push(
+                          '/learning-path-viewer/$categoryIndex?word=${card.id}',
+                        );
                       },
                     ),
                   ),
@@ -177,8 +187,10 @@ class DiscoveredWordSheet extends ConsumerWidget {
                       label: l10n.pronunciationPractice,
                       onTap: () {
                         _recordActivity(ref);
+                        // Single listen-and-pick round for this discovery.
                         context.push(
-                          '/games/pronunciation?difficulty=easy&categories=$categoryIndex',
+                          '/games/pronunciation?difficulty=easy&categories=$categoryIndex'
+                          '&word=${card.id}',
                         );
                       },
                     ),
@@ -244,19 +256,21 @@ class _SheetAction extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        child: Container(
+          // PWD-friendly tap target: at least 56 dp tall with large type.
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 20)),
-              const SizedBox(width: 6),
+              Text(emoji, style: const TextStyle(fontSize: 24)),
+              const SizedBox(width: 8),
               Flexible(
                 child: Text(
                   label,
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: 16,
                     color: AppColors.textPrimary,
                   ),
                   maxLines: 1,

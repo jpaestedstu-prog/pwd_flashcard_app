@@ -39,11 +39,17 @@ class PronunciationScreen extends ConsumerStatefulWidget {
   final List<FlashcardCategory> categories;
   final bool timedMode;
 
+  /// Focus mode (Word Hunt): play exactly one round with this seed word.
+  /// A correct answer earns exactly 1 star, and exits pop back to the
+  /// launcher instead of going to the games hub.
+  final String? focusWordId;
+
   const PronunciationScreen({
     super.key,
     this.difficulty = GameDifficulty.medium,
     this.categories = const [],
     this.timedMode = false,
+    this.focusWordId,
   });
 
   @override
@@ -65,12 +71,28 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
   final List<GameReviewItem> _reviewItems = [];
   final _random = Random();
 
-  /// Difficulty-based configuration.
-  int get _totalRounds => switch (widget.difficulty) {
-    GameDifficulty.easy => 6,
-    GameDifficulty.medium => 10,
-    GameDifficulty.hard => 14,
-  };
+  /// Resolved focus card when [PronunciationScreen.focusWordId] matches a
+  /// seed word; null runs the normal multi-round game.
+  Flashcard? _focusCard;
+  bool get _isFocusMode => _focusCard != null;
+
+  Flashcard? _resolveFocusCard() {
+    final id = widget.focusWordId;
+    if (id == null) return null;
+    for (final c in SeedData.allFlashcards) {
+      if (c.id == id) return c;
+    }
+    return null;
+  }
+
+  /// Difficulty-based configuration. Focus mode is always a single round.
+  int get _totalRounds => _isFocusMode
+      ? 1
+      : switch (widget.difficulty) {
+          GameDifficulty.easy => 6,
+          GameDifficulty.medium => 10,
+          GameDifficulty.hard => 14,
+        };
 
   int get _numChoices => switch (widget.difficulty) {
     GameDifficulty.easy => 3,
@@ -86,6 +108,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
   }
 
   void _startGame() {
+    _focusCard = _resolveFocusCard();
     var source = List.of(SeedData.allFlashcards);
     if (widget.categories.isNotEmpty) {
       source =
@@ -98,6 +121,13 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
       cards: source,
       random: _random,
     );
+    // Focus mode plays exactly one round with the focus word; the rest of
+    // the pool still supplies the wrong choices.
+    final focus = _focusCard;
+    if (focus != null) {
+      ordered.removeWhere((c) => c.id == focus.id);
+      ordered.insert(0, focus);
+    }
     _generateRounds(ordered);
     _currentRound = 0;
     _score = 0;
@@ -302,6 +332,8 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
   }
 
   int get _starsEarned {
+    // Focus mode is a single round: exactly 1 star for a correct answer.
+    if (_isFocusMode) return _score.clamp(0, 1);
     final pct = _score / _rounds.length;
     if (pct >= 0.9) return 3;
     if (pct >= 0.7) return 2;
@@ -310,6 +342,16 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
   }
 
   void _restart() => setState(() => _startGame());
+
+  /// Exits return to the launcher (Word Hunt sheet) in focus mode, the
+  /// games hub otherwise.
+  void _exitGame() {
+    if (_isFocusMode) {
+      context.pop();
+    } else {
+      context.go('/games');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -327,7 +369,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                   total: _rounds.length,
                   starsEarned: _starsEarned,
                   onPlayAgain: _restart,
-                  onExit: () => context.go('/games'),
+                  onExit: _exitGame,
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
@@ -679,7 +721,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
             },
             onQuit: () async {
               await savePartialProgress();
-              if (context.mounted) context.go('/games');
+              if (context.mounted) _exitGame();
             },
           ),
       ]),
