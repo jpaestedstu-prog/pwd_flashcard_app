@@ -957,6 +957,13 @@ class GameResultDialog extends StatelessWidget {
   final int score;
   final int total;
   final int starsEarned;
+
+  /// Performance rating (0–3 stars) shown by the result screen. When null
+  /// it is derived from the score via [ratingForScore] — the same
+  /// thresholds every game's star formula has always used. Single-round
+  /// games (Word Hunt focus mode) pass it explicitly so a perfect round
+  /// rates 3/3 even though it earns just 1 ⭐.
+  final int? rating;
   final VoidCallback onPlayAgain;
   final VoidCallback onExit;
   final VoidCallback? onReview;
@@ -966,16 +973,29 @@ class GameResultDialog extends StatelessWidget {
     required this.score,
     required this.total,
     required this.starsEarned,
+    this.rating,
     required this.onPlayAgain,
     required this.onExit,
     this.onReview,
   });
+
+  /// Default 0–3 rating from the share of correct answers (≥90% → 3,
+  /// ≥70% → 2, ≥50% → 1).
+  static int ratingForScore(int score, int total) {
+    if (total <= 0) return 0;
+    final pct = score / total;
+    if (pct >= 0.9) return 3;
+    if (pct >= 0.7) return 2;
+    if (pct >= 0.5) return 1;
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedScoreReveal(
       score: score,
       total: total,
+      rating: rating ?? ratingForScore(score, total),
       starsEarned: starsEarned,
       onPlayAgain: onPlayAgain,
       onExit: onExit,

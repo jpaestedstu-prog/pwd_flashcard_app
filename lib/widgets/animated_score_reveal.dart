@@ -10,16 +10,27 @@ import '../core/utils/responsive_utils.dart';
 //  Animated Score Reveal
 //
 //  An enhanced game result dialog featuring:
-//  • Circular score gauge that fills with color gradient
+//  • Circular gauge that fills to the star rating (out of 3)
 //  • Stars that bounce in one-by-one with golden glow
 //  • Score counter that animates up with color shift
-//  • Percentage bar with gradient fill
+//  • "+N ⭐ earned" chip for the stars added to the balance
 //  • Tier-based emoji message with entrance animation
+//
+//  Deliberately percentage-free: a 0–3 star rating is what young
+//  PWD learners read at a glance, and percentages are meaningless
+//  for the single-word rounds launched from Word Hunt.
 // ─────────────────────────────────────────────────────────────
 
 class AnimatedScoreReveal extends StatefulWidget {
   final int score;
   final int total;
+
+  /// Performance rating for this round, 0–3 stars. Drives the gauge, the
+  /// star row, and the message tier.
+  final int rating;
+
+  /// Currency stars added to the learner's balance (may differ from
+  /// [rating] — e.g. a perfect Word Hunt round rates 3/3 but earns 1 ⭐).
   final int starsEarned;
   final VoidCallback onPlayAgain;
   final VoidCallback onExit;
@@ -29,6 +40,7 @@ class AnimatedScoreReveal extends StatefulWidget {
     super.key,
     required this.score,
     required this.total,
+    required this.rating,
     required this.starsEarned,
     required this.onPlayAgain,
     required this.onExit,
@@ -83,13 +95,13 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
 
   @override
   Widget build(BuildContext context) {
-    final percentage = (widget.score / widget.total * 100).round();
+    final rating = widget.rating.clamp(0, 3);
     final hc = HCColor.of(context);
-    final tier = _ScoreTier.forPercentage(percentage);
+    final tier = _ScoreTier.forRating(rating);
 
     return Semantics(
       label:
-          'Game results: ${widget.score} out of ${widget.total}, $percentage percent correct, '
+          'Game results: ${widget.score} out of ${widget.total}, rating $rating out of 3 stars, '
           '${widget.starsEarned} stars earned',
       child: Dialog(
         backgroundColor: Colors.transparent,
@@ -127,14 +139,14 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                           .transform(_gaugeController.value);
                       return CustomPaint(
                         painter: _ScoreGaugePainter(
-                          progress: gaugeValue * (percentage / 100),
+                          progress: gaugeValue * (rating / 3),
                           tier: tier,
                           backgroundColor: hc.hc
                               ? AppColors.hcSurface
                               : AppColors.surfaceLight,
                         ),
                         child: Center(
-                          child: _buildGaugeCenter(percentage, tier),
+                          child: _buildGaugeCenter(rating, tier),
                         ),
                       );
                     },
@@ -150,7 +162,7 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(3, (index) {
-                        final isEarned = index < widget.starsEarned;
+                        final isEarned = index < rating;
                         final starDelay = index * 0.25;
                         final starProgress = ((_starController.value - starDelay) / 0.5)
                             .clamp(0.0, 1.0);
@@ -248,14 +260,33 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                   },
                 ),
 
-                const SizedBox(height: 10),
-
-                // ─── Percentage Bar ───────────────
-                _AnimatedPercentageBar(
-                  percentage: percentage,
-                  tier: tier,
-                  controller: _gaugeController,
-                ),
+                // ─── Stars earned chip ────────────
+                // The currency reward, separate from the rating above.
+                if (widget.starsEarned > 0) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '+${widget.starsEarned} ⭐ earned',
+                      style: AppTypography.titleSmall.copyWith(
+                        color: hc.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                      .animate(delay: 1200.ms)
+                      .fadeIn(duration: 400.ms)
+                      .scale(
+                        begin: const Offset(0.8, 0.8),
+                        end: const Offset(1, 1),
+                        curve: Curves.easeOutBack,
+                      ),
+                ],
 
                 // ─── Review Button ────────────────
                 if (widget.onReview != null) ...[
@@ -311,15 +342,15 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
         .fadeIn(duration: 300.ms);
   }
 
-  Widget _buildGaugeCenter(int percentage, _ScoreTier tier) {
+  Widget _buildGaugeCenter(int rating, _ScoreTier tier) {
     return AnimatedBuilder(
       animation: _scoreController,
       builder: (context, _) {
         final ease = Curves.easeOutCubic.transform(_scoreController.value);
-        final displayPct = (percentage * ease).round();
+        final displayRating = (rating * ease).round();
         // Lock TextScaler to 1.0 inside the gauge — at 1.5x the hardcoded
-        // emoji/percent text would burst the painted circle. The percentage
-        // is duplicated in the bar below so accessibility isn't lost.
+        // emoji/rating text would burst the painted circle. The rating is
+        // duplicated by the star row + Semantics so accessibility isn't lost.
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(
             textScaler: const TextScaler.linear(1.0),
@@ -332,7 +363,7 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                 style: const TextStyle(fontSize: 28),
               ),
               Text(
-                '$displayPct%',
+                '$displayRating/3',
                 style: AppTypography.titleLarge.copyWith(
                   fontWeight: FontWeight.w900,
                   color: tier.color,
@@ -364,10 +395,10 @@ class _ScoreTier {
     required this.encouragement,
   });
 
-  static _ScoreTier forPercentage(int pct) {
-    if (pct >= 90) return amazing;
-    if (pct >= 70) return great;
-    if (pct >= 50) return good;
+  static _ScoreTier forRating(int rating) {
+    if (rating >= 3) return amazing;
+    if (rating == 2) return great;
+    if (rating == 1) return good;
     return practice;
   }
 
@@ -517,64 +548,5 @@ class _StarIcon extends StatelessWidget {
   }
 }
 
-// ─── Animated Percentage Bar ──────────────────────────
-
-class _AnimatedPercentageBar extends StatelessWidget {
-  final int percentage;
-  final _ScoreTier tier;
-  final AnimationController controller;
-
-  const _AnimatedPercentageBar({
-    required this.percentage,
-    required this.tier,
-    required this.controller,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const SizedBox(height: 4),
-        AnimatedBuilder(
-          animation: controller,
-          builder: (context, _) {
-            final ease = Curves.easeOutCubic.transform(controller.value);
-            final fill = (percentage / 100) * ease;
-
-            return Container(
-              height: 8,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: HCColor.of(context).surfaceLight,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: fill.clamp(0.0, 1.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: tier.gradientColors),
-                    borderRadius: BorderRadius.circular(4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: tier.color.withValues(alpha: 0.3),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '$percentage% correct',
-          style: AppTypography.bodyLarge.copyWith(
-            color: HCColor.of(context).textSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-}
+// (The old animated percentage bar was removed: results are expressed as a
+// 0–3 star rating + "+N ⭐ earned" chip, never as percentages.)

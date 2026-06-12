@@ -422,6 +422,9 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                   score: _score,
                   total: _cards.length,
                   starsEarned: _starsEarned,
+                  // Focus mode: a correct single word is a perfect round —
+                  // full 3/3 rating (the 1 ⭐ earned shows separately).
+                  rating: _isFocusMode ? (_score >= 1 ? 3 : 0) : null,
                   onPlayAgain: _restart,
                   onExit: _exitGame,
                   onReview: () => showGameReview(

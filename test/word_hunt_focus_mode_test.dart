@@ -168,6 +168,16 @@ void main() {
     expect(progressStub.total, 1);
     expect(progressStub.stars, 1, reason: 'focus mode awards exactly 1 star');
 
+    // Result screen is percentage-free: star rating + earned chip instead.
+    expect(find.textContaining('%'), findsNothing);
+    expect(find.textContaining('+1 ⭐'), findsOneWidget);
+    // Step past the staged gauge→stars→score animations, then the gauge
+    // center shows the full 3/3 rating for a perfect single-word round.
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    expect(find.text('3/3'), findsOneWidget);
+
     await settleAndUnmount(tester);
   });
 
@@ -197,6 +207,14 @@ void main() {
     expect(progressStub.score, 1);
     expect(progressStub.total, 1);
     expect(progressStub.stars, 1, reason: 'focus mode awards exactly 1 star');
+
+    // Result screen is percentage-free: star rating + earned chip instead.
+    expect(find.textContaining('%'), findsNothing);
+    expect(find.textContaining('+1 ⭐'), findsOneWidget);
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    expect(find.text('3/3'), findsOneWidget);
 
     await settleAndUnmount(tester);
   });

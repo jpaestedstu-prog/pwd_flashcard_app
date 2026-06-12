@@ -153,6 +153,7 @@ void main() {
       (_) => const AnimatedScoreReveal(
         score: 7,
         total: 10,
+        rating: 2,
         starsEarned: 2,
         onPlayAgain: _noop,
         onExit: _noop,
