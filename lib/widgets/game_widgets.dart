@@ -964,6 +964,10 @@ class GameResultDialog extends StatelessWidget {
   /// games (Word Hunt focus mode) pass it explicitly so a perfect round
   /// rates 3/3 even though it earns just 1 ⭐.
   final int? rating;
+
+  /// Optional one-line context under the earned-stars chip (e.g. Word
+  /// Hunt's camera-word collection count).
+  final String? footnote;
   final VoidCallback onPlayAgain;
   final VoidCallback onExit;
   final VoidCallback? onReview;
@@ -974,6 +978,7 @@ class GameResultDialog extends StatelessWidget {
     required this.total,
     required this.starsEarned,
     this.rating,
+    this.footnote,
     required this.onPlayAgain,
     required this.onExit,
     this.onReview,
@@ -997,6 +1002,7 @@ class GameResultDialog extends StatelessWidget {
       total: total,
       rating: rating ?? ratingForScore(score, total),
       starsEarned: starsEarned,
+      footnote: footnote,
       onPlayAgain: onPlayAgain,
       onExit: onExit,
       onReview: onReview,

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,7 +80,12 @@ class _FakeTtsService extends TtsService {
 
 void main() {
   setUpAll(() async {
-    Hive.init('./build/test_cache/word_hunt_focus');
+    // Wipe any leftover store from a previous run BEFORE Hive touches it —
+    // the focus games persist a per-day game-star log, and stale entries
+    // would make the "first win awards a star" assertions day-dependent.
+    final dir = Directory('./build/test_cache/word_hunt_focus');
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
+    Hive.init(dir.path);
     for (final name in const <String>[
       'profiles',
       'settings',
@@ -90,7 +97,15 @@ void main() {
     }
   });
 
-  tearDownAll(() async => Hive.deleteFromDisk());
+  // NOTE: no `tearDownAll(Hive.deleteFromDisk)` here, unlike the other
+  // suites. The focus games issue fire-and-forget Hive puts from inside
+  // the widget-test FakeAsync zone (the once-per-day star log); those
+  // writes never drain the box's queue under fake time, so anything that
+  // awaits Hive at teardown stalls for ~10 minutes. The store lives under
+  // build/test_cache and is wiped by the setUpAll above on the next run.
+  //
+  // Isolation between the two game tests: each uses a DIFFERENT focus
+  // word so the per-word daily-cap entries can't collide.
 
   late _StubProgressNotifier progressStub;
 
@@ -171,12 +186,29 @@ void main() {
     // Result screen is percentage-free: star rating + earned chip instead.
     expect(find.textContaining('%'), findsNothing);
     expect(find.textContaining('+1 ⭐'), findsOneWidget);
+    // Word Hunt rounds also show the camera-word collection footnote.
+    expect(find.textContaining('words with your camera'), findsOneWidget);
     // Step past the staged gauge→stars→score animations, then the gauge
     // center shows the full 3/3 rating for a perfect single-word round.
     for (var i = 0; i < 12; i++) {
       await tester.pump(const Duration(milliseconds: 300));
     }
     expect(find.text('3/3'), findsOneWidget);
+
+    // Play Again replays the same word: the celebration still rates 3/3,
+    // but the once-per-day star for this word was already claimed.
+    await tester.tap(find.text('Play Again'));
+    await tester.pump();
+    for (final letter in const ['D', 'O', 'G']) {
+      await tester.tap(find.text(letter).first);
+      await tester.pump();
+    }
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pump();
+    expect(find.byType(GameResultDialog), findsOneWidget);
+    expect(progressStub.stars, 0,
+        reason: 'same-day replay must not award another star');
+    expect(find.textContaining('+1 ⭐'), findsNothing);
 
     await settleAndUnmount(tester);
   });
@@ -189,15 +221,17 @@ void main() {
       const PronunciationScreen(
         difficulty: GameDifficulty.easy,
         categories: [FlashcardCategory.animals],
-        focusWordId: 'a01',
+        // a02 (Cat), not a01: the spelling test already claims Dog's
+        // once-per-day game star in the shared guest bucket.
+        focusWordId: 'a02',
       ),
     );
 
     // Exactly one round.
     expect(find.textContaining('1/1'), findsOneWidget);
 
-    // Round 0 prompts in English → choices show Filipino; Dog = Aso.
-    await tester.tap(find.text('Aso'));
+    // Round 0 prompts in English → choices show Filipino; Cat = Pusa.
+    await tester.tap(find.text('Pusa'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1500));
     await tester.pump();

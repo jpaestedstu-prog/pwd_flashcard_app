@@ -32,6 +32,10 @@ class AnimatedScoreReveal extends StatefulWidget {
   /// Currency stars added to the learner's balance (may differ from
   /// [rating] — e.g. a perfect Word Hunt round rates 3/3 but earns 1 ⭐).
   final int starsEarned;
+
+  /// Optional one-line context shown under the earned-stars chip
+  /// (e.g. Word Hunt's "📷 You've found 12 words with your camera!").
+  final String? footnote;
   final VoidCallback onPlayAgain;
   final VoidCallback onExit;
   final VoidCallback? onReview;
@@ -42,6 +46,7 @@ class AnimatedScoreReveal extends StatefulWidget {
     required this.total,
     required this.rating,
     required this.starsEarned,
+    this.footnote,
     required this.onPlayAgain,
     required this.onExit,
     this.onReview,
@@ -286,6 +291,22 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                         end: const Offset(1, 1),
                         curve: Curves.easeOutBack,
                       ),
+                ],
+
+                // ─── Footnote (e.g. camera-word collection) ──
+                if (widget.footnote != null) ...[
+                  const SizedBox(height: 10),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      widget.footnote!,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: hc.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                    ),
+                  ).animate(delay: 1400.ms).fadeIn(duration: 400.ms),
                 ],
 
                 // ─── Review Button ────────────────

@@ -70,4 +70,35 @@ void main() {
       expect(ObjectScanDiscoveryService.isDiscovered('', 'cr13'), isTrue);
     });
   });
+
+  group('tryAwardGameStar (once-per-day per word)', () {
+    test('first win today awards; same-day repeat does not', () {
+      expect(
+          ObjectScanDiscoveryService.tryAwardGameStar('p1', 'a01', now: day),
+          isTrue);
+      expect(
+          ObjectScanDiscoveryService.tryAwardGameStar('p1', 'a01', now: day),
+          isFalse);
+      // A different word the same day still awards.
+      expect(
+          ObjectScanDiscoveryService.tryAwardGameStar('p1', 'a02', now: day),
+          isTrue);
+    });
+
+    test('resets the next day', () {
+      ObjectScanDiscoveryService.tryAwardGameStar('p1', 'a01', now: day);
+      expect(
+        ObjectScanDiscoveryService.tryAwardGameStar('p1', 'a01',
+            now: day.add(const Duration(days: 1))),
+        isTrue,
+      );
+    });
+
+    test('profiles are isolated', () {
+      ObjectScanDiscoveryService.tryAwardGameStar('p1', 'a01', now: day);
+      expect(
+          ObjectScanDiscoveryService.tryAwardGameStar('p2', 'a01', now: day),
+          isTrue);
+    });
+  });
 }

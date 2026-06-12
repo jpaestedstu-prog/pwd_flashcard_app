@@ -27,6 +27,8 @@ class ObjectScanDiscoveryService {
       'object_scan_discoveries_$profileId';
   static String _starDayKey(String profileId) =>
       'object_scan_star_day_$profileId';
+  static String _gameStarsKey(String profileId) =>
+      'object_scan_game_stars_$profileId';
 
   static String _dayKey(DateTime now) =>
       '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -77,5 +79,28 @@ class ObjectScanDiscoveryService {
       }
     }
     return DiscoveryResult(isNew: isNew, starAwarded: starAwarded);
+  }
+
+  /// Claims the once-per-day game star for winning [wordId]'s single-word
+  /// round (Word Hunt focus mode). Returns true on the first win of that
+  /// word today; false on same-day replays, so "Play Again" can't farm
+  /// stars — the 0–3 rating celebration still shows either way. Resets at
+  /// midnight like the discovery-star cap.
+  static bool tryAwardGameStar(String? profileId, String wordId,
+      {DateTime? now}) {
+    final id = _id(profileId);
+    final today = _dayKey(now ?? DateTime.now());
+    final raw = _box.get(_gameStarsKey(id));
+    var wordIds = const <String>[];
+    if (raw is Map && raw['day'] == today) {
+      wordIds =
+          (raw['wordIds'] as List?)?.whereType<String>().toList() ?? const [];
+      if (wordIds.contains(wordId)) return false;
+    }
+    _box.put(_gameStarsKey(id), {
+      'day': today,
+      'wordIds': [...wordIds, wordId],
+    });
+    return true;
   }
 }

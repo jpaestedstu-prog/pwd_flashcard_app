@@ -23,6 +23,7 @@ import '../../../core/services/celebration_service.dart';
 import '../../../widgets/accessible_celebration_overlay.dart';
 import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
+import '../../object_scan/services/object_scan_discovery_service.dart';
 import '../../../core/constants/flashcard_emojis.dart';
 import '../../../widgets/accessibility_visual_feedback.dart';
 import '../timed_game_mixin.dart';
@@ -86,6 +87,10 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
   /// seed word; null runs the normal multi-round game.
   Flashcard? _focusCard;
   bool get _isFocusMode => _focusCard != null;
+
+  /// Stars actually persisted for this game, computed once at finish time
+  /// (the daily focus-mode cap can zero out [_starsEarned]).
+  int _finalStars = 0;
 
   Flashcard? _resolveFocusCard() {
     final id = widget.focusWordId;
@@ -315,11 +320,22 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
         .map((c) => c.category)
         .toSet()
         .toList();
+    var stars = _starsEarned;
+    if (_isFocusMode && stars > 0) {
+      // Once-per-day star per word: replays still celebrate (3/3 rating)
+      // but "Play Again" can't farm the balance.
+      final awarded = ObjectScanDiscoveryService.tryAwardGameStar(
+        ref.read(profileProvider)?.id,
+        _focusCard!.id,
+      );
+      if (!awarded) stars = 0;
+    }
+    _finalStars = stars;
     ref.read(progressProvider.notifier).recordGameResult(
       gameType: GameType.spellingBee,
       score: _score,
       total: _cards.length,
-      starsEarned: _starsEarned,
+      starsEarned: _finalStars,
       categoriesPlayed: categories,
     );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
@@ -421,10 +437,15 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                 child: GameResultDialog(
                   score: _score,
                   total: _cards.length,
-                  starsEarned: _starsEarned,
+                  starsEarned: _finalStars,
                   // Focus mode: a correct single word is a perfect round —
-                  // full 3/3 rating (the 1 ⭐ earned shows separately).
+                  // full 3/3 rating (the ⭐ earned shows separately).
                   rating: _isFocusMode ? (_score >= 1 ? 3 : 0) : null,
+                  footnote: _isFocusMode
+                      ? '📷 You\'ve found '
+                          '${ObjectScanDiscoveryService.discoveredWordIds(ref.read(profileProvider)?.id).length} '
+                          'words with your camera!'
+                      : null,
                   onPlayAgain: _restart,
                   onExit: _exitGame,
                   onReview: () => showGameReview(
