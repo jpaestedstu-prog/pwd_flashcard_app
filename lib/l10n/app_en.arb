@@ -465,6 +465,7 @@
   "wordHuntTitle": "Word Hunt",
   "wordHuntPointCamera": "Point your camera at an object!",
   "wordHuntTakePhoto": "Take a photo!",
+  "wordHuntFlipCamera": "Flip camera",
   "wordHuntLooking": "Looking at your photo…",
   "wordHuntFoundWords": "I found these words — tap one!",
   "wordHuntNoneFound": "I couldn't find a word in this photo. Get closer and try again!",

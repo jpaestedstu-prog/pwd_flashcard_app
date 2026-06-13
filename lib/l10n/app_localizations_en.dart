@@ -1245,6 +1245,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get wordHuntTakePhoto => 'Take a photo!';
 
   @override
+  String get wordHuntFlipCamera => 'Flip camera';
+
+  @override
   String get wordHuntLooking => 'Looking at your photo…';
 
   @override

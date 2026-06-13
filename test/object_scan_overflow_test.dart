@@ -56,4 +56,37 @@ void main() {
       ),
     );
   });
+
+  group('hasFrontAndBackCameras (flip-button gate)', () {
+    CameraDescription cam(CameraLensDirection dir) => CameraDescription(
+          name: dir.name,
+          lensDirection: dir,
+          sensorOrientation: 0,
+        );
+
+    test('true only when both a front and a back lens exist', () {
+      expect(
+        hasFrontAndBackCameras(
+            [cam(CameraLensDirection.back), cam(CameraLensDirection.front)]),
+        isTrue,
+      );
+    });
+
+    test('false with a single lens or none', () {
+      expect(hasFrontAndBackCameras([cam(CameraLensDirection.back)]), isFalse);
+      expect(hasFrontAndBackCameras([cam(CameraLensDirection.front)]), isFalse);
+      expect(hasFrontAndBackCameras(const []), isFalse);
+    });
+
+    test('ignores extra lenses of the same direction (e.g. dual back)', () {
+      expect(
+        hasFrontAndBackCameras([
+          cam(CameraLensDirection.back),
+          cam(CameraLensDirection.back),
+          cam(CameraLensDirection.external),
+        ]),
+        isFalse,
+      );
+    });
+  });
 }

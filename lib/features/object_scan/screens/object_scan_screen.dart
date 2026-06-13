@@ -22,6 +22,17 @@ enum _ScanStatus { initializing, ready, noCamera, permissionDenied, failed }
 /// or looking at a captured photo with its detected words.
 enum _CapturePhase { preview, capturing, reviewing }
 
+/// True when the device exposes both a front and a back lens, so the flip
+/// control is worth showing. Pure (no platform channels) so it is unit
+/// testable; the actual flip still needs a real camera on-device.
+bool hasFrontAndBackCameras(List<CameraDescription> cameras) {
+  final hasBack =
+      cameras.any((c) => c.lensDirection == CameraLensDirection.back);
+  final hasFront =
+      cameras.any((c) => c.lensDirection == CameraLensDirection.front);
+  return hasBack && hasFront;
+}
+
 /// Word Hunt — take a photo of a real object and the bundled on-device
 /// ML Kit model turns it into tappable vocabulary words.
 ///
@@ -47,6 +58,14 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
   CameraController? _controller;
   _ScanStatus _status = _ScanStatus.initializing;
   bool _initInFlight = false;
+
+  /// Which lens to open. Defaults to the back camera (the natural choice
+  /// for pointing at objects); the flip button toggles it.
+  CameraLensDirection _lensDirection = CameraLensDirection.back;
+
+  /// Cameras reported by the device, used to decide whether to offer flip.
+  List<CameraDescription> _cameras = const [];
+  bool get _canFlip => hasFrontAndBackCameras(_cameras);
 
   _CapturePhase _phase = _CapturePhase.preview;
   String? _photoPath;
@@ -121,8 +140,9 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
       setState(() => _status = _ScanStatus.noCamera);
       return;
     }
+    _cameras = cameras;
     final camera = cameras.firstWhere(
-      (c) => c.lensDirection == CameraLensDirection.back,
+      (c) => c.lensDirection == _lensDirection,
       orElse: () => cameras.first,
     );
     final controller = CameraController(
@@ -159,6 +179,26 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
       if (!mounted) return;
       setState(() => _status = _ScanStatus.failed);
     }
+  }
+
+  /// Switches between the front and back lens, then re-initializes through
+  /// the same guarded path used at startup (a flip is just dispose +
+  /// re-init with the other lens).
+  Future<void> _flipCamera() async {
+    if (_status != _ScanStatus.ready ||
+        _phase != _CapturePhase.preview ||
+        _initInFlight ||
+        !_canFlip) {
+      return;
+    }
+    ref.read(hapticServiceProvider).lightTap();
+    _lensDirection = _lensDirection == CameraLensDirection.back
+        ? CameraLensDirection.front
+        : CameraLensDirection.back;
+    _controller?.dispose();
+    _controller = null;
+    setState(() => _status = _ScanStatus.initializing);
+    await _initCamera();
   }
 
   void _deletePhoto() {
@@ -353,34 +393,71 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
             ),
           ),
           const SizedBox(height: 16),
-          Semantics(
-            button: true,
-            label: l10n.wordHuntTakePhoto,
-            child: Material(
-              color: Colors.white,
-              shape: const CircleBorder(),
-              elevation: 4,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: capturing ? null : _capturePhoto,
-                child: SizedBox(
-                  width: 80,
-                  height: 80,
-                  child: capturing
-                      ? const Padding(
-                          padding: EdgeInsets.all(22),
-                          child: CircularProgressIndicator(
-                            color: AppColors.bannerWordHuntEnd,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Left slot: flip button when two lenses exist, otherwise an
+              // empty box of the same width so the shutter stays centered.
+              SizedBox(
+                width: 56,
+                child: _canFlip
+                    ? Semantics(
+                        button: true,
+                        label: l10n.wordHuntFlipCamera,
+                        child: Material(
+                          color: Colors.black38,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: capturing ? null : _flipCamera,
+                            child: const SizedBox(
+                              width: 56,
+                              height: 56,
+                              child: Icon(
+                                Icons.cameraswitch_rounded,
+                                size: 28,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
-                        )
-                      : const Icon(
-                          Icons.camera_alt_rounded,
-                          size: 40,
-                          color: AppColors.bannerWordHuntEnd,
                         ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 24),
+              Semantics(
+                button: true,
+                label: l10n.wordHuntTakePhoto,
+                child: Material(
+                  color: Colors.white,
+                  shape: const CircleBorder(),
+                  elevation: 4,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: capturing ? null : _capturePhoto,
+                    child: SizedBox(
+                      width: 80,
+                      height: 80,
+                      child: capturing
+                          ? const Padding(
+                              padding: EdgeInsets.all(22),
+                              child: CircularProgressIndicator(
+                                color: AppColors.bannerWordHuntEnd,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.camera_alt_rounded,
+                              size: 40,
+                              color: AppColors.bannerWordHuntEnd,
+                            ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              // Right slot mirrors the left so the shutter sits centered.
+              const SizedBox(width: 24),
+              const SizedBox(width: 56),
+            ],
           ),
         ],
       ),

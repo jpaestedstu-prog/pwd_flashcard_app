@@ -1258,6 +1258,9 @@ class AppLocalizationsFil extends AppLocalizations {
   String get wordHuntTakePhoto => 'Kumuha ng litrato!';
 
   @override
+  String get wordHuntFlipCamera => 'Baligtarin ang camera';
+
+  @override
   String get wordHuntLooking => 'Tinitingnan ang iyong litrato…';
 
   @override

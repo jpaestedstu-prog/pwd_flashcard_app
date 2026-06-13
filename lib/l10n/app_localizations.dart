@@ -2384,6 +2384,12 @@ abstract class AppLocalizations {
   /// **'Take a photo!'**
   String get wordHuntTakePhoto;
 
+  /// No description provided for @wordHuntFlipCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Flip camera'**
+  String get wordHuntFlipCamera;
+
   /// No description provided for @wordHuntLooking.
   ///
   /// In en, this message translates to:
