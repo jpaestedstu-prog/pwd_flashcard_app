@@ -8,6 +8,7 @@ import '../../../core/accessibility/haptic_service.dart' show hapticServiceProvi
 import '../../../core/accessibility/tts_service.dart' show ttsServiceProvider;
 import '../../../data/local/seed_data.dart';
 import '../../../data/local/spaced_repetition_service.dart';
+import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
 import '../models/tutor_models.dart';
@@ -41,6 +42,8 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
   TutorStats _stats = const TutorStats();
   String? _lastPlanDate;
   List<String> _planWordIds = const [];
+  List<String> _favoriteCategories = const [];
+  Map<String, double> _interestScores = const {};
 
   // Quiz / lesson run state.
   final _answeredQuizIds = <String>{};
@@ -55,6 +58,14 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
   late TutorPersona _persona;
   String get _profileId => ref.read(profileProvider)?.id ?? 'guest';
   bool get _isFilipino => ref.read(settingsProvider).locale == 'fil';
+
+  /// Current interests: explicit favorites first, then strong implicit ones.
+  List<FlashcardCategory> get _interests => TutorEngine.topInterests(
+        TutorMemory(
+          favoriteCategories: _favoriteCategories,
+          interestScores: _interestScores,
+        ),
+      );
 
   @override
   void initState() {
@@ -76,23 +87,52 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
     _stats = memory.stats;
     _lastPlanDate = memory.lastPlanDate;
     _planWordIds = memory.planWordIds;
+    _favoriteCategories = memory.favoriteCategories;
+    _interestScores = memory.interestScores;
 
     // Restore a remembered conversation instead of greeting from scratch.
     if (memory.messages.isNotEmpty) {
       setState(() {
         _messages.addAll(memory.messages);
         for (final m in memory.messages) {
-          if (m.action?.type == TutorActionType.quickQuiz) {
-            // Quizzes restored from history are already in the past — lock them.
+          final type = m.action?.type;
+          // Interactive bubbles restored from history are already in the
+          // past — lock them (quiz options and favorite-topic pickers).
+          if (type == TutorActionType.quickQuiz ||
+              (type == TutorActionType.pickInterests &&
+                  m.action?.options != null)) {
             _answeredQuizIds.add(m.id);
           }
         }
       });
       _scrollToBottom();
+
+      // First visit of a new day → welcome the learner back by name, mention
+      // their favorite topic, and offer today's interest-aware lesson plan.
+      final lastDay =
+          TutorMemoryService.dayKey(memory.messages.last.timestamp);
+      if (lastDay != TutorMemoryService.dayKey(DateTime.now())) {
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (!mounted) return;
+          final progress = ref.read(progressProvider);
+          final msg = TutorEngine.welcomeBack(
+            profile?.name ?? 'Learner',
+            progress,
+            _profileId,
+            isFilipino: _isFilipino,
+            interests: _interests,
+          );
+          if (msg.action?.type == TutorActionType.startLesson) {
+            _planWordIds = msg.action!.planWordIds ?? const [];
+          }
+          _addTutorMessage(msg);
+        });
+      }
       return;
     }
 
-    // Fresh start: greet, then offer a personalized analysis after a beat.
+    // Fresh start: greet, then (first ever visit) ask for favorite topics so
+    // examples can be personalized — or offer the usual analysis.
     setState(() {
       _messages.add(
         TutorEngine.greet(profile?.name ?? 'Learner', isFilipino: _isFilipino),
@@ -100,6 +140,10 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
     });
     Future.delayed(const Duration(milliseconds: 1200), () {
       if (!mounted) return;
+      if (_favoriteCategories.isEmpty) {
+        _addTutorMessage(TutorEngine.askInterests(isFilipino: _isFilipino));
+        return;
+      }
       final progress = ref.read(progressProvider);
       _addTutorMessage(
         TutorEngine.analyzeAndRespond(
@@ -107,6 +151,7 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
           profile?.name ?? 'Learner',
           _profileId,
           isFilipino: _isFilipino,
+          interests: _interests,
         ),
       );
     });
@@ -123,6 +168,8 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
         stats: _stats,
         lastPlanDate: _lastPlanDate,
         planWordIds: _planWordIds,
+        favoriteCategories: _favoriteCategories,
+        interestScores: _interestScores,
       ),
     );
   }
@@ -172,24 +219,84 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
 
     Future.delayed(const Duration(milliseconds: 800), () {
       if (!mounted) return;
+      // Asking about a topic is itself an interest signal.
+      final mentioned = TutorEngine.categoryInText(text);
+      if (mentioned != null) {
+        _interestScores = TutorEngine.bumpInterest(
+            _interestScores, mentioned, TutorEngine.signalAsk);
+      }
       final progress = ref.read(progressProvider);
       final response = TutorEngine.respondToQuestion(
         text,
         progress,
         _profileId,
         isFilipino: _isFilipino,
+        interests: _interests,
       );
       setState(() => _isTyping = false);
       if (response.action?.type == TutorActionType.startLesson) {
         _planWordIds = response.action!.planWordIds ?? const [];
       }
       _addTutorMessage(response);
+      // "I like animals" → the engine confirmed a favorite; record it.
+      if (response.action?.type == TutorActionType.pickInterests &&
+          response.action!.categoryLabel != null) {
+        final cat =
+            TutorEngine.categoryFromName(response.action!.categoryLabel!);
+        if (cat != null) {
+          _recordFavorite(cat);
+          _celebrateNewFavorite(cat);
+        }
+      }
     });
   }
 
   void _sendQuick(String command) {
     _textController.text = command;
     _sendMessage();
+  }
+
+  // ─── Favorite topics (interest personalization) ───────────────────────────
+
+  /// Remembers [cat] as an explicit favorite (most recent first, capped) and
+  /// strengthens its implicit score.
+  void _recordFavorite(FlashcardCategory cat) {
+    setState(() {
+      _favoriteCategories = [
+        cat.name,
+        ..._favoriteCategories.where((n) => n != cat.name),
+      ].take(TutorEngine.maxFavorites).toList();
+      _interestScores = TutorEngine.bumpInterest(
+          _interestScores, cat, TutorEngine.signalPick);
+    });
+    _persist();
+  }
+
+  /// Celebration + an immediate quiz from the new favorite topic, so the
+  /// learner sees the personalization right away.
+  void _celebrateNewFavorite(FlashcardCategory cat) {
+    _flashCelebrate();
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      _addTutorMessage(
+        TutorEngine.quickQuiz(interests: [cat], isFilipino: _isFilipino),
+      );
+    });
+  }
+
+  /// A favorite-topic chip was tapped on a [TutorActionType.pickInterests]
+  /// bubble. Locks the picker, records the pick, confirms, then quizzes.
+  void _handleInterestPick(TutorMessage msg, String categoryName) {
+    if (_answeredQuizIds.contains(msg.id)) return;
+    final cat = TutorEngine.categoryFromName(categoryName);
+    if (cat == null) return;
+    ref.read(hapticServiceProvider).lightTap();
+    setState(() => _answeredQuizIds.add(msg.id));
+    _recordFavorite(cat);
+    _addTutorMessage(
+      TutorEngine.interestConfirmation(cat, isFilipino: _isFilipino),
+    );
+    _celebrateNewFavorite(cat);
   }
 
   // ─── Quiz answering + progress tracking ───────────────────────────────────
@@ -213,6 +320,17 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
         profileId: _profileId,
         wordId: action.wordId!,
         wasCorrect: correct,
+      );
+    }
+    // Engaging with a topic's quizzes is an implicit interest signal.
+    final quizCat = action.categoryLabel == null
+        ? null
+        : TutorEngine.categoryFromLabel(action.categoryLabel!);
+    if (quizCat != null) {
+      _interestScores = TutorEngine.bumpInterest(
+        _interestScores,
+        quizCat,
+        TutorEngine.signalQuiz + (correct ? TutorEngine.signalQuizCorrect : 0),
       );
     }
 
@@ -412,6 +530,12 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
                         emoji: '📝',
                         onTap: () => _sendQuick('practice'),
                       ),
+                      const SizedBox(width: 8),
+                      TutorQuickChip(
+                        label: isFilipino ? 'Paborito' : 'Favorites',
+                        emoji: '💖',
+                        onTap: () => _sendQuick('favorites'),
+                      ),
                     ],
                   ),
                 ),
@@ -434,6 +558,7 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
                         isFilipino: isFilipino,
                         answered: _answeredQuizIds.contains(msg.id),
                         onQuizAnswer: (answer) => _handleQuizAnswer(msg, answer),
+                        onInterestPick: (name) => _handleInterestPick(msg, name),
                         onActionTap: () => _handleActionTap(msg),
                         onSpeak: () => _speak(msg.content),
                       );

@@ -42,6 +42,14 @@ class TutorMemoryService {
         ? const TutorStats()
         : TutorStats.fromJson(Map<String, dynamic>.from(map['stats'] as Map));
 
+    final rawScores = map['interestScores'] as Map?;
+    final interestScores = <String, double>{};
+    if (rawScores != null) {
+      rawScores.forEach((key, value) {
+        if (value is num) interestScores['$key'] = value.toDouble();
+      });
+    }
+
     return TutorMemory(
       messages: messages,
       stats: stats,
@@ -49,6 +57,11 @@ class TutorMemoryService {
       planWordIds:
           (map['planWordIds'] as List?)?.map((e) => e as String).toList() ??
               const [],
+      favoriteCategories: (map['favoriteCategories'] as List?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      interestScores: interestScores,
     );
   }
 
@@ -65,6 +78,8 @@ class TutorMemoryService {
       'stats': memory.stats.toJson(),
       if (memory.lastPlanDate != null) 'lastPlanDate': memory.lastPlanDate,
       'planWordIds': memory.planWordIds,
+      'favoriteCategories': memory.favoriteCategories,
+      'interestScores': memory.interestScores,
     });
   }
 

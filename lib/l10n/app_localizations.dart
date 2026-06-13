@@ -2461,6 +2461,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Flashcards'**
   String get wordHuntFlashcards;
+
+  /// No description provided for @wordHuntMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Meaning'**
+  String get wordHuntMeaning;
 }
 
 class _AppLocalizationsDelegate

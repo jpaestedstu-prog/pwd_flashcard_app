@@ -6,7 +6,19 @@ import '../models/models.dart';
 class SeedData {
   SeedData._();
 
-  static List<Flashcard> get allFlashcards => [
+  /// Every seed flashcard with its [_definitions] entry applied. Built once
+  /// and cached, so callers (which hit this often) reuse the same list and
+  /// identity stays stable. Cards without a definition are returned as-is.
+  static List<Flashcard> get allFlashcards => _allWithDefinitions;
+
+  static final List<Flashcard> _allWithDefinitions = [
+    for (final card in _rawSeed)
+      _definitions.containsKey(card.id)
+          ? card.copyWith(definition: _definitions[card.id])
+          : card,
+  ];
+
+  static final List<Flashcard> _rawSeed = [
     ..._animals,
     ..._colorsAndShapes,
     ..._numbers,
@@ -232,6 +244,184 @@ class SeedData {
     const Flashcard(id: 'd11', wordEnglish: 'Clock', wordFilipino: 'Orasan', exampleSentence: 'The clock shows the time.', category: FlashcardCategory.daysAndTime),
     const Flashcard(id: 'd12', wordEnglish: 'Today', wordFilipino: 'Ngayon', exampleSentence: 'Today is a beautiful day!', category: FlashcardCategory.daysAndTime),
   ];
+
+  // ─── Definitions ─────────────────────────────────────────────────
+  // Short, kid-friendly meanings keyed by flashcard id, applied to every
+  // seed card via [allFlashcards]. Surfaced in the Word Hunt camera sheet
+  // (and available anywhere through [Flashcard.definition]). English-only,
+  // matching the example sentences. Fully offline — no dictionary lookups.
+  static const Map<String, String> _definitions = {
+    // Animals
+    'a01': 'A dog is a friendly animal that many people keep as a pet.',
+    'a02': "A cat is a small furry pet that says 'meow' and likes to nap.",
+    'a03': 'A bird is an animal with feathers and wings that can fly and sing.',
+    'a04': 'A fish is an animal that lives in water and breathes through gills.',
+    'a05':
+        'A butterfly is an insect with big colorful wings that flies from flower to flower.',
+    'a06': 'A horse is a large strong animal that people can ride.',
+    'a07': "A chicken is a farm bird that lays eggs and says 'cluck'.",
+    'a08': 'A pig is a pink farm animal that likes to roll in the mud.',
+    'a09': "A cow is a big farm animal that gives us milk and says 'moo'.",
+    'a10': 'A frog is a small green animal that jumps and lives near water.',
+    'a11': 'An elephant is a huge gray animal with big ears and a long trunk.',
+    'a12': 'A rabbit is a small soft animal with long ears that hops.',
+    // Colors & Shapes
+    'c01': 'Red is the bright color of apples, tomatoes, and fire trucks.',
+    'c02': 'Blue is the color of the clear sky and the deep sea.',
+    'c03': 'Yellow is the bright color of the sun and bananas.',
+    'c04': 'Green is the color of grass, leaves, and many plants.',
+    'c05': 'Orange is the color you get by mixing red and yellow, like a carrot.',
+    'c06': 'Purple is the color made by mixing red and blue, like grapes.',
+    'c07': 'A circle is a round shape with no corners, like a wheel.',
+    'c08': 'A square is a shape with four equal sides and four corners.',
+    'c09': 'A triangle is a shape with three straight sides and three corners.',
+    'c10': 'A star is a shape with five points, like the ones in the night sky.',
+    'c11': 'A heart is a shape we use to show love.',
+    'c12': 'White is the color of clouds, milk, and fresh snow.',
+    'c13': 'A flower is the colorful, sweet-smelling part of a plant.',
+    // Numbers
+    'n01': 'One is the first counting number, written as 1.',
+    'n02': 'Two is the number that comes after one, written as 2.',
+    'n03': 'Three is the number that comes after two, written as 3.',
+    'n04': 'Four is the number that comes after three, written as 4.',
+    'n05': 'Five is the number of fingers on one hand, written as 5.',
+    'n06': 'Six is the number that comes after five, written as 6.',
+    'n07': 'Seven is the number of days in a week, written as 7.',
+    'n08': 'Eight is the number that comes after seven, written as 8.',
+    'n09': 'Nine is the number that comes after eight, written as 9.',
+    'n10': 'Ten is the number of fingers on both hands, written as 10.',
+    'n11': 'Twenty is two groups of ten, written as 20.',
+    'n12': 'A hundred is ten groups of ten, written as 100.',
+    // Body Parts
+    'b01': 'The head is the top part of your body where your face is.',
+    'b02': 'Eyes are the parts of your face that you use to see.',
+    'b03': 'Ears are the parts of your body that you use to hear.',
+    'b04': 'The nose is the part of your face you use to smell and breathe.',
+    'b05': 'The mouth is the part of your face you use to eat and talk.',
+    'b06': 'Hands are the parts at the ends of your arms that hold things.',
+    'b07': 'Feet are the parts at the ends of your legs that you stand on.',
+    'b08': 'Fingers are the long parts of your hand that grab and point.',
+    'b09': 'Hair is the soft strands that grow on top of your head.',
+    'b10': 'Teeth are the hard white parts in your mouth used to chew.',
+    'b11': 'Shoulders are where your arms join the top of your body.',
+    'b12': 'Knees are the parts in the middle of your legs that bend.',
+    // Food & Drinks
+    'f01': 'Rice is small white grains that many people eat as a meal.',
+    'f02': 'Water is the clear drink we need every day to stay healthy.',
+    'f03': 'Bread is a soft food made from flour that we bake and eat.',
+    'f04': 'Milk is a white drink from cows that helps bones grow strong.',
+    'f05': 'An apple is a round, crunchy fruit that can be red, green, or yellow.',
+    'f06': 'A banana is a long, curved yellow fruit that is soft and sweet.',
+    'f07': 'An egg is an oval food from chickens that we cook and eat.',
+    'f08': 'Chicken is the meat from a chicken that people cook and eat.',
+    'f09': 'Juice is a sweet drink made by squeezing fruit.',
+    'f10': 'Vegetables are healthy plant foods like carrots, beans, and spinach.',
+    'f11': 'Soup is a warm liquid food made by cooking things in water.',
+    'f12': 'Candy is a small sweet treat made mostly of sugar.',
+    'f13': 'A bottle is a container with a narrow top that holds drinks.',
+    'f14': 'A cup is a small open container that you drink from.',
+    'f15': 'A spoon is a tool with a small bowl shape for eating soup and rice.',
+    'f16': 'A fork is a tool with pointed prongs for picking up food.',
+    'f17': 'A plate is a flat dish that you put your food on.',
+    // Family & Greetings
+    'g01': 'A mother is a woman who has a child and cares for the family.',
+    'g02': 'A father is a man who has a child and cares for the family.',
+    'g03': 'A brother is a boy who has the same parents as you.',
+    'g04': 'A sister is a girl who has the same parents as you.',
+    'g05': 'A grandmother is the mother of your mother or father.',
+    'g06': 'A grandfather is the father of your mother or father.',
+    'g07': "'Hello' is a friendly word you say when you greet someone.",
+    'g08': "'Thank you' is what you say to show you are grateful.",
+    'g09': "'Please' is a polite word you use when you ask for something.",
+    'g10': "'Sorry' is what you say when you feel bad about a mistake.",
+    'g11': "'Good morning' is a greeting you say early in the day.",
+    'g12': 'A friend is someone you like and enjoy spending time with.',
+    // Clothing
+    'cl01': 'A t-shirt is a light shirt with short sleeves you pull over your head.',
+    'cl02': 'Pants are clothes that cover each leg from your waist to your ankles.',
+    'cl03': 'A dress is a one-piece outfit, often worn by girls and women.',
+    'cl04': 'Socks are soft clothes you wear on your feet inside your shoes.',
+    'cl05': 'Shoes are what you wear on your feet to protect them when you walk.',
+    'cl06': 'A cap is a soft hat with a brim that shades your eyes from the sun.',
+    'cl07': 'A jacket is warm clothing you wear over your shirt when it is cold.',
+    'cl08': 'A uniform is the special set of clothes you wear to school or a job.',
+    'cl09': 'Shorts are short pants that end above the knees for hot days.',
+    'cl10': 'Gloves are clothes you wear on your hands to keep them warm or safe.',
+    'cl11': 'Glasses are lenses you wear over your eyes to help you see clearly.',
+    'cl12': 'A backpack is a bag you carry on your back to hold your things.',
+    // Weather
+    'w01': 'Sunny means the sky is clear and the sun is shining brightly.',
+    'w02': 'Rainy means water is falling from the clouds as rain.',
+    'w03': 'Cloudy means the sky is covered with gray clouds.',
+    'w04': 'A rainbow is a colorful arc of light in the sky after the rain.',
+    'w05': 'A storm is rough weather with strong wind, heavy rain, and thunder.',
+    'w06': 'Windy means the air is moving fast and blowing things around.',
+    'w07': 'Hot means the weather is very warm and makes you sweat.',
+    'w08': 'Cold means the weather is chilly and makes you shiver.',
+    'w09': 'A flood is when too much water covers land that is usually dry.',
+    'w10': 'Lightning is a bright flash of electricity in the sky during a storm.',
+    'w11': 'Partly cloudy means there are some clouds and some sunshine.',
+    'w12': 'Night is the dark part of the day when the sun is down.',
+    // Classroom
+    'cr01': 'A book is pages joined together that you read to learn or enjoy.',
+    'cr02': 'A pencil is a thin tool you use to write or draw, and you can erase it.',
+    'cr03': 'A notebook is a book of blank pages where you write your notes.',
+    'cr04': 'A crayon is a colored wax stick you use to color pictures.',
+    'cr05': 'A ruler is a straight tool you use to measure and draw straight lines.',
+    'cr06': 'Scissors are a tool with two blades that you use to cut paper.',
+    'cr07': 'A pen is a tool with ink that you use to write.',
+    'cr08': 'Paint is colored liquid you brush on to make pictures.',
+    'cr09': 'An eraser is a soft tool you use to rub out pencil marks.',
+    'cr10': 'A chair is a seat with a back where one person sits.',
+    'cr11': 'A school is a place where children go to learn.',
+    'cr12': 'A teacher is a person whose job is to help students learn.',
+    'cr13': 'A table is a piece of furniture with a flat top and legs.',
+    'cr14': 'Paper is a thin flat material that you write, draw, or print on.',
+    'cr15': 'A ball is a round object that you throw, kick, or bounce in games.',
+    'cr16': 'A door is the part of a room you open and close to go in or out.',
+    'cr17': 'A window is an opening in a wall with glass that lets in light.',
+    'cr18': 'A television is a screen that shows moving pictures and sound.',
+    'cr19': 'A phone is a device you use to call and talk to people far away.',
+    // Transportation
+    't01': 'A car is a vehicle with four wheels that people drive on roads.',
+    't02': 'A bus is a long vehicle that carries many people at once.',
+    't03': 'A bicycle is a two-wheeled ride you move by pushing the pedals.',
+    't04': 'An airplane is a vehicle with wings that flies people through the sky.',
+    't05': 'A ship is a very large boat that carries people or goods across the sea.',
+    't06': 'A train is a line of cars that runs on tracks and carries many people.',
+    't07': 'A motorcycle is a fast two-wheeled vehicle with an engine.',
+    't08': 'A helicopter is a flying machine with spinning blades on top.',
+    't09': 'A taxi is a car you pay to drive you where you want to go.',
+    't10': 'A boat is a vehicle that floats and carries people on water.',
+    't11': 'To walk is to move on your feet, step by step.',
+    't12': 'A road is a hard path that cars and people travel on.',
+    // Emotions
+    'e01': 'Happy is the good feeling you have when you are glad and smiling.',
+    'e02': 'Sad is the down feeling you have when something makes you unhappy.',
+    'e03': 'Angry is the strong feeling you have when something upsets you.',
+    'e04': 'Scared is the feeling you have when something frightens you.',
+    'e05': 'Surprised is the feeling you get when something unexpected happens.',
+    'e06': 'Loved is the warm feeling of knowing people care about you.',
+    'e07': 'Sleepy is the feeling of being tired and ready to sleep.',
+    'e08': 'Sick is the feeling of being unwell in your body.',
+    'e09': 'Proud is the happy feeling you get when you do something well.',
+    'e10': 'Confused is the feeling of not understanding something.',
+    'e11': 'Excited is the bubbly feeling of really looking forward to something.',
+    'e12': 'Calm is the peaceful, relaxed feeling of being quiet inside.',
+    // Days & Time
+    'd01': 'Monday is the first day of the school week.',
+    'd02': 'Tuesday is the day that comes after Monday.',
+    'd03': 'Wednesday is the day in the middle of the week.',
+    'd04': 'Thursday is the day that comes after Wednesday.',
+    'd05': 'Friday is the last day of the school week.',
+    'd06': 'Saturday is a weekend day when there is no school.',
+    'd07': 'Sunday is a weekend day for rest and family.',
+    'd08': 'Morning is the early part of the day when the sun comes up.',
+    'd09': 'Afternoon is the part of the day after noon and before evening.',
+    'd10': 'Evening is the part of the day when the sun goes down.',
+    'd11': 'A clock is a device that shows you what time it is.',
+    'd12': 'Today is this day, the one that is happening right now.',
+  };
 
   /// Generate default decks (one per category)
   static List<FlashcardDeck> get defaultDecks {

@@ -39,6 +39,21 @@ class TvCastAudioNarrator {
     }
   }
 
+  /// Speak a single utterance in one language. Backs the on-demand,
+  /// per-language "Replay" buttons on the cast screen. Stops any in-flight
+  /// speech and clears a pending [speakBoth] follow-up so a queued second
+  /// language can't fire over this one. No-op on empty text.
+  Future<void> speakOne(String text, {required bool filipino}) async {
+    if (text.trim().isEmpty) return;
+    await tts.stop();
+    tts.setCompletionHandler(() {});
+    if (filipino) {
+      await tts.speakFilipino(text);
+    } else {
+      await tts.speakEnglish(text);
+    }
+  }
+
   /// Soft attention chime on slide / page change. Reuses the card-flip effect.
   void cue() => sfx.playFlip();
 

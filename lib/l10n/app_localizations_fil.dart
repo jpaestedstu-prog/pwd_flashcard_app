@@ -1300,4 +1300,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get wordHuntFlashcards => 'Flashcards';
+
+  @override
+  String get wordHuntMeaning => 'Kahulugan';
 }

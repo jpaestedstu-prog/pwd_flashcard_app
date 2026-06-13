@@ -294,6 +294,58 @@ class SettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: 28),
 
+          // ─── Learning Modes Section ────────
+          const _SectionHeader(title: 'Learning Modes'),
+          const SizedBox(height: 8),
+
+          _SettingsTile(
+            icon: Icons.slow_motion_video_rounded,
+            title: 'Slow-Motion Mode',
+            subtitle: settings.slowMotionEnabled
+                ? 'Games & flashcards animate at half speed'
+                : 'Slow gameplay & flashcard animations down',
+            trailing: Switch.adaptive(
+              value: settings.slowMotionEnabled,
+              activeTrackColor: AppColors.primary,
+              onChanged: (v) =>
+                  settingsNotifier.update(settings.copyWith(slowMotionEnabled: v)),
+            ),
+          ),
+
+          _SettingsTile(
+            icon: Icons.support_rounded,
+            title: 'Learning Assist',
+            subtitle: settings.learningAssistEnabled
+                ? 'Shows "why" hints and a 50/50 helper in quizzes'
+                : 'Plain quizzes — no hints or explanations',
+            trailing: Switch.adaptive(
+              value: settings.learningAssistEnabled,
+              activeTrackColor: AppColors.primary,
+              onChanged: (v) => settingsNotifier
+                  .update(settings.copyWith(learningAssistEnabled: v)),
+            ),
+          ),
+
+          _SettingsTile(
+            icon: Icons.flag_rounded,
+            title: 'Daily Mission Size',
+            subtitle: '${settings.dailyMissionSize} words per day',
+            trailing: SizedBox(
+              width: 150,
+              child: Slider(
+                value: settings.dailyMissionSize.clamp(3, 5).toDouble(),
+                min: 3,
+                max: 5,
+                divisions: 2,
+                label: '${settings.dailyMissionSize}',
+                onChanged: (v) =>
+                    settingsNotifier.setDailyMissionSize(v.round()),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
           // ─── Audio Section ─────────────────
           _SectionHeader(title: AppLocalizations.of(context)?.audio ?? 'Audio'),
           const SizedBox(height: 8),

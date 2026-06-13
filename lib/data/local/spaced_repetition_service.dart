@@ -66,18 +66,22 @@ class SpacedRepetitionService {
     });
   }
 
+  static Map<String, Map<String, dynamic>> _serialize(
+    Map<String, WordAccuracy> accuracies,
+  ) =>
+      accuracies.map(
+        (key, wa) => MapEntry(key, {
+          'correct': wa.correct,
+          'total': wa.total,
+          'lastSeen': wa.lastSeen.toIso8601String(),
+        }),
+      );
+
   static Future<void> _saveWordAccuracies(
     String profileId,
     Map<String, WordAccuracy> accuracies,
   ) async {
-    final data = accuracies.map(
-      (key, wa) => MapEntry(key, {
-        'correct': wa.correct,
-        'total': wa.total,
-        'lastSeen': wa.lastSeen.toIso8601String(),
-      }),
-    );
-    await _box.put('sr_$profileId', data);
+    await _box.put('sr_$profileId', _serialize(accuracies));
   }
 
   // ─── Recording ──────────────────────────────────────
@@ -93,6 +97,30 @@ class SpacedRepetitionService {
         accs[wordId] ?? WordAccuracy(wordId: wordId, lastSeen: DateTime.now());
     accs[wordId] = existing.recordAttempt(wasCorrect);
     await _saveWordAccuracies(profileId, accs);
+  }
+
+  /// Registers a word as encountered — e.g. discovered with the Word Hunt
+  /// camera — so it enters the spaced-repetition review queue without
+  /// recording a right/wrong attempt. Refreshes `lastSeen` (the learner just
+  /// saw it) but never touches the accuracy counts, so summary stats stay
+  /// truthful and an untested word can't be mistaken for a weak one.
+  ///
+  /// The Hive write is fire-and-forget by design: callers in widget code
+  /// must NOT await it (see the Hive FakeAsync deadlock note), mirroring
+  /// [ObjectScanDiscoveryService.recordDiscovery].
+  static void markSeen({
+    required String profileId,
+    required String wordId,
+  }) {
+    final accs = getWordAccuracies(profileId);
+    final existing = accs[wordId];
+    accs[wordId] = WordAccuracy(
+      wordId: wordId,
+      correct: existing?.correct ?? 0,
+      total: existing?.total ?? 0,
+      lastSeen: DateTime.now(),
+    );
+    _box.put('sr_$profileId', _serialize(accs));
   }
 
   /// Batch record after a game (list of word IDs and whether each was correct).

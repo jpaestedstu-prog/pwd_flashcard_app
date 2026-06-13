@@ -80,6 +80,22 @@ class SettingsNotifier extends Notifier<AppSettings> {
     HiveService.saveSettings(state);
   }
 
+  void toggleSlowMotion() {
+    state = state.copyWith(slowMotionEnabled: !state.slowMotionEnabled);
+    HiveService.saveSettings(state);
+  }
+
+  void toggleLearningAssist() {
+    state = state.copyWith(learningAssistEnabled: !state.learningAssistEnabled);
+    HiveService.saveSettings(state);
+  }
+
+  /// Sets the Daily Mission size, clamped to the supported 3–5 range.
+  void setDailyMissionSize(int size) {
+    state = state.copyWith(dailyMissionSize: size.clamp(3, 5));
+    HiveService.saveSettings(state);
+  }
+
   void toggleSoundEffects() {
     state = state.copyWith(soundEffects: !state.soundEffects);
     HiveService.saveSettings(state);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/features/ai_tutor/models/tutor_models.dart';
 import 'package:pwdpwdpwd/features/ai_tutor/widgets/tutor_chat.dart';
 import 'package:pwdpwdpwd/features/ai_tutor/widgets/tutor_persona.dart';
@@ -53,6 +54,19 @@ TutorMessage _studentMessage() => TutorMessage(
           'Can you help me understand how transportation words are used in long '
           'example sentences please?',
       timestamp: DateTime.now(),
+    );
+
+/// All 12 favorite-topic chips — the widest interactive bubble.
+TutorMessage _interestPickerMessage() => TutorMessage(
+      id: 'i',
+      role: TutorMessageRole.tutor,
+      content: '💖 What topic do you love? Pick one — I\'ll use more words '
+          'you like in our quizzes and examples!',
+      timestamp: DateTime.now(),
+      action: TutorAction(
+        type: TutorActionType.pickInterests,
+        options: FlashcardCategory.values.map((c) => c.name).toList(),
+      ),
     );
 
 TutorMessage _practiceMessage() => TutorMessage(
@@ -109,6 +123,21 @@ void main() {
           persona: persona,
           isFilipino: false,
           onActionTap: () {},
+          onSpeak: () {},
+        ),
+        host: LayoutHost.scrollable,
+      );
+    });
+
+    testWidgets('$tag interest-picker bubble never overflows',
+        (tester) async {
+      await expectNoOverflowAcrossDevices(
+        tester,
+        (_) => TutorMessageBubble(
+          message: _interestPickerMessage(),
+          persona: persona,
+          isFilipino: true,
+          onInterestPick: (_) {},
           onSpeak: () {},
         ),
         host: LayoutHost.scrollable,
@@ -173,7 +202,7 @@ void main() {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            for (final label in const ['Aralin', 'Quiz', 'Progress', 'Hint', 'Practice'])
+            for (final label in const ['Aralin', 'Quiz', 'Progress', 'Hint', 'Practice', 'Paborito'])
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: TutorQuickChip(label: label, emoji: '🎯', onTap: () {}),

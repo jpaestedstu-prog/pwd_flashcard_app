@@ -12,29 +12,61 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/fsl_fullscreen_player.dart';
 
 /// Bottom sheet shown when a Word Hunt detection is tapped: the word in
-/// English + Filipino with one-tap bridges into the existing learning tools
-/// (TTS, spelling game, flashcards, pronunciation practice, FSL video).
-class DiscoveredWordSheet extends ConsumerWidget {
+/// English + Filipino with its meaning, plus one-tap bridges into the
+/// existing learning tools (TTS, spelling game, flashcards, pronunciation
+/// practice, FSL video). The word is read aloud automatically on open.
+class DiscoveredWordSheet extends ConsumerStatefulWidget {
   final Flashcard card;
   final bool isNewDiscovery;
   final bool starAwarded;
+
+  /// Speak the word once with TTS as soon as the sheet appears (the "reads
+  /// the word aloud" step) — the manual 🔊 buttons stay available either way.
+  /// Honored only when the app's `ttsEnabled` setting is on. Tests that don't
+  /// wire up TTS/settings pass false to keep the sheet inert.
+  final bool autoSpeak;
 
   const DiscoveredWordSheet({
     super.key,
     required this.card,
     this.isNewDiscovery = false,
     this.starAwarded = false,
+    this.autoSpeak = true,
   });
+
+  @override
+  ConsumerState<DiscoveredWordSheet> createState() =>
+      _DiscoveredWordSheetState();
+}
+
+class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoSpeak());
+  }
+
+  /// Reads the discovered word aloud once, right after the sheet lays out.
+  /// Short-circuits on [DiscoveredWordSheet.autoSpeak] before touching any
+  /// provider, so widget tests that don't set up TTS/settings stay green.
+  void _autoSpeak() {
+    if (!widget.autoSpeak || !mounted) return;
+    if (!ref.read(settingsProvider).ttsEnabled) return;
+    ref.read(ttsServiceProvider).speakEnglish(widget.card.wordEnglish);
+  }
 
   /// Any learning action from a discovery counts as learning activity for
   /// the streak — same surgical pattern as the AI Tutor.
-  void _recordActivity(WidgetRef ref) {
+  void _recordActivity() {
     ref.read(progressProvider.notifier).recordDailyActivity();
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final card = widget.card;
+    final isNewDiscovery = widget.isNewDiscovery;
+    final starAwarded = widget.starAwarded;
     final categoryIndex = card.category.index;
     return SafeArea(
       child: Container(
@@ -96,6 +128,17 @@ class DiscoveredWordSheet extends ConsumerWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
+              if (card.definition != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  '${l10n.wordHuntMeaning}: ${card.definition}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               if (card.exampleSentence != null) ...[
                 const SizedBox(height: 6),
                 Text(
@@ -116,7 +159,7 @@ class DiscoveredWordSheet extends ConsumerWidget {
                       emoji: '🔊',
                       label: l10n.wordHuntSpeakEnglish,
                       onTap: () {
-                        _recordActivity(ref);
+                        _recordActivity();
                         ref.read(ttsServiceProvider).speakEnglish(
                               card.exampleSentence == null
                                   ? card.wordEnglish
@@ -131,7 +174,7 @@ class DiscoveredWordSheet extends ConsumerWidget {
                       emoji: '🗣️',
                       label: l10n.wordHuntSpeakFilipino,
                       onTap: () {
-                        _recordActivity(ref);
+                        _recordActivity();
                         ref
                             .read(ttsServiceProvider)
                             .speakFilipino(card.wordFilipino);
@@ -148,7 +191,7 @@ class DiscoveredWordSheet extends ConsumerWidget {
                       emoji: '🔤',
                       label: l10n.spellingBee,
                       onTap: () {
-                        _recordActivity(ref);
+                        _recordActivity();
                         // Single-word round for this discovery. Words with
                         // spaces/hyphens can't be letter-scrambled (mirrors
                         // the game's own filter) — those fall back to a
@@ -168,7 +211,7 @@ class DiscoveredWordSheet extends ConsumerWidget {
                       emoji: '🃏',
                       label: l10n.wordHuntFlashcards,
                       onTap: () {
-                        _recordActivity(ref);
+                        _recordActivity();
                         // Show just this word's card.
                         context.push(
                           '/learning-path-viewer/$categoryIndex?word=${card.id}',
@@ -186,7 +229,7 @@ class DiscoveredWordSheet extends ConsumerWidget {
                       emoji: '🎤',
                       label: l10n.pronunciationPractice,
                       onTap: () {
-                        _recordActivity(ref);
+                        _recordActivity();
                         // Single listen-and-pick round for this discovery.
                         context.push(
                           '/games/pronunciation?difficulty=easy&categories=$categoryIndex'

@@ -14,6 +14,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/flashcard_image.dart';
+import '../../../widgets/language_replay_bar.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -122,6 +123,9 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
+    // The replay buttons are hidden when Text-to-Speech is off (e.g. the
+    // hearing preset, which prioritises FSL video over spoken audio).
+    final ttsEnabled = ref.watch(settingsProvider).ttsEnabled;
     if (_finished) return _buildResultScreen();
 
     if (_reviewCards.isEmpty) {
@@ -326,6 +330,21 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
             ),
 
             const SizedBox(height: 16),
+
+            // Hear the word again — in either language, so a student who only
+            // understands one can reach it directly. Only after the answer is
+            // revealed: before that, Filipino audio would give away the recall
+            // answer. Hidden entirely when Text-to-Speech is off.
+            if (_showAnswer && ttsEnabled) ...[
+              LanguageReplayBar(
+                onEnglish: () =>
+                    ref.read(ttsServiceProvider).speakEnglish(card.wordEnglish),
+                onFilipino: () => ref
+                    .read(ttsServiceProvider)
+                    .speakFilipino(card.wordFilipino),
+              ),
+              const SizedBox(height: 12),
+            ],
 
             // ─── Action Buttons ────────
             if (!_showAnswer)

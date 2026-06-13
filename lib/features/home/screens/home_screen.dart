@@ -1186,12 +1186,15 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
     // Save result
     final profile = ref.read(profileProvider);
     if (profile != null) {
-      await DailyChallenge.markCompleted(profile.id, correct);
+      // Idempotent: `counted` is false if today's mission was already
+      // completed (e.g. on the full Daily Mission screen), so we don't
+      // double-award stars or double-count the streak.
+      final counted = await DailyChallenge.markCompleted(profile.id, correct);
       if (!mounted) return;
       // Completing the daily challenge is a learning activity — keep the
       // streak alive regardless of whether the answer was correct.
       ref.read(progressProvider.notifier).recordDailyActivity();
-      if (correct) {
+      if (counted && correct) {
         ref.read(progressProvider.notifier).addStars(2);
       }
       setState(() {

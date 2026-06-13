@@ -19,17 +19,25 @@ class Motion {
   /// because some animation widgets misbehave with it.
   static const Duration reducedCap = Duration(milliseconds: 80);
 
+  /// Multiplier applied to durations when [slowMotion] is on (~half speed).
+  static const double slowFactor = 2.0;
+
   final bool reducedMotion;
 
-  const Motion({required this.reducedMotion});
+  /// When true (and [reducedMotion] is off), animations are stretched by
+  /// [slowFactor] so learners can follow them. Reduced-motion takes priority:
+  /// if both are on, motion is minimized rather than slowed.
+  final bool slowMotion;
+
+  const Motion({required this.reducedMotion, this.slowMotion = false});
 
   /// Reads the active settings from a Riverpod scope. Use this in
   /// `ConsumerWidget`/`ConsumerStatefulWidget` build methods.
   factory Motion.of(WidgetRef ref) {
-    final reduced = ref.watch(
-      settingsProvider.select((s) => s.reducedMotion),
+    final flags = ref.watch(
+      settingsProvider.select((s) => (s.reducedMotion, s.slowMotionEnabled)),
     );
-    return Motion(reducedMotion: reduced);
+    return Motion(reducedMotion: flags.$1, slowMotion: flags.$2);
   }
 
   /// Static lookup that tolerates a missing scope. Returns a no-reduction
@@ -41,19 +49,22 @@ class Motion {
   }
 
   /// Pick the right duration for a given animation. Returns [reducedCap]
-  /// (capped) when the user prefers less motion, otherwise the full
-  /// [full] duration.
+  /// (capped) when the user prefers less motion; stretches by [slowFactor]
+  /// when slow-motion is on; otherwise the full [full] duration.
   Duration duration(Duration full) {
-    if (!reducedMotion) return full;
-    if (full <= reducedCap) return full;
-    return reducedCap;
+    if (reducedMotion) {
+      return full <= reducedCap ? full : reducedCap;
+    }
+    if (slowMotion) return full * slowFactor;
+    return full;
   }
 
-  /// Convenience: zero ms when reduced, otherwise [full]. Use this for
-  /// celebratory effects (confetti, big bursts) that should not play at
-  /// all under reduced motion.
+  /// Convenience: zero ms when reduced, otherwise [full] (stretched under
+  /// slow-motion). Use this for celebratory effects (confetti, big bursts)
+  /// that should not play at all under reduced motion.
   Duration optional(Duration full) {
-    return reducedMotion ? Duration.zero : full;
+    if (reducedMotion) return Duration.zero;
+    return slowMotion ? full * slowFactor : full;
   }
 }
 

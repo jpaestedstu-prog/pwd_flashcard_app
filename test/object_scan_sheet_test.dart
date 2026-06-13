@@ -42,6 +42,16 @@ class _FakeTtsService extends TtsService {
   Future<void> speakFilipino(String text) async => spoken.add('fil:$text');
 }
 
+/// Settings stub so the sheet can read `ttsEnabled` (for auto-speak) without
+/// opening the Hive settings box inside testWidgets.
+class _StubSettingsNotifier extends SettingsNotifier {
+  _StubSettingsNotifier(this._ttsEnabled);
+  final bool _ttsEnabled;
+
+  @override
+  AppSettings build() => AppSettings(ttsEnabled: _ttsEnabled);
+}
+
 Flashcard _card(String id) =>
     SeedData.allFlashcards.firstWhere((c) => c.id == id);
 
@@ -61,6 +71,9 @@ void main() {
     required Flashcard card,
     bool isNewDiscovery = false,
     bool starAwarded = false,
+    // Auto-speak is off by default so the existing button/navigation
+    // assertions see only the speech they trigger.
+    bool ttsEnabled = false,
   }) async {
     progressStub = _StubProgressNotifier();
     tts = _FakeTtsService();
@@ -101,6 +114,7 @@ void main() {
         overrides: [
           progressProvider.overrideWith(() => progressStub),
           ttsServiceProvider.overrideWithValue(tts),
+          settingsProvider.overrideWith(() => _StubSettingsNotifier(ttsEnabled)),
         ],
         child: MaterialApp.router(
           routerConfig: router,
@@ -118,6 +132,28 @@ void main() {
     expect(find.text('Table'), findsOneWidget);
     expect(find.text('Mesa'), findsOneWidget);
     expect(find.textContaining('The book is on the table.'), findsOneWidget);
+  });
+
+  testWidgets('shows the word definition (meaning)', (tester) async {
+    await pumpSheet(tester, card: _card('cr13'));
+    expect(
+      find.textContaining('A table is a piece of furniture'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('auto-speaks the English word on open when TTS is enabled',
+      (tester) async {
+    await pumpSheet(tester, card: _card('cr13'), ttsEnabled: true);
+    // Post-frame callback fires the auto-speak after layout.
+    await tester.pump();
+    expect(tts.spoken, ['en:Table']);
+  });
+
+  testWidgets('does not auto-speak when TTS is disabled', (tester) async {
+    await pumpSheet(tester, card: _card('cr13'));
+    await tester.pump();
+    expect(tts.spoken, isEmpty);
   });
 
   testWidgets('new discovery with a star shows the +1 banner', (tester) async {

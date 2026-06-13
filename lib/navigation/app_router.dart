@@ -130,6 +130,7 @@ import '../features/account/screens/backup_account_screen.dart';
 import '../features/reports/screens/export_report_screen.dart';
 import '../features/tv_cast/screens/tv_cast_screen.dart';
 import '../core/services/engagement_tracker.dart';
+import '../core/utils/slow_motion.dart';
 import '../providers/lock_state_provider.dart';
 import 'app_page_transitions.dart';
 import 'bottom_nav_shell.dart';
@@ -618,9 +619,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                   }
                   return AppPageTransitions.slideRight(
                     key: state.pageKey,
-                    child: FlashcardViewerScreen(
+                    child: _slow(FlashcardViewerScreen(
                       category: FlashcardCategory.values[catIndex],
-                    ),
+                    )),
                   );
                 },
               ),
@@ -660,11 +661,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: WordMatchScreen(
+                  child: _slow(WordMatchScreen(
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
-                  ),
+                  )),
                 ),
               ),
               GoRoute(
@@ -672,12 +673,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: SpellingBeeScreen(
+                  child: _slow(SpellingBeeScreen(
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
                     focusWordId: _parseFocusWord(state),
-                  ),
+                  )),
                 ),
               ),
               GoRoute(
@@ -685,11 +686,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: MemoryMatchScreen(
+                  child: _slow(MemoryMatchScreen(
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
-                  ),
+                  )),
                 ),
               ),
               GoRoute(
@@ -697,11 +698,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: DragDropScreen(
+                  child: _slow(DragDropScreen(
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
-                  ),
+                  )),
                 ),
               ),
               GoRoute(
@@ -709,11 +710,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: FlashcardQuizScreen(
+                  child: _slow(FlashcardQuizScreen(
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
-                  ),
+                  )),
                 ),
               ),
               GoRoute(
@@ -721,12 +722,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: PronunciationScreen(
+                  child: _slow(PronunciationScreen(
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
                     focusWordId: _parseFocusWord(state),
-                  ),
+                  )),
                 ),
               ),
               GoRoute(
@@ -734,11 +735,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: SentenceBuilderScreen(
+                  child: _slow(SentenceBuilderScreen(
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
-                  ),
+                  )),
                 ),
               ),
               GoRoute(
@@ -746,11 +747,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: TracingScreen(
+                  child: _slow(TracingScreen(
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
-                  ),
+                  )),
                 ),
               ),
               GoRoute(
@@ -758,11 +759,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: JigsawPuzzleScreen(
+                  child: _slow(JigsawPuzzleScreen(
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
-                  ),
+                  )),
                 ),
               ),
               GoRoute(
@@ -770,11 +771,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: PictureWordScreen(
+                  child: _slow(PictureWordScreen(
                     difficulty: _parseDifficulty(state),
                     categories: _parseCategories(state),
                     timedMode: _parseTimedMode(state),
-                  ),
+                  )),
                 ),
               ),
               GoRoute(
@@ -793,9 +794,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                     parentNavigatorKey: rootNavigatorKey,
                     pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                       key: state.pageKey,
-                      child: FslSignToWordScreen(
+                      child: _slow(FslSignToWordScreen(
                         categories: _parseCategories(state),
-                      ),
+                      )),
                     ),
                   ),
                   GoRoute(
@@ -803,9 +804,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                     parentNavigatorKey: rootNavigatorKey,
                     pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                       key: state.pageKey,
-                      child: FslWordToSignScreen(
+                      child: _slow(FslWordToSignScreen(
                         categories: _parseCategories(state),
-                      ),
+                      )),
                     ),
                   ),
                 ],
@@ -843,9 +844,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: StoryQuizScreen(
+                  child: _slow(StoryQuizScreen(
                     storyId: state.pathParameters['storyId']!,
-                  ),
+                  )),
                 ),
               ),
             ],
@@ -894,7 +895,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/smart-review',
         pageBuilder: (context, state) => AppPageTransitions.scaleUp(
           key: state.pageKey,
-          child: const SmartReviewScreen(),
+          child: _slow(const SmartReviewScreen()),
         ),
       ),
       // Star Shop
@@ -1083,13 +1084,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               state.uri.queryParameters['totalSteps'] ?? '');
           return AppPageTransitions.slideRight(
             key: state.pageKey,
-            child: FlashcardViewerScreen(
+            child: _slow(FlashcardViewerScreen(
               category: FlashcardCategory.values[catIndex],
               learningPathId: pathId,
               learningStepIndex: stepIndex,
               learningTotalSteps: totalSteps,
               focusWordId: _parseFocusWord(state),
-            ),
+            )),
           );
         },
       ),
@@ -1130,7 +1131,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/daily-challenge',
         pageBuilder: (context, state) => AppPageTransitions.scaleUp(
           key: state.pageKey,
-          child: const DailyChallengeScreen(),
+          child: _slow(const DailyChallengeScreen()),
         ),
       ),
       // Parent Dashboard
@@ -1163,7 +1164,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/multiplayer-quiz',
         pageBuilder: (context, state) => AppPageTransitions.scaleUp(
           key: state.pageKey,
-          child: const MultiplayerQuizScreen(),
+          child: _slow(const MultiplayerQuizScreen()),
         ),
       ),
       // Play Together — star-free multiplayer lobby (online with friends +
@@ -1352,7 +1353,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               : FlashcardCategory.values.first;
           return AppPageTransitions.scaleUp(
             key: state.pageKey,
-            child: GuidedPracticeScreen(category: category),
+            child: _slow(GuidedPracticeScreen(category: category)),
           );
         },
       ),
@@ -1443,7 +1444,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/hard-words',
         pageBuilder: (context, state) => AppPageTransitions.scaleUp(
           key: state.pageKey,
-          child: const HardWordsScreen(),
+          child: _slow(const HardWordsScreen()),
         ),
       ),
       // ─── Custom Quiz Builder ─────────────────────────
@@ -1604,6 +1605,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Wraps a learning/quiz screen in a [SlowMotionScope] so Slow-Motion mode
+/// (when enabled in Settings) stretches its animations. A visual no-op when
+/// the setting is off — see [SlowMotionScope]. Applied only to gameplay,
+/// flashcard, and quiz surfaces, never to navigation/UI chrome.
+Widget _slow(Widget child) => SlowMotionScope(child: child);
 
 /// Parses difficulty from the query parameter, defaulting to medium.
 GameDifficulty _parseDifficulty(GoRouterState state) {

@@ -16,6 +16,97 @@ class TutorEngine {
 
   static final _random = Random();
 
+  // ─── Interest model ─────────────────────────────────────────────────────
+  //
+  // The tutor personalizes examples around topics the learner *loves*, not
+  // just topics they're weak in. Interests come from two signals:
+  //   * explicit — the learner taps a favorite-topic chip ("pickInterests");
+  //   * implicit — repeated behavior (asking about a category, answering its
+  //     quizzes) accumulates a per-category score.
+  // Both live in [TutorMemory] so the buddy remembers across sessions.
+
+  /// Max explicit favorites remembered (most recent first).
+  static const int maxFavorites = 3;
+
+  /// Implicit score a category needs before it counts as an interest.
+  static const double interestThreshold = 2.0;
+
+  /// Ceiling so one obsession can't grow unboundedly.
+  static const double maxInterestScore = 50.0;
+
+  // Signal weights.
+  static const double signalPick = 3.0; // explicit favorite tap
+  static const double signalAsk = 1.0; // asked about the category
+  static const double signalQuiz = 0.5; // answered a quiz in it
+  static const double signalQuizCorrect = 0.5; // …and got it right
+
+  /// Resolves the learner's current interests: explicit favorites first (in
+  /// pick order), then implicit categories whose score passed the threshold,
+  /// strongest first. Deduplicated and capped at [max].
+  static List<FlashcardCategory> topInterests(TutorMemory memory,
+      {int max = maxFavorites}) {
+    final result = <FlashcardCategory>[];
+    for (final name in memory.favoriteCategories) {
+      final cat = categoryFromName(name);
+      if (cat != null && !result.contains(cat)) result.add(cat);
+    }
+    final implicit = memory.interestScores.entries
+        .where((e) => e.value >= interestThreshold)
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    for (final e in implicit) {
+      final cat = categoryFromName(e.key);
+      if (cat != null && !result.contains(cat)) result.add(cat);
+    }
+    return result.take(max).toList();
+  }
+
+  /// Returns a new score map with [category] bumped by [amount], clamped to
+  /// [0, maxInterestScore].
+  static Map<String, double> bumpInterest(
+      Map<String, double> scores, FlashcardCategory category, double amount) {
+    final next = Map<String, double>.from(scores);
+    next[category.name] = ((next[category.name] ?? 0) + amount)
+        .clamp(0.0, maxInterestScore)
+        .toDouble();
+    return next;
+  }
+
+  /// Looks up a category by its enum [name] (the stored identifier).
+  static FlashcardCategory? categoryFromName(String name) {
+    for (final c in FlashcardCategory.values) {
+      if (c.name == name) return c;
+    }
+    return null;
+  }
+
+  /// Looks up a category by display label (English or Filipino) or enum name.
+  static FlashcardCategory? categoryFromLabel(String label) {
+    for (final c in FlashcardCategory.values) {
+      if (c.label == label || c.labelFilipino == label || c.name == label) {
+        return c;
+      }
+    }
+    return null;
+  }
+
+  /// Finds a category mentioned in free text — matches the full English or
+  /// Filipino label, or any distinctive (5+ letter) word of either, so
+  /// "I like animals" and "gusto ko ang mga hayop" both resolve.
+  static FlashcardCategory? categoryInText(String text) {
+    final lower = text.toLowerCase();
+    for (final c in FlashcardCategory.values) {
+      for (final label in [c.label, c.labelFilipino]) {
+        final lowerLabel = label.toLowerCase();
+        if (lower.contains(lowerLabel)) return c;
+        for (final token in lowerLabel.split(RegExp(r'[^a-zà-ÿ]+'))) {
+          if (token.length >= 5 && lower.contains(token)) return c;
+        }
+      }
+    }
+    return null;
+  }
+
   /// Generate an initial greeting message
   static TutorMessage greet(String studentName, {bool isFilipino = false}) {
     final greetings = isFilipino
@@ -44,6 +135,7 @@ class TutorEngine {
     String studentName,
     String profileId, {
     bool isFilipino = false,
+    List<FlashcardCategory> interests = const [],
   }) {
     // Check for weak categories
     final weakCategories = <String>[];
@@ -73,7 +165,8 @@ class TutorEngine {
     }
 
     // Default: offer today's personalized learning plan.
-    return offerLearningPlan(progress, profileId, isFilipino: isFilipino);
+    return offerLearningPlan(progress, profileId,
+        isFilipino: isFilipino, interests: interests);
   }
 
   /// Generate a response to a student question
@@ -82,14 +175,32 @@ class TutorEngine {
     LearningProgress progress,
     String profileId, {
     bool isFilipino = false,
+    List<FlashcardCategory> interests = const [],
   }) {
     final lowerQ = question.toLowerCase();
+    final mentioned = categoryInText(lowerQ);
+
+    // "I like animals" / "gusto ko ang mga hayop" → record the favorite.
+    // Checked before the category-info branch so liking beats describing.
+    const likingVerbs = ['i like', 'i love', 'favorite', 'favourite',
+        'gusto', 'mahilig', 'paborito'];
+    final expressesLiking = likingVerbs.any(lowerQ.contains);
+    if (expressesLiking && mentioned != null) {
+      return interestConfirmation(mentioned, isFilipino: isFilipino);
+    }
+
+    // "favorites" / "paborito" with no topic named → show the topic picker.
+    if (lowerQ.contains('favorite') ||
+        lowerQ.contains('favourite') ||
+        lowerQ.contains('interest') ||
+        lowerQ.contains('paborito') ||
+        lowerQ.contains('mahilig')) {
+      return askInterests(isFilipino: isFilipino);
+    }
 
     // Check for category queries
-    for (final cat in FlashcardCategory.values) {
-      if (lowerQ.contains(cat.label.toLowerCase())) {
-        return _categoryInfo(cat, progress, isFilipino: isFilipino);
-      }
+    if (mentioned != null) {
+      return _categoryInfo(mentioned, progress, isFilipino: isFilipino);
     }
 
     // Check for help/hint requests
@@ -104,7 +215,7 @@ class TutorEngine {
     if (lowerQ.contains('quiz') ||
         lowerQ.contains('test') ||
         lowerQ.contains('pagsusulit')) {
-      return _quickQuiz(isFilipino: isFilipino);
+      return quickQuiz(isFilipino: isFilipino, interests: interests);
     }
 
     // Check for learning-plan / daily lesson requests
@@ -113,7 +224,8 @@ class TutorEngine {
         lowerQ.contains('today') ||
         lowerQ.contains('aralin') ||
         lowerQ.contains('ngayon')) {
-      return offerLearningPlan(progress, profileId, isFilipino: isFilipino);
+      return offerLearningPlan(progress, profileId,
+          isFilipino: isFilipino, interests: interests);
     }
 
     // Check for practice requests
@@ -135,12 +247,12 @@ class TutorEngine {
     final defaults = isFilipino
         ? [
             'Subukan mong tanungin ako tungkol sa isang kategorya, o sabihin "quiz" para sa isang mabilisang pagsusulit! 😊',
-            'Pwede mong sabihin: "practice", "hint", "quiz", o tanungin mo ako tungkol sa anumang kategorya! 📖',
+            'Pwede mong sabihin: "practice", "hint", "quiz", "paborito", o tanungin mo ako tungkol sa anumang kategorya! 📖',
             'Hindi ko masyadong naintindihan. Subukan mo: "Tulong sa Animals" o "Bigyan mo ako ng quiz"! 🤔',
           ]
         : [
             'Try asking me about a category, or say "quiz" for a quick question! 😊',
-            'You can say: "practice", "hint", "quiz", or ask about any category! 📖',
+            'You can say: "practice", "hint", "quiz", "favorites", or ask about any category! 📖',
             'I\'m not sure what you mean. Try: "Help with Animals" or "Give me a quiz"! 🤔',
           ];
 
@@ -194,9 +306,12 @@ class TutorEngine {
     );
   }
 
-  static TutorMessage _wordOfTheDay({bool isFilipino = false}) {
-    final allCards = SeedData.allFlashcards;
-    if (allCards.isEmpty) {
+  static TutorMessage _wordOfTheDay({
+    bool isFilipino = false,
+    List<FlashcardCategory> interests = const [],
+  }) {
+    final card = _pickCard(interests);
+    if (card == null) {
       return TutorMessage(
         id: _uuid.v4(),
         role: TutorMessageRole.tutor,
@@ -206,7 +321,6 @@ class TutorEngine {
         timestamp: DateTime.now(),
       );
     }
-    final card = allCards[_random.nextInt(allCards.length)];
     return TutorMessage(
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
@@ -257,9 +371,28 @@ class TutorEngine {
     );
   }
 
-  static TutorMessage _quickQuiz({bool isFilipino = false}) {
+  /// Picks a flashcard, preferring the learner's interest categories when any
+  /// exist (a random favorite, then a random card within it). Falls back to
+  /// the full pool. Null only when no seed cards exist at all.
+  static Flashcard? _pickCard(List<FlashcardCategory> interests) {
     final allCards = SeedData.allFlashcards;
-    if (allCards.isEmpty) {
+    if (allCards.isEmpty) return null;
+    if (interests.isNotEmpty) {
+      final cat = interests[_random.nextInt(interests.length)];
+      final pool = SeedData.getByCategory(cat);
+      if (pool.isNotEmpty) return pool[_random.nextInt(pool.length)];
+    }
+    return allCards[_random.nextInt(allCards.length)];
+  }
+
+  /// A standalone quick quiz. With [interests], the word comes from a favorite
+  /// topic and the header says so ("your favorite!").
+  static TutorMessage quickQuiz({
+    bool isFilipino = false,
+    List<FlashcardCategory> interests = const [],
+  }) {
+    final card = _pickCard(interests);
+    if (card == null) {
       return TutorMessage(
         id: _uuid.v4(),
         role: TutorMessageRole.tutor,
@@ -270,8 +403,85 @@ class TutorEngine {
       );
     }
 
-    final card = allCards[_random.nextInt(allCards.length)];
-    return quizForWord(card, isFilipino: isFilipino);
+    String? prefix;
+    if (interests.contains(card.category)) {
+      final catLabel =
+          isFilipino ? card.category.labelFilipino : card.category.label;
+      prefix = isFilipino
+          ? '❓ Quiz tungkol sa $catLabel ${card.category.emoji} — paborito mo!'
+          : '❓ A ${card.category.emoji} $catLabel quiz — your favorite!';
+    }
+    return quizForWord(card, isFilipino: isFilipino, prefix: prefix);
+  }
+
+  /// Invites the learner to pick favorite topics via tappable chips. The
+  /// action's options carry [FlashcardCategory] enum names; the chat bubble
+  /// renders them as localized emoji chips.
+  static TutorMessage askInterests({bool isFilipino = false}) {
+    return TutorMessage(
+      id: _uuid.v4(),
+      role: TutorMessageRole.tutor,
+      content: isFilipino
+          ? '💖 Anong paksa ang paborito mo? Pumili ng isa — gagamit ako ng mga salitang gusto mo sa ating mga quiz at halimbawa!'
+          : '💖 What topic do you love? Pick one — I\'ll use more words you like in our quizzes and examples!',
+      timestamp: DateTime.now(),
+      action: TutorAction(
+        type: TutorActionType.pickInterests,
+        options: FlashcardCategory.values.map((c) => c.name).toList(),
+      ),
+    );
+  }
+
+  /// Confirms a newly picked favorite topic. The action carries the category
+  /// name (no options) so the screen can record the pick when this message
+  /// came from free text ("I like animals") rather than a chip tap.
+  static TutorMessage interestConfirmation(FlashcardCategory category,
+      {bool isFilipino = false}) {
+    final label = isFilipino ? category.labelFilipino : category.label;
+    return TutorMessage(
+      id: _uuid.v4(),
+      role: TutorMessageRole.tutor,
+      content: isFilipino
+          ? '🎉 Magaling na pili! Gagamit ako ng mas maraming salita tungkol sa $label ${category.emoji} sa ating mga quiz at aralin!'
+          : '🎉 Great choice! I\'ll use more $label ${category.emoji} words in our quizzes and lessons!',
+      timestamp: DateTime.now(),
+      action: TutorAction(
+        type: TutorActionType.pickInterests,
+        categoryLabel: category.name,
+      ),
+    );
+  }
+
+  /// A "welcome back" for a returning learner on a new day — mentions their
+  /// favorite topic and offers today's (interest-aware) lesson plan.
+  static TutorMessage welcomeBack(
+    String studentName,
+    LearningProgress progress,
+    String profileId, {
+    bool isFilipino = false,
+    List<FlashcardCategory> interests = const [],
+  }) {
+    final plan =
+        buildLearningPlan(progress, profileId, interests: interests);
+    final favLine = interests.isEmpty
+        ? ''
+        : (isFilipino
+            ? ' Handa ka na ba para sa mas maraming ${interests.first.labelFilipino} ${interests.first.emoji}?'
+            : ' Ready for more ${interests.first.label} ${interests.first.emoji} words?');
+    return TutorMessage(
+      id: _uuid.v4(),
+      role: TutorMessageRole.tutor,
+      content: isFilipino
+          ? '👋 Maligayang pagbabalik, $studentName!$favLine Pindutin sa ibaba para sa aralin ngayong araw!'
+          : '👋 Welcome back, $studentName!$favLine Tap below to start today\'s lesson!',
+      timestamp: DateTime.now(),
+      action: plan.isEmpty
+          ? null
+          : TutorAction(
+              type: TutorActionType.startLesson,
+              planWordIds: plan.map((c) => c.id).toList(),
+            ),
+    );
   }
 
   /// Builds a multiple-choice quiz message for a specific [card]. The action
@@ -312,18 +522,39 @@ class TutorEngine {
   /// Picks today's personalized learning plan — 3 flashcards prioritized by the
   /// learner's spaced-repetition data (weakest / least-recently-seen first),
   /// falling back to unseen words. Reuses [SpacedRepetitionService.getReviewWords].
+  ///
+  /// With [interests]: weakness still wins (slots keep SR priority order), but
+  /// if no plan word comes from a favorite topic, the *last* (lowest-priority)
+  /// slot is swapped for a word from the strongest interest, so every lesson
+  /// has something the learner loves without hiding what they struggle with.
   static List<Flashcard> buildLearningPlan(
     LearningProgress progress,
     String profileId, {
     int count = 3,
+    List<FlashcardCategory> interests = const [],
   }) {
     final allCards = SeedData.allFlashcards;
     if (allCards.isEmpty) return const [];
-    return SpacedRepetitionService.getReviewWords(
+    final plan = SpacedRepetitionService.getReviewWords(
       profileId: profileId,
       allCards: allCards,
       count: count,
     );
+    if (interests.isEmpty ||
+        plan.isEmpty ||
+        plan.any((c) => interests.contains(c.category))) {
+      return plan;
+    }
+    for (final cat in interests) {
+      final candidates = SeedData.getByCategory(cat)
+          .where((c) => plan.every((p) => p.id != c.id))
+          .toList();
+      if (candidates.isNotEmpty) {
+        final pick = candidates[_random.nextInt(candidates.length)];
+        return [...plan.sublist(0, plan.length - 1), pick];
+      }
+    }
+    return plan;
   }
 
   /// A message that invites the learner to start today's learning plan. The
@@ -332,10 +563,11 @@ class TutorEngine {
     LearningProgress progress,
     String profileId, {
     bool isFilipino = false,
+    List<FlashcardCategory> interests = const [],
   }) {
-    final plan = buildLearningPlan(progress, profileId);
+    final plan = buildLearningPlan(progress, profileId, interests: interests);
     if (plan.isEmpty) {
-      return _wordOfTheDay(isFilipino: isFilipino);
+      return _wordOfTheDay(isFilipino: isFilipino, interests: interests);
     }
     final preview = plan.map((c) => c.wordEnglish).join(', ');
     return TutorMessage(

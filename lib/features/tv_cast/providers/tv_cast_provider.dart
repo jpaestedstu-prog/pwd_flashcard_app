@@ -75,29 +75,49 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     if (withCue && settings.soundEffects) _audio().cue();
     if (!settings.ttsEnabled) return;
 
+    final (en, fil) = _currentSpeechText();
+    if (en.isEmpty && fil.isEmpty) return;
+    unawaited(_audio().speakBoth(en, fil));
+  }
+
+  /// The (English, Filipino) text for whatever Flashcard word / Story page is
+  /// currently showing. Empty strings for modes that don't speak words
+  /// (progress / live / idle). Shared by auto-narration and on-demand replay.
+  (String, String) _currentSpeechText() {
     switch (state.mode) {
       case CastMode.flashcards:
       case CastMode.fslVideo:
         final cards = _currentCards();
-        if (cards.isEmpty) return;
+        if (cards.isEmpty) return ('', '');
         final card = cards[state.slideIndex % cards.length];
-        unawaited(_audio().speakBoth(card.wordEnglish, card.wordFilipino));
-        break;
+        return (card.wordEnglish, card.wordFilipino);
       case CastMode.story:
         final story = _currentStory();
-        if (story == null) return;
+        if (story == null) return ('', '');
         final pagesEn = story.sentencesEn;
         final pagesFil = story.sentencesFil;
         final idx = state.storyPageIndex.clamp(0, pagesEn.length - 1);
         final en = idx < pagesEn.length ? pagesEn[idx] : '';
         final fil = idx < pagesFil.length ? pagesFil[idx] : '';
-        unawaited(_audio().speakBoth(en, fil));
-        break;
+        return (en, fil);
       case CastMode.progress:
       case CastMode.live:
       case CastMode.idle:
-        break;
+        return ('', '');
     }
+  }
+
+  /// Re-speaks the current Flashcard word / Story page on the educator's phone
+  /// in a single language. Backs the on-demand "Replay" buttons on the cast
+  /// screen: it always plays from the phone (the control device), independent
+  /// of the TV/phone audio target, and is a no-op when Text-to-Speech is off or
+  /// there is nothing to say.
+  void replayCurrentWord({required bool filipino}) {
+    if (!ref.read(settingsProvider).ttsEnabled) return;
+    final (en, fil) = _currentSpeechText();
+    final text = filipino ? fil : en;
+    if (text.trim().isEmpty) return;
+    unawaited(_audio().speakOne(text, filipino: filipino));
   }
 
   // ─── Server lifecycle ─────────────────────────────────

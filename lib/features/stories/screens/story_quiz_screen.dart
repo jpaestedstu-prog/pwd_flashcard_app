@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/accessibility/sound_service.dart';
+import '../../../core/accessibility/tts_service.dart';
 import '../../../core/accessibility/haptic_service.dart' show hapticServiceProvider;
 import '../../../core/services/celebration_service.dart';
 import '../../../widgets/accessible_celebration_overlay.dart';
@@ -16,6 +17,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
+import '../../../widgets/language_replay_bar.dart';
 
 /// Reading-comprehension quiz — 3 multiple-choice questions per story.
 class StoryQuizScreen extends ConsumerStatefulWidget {
@@ -34,11 +36,32 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
   bool _answered = false;
   bool _showResult = false;
   List<Achievement> _newAchievements = [];
+  TtsService? _ttsRef;
 
   @override
   void initState() {
     super.initState();
     _story = SeedStories.all.where((s) => s.id == widget.storyId).firstOrNull;
+  }
+
+  @override
+  void dispose() {
+    _ttsRef?.stop();
+    super.dispose();
+  }
+
+  /// Reads the current question aloud in one language — a read-aloud
+  /// accommodation for the comprehension quiz. Independent of the displayed
+  /// language so a learner can hear it in whichever they understand.
+  void _speakLang(String text, {required bool filipino}) {
+    if (text.trim().isEmpty) return;
+    final tts = ref.read(ttsServiceProvider);
+    _ttsRef = tts; // cache for safe dispose
+    if (filipino) {
+      tts.speakFilipino(text);
+    } else {
+      tts.speakEnglish(text);
+    }
   }
 
   StoryQuestion? get _question => _story?.questions[_currentQ];
@@ -165,6 +188,8 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
     final hc = HCColor.of(context);
     final settings = ref.watch(settingsProvider);
     final showFil = settings.locale == 'fil';
+    // Read-aloud buttons hidden when Text-to-Speech is off.
+    final ttsEnabled = settings.ttsEnabled;
     final question = _question!;
     final questionText =
         showFil ? question.questionFil : question.questionEn;
@@ -253,6 +278,23 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                               .animate()
                               .fadeIn(duration: 300.ms)
                               .slideY(begin: 0.05, end: 0),
+
+                          // Read the question aloud in either language — a
+                          // read-aloud accommodation for learners who find the
+                          // text hard to read or understand one language better.
+                          if (ttsEnabled) ...[
+                            const SizedBox(height: 16),
+                            LanguageReplayBar(
+                              onEnglish: () => _speakLang(
+                                question.questionEn,
+                                filipino: false,
+                              ),
+                              onFilipino: () => _speakLang(
+                                question.questionFil,
+                                filipino: true,
+                              ),
+                            ),
+                          ],
 
                           const SizedBox(height: 28),
 

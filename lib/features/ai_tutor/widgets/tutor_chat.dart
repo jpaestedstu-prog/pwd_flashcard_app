@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../data/models/enums.dart';
 import '../models/tutor_models.dart';
 import 'tutor_persona.dart';
 
@@ -132,6 +133,10 @@ class TutorMessageBubble extends StatelessWidget {
   final bool isFilipino;
   final bool answered;
   final ValueChanged<String>? onQuizAnswer;
+
+  /// Called with the picked [FlashcardCategory] enum name when the learner
+  /// taps a favorite-topic chip.
+  final ValueChanged<String>? onInterestPick;
   final VoidCallback? onActionTap;
   final VoidCallback? onSpeak;
 
@@ -142,6 +147,7 @@ class TutorMessageBubble extends StatelessWidget {
     required this.isFilipino,
     this.answered = false,
     this.onQuizAnswer,
+    this.onInterestPick,
     this.onActionTap,
     this.onSpeak,
   });
@@ -268,6 +274,31 @@ class TutorMessageBubble extends StatelessWidget {
                       ),
                     ),
                   ),
+                // Favorite-topic picker chips
+                if (message.action?.type == TutorActionType.pickInterests &&
+                    message.action?.options != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Opacity(
+                      opacity: answered ? 0.5 : 1,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final name in message.action!.options!)
+                            for (final cat in FlashcardCategory.values)
+                              if (cat.name == name)
+                                _InterestChip(
+                                  category: cat,
+                                  isFilipino: isFilipino,
+                                  onTap: answered
+                                      ? null
+                                      : () => onInterestPick?.call(name),
+                                ),
+                        ],
+                      ),
+                    ),
+                  ),
                 // Practice redirect button
                 if (message.action?.type == TutorActionType.practiceRedirect)
                   Padding(
@@ -321,6 +352,56 @@ class TutorMessageBubble extends StatelessWidget {
         ],
       ),
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05, end: 0);
+  }
+}
+
+/// A tappable favorite-topic chip (emoji + localized category label) shown by
+/// the [TutorActionType.pickInterests] action.
+class _InterestChip extends StatelessWidget {
+  final FlashcardCategory category;
+  final bool isFilipino;
+  final VoidCallback? onTap;
+
+  const _InterestChip({
+    required this.category,
+    required this.isFilipino,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final label = isFilipino ? category.labelFilipino : category.label;
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(category.emoji, style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style:
+                    AppTypography.labelMedium.copyWith(color: hc.textPrimary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

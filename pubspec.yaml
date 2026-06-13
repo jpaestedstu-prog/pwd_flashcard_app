@@ -102,6 +102,9 @@ dev_dependencies:
   # Direct dev dep so tests can install a fake ConnectivityPlatform
   # (already in the dependency graph via connectivity_plus).
   connectivity_plus_platform_interface: ^2.1.0
+  # Generates platform launcher icons from a single brand PNG.
+  # Dev-only — pure Dart, no native/Gradle impact.
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   generate: true
@@ -122,3 +125,30 @@ flutter:
     # first play (GitHub Releases primary, Streamable fallback) and caches
     # it on-device. See assets/data/fsl_video_manifest.json.
     - google_fonts/
+
+# ─── App launcher icon generation ──────────────────────────────────────
+# Regenerates every platform's launcher icon from the single brand PNG.
+# Run after changing the source image:
+#   flutter pub run flutter_launcher_icons
+#
+# Deliberately NO `adaptive_icon_*` keys: Android already has a hand-tuned
+# res/mipmap-anydpi-v26/ic_launcher.xml that insets the full ic_launcher PNG
+# 18% into the adaptive safe zone and adds a monochrome themed-icon layer over
+# the #F5F1FB background. With `android: true` and no adaptive keys, the tool
+# only regenerates the square ic_launcher.png at each density (which that XML
+# reuses), leaving the adaptive/monochrome XML and brand background intact.
+flutter_launcher_icons:
+  image_path: "assets/images/icon app/FlashLearnPWD.png"
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  background_color_ios: "#F5F1FB"
+  web:
+    generate: true
+    background_color: "#F5F1FB"
+    theme_color: "#F5F1FB"
+  windows:
+    generate: true
+    icon_size: 256
+  macos:
+    generate: true

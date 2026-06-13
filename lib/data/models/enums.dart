@@ -231,6 +231,21 @@ extension FlashcardCategoryX on FlashcardCategory {
     FlashcardCategory.daysAndTime => 'Araw at Oras',
   };
 
+  String get emoji => switch (this) {
+    FlashcardCategory.animals => '🐶',
+    FlashcardCategory.colorsAndShapes => '🎨',
+    FlashcardCategory.numbers => '🔢',
+    FlashcardCategory.bodyParts => '🖐️',
+    FlashcardCategory.foodAndDrinks => '🍎',
+    FlashcardCategory.familyAndGreetings => '👋',
+    FlashcardCategory.clothing => '👕',
+    FlashcardCategory.weather => '☀️',
+    FlashcardCategory.classroom => '🏫',
+    FlashcardCategory.transportation => '🚌',
+    FlashcardCategory.emotions => '😊',
+    FlashcardCategory.daysAndTime => '🕒',
+  };
+
   IconData get icon => switch (this) {
     FlashcardCategory.animals => Icons.pets_rounded,
     FlashcardCategory.colorsAndShapes => Icons.palette_rounded,

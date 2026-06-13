@@ -12,6 +12,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_action_bar.dart';
 import '../../../widgets/app_icon_button.dart';
+import '../../../widgets/language_replay_bar.dart';
 
 /// Paginated story reader with TTS and vocabulary highlights.
 class StoryReaderScreen extends ConsumerStatefulWidget {
@@ -26,7 +27,6 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
   Story? _story;
   int _currentSentence = 0;
   bool _showFilipino = false;
-  bool _isSpeaking = false;
   TtsService? _ttsRef;
 
   @override
@@ -53,29 +53,31 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     return _currentSentence >= story.sentencesEn.length - 1;
   }
 
-  void _speakCurrent() {
-    final story = _story;
-    if (story == null) return;
-
+  /// Speaks an explicit string in one language. Backs the two-language Replay
+  /// buttons, which let a learner hear the current page in whichever language
+  /// they understand — independent of the EN/FIL display toggle.
+  void _speakLang(String text, {required bool filipino}) {
+    if (text.trim().isEmpty) return;
     final tts = ref.read(ttsServiceProvider);
     _ttsRef = tts; // cache for safe dispose
-    final settings = ref.read(settingsProvider);
-    if (!settings.ttsEnabled) return;
-
-    setState(() => _isSpeaking = true);
-    final text = _showFilipino
-        ? story.sentencesFil[_currentSentence]
-        : story.sentencesEn[_currentSentence];
-
-    if (_showFilipino) {
+    if (filipino) {
       tts.speakFilipino(text);
     } else {
       tts.speakEnglish(text);
     }
-    // Reset speaking state when TTS finishes
-    tts.setCompletionHandler(() {
-      if (mounted) setState(() => _isSpeaking = false);
-    });
+  }
+
+  /// Auto-reads the current page in the displayed language when navigating.
+  void _speakCurrent() {
+    final story = _story;
+    if (story == null) return;
+    if (!ref.read(settingsProvider).ttsEnabled) return;
+    _speakLang(
+      _showFilipino
+          ? story.sentencesFil[_currentSentence]
+          : story.sentencesEn[_currentSentence],
+      filipino: _showFilipino,
+    );
   }
 
   void _markStoryRead() {
@@ -128,6 +130,9 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     }
     final hc = HCColor.of(context);
     final kidMode = ref.watch(profileProvider)?.role == UserRole.child;
+    // Replay buttons are hidden when Text-to-Speech is off (e.g. the hearing
+    // preset, which leans on the visual story instead of audio).
+    final ttsEnabled = ref.watch(settingsProvider).ttsEnabled;
     final sentenceEn = _story!.sentencesEn[_currentSentence];
     final sentenceFil = _story!.sentencesFil[_currentSentence];
 
@@ -332,42 +337,20 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
                                       textAlign: TextAlign.center,
                                     ),
                                   ],
-                                  const SizedBox(height: 24),
-                                  // TTS button
-                                  Semantics(
-                                    label: 'Read aloud',
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: _story!.category.color
-                                                .withValues(alpha: 0.25),
-                                            blurRadius: 10,
-                                          ),
-                                        ],
-                                      ),
-                                      child: IconButton.filled(
-                                        onPressed: _speakCurrent,
-                                        icon: AnimatedSwitcher(
-                                          duration:
-                                              const Duration(milliseconds: 200),
-                                          child: _isSpeaking
-                                              ? const Icon(Icons.volume_up_rounded,
-                                                  key: ValueKey('speaking'))
-                                              : const Icon(
-                                                  Icons.volume_up_outlined,
-                                                  key: ValueKey('silent')),
-                                        ),
-                                        iconSize: 32,
-                                        style: IconButton.styleFrom(
-                                          backgroundColor: _story!.category.color
-                                              .withValues(alpha: 0.15),
-                                          foregroundColor: _story!.category.color,
-                                        ),
+                                  // Two-language "read aloud" — the learner can
+                                  // hear this page in either language with one
+                                  // tap, regardless of the display toggle above.
+                                  if (ttsEnabled) ...[
+                                    const SizedBox(height: 24),
+                                    LanguageReplayBar(
+                                      onEnglish: () =>
+                                          _speakLang(sentenceEn, filipino: false),
+                                      onFilipino: () => _speakLang(
+                                        sentenceFil,
+                                        filipino: true,
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ],
                               ),
                             ),

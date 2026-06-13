@@ -16,6 +16,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_snack_bar.dart';
+import '../../../widgets/language_replay_bar.dart';
 import '../models/tv_cast_session.dart';
 import '../providers/tv_cast_provider.dart';
 import '../services/tv_cast_ip_discovery.dart';
@@ -212,6 +213,8 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
     final state = ref.watch(tvCastSessionProvider);
     final hc = HCColor.of(context);
     final padding = context.pagePadding;
+    // Gates the on-demand audio replay (phone-side) for Flashcards / Stories.
+    final ttsEnabled = ref.watch(settingsProvider.select((s) => s.ttsEnabled));
 
     return Scaffold(
       appBar: AppBar(
@@ -292,6 +295,33 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                     onNext: () =>
                         ref.read(tvCastSessionProvider.notifier).next(),
                   ),
+                // On-demand audio replay for the current word / page, in either
+                // language — plays from this phone so the educator can model
+                // pronunciation without advancing the slide. (The TV narrates
+                // automatically as slides change.)
+                if ((state.mode == CastMode.flashcards ||
+                        state.mode == CastMode.story) &&
+                    ttsEnabled) ...[
+                  const SizedBox(height: 20),
+                  const _SectionLabel('Replay audio'),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Hear the current ${state.mode == CastMode.story ? 'page' : 'word'} '
+                    'again on this phone.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  LanguageReplayBar(
+                    onEnglish: () => ref
+                        .read(tvCastSessionProvider.notifier)
+                        .replayCurrentWord(filipino: false),
+                    onFilipino: () => ref
+                        .read(tvCastSessionProvider.notifier)
+                        .replayCurrentWord(filipino: true),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 const _SectionLabel('TV display style'),
                 const SizedBox(height: 10),

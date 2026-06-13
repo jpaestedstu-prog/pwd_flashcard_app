@@ -47,10 +47,12 @@ void main() {
       tester,
       () => Scaffold(
         body: SingleChildScrollView(
+          // autoSpeak off: this layout-only test wires up no TTS/settings.
           child: DiscoveredWordSheet(
             card: card,
             isNewDiscovery: true,
             starAwarded: true,
+            autoSpeak: false,
           ),
         ),
       ),

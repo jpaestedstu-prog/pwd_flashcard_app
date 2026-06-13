@@ -21,6 +21,7 @@ import '../../../data/local/seed_data.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/flashcard_image.dart';
+import '../../../widgets/language_replay_bar.dart';
 import '../../../widgets/fsl_fullscreen_player.dart';
 import '../../../widgets/fsl_loading_overlay.dart';
 import '../../../widgets/shimmer_loading.dart';
@@ -248,8 +249,10 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch settings for any dynamic theme changes
-    ref.watch(settingsProvider);
+    // Watch settings for dynamic theme changes, and for the audio-replay
+    // affordance: the prominent Replay button is hidden when Text-to-Speech is
+    // off (e.g. the hearing preset, which prioritises FSL video over audio).
+    final ttsEnabled = ref.watch(settingsProvider).ttsEnabled;
 
     return Stack(
       children: [
@@ -422,6 +425,22 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Prominent, single-tap audio replay — the accessible
+                    // alternative to a shake/motion gesture (motion actuation is
+                    // unreliable for motor-impaired learners and discouraged by
+                    // WCAG 2.1 SC 2.5.4). Both languages are shown explicitly so
+                    // a student who only understands one can hear it directly.
+                    if (ttsEnabled && _cards.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: LanguageReplayBar(
+                          onEnglish: () =>
+                              _speakEnglish(_cards[_currentIndex].wordEnglish),
+                          onFilipino: () => _speakFilipino(
+                            _cards[_currentIndex].wordFilipino,
+                          ),
+                        ),
+                      ),
                     // Edit / Delete row for custom cards
                     if (_cards.isNotEmpty && _cards[_currentIndex].isCustom)
                       Padding(
@@ -468,22 +487,6 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                           label: AppLocalizations.of(context)!.previous,
                           onTap: _prevCard,
                           enabled: _currentIndex > 0,
-                        ),
-                        _ActionButton(
-                          icon: Icons.volume_up_rounded,
-                          label: _isFlipped
-                              ? AppLocalizations.of(context)!.filipino
-                              : AppLocalizations.of(context)!.english,
-                          color: _isFlipped
-                              ? AppColors.secondary
-                              : AppColors.info,
-                          onTap: () => _isFlipped
-                              ? _speakFilipino(
-                                  _cards[_currentIndex].wordFilipino,
-                                )
-                              : _speakEnglish(
-                                  _cards[_currentIndex].wordEnglish,
-                                ),
                         ),
                         _ActionButton(
                           icon: Icons.sign_language_rounded,

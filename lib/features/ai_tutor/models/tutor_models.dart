@@ -54,6 +54,7 @@ enum TutorActionType {
   encouragement,    // Special encouragement with celebration
   wordOfTheDay,     // Show a vocabulary word
   startLesson,      // Offer to start today's personalized learning plan
+  pickInterests,    // Tappable favorite-topic chips (or a recorded pick)
 }
 
 class TutorAction {
@@ -181,11 +182,21 @@ class TutorMemory {
   /// Flashcard ids in the plan offered for [lastPlanDate].
   final List<String> planWordIds;
 
+  /// Topics the learner explicitly picked as favorites — [FlashcardCategory]
+  /// enum *names* (stable across label/locale changes), most recent first.
+  final List<String> favoriteCategories;
+
+  /// Implicit per-topic affinity learned from behavior (asking about a
+  /// category, answering its quizzes), keyed by [FlashcardCategory] name.
+  final Map<String, double> interestScores;
+
   const TutorMemory({
     this.messages = const [],
     this.stats = const TutorStats(),
     this.lastPlanDate,
     this.planWordIds = const [],
+    this.favoriteCategories = const [],
+    this.interestScores = const {},
   });
 
   TutorMemory copyWith({
@@ -193,11 +204,15 @@ class TutorMemory {
     TutorStats? stats,
     String? lastPlanDate,
     List<String>? planWordIds,
+    List<String>? favoriteCategories,
+    Map<String, double>? interestScores,
   }) =>
       TutorMemory(
         messages: messages ?? this.messages,
         stats: stats ?? this.stats,
         lastPlanDate: lastPlanDate ?? this.lastPlanDate,
         planWordIds: planWordIds ?? this.planWordIds,
+        favoriteCategories: favoriteCategories ?? this.favoriteCategories,
+        interestScores: interestScores ?? this.interestScores,
       );
 }

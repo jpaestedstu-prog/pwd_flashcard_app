@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
 import '../../../core/theme/app_colors.dart';
+import '../../../data/local/spaced_repetition_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../models/object_scan_models.dart';
@@ -265,15 +266,23 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
   Future<void> _openWord(WordMatch match) async {
     if (_sheetOpen) return;
     _sheetOpen = true;
-    final result = ObjectScanDiscoveryService.recordDiscovery(
-      ref.read(profileProvider)?.id,
-      match.card.id,
-    );
+    final profileId = ref.read(profileProvider)?.id;
+    final result =
+        ObjectScanDiscoveryService.recordDiscovery(profileId, match.card.id);
     if (result.starAwarded) {
       ref.read(progressProvider.notifier).addStars(1);
       ref.read(hapticServiceProvider).celebration();
     } else {
       ref.read(hapticServiceProvider).lightTap();
+    }
+    // Queue the discovered word for Smart Review (spaced repetition). Profile-
+    // scoped and offline; guests have no review queue, so skip them. The Hive
+    // write is fire-and-forget — never awaited from widget code.
+    if (profileId != null && profileId.isNotEmpty) {
+      SpacedRepetitionService.markSeen(
+        profileId: profileId,
+        wordId: match.card.id,
+      );
     }
     await showModalBottomSheet<void>(
       context: context,

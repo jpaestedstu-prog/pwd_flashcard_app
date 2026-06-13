@@ -6,6 +6,10 @@ class Flashcard {
   final String wordEnglish;
   final String wordFilipino;
   final String? exampleSentence;
+  /// Short, kid-friendly meaning of the word. Shown in the Word Hunt camera
+  /// sheet and any other learning surface. English-only, mirroring
+  /// [exampleSentence]; null when no definition is available.
+  final String? definition;
   final String? imageAsset; // asset path or null for placeholder
   final FlashcardCategory category;
   final bool isCustom;
@@ -15,6 +19,7 @@ class Flashcard {
     required this.wordEnglish,
     required this.wordFilipino,
     this.exampleSentence,
+    this.definition,
     this.imageAsset,
     required this.category,
     this.isCustom = false,
@@ -25,6 +30,7 @@ class Flashcard {
     String? wordEnglish,
     String? wordFilipino,
     String? exampleSentence,
+    String? definition,
     String? imageAsset,
     FlashcardCategory? category,
     bool? isCustom,
@@ -34,6 +40,7 @@ class Flashcard {
       wordEnglish: wordEnglish ?? this.wordEnglish,
       wordFilipino: wordFilipino ?? this.wordFilipino,
       exampleSentence: exampleSentence ?? this.exampleSentence,
+      definition: definition ?? this.definition,
       imageAsset: imageAsset ?? this.imageAsset,
       category: category ?? this.category,
       isCustom: isCustom ?? this.isCustom,
@@ -46,6 +53,7 @@ class Flashcard {
     'wordEnglish': wordEnglish,
     'wordFilipino': wordFilipino,
     'exampleSentence': exampleSentence,
+    'definition': definition,
     'imageAsset': imageAsset,
     'category': category.index,
     'isCustom': isCustom,
@@ -59,6 +67,7 @@ class Flashcard {
       wordEnglish: json['wordEnglish'] as String,
       wordFilipino: json['wordFilipino'] as String,
       exampleSentence: json['exampleSentence'] as String?,
+      definition: json['definition'] as String?,
       imageAsset: json['imageAsset'] as String?,
       category: (catIndex >= 0 && catIndex < FlashcardCategory.values.length)
           ? FlashcardCategory.values[catIndex]
@@ -406,6 +415,22 @@ class AppSettings {
   final bool vocabReviewEnabled;
   final bool dyslexiaMode;
 
+  /// Slow-Motion learning mode. When on, gameplay / flashcard / quiz
+  /// animations play at roughly half speed (~2× duration) so learners with
+  /// cognitive or processing differences can follow them. Does NOT affect
+  /// TTS speed or non-learning UI animations. Default off. See
+  /// [Motion] and `SlowMotionScope`.
+  final bool slowMotionEnabled;
+
+  /// Number of items in the bite-sized Daily Mission (was a single word).
+  /// Clamped to 3–5 to keep cognitive load low. Default 4.
+  final int dailyMissionSize;
+
+  /// Gentler wrong-answer support in MCQ learning surfaces: shows a short
+  /// "why" explanation after answering and offers a limited 50/50 hint that
+  /// removes two wrong options. Default on; turn off for a plain quiz.
+  final bool learningAssistEnabled;
+
   const AppSettings({
     this.fontScale = 1.0,
     this.highContrastMode = false,
@@ -423,6 +448,9 @@ class AppSettings {
     this.adaptiveDifficulty = true,
     this.vocabReviewEnabled = false,
     this.dyslexiaMode = false,
+    this.slowMotionEnabled = false,
+    this.dailyMissionSize = 4,
+    this.learningAssistEnabled = true,
   });
 
   AppSettings copyWith({
@@ -442,6 +470,9 @@ class AppSettings {
     bool? adaptiveDifficulty,
     bool? vocabReviewEnabled,
     bool? dyslexiaMode,
+    bool? slowMotionEnabled,
+    int? dailyMissionSize,
+    bool? learningAssistEnabled,
   }) {
     return AppSettings(
       fontScale: fontScale ?? this.fontScale,
@@ -460,6 +491,10 @@ class AppSettings {
       adaptiveDifficulty: adaptiveDifficulty ?? this.adaptiveDifficulty,
       vocabReviewEnabled: vocabReviewEnabled ?? this.vocabReviewEnabled,
       dyslexiaMode: dyslexiaMode ?? this.dyslexiaMode,
+      slowMotionEnabled: slowMotionEnabled ?? this.slowMotionEnabled,
+      dailyMissionSize: dailyMissionSize ?? this.dailyMissionSize,
+      learningAssistEnabled:
+          learningAssistEnabled ?? this.learningAssistEnabled,
     );
   }
 }

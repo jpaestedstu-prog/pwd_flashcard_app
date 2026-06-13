@@ -284,6 +284,11 @@ class HiveService {
       adaptiveDifficulty: _settBox.get('adaptiveDifficulty', defaultValue: true),
       vocabReviewEnabled: _settBox.get('vocabReviewEnabled', defaultValue: false),
       dyslexiaMode: _settBox.get('dyslexiaMode', defaultValue: false),
+      slowMotionEnabled:
+          _settBox.get('slowMotionEnabled', defaultValue: false),
+      dailyMissionSize: _settBox.get('dailyMissionSize', defaultValue: 4),
+      learningAssistEnabled:
+          _settBox.get('learningAssistEnabled', defaultValue: true),
     );
   }
 
@@ -304,6 +309,9 @@ class HiveService {
     await _settBox.put('adaptiveDifficulty', settings.adaptiveDifficulty);
     await _settBox.put('vocabReviewEnabled', settings.vocabReviewEnabled);
     await _settBox.put('dyslexiaMode', settings.dyslexiaMode);
+    await _settBox.put('slowMotionEnabled', settings.slowMotionEnabled);
+    await _settBox.put('dailyMissionSize', settings.dailyMissionSize);
+    await _settBox.put('learningAssistEnabled', settings.learningAssistEnabled);
   }
 
   /// Generic setting getter — read any key from the settings box.
