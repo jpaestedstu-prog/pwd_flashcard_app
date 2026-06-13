@@ -1,18 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive launcher icon for Android 8+ (we target 10+). The OS masks
-     the foreground+background into the launcher's shape (circle, squircle,
-     etc.), so the existing PNG is inset to keep its full design inside
-     the 66dp visible area of the 108dp adaptive canvas. -->
+<!-- Adaptive launcher icon for Android 8+ (minSdk is 29, so this is what
+     every device actually renders). The OS masks foreground+background into
+     the launcher's shape (circle, squircle, rounded square).
+
+     IMPORTANT: the foreground points at @mipmap/ic_launcher_FOREGROUND, a
+     dedicated bitmap that exists ONLY as density rasters (no -anydpi-v26
+     variant). It must NOT reference @mipmap/ic_launcher here: on API 26+
+     that name resolves back to THIS adaptive XML, creating an infinite
+     self-reference ("Failure retrieving resources ... mipmap/ic_launcher")
+     that makes Android fall back to the default system icon.
+
+     The foreground art is inset to 80% of the canvas (baked into
+     ic_launcher_foreground.png) so nothing is clipped on circle/round masks;
+     the surrounding margin is filled by the gradient background drawable,
+     whose stops match the artwork's edges for a seamless blend. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background" />
-    <foreground>
-        <inset
-            android:drawable="@mipmap/ic_launcher"
-            android:inset="18%" />
-    </foreground>
-    <monochrome>
-        <inset
-            android:drawable="@mipmap/ic_launcher"
-            android:inset="18%" />
-    </monochrome>
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <!-- No <monochrome> layer on purpose. Themed icons (Android 13+) render
+         ONLY the alpha channel as a single-color silhouette; feeding the
+         full-color artwork there produced a tinted blob. Omitting it makes
+         themed-icon mode fall back to the normal adaptive icon. Add a proper
+         white silhouette drawable here if a themed icon is wanted later. -->
 </adaptive-icon>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Background layer for the adaptive launcher icon. The foreground art is
+     inset to 80% (for safe-zone compatibility on round/circle masks), so this
+     gradient fills the surrounding margin. Stops are sampled from the
+     artwork's own top/bottom edges (top #C3F6F7 light cyan -> bottom #41C5F0
+     light blue), and angle 270 runs top->bottom, so the inset art blends
+     seamlessly into the panel instead of sitting on a flat-color seam. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:startColor="#C3F6F7"
+        android:endColor="#41C5F0"
+        android:angle="270" />
+</shape>
