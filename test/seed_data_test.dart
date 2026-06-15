@@ -4,9 +4,10 @@ import 'package:pwdpwdpwd/data/models/enums.dart';
 
 void main() {
   group('SeedData', () {
-    test('contains 157 flashcards', () {
-      // 144 original + 13 Word Hunt object words (f13–f17, cr13–cr19, c13).
-      expect(SeedData.allFlashcards.length, 157);
+    test('contains 177 flashcards', () {
+      // 144 original + 13 Word Hunt object words (f13–f17, cr13–cr19, c13)
+      // + 20 action words (ac01–ac20).
+      expect(SeedData.allFlashcards.length, 177);
     });
 
     test('all flashcards have unique IDs', () {

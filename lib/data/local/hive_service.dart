@@ -97,6 +97,7 @@ class HiveService {
       'section': profile.section,
       'birthDate': profile.birthDate?.toIso8601String(),
       'tags': profile.tags,
+      'interests': profile.interests.map((c) => c.index).toList(),
       'classroomId': profile.classroomId,
       'homeGroupId': profile.homeGroupId,
       'isGuestPlayer': profile.isGuestPlayer,
@@ -169,6 +170,20 @@ class HiveService {
     }
   }
 
+  /// Decode stored interest category indices into [FlashcardCategory],
+  /// skipping any out-of-range values from older / corrupted data.
+  static List<FlashcardCategory> _decodeInterests(List? raw) {
+    if (raw == null) return const [];
+    final result = <FlashcardCategory>[];
+    for (final e in raw) {
+      final idx = e is int ? e : int.tryParse(e.toString());
+      if (idx != null && idx >= 0 && idx < FlashcardCategory.values.length) {
+        result.add(FlashcardCategory.values[idx]);
+      }
+    }
+    return result;
+  }
+
   static UserProfile _deserializeProfile(
     Map<String, dynamic> data,
     int roleIndex,
@@ -209,6 +224,7 @@ class HiveService {
       tags: rawTags != null
           ? List<String>.from(rawTags.map((e) => e.toString()))
           : const [],
+      interests: _decodeInterests(data['interests'] as List?),
       classroomId: data['classroomId'] as String?,
       homeGroupId: data['homeGroupId'] as String?,
       isGuestPlayer: data['isGuestPlayer'] as bool? ?? false,

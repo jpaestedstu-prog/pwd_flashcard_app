@@ -192,5 +192,27 @@ class FlashcardEmojis {
     'd10': '🌆',  // Evening
     'd11': '⏰',  // Clock/Time
     'd12': '📆',  // Today
+
+    // ─── Actions / Verbs ────────────────────────────────
+    'ac01': '🏃',  // Run
+    'ac02': '🚶',  // Walk
+    'ac03': '🤸',  // Jump
+    'ac04': '🍽️',  // Eat
+    'ac05': '🥤',  // Drink
+    'ac06': '😴',  // Sleep
+    'ac07': '📚',  // Read
+    'ac08': '✍️',  // Write
+    'ac09': '🎤',  // Sing
+    'ac10': '💃',  // Dance
+    'ac11': '👏',  // Clap
+    'ac12': '🪑',  // Sit
+    'ac13': '🧍',  // Stand
+    'ac14': '🚪',  // Open
+    'ac15': '🔒',  // Close
+    'ac16': '👋',  // Wave
+    'ac17': '😢',  // Cry
+    'ac18': '😂',  // Laugh
+    'ac19': '🏊',  // Swim
+    'ac20': '🛝',  // Play
   };
 }

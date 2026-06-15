@@ -371,7 +371,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                         children: [
                           FlashcardImage(
                             card: round.correctCard,
-                            size: 56,
+                            size: 84,
                           ),
                           const SizedBox(height: 16),
                           Text(

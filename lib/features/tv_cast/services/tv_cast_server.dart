@@ -16,12 +16,19 @@ import 'tv_cast_asset_bridge.dart';
 /// plugins are involved and we don't risk the Flutter 3.44 / Kotlin
 /// 2.0.0 conflict that affects native cast SDKs.
 class TvCastServer {
-  TvCastServer({required this.getSession});
+  TvCastServer({required this.getSession, this.onTvAudioReport});
 
   /// Source-of-truth callback the server reads on every request. Lets
   /// the server stay decoupled from the Riverpod notifier (which owns
   /// the actual session state).
   final TvCastSession Function() getSession;
+
+  /// Optional callback fired when a TV reports its Web Speech ability via the
+  /// `/api/state` poll (`?tts=…&unlocked=…`). Lets the phone surface *why* the
+  /// TV is or isn't speaking. Decoupled like [getSession] so the server doesn't
+  /// reach into the notifier.
+  final void Function({required bool supported, required bool unlocked})?
+      onTvAudioReport;
 
   HttpServer? _httpServer;
   int? _boundPort;
@@ -143,7 +150,16 @@ class TvCastServer {
     };
   }
 
-  Response _serveState(Request _) {
+  Response _serveState(Request request) {
+    // The TV piggybacks its Web Speech ability on the state poll so the phone
+    // can explain why audio is/isn't coming out of the TV. Only report when the
+    // `tts` flag is present (older clients / direct hits simply omit it).
+    final q = request.url.queryParameters;
+    final cb = onTvAudioReport;
+    if (cb != null && q.containsKey('tts')) {
+      cb(supported: q['tts'] == '1', unlocked: q['unlocked'] == '1');
+    }
+
     final session = getSession();
     final body = jsonEncode(_enrichState(session));
     return Response.ok(

@@ -281,6 +281,17 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                   const SizedBox(height: 10),
                   _CastPreview(state: state),
                 ],
+                // Per-cast pacing toggle for the auto-advanceable modes. Lets
+                // the educator stop the slideshow timer and step through items
+                // manually (or turn it back on).
+                if (state.mode == CastMode.flashcards ||
+                    state.mode == CastMode.fslVideo ||
+                    state.mode == CastMode.story) ...[
+                  const SizedBox(height: 20),
+                  const _SectionLabel('Pacing'),
+                  const SizedBox(height: 8),
+                  _AutoAdvanceControl(state: state),
+                ],
                 const SizedBox(height: 20),
                 // The Live Activity panel has its own push controls; the
                 // prev/pause/next remote only applies to the slide modes.
@@ -397,7 +408,9 @@ class _StartCard extends StatelessWidget {
           Text(
             'Works on any TV with a web browser — Samsung, LG, Sony, '
             'Fire TV, Chromecast with Google TV, smart projectors, '
-            'or any laptop plugged into HDMI.',
+            'or any laptop plugged into HDMI. You open the link in the TV\'s '
+            'own browser — this is not the same as mirroring or casting your '
+            'tablet, so sound comes from the TV.',
             textAlign: TextAlign.center,
             style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
           ),
@@ -970,6 +983,58 @@ class _CastTitleFieldState extends ConsumerState<_CastTitleField> {
   }
 }
 
+// ─── Auto-advance (pacing) ─────────────────────────────
+
+/// A single toggle that turns the auto-advance slideshow timer on/off for the
+/// current mode. Default on (the classic slideshow); off lets the educator
+/// dwell on each item and step with the prev/next remote.
+class _AutoAdvanceControl extends ConsumerWidget {
+  final TvCastSession state;
+  const _AutoAdvanceControl({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hc = HCColor.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+
+    final noun = switch (state.mode) {
+      CastMode.story => 'page',
+      CastMode.fslVideo => 'sign',
+      _ => 'card',
+    };
+    final subtitle = state.autoAdvanceEnabled
+        ? 'Moves to the next $noun automatically every few seconds.'
+        : 'Stays on each $noun until you tap Next.';
+
+    // A Material surface (not a coloured Container) so the SwitchListTile can
+    // paint its ink/background — matches the Audio controls card below.
+    return Material(
+      color: hc.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
+      ),
+      child: SwitchListTile(
+        value: state.autoAdvanceEnabled,
+        onChanged: notifier.setAutoAdvanceEnabled,
+        secondary: const Icon(Icons.slideshow_rounded),
+        title: Text(
+          'Auto-advance',
+          style: AppTypography.titleSmall.copyWith(
+            fontWeight: FontWeight.w700,
+            color: hc.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Audio controls ────────────────────────────────────
 
 /// Speech master toggle, a TV-vs-phone output selector, and the optional
@@ -1057,16 +1122,22 @@ class _AudioControls extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    onTv
-                        ? 'On older TVs, press OK once to allow sound — or '
-                              'switch to This phone.'
-                        : 'Plays from this phone (or a phone-connected speaker).',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: hc.textSecondary,
+                  const SizedBox(height: 8),
+                  // Live status: when routed to the TV, explain whether the TV
+                  // is actually speaking (or why it isn't). For the phone, a
+                  // simple static line.
+                  if (onTv)
+                    _TvAudioStatusLine(
+                      status: state.tvAudioStatus,
+                      hasViewer: state.connectedViewers > 0,
+                    )
+                  else
+                    Text(
+                      'Plays from this phone (or a phone-connected speaker).',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: hc.textSecondary,
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 8),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1080,10 +1151,11 @@ class _AudioControls extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           onTv
-                              ? 'Speech is at max volume — turn up the TV\'s '
-                                    'volume to make it louder.'
-                              : 'Speech is at max volume — use this phone\'s '
-                                    'volume buttons to make it louder.',
+                              ? 'Words play at full volume on the TV — raise the '
+                                    'TV\'s own volume so every student, including '
+                                    'those who need it louder, can hear clearly.'
+                              : 'Words play at full volume — use this phone\'s '
+                                    'volume buttons to make them louder.',
                           style: AppTypography.bodySmall.copyWith(
                             color: hc.textSecondary,
                           ),
@@ -1107,12 +1179,78 @@ class _AudioControls extends ConsumerWidget {
               ),
             ),
             subtitle: Text(
-              'For signs that include a voiceover. May not work on older TVs.',
+              'Off by default so signs stay muted (Deaf-friendly). Turn on for '
+              'signs that include a spoken voiceover. May not work on older TVs.',
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One-line status explaining whether the connected TV is actually speaking
+/// the words — driven by what the TV reports about its Web Speech ability
+/// ([TvCastSession.tvAudioStatus]). Turns silent failures into a clear,
+/// actionable message so the teacher knows why the TV is quiet.
+class _TvAudioStatusLine extends StatelessWidget {
+  final TvAudioStatus status;
+  final bool hasViewer;
+  const _TvAudioStatusLine({required this.status, required this.hasViewer});
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    const green = Color(0xFF2E7D32);
+    const amber = Color(0xFFB26A00);
+
+    final (IconData icon, Color color, String text) = !hasViewer
+        ? (
+            Icons.hourglass_empty_rounded,
+            hc.textSecondary,
+            'Waiting for a TV to connect…',
+          )
+        : switch (status) {
+            TvAudioStatus.ready => (
+                Icons.check_circle_rounded,
+                green,
+                'The TV is playing the sound.',
+              ),
+            TvAudioStatus.needsTap => (
+                Icons.touch_app_rounded,
+                amber,
+                'Press OK on the TV remote once to turn on its sound.',
+              ),
+            TvAudioStatus.unsupported => (
+                Icons.warning_amber_rounded,
+                amber,
+                'This TV can’t speak words. Tap “This phone” to hear narration '
+                    'here instead.',
+              ),
+            TvAudioStatus.unknown => (
+                Icons.hourglass_empty_rounded,
+                hc.textSecondary,
+                'Getting the TV ready… if it stays silent, press OK on the TV '
+                    'remote once.',
+              ),
+          };
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: AppTypography.bodySmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

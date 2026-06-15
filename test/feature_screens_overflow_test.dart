@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/goals/screens/goals_screen.dart';
+import 'package:pwdpwdpwd/features/home/screens/educator_home_screen.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/screens/mood_check_in_screen.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/screens/mood_history_screen.dart';
 import 'package:pwdpwdpwd/features/notebook/screens/notebook_screen.dart';
@@ -110,4 +111,19 @@ void main() {
       overrides: _asRole(UserRole.parent),
     );
   });
+
+  // The educator Home renders the large "Primary + More" action grids for both
+  // teacher and parent roles. Without Firebase the roster resolves to the empty
+  // Hive fallback, which still lays out the action grids + overview stats +
+  // empty state — exactly the layout we need overflow coverage for.
+  for (final role in const [UserRole.teacher, UserRole.parent]) {
+    testWidgets('EducatorHomeScreen (${role.name}) survives the device matrix',
+        (tester) async {
+      await expectScreenNoOverflowAcrossDevices(
+        tester,
+        () => const EducatorHomeScreen(),
+        overrides: _asRole(role),
+      );
+    });
+  }
 }

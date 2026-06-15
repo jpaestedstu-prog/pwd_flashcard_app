@@ -31,6 +31,7 @@ class SeedData {
     ..._transportation,
     ..._emotions,
     ..._daysAndTime,
+    ..._actions,
   ];
 
   static List<Flashcard> getByCategory(FlashcardCategory category) {
@@ -245,6 +246,34 @@ class SeedData {
     const Flashcard(id: 'd12', wordEnglish: 'Today', wordFilipino: 'Ngayon', exampleSentence: 'Today is a beautiful day!', category: FlashcardCategory.daysAndTime),
   ];
 
+  // ─── Actions / Verbs ─────────────────────────────────────────────
+  // Action words pair best with a short looping "Show Me" clip (a character
+  // performing the action) — far clearer than a static picture or a written
+  // definition. Clips/photos attach by category+word through the media
+  // manifests (assets/data/action_clip_manifest.json + photo manifest).
+  static final List<Flashcard> _actions = [
+    const Flashcard(id: 'ac01', wordEnglish: 'Run', wordFilipino: 'Tumakbo', exampleSentence: 'The boy can run fast.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac02', wordEnglish: 'Walk', wordFilipino: 'Maglakad', exampleSentence: 'We walk to school every day.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac03', wordEnglish: 'Jump', wordFilipino: 'Tumalon', exampleSentence: 'I can jump very high.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac04', wordEnglish: 'Eat', wordFilipino: 'Kumain', exampleSentence: 'We eat rice for lunch.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac05', wordEnglish: 'Drink', wordFilipino: 'Uminom', exampleSentence: 'I drink water every day.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac06', wordEnglish: 'Sleep', wordFilipino: 'Matulog', exampleSentence: 'Babies sleep a lot.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac07', wordEnglish: 'Read', wordFilipino: 'Magbasa', exampleSentence: 'I read a book at night.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac08', wordEnglish: 'Write', wordFilipino: 'Magsulat', exampleSentence: 'She can write her name.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac09', wordEnglish: 'Sing', wordFilipino: 'Kumanta', exampleSentence: 'We sing in music class.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac10', wordEnglish: 'Dance', wordFilipino: 'Sumayaw', exampleSentence: 'They dance at the party.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac11', wordEnglish: 'Clap', wordFilipino: 'Pumalakpak', exampleSentence: 'We clap for the winner.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac12', wordEnglish: 'Sit', wordFilipino: 'Umupo', exampleSentence: 'Please sit on the chair.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac13', wordEnglish: 'Stand', wordFilipino: 'Tumayo', exampleSentence: 'We stand for the flag.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac14', wordEnglish: 'Open', wordFilipino: 'Magbukas', exampleSentence: 'Open the door, please.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac15', wordEnglish: 'Close', wordFilipino: 'Magsara', exampleSentence: 'Close the window now.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac16', wordEnglish: 'Wave', wordFilipino: 'Kumaway', exampleSentence: 'I wave goodbye to mom.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac17', wordEnglish: 'Cry', wordFilipino: 'Umiyak', exampleSentence: 'The baby starts to cry.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac18', wordEnglish: 'Laugh', wordFilipino: 'Tumawa', exampleSentence: 'We laugh at the funny joke.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac19', wordEnglish: 'Swim', wordFilipino: 'Lumangoy', exampleSentence: 'Fish swim in the sea.', category: FlashcardCategory.actions),
+    const Flashcard(id: 'ac20', wordEnglish: 'Play', wordFilipino: 'Maglaro', exampleSentence: 'Kids play in the park.', category: FlashcardCategory.actions),
+  ];
+
   // ─── Definitions ─────────────────────────────────────────────────
   // Short, kid-friendly meanings keyed by flashcard id, applied to every
   // seed card via [allFlashcards]. Surfaced in the Word Hunt camera sheet
@@ -421,6 +450,28 @@ class SeedData {
     'd10': 'Evening is the part of the day when the sun goes down.',
     'd11': 'A clock is a device that shows you what time it is.',
     'd12': 'Today is this day, the one that is happening right now.',
+
+    // ─── Actions / Verbs ──────────────────────────────────
+    'ac01': 'To run is to move very fast using your legs.',
+    'ac02': 'To walk is to move by putting one foot in front of the other.',
+    'ac03': 'To jump is to push yourself up into the air with your legs.',
+    'ac04': 'To eat is to put food in your mouth and swallow it.',
+    'ac05': 'To drink is to take water or juice into your mouth.',
+    'ac06': 'To sleep is to close your eyes and rest your whole body.',
+    'ac07': 'To read is to look at words and understand what they say.',
+    'ac08': 'To write is to make letters and words with a pen or pencil.',
+    'ac09': 'To sing is to make music with your voice.',
+    'ac10': 'To dance is to move your body to music.',
+    'ac11': 'To clap is to hit your hands together to make a sound.',
+    'ac12': 'To sit is to rest your body on a chair or the floor.',
+    'ac13': 'To stand is to be up on your feet.',
+    'ac14': 'To open is to move something so it is no longer closed.',
+    'ac15': 'To close is to shut something so nothing can pass through.',
+    'ac16': 'To wave is to move your hand to say hello or goodbye.',
+    'ac17': 'To cry is to have tears fall from your eyes when you are sad.',
+    'ac18': 'To laugh is to make a happy sound when something is funny.',
+    'ac19': 'To swim is to move through the water with your body.',
+    'ac20': 'To play is to have fun with games or toys.',
   };
 
   /// Generate default decks (one per category)

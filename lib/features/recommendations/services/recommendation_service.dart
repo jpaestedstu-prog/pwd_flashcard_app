@@ -19,6 +19,7 @@ class RecommendationService {
     required String profileId,
     required LearningProgress progress,
     required Map<String, LearningPathProgress> pathProgress,
+    List<FlashcardCategory> interests = const [],
   }) {
     final allCards = SeedData.allFlashcards;
     final recommendations = <Recommendation>[];
@@ -174,24 +175,34 @@ class RecommendationService {
     }
 
     // ── 7. Explore new/unexplored categories ─────────────────────
-    final unexplored = _findUnexploredCategories(progress);
+    // Interest categories are surfaced first, so a learner who picked
+    // favourite topics in their profile sees those suggested sooner.
+    final unexplored = _findUnexploredCategories(progress, interests);
     if (unexplored.isNotEmpty) {
       final cat = unexplored.first;
+      final isInterest = interests.contains(cat);
       recommendations.add(Recommendation(
         id: 'explore_${cat.name}',
         type: RecommendationType.exploreNewCategory,
-        priority: RecommendationPriority.low,
+        priority: isInterest
+            ? RecommendationPriority.medium
+            : RecommendationPriority.low,
         title: 'Discover ${cat.label}',
         titleFilipino: 'Tuklasin ang ${cat.labelFilipino}',
-        description: 'You haven\'t explored ${cat.label} yet. '
-            'Tap to start learning new words!',
-        descriptionFilipino:
-            'Hindi mo pa natutuklas ang ${cat.labelFilipino}. '
-            'Pindutin para magsimulang matuto ng mga bagong salita!',
+        description: isInterest
+            ? 'One of your favourite topics! Tap to start learning '
+                '${cat.label} words!'
+            : 'You haven\'t explored ${cat.label} yet. '
+                'Tap to start learning new words!',
+        descriptionFilipino: isInterest
+            ? 'Isa sa mga paborito mong paksa! Pindutin para matuto ng '
+                'mga salita sa ${cat.labelFilipino}!'
+            : 'Hindi mo pa natutuklas ang ${cat.labelFilipino}. '
+                'Pindutin para magsimulang matuto ng mga bagong salita!',
         emoji: _categoryEmojiFromEnum(cat),
         route: '/flashcards/viewer/${cat.index}',
         category: cat,
-        relevanceScore: 0.5,
+        relevanceScore: isInterest ? 0.8 : 0.5,
       ));
     }
 
@@ -270,13 +281,20 @@ class RecommendationService {
     return weak.take(3).toList(); // top 3 weakest
   }
 
-  /// Categories with zero progress.
+  /// Categories with zero progress, with the learner's chosen interest
+  /// categories surfaced first so suggestions feel personalised.
   static List<FlashcardCategory> _findUnexploredCategories(
-      LearningProgress progress) {
-    return FlashcardCategory.values.where((cat) {
+      LearningProgress progress, List<FlashcardCategory> interests) {
+    final unexplored = FlashcardCategory.values.where((cat) {
       final p = progress.categoryProgress[cat.label] ?? 0.0;
       return p == 0.0;
     }).toList();
+    unexplored.sort((a, b) {
+      final ai = interests.contains(a) ? 0 : 1;
+      final bi = interests.contains(b) ? 0 : 1;
+      return ai.compareTo(bi);
+    });
+    return unexplored;
   }
 
   /// Finds the game type least played in recent scores.
@@ -368,6 +386,7 @@ class RecommendationService {
       FlashcardCategory.transportation => '🚌',
       FlashcardCategory.emotions => '😊',
       FlashcardCategory.daysAndTime => '📅',
+      FlashcardCategory.actions => '🏃',
     };
   }
 

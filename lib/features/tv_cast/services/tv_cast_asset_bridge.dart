@@ -102,6 +102,7 @@ class TvCastAssetBridge {
     FlashcardCategory.transportation => '🚌',
     FlashcardCategory.emotions => '😊',
     FlashcardCategory.daysAndTime => '📅',
+    FlashcardCategory.actions => '🏃',
   };
 
   /// `#RRGGBB` for a [Color]. The TV CSS avoids `var()` for old browsers, so

@@ -10,6 +10,8 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../core/services/adaptive_difficulty_service.dart';
+import '../../../core/services/action_clip_service.dart';
+import '../../flashcards/widgets/show_me_button.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
@@ -431,6 +433,12 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
               .animate(key: ValueKey(_currentRound))
               .fadeIn(duration: 300.ms)
               .slideX(begin: 0.1, end: 0),
+          // Optional "Show Me" action demo for verb cards. Adds nothing to
+          // the layout unless a clip is actually configured for this word.
+          if (ActionClipService.hasClip(round.correctCard)) ...[
+            const SizedBox(height: 12),
+            Center(child: ShowMeButton(card: round.correctCard)),
+          ],
           const SizedBox(height: 24),
 
           // ─── Picture choices grid ───────────
@@ -482,10 +490,12 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                             ),
                         ],
                       ),
-                      child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
                         child: FlashcardImage(
                           card: choice,
-                          size: 56,
+                          expand: true,
+                          borderRadius: 16,
                         ),
                       ),
                     ),
@@ -522,18 +532,23 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                     width: 2,
                   ),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FlashcardImage(card: round.correctCard),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Which word matches?',
-                      style: AppTypography.titleMedium.copyWith(
-                        color: HCColor.of(context).textSecondary,
-                      ),
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        FlashcardImage(card: round.correctCard, size: 112),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Which word matches?',
+                          style: AppTypography.titleMedium.copyWith(
+                            color: HCColor.of(context).textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             )

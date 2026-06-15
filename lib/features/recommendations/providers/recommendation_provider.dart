@@ -28,5 +28,6 @@ final recommendationProvider = Provider<RecommendationSnapshot>((ref) {
     profileId: profile.id,
     progress: progress,
     pathProgress: pathProgress,
+    interests: profile.interests,
   );
 });

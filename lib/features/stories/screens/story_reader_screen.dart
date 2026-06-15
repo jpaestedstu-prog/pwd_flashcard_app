@@ -67,19 +67,6 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     }
   }
 
-  /// Auto-reads the current page in the displayed language when navigating.
-  void _speakCurrent() {
-    final story = _story;
-    if (story == null) return;
-    if (!ref.read(settingsProvider).ttsEnabled) return;
-    _speakLang(
-      _showFilipino
-          ? story.sentencesFil[_currentSentence]
-          : story.sentencesEn[_currentSentence],
-      filipino: _showFilipino,
-    );
-  }
-
   void _markStoryRead() {
     final story = _story;
     if (story == null) return;
@@ -90,13 +77,11 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     if (_isLastSentence) return;
     setState(() => _currentSentence++);
     if (_isLastSentence) _markStoryRead();
-    _speakCurrent();
   }
 
   void _prevSentence() {
     if (_currentSentence <= 0) return;
     setState(() => _currentSentence--);
-    _speakCurrent();
   }
 
   void _goToQuiz() {

@@ -26,6 +26,7 @@
   var lastSpokenKey = null;
   var ttsUnlocked = false;
   var lastState = null;
+  var lastReplayNonce = null;   // last seen state.ttsReplay.n (explicit replay)
 
   function ttsSupported() {
     return typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -33,7 +34,7 @@
 
   function showSoundHint() {
     if (hint) {
-      hint.innerHTML = '🔊 Press OK / tap to enable sound';
+      hint.innerHTML = '🔊 Press OK on the remote (or tap) to turn on sound';
       hint.className = 'sound-hint';
     }
   }
@@ -98,6 +99,33 @@
     }
     if (key === lastSpokenKey) return;
     lastSpokenKey = key;
+    speakSequence(en, fil);
+    if (!ttsUnlocked) showSoundHint();
+  }
+
+  // Explicit "Replay" from the phone: re-speak the CURRENT item whenever the
+  // replay nonce changes, even though the slide/page key hasn't. `lang` picks
+  // English ('en'), Filipino ('fil'), or both. We seed lastReplayNonce on the
+  // first sighting so a reconnecting TV doesn't replay stale taps.
+  function maybeReplay(state) {
+    var rp = state.ttsReplay;
+    if (!rp || typeof rp.n !== 'number') return;
+    if (lastReplayNonce === null) { lastReplayNonce = rp.n; return; }
+    if (rp.n === lastReplayNonce) return;
+    lastReplayNonce = rp.n;
+    if (!ttsSupported()) return;
+    var en = '', fil = '';
+    if (state.mode === 'flashcards' && state.slide) {
+      en = state.slide.wordEn || '';
+      fil = state.slide.wordFil || '';
+    } else if (state.mode === 'story' && state.story) {
+      en = state.story.textEn || '';
+      fil = state.story.textFil || '';
+    } else {
+      return; // nothing speakable in this mode
+    }
+    if (rp.lang === 'en') fil = '';
+    else if (rp.lang === 'fil') en = '';
     speakSequence(en, fil);
     if (!ttsUnlocked) showSoundHint();
   }
@@ -585,6 +613,7 @@
     }
     updateFooter(state);
     maybeSpeak(state);
+    maybeReplay(state);
   }
 
   function poll() {
@@ -615,7 +644,15 @@
       render(state);
     }
 
-    xhr.open('GET', '/api/state', true);
+    // Tell the phone whether this TV can synthesize speech and whether audio
+    // has been unlocked yet, so it can explain why the TV is/isn't talking.
+    var ttsFlag = ttsSupported() ? '1' : '0';
+    var unlockedFlag = ttsUnlocked ? '1' : '0';
+    xhr.open(
+      'GET',
+      '/api/state?tts=' + ttsFlag + '&unlocked=' + unlockedFlag,
+      true
+    );
     xhr.timeout = 4000;
     xhr.onreadystatechange = function () {
       if (xhr.readyState !== 4) return;

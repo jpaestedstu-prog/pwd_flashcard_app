@@ -126,6 +126,10 @@ class UserProfile {
   final String? section;
   final DateTime? birthDate;
   final List<String> tags;
+  /// Learner-chosen favourite vocabulary categories. Used to personalise
+  /// content surfacing (e.g. prioritising these categories in suggestions).
+  /// Empty by default and on non-learner profiles.
+  final List<FlashcardCategory> interests;
   /// Classroom this profile is enrolled in. Null for unlinked profiles
   /// (player mode, teachers, parents).
   final String? classroomId;
@@ -178,6 +182,7 @@ class UserProfile {
     this.section,
     this.birthDate,
     this.tags = const [],
+    this.interests = const [],
     this.classroomId,
     this.homeGroupId,
     this.isGuestPlayer = false,
@@ -239,6 +244,7 @@ class UserProfile {
     String? Function()? section,
     DateTime? Function()? birthDate,
     List<String>? tags,
+    List<FlashcardCategory>? interests,
     String? Function()? classroomId,
     String? Function()? homeGroupId,
     bool? isGuestPlayer,
@@ -273,6 +279,7 @@ class UserProfile {
       section: section != null ? section() : this.section,
       birthDate: birthDate != null ? birthDate() : this.birthDate,
       tags: tags ?? this.tags,
+      interests: interests ?? this.interests,
       classroomId: classroomId != null ? classroomId() : this.classroomId,
       homeGroupId: homeGroupId != null ? homeGroupId() : this.homeGroupId,
       isGuestPlayer: isGuestPlayer ?? this.isGuestPlayer,

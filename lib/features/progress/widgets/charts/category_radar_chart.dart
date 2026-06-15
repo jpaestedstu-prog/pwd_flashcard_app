@@ -102,6 +102,7 @@ class CategoryRadarChart extends StatelessWidget {
       FlashcardCategory.transportation => 'Travel',
       FlashcardCategory.emotions => 'Feels',
       FlashcardCategory.daysAndTime => 'Days',
+      FlashcardCategory.actions => 'Action',
     };
   }
 }

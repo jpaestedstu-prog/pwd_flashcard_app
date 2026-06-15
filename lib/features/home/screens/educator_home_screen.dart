@@ -95,16 +95,21 @@ class EducatorHomeScreen extends ConsumerWidget {
                       ),
                     ),
                     const ConnectivityIndicator(),
+                    // Settings gear (top-right). Switching profiles now lives
+                    // inside Settings, matching the Student/Child surfaces.
                     Semantics(
                       button: true,
-                      label: 'Switch profile',
+                      label: 'Open settings',
                       child: IconButton(
-                        onPressed: () => context.push('/profile-switcher'),
-                        icon: const Icon(Icons.swap_horiz_rounded),
+                        onPressed: () => context.push('/settings'),
+                        icon: const Icon(Icons.settings_rounded),
                         iconSize: 28,
                         color: hc.textSecondary,
                       ),
-                    ).animate().fadeIn(delay: 200.ms),
+                    )
+                        .animate()
+                        .fadeIn(delay: 200.ms)
+                        .rotate(begin: -0.1, end: 0, duration: 500.ms),
                   ],
                 ),
               ),
@@ -421,187 +426,214 @@ class _QuickActions extends StatelessWidget {
   }
 
   Widget _buildParentChips(BuildContext context) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+    // Primary actions as large, easy-to-tap professional tiles; the rest tuck
+    // into a compact "More" grid. (Family View lives in the hero CTA above, so
+    // it isn't duplicated here.)
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ActionChip(
-          icon: Icons.qr_code_2_rounded,
-          label: 'Share Code',
-          color: AppColors.success,
-          onTap: () => context.push('/home-group-manage'),
+        ProActionGrid(
+          tiles: [
+            ProActionTile(
+              icon: Icons.assessment_rounded,
+              label: 'Reports',
+              caption: 'Weekly summary',
+              accent: AppColors.warning,
+              onTap: () => context.push('/weekly-reports'),
+            ),
+            ProActionTile(
+              icon: Icons.shield_rounded,
+              label: 'Parental Controls',
+              caption: 'Limits & safety',
+              accent: AppColors.sectionAssessment,
+              onTap: () => context.push('/parental-controls'),
+            ),
+            ProActionTile(
+              icon: Icons.style_rounded,
+              label: 'Cards',
+              caption: 'Browse decks',
+              accent: AppColors.info,
+              onTap: () => context.push('/flashcards'),
+            ),
+            ProActionTile(
+              icon: Icons.qr_code_2_rounded,
+              label: 'Share Code',
+              caption: 'Invite your child',
+              accent: AppColors.success,
+              onTap: () => context.push('/home-group-manage'),
+            ),
+          ],
         ),
-        _ActionChip(
-          icon: Icons.family_restroom_rounded,
-          label: 'Family View',
-          color: AppColors.accent,
-          onTap: () => context.push('/parent-dashboard'),
-        ),
-        _ActionChip(
-          icon: Icons.shield_rounded,
-          label: 'Parental Controls',
-          color: AppColors.sectionAssessment,
-          onTap: () => context.push('/parental-controls'),
-        ),
-        _ActionChip(
-          icon: Icons.style_rounded,
-          label: 'Cards',
-          color: AppColors.info,
-          onTap: () => context.push('/flashcards'),
-        ),
-        _ActionChip(
-          icon: Icons.tv_rounded,
-          label: 'TV Cast',
-          color: AppColors.primary,
-          onTap: () => context.push('/tv-cast'),
-        ),
-        _ActionChip(
-          icon: Icons.message_rounded,
-          label: 'Messages',
-          color: AppColors.sectionSocial,
-          onTap: () => context.push('/messages'),
-        ),
-        _ActionChip(
-          icon: Icons.assessment_rounded,
-          label: 'Reports',
-          color: AppColors.warning,
-          onTap: () => context.push('/weekly-reports'),
+        const SizedBox(height: 24),
+        const ProSectionHeader(title: 'More'),
+        const SizedBox(height: 12),
+        ProActionGrid(
+          compact: true,
+          tiles: [
+            ProActionTile(
+              compact: true,
+              icon: Icons.tv_rounded,
+              label: 'TV Cast',
+              accent: AppColors.primary,
+              onTap: () => context.push('/tv-cast'),
+            ),
+            ProActionTile(
+              compact: true,
+              icon: Icons.message_rounded,
+              label: 'Messages',
+              accent: AppColors.sectionSocial,
+              onTap: () => context.push('/messages'),
+            ),
+          ],
         ),
       ],
     );
   }
 
   Widget _buildTeacherChips(BuildContext context) {
+    // Six large primary tiles for the daily essentials, then the long tail of
+    // actions grouped under a compact "More" section.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _GroupLabel(text: 'Classroom & Students', color: hc.textSecondary),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _ActionChip(
-              icon: Icons.qr_code_2_rounded,
-              label: 'Share Code',
-              color: AppColors.success,
-              onTap: () => context.push('/classroom-manage'),
-            ),
-            _ActionChip(
+        ProActionGrid(
+          tiles: [
+            ProActionTile(
               icon: Icons.people_rounded,
               label: 'All Students',
-              color: AppColors.sectionLearning,
+              caption: 'Roster & progress',
+              accent: AppColors.sectionLearning,
               onTap: () => context.push('/multi-dashboard'),
             ),
-            _ActionChip(
+            ProActionTile(
+              icon: Icons.analytics_rounded,
+              label: 'Analytics',
+              caption: 'Class insights',
+              accent: AppColors.sectionCommunication,
+              onTap: () => context.push('/teacher-analytics'),
+            ),
+            ProActionTile(
+              icon: Icons.assessment_rounded,
+              label: 'Reports',
+              caption: 'Weekly summary',
+              accent: AppColors.warning,
+              onTap: () => context.push('/weekly-reports'),
+            ),
+            ProActionTile(
               icon: Icons.cast_for_education_rounded,
               label: 'Classroom',
-              color: AppColors.accent,
+              caption: 'Live session',
+              accent: AppColors.accent,
               onTap: () => context.push('/classroom'),
             ),
-            _ActionChip(
-              icon: Icons.qr_code_2_rounded,
-              label: 'Manage Classes',
-              color: AppColors.sectionCommunication,
-              onTap: () => context.push('/classroom-manage'),
+            ProActionTile(
+              icon: Icons.style_rounded,
+              label: 'Cards',
+              caption: 'Browse decks',
+              accent: AppColors.info,
+              onTap: () => context.push('/flashcards'),
             ),
-            _ActionChip(
-              icon: Icons.message_rounded,
-              label: 'Messages',
-              color: AppColors.sectionSocial,
-              onTap: () => context.push('/messages'),
+            ProActionTile(
+              icon: Icons.qr_code_2_rounded,
+              label: 'Share Code',
+              caption: 'Invite students',
+              accent: AppColors.success,
+              onTap: () => context.push('/classroom-manage'),
             ),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 24),
+        const ProSectionHeader(title: 'More'),
+        const SizedBox(height: 12),
         _GroupLabel(text: 'Content', color: hc.textSecondary),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _ActionChip(
-              icon: Icons.style_rounded,
-              label: 'Cards',
-              color: AppColors.info,
-              onTap: () => context.push('/flashcards'),
-            ),
-            _ActionChip(
+        ProActionGrid(
+          compact: true,
+          tiles: [
+            ProActionTile(
+              compact: true,
               icon: Icons.tv_rounded,
               label: 'TV Cast',
-              color: AppColors.primary,
+              accent: AppColors.primary,
               onTap: () => context.push('/tv-cast'),
             ),
-            _ActionChip(
+            ProActionTile(
+              compact: true,
               icon: Icons.print_rounded,
               label: 'Worksheets',
-              color: AppColors.sectionWellbeing,
+              accent: AppColors.sectionWellbeing,
               onTap: () => context.push('/worksheets'),
+            ),
+            ProActionTile(
+              compact: true,
+              icon: Icons.message_rounded,
+              label: 'Messages',
+              accent: AppColors.sectionSocial,
+              onTap: () => context.push('/messages'),
             ),
           ],
         ),
         const SizedBox(height: 18),
         _GroupLabel(text: 'Assessments & Progress', color: hc.textSecondary),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _ActionChip(
-              icon: Icons.analytics_rounded,
-              label: 'Analytics',
-              color: AppColors.sectionCommunication,
-              onTap: () => context.push('/teacher-analytics'),
-            ),
-            _ActionChip(
-              icon: Icons.assessment_rounded,
-              label: 'Reports',
-              color: AppColors.warning,
-              onTap: () => context.push('/weekly-reports'),
-            ),
-            _ActionChip(
+        ProActionGrid(
+          compact: true,
+          tiles: [
+            ProActionTile(
+              compact: true,
               icon: Icons.quiz_rounded,
               label: 'Assessments',
-              color: AppColors.sectionAssessment,
+              accent: AppColors.sectionAssessment,
               onTap: () => context.push('/assessment'),
             ),
-            _ActionChip(
+            ProActionTile(
+              compact: true,
               icon: Icons.assignment_turned_in_rounded,
               label: 'Assign Tasks',
-              color: AppColors.success,
+              accent: AppColors.success,
               onTap: () => context.push('/assessment/assign'),
             ),
-            _ActionChip(
+            ProActionTile(
+              compact: true,
               icon: Icons.track_changes_rounded,
               label: 'Track Progress',
-              color: AppColors.info,
+              accent: AppColors.info,
               onTap: () => context.push('/assessment/tracking'),
+            ),
+            ProActionTile(
+              compact: true,
+              icon: Icons.qr_code_2_rounded,
+              label: 'Manage Classes',
+              accent: AppColors.sectionCommunication,
+              onTap: () => context.push('/classroom-manage'),
             ),
           ],
         ),
         const SizedBox(height: 18),
         _GroupLabel(text: 'Research', color: hc.textSecondary),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _ActionChip(
+        ProActionGrid(
+          compact: true,
+          tiles: [
+            ProActionTile(
+              compact: true,
               icon: Icons.science_rounded,
               label: 'Experiment Setup',
-              color: AppColors.sectionWellbeing,
+              accent: AppColors.sectionWellbeing,
               onTap: () => context.push('/experiment-setup'),
             ),
-            _ActionChip(
+            ProActionTile(
+              compact: true,
               icon: Icons.poll_rounded,
               label: 'SUS Survey',
-              color: AppColors.sectionCommunication,
+              accent: AppColors.sectionCommunication,
               onTap: () => context.push('/survey-results'),
             ),
-            _ActionChip(
+            ProActionTile(
+              compact: true,
               icon: Icons.file_download_rounded,
               label: 'Research Export',
-              color: AppColors.primaryDark,
+              accent: AppColors.primaryDark,
               onTap: () => context.push('/research-export'),
             ),
           ],
@@ -686,66 +718,6 @@ class _ParentDashboardCta extends StatelessWidget {
             ),
           ),
           Icon(Icons.arrow_forward_rounded, color: hc.primary),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ActionChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      borderRadius: 14,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      borderColor: color.withValues(alpha: 0.15),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          color.withValues(alpha: 0.12),
-          color.withValues(alpha: 0.04),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.2),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(icon, size: 18, color: color),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: AppTypography.labelMedium.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
         ],
       ),
     );

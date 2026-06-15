@@ -156,13 +156,14 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
     '/stories',
     '/progress'
   ];
-  // ─── Educator tabs: Home, Students, Analytics, Reports, Settings
+  // ─── Educator tabs: Home, Students, Analytics, Reports
+  // Settings is reached from the top-right gear on the educator home (matching
+  // the Student/Child surfaces), so it is intentionally not a nav tab.
   static const _educatorPaths = [
     '/home',
     '/multi-dashboard',
     '/teacher-analytics',
     '/weekly-reports',
-    '/settings'
   ];
   // ─── Child tabs: Home, Games, Stories, Stickers (gamified, smaller set)
   static const _childPaths = [
@@ -328,7 +329,6 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       _NavItem(icon: Icons.people_outlined, selectedIcon: Icons.people_rounded, label: 'Students'),
       _NavItem(icon: Icons.analytics_outlined, selectedIcon: Icons.analytics_rounded, label: 'Analytics'),
       _NavItem(icon: Icons.assessment_outlined, selectedIcon: Icons.assessment_rounded, label: 'Reports'),
-      _NavItem(icon: Icons.settings_outlined, selectedIcon: Icons.settings_rounded, label: 'Settings'),
     ];
   }
 

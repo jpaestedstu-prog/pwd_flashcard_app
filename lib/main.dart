@@ -12,8 +12,10 @@ import 'l10n/app_localizations.dart';
 import 'core/security/owner_uid_migration.dart';
 import 'core/security/pin_migration.dart';
 import 'core/security/username_migration.dart';
+import 'core/services/action_clip_service.dart';
 import 'core/services/active_time_tracker.dart';
 import 'core/services/alarm_scheduler.dart';
+import 'core/services/flashcard_photo_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/analytics_service.dart';
 import 'core/services/firebase_service.dart';
@@ -126,6 +128,12 @@ void main() {
     // (they are independent of each other)
     await Future.wait([
       HiveService.init(),
+      // Parse the media manifests (real photos + "Show Me" action clips) so
+      // FlashcardImage / the Picture-Word game / the viewer know what's
+      // available by first render. Both swallow errors and stay dormant when
+      // no manifest URL is configured, so this never blocks or breaks startup.
+      FlashcardPhotoService.load(),
+      ActionClipService.load(),
       FirebaseService.init(options: DefaultFirebaseOptions.currentPlatform),
       NotificationService.init(
         onNotificationTap: (payload) { 
@@ -133,6 +141,7 @@ void main() {
             final ctx = rootNavigatorKey.currentContext;
             if (ctx == null) return;
             switch (payload) {
+              
               case 'daily_challenge':
                 GoRouter.of(ctx).go('/home');
               case 'vocab_review':
@@ -149,7 +158,7 @@ void main() {
     await Hive.openBox('error_logs');
 
     // Migrate any plaintext PINs to salted PBKDF2 hashes before the first
-    // PIN-gated screen can be reached. Local-only and idempotent — a
+    // PIN-gated screen can be reached. Local-only and idempotent — a 
     // settings flag and per-profile guards prevent double-hashing.
     await PinMigration.runIfNeeded();
 

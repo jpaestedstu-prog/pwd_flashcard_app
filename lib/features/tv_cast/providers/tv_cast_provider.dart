@@ -113,10 +113,24 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   /// of the TV/phone audio target, and is a no-op when Text-to-Speech is off or
   /// there is nothing to say.
   void replayCurrentWord({required bool filipino}) {
-    if (!ref.read(settingsProvider).ttsEnabled) return;
     final (en, fil) = _currentSpeechText();
     final text = filipino ? fil : en;
     if (text.trim().isEmpty) return;
+
+    // When casting audio to the TV, ask the TV browser to re-speak the current
+    // item (so "Replay" works on the TV, not just this phone). Bumping the
+    // nonce + revision is what the TV polls and acts on.
+    if (state.isServerRunning && state.castAudioTarget == CastAudioTarget.tv) {
+      state = state.copyWith(
+        ttsReplayNonce: state.ttsReplayNonce + 1,
+        ttsReplayLang: filipino ? 'fil' : 'en',
+        revision: state.revision + 1,
+      );
+      return;
+    }
+
+    // Otherwise model it on this phone (unchanged behaviour).
+    if (!ref.read(settingsProvider).ttsEnabled) return;
     unawaited(_audio().speakOne(text, filipino: filipino));
   }
 
@@ -138,7 +152,10 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       return;
     }
 
-    _server ??= TvCastServer(getSession: () => state);
+    _server ??= TvCastServer(
+      getSession: () => state,
+      onTvAudioReport: _onTvAudioReport,
+    );
     final port = await _server!.start();
     final url = 'http://$ip:$port';
 
@@ -183,6 +200,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       mode: CastMode.idle,
       isPaused: false,
       isAway: false,
+      tvAudioStatus: TvAudioStatus.unknown,
       slideIndex: 0,
       clearListenUrl: true,
       clearCategory: true,
@@ -211,13 +229,15 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       revision: state.revision + 1,
     );
 
-    if (mode == CastMode.flashcards || mode == CastMode.fslVideo) {
-      _autoplay?.resume();
-      _autoplay?.start(
-        interval: mode == CastMode.fslVideo
-            ? const Duration(seconds: 8)
-            : const Duration(seconds: 4),
-      );
+    if (mode == CastMode.flashcards ||
+        mode == CastMode.fslVideo ||
+        mode == CastMode.story) {
+      if (state.autoAdvanceEnabled) {
+        _autoplay?.resume();
+        _autoplay?.start(interval: _autoplayIntervalFor(mode));
+      } else {
+        _autoplay?.stop();
+      }
       if (mode == CastMode.fslVideo) _prefetchFslAround();
       _narrateCurrent();
     } else if (mode == CastMode.progress) {
@@ -342,6 +362,30 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     );
   }
 
+  /// Turns the auto-advance slideshow timer on or off. When enabled, resumes
+  /// ticking for the current auto-advanceable mode (flashcards / FSL / story)
+  /// unless paused or the teacher is away; when disabled, stops the timer so
+  /// the cast stays on the current item until the educator taps Next.
+  void setAutoAdvanceEnabled(bool enabled) {
+    if (state.autoAdvanceEnabled == enabled) return;
+    state = state.copyWith(
+      autoAdvanceEnabled: enabled,
+      revision: state.revision + 1,
+    );
+    final mode = state.mode;
+    final canAuto = mode == CastMode.flashcards ||
+        mode == CastMode.fslVideo ||
+        mode == CastMode.story;
+    if (enabled) {
+      if (canAuto && !state.isPaused && !state.isAway) {
+        _autoplay?.resume();
+        _autoplay?.start(interval: _autoplayIntervalFor(mode));
+      }
+    } else {
+      _autoplay?.stop();
+    }
+  }
+
   void setStory(String storyId) {
     final story = SeedStories.all.firstWhere(
       (s) => s.id == storyId,
@@ -354,7 +398,12 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       isPaused: false,
       revision: state.revision + 1,
     );
-    _autoplay?.stop();
+    if (state.autoAdvanceEnabled) {
+      _autoplay?.resume();
+      _autoplay?.start(interval: _autoplayIntervalFor(CastMode.story));
+    } else {
+      _autoplay?.stop();
+    }
     _narrateCurrent();
   }
 
@@ -429,8 +478,10 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     if (paused) {
       _autoplay?.pause();
       unawaited(_narrator?.stop());
-    } else if (state.mode == CastMode.flashcards ||
-        state.mode == CastMode.fslVideo) {
+    } else if (state.autoAdvanceEnabled &&
+        (state.mode == CastMode.flashcards ||
+            state.mode == CastMode.fslVideo ||
+            state.mode == CastMode.story)) {
       _autoplay?.resume();
     }
   }
@@ -447,8 +498,10 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       _autoplay?.pause();
       unawaited(_narrator?.stop());
     } else if (!state.isPaused &&
+        state.autoAdvanceEnabled &&
         (state.mode == CastMode.flashcards ||
-            state.mode == CastMode.fslVideo)) {
+            state.mode == CastMode.fslVideo ||
+            state.mode == CastMode.story)) {
       _autoplay?.resume();
       _narrateCurrent(withCue: false);
     }
@@ -457,9 +510,30 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   // ─── Internal helpers ─────────────────────────────────
 
   void _advanceFromAutoplay() {
-    if (state.isPaused) return;
+    if (state.isPaused || !state.autoAdvanceEnabled) return;
     next();
   }
+
+  /// Folds a TV's reported Web Speech ability (from its `/api/state` poll) into
+  /// [TvCastSession.tvAudioStatus] so the phone can explain why the TV is or
+  /// isn't speaking. Updates only on change and **without** bumping `revision`
+  /// (this is phone-UI-only info — the TV must not repaint for it), mirroring
+  /// the `connectedViewers` tick.
+  void _onTvAudioReport({required bool supported, required bool unlocked}) {
+    final next = !supported
+        ? TvAudioStatus.unsupported
+        : (unlocked ? TvAudioStatus.ready : TvAudioStatus.needsTap);
+    if (next == state.tvAudioStatus) return;
+    state = state.copyWith(tvAudioStatus: next);
+  }
+
+  /// Auto-advance cadence per mode: signs dwell longest (8s) so the clip can
+  /// play, story pages get reading time (7s), and flashcards flip at 4s.
+  Duration _autoplayIntervalFor(CastMode mode) => switch (mode) {
+        CastMode.fslVideo => const Duration(seconds: 8),
+        CastMode.story => const Duration(seconds: 7),
+        _ => const Duration(seconds: 4), // flashcards
+      };
 
   /// Warms up the FSL video disk cache for the current card and the next one
   /// so the TV can stream them without waiting on a download. Fire-and-forget;

@@ -34,6 +34,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late GradeLevel? _selectedGradeLevel;
   late DateTime? _selectedBirthDate;
   late List<String> _tags;
+  late List<FlashcardCategory> _selectedInterests;
   bool _hasChanged = false;
 
   // Premium avatar selection (null = using free avatar)
@@ -59,6 +60,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _selectedGradeLevel = profile?.gradeLevel;
     _selectedBirthDate = profile?.birthDate;
     _tags = List<String>.from(profile?.tags ?? []);
+    _selectedInterests =
+        List<FlashcardCategory>.from(profile?.interests ?? const []);
     _hasPinOriginal = profile?.hasPinProtection ?? false;
     _enablePin = _hasPinOriginal;
     // Check if a premium avatar is currently equipped
@@ -79,6 +82,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         _sectionController.text.trim() != (profile.section ?? '') ||
         _selectedBirthDate != profile.birthDate ||
         !_listEquals(_tags, profile.tags) ||
+        !_interestsEqual(_selectedInterests, profile.interests) ||
         _enablePin != _hasPinOriginal ||
         _removingPin ||
         _selectedPremiumAvatarId != _originalPremiumAvatarId ||
@@ -92,6 +96,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (a[i] != b[i]) return false;
     }
     return true;
+  }
+
+  /// Order-independent comparison of selected interest categories.
+  bool _interestsEqual(List<FlashcardCategory> a, List<FlashcardCategory> b) {
+    if (a.length != b.length) return false;
+    return a.toSet().containsAll(b);
+  }
+
+  /// Whole-years age for the currently picked birth date.
+  int _ageFrom(DateTime birth) {
+    final now = DateTime.now();
+    int years = now.year - birth.year;
+    if (now.month < birth.month ||
+        (now.month == birth.month && now.day < birth.day)) {
+      years--;
+    }
+    return years;
   }
 
   void _addTag() {
@@ -147,6 +168,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       section: () => sectionText.isNotEmpty ? sectionText : null,
       birthDate: () => _selectedBirthDate,
       tags: _tags,
+      interests: _selectedInterests,
     );
 
     // Apply PIN changes via the credential helper so plaintext is never
@@ -280,6 +302,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
     final hc = HCColor.of(context);
+    // Gamification (premium avatars) and school-enrollment metadata
+    // (grade, section, birth date, tags) only apply to learners. Teacher /
+    // parent profiles get a lean, professional edit form.
+    final isLearner = profile?.role.isLearner ?? true;
     if (profile == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Edit Profile')),
@@ -396,7 +422,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
           const SizedBox(height: 20),
 
-          // ─── Premium Avatars ──────────────
+          // ─── Premium Avatars (learners only) ───
+          if (isLearner) ...[
           Text('Premium Avatars',
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
@@ -502,8 +529,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               }).toList(),
             );
           }),
-
           const SizedBox(height: 28),
+          ],
 
           // ─── Name Field ───────────────────
           Text('Name',
@@ -526,6 +553,52 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
           const SizedBox(height: 20),
 
+          // ─── Learning Level (learners only, read-only) ───
+          if (isLearner) ...[
+            Text('Learning Level',
+                style: AppTypography.titleSmall
+                    .copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Builder(builder: (_) {
+              final level = profile.effectiveLearningLevel;
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: level.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                  border:
+                      Border.all(color: level.color.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_graph_rounded, color: level.color),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(level.label,
+                              style: AppTypography.bodyMedium
+                                  .copyWith(fontWeight: FontWeight.w700)),
+                          Text(
+                            profile.hasLearningLevelOverride
+                                ? 'Set by your teacher'
+                                : level.description,
+                            style: AppTypography.bodySmall
+                                .copyWith(color: hc.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 20),
+          ],
+
+          // ─── School info (learners only) ───
+          if (isLearner) ...[
           // ─── Grade Level ──────────────────
           Text('Grade Level',
               style: AppTypography.titleSmall
@@ -611,6 +684,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   Text(
                     _selectedBirthDate != null
                         ? '${_selectedBirthDate!.month}/${_selectedBirthDate!.day}/${_selectedBirthDate!.year}'
+                          '  (Age: ${_ageFrom(_selectedBirthDate!)})'
                         : 'Not set',
                     style: AppTypography.bodyMedium.copyWith(
                       color: _selectedBirthDate != null
@@ -689,8 +763,76 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   .toList(),
             ),
           ],
-
           const SizedBox(height: 20),
+          ],
+
+          // ─── Learning Interests (learners only) ───
+          if (isLearner) ...[
+            Text('Learning Interests',
+                style: AppTypography.titleSmall
+                    .copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(
+              'Pick favourite topics to personalise lessons',
+              style:
+                  AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: FlashcardCategory.values.map((cat) {
+                final selected = _selectedInterests.contains(cat);
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (selected) {
+                        _selectedInterests.remove(cat);
+                      } else {
+                        _selectedInterests.add(cat);
+                      }
+                    });
+                    _onChanged();
+                  },
+                  child: Semantics(
+                    label: '${cat.label}${selected ? ', selected' : ''}',
+                    button: true,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? cat.color.withValues(alpha: 0.30)
+                            : hc.surface,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color:
+                              selected ? cat.darkColor : Colors.transparent,
+                          width: selected ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(cat.emoji,
+                              style: const TextStyle(fontSize: 16)),
+                          const SizedBox(width: 6),
+                          Text(cat.label,
+                              style: AppTypography.bodySmall.copyWith(
+                                fontWeight: selected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              )),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+          ],
 
           // ─── Disability Type ──────────────
           Text('Accessibility Profile',

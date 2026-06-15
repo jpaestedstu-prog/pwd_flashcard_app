@@ -109,6 +109,83 @@ void main() {
     });
   });
 
+  group('TvCastSession auto-advance', () {
+    test('autoAdvanceEnabled defaults on', () {
+      expect(const TvCastSession().autoAdvanceEnabled, isTrue);
+    });
+
+    test('copyWith updates autoAdvanceEnabled and leaves other fields alone',
+        () {
+      const base = TvCastSession(mode: CastMode.story, storyPageIndex: 2);
+      final off = base.copyWith(autoAdvanceEnabled: false);
+      expect(off.autoAdvanceEnabled, isFalse);
+      expect(off.mode, CastMode.story);
+      expect(off.storyPageIndex, 2);
+    });
+
+    test('copyWith preserves autoAdvanceEnabled when not specified', () {
+      const base = TvCastSession(autoAdvanceEnabled: false);
+      expect(base.copyWith(slideIndex: 1).autoAdvanceEnabled, isFalse);
+    });
+
+    test('autoAdvanceEnabled is phone-only — never sent to the TV', () {
+      final json = const TvCastSession(autoAdvanceEnabled: false).toApiJson();
+      expect(json.containsKey('autoAdvanceEnabled'), isFalse);
+      expect(json.containsKey('autoAdvance'), isFalse);
+    });
+  });
+
+  group('TvCastSession TV audio status', () {
+    test('defaults to unknown', () {
+      expect(const TvCastSession().tvAudioStatus, TvAudioStatus.unknown);
+    });
+
+    test('copyWith updates tvAudioStatus and leaves other fields alone', () {
+      const base = TvCastSession(mode: CastMode.flashcards, slideIndex: 3);
+      final next = base.copyWith(tvAudioStatus: TvAudioStatus.needsTap);
+      expect(next.tvAudioStatus, TvAudioStatus.needsTap);
+      expect(next.mode, CastMode.flashcards);
+      expect(next.slideIndex, 3);
+    });
+
+    test('copyWith preserves tvAudioStatus when not specified', () {
+      const base = TvCastSession(tvAudioStatus: TvAudioStatus.unsupported);
+      expect(base.copyWith(slideIndex: 1).tvAudioStatus,
+          TvAudioStatus.unsupported);
+    });
+
+    test('tvAudioStatus is phone-only — never sent to the TV', () {
+      final json =
+          const TvCastSession(tvAudioStatus: TvAudioStatus.ready).toApiJson();
+      expect(json.containsKey('tvAudioStatus'), isFalse);
+      expect(json.containsKey('audio'), isFalse);
+    });
+  });
+
+  group('TvCastSession TV replay signal', () {
+    test('defaults: nonce 0, lang both — emitted in toApiJson for the TV', () {
+      final replay = const TvCastSession().toApiJson()['ttsReplay'] as Map;
+      expect(replay['n'], 0);
+      expect(replay['lang'], 'both');
+    });
+
+    test('toApiJson carries the bumped nonce + chosen language', () {
+      final replay = const TvCastSession(
+        ttsReplayNonce: 4,
+        ttsReplayLang: 'fil',
+      ).toApiJson()['ttsReplay'] as Map;
+      expect(replay['n'], 4);
+      expect(replay['lang'], 'fil');
+    });
+
+    test('copyWith updates the replay fields and preserves them otherwise', () {
+      const base = TvCastSession(ttsReplayNonce: 2, ttsReplayLang: 'en');
+      expect(base.copyWith(slideIndex: 1).ttsReplayNonce, 2);
+      expect(base.copyWith(slideIndex: 1).ttsReplayLang, 'en');
+      expect(base.copyWith(ttsReplayNonce: 3).ttsReplayNonce, 3);
+    });
+  });
+
   group('TvCastSession display design', () {
     test('toApiJson emits the enum name for every template', () {
       for (final theme in CastTheme.values) {

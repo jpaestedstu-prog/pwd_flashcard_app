@@ -487,3 +487,217 @@ class _GridCell extends StatelessWidget {
     );
   }
 }
+
+/// A large, tappable navigation button for the educator surfaces — the
+/// professional counterpart to the playful `HomeTile`. An accent-tinted icon
+/// badge over a bold label and an optional one-line caption, on a flat,
+/// hairline-bordered card (square 12px corners, no emoji, no drop shadow) so it
+/// reads as a dashboard action rather than a toy.
+///
+/// Overflow-safe by construction (mirrors [ProStatTile]): the icon badge is a
+/// fixed size wrapped in a [FittedBox], the label/caption use `maxLines` +
+/// ellipsis, and the column is `mainAxisSize.min` — so it can never trigger a
+/// `RenderFlex` overflow at any cell width or font scale. Designed to sit in a
+/// [ProActionGrid] cell of bounded width.
+class ProActionTile extends StatelessWidget {
+  const ProActionTile({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.caption,
+    this.accent,
+    this.compact = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  /// Optional one-line description, shown on large (non-[compact]) tiles only.
+  final String? caption;
+
+  /// Accent colour for the icon badge; defaults to the theme primary.
+  final Color? accent;
+
+  /// Compact tiles (smaller badge/label, caption hidden) are used in the
+  /// secondary "More" grid.
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final theme = Theme.of(context);
+    final accentColor = accent ?? hc.primary;
+    final double badge = compact ? 40 : 52;
+    final double iconSize = compact ? 22 : 28;
+
+    // A restrained dose of colour: the accent is *blended into* the surface so
+    // the fill stays opaque (the screen sits on an animated gradient — a
+    // translucent fill would bleed through) and auto-adapts to light/dark.
+    final Color fillStrong =
+        Color.alphaBlend(accentColor.withValues(alpha: 0.12), hc.cardBackground);
+    final Color fillSoft =
+        Color.alphaBlend(accentColor.withValues(alpha: 0.04), hc.cardBackground);
+
+    final content = Container(
+      padding: compact ? AppSpacing.paddingMd : AppSpacing.paddingLg,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [fillStrong, fillSoft],
+        ),
+        borderRadius: ProSurface.borderRadius,
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.30),
+          // ignore: avoid_redundant_argument_values  (width comes from the token)
+          width: ProSurface.borderWidth,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Fixed-size icon badge — never grows, so it always fits the cell.
+          Container(
+            width: badge,
+            height: badge,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.16),
+              borderRadius: ProSurface.borderRadius,
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Icon(icon, size: iconSize, color: accentColor),
+            ),
+          ),
+          SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: (compact
+                    ? theme.textTheme.titleSmall
+                    : theme.textTheme.titleMedium)
+                ?.copyWith(
+              color: hc.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (!compact && caption != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              caption!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(color: hc.textHint),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    return Semantics(
+      button: true,
+      label: caption == null ? label : '$label. $caption',
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: ProSurface.borderRadius,
+          child: content,
+        ),
+      ),
+    );
+  }
+}
+
+/// Lays out [ProActionTile]s in the same responsive, overflow-safe grid as
+/// [ProStatGrid] — rows of [Expanded] cells inside an [IntrinsicHeight] (so all
+/// tiles in a row share a height and no cell can overflow horizontally at any
+/// width or font scale).
+///
+/// [compact] grids pack one more column per tier and are meant for the
+/// secondary "More" actions; the default (large) grid keeps tiles big and
+/// easy to tap.
+class ProActionGrid extends StatelessWidget {
+  const ProActionGrid({
+    super.key,
+    required this.tiles,
+    this.spacing = AppSpacing.md,
+    this.compact = false,
+  });
+
+  final List<ProActionTile> tiles;
+  final double spacing;
+  final bool compact;
+
+  /// Width-aware column count, clamped to the number of tiles. Large grids stay
+  /// at two big columns on phones; compact grids fit more, smaller tiles.
+  static int columnsForWidth(double width, int itemCount, {bool compact = false}) {
+    int cols;
+    if (compact) {
+      if (width >= 1120) {
+        cols = 5;
+      } else if (width >= 840) {
+        cols = 4;
+      } else if (width >= 520) {
+        cols = 3;
+      } else {
+        cols = 2;
+      }
+    } else {
+      if (width >= 1120) {
+        cols = 4;
+      } else if (width >= 840) {
+        cols = 3;
+      } else {
+        cols = 2;
+      }
+    }
+    return cols.clamp(1, itemCount == 0 ? 1 : itemCount);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (tiles.isEmpty) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols =
+            columnsForWidth(constraints.maxWidth, tiles.length, compact: compact);
+        final rows = <Widget>[];
+        for (var i = 0; i < tiles.length; i += cols) {
+          final rowTiles = tiles.sublist(
+            i,
+            (i + cols) > tiles.length ? tiles.length : i + cols,
+          );
+          final cells = <Widget>[];
+          for (var c = 0; c < cols; c++) {
+            if (c > 0) cells.add(SizedBox(width: spacing));
+            if (c < rowTiles.length) {
+              cells.add(Expanded(child: rowTiles[c]));
+            } else {
+              // Pad the last row so cells keep a consistent width.
+              cells.add(const Expanded(child: SizedBox.shrink()));
+            }
+          }
+          if (rows.isNotEmpty) rows.add(SizedBox(height: spacing));
+          rows.add(IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: cells,
+            ),
+          ));
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: rows,
+        );
+      },
+    );
+  }
+}

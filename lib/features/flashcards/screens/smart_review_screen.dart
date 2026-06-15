@@ -58,13 +58,9 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
   }
 
   void _revealAnswer() {
+    // No auto-speak on reveal — audio is opt-in via the Replay buttons below,
+    // so a learner is never startled by sound they didn't ask for.
     setState(() => _showAnswer = true);
-    // Speak the word
-    final settings = ref.read(settingsProvider);
-    if (settings.ttsEnabled) {
-      final card = _reviewCards[_currentIndex];
-      ref.read(ttsServiceProvider).speakEnglish(card.wordEnglish);
-    }
   }
 
   void _answerKnow() {
@@ -248,7 +244,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                       // Per-word image
                       FlashcardImage(
                         card: card,
-                        size: 52,
+                        size: 76,
                         borderRadius: 16,
                       ),
                       const SizedBox(height: 16),

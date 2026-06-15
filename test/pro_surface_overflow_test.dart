@@ -9,6 +9,8 @@ import 'support/device_matrix.dart';
 /// deliberately worst-case content (long labels, huge numbers) across
 /// [kTabletMatrix] × [kTextScales] and must not overflow.
 
+void _noop() {}
+
 void main() {
   testWidgets('ProStatTile survives the device matrix', (tester) async {
     await expectNoOverflowAcrossDevices(
@@ -44,6 +46,50 @@ void main() {
       (_) => Padding(
         padding: const EdgeInsets.all(16),
         child: ProStatGrid(tiles: tiles),
+      ),
+      // Vertically-growing dashboard content → lives in a scroll view.
+      host: LayoutHost.scrollable,
+    );
+  });
+
+  testWidgets('ProActionTile survives the device matrix', (tester) async {
+    await expectNoOverflowAcrossDevices(
+      tester,
+      (_) => const SizedBox(
+        width: 200,
+        child: ProActionTile(
+          icon: Icons.assignment_turned_in_rounded,
+          label: 'Assign Tasks To The Whole Class',
+          caption: 'Pick decks, set a due date, and track completion',
+          onTap: _noop,
+        ),
+      ),
+    );
+  });
+
+  testWidgets('ProActionGrid (large + compact) packs tiles without overflow',
+      (tester) async {
+    ProActionTile tile(int i, {bool compact = false}) => ProActionTile(
+          compact: compact,
+          icon: Icons.dashboard_rounded,
+          label: 'A Deliberately Long Action Label Number ${i + 1}',
+          caption: compact ? null : 'Supporting caption for tile ${i + 1}',
+          onTap: _noop,
+        );
+    await expectNoOverflowAcrossDevices(
+      tester,
+      (_) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            ProActionGrid(tiles: [for (var i = 0; i < 6; i++) tile(i)]),
+            const SizedBox(height: 24),
+            ProActionGrid(
+              compact: true,
+              tiles: [for (var i = 0; i < 10; i++) tile(i, compact: true)],
+            ),
+          ],
+        ),
       ),
       // Vertically-growing dashboard content → lives in a scroll view.
       host: LayoutHost.scrollable,

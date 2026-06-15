@@ -331,6 +331,7 @@ class HCColor {
           FlashcardCategory.transportation => const Color(0xFFFF6E40),
           FlashcardCategory.emotions => const Color(0xFFB388FF),
           FlashcardCategory.daysAndTime => const Color(0xFFFF80AB),
+          FlashcardCategory.actions => const Color(0xFF18FFFF),
         }
       : cat.color;
 

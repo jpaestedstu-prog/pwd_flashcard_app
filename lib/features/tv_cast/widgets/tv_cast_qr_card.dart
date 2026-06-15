@@ -54,7 +54,7 @@ class TvCastQrCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Scan this on your TV',
+            'Open this on your TV',
             style: AppTypography.titleSmall.copyWith(
               fontWeight: FontWeight.w700,
               color: hc.textPrimary,
@@ -62,7 +62,9 @@ class TvCastQrCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Or type this URL in any TV web browser:',
+            'In the TV\'s own web browser, scan the code or type this URL '
+            '(don\'t mirror or cast your tablet — that keeps the sound on '
+            'the tablet):',
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             textAlign: TextAlign.center,
           ),

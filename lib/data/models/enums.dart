@@ -28,6 +28,10 @@ enum FlashcardCategory {
   transportation,
   emotions,
   daysAndTime,
+  // Action words / verbs. Appended last to preserve every existing Hive int
+  // index (categories are persisted by `index`). Real-world "Show Me" clips
+  // and photographs attach to these cards via the media manifests.
+  actions,
 }
 
 /// Game difficulty
@@ -214,6 +218,7 @@ extension FlashcardCategoryX on FlashcardCategory {
     FlashcardCategory.transportation => 'Transportation',
     FlashcardCategory.emotions => 'Emotions',
     FlashcardCategory.daysAndTime => 'Days & Time',
+    FlashcardCategory.actions => 'Actions',
   };
 
   String get labelFilipino => switch (this) {
@@ -229,6 +234,7 @@ extension FlashcardCategoryX on FlashcardCategory {
     FlashcardCategory.transportation => 'Sasakyan',
     FlashcardCategory.emotions => 'Damdamin',
     FlashcardCategory.daysAndTime => 'Araw at Oras',
+    FlashcardCategory.actions => 'Mga Kilos',
   };
 
   String get emoji => switch (this) {
@@ -244,6 +250,7 @@ extension FlashcardCategoryX on FlashcardCategory {
     FlashcardCategory.transportation => '🚌',
     FlashcardCategory.emotions => '😊',
     FlashcardCategory.daysAndTime => '🕒',
+    FlashcardCategory.actions => '🏃',
   };
 
   IconData get icon => switch (this) {
@@ -259,6 +266,7 @@ extension FlashcardCategoryX on FlashcardCategory {
     FlashcardCategory.transportation => Icons.directions_bus_rounded,
     FlashcardCategory.emotions => Icons.emoji_emotions_rounded,
     FlashcardCategory.daysAndTime => Icons.calendar_today_rounded,
+    FlashcardCategory.actions => Icons.directions_run_rounded,
   };
 
   Color get color => switch (this) {
@@ -274,6 +282,7 @@ extension FlashcardCategoryX on FlashcardCategory {
     FlashcardCategory.transportation => const Color(0xFFD1C4E9),
     FlashcardCategory.emotions => const Color(0xFFFFCDD2),
     FlashcardCategory.daysAndTime => const Color(0xFFDCEDC8),
+    FlashcardCategory.actions => const Color(0xFF80DEEA),
   };
 
   Color get darkColor => switch (this) {
@@ -289,6 +298,7 @@ extension FlashcardCategoryX on FlashcardCategory {
     FlashcardCategory.transportation => const Color(0xFF4527A0),
     FlashcardCategory.emotions => const Color(0xFFB71C1C),
     FlashcardCategory.daysAndTime => const Color(0xFF33691E),
+    FlashcardCategory.actions => const Color(0xFF00838F),
   };
 }
 

@@ -180,6 +180,7 @@ class ProfileExportService {
         'section': p.section,
         'birthDate': p.birthDate?.toIso8601String(),
         'tags': p.tags,
+        'interests': p.interests.map((c) => c.index).toList(),
       };
 
   static UserProfile _profileFromMap(Map<String, dynamic> m) {
@@ -187,6 +188,7 @@ class ProfileExportService {
     final disabilityIndex = m['disabilityType'] as int?;
     final gradeLevelIndex = m['gradeLevel'] as int?;
     final rawTags = m['tags'] as List?;
+    final rawInterests = m['interests'] as List?;
     return UserProfile(
       id: m['id'] as String,
       name: m['name'] as String,
@@ -210,6 +212,14 @@ class ProfileExportService {
       tags: rawTags != null
           ? List<String>.from(rawTags.map((e) => e.toString()))
           : const [],
+      interests: rawInterests == null
+          ? const []
+          : [
+              for (final e in rawInterests)
+                if ((e is int ? e : int.tryParse(e.toString())) case final i?
+                    when i >= 0 && i < FlashcardCategory.values.length)
+                  FlashcardCategory.values[i],
+            ],
     );
   }
 
