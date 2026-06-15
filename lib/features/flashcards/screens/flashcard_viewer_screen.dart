@@ -5,6 +5,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
+import '../../../core/services/action_clip_service.dart';
+import '../../../core/services/flashcard_photo_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -24,6 +26,8 @@ import '../../../widgets/flashcard_image.dart';
 import '../../../widgets/language_replay_bar.dart';
 import '../../../widgets/fsl_fullscreen_player.dart';
 import '../../../widgets/fsl_loading_overlay.dart';
+import '../widgets/show_me_button.dart';
+import '../widgets/examples_gallery.dart';
 import '../../../widgets/shimmer_loading.dart';
 
 class FlashcardViewerScreen extends ConsumerStatefulWidget {
@@ -131,12 +135,8 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
       return;
     }
 
-    // Speak the current word before moving on
-    final ttsEnabled = ref.read(settingsProvider).ttsEnabled;
-    if (ttsEnabled) {
-      _speakEnglish(_cards[_currentIndex].wordEnglish);
-    }
-
+    // Auto-play advances the slideshow silently — narration is opt-in via the
+    // Replay buttons, so a learner is never startled by unexpected sound.
     if (_currentIndex < _cards.length - 1) {
       _nextCard();
     } else {
@@ -494,6 +494,33 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                           color: AppColors.secondary,
                           onTap: () => _showFslVideo(_cards[_currentIndex]),
                         ),
+                        // "Show Me" action demo — only appears for cards that
+                        // have a clip configured (e.g. action words). Dormant
+                        // builds simply never show it, so the bar is unchanged.
+                        if (ActionClipService.hasClip(_cards[_currentIndex]))
+                          _ActionButton(
+                            icon: Icons.play_circle_fill_rounded,
+                            label: 'Show Me',
+                            color: AppColors.secondaryDark,
+                            onTap: () => showActionClipSheet(
+                              context,
+                              _cards[_currentIndex],
+                            ),
+                          ),
+                        // "Examples" gallery — appears for cards enriched with
+                        // several real-world photos (e.g. colors, numbers).
+                        if (FlashcardPhotoService.hasGallery(
+                          _cards[_currentIndex],
+                        ))
+                          _ActionButton(
+                            icon: Icons.photo_library_rounded,
+                            label: 'Examples',
+                            color: AppColors.accentDark,
+                            onTap: () => showExamplesGallery(
+                              context,
+                              _cards[_currentIndex],
+                            ),
+                          ),
                         _ActionButton(
                           icon: Icons.flip_rounded,
                           label: AppLocalizations.of(context)!.flip,
@@ -818,102 +845,110 @@ class _FlipCard extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Category color strip
-                Container(
-                  height: 6,
-                  width: 60,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [category.darkColor, category.color],
-                    ),
-                    borderRadius: BorderRadius.circular(3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: category.color.withValues(alpha: 0.4),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Category color strip
+                    Container(
+                      height: 6,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [category.darkColor, category.color],
+                        ),
+                        borderRadius: BorderRadius.circular(3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: category.color.withValues(alpha: 0.4),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Category badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: category.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: category.color.withValues(alpha: 0.2),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        category.icon,
-                        size: context.scaleIcon(14),
-                        color: category.darkColor,
+                    const SizedBox(height: 8),
+                    // Category badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        category.label,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: category.darkColor,
-                          fontWeight: FontWeight.w700,
+                      decoration: BoxDecoration(
+                        color: category.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: category.color.withValues(alpha: 0.2),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Per-word image
-                FlashcardImage(card: card, size: 80),
-                const SizedBox(height: 32),
-                // Word
-                Text(
-                  card.wordEnglish,
-                  style: AppTypography.flashcardWord.copyWith(
-                    color: HCColor.of(context).textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  card.wordFilipino,
-                  style: AppTypography.titleLarge.copyWith(
-                    color: category.darkColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Tap hint
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.touch_app_rounded,
-                      size: context.scaleIcon(14),
-                      color: HCColor.of(
-                        context,
-                      ).textSecondary.withValues(alpha: 0.5),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      AppLocalizations.of(context)!.tapToSeeMore,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: HCColor.of(
-                          context,
-                        ).textSecondary.withValues(alpha: 0.6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            category.icon,
+                            size: context.scaleIcon(14),
+                            color: category.darkColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            category.label,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: category.darkColor,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    // Per-word image — tap to switch between the emoji and the
+                    // real photograph (smooth 3D flip), with a black outline on
+                    // both faces. Instruction shown beneath.
+                    FlashcardImage(
+                      card: card,
+                      size: 160,
+                      interactive: true,
+                      outlined: true,
+                      reducedMotion: reducedMotion,
+                    ),
+                    const SizedBox(height: 32),
+                    // Word
+                    Text(
+                      card.wordEnglish,
+                      style: AppTypography.flashcardWord.copyWith(
+                        color: HCColor.of(context).textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      card.wordFilipino,
+                      style: AppTypography.titleLarge.copyWith(
+                        color: category.darkColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Tap hint
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.touch_app_rounded,
+                          size: context.scaleIcon(14),
+                          color: HCColor.of(
+                            context,
+                          ).textSecondary.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          AppLocalizations.of(context)!.tapToSeeMore,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: HCColor.of(
+                              context,
+                            ).textSecondary.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
-                ),
-              ],
                 ),
               ),
             ),
@@ -958,174 +993,173 @@ class _FlipCard extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
               child: ConstrainedBox(
-                constraints:
-                    BoxConstraints(minHeight: constraints.maxHeight),
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Back label
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      category.darkColor.withValues(alpha: 0.15),
-                      category.color.withValues(alpha: 0.10),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: category.color.withValues(alpha: 0.2),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      category.icon,
-                      size: context.scaleIcon(14),
-                      color: category.darkColor,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      AppLocalizations.of(context)!.details,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: category.darkColor,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.5,
+                    // Back label
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              // Word pair
-              Text(
-                '${card.wordEnglish} — ${card.wordFilipino}',
-                style: AppTypography.headlineMedium.copyWith(
-                  color: HCColor.of(context).textPrimary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              // Listen buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _MiniListenButton(
-                    label: AppLocalizations.of(context)!.english,
-                    icon: Icons.volume_up_rounded,
-                    color: AppColors.info,
-                    onTap: onSpeak,
-                  ),
-                  const SizedBox(width: 12),
-                  _MiniListenButton(
-                    label: AppLocalizations.of(context)!.filipino,
-                    icon: Icons.volume_up_rounded,
-                    color: AppColors.secondary,
-                    onTap: onSpeakFilipino,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Example sentence
-              if (card.exampleSentence != null)
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: category.color.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: category.color.withValues(alpha: 0.12),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            category.darkColor.withValues(alpha: 0.15),
+                            category.color.withValues(alpha: 0.10),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: category.color.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.format_quote_rounded,
-                            size: context.scaleIcon(20),
+                            category.icon,
+                            size: context.scaleIcon(14),
                             color: category.darkColor,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Text(
-                            AppLocalizations.of(context)!.example,
+                            AppLocalizations.of(context)!.details,
                             style: AppTypography.labelMedium.copyWith(
                               color: category.darkColor,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.5,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        card.exampleSentence!,
-                        style: AppTypography.bodyLarge.copyWith(
-                          fontStyle: FontStyle.italic,
-                          color: HCColor.of(context).textPrimary,
+                    ),
+                    const SizedBox(height: 24),
+                    // Word pair
+                    Text(
+                      '${card.wordEnglish} — ${card.wordFilipino}',
+                      style: AppTypography.headlineMedium.copyWith(
+                        color: HCColor.of(context).textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    // Listen buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _MiniListenButton(
+                          label: AppLocalizations.of(context)!.english,
+                          icon: Icons.volume_up_rounded,
+                          color: AppColors.info,
+                          onTap: onSpeak,
                         ),
-                        textAlign: TextAlign.center,
+                        const SizedBox(width: 12),
+                        _MiniListenButton(
+                          label: AppLocalizations.of(context)!.filipino,
+                          icon: Icons.volume_up_rounded,
+                          color: AppColors.secondary,
+                          onTap: onSpeakFilipino,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Example sentence
+                    if (card.exampleSentence != null)
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: category.color.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: category.color.withValues(alpha: 0.12),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.format_quote_rounded,
+                                  size: context.scaleIcon(20),
+                                  color: category.darkColor,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  AppLocalizations.of(context)!.example,
+                                  style: AppTypography.labelMedium.copyWith(
+                                    color: category.darkColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              card.exampleSentence!,
+                              style: AppTypography.bodyLarge.copyWith(
+                                fontStyle: FontStyle.italic,
+                                color: HCColor.of(context).textPrimary,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 20),
-              // Category badge
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [category.darkColor, category.color],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
+                    const SizedBox(height: 20),
+                    // Category badge
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [category.darkColor, category.color],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            category.icon,
+                            size: context.scaleIcon(14),
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          category.label,
+                          style: AppTypography.labelMedium.copyWith(
+                            color: category.darkColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Icon(
-                      category.icon,
-                      size: context.scaleIcon(14),
-                      color: Colors.white,
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.touch_app_rounded,
+                          size: context.scaleIcon(14),
+                          color: HCColor.of(
+                            context,
+                          ).textSecondary.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          AppLocalizations.of(context)!.tapToFlipBack,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: HCColor.of(
+                              context,
+                            ).textSecondary.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    category.label,
-                    style: AppTypography.labelMedium.copyWith(
-                      color: category.darkColor,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.touch_app_rounded,
-                    size: context.scaleIcon(14),
-                    color: HCColor.of(
-                      context,
-                    ).textSecondary.withValues(alpha: 0.5),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    AppLocalizations.of(context)!.tapToFlipBack,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: HCColor.of(
-                        context,
-                      ).textSecondary.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
                 ),
               ),
             ),
