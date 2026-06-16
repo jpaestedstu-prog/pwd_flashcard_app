@@ -13,6 +13,7 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/app_action_bar.dart';
 import '../../../widgets/app_icon_button.dart';
 import '../../../widgets/language_replay_bar.dart';
+import '../widgets/story_fsl_button.dart';
 
 /// Paginated story reader with TTS and vocabulary highlights.
 class StoryReaderScreen extends ConsumerStatefulWidget {
@@ -26,7 +27,6 @@ class StoryReaderScreen extends ConsumerStatefulWidget {
 class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
   Story? _story;
   int _currentSentence = 0;
-  bool _showFilipino = false;
   TtsService? _ttsRef;
 
   @override
@@ -120,6 +120,9 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     final ttsEnabled = ref.watch(settingsProvider).ttsEnabled;
     final sentenceEn = _story!.sentencesEn[_currentSentence];
     final sentenceFil = _story!.sentencesFil[_currentSentence];
+    // Sign-language clip for this page, if the story has one. Shown
+    // independently of the TTS setting so Deaf learners always have it.
+    final sentenceFslUrl = _story!.fslForSentence(_currentSentence);
 
     return Scaffold(
       appBar: AppBar(
@@ -129,19 +132,6 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
           onPressed: () => context.pop(),
         ),
         title: Text(_story!.titleEn),
-        actions: [
-          // Language toggle
-          Semantics(
-            label: _showFilipino ? 'Switch to English' : 'Switch to Filipino',
-            child: TextButton(
-              onPressed: () => setState(() => _showFilipino = !_showFilipino),
-              child: Text(
-                _showFilipino ? '🇵🇭 FIL' : '🇺🇸 EN',
-                style: AppTypography.labelLarge,
-              ),
-            ),
-          ),
-        ],
       ),
       body: SafeArea(
         child: Center(
@@ -283,7 +273,11 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
                                         curve: Curves.easeOutBack,
                                       ),
                                   const SizedBox(height: 24),
-                                  // Sentence
+                                  // Sentence — both languages are shown together
+                                  // (English as the main line, the Tagalog
+                                  // translation beneath it), mirroring the
+                                  // Flashcards → Cards layout where the English
+                                  // word sits above its smaller Filipino word.
                                   AnimatedSwitcher(
                                     duration: const Duration(milliseconds: 300),
                                     transitionBuilder: (child, animation) =>
@@ -297,34 +291,44 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
                                         child: child,
                                       ),
                                     ),
-                                    child: Text(
-                                      _showFilipino ? sentenceFil : sentenceEn,
-                                      key: ValueKey(
-                                          '$_currentSentence-$_showFilipino'),
-                                      style: (kidMode
-                                              ? AppTypography.headlineMedium
-                                              : AppTypography.headlineSmall)
-                                          .copyWith(
-                                        height: 1.6,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      textAlign: TextAlign.center,
+                                    child: Column(
+                                      key: ValueKey(_currentSentence),
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // English — the main, large line.
+                                        Text(
+                                          sentenceEn,
+                                          style: (kidMode
+                                                  ? AppTypography.headlineMedium
+                                                  : AppTypography.headlineSmall)
+                                              .copyWith(
+                                            height: 1.6,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 10),
+                                        // Tagalog translation — secondary, in the
+                                        // category accent colour, like the
+                                        // flashcard card's Filipino word.
+                                        Text(
+                                          sentenceFil,
+                                          style: (kidMode
+                                                  ? AppTypography.titleMedium
+                                                  : AppTypography.bodyLarge)
+                                              .copyWith(
+                                            color: _story!.category.darkColor,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.5,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  if (_showFilipino) ...[
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      sentenceEn,
-                                      style: AppTypography.bodyMedium.copyWith(
-                                        color: hc.textSecondary,
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
                                   // Two-language "read aloud" — the learner can
                                   // hear this page in either language with one
-                                  // tap, regardless of the display toggle above.
+                                  // tap; both languages are shown on the page.
                                   if (ttsEnabled) ...[
                                     const SizedBox(height: 24),
                                     LanguageReplayBar(
@@ -334,6 +338,20 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
                                         sentenceFil,
                                         filipino: true,
                                       ),
+                                    ),
+                                  ],
+                                  // Sign-language replay for this page. Always
+                                  // shown when available — independent of TTS —
+                                  // so Deaf learners can watch the page signed.
+                                  if (sentenceFslUrl != null) ...[
+                                    const SizedBox(height: 12),
+                                    StoryFslButton(
+                                      pageUrl: sentenceFslUrl,
+                                      cacheKey:
+                                          'story_${_story!.id}_s$_currentSentence',
+                                      label: sentenceEn,
+                                      secondaryLabel: sentenceFil,
+                                      color: _story!.category.color,
                                     ),
                                   ],
                                 ],

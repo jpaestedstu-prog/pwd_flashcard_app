@@ -112,6 +112,16 @@ class ActionClipService {
   /// True if a "Show Me" clip source exists for [card].
   static bool hasClip(Flashcard card) => urlFor(card) != null;
 
+  /// True if [card]'s clip is an animated GIF (render as a looping image)
+  /// rather than a video container. Inferred synchronously from the *authored*
+  /// URL extension — matching [resolveClip]'s decision — so callers (e.g. the
+  /// TV Cast server) can pick the right content type without downloading first.
+  /// False when there is no clip.
+  static bool isGifFor(Flashcard card) {
+    final url = urlFor(card);
+    return url != null && _looksLikeGif(url);
+  }
+
   static bool _looksLikeGif(String url) {
     final path = Uri.tryParse(url)?.path ?? url;
     return path.toLowerCase().endsWith('.gif');

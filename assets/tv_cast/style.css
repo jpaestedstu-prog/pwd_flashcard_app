@@ -162,8 +162,13 @@ html, body {
 
 .fcard-badge-ico { font-size: 3.2vh; line-height: 1; }
 
-/* The word's emoji inside a rounded, category-tinted tile (background inline). */
+/* The word's picture inside a rounded, category-tinted tile (background set
+   inline). Also the 3D stage for the emoji⇄photo flip — `perspective` gives
+   the rotation real depth. Prefixed for old Android WebKit / smart-TV browsers;
+   ones that ignore it still show the flip (just flatter) or, with no transform
+   support at all, the photo simply painted over the emoji. */
 .fcard-pic {
+  position: relative;
   width: 30vh;
   height: 30vh;
   border-radius: 3vh;
@@ -171,9 +176,73 @@ html, body {
   align-items: center;
   justify-content: center;
   margin-bottom: 3.5vh;
+  -webkit-perspective: 1200px;
+  perspective: 1200px;
 }
 
 .fcard-pic-emoji { font-size: 20vh; line-height: 1; }
+
+/* ── Emoji⇄photo 3D flip (the TV analog of the in-app "Cards" flip) ──
+   Two stacked faces inside the tile: the emoji (front) and the real photo /
+   GIF (back, pre-rotated 180°). app.js adds `.is-flipped` once the photo has
+   loaded, rotating the card to reveal it. The 0.66s easeOut curve mirrors the
+   in-app card's 650ms easeOutBack reveal. reduced-motion / Calm null the
+   transition below, so the photo then appears instantly. */
+.fcard-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  -webkit-transition: -webkit-transform 0.66s cubic-bezier(0.2, 0.7, 0.2, 1.02);
+  transition: transform 0.66s cubic-bezier(0.2, 0.7, 0.2, 1.02);
+}
+
+.fcard-flip.is-flipped {
+  -webkit-transform: rotateY(180deg);
+  transform: rotateY(180deg);
+}
+
+.fcard-face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* Photo (set inline by app.js) fills the tile, cropped to centre — the
+     background route works back to old Android WebKit and animates GIFs. */
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+.fcard-face-back {
+  -webkit-transform: rotateY(180deg);
+  transform: rotateY(180deg);
+}
+
+/* The emoji⇄photo flip is driven by the phone's "Flip" button (the TV is a
+   passive display), so the tile itself has no tap target or hint. */
+
+/* "Show Me" action clip rendered as a looping GIF — fills the stage like the
+   FSL video does. (MP4 clips reuse the .fsl-video-box / video rules below.) */
+.clip-gif-box { line-height: 0; }
+
+.clip-gif {
+  max-width: 95vw;
+  max-height: 80vh;
+  border-radius: 1vh;
+  box-shadow: 0 0 4vh rgba(0, 0, 0, 0.5);
+  background: #000;
+}
 
 .fcard-word-en {
   font-size: 9vh;
@@ -737,6 +806,8 @@ body.theme-highContrast .fcard-example .quote { color: #ffff00 !important; }
 /* Drop the tinted blobs + glossy sheen — keep the strict black/white/yellow. */
 body.theme-highContrast .fcard-blob,
 body.theme-highContrast .fcard-shine { display: none; }
+/* Action GIF gets a white frame in the strict high-contrast palette. */
+body.theme-highContrast .clip-gif { border: 0.6vh solid #ffffff; }
 
 /* ─── Live activity — light theme ──────────────── */
 body.theme-light .live-sub,

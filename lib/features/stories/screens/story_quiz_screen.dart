@@ -18,6 +18,7 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
 import '../../../widgets/language_replay_bar.dart';
+import '../widgets/story_fsl_button.dart';
 
 /// Reading-comprehension quiz — 3 multiple-choice questions per story.
 class StoryQuizScreen extends ConsumerStatefulWidget {
@@ -187,13 +188,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
 
     final hc = HCColor.of(context);
     final settings = ref.watch(settingsProvider);
-    final showFil = settings.locale == 'fil';
     // Read-aloud buttons hidden when Text-to-Speech is off.
     final ttsEnabled = settings.ttsEnabled;
     final question = _question!;
-    final questionText =
-        showFil ? question.questionFil : question.questionEn;
-    final options = showFil ? question.optionsFil : question.optionsEn;
 
     return Scaffold(
       appBar: AppBar(
@@ -268,11 +265,31 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                   : null,
                               boxShadow: AppColors.cardShadow,
                             ),
-                            child: Text(
-                              questionText,
-                              style: AppTypography.headlineSmall
-                                  .copyWith(fontWeight: FontWeight.w600),
-                              textAlign: TextAlign.center,
+                            // Both languages are shown together — English as
+                            // the main line with the Tagalog translation
+                            // beneath it, mirroring the Flashcards → Cards
+                            // layout (large English word over a smaller
+                            // Filipino word).
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  question.questionEn,
+                                  style: AppTypography.headlineSmall
+                                      .copyWith(fontWeight: FontWeight.w600),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  question.questionFil,
+                                  style: AppTypography.titleMedium.copyWith(
+                                    color: _story!.category.darkColor,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.4,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
                           )
                               .animate()
@@ -296,12 +313,28 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                             ),
                           ],
 
+                          // Watch the question signed. Always available when
+                          // the story has an FSL track — independent of TTS so
+                          // Deaf learners can sign-read the prompt.
+                          if (question.fslVideoUrl != null) ...[
+                            const SizedBox(height: 12),
+                            StoryFslButton(
+                              pageUrl: question.fslVideoUrl!,
+                              cacheKey: 'story_${_story!.id}_q$_currentQ',
+                              label: question.questionEn,
+                              secondaryLabel: question.questionFil,
+                              color: _story!.category.color,
+                            ),
+                          ],
+
                           const SizedBox(height: 28),
 
                           // Options
-                          ...options.asMap().entries.map((entry) {
+                          ...question.optionsEn.asMap().entries.map((entry) {
                             final idx = entry.key;
-                            final text = entry.value;
+                            final text = entry.value; // English — main line
+                            final textFil =
+                                question.optionsFil[idx]; // Tagalog — below
                             final isSelected = _selectedIndex == idx;
                             final isCorrect = idx == question.correctIndex;
 
@@ -327,10 +360,19 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                               borderColor = AppColors.border;
                             }
 
+                            // Tagalog line keeps the category accent normally,
+                            // but adopts the green/red state colour once this
+                            // option is marked correct or wrongly selected, so
+                            // both lines read as one piece of feedback.
+                            final subColor =
+                                (_answered && (isCorrect || isSelected))
+                                    ? textColor
+                                    : _story!.category.darkColor;
+
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: Semantics(
-                                label: text,
+                                label: '$text, $textFil',
                                 selected: isSelected,
                                 child: InkWell(
                                   onTap: _answered ? null : () => _selectAnswer(idx),
@@ -344,40 +386,139 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(color: borderColor, width: 2),
                                     ),
-                                    child: Row(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        // Option letter
-                                        Container(
-                                          width: context.scaleIcon(36),
-                                          height: context.scaleIcon(36),
-                                          decoration: BoxDecoration(
-                                            color: borderColor.withValues(alpha: 0.15),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Center(
-                                            child: Text(
-                                              String.fromCharCode(65 + idx), // A, B, C
-                                              style: AppTypography.titleSmall
-                                                  .copyWith(color: textColor),
+                                        Row(
+                                          children: [
+                                            // Option letter
+                                            Container(
+                                              width: context.scaleIcon(36),
+                                              height: context.scaleIcon(36),
+                                              decoration: BoxDecoration(
+                                                color: borderColor
+                                                    .withValues(alpha: 0.15),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  String.fromCharCode(
+                                                      65 + idx), // A, B, C
+                                                  style: AppTypography.titleSmall
+                                                      .copyWith(
+                                                          color: textColor),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 14),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  // English — the main line.
+                                                  Text(
+                                                    text,
+                                                    style: AppTypography
+                                                        .bodyLarge
+                                                        .copyWith(
+                                                            color: textColor),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  // Tagalog translation beneath,
+                                                  // smaller, like the flashcard
+                                                  // card's Filipino word.
+                                                  Text(
+                                                    textFil,
+                                                    style: AppTypography
+                                                        .bodyMedium
+                                                        .copyWith(
+                                                      color: subColor,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            if (_answered && isCorrect)
+                                              Icon(Icons.check_circle_rounded,
+                                                  color: AppColors.success,
+                                                  size: context.scaleIcon(24)),
+                                            if (_answered &&
+                                                isSelected &&
+                                                !isCorrect)
+                                              Icon(Icons.cancel_rounded,
+                                                  color: AppColors.error,
+                                                  size: context.scaleIcon(24)),
+                                          ],
+                                        ),
+                                        // Per-choice helpers: hear this choice in
+                                        // English and in Tagalog (mirroring the
+                                        // question's two-language read-aloud) and
+                                        // watch it signed. Each is its own tap
+                                        // target, so they never select the
+                                        // answer; the surrounding empty space
+                                        // still selects. A Wrap lets the controls
+                                        // flow onto another line instead of
+                                        // overflowing on a narrow phone at a
+                                        // large font scale.
+                                        if (ttsEnabled ||
+                                            question.fslForOption(idx) != null)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                top: 12, left: 50),
+                                            child: Wrap(
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              crossAxisAlignment:
+                                                  WrapCrossAlignment.center,
+                                              children: [
+                                                if (ttsEnabled) ...[
+                                                  _ChoiceListenButton(
+                                                    label: 'English',
+                                                    semanticLabel:
+                                                        'Listen to this choice in English',
+                                                    color: AppColors.info,
+                                                    onTap: () => _speakLang(
+                                                      question.optionsEn[idx],
+                                                      filipino: false,
+                                                    ),
+                                                  ),
+                                                  _ChoiceListenButton(
+                                                    label: 'Tagalog',
+                                                    semanticLabel:
+                                                        'Listen to this choice in Tagalog',
+                                                    color: AppColors.secondary,
+                                                    onTap: () => _speakLang(
+                                                      question.optionsFil[idx],
+                                                      filipino: true,
+                                                    ),
+                                                  ),
+                                                ],
+                                                // Watch this choice signed (when
+                                                // the story has an FSL track).
+                                                if (question.fslForOption(idx) !=
+                                                    null)
+                                                  StoryFslButton(
+                                                    pageUrl: question
+                                                        .fslForOption(idx)!,
+                                                    cacheKey:
+                                                        'story_${_story!.id}_q${_currentQ}_o$idx',
+                                                    label:
+                                                        question.optionsEn[idx],
+                                                    secondaryLabel: question
+                                                        .optionsFil[idx],
+                                                    color:
+                                                        _story!.category.color,
+                                                    compact: true,
+                                                  ),
+                                              ],
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          child: Text(
-                                            text,
-                                            style: AppTypography.bodyLarge
-                                                .copyWith(color: textColor),
-                                          ),
-                                        ),
-                                        if (_answered && isCorrect)
-                                          Icon(Icons.check_circle_rounded,
-                                              color: AppColors.success,
-                                              size: context.scaleIcon(24)),
-                                        if (_answered && isSelected && !isCorrect)
-                                          Icon(Icons.cancel_rounded,
-                                              color: AppColors.error,
-                                              size: context.scaleIcon(24)),
                                       ],
                                     ),
                                   ),
@@ -418,6 +559,64 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact, single-language "listen" pill for one quiz answer choice.
+///
+/// Two of these sit beneath each choice — English and Tagalog — echoing the
+/// question's [LanguageReplayBar] so a learner can hear any individual choice
+/// in either language. The caller lays them out in a [Wrap], so the pills flow
+/// onto a new line rather than overflowing on a narrow phone at a large font
+/// scale. It is its own button, so a tap reads the choice aloud without
+/// selecting the answer.
+class _ChoiceListenButton extends StatelessWidget {
+  /// Visible language label (e.g. "English", "Tagalog").
+  final String label;
+
+  /// Full spoken description for screen readers.
+  final String semanticLabel;
+
+  /// Accent colour — blue for English, teal for Tagalog, matching the
+  /// question's two-language read-aloud bar.
+  final Color color;
+
+  final VoidCallback onTap;
+
+  const _ChoiceListenButton({
+    required this.label,
+    required this.semanticLabel,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: ExcludeSemantics(
+        child: OutlinedButton.icon(
+          onPressed: onTap,
+          icon: Icon(Icons.volume_up_rounded, size: context.scaleIcon(18)),
+          label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: color,
+            side: BorderSide(color: color.withValues(alpha: 0.6), width: 1.4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            // 44dp floor keeps the target above the accessibility minimum while
+            // staying compact enough to sit two-up beside the FSL button.
+            minimumSize: const Size(0, 44),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            textStyle:
+                AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
       ),

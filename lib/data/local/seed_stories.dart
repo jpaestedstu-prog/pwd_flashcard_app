@@ -8,13 +8,33 @@ class StoryQuestion {
   final List<String> optionsFil;
   final int correctIndex;
 
+  /// Optional Filipino Sign Language clip for the question prompt, given as a
+  /// share-page URL (e.g. `https://streamable.com/<id>`). Null when this story
+  /// has no sign-language track yet.
+  final String? fslVideoUrl;
+
+  /// Optional FSL clips for each answer option, parallel to [optionsEn] /
+  /// [optionsFil]. Empty when unavailable; individual entries may be null so a
+  /// partial set still works. Use [fslForOption] for safe, bounds-checked
+  /// lookups.
+  final List<String?> optionFslUrls;
+
   const StoryQuestion({
     required this.questionEn,
     required this.questionFil,
     required this.optionsEn,
     required this.optionsFil,
     required this.correctIndex,
+    this.fslVideoUrl,
+    this.optionFslUrls = const [],
   });
+
+  /// FSL clip share-page URL for option [index], or null when none is
+  /// registered (out of range or explicitly absent).
+  String? fslForOption(int index) =>
+      (index >= 0 && index < optionFslUrls.length)
+          ? optionFslUrls[index]
+          : null;
 }
 
 /// A short story using vocabulary words for reading comprehension.
@@ -29,6 +49,12 @@ class Story {
   final FlashcardCategory category;
   final String emoji; // visual indicator instead of image
 
+  /// Optional Filipino Sign Language clips, parallel to [sentencesEn] /
+  /// [sentencesFil] — one per story page. Empty when the story has no
+  /// sign-language track; individual entries may be null. Use [fslForSentence]
+  /// for safe, bounds-checked lookups.
+  final List<String?> sentenceFslUrls;
+
   const Story({
     required this.id,
     required this.titleEn,
@@ -39,7 +65,15 @@ class Story {
     required this.questions,
     required this.category,
     required this.emoji,
+    this.sentenceFslUrls = const [],
   });
+
+  /// FSL clip share-page URL for the sentence at [index], or null when none is
+  /// registered (out of range or explicitly absent).
+  String? fslForSentence(int index) =>
+      (index >= 0 && index < sentenceFslUrls.length)
+          ? sentenceFslUrls[index]
+          : null;
 }
 
 /// Pre-loaded stories for all 6 categories (2–3 per category).
@@ -89,6 +123,14 @@ class SeedStories {
         'Ang manok ay naglalakad kasama ang mga sisiw nito.',
         'Ang baboy ay masayang gumugulong sa putik.',
       ],
+      // FSL sign-language clip per story page (parallel to the sentences above).
+      sentenceFslUrls: [
+        'https://streamable.com/m2r30x',
+        'https://streamable.com/wlme5r',
+        'https://streamable.com/45q4ow',
+        'https://streamable.com/minocz',
+        'https://streamable.com/unpqjf',
+      ],
       questions: [
         StoryQuestion(
           questionEn: 'Where did Anna visit?',
@@ -96,6 +138,12 @@ class SeedStories {
           optionsEn: ['The beach', 'The farm', 'The school'],
           optionsFil: ['Sa beach', 'Sa bukid', 'Sa paaralan'],
           correctIndex: 1,
+          fslVideoUrl: 'https://streamable.com/qwd5bi',
+          optionFslUrls: [
+            'https://streamable.com/tlhmz6', // A
+            'https://streamable.com/8m0bqs', // B
+            'https://streamable.com/90ksoc', // C
+          ],
         ),
         StoryQuestion(
           questionEn: 'What was the cow doing?',
@@ -103,6 +151,12 @@ class SeedStories {
           optionsEn: ['Sleeping', 'Eating grass', 'Drinking water'],
           optionsFil: ['Natutulog', 'Kumakain ng damo', 'Umiinom ng tubig'],
           correctIndex: 1,
+          fslVideoUrl: 'https://streamable.com/v2a1xk',
+          optionFslUrls: [
+            'https://streamable.com/i2m2wr', // A
+            'https://streamable.com/lvkgai', // B
+            'https://streamable.com/ht2tzz', // C
+          ],
         ),
         StoryQuestion(
           questionEn: 'What was the pig doing?',
@@ -110,6 +164,12 @@ class SeedStories {
           optionsEn: ['Eating food', 'Swimming', 'Rolling in mud'],
           optionsFil: ['Kumakain', 'Lumalangoy', 'Gumugulong sa putik'],
           correctIndex: 2,
+          fslVideoUrl: 'https://streamable.com/3thgup',
+          optionFslUrls: [
+            'https://streamable.com/l3zy1k', // A
+            'https://streamable.com/gh1tsy', // B
+            'https://streamable.com/vlzc39', // C
+          ],
         ),
       ],
     ),
