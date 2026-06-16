@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import '../../data/local/seed_data.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/models.dart';
+import 'media_url_resolver.dart';
 
 /// Reports which FSL sign-language videos are available to this build and
 /// resolves them to playable [VideoSource]s.
@@ -276,6 +277,110 @@ class FslAssetsService {
 
     final file = await cachedVideoFile(card);
     return file != null ? _FileVideoSource(file) : null;
+  }
+
+  /// Resolves an arbitrary FSL *share-page* URL (e.g. a Streamable Story clip)
+  /// to a playable [VideoSource], downloading and caching it on first play.
+  ///
+  /// Unlike [videoSourceFor], this is not tied to a seed [Flashcard] — it backs
+  /// the Stories feature, whose sentence / question / option sign-language
+  /// clips are not flashcards. [cacheKey] must be stable and unique per clip so
+  /// the on-disk cache survives Streamable URL rotations and is reused across
+  /// sessions (offline replay). Shares the same [_videoCache] namespace as the
+  /// flashcard videos; the distinct key prefix keeps the two from colliding.
+  ///
+  /// Returns null when [pageUrl] is blank, can't be resolved to a direct file,
+  /// or the download fails — callers should degrade gracefully (e.g. a
+  /// "video unavailable" message) rather than crash.
+  static Future<VideoSource?> videoSourceForUrl(
+    String pageUrl, {
+    required String cacheKey,
+  }) async {
+    if (pageUrl.trim().isEmpty) return null;
+
+    // Cache hit short-circuits all network work — instant, offline-safe replay
+    // and immunity to Streamable signed-URL expiry.
+    try {
+      final cached = await _videoCache.getFileFromCache(cacheKey);
+      if (cached != null) return _FileVideoSource(cached.file);
+    } catch (_) {
+      // ignore and fall through to a fresh resolve/download
+    }
+
+    final direct = await MediaUrlResolver.resolve(pageUrl);
+    if (direct == null || direct.isEmpty) return null;
+    try {
+      final file = await _videoCache.getSingleFile(direct, key: cacheKey);
+      return _FileVideoSource(file);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Resolves an arbitrary FSL *share-page* URL (e.g. a Streamable Story clip)
+  /// to an on-device cached [File], downloading and caching it on first call.
+  ///
+  /// The file-returning counterpart of [videoSourceForUrl]: it always yields a
+  /// real file on disk, so the TV Cast server can stream it off disk with Range
+  /// support (the same model as [cachedVideoFile] for flashcards). [cacheKey]
+  /// must be stable and unique per clip and is shared with [videoSourceForUrl]
+  /// (and the in-app Story player) so the cast and the in-app reader reuse the
+  /// exact same cached file. Returns null when [pageUrl] is blank, can't be
+  /// resolved to a direct file, or the download fails.
+  static Future<File?> cachedVideoFileForUrl(
+    String pageUrl, {
+    required String cacheKey,
+  }) async {
+    if (pageUrl.trim().isEmpty) return null;
+
+    // Cache hit short-circuits all network work — instant, offline-safe replay
+    // and immunity to Streamable signed-URL expiry.
+    try {
+      final cached = await _videoCache.getFileFromCache(cacheKey);
+      if (cached != null) return cached.file;
+    } catch (_) {
+      // ignore and fall through to a fresh resolve/download
+    }
+
+    final direct = await MediaUrlResolver.resolve(pageUrl);
+    if (direct == null || direct.isEmpty) return null;
+    try {
+      return await _videoCache.getSingleFile(direct, key: cacheKey);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// True if the clip behind [cacheKey] is already present in the on-device disk
+  /// cache (no network needed to play it). Backs the cast UI's per-page FSL
+  /// readiness badge for Stories, the URL-keyed analogue of [isCached].
+  static Future<bool> isUrlCached(String cacheKey) async {
+    try {
+      final cached = await _videoCache.getFileFromCache(cacheKey);
+      return cached != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Best-effort warm-up for a share-page FSL clip — kicks off a download so the
+  /// next play is instant. Safe to call without awaiting; failures are
+  /// swallowed and an already-cached clip is a no-op. The URL-keyed analogue of
+  /// [prefetch], used by the cast notifier to prime Story sign-language clips.
+  static Future<void> prefetchUrl(
+    String pageUrl, {
+    required String cacheKey,
+  }) async {
+    if (pageUrl.trim().isEmpty) return;
+    try {
+      final cached = await _videoCache.getFileFromCache(cacheKey);
+      if (cached != null) return;
+    } catch (_) {}
+    try {
+      final direct = await MediaUrlResolver.resolve(pageUrl);
+      if (direct == null || direct.isEmpty) return;
+      await _videoCache.downloadFile(direct, key: cacheKey);
+    } catch (_) {}
   }
 
   /// Resolves the card's video to an on-device cached [File], downloading

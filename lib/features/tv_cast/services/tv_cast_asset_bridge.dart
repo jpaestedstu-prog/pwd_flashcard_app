@@ -5,6 +5,8 @@ import 'dart:ui' show Color;
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../../../core/constants/flashcard_emojis.dart';
+import '../../../core/services/action_clip_service.dart';
+import '../../../core/services/flashcard_photo_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../data/local/seed_stories.dart';
@@ -71,6 +73,103 @@ class TvCastAssetBridge {
   static bool hasFslVideo(Flashcard card) =>
       FslAssetsService.hasAnyVideoSource(card);
 
+  // ─── Real photographs / GIFs (mirrors the in-app "Cards" section) ───
+  // The in-app flashcard can show a real photo (or animated GIF) instead of
+  // the emoji — bundled with the card (`imageAsset`) or downloaded on demand
+  // from the photo manifest ([FlashcardPhotoService]). These let the TV paint
+  // the same image so it matches what Student / Child profiles see in-app.
+
+  /// True if a real photo/GIF source exists for [card] — a bundled image asset
+  /// or a manifest-configured (downloadable) photograph. Gates the cast
+  /// `/api/image/...` URL so the TV only attempts a photo when one exists.
+  static bool hasPhoto(Flashcard card) =>
+      (card.imageAsset != null && card.imageAsset!.isNotEmpty) ||
+      FlashcardPhotoService.hasPhoto(card);
+
+  /// Bundled image-asset path for [card] (custom cards bundle their picture),
+  /// or null. The shelf server reads its bytes straight from the asset bundle.
+  static String? photoAssetPathFor(Flashcard card) =>
+      (card.imageAsset != null && card.imageAsset!.isNotEmpty)
+      ? card.imageAsset
+      : null;
+
+  /// On-device cached file for [card]'s manifest photo/GIF, downloading it from
+  /// the host on first request and caching it thereafter (same host-and-download
+  /// model as FSL videos). Null if no manifest source is registered or it fails.
+  /// The TV Cast server streams the bytes off this file.
+  static Future<File?> photoFileFor(Flashcard card) =>
+      FlashcardPhotoService.photoFile(card);
+
+  // ─── "Show Me" action clips (mirrors the in-app "Show Me" button) ───
+  // A short looping clip of the word in motion — MP4 (video) or animated GIF —
+  // resolved from the action-clip manifest ([ActionClipService]). The in-app
+  // viewer surfaces these via the "Show Me" button; the TV plays them when the
+  // teacher taps "Show Me" on the cast screen.
+
+  /// True if a "Show Me" action-clip source exists for [card].
+  static bool hasActionClip(Flashcard card) => ActionClipService.hasClip(card);
+
+  /// True if [card]'s action clip is an animated GIF (served as `image/gif`,
+  /// rendered as a looping `<img>`) rather than a video container (served as
+  /// `video/mp4`, rendered with a `<video>`). Resolved synchronously from the
+  /// authored URL so the server can pick the content type without downloading.
+  static bool actionClipIsGif(Flashcard card) =>
+      ActionClipService.isGifFor(card);
+
+  /// On-device cached file for [card]'s action clip, downloading + caching it
+  /// (resolving share-page URLs like Streamable) on first request. Null when no
+  /// clip source is registered or the fetch fails. The TV Cast server streams
+  /// MP4s off this file (with Range) and serves GIF bytes whole.
+  static Future<File?> actionClipFileFor(Flashcard card) async {
+    final clip = await ActionClipService.resolveClip(card);
+    return clip?.file;
+  }
+
+  /// Best-effort image MIME type for [bytes] (falling back to [path]'s
+  /// extension, then a generic JPEG). Sniffing the magic bytes is what makes
+  /// GIFs work: the on-device cache stores files under hashed keys with no
+  /// extension, and a GIF MUST be served as `image/gif` to animate in the TV
+  /// browser's `<img>` / CSS background. PNG / JPEG / WebP are detected too so
+  /// the right type is always sent.
+  static String imageContentType(List<int> bytes, [String path = '']) {
+    if (bytes.length >= 3 &&
+        bytes[0] == 0x47 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46) {
+      return 'image/gif'; // "GIF" (GIF87a / GIF89a)
+    }
+    if (bytes.length >= 8 &&
+        bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4e &&
+        bytes[3] == 0x47) {
+      return 'image/png'; // \x89PNG
+    }
+    if (bytes.length >= 3 &&
+        bytes[0] == 0xff &&
+        bytes[1] == 0xd8 &&
+        bytes[2] == 0xff) {
+      return 'image/jpeg'; // \xFF\xD8\xFF
+    }
+    if (bytes.length >= 12 &&
+        bytes[0] == 0x52 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46 &&
+        bytes[3] == 0x46 && // "RIFF"
+        bytes[8] == 0x57 &&
+        bytes[9] == 0x45 &&
+        bytes[10] == 0x42 &&
+        bytes[11] == 0x50) {
+      return 'image/webp'; // "WEBP"
+    }
+    final lower = path.toLowerCase();
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    return 'image/jpeg';
+  }
+
   /// Emoji representation of a card — what the TV renders when there's
   /// no bundled image (the project uses emojis as the per-card visual).
   static String emojiFor(Flashcard card) => FlashcardEmojis.forId(card.id);
@@ -125,6 +224,32 @@ class TvCastAssetBridge {
     }
     return null;
   }
+
+  // ─── Story FSL sign-language clips (mirrors the in-app "Watch in FSL") ───
+  // Each story page can carry a Filipino Sign Language clip as a share-page URL
+  // (`Story.sentenceFslUrls`). The in-app reader plays it via the "Watch in FSL"
+  // button; the TV plays it when the teacher taps "Watch in FSL" on the cast
+  // screen. These mirror the flashcard FSL helpers above for the Stories mode.
+
+  /// Stable, unique on-disk cache key for a story page's FSL clip. MUST match
+  /// the key the in-app Story reader uses (`story_<id>_s<page>`) so the cast and
+  /// the reader reuse the exact same cached file and replay offline.
+  static String storyFslCacheKey(String storyId, int pageIndex) =>
+      'story_${storyId}_s$pageIndex';
+
+  /// FSL sign-language clip share-page URL for [story]'s page [pageIndex], or
+  /// null when that page has no clip. Bounds-checked via [Story.fslForSentence].
+  static String? storyFslUrl(Story story, int pageIndex) {
+    final url = story.fslForSentence(pageIndex);
+    return (url != null && url.isNotEmpty) ? url : null;
+  }
+
+  /// On-device cached file for a story page's FSL clip, resolving its share-page
+  /// URL (e.g. Streamable) and downloading + caching it on first request. Null
+  /// when [pageUrl] is blank, can't be resolved, or the fetch fails. The TV Cast
+  /// server streams this file off disk (with Range support).
+  static Future<File?> storyFslVideoFile(String pageUrl, String cacheKey) =>
+      FslAssetsService.cachedVideoFileForUrl(pageUrl, cacheKey: cacheKey);
 
   static String _slugify(String input) {
     final buf = StringBuffer();

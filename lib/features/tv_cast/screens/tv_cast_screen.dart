@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/flashcard_emojis.dart';
+import '../../../core/services/action_clip_service.dart';
+import '../../../core/services/flashcard_photo_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -19,6 +21,7 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/language_replay_bar.dart';
 import '../models/tv_cast_session.dart';
 import '../providers/tv_cast_provider.dart';
+import '../services/tv_cast_asset_bridge.dart';
 import '../services/tv_cast_ip_discovery.dart';
 import '../widgets/tv_cast_live_panel.dart';
 import '../widgets/tv_cast_qr_card.dart';
@@ -291,6 +294,12 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                   const _SectionLabel('Pacing'),
                   const SizedBox(height: 8),
                   _AutoAdvanceControl(state: state),
+                  // Flashcards can also reveal a real photo by tapping the card
+                  // on the TV. This toggles that tap-to-flip on/off.
+                  if (state.mode == CastMode.flashcards) ...[
+                    const SizedBox(height: 8),
+                    _TapOnlyControl(state: state),
+                  ],
                 ],
                 const SizedBox(height: 20),
                 // The Live Activity panel has its own push controls; the
@@ -607,11 +616,25 @@ class _ModeConfig extends ConsumerWidget {
             ],
           );
         }
+        // Flashcards mode adds the "Show Me" button below the category when the
+        // current card has an action clip (a looping video/GIF of the word in
+        // motion) — mirroring the in-app "Show Me" button. It hides itself on
+        // cards without a clip.
+        if (state.mode == CastMode.flashcards && state.category != null) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              dropdown,
+              _FlipControl(state: state),
+              _ShowMeControl(state: state),
+            ],
+          );
+        }
         return dropdown;
 
       case CastMode.story:
         final all = SeedStories.all;
-        return DropdownButtonFormField<String>(
+        final dropdown = DropdownButtonFormField<String>(
           initialValue: state.storyId,
           isExpanded: true,
           decoration: InputDecoration(
@@ -633,6 +656,17 @@ class _ModeConfig extends ConsumerWidget {
           onChanged: (id) {
             if (id != null) notifier.setStory(id);
           },
+        );
+        // Story mode adds a "Watch in FSL" button below the story picker when
+        // the current page has a sign-language clip — mirroring the in-app
+        // Stories "Watch in FSL" button and the Flashcards "Show Me" button. It
+        // hides itself on pages / stories without an FSL clip.
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            dropdown,
+            _StoryFslControl(state: state),
+          ],
         );
 
       case CastMode.progress:
@@ -1030,6 +1064,317 @@ class _AutoAdvanceControl extends ConsumerWidget {
           subtitle,
           style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Tap Only (flashcard photo reveal) ─────────────────
+
+/// Enables the flashcard photo-flip feature. On by default: the TV shows the
+/// emoji and a "Flip" button below lets you reveal the real photograph on the
+/// TV (mirroring the in-app "Cards" emoji⇄photo flip). Off shows the emoji
+/// only. There is no auto-flip — the reveal is always driven by the Flip button.
+class _TapOnlyControl extends ConsumerWidget {
+  final TvCastSession state;
+  const _TapOnlyControl({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hc = HCColor.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+
+    final subtitle = state.flipTapOnly
+        ? 'The TV shows the emoji; use the Flip button to reveal the real photo '
+              '(and flip back). Works on any TV.'
+        : 'The TV shows the emoji only — the photo is hidden.';
+
+    return Material(
+      color: hc.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
+      ),
+      child: SwitchListTile(
+        value: state.flipTapOnly,
+        onChanged: notifier.setFlipTapOnly,
+        secondary: const Icon(Icons.touch_app_rounded),
+        title: Text(
+          'Tap Only',
+          style: AppTypography.titleSmall.copyWith(
+            fontWeight: FontWeight.w700,
+            color: hc.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Flip button (reveal the real photo on the TV) ─────
+
+/// A "Flip" button shown for flashcards whose current card has a real photo
+/// (and the photo-flip feature is on). Tapping it flips the TV flashcard
+/// between the emoji and the photograph — driven from the phone so it works on
+/// any receiver, including TVs you can't touch. Hidden while "Show Me" is
+/// playing (the card isn't on screen then).
+class _FlipControl extends ConsumerWidget {
+  final TvCastSession state;
+  const _FlipControl({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!state.flipTapOnly || state.showMeActive) return const SizedBox.shrink();
+    final category = state.category;
+    if (category == null) return const SizedBox.shrink();
+    final cards = SeedData.getByCategory(category);
+    if (cards.isEmpty) return const SizedBox.shrink();
+    final card = cards[state.slideIndex % cards.length];
+    if (!FlashcardPhotoService.hasPhoto(card)) return const SizedBox.shrink();
+
+    final hc = HCColor.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+    final flipped = state.cardFlipped;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OutlinedButton.icon(
+            onPressed: notifier.flipCard,
+            icon: const Icon(Icons.flip_rounded),
+            label: Text(flipped ? 'Show emoji' : 'Flip to photo'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            flipped
+                ? 'The TV is showing the real photo. Tap to flip back to the emoji.'
+                : 'Flip "${card.wordEnglish}" on the TV to its real photo.',
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── "Show Me" action clip ─────────────────────────────
+
+/// A "Show Me" button shown only when the current flashcard has an action clip
+/// (a short looping video / GIF of the word in motion). Tapping it plays the
+/// clip on the TV (and pauses autoplay so it isn't cut off); tapping again
+/// returns to the card. Mirrors the in-app "Show Me" button.
+class _ShowMeControl extends ConsumerWidget {
+  final TvCastSession state;
+  const _ShowMeControl({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final category = state.category;
+    if (category == null) return const SizedBox.shrink();
+    final cards = SeedData.getByCategory(category);
+    if (cards.isEmpty) return const SizedBox.shrink();
+    final card = cards[state.slideIndex % cards.length];
+    if (!ActionClipService.hasClip(card)) return const SizedBox.shrink();
+
+    final hc = HCColor.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+    final active = state.showMeActive;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FilledButton.icon(
+            onPressed: () => notifier.setShowMe(!active),
+            icon: Icon(
+              active
+                  ? Icons.stop_circle_rounded
+                  : Icons.play_circle_fill_rounded,
+            ),
+            label: Text(active ? 'Hide clip' : 'Show Me'),
+            style: FilledButton.styleFrom(
+              backgroundColor: active
+                  ? AppColors.secondaryDark
+                  : AppColors.secondary,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            active
+                ? 'Playing the clip on the TV. Tap to go back to the card.'
+                : 'Play a short clip of "${card.wordEnglish}" in motion on the TV.',
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Story "Watch in FSL" sign-language clip ───────────
+
+/// A "Watch in FSL" button shown only when the current story page has a
+/// sign-language clip. Tapping it plays the clip on the TV (and pauses autoplay
+/// so it isn't cut off); tapping again returns to the story text. Mirrors the
+/// flashcard "Show Me" button and the in-app Stories "Watch in FSL" button.
+/// Independent of the Text-to-Speech setting — Deaf / hard-of-hearing learners
+/// run with TTS off yet still need the sign-language path.
+class _StoryFslControl extends ConsumerWidget {
+  final TvCastSession state;
+  const _StoryFslControl({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stories = SeedStories.all.where((s) => s.id == state.storyId);
+    if (stories.isEmpty) return const SizedBox.shrink();
+    final story = stories.first;
+    final total = story.sentencesEn.length;
+    if (total == 0) return const SizedBox.shrink();
+    final pageIdx = state.storyPageIndex.clamp(0, total - 1);
+    final fslUrl = TvCastAssetBridge.storyFslUrl(story, pageIdx);
+    if (fslUrl == null) return const SizedBox.shrink();
+
+    final hc = HCColor.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+    final active = state.storyFslActive;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FilledButton.icon(
+            onPressed: () => notifier.setStoryFsl(!active),
+            icon: Icon(
+              active
+                  ? Icons.stop_circle_rounded
+                  : Icons.sign_language_rounded,
+            ),
+            label: Text(active ? 'Hide FSL' : 'Watch in FSL'),
+            style: FilledButton.styleFrom(
+              backgroundColor: active
+                  ? AppColors.secondaryDark
+                  : AppColors.secondary,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            active
+                ? 'Playing the sign-language video on the TV. Tap to go back to '
+                      'the story.'
+                : 'Play page ${pageIdx + 1} in Filipino Sign Language on the TV.',
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          _StoryFslReadyStatus(
+            key: ValueKey('${story.id}_$pageIdx'),
+            cacheKey: TvCastAssetBridge.storyFslCacheKey(story.id, pageIdx),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Preparing video… / Ready" status for the current story page's FSL clip.
+/// Re-checks the on-device cache every 1.5s until the clip is ready, then stops.
+/// Read-only — the notifier prefetches the clip when the page changes; this just
+/// reflects whether it's on disk yet (mirrors [_FslReadyStatus] for flashcards).
+class _StoryFslReadyStatus extends StatefulWidget {
+  final String cacheKey;
+  const _StoryFslReadyStatus({super.key, required this.cacheKey});
+
+  @override
+  State<_StoryFslReadyStatus> createState() => _StoryFslReadyStatusState();
+}
+
+class _StoryFslReadyStatusState extends State<_StoryFslReadyStatus> {
+  bool _ready = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    final cached = await FslAssetsService.isUrlCached(widget.cacheKey);
+    if (!mounted) return;
+    setState(() => _ready = cached);
+    if (cached) {
+      _timer?.cancel();
+    } else {
+      _timer ??= Timer.periodic(
+        const Duration(milliseconds: 1500),
+        (_) => _check(),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    if (_ready) {
+      return Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.check_circle_rounded,
+              size: 14,
+              color: Color(0xFF4CAF50),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Ready to play',
+              style: AppTypography.labelSmall.copyWith(
+                color: const Color(0xFF4CAF50),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Preparing video…',
+            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+          ),
+        ],
       ),
     );
   }

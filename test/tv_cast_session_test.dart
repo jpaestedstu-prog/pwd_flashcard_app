@@ -315,6 +315,97 @@ void main() {
     });
   });
 
+  group('TvCastSession tap-to-flip ("Tap Only")', () {
+    test('flipTapOnly defaults on; toApiJson emits tapOnly:true', () {
+      const session = TvCastSession();
+      expect(session.flipTapOnly, isTrue);
+      expect(session.toApiJson()['tapOnly'], isTrue);
+    });
+
+    test('tapOnly:false flows through so the TV shows the emoji only', () {
+      expect(
+        const TvCastSession(flipTapOnly: false).toApiJson()['tapOnly'],
+        isFalse,
+      );
+    });
+
+    test('copyWith updates flipTapOnly and preserves it otherwise', () {
+      const base = TvCastSession(mode: CastMode.flashcards, slideIndex: 3);
+      final off = base.copyWith(flipTapOnly: false);
+      expect(off.flipTapOnly, isFalse);
+      expect(off.mode, CastMode.flashcards);
+      expect(off.slideIndex, 3);
+      expect(off.copyWith(slideIndex: 4).flipTapOnly, isFalse);
+    });
+
+    test('cardFlipped defaults to the emoji face; flows through as flipped', () {
+      const session = TvCastSession();
+      expect(session.cardFlipped, isFalse);
+      expect(session.toApiJson()['flipped'], isFalse);
+      expect(
+        const TvCastSession(cardFlipped: true).toApiJson()['flipped'],
+        isTrue,
+      );
+    });
+
+    test('copyWith toggles cardFlipped and preserves it across re-renders', () {
+      const base = TvCastSession(mode: CastMode.flashcards, slideIndex: 2);
+      final flipped = base.copyWith(cardFlipped: true);
+      expect(flipped.cardFlipped, isTrue);
+      // An unrelated bump (e.g. theme) keeps the current face.
+      expect(flipped.copyWith(revision: 9).cardFlipped, isTrue);
+    });
+  });
+
+  group('TvCastSession "Show Me" action clip', () {
+    test('showMeActive defaults off; toApiJson emits showMe:false', () {
+      const session = TvCastSession();
+      expect(session.showMeActive, isFalse);
+      expect(session.toApiJson()['showMe'], isFalse);
+    });
+
+    test('showMe flows through toApiJson when active', () {
+      expect(
+        const TvCastSession(showMeActive: true).toApiJson()['showMe'],
+        isTrue,
+      );
+    });
+
+    test('copyWith toggles showMeActive and preserves the rest', () {
+      const base = TvCastSession(mode: CastMode.flashcards, slideIndex: 5);
+      final on = base.copyWith(showMeActive: true);
+      expect(on.showMeActive, isTrue);
+      expect(on.slideIndex, 5);
+      // Re-rendering the same card without touching showMeActive keeps it.
+      expect(on.copyWith(isPaused: true).showMeActive, isTrue);
+    });
+  });
+
+  group('TvCastSession story "Watch in FSL" clip', () {
+    test('storyFslActive defaults off; toApiJson emits storyFsl:false', () {
+      const session = TvCastSession();
+      expect(session.storyFslActive, isFalse);
+      expect(session.toApiJson()['storyFsl'], isFalse);
+    });
+
+    test('storyFsl flows through toApiJson when active', () {
+      expect(
+        const TvCastSession(storyFslActive: true).toApiJson()['storyFsl'],
+        isTrue,
+      );
+    });
+
+    test('copyWith toggles storyFslActive and preserves the rest', () {
+      const base = TvCastSession(mode: CastMode.story, storyPageIndex: 4);
+      final on = base.copyWith(storyFslActive: true);
+      expect(on.storyFslActive, isTrue);
+      expect(on.mode, CastMode.story);
+      expect(on.storyPageIndex, 4);
+      // Re-rendering the same page without touching storyFslActive keeps it.
+      expect(on.copyWith(isPaused: true).storyFslActive, isTrue);
+    });
+  });
+
   group('TvCastSession TV-speech routing (ttsOnTv)', () {
     test('defaults: audio on + target TV → ttsOnTv true', () {
       const session = TvCastSession();

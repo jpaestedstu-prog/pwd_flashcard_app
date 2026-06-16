@@ -15,6 +15,8 @@
   var hint = document.getElementById('sound-hint');
   var lastRev = -1;
   var lastVideoUrl = null;
+  var lastFlashcardKey = null; // identifies the flashcard currently painted, so
+                               // a Flip press animates instead of rebuilding.
   var failCount = 0;          // consecutive failed /api/state polls
   var reconnecting = false;   // currently showing the "connecting" overlay
   var FAIL_THRESHOLD = 2;     // ~3s of failures before the overlay appears
@@ -87,12 +89,13 @@
       en = state.slide.wordEn || '';
       fil = state.slide.wordFil || '';
       key = 'f:' + state.slide.index;
-    } else if (state.mode === 'story' && state.story) {
+    } else if (state.mode === 'story' && state.story && !state.storyFsl) {
       en = state.story.textEn || '';
       fil = state.story.textFil || '';
       key = 's:' + state.story.pageIndex;
     } else {
-      // FSL / progress / idle never speak on the TV.
+      // FSL / progress / idle — and a story page showing its sign-language clip
+      // (storyFsl) — never speak on the TV.
       window.speechSynthesis.cancel();
       lastSpokenKey = null;
       return;
@@ -118,11 +121,11 @@
     if (state.mode === 'flashcards' && state.slide) {
       en = state.slide.wordEn || '';
       fil = state.slide.wordFil || '';
-    } else if (state.mode === 'story' && state.story) {
+    } else if (state.mode === 'story' && state.story && !state.storyFsl) {
       en = state.story.textEn || '';
       fil = state.story.textFil || '';
     } else {
-      return; // nothing speakable in this mode
+      return; // nothing speakable in this mode (or the FSL clip is showing)
     }
     if (rp.lang === 'en') fil = '';
     else if (rp.lang === 'fil') en = '';
@@ -221,25 +224,68 @@
     reconnecting = true;
   }
 
-  // A flashcard styled like the in-app "Cards" section: a light card surface
-  // with a category accent strip, a category badge (emoji + label), the word's
-  // emoji in a tinted tile, the English + Filipino words, and the example.
-  // Category colours come from the payload and are applied inline because the
-  // TV CSS avoids var() for old browsers. The high-contrast theme overrides
-  // these inline colours with !important rules in style.css.
-  //
-  // The motion (3D flip-in, staggered reveal, emoji pop, glossy shine sweep,
-  // floating corner blobs) mirrors the animated in-app flip card and lives
-  // entirely in style.css — so old TV browsers, reduced-motion, and the Calm
-  // template all degrade to a clean static card. setStage() replaces the DOM
-  // on every revision change, which is what re-triggers the entrance each time
-  // a new card is pushed from the phone.
+  // Flashcards entry point. Normally paints the card (renderFlashcardCard); when
+  // the teacher activates "Show Me" and the current card has an action clip, the
+  // clip takes over the whole stage (renderActionClip) instead.
   function renderFlashcards(state) {
     var slide = state.slide;
     if (!slide) {
       renderIdle();
       return;
     }
+    if (state.showMe && slide.clip && slide.clip.available && slide.clip.url) {
+      renderActionClip(state);
+      return;
+    }
+    renderFlashcardCard(state);
+  }
+
+  // A flashcard styled like the in-app "Cards" section: a light card surface
+  // with a category accent strip, a category badge (emoji + label), the word's
+  // picture in a tinted tile, the English + Filipino words, and the example.
+  // Category colours come from the payload and are applied inline because the
+  // TV CSS avoids var() for old browsers. The high-contrast theme overrides
+  // these inline colours with !important rules in style.css.
+  //
+  // The picture tile shows the word's emoji and — when the card has a real
+  // photo / animated GIF (slide.photo) AND the "Tap Only" control is on
+  // (state.tapOnly) — is a two-faced 3D flip card (emoji front, photo back).
+  // Which face shows is driven by the phone's "Flip" button (state.flipped), so
+  // the flip works on ANY receiver, including TVs you can't touch. There is no
+  // auto-flip and no TV-side tap. When only the flip flag changes for the SAME
+  // card we toggle the class on the existing tile (so the 3D flip animates);
+  // a new card does a full rebuild (and always starts on the emoji).
+  //
+  // The rest of the motion (3D flip-in, staggered reveal, emoji pop, glossy
+  // shine sweep, floating corner blobs) mirrors the animated in-app flip card
+  // and lives entirely in style.css — so old TV browsers, reduced-motion, and
+  // the Calm template all degrade to a clean static card.
+  function renderFlashcardCard(state) {
+    var slide = state.slide;
+    var photo = slide.photo;
+    var tapEnabled = state.tapOnly !== false; // default on for older payloads
+    var hasPhoto = !!(photo && photo.available && photo.url) && tapEnabled;
+    var flipped = hasPhoto && !!state.flipped;
+    // Identifies the card + whether it has the flip structure, so a Flip press
+    // (same key) animates via a class toggle instead of rebuilding the DOM.
+    var key = (slide.catLabel || '') + '#' + slide.index + (hasPhoto ? '+p' : '');
+
+    // Same card re-rendering (typically the teacher pressed Flip): just sync the
+    // is-flipped class on the existing tile so the CSS transition animates. A
+    // full rebuild would drop the animation. Guarded on the flip element still
+    // being present (it isn't after a mode/clip switch → falls through).
+    if (key === lastFlashcardKey && hasPhoto) {
+      var flipEl = document.getElementById('fcard-flip');
+      var backEl = document.getElementById('fcard-photo-back');
+      if (flipEl && backEl) {
+        if (flipped && !backEl.style.backgroundImage) {
+          backEl.style.backgroundImage = 'url("' + photo.url + '")';
+        }
+        flipEl.className = flipped ? 'fcard-flip is-flipped' : 'fcard-flip';
+        return;
+      }
+    }
+
     var accent = slide.catColorDark || '#1565c0'; // deep — strips, fil, badge text
     var tint = slide.catColor || '#dbeafe';        // pastel — badge + pic tile
 
@@ -262,6 +308,23 @@
         '</div>';
     }
 
+    // Picture tile. With a real photo/GIF AND the photo-flip feature on we build
+    // a two-faced 3D flip card (emoji front, photo back); otherwise we keep the
+    // plain emoji tile the TV has always shown. Either way the emoji is the face
+    // that paints first, so a missing/slow/broken photo — or the control
+    // switched off — just shows the emoji.
+    var emojiSpan = '<span class="fcard-pic-emoji">' + escapeHtml(slide.emoji) + '</span>';
+    var picInner;
+    if (hasPhoto) {
+      picInner =
+        '<div class="fcard-flip" id="fcard-flip">' +
+        '<div class="fcard-face fcard-face-front">' + emojiSpan + '</div>' +
+        '<div class="fcard-face fcard-face-back" id="fcard-photo-back"></div>' +
+        '</div>';
+    } else {
+      picInner = emojiSpan;
+    }
+
     // Decorative tinted corner blobs (behind the content) + the glossy shine
     // overlay (above it). The content sits in its own .fcard-body layer so the
     // three z-index layers always sort correctly. Colours are inline; the
@@ -274,8 +337,8 @@
       '<span class="fcard-blob fcard-blob-bl" style="background:' + tint + '"></span>' +
       '<div class="fcard-body">' +
       badge +
-      '<div class="fcard-pic" style="background:' + tint + '">' +
-      '<span class="fcard-pic-emoji">' + escapeHtml(slide.emoji) + '</span>' +
+      '<div class="fcard-pic" id="fcard-pic" style="background:' + tint + '">' +
+      picInner +
       '</div>' +
       '<h1 class="fcard-word-en">' + escapeHtml(slide.wordEn) + '</h1>' +
       '<div class="fcard-word-fil" style="color:' + accent + '">' +
@@ -287,6 +350,86 @@
       '</div>'
     );
     lastVideoUrl = null;
+    lastFlashcardKey = key;
+    if (hasPhoto) applyFlashcardPhoto(photo.url, flipped);
+  }
+
+  // Preloads the card's photo / GIF onto the flip's back face so the reveal is
+  // instant when the teacher presses Flip, and applies the initial face. The
+  // photo is a CSS background (background-size: cover) so it scales cleanly back
+  // to old Android WebKit and animated GIFs animate too. A failed load just
+  // leaves the emoji. `flipped` is normally false on a fresh card (the flag is
+  // reset on every card change), so this paints the emoji first with no motion;
+  // the animated flip happens later via the same-card class toggle above.
+  function applyFlashcardPhoto(url, flipped) {
+    var flip = document.getElementById('fcard-flip');
+    var back = document.getElementById('fcard-photo-back');
+    if (!flip || !back) return;
+
+    var img = new Image();
+    img.onload = function () {
+      if (back.parentNode) back.style.backgroundImage = 'url("' + url + '")';
+    };
+    img.onerror = function () { /* keep the emoji face */ };
+    img.src = url;
+
+    if (flipped) {
+      back.style.backgroundImage = 'url("' + url + '")';
+      flip.className = 'fcard-flip is-flipped';
+    }
+  }
+
+  // Plays the current card's "Show Me" action clip across the whole stage: a
+  // GIF as a looping <img>, an MP4 as a muted autoplaying looping <video>
+  // (Range-streamed by the server, with the same loading overlay + retry as the
+  // FSL video). The phone toggles this on/off and it auto-clears when the card
+  // changes. Reuses lastVideoUrl so an unrelated state poll doesn't restart it.
+  function renderActionClip(state) {
+    var slide = state.slide;
+    var clip = slide && slide.clip;
+    if (!slide || !clip || !clip.available || !clip.url) {
+      renderFlashcardCard(state);
+      return;
+    }
+    if (clip.url === lastVideoUrl) return; // already showing this clip
+
+    var caption =
+      '<div class="fsl-caption">' +
+      escapeHtml(slide.wordEn) +
+      '<span class="fil">' + escapeHtml(slide.wordFil) + '</span>' +
+      '</div>';
+
+    if (clip.isGif) {
+      setStage(
+        '<div class="fsl-wrap">' +
+        '<div class="clip-gif-box">' +
+        '<img class="clip-gif" src="' + escapeHtml(clip.url) + '" alt="">' +
+        '</div>' +
+        caption +
+        '</div>'
+      );
+      lastVideoUrl = clip.url;
+      return;
+    }
+
+    // Muted by default so it autoplays on every browser; the phone can opt in
+    // to the clip's own audio track via `videoSound`.
+    var mutedAttr = state.videoSound ? '' : 'muted ';
+    setStage(
+      '<div class="fsl-wrap">' +
+      '<div class="fsl-video-box">' +
+      '<video autoplay ' + mutedAttr + 'loop playsinline webkit-playsinline ' +
+      'controls preload="auto" src="' + escapeHtml(clip.url) + '"></video>' +
+      '<div class="fsl-loading" id="fsl-loading">' +
+      '<div class="spinner"></div>' +
+      '<div class="fsl-loading-text">Loading…</div>' +
+      '</div>' +
+      '</div>' +
+      caption +
+      '</div>'
+    );
+    lastVideoUrl = clip.url;
+    attachVideoHandlers(slide);
   }
 
   function renderFslVideo(state) {
@@ -363,17 +506,26 @@
         '<div class="fsl-wrap">' +
         '<div class="fsl-missing">' +
         '<span class="emoji">' + escapeHtml(slide.emoji) + '</span>' +
-        'Loading sign for "' + escapeHtml(slide.wordEn) + '"…' +
+        'Loading "' + escapeHtml(slide.wordEn) + '"…' +
         '</div>' +
         '</div>'
       );
     };
   }
 
+  // Story entry point. Normally paints the story page (text); when the teacher
+  // activates "Watch in FSL" and the current page has a sign-language clip, the
+  // clip takes over the whole stage (renderStoryFsl) instead — mirroring the
+  // flashcard "Show Me" path.
   function renderStory(state) {
     var story = state.story;
     if (!story) {
       renderIdle();
+      return;
+    }
+    var sv = state.storyVideo;
+    if (state.storyFsl && sv && sv.available && sv.url) {
+      renderStoryFsl(state);
       return;
     }
     setStage(
@@ -387,6 +539,80 @@
       '</div>'
     );
     lastVideoUrl = null;
+  }
+
+  // Plays the current story page's FSL sign-language video across the whole
+  // stage: a muted autoplaying looping <video> (Range-streamed by the server,
+  // with the same loading overlay + retry as the flashcard FSL video). The
+  // phone toggles this on/off and it auto-clears when the page / story changes.
+  // Reuses lastVideoUrl so an unrelated state poll doesn't restart playback. The
+  // caption shows the page text (English + Filipino) under the signing.
+  function renderStoryFsl(state) {
+    var story = state.story;
+    var video = state.storyVideo;
+    if (!story || !video || !video.available || !video.url) {
+      // No clip after all — fall back to the text page (renderStory won't
+      // re-enter here because storyVideo is absent / unavailable).
+      renderStory(state);
+      return;
+    }
+    if (video.url === lastVideoUrl) return; // already showing this clip
+
+    var caption =
+      '<div class="fsl-caption">' +
+      escapeHtml(story.textEn) +
+      (story.textFil
+        ? '<span class="fil">' + escapeHtml(story.textFil) + '</span>'
+        : '') +
+      '</div>';
+
+    // Muted by default so the sign autoplays on every TV browser. The phone can
+    // opt-in to the clip's own audio track (`videoSound`) for clips that include
+    // a voiceover — at the cost of autoplay on some browsers.
+    var mutedAttr = state.videoSound ? '' : 'muted ';
+    setStage(
+      '<div class="fsl-wrap">' +
+      '<div class="fsl-video-box">' +
+      '<video autoplay ' + mutedAttr + 'loop playsinline webkit-playsinline ' +
+      'controls preload="auto" src="' + escapeHtml(video.url) + '"></video>' +
+      '<div class="fsl-loading" id="fsl-loading">' +
+      '<div class="spinner"></div>' +
+      '<div class="fsl-loading-text">Loading sign…</div>' +
+      '</div>' +
+      '</div>' +
+      caption +
+      '</div>'
+    );
+    lastVideoUrl = video.url;
+    attachStoryVideoHandlers(story);
+  }
+
+  // Wires the loading-overlay + error-retry handlers onto the story FSL <video>
+  // (the story-page counterpart of attachVideoHandlers). On error (e.g. the clip
+  // is still downloading on the phone, so /api/story-video 404s) we drop
+  // lastVideoUrl + lastRev so the next poll rebuilds and retries.
+  function attachStoryVideoHandlers(story) {
+    var vids = stage.getElementsByTagName('video');
+    if (!vids || !vids.length) return;
+    var v = vids[0];
+    var loading = document.getElementById('fsl-loading');
+    function hideLoading() {
+      if (loading) loading.className = 'fsl-loading hidden';
+    }
+    v.onplaying = hideLoading;
+    v.oncanplay = hideLoading;
+    v.onerror = function () {
+      lastVideoUrl = null;
+      lastRev = -1;
+      setStage(
+        '<div class="fsl-wrap">' +
+        '<div class="fsl-missing">' +
+        '<span class="emoji">' + escapeHtml(story.emoji) + '</span>' +
+        'Loading sign for "' + escapeHtml(story.titleEn) + '"…' +
+        '</div>' +
+        '</div>'
+      );
+    };
   }
 
   function renderProgress(state) {

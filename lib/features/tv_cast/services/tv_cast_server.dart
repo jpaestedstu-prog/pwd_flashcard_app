@@ -115,6 +115,9 @@ class TvCastServer {
 
     r.get('/api/state', _serveState);
     r.get('/api/video/<catIdx>/<wordSlug>', _serveVideo);
+    r.get('/api/story-video/<storyId>/<pageIdx>', _serveStoryVideo);
+    r.get('/api/image/<catIdx>/<wordSlug>', _serveImage);
+    r.get('/api/clip/<catIdx>/<wordSlug>', _serveClip);
     r.get('/healthz', (Request _) => Response.ok('ok'));
 
     return r;
@@ -184,7 +187,7 @@ class TvCastServer {
       if (cards.isNotEmpty) {
         final idx = session.slideIndex % cards.length;
         final card = cards[idx];
-        map['slide'] = {
+        final slideMap = <String, dynamic>{
           'index': idx,
           'total': cards.length,
           'wordEn': card.wordEnglish,
@@ -194,6 +197,28 @@ class TvCastServer {
           // Category visuals so the TV paints a card matching the in-app one.
           ...TvCastAssetBridge.categoryVisual(cat),
         };
+        final slug = _slugifyForUrl(card.wordEnglish);
+        // Real photo / GIF (mirrors the in-app "Cards" image). The file may not
+        // be downloaded yet; the TV fetches /api/image and flips emoji→photo on
+        // tap (and stays on the emoji if it never loads).
+        if (TvCastAssetBridge.hasPhoto(card)) {
+          slideMap['photo'] = {
+            'available': true,
+            'url': '/api/image/${cat.index}/$slug',
+          };
+        }
+        // "Show Me" action clip (mirrors the in-app "Show Me" button) — a short
+        // looping video/GIF of the word in motion. Played on the TV only when
+        // the teacher activates Show Me (`showMe` flag); `isGif` tells the TV
+        // whether to use a <video> (MP4) or a looping <img> (GIF).
+        if (TvCastAssetBridge.hasActionClip(card)) {
+          slideMap['clip'] = {
+            'available': true,
+            'url': '/api/clip/${cat.index}/$slug',
+            'isGif': TvCastAssetBridge.actionClipIsGif(card),
+          };
+        }
+        map['slide'] = slideMap;
         if (session.mode == CastMode.fslVideo) {
           // Any source counts — bundled, direct download, or Streamable. The
           // clip may not be on disk yet; the TV retries until /api/video can
@@ -223,6 +248,18 @@ class TvCastServer {
           'textEn': pages[pageIdx],
           'textFil': pageIdx < pagesFil.length ? pagesFil[pageIdx] : '',
         };
+        // FSL sign-language clip for the current page (mirrors the in-app
+        // "Watch in FSL" button). Played on the TV only when the teacher
+        // activates the story FSL toggle (`storyFsl` flag). The file may not be
+        // on disk yet; the TV retries until /api/story-video can serve it (the
+        // phone prefetches in the background, see the notifier).
+        final fslUrl = TvCastAssetBridge.storyFslUrl(story, pageIdx);
+        if (fslUrl != null) {
+          map['storyVideo'] = {
+            'available': true,
+            'url': '/api/story-video/${story.id}/$pageIdx',
+          };
+        }
       }
     }
 
@@ -288,13 +325,53 @@ class TvCastServer {
       // retries on the next state poll.
       return Response.notFound('video not ready for ${card.wordEnglish}');
     }
+    return _streamFileRanged(request, file, 'video/mp4', 'video');
+  }
 
+  /// Serves the current story page's FSL sign-language clip so the TV can play
+  /// the same sign video as the in-app "Watch in FSL" button. The page's
+  /// share-page URL (from the story's `sentenceFslUrls`) is resolved + cached on
+  /// first request, keyed so the cast and the in-app reader share one file.
+  /// Range-streamed as `video/mp4` (reusing [_streamFileRanged]); not ready yet
+  /// (download in flight) → 404 and the TV retries on its next poll.
+  Future<Response> _serveStoryVideo(
+    Request request,
+    String storyId,
+    String pageIdxStr,
+  ) async {
+    final pageIdx = int.tryParse(pageIdxStr);
+    if (pageIdx == null) return Response(400, body: 'bad page');
+
+    final story = TvCastAssetBridge.findStory(storyId);
+    if (story == null) return Response.notFound('story not found');
+
+    final url = TvCastAssetBridge.storyFslUrl(story, pageIdx);
+    if (url == null) return Response.notFound('no FSL for this page');
+
+    final cacheKey = TvCastAssetBridge.storyFslCacheKey(story.id, pageIdx);
+    final File? file = await TvCastAssetBridge.storyFslVideoFile(url, cacheKey);
+    if (file == null || !await file.exists()) {
+      // Not ready yet (download in flight or unresolvable) — the TV-side player
+      // retries on the next state poll.
+      return Response.notFound('story video not ready for ${story.titleEn}');
+    }
+    return _streamFileRanged(request, file, 'video/mp4', 'story video');
+  }
+
+  /// Streams [file] off disk with HTTP Range support, so older TV browsers can
+  /// fetch a large clip in chunks rather than buffering it whole. Shared by the
+  /// FSL video and the "Show Me" action-clip (MP4) routes. `openRead` keeps the
+  /// file off the heap; the byte range is parsed defensively and a malformed /
+  /// out-of-bounds Range falls back to the full 200 response.
+  Future<Response> _streamFileRanged(
+    Request request,
+    File file,
+    String contentType,
+    String label,
+  ) async {
     final total = await file.length();
-    if (total <= 0) return Response.notFound('empty video');
+    if (total <= 0) return Response.notFound('empty $label');
 
-    // Honour Range requests for chunked playback on older TV browsers that
-    // can't reliably stream a whole 30 MB clip in one shot. Stream straight
-    // off disk via openRead so the file is never fully buffered in memory.
     final rangeHeader = request.headers['range'];
     if (rangeHeader != null && rangeHeader.startsWith('bytes=')) {
       final spec = rangeHeader.substring(6);
@@ -312,7 +389,7 @@ class TvCastServer {
             206,
             body: file.openRead(start, end + 1),
             headers: {
-              HttpHeaders.contentTypeHeader: 'video/mp4',
+              HttpHeaders.contentTypeHeader: contentType,
               HttpHeaders.contentLengthHeader: (end - start + 1).toString(),
               HttpHeaders.acceptRangesHeader: 'bytes',
               'Content-Range': 'bytes $start-$end/$total',
@@ -326,9 +403,102 @@ class TvCastServer {
     return Response.ok(
       file.openRead(),
       headers: {
-        HttpHeaders.contentTypeHeader: 'video/mp4',
+        HttpHeaders.contentTypeHeader: contentType,
         HttpHeaders.contentLengthHeader: total.toString(),
         HttpHeaders.acceptRangesHeader: 'bytes',
+        HttpHeaders.cacheControlHeader: 'public, max-age=86400',
+      },
+    );
+  }
+
+  /// Serves the current flashcard's "Show Me" action clip so the TV can play
+  /// the same demonstration as the in-app "Show Me" button. A GIF is sent whole
+  /// as `image/gif` (the TV loops it in an `<img>`); a video container is
+  /// Range-streamed as `video/mp4` (the TV plays it muted + looping), reusing
+  /// [_streamFileRanged]. Not ready yet (download in flight) → 404 and the TV
+  /// retries on its next poll.
+  Future<Response> _serveClip(
+    Request request,
+    String catIdxStr,
+    String wordSlug,
+  ) async {
+    final catIdx = int.tryParse(catIdxStr);
+    if (catIdx == null) return Response(400, body: 'bad category');
+
+    final card = TvCastAssetBridge.findFlashcard(catIdx, wordSlug);
+    if (card == null) return Response.notFound('card not found');
+
+    final File? file = await TvCastAssetBridge.actionClipFileFor(card);
+    if (file == null || !await file.exists()) {
+      return Response.notFound('clip not ready for ${card.wordEnglish}');
+    }
+
+    if (TvCastAssetBridge.actionClipIsGif(card)) {
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) return Response.notFound('empty clip');
+      return Response.ok(
+        bytes,
+        headers: {
+          HttpHeaders.contentTypeHeader:
+              TvCastAssetBridge.imageContentType(bytes, file.path),
+          HttpHeaders.contentLengthHeader: bytes.length.toString(),
+          HttpHeaders.cacheControlHeader: 'public, max-age=86400',
+        },
+      );
+    }
+    return _streamFileRanged(request, file, 'video/mp4', 'clip');
+  }
+
+  /// Serves the current flashcard's real photo / GIF so the TV can show the
+  /// same image as the in-app "Cards" section. Bundled asset images are read
+  /// from the bundle; manifest photos are downloaded + cached on first request
+  /// (same model as [_serveVideo]). Photos are small, so the whole file is sent
+  /// in one response (no Range) with the MIME type sniffed from its bytes — the
+  /// latter is what lets GIFs animate (they must be served as `image/gif`).
+  Future<Response> _serveImage(
+    Request request,
+    String catIdxStr,
+    String wordSlug,
+  ) async {
+    final catIdx = int.tryParse(catIdxStr);
+    if (catIdx == null) return Response(400, body: 'bad category');
+
+    final card = TvCastAssetBridge.findFlashcard(catIdx, wordSlug);
+    if (card == null) return Response.notFound('card not found');
+
+    // 1. Bundled asset image (custom cards) — read straight from the bundle.
+    final assetPath = TvCastAssetBridge.photoAssetPathFor(card);
+    if (assetPath != null) {
+      final bytes = await TvCastAssetBridge.loadAssetBytes(assetPath);
+      if (bytes != null && bytes.isNotEmpty) {
+        return Response.ok(
+          bytes,
+          headers: {
+            HttpHeaders.contentTypeHeader:
+                TvCastAssetBridge.imageContentType(bytes, assetPath),
+            HttpHeaders.contentLengthHeader: bytes.length.toString(),
+            HttpHeaders.cacheControlHeader: 'public, max-age=86400',
+          },
+        );
+      }
+    }
+
+    // 2. Manifest photo — downloaded + cached on first request. Not ready yet
+    //    (download in flight or no source) → the TV keeps showing the emoji and
+    //    retries the image on its next state poll.
+    final File? file = await TvCastAssetBridge.photoFileFor(card);
+    if (file == null || !await file.exists()) {
+      return Response.notFound('photo not ready for ${card.wordEnglish}');
+    }
+    final bytes = await file.readAsBytes();
+    if (bytes.isEmpty) return Response.notFound('empty photo');
+
+    return Response.ok(
+      bytes,
+      headers: {
+        HttpHeaders.contentTypeHeader:
+            TvCastAssetBridge.imageContentType(bytes, file.path),
+        HttpHeaders.contentLengthHeader: bytes.length.toString(),
         HttpHeaders.cacheControlHeader: 'public, max-age=86400',
       },
     );

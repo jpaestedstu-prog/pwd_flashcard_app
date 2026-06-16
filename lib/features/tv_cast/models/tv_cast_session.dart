@@ -210,6 +210,35 @@ class TvCastSession {
   /// disable entrance/transition animations for motion-sensitive viewers.
   final bool reducedMotion;
 
+  /// Whether the photo-flip feature is enabled for the TV flashcard (the "Tap
+  /// Only" control). When true (default) the educator's phone shows a "Flip"
+  /// button that reveals the real photograph on the TV; when false the TV shows
+  /// the emoji only (no photo). Sent to the TV as `tapOnly`. There is no
+  /// auto-flip — the reveal is always driven by the phone's Flip button.
+  final bool flipTapOnly;
+
+  /// Which face the TV flashcard is currently showing: false = emoji (default),
+  /// true = the real photograph. Toggled by the phone-side "Flip" button so the
+  /// flip works on any receiver — including TVs you can't touch — and the 3D
+  /// flip animates when this changes. Sent to the TV as `flipped`; auto-reset to
+  /// emoji when the card changes.
+  final bool cardFlipped;
+
+  /// Whether the TV should play the current flashcard's "Show Me" action clip
+  /// (a short looping video / GIF of the word in motion) instead of the card.
+  /// Toggled by the phone-side "Show Me" button and auto-cleared when the card
+  /// changes. Sent to the TV as `showMe`. Only meaningful in flashcards mode
+  /// and only when the current card actually has a clip.
+  final bool showMeActive;
+
+  /// Whether the TV should play the current story page's Filipino Sign Language
+  /// video (resolved as `storyVideo.url`) instead of the story text. Toggled by
+  /// the phone-side "Watch in FSL" button and auto-cleared when the page / story
+  /// changes. Sent to the TV as `storyFsl`. Only meaningful in story mode and
+  /// only when the current page actually has an FSL clip. Mirrors [showMeActive]
+  /// for the Flashcards "Show Me" button.
+  final bool storyFslActive;
+
   const TvCastSession({
     this.mode = CastMode.idle,
     this.revision = 0,
@@ -242,6 +271,10 @@ class TvCastSession {
     this.seasonalEmoji,
     this.seasonalAccent,
     this.reducedMotion = false,
+    this.flipTapOnly = true,
+    this.cardFlipped = false,
+    this.showMeActive = false,
+    this.storyFslActive = false,
   });
 
   TvCastSession copyWith({
@@ -283,6 +316,10 @@ class TvCastSession {
     String? seasonalAccent,
     bool clearSeasonal = false,
     bool? reducedMotion,
+    bool? flipTapOnly,
+    bool? cardFlipped,
+    bool? showMeActive,
+    bool? storyFslActive,
   }) {
     return TvCastSession(
       mode: mode ?? this.mode,
@@ -324,6 +361,10 @@ class TvCastSession {
       seasonalAccent:
           clearSeasonal ? null : (seasonalAccent ?? this.seasonalAccent),
       reducedMotion: reducedMotion ?? this.reducedMotion,
+      flipTapOnly: flipTapOnly ?? this.flipTapOnly,
+      cardFlipped: cardFlipped ?? this.cardFlipped,
+      showMeActive: showMeActive ?? this.showMeActive,
+      storyFslActive: storyFslActive ?? this.storyFslActive,
     );
   }
 
@@ -341,6 +382,19 @@ class TvCastSession {
           : '',
       // Lets the TV disable entrance/transition animations.
       'reducedMotion': reducedMotion,
+      // Photo-flip feature gate (the "Tap Only" control). When false the TV
+      // shows the emoji only; there is no auto-flip.
+      'tapOnly': flipTapOnly,
+      // Which face the TV flashcard shows — false = emoji, true = real photo.
+      // Driven by the phone's "Flip" button; the TV animates the 3D flip when
+      // this changes.
+      'flipped': cardFlipped,
+      // When true the TV plays the current card's "Show Me" action clip
+      // (resolved as `slide.clip`) instead of the flashcard face.
+      'showMe': showMeActive,
+      // When true the TV plays the current story page's FSL sign-language video
+      // (resolved as `storyVideo`) instead of the story text.
+      'storyFsl': storyFslActive,
       // Festive accents for the `seasonal` template (null on other templates).
       // Carried in the payload because the TV CSS avoids `var()` for old
       // browsers, so dynamic colours must be applied inline by app.js.

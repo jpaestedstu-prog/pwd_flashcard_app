@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/accessibility/tts_service.dart';
+import '../../../core/services/action_clip_service.dart';
 import '../../../core/services/firebase_service.dart';
+import '../../../core/services/flashcard_photo_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../data/local/seed_stories.dart';
@@ -16,6 +18,7 @@ import '../../../providers/seasonal_event_provider.dart';
 import '../../live_session/models/live_session_models.dart';
 import '../../live_session/services/live_session_service.dart';
 import '../models/tv_cast_session.dart';
+import '../services/tv_cast_asset_bridge.dart';
 import '../services/tv_cast_audio_narrator.dart';
 import '../services/tv_cast_autoplay_controller.dart';
 import '../services/tv_cast_ip_discovery.dart';
@@ -146,6 +149,16 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     // recover. Awaiting here closes that race (it's a fast local asset read).
     await FslAssetsService.load();
 
+    // Likewise parse the flashcard photo manifest so `_enrichState` reports the
+    // right `slide.photo` availability from its first poll. Idempotent (it's
+    // also loaded at app startup), so this only awaits a ready Future normally.
+    await FlashcardPhotoService.load();
+
+    // And the "Show Me" action-clip manifest, so `_enrichState` reports the
+    // right `slide.clip` availability (and the phone-side "Show Me" button
+    // appears) without waiting on a download. Idempotent / loaded at startup.
+    await ActionClipService.load();
+
     final ip = await TvCastIpDiscovery.findLocalIp();
     if (ip == null) {
       state = state.copyWith(clearListenUrl: true, isServerRunning: false);
@@ -226,6 +239,9 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       slideIndex: 0,
       storyPageIndex: 0,
       isPaused: false,
+      showMeActive: false,
+      storyFslActive: false,
+      cardFlipped: false,
       revision: state.revision + 1,
     );
 
@@ -239,6 +255,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         _autoplay?.stop();
       }
       if (mode == CastMode.fslVideo) _prefetchFslAround();
+      if (mode == CastMode.story) _prefetchStoryFslAround();
       _narrateCurrent();
     } else if (mode == CastMode.progress) {
       _refreshProgress();
@@ -254,6 +271,8 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     state = state.copyWith(
       category: category,
       slideIndex: 0,
+      showMeActive: false,
+      cardFlipped: false,
       revision: state.revision + 1,
     );
     if (state.mode == CastMode.fslVideo) _prefetchFslAround();
@@ -269,6 +288,8 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     state = state.copyWith(
       slideIndex: clamped,
       isPaused: true,
+      showMeActive: false,
+      cardFlipped: false,
       revision: state.revision + 1,
     );
     _autoplay?.pause();
@@ -386,6 +407,74 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     }
   }
 
+  /// Enables/disables the flashcard photo-flip feature (the "Tap Only" control).
+  /// When off, the TV flashcard shows the emoji only (no photo). Always resets
+  /// the card back to the emoji face. Bumps the revision so connected TVs pick
+  /// it up on their next poll (~1.5s).
+  void setFlipTapOnly(bool enabled) {
+    if (state.flipTapOnly == enabled) return;
+    state = state.copyWith(
+      flipTapOnly: enabled,
+      cardFlipped: false,
+      revision: state.revision + 1,
+    );
+  }
+
+  /// Flips the current TV flashcard between the emoji and the real photograph
+  /// (the phone-side "Flip" button). Works on any receiver — including TVs you
+  /// can't touch — because the TV renders the face from this flag and animates
+  /// the 3D flip when it changes. No-op unless the photo-flip feature is on.
+  void flipCard() {
+    if (!state.flipTapOnly) return;
+    state = state.copyWith(
+      cardFlipped: !state.cardFlipped,
+      revision: state.revision + 1,
+    );
+  }
+
+  /// Shows or hides the current flashcard's "Show Me" action clip on the TV.
+  /// Activating pauses autoplay (and phone narration) so the clip isn't cut off
+  /// mid-play — mirroring the per-word FSL picker; the clip auto-hides when the
+  /// card changes (see [next] / [prev] / [jumpToSlide] / [setCategory]).
+  void setShowMe(bool show) {
+    if (state.showMeActive == show) return;
+    if (show) {
+      state = state.copyWith(
+        showMeActive: true,
+        isPaused: true,
+        revision: state.revision + 1,
+      );
+      _autoplay?.pause();
+      unawaited(_narrator?.stop());
+    } else {
+      state = state.copyWith(showMeActive: false, revision: state.revision + 1);
+    }
+  }
+
+  /// Shows or hides the current story page's FSL sign-language video on the TV
+  /// (the phone-side "Watch in FSL" button). Activating pauses autoplay (and
+  /// phone narration) so the clip isn't cut off mid-play — mirroring the
+  /// flashcard "Show Me" button; the clip auto-hides when the page / story
+  /// changes (see [next] / [prev] / [setStory] / [setMode]). No-op unless the
+  /// current page actually has an FSL clip (the phone only shows the button then).
+  void setStoryFsl(bool show) {
+    if (state.storyFslActive == show) return;
+    if (show) {
+      state = state.copyWith(
+        storyFslActive: true,
+        isPaused: true,
+        revision: state.revision + 1,
+      );
+      _autoplay?.pause();
+      unawaited(_narrator?.stop());
+    } else {
+      state = state.copyWith(
+        storyFslActive: false,
+        revision: state.revision + 1,
+      );
+    }
+  }
+
   void setStory(String storyId) {
     final story = SeedStories.all.firstWhere(
       (s) => s.id == storyId,
@@ -396,6 +485,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       storyId: story.id,
       storyPageIndex: 0,
       isPaused: false,
+      storyFslActive: false,
       revision: state.revision + 1,
     );
     if (state.autoAdvanceEnabled) {
@@ -404,6 +494,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     } else {
       _autoplay?.stop();
     }
+    _prefetchStoryFslAround();
     _narrateCurrent();
   }
 
@@ -417,6 +508,8 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         if (cards.isEmpty) return;
         state = state.copyWith(
           slideIndex: (state.slideIndex + 1) % cards.length,
+          showMeActive: false,
+          cardFlipped: false,
           revision: state.revision + 1,
         );
         if (state.mode == CastMode.fslVideo) _prefetchFslAround();
@@ -428,8 +521,10 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         if (state.storyPageIndex < story.sentencesEn.length - 1) {
           state = state.copyWith(
             storyPageIndex: state.storyPageIndex + 1,
+            storyFslActive: false,
             revision: state.revision + 1,
           );
+          _prefetchStoryFslAround();
           _narrateCurrent();
         }
         break;
@@ -451,6 +546,8 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         final next = state.slideIndex - 1;
         state = state.copyWith(
           slideIndex: next < 0 ? cards.length - 1 : next,
+          showMeActive: false,
+          cardFlipped: false,
           revision: state.revision + 1,
         );
         if (state.mode == CastMode.fslVideo) _prefetchFslAround();
@@ -460,8 +557,10 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         if (state.storyPageIndex > 0) {
           state = state.copyWith(
             storyPageIndex: state.storyPageIndex - 1,
+            storyFslActive: false,
             revision: state.revision + 1,
           );
+          _prefetchStoryFslAround();
           _narrateCurrent();
         }
         break;
@@ -547,6 +646,34 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     final next = (i + 1) % cards.length;
     unawaited(FslAssetsService.prefetch(cards[i]));
     if (next != i) unawaited(FslAssetsService.prefetch(cards[next]));
+  }
+
+  /// Warms up the FSL video disk cache for the current story page and the next
+  /// one so the TV can stream the sign-language clip the moment the teacher taps
+  /// "Watch in FSL" — without waiting on a download. Fire-and-forget;
+  /// [FslAssetsService.prefetchUrl] no-ops when a clip is already cached or the
+  /// page has no FSL URL. Keyed identically to the in-app reader so a clip the
+  /// learner already watched is reused instantly.
+  void _prefetchStoryFslAround() {
+    final story = _currentStory();
+    if (story == null) return;
+    final total = story.sentencesEn.length;
+    if (total == 0) return;
+    final i = state.storyPageIndex.clamp(0, total - 1);
+    void warm(int idx) {
+      if (idx < 0 || idx >= total) return;
+      final url = TvCastAssetBridge.storyFslUrl(story, idx);
+      if (url == null) return;
+      unawaited(
+        FslAssetsService.prefetchUrl(
+          url,
+          cacheKey: TvCastAssetBridge.storyFslCacheKey(story.id, idx),
+        ),
+      );
+    }
+
+    warm(i);
+    warm(i + 1);
   }
 
   List _currentCards() {
