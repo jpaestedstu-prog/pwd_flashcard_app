@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:video_player/video_player.dart';
 import '../../../core/services/action_clip_service.dart';
 import '../../../core/services/flashcard_photo_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
@@ -24,11 +23,11 @@ import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../../../widgets/language_replay_bar.dart';
-import '../../../widgets/fsl_fullscreen_player.dart';
 import '../../../widgets/fsl_loading_overlay.dart';
+import '../../../widgets/fsl_video_sheet.dart';
+import '../../break_time/break_time.dart';
 import '../widgets/show_me_button.dart';
 import '../widgets/examples_gallery.dart';
-import '../../../widgets/shimmer_loading.dart';
 
 class FlashcardViewerScreen extends ConsumerStatefulWidget {
   final FlashcardCategory category;
@@ -124,6 +123,28 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
   void _stopAutoPlay() {
     _autoPlayTimer?.cancel();
     _autoPlayTimer = null;
+  }
+
+  // ─── "I Need a Break" pause / resume ──────────────────
+  // Opening a calming break holds the lesson: any running auto-play slideshow
+  // is paused while the break is open and restored afterwards, so the student
+  // returns to the exact same card in the exact same state.
+  bool _autoPlayBeforeBreak = false;
+
+  void _onBreakStart() {
+    _autoPlayBeforeBreak = _autoPlay;
+    if (_autoPlay) {
+      _stopAutoPlay();
+      setState(() => _autoPlay = false);
+    }
+  }
+
+  void _onBreakEnd() {
+    if (!mounted) return;
+    if (_autoPlayBeforeBreak) {
+      setState(() => _autoPlay = true);
+      _startAutoPlay();
+    }
   }
 
   void _autoAdvance() {
@@ -257,18 +278,23 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     return Stack(
       children: [
         Scaffold(
-          // Opaque blend: a translucent color here composites over black on
-          // root-level routes (e.g. opened from Word Hunt) and reads as
-          // unintended "dark mode". Blending onto the theme surface keeps
-          // the same tint and follows the real light/dark setting.
-          backgroundColor: Color.alphaBlend(
-            widget.category.color.withValues(alpha: 0.08),
-            Theme.of(context).colorScheme.surface,
-          ),
+          // Opaque base so nothing composites over black on root-level routes
+          // (e.g. opened from Word Hunt). The colourful depth lives in the
+          // _CardsBackdrop layered behind the body; this just guarantees an
+          // opaque floor that follows the real light/dark setting.
+          backgroundColor: Theme.of(context).colorScheme.surface,
           appBar: AppBar(
             leading: const AppBackButton(fallbackRoute: '/flashcards'),
             title: Text(widget.category.label),
             actions: [
+              // "I Need a Break" — always visible so a student who feels
+              // overwhelmed can pause the lesson and choose a calming activity,
+              // then return to this exact card. Pauses/restores auto-play.
+              BreakButton(
+                color: AppColors.secondary,
+                onBreakStart: _onBreakStart,
+                onBreakEnd: _onBreakEnd,
+              ),
               // Auto-play toggle
               IconButton(
                 icon: Icon(
@@ -307,236 +333,253 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
               ),
             ],
           ),
-          body: Column(
+          body: Stack(
             children: [
-              // ─── Progress dots ──────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 8,
-                ),
-                child: Row(
-                  children: List.generate(_cards.length, (i) {
-                    final isActive = i == _currentIndex;
-                    final isPast = i < _currentIndex;
-                    return Expanded(
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        height: isActive ? 6 : 4,
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? widget.category.color
-                              : isPast
-                              ? widget.category.color.withValues(alpha: 0.5)
-                              : widget.category.color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(3),
-                          boxShadow: isActive
-                              ? [
-                                  BoxShadow(
-                                    color: widget.category.color.withValues(
-                                      alpha: 0.4,
+              // Colourful, lit, depth-rich background behind everything.
+              _CardsBackdrop(category: widget.category),
+              Column(
+                children: [
+                  // ─── Progress dots ──────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: List.generate(_cards.length, (i) {
+                        final isActive = i == _currentIndex;
+                        final isPast = i < _currentIndex;
+                        return Expanded(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            height: isActive ? 6 : 4,
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? widget.category.color
+                                  : isPast
+                                  ? widget.category.color.withValues(alpha: 0.5)
+                                  : widget.category.color.withValues(
+                                      alpha: 0.15,
                                     ),
-                                    blurRadius: 6,
-                                  ),
-                                ]
-                              : [],
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-
-              // ─── Card Area ──────────────────────────
-              Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  itemCount: _cards.length,
-                  onPageChanged: (index) {
-                    setState(() {
-                      _currentIndex = index;
-                      _isFlipped = false;
-                    });
-                  },
-                  itemBuilder: (context, index) {
-                    final card = _cards[index];
-                    // When the user reaches the last card, mark step complete
-                    if (_isLearningPathMode &&
-                        index == _cards.length - 1 &&
-                        _currentIndex == index) {
-                      _markStepCompleteIfNeeded();
-                    }
-                    return Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 16,
-                          ),
-                          child: _FlipCard(
-                            card: card,
-                            category: widget.category,
-                            isFlipped: _isFlipped && index == _currentIndex,
-                            reducedMotion: ref.watch(
-                              settingsProvider.select((s) => s.reducedMotion),
+                              borderRadius: BorderRadius.circular(3),
+                              boxShadow: isActive
+                                  ? [
+                                      BoxShadow(
+                                        color: widget.category.color.withValues(
+                                          alpha: 0.4,
+                                        ),
+                                        blurRadius: 6,
+                                      ),
+                                    ]
+                                  : [],
                             ),
-                            onFlip: () {
-                              if (index == _currentIndex) {
-                                setState(() => _isFlipped = !_isFlipped);
-                              }
-                            },
-                            onSpeak: () => _speakEnglish(card.wordEnglish),
-                            onSpeakFilipino: () =>
-                                _speakFilipino(card.wordFilipino),
                           ),
-                        )
-                        .animate()
-                        .scale(
-                          begin: const Offset(0.92, 0.92),
-                          end: const Offset(1, 1),
-                          duration: 400.ms,
-                          curve: Curves.easeOutBack,
-                        )
-                        .fadeIn(duration: 300.ms);
-                  },
-                ),
-              ),
-
-              // ─── Bottom Action Bar ──────────────────
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: HCColor.of(context).surface,
-                  border: Border(
-                    top: BorderSide(
-                      color: widget.category.color.withValues(alpha: 0.15),
+                        );
+                      }),
                     ),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 12,
-                      offset: const Offset(0, -4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Prominent, single-tap audio replay — the accessible
-                    // alternative to a shake/motion gesture (motion actuation is
-                    // unreliable for motor-impaired learners and discouraged by
-                    // WCAG 2.1 SC 2.5.4). Both languages are shown explicitly so
-                    // a student who only understands one can hear it directly.
-                    if (ttsEnabled && _cards.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: LanguageReplayBar(
-                          onEnglish: () =>
-                              _speakEnglish(_cards[_currentIndex].wordEnglish),
-                          onFilipino: () => _speakFilipino(
-                            _cards[_currentIndex].wordFilipino,
-                          ),
-                        ),
-                      ),
-                    // Edit / Delete row for custom cards
-                    if (_cards.isNotEmpty && _cards[_currentIndex].isCustom)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: AppActionBar(
-                          children: [
-                            Container(
+
+                  // ─── Card Area ──────────────────────────
+                  Expanded(
+                    child: PageView.builder(
+                      controller: _pageController,
+                      itemCount: _cards.length,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentIndex = index;
+                          _isFlipped = false;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final card = _cards[index];
+                        // When the user reaches the last card, mark step complete
+                        if (_isLearningPathMode &&
+                            index == _cards.length - 1 &&
+                            _currentIndex == index) {
+                          _markStepCompleteIfNeeded();
+                        }
+                        return Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
+                                horizontal: 24,
+                                vertical: 16,
                               ),
-                              decoration: BoxDecoration(
-                                color: AppColors.info.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                AppLocalizations.of(context)!.customCard,
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: AppColors.info,
-                                  fontWeight: FontWeight.w700,
+                              child: _FlipCard(
+                                card: card,
+                                category: widget.category,
+                                isFlipped: _isFlipped && index == _currentIndex,
+                                reducedMotion: ref.watch(
+                                  settingsProvider.select(
+                                    (s) => s.reducedMotion,
+                                  ),
                                 ),
+                                onFlip: () {
+                                  if (index == _currentIndex) {
+                                    setState(() => _isFlipped = !_isFlipped);
+                                  }
+                                },
+                                onSpeak: () => _speakEnglish(card.wordEnglish),
+                                onSpeakFilipino: () =>
+                                    _speakFilipino(card.wordFilipino),
                               ),
-                            ),
-                            _ActionButton(
-                              icon: Icons.edit_rounded,
-                              label: AppLocalizations.of(context)!.edit,
-                              color: AppColors.info,
-                              onTap: () => _editCard(_cards[_currentIndex]),
-                            ),
-                            _ActionButton(
-                              icon: Icons.delete_rounded,
-                              label: AppLocalizations.of(context)!.delete,
-                              color: AppColors.error,
-                              onTap: () => _deleteCard(_cards[_currentIndex]),
-                            ),
-                          ],
+                            )
+                            .animate()
+                            .scale(
+                              begin: const Offset(0.92, 0.92),
+                              end: const Offset(1, 1),
+                              duration: 400.ms,
+                              curve: Curves.easeOutBack,
+                            )
+                            .fadeIn(duration: 300.ms);
+                      },
+                    ),
+                  ),
+
+                  // ─── Bottom Action Bar ──────────────────
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: HCColor.of(context).surface,
+                      border: Border(
+                        top: BorderSide(
+                          color: widget.category.color.withValues(alpha: 0.15),
                         ),
                       ),
-                    AppActionBar(
-                      alignment: WrapAlignment.spaceEvenly,
-                      children: [
-                        _ActionButton(
-                          icon: Icons.arrow_back_rounded,
-                          label: AppLocalizations.of(context)!.previous,
-                          onTap: _prevCard,
-                          enabled: _currentIndex > 0,
-                        ),
-                        _ActionButton(
-                          icon: Icons.sign_language_rounded,
-                          label: AppLocalizations.of(context)!.fsl,
-                          color: AppColors.secondary,
-                          onTap: () => _showFslVideo(_cards[_currentIndex]),
-                        ),
-                        // "Show Me" action demo — only appears for cards that
-                        // have a clip configured (e.g. action words). Dormant
-                        // builds simply never show it, so the bar is unchanged.
-                        if (ActionClipService.hasClip(_cards[_currentIndex]))
-                          _ActionButton(
-                            icon: Icons.play_circle_fill_rounded,
-                            label: 'Show Me',
-                            color: AppColors.secondaryDark,
-                            onTap: () => showActionClipSheet(
-                              context,
-                              _cards[_currentIndex],
-                            ),
-                          ),
-                        // "Examples" gallery — appears for cards enriched with
-                        // several real-world photos (e.g. colors, numbers).
-                        if (FlashcardPhotoService.hasGallery(
-                          _cards[_currentIndex],
-                        ))
-                          _ActionButton(
-                            icon: Icons.photo_library_rounded,
-                            label: 'Examples',
-                            color: AppColors.accentDark,
-                            onTap: () => showExamplesGallery(
-                              context,
-                              _cards[_currentIndex],
-                            ),
-                          ),
-                        _ActionButton(
-                          icon: Icons.flip_rounded,
-                          label: AppLocalizations.of(context)!.flip,
-                          color: AppColors.accent,
-                          onTap: () => setState(() => _isFlipped = !_isFlipped),
-                        ),
-                        _ActionButton(
-                          icon: Icons.arrow_forward_rounded,
-                          label: AppLocalizations.of(context)!.next,
-                          onTap: _nextCard,
-                          enabled: _currentIndex < _cards.length - 1,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 12,
+                          offset: const Offset(0, -4),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Prominent, single-tap audio replay — the accessible
+                        // alternative to a shake/motion gesture (motion actuation is
+                        // unreliable for motor-impaired learners and discouraged by
+                        // WCAG 2.1 SC 2.5.4). Both languages are shown explicitly so
+                        // a student who only understands one can hear it directly.
+                        if (ttsEnabled && _cards.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: LanguageReplayBar(
+                              onEnglish: () => _speakEnglish(
+                                _cards[_currentIndex].wordEnglish,
+                              ),
+                              onFilipino: () => _speakFilipino(
+                                _cards[_currentIndex].wordFilipino,
+                              ),
+                            ),
+                          ),
+                        // Edit / Delete row for custom cards
+                        if (_cards.isNotEmpty && _cards[_currentIndex].isCustom)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: AppActionBar(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.info.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    AppLocalizations.of(context)!.customCard,
+                                    style: AppTypography.labelSmall.copyWith(
+                                      color: AppColors.info,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                _ActionButton(
+                                  icon: Icons.edit_rounded,
+                                  label: AppLocalizations.of(context)!.edit,
+                                  color: AppColors.info,
+                                  onTap: () => _editCard(_cards[_currentIndex]),
+                                ),
+                                _ActionButton(
+                                  icon: Icons.delete_rounded,
+                                  label: AppLocalizations.of(context)!.delete,
+                                  color: AppColors.error,
+                                  onTap: () =>
+                                      _deleteCard(_cards[_currentIndex]),
+                                ),
+                              ],
+                            ),
+                          ),
+                        AppActionBar(
+                          alignment: WrapAlignment.spaceEvenly,
+                          children: [
+                            _ActionButton(
+                              icon: Icons.arrow_back_rounded,
+                              label: AppLocalizations.of(context)!.previous,
+                              onTap: _prevCard,
+                              enabled: _currentIndex > 0,
+                            ),
+                            _ActionButton(
+                              icon: Icons.sign_language_rounded,
+                              label: AppLocalizations.of(context)!.fsl,
+                              color: AppColors.secondary,
+                              onTap: () => _showFslVideo(_cards[_currentIndex]),
+                            ),
+                            // "Show Me" action demo — only appears for cards that
+                            // have a clip configured (e.g. action words). Dormant
+                            // builds simply never show it, so the bar is unchanged.
+                            if (ActionClipService.hasClip(
+                              _cards[_currentIndex],
+                            ))
+                              _ActionButton(
+                                icon: Icons.play_circle_fill_rounded,
+                                label: 'Show Me',
+                                color: AppColors.secondaryDark,
+                                onTap: () => showActionClipSheet(
+                                  context,
+                                  _cards[_currentIndex],
+                                ),
+                              ),
+                            // "Examples" gallery — appears for cards enriched with
+                            // several real-world photos (e.g. colors, numbers).
+                            if (FlashcardPhotoService.hasGallery(
+                              _cards[_currentIndex],
+                            ))
+                              _ActionButton(
+                                icon: Icons.photo_library_rounded,
+                                label: 'Examples',
+                                color: AppColors.accentDark,
+                                onTap: () => showExamplesGallery(
+                                  context,
+                                  _cards[_currentIndex],
+                                ),
+                              ),
+                            _ActionButton(
+                              icon: Icons.flip_rounded,
+                              label: AppLocalizations.of(context)!.flip,
+                              color: AppColors.accent,
+                              onTap: () =>
+                                  setState(() => _isFlipped = !_isFlipped),
+                            ),
+                            _ActionButton(
+                              icon: Icons.arrow_forward_rounded,
+                              label: AppLocalizations.of(context)!.next,
+                              onTap: _nextCard,
+                              enabled: _currentIndex < _cards.length - 1,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -563,76 +606,13 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     setState(() => _isLoadingFsl = false);
 
     if (videoSource == null) {
-      // No video available for this word — show a friendly message
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (context) => Container(
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: HCColor.of(context).surface,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(28),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 48,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: HCColor.of(
-                    context,
-                  ).textSecondary.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                width: 80,
-                height: 80,
-                decoration: const BoxDecoration(
-                  color: AppColors.secondaryLight,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.sign_language_rounded,
-                  size: context.scaleIcon(40),
-                  color: AppColors.secondaryDark,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                AppLocalizations.of(context)!.filipinoSignLanguage,
-                style: AppTypography.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'No FSL video available yet for "${card.wordEnglish}".',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: HCColor.of(context).textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(AppLocalizations.of(context)!.gotIt),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      // No video available for this word — show a friendly message.
+      showFslUnavailableSheet(context, wordEnglish: card.wordEnglish);
       return;
     }
 
-    // Video exists — show it in a bottom sheet with a built-in player
-    // Record the view for analytics
+    // Video exists — show it in a bottom sheet with a built-in player.
+    // Record the view for analytics.
     final activeProfile = ref.read(profileProvider);
     if (activeProfile != null) {
       HiveService.recordFslVideoView(
@@ -641,14 +621,10 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
         card.wordEnglish,
       );
     }
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _FslVideoSheet(
-        videoSource: videoSource,
-        wordEnglish: card.wordEnglish,
-      ),
+    showFslVideoSheet(
+      context,
+      videoSource: videoSource,
+      wordEnglish: card.wordEnglish,
     );
   }
 }
@@ -1170,6 +1146,114 @@ class _FlipCard extends StatelessWidget {
   }
 }
 
+// ─── Colourful 3D Backdrop (Cards screen) ─────────────
+// Replaces the old flat 8%-tint wash that read as merely "bright". This
+// layers a diagonal, category-tinted gradient (lit from the top-left) with
+// soft glowing orbs that give the screen real depth and saturation while the
+// white flip cards still float clearly on top. Fully static — no motion — so
+// it stays calm for reduced-motion / sensory-sensitive learners, and blends
+// every tint onto the opaque surface so it never composites over black.
+class _CardsBackdrop extends StatelessWidget {
+  final FlashcardCategory category;
+
+  const _CardsBackdrop({required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    final base = Theme.of(context).colorScheme.surface;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final light = category.color; // pale pastel
+    final deep = category.darkColor; // rich, saturated tone
+
+    Color tint(Color c, double a) =>
+        Color.alphaBlend(c.withValues(alpha: a), base);
+
+    return Positioned.fill(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            // Brighter, more saturated than the old 0.08 wash, and shaded
+            // corner-to-corner so the surface reads as lit rather than flat.
+            colors: isDark
+                ? [tint(light, 0.16), base, tint(deep, 0.20)]
+                : [tint(light, 0.30), tint(light, 0.08), tint(deep, 0.22)],
+            stops: const [0.0, 0.55, 1.0],
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Top-left glow — the implied light source.
+            Positioned(
+              top: -90,
+              left: -70,
+              child: _GlowOrb(
+                color: light,
+                size: 280,
+                intensity: isDark ? 0.22 : 0.45,
+              ),
+            ),
+            // Bottom-right deep accent — grounds the screen with depth.
+            Positioned(
+              bottom: -110,
+              right: -80,
+              child: _GlowOrb(
+                color: deep,
+                size: 320,
+                intensity: isDark ? 0.20 : 0.34,
+              ),
+            ),
+            // Smaller mid-right accent for extra dimension.
+            Positioned(
+              top: 160,
+              right: -60,
+              child: _GlowOrb(
+                color: light,
+                size: 170,
+                intensity: isDark ? 0.14 : 0.26,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// A soft circular glow built from a radial gradient — cheaper than a blur
+// filter and produces the same diffuse, dimensional "orb" effect.
+class _GlowOrb extends StatelessWidget {
+  final Color color;
+  final double size;
+  final double intensity;
+
+  const _GlowOrb({
+    required this.color,
+    required this.size,
+    required this.intensity,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              color.withValues(alpha: intensity),
+              color.withValues(alpha: 0),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Mini Listen Button (card back) ───────────────────
 class _MiniListenButton extends StatelessWidget {
   final String label;
@@ -1285,280 +1369,6 @@ class _ActionButton extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ─── FSL Video Bottom Sheet ───────────────────────────
-class _FslVideoSheet extends StatefulWidget {
-  final VideoSource videoSource;
-  final String wordEnglish;
-
-  const _FslVideoSheet({required this.videoSource, required this.wordEnglish});
-
-  @override
-  State<_FslVideoSheet> createState() => _FslVideoSheetState();
-}
-
-class _FslVideoSheetState extends State<_FslVideoSheet> {
-  late VideoPlayerController _controller;
-  bool _initialized = false;
-  bool _hasError = false;
-  double _playbackSpeed = 1.0;
-
-  static const _speeds = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = widget.videoSource.createController()
-      ..initialize()
-          .then((_) {
-            if (mounted) {
-              setState(() => _initialized = true);
-              _controller.setLooping(true);
-              _controller.play();
-            }
-          })
-          .catchError((_) {
-            if (mounted) setState(() => _hasError = true);
-          });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hc = HCColor.of(context);
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: hc.surface,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(28),
-          topRight: Radius.circular(28),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          Container(
-            width: 48,
-            height: 4,
-            decoration: BoxDecoration(
-              color: hc.textSecondary.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Title
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.sign_language_rounded,
-                color: AppColors.secondaryDark,
-                size: context.scaleIcon(24),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'FSL — ${widget.wordEnglish}',
-                style: AppTypography.titleLarge,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Video player
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: AspectRatio(
-              aspectRatio: _initialized
-                  ? _controller.value.aspectRatio
-                  : 16 / 9,
-              child: _hasError
-                  ? Container(
-                      color: AppColors.surfaceVariant,
-                      child: Center(
-                        child: Text(
-                          AppLocalizations.of(context)!.unableToLoadVideo,
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: hc.textSecondary,
-                          ),
-                        ),
-                      ),
-                    )
-                  : _initialized
-                  ? GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _controller.value.isPlaying
-                              ? _controller.pause()
-                              : _controller.play();
-                        });
-                      },
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          VideoPlayer(_controller),
-                          if (!_controller.value.isPlaying)
-                            Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.play_arrow_rounded,
-                                color: Colors.white,
-                                size: context.scaleIcon(36),
-                              ),
-                            ),
-                          // Fullscreen button
-                          Positioned(
-                            right: 8,
-                            bottom: 8,
-                            child: GestureDetector(
-                              onTap: () async {
-                                final wasPlaying = _controller.value.isPlaying;
-                                final pos = _controller.value.position;
-                                _controller.pause();
-                                final returnPos = await openFslFullscreenPlayer(
-                                  context,
-                                  videoSource: widget.videoSource,
-                                  wordEnglish: widget.wordEnglish,
-                                  startPosition: pos,
-                                );
-                                if (returnPos != null && mounted) {
-                                  _controller.seekTo(returnPos);
-                                }
-                                if (wasPlaying && mounted) {
-                                  _controller.play();
-                                }
-                              },
-                              child: Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.5),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.fullscreen_rounded,
-                                  color: Colors.white,
-                                  size: context.scaleIcon(22),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Container(
-                      color: AppColors.surfaceVariant,
-                      child: ShimmerLoading(
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.play_circle_outline_rounded,
-                                size: context.scaleIcon(48),
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant
-                                    .withValues(alpha: 0.3),
-                              ),
-                              const SizedBox(height: 8),
-                              const ShimmerBox(width: 100, height: 12),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Playback speed selector
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.speed_rounded,
-                size: context.scaleIcon(18),
-                color: hc.textSecondary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                AppLocalizations.of(context)!.speed,
-                style: AppTypography.labelSmall.copyWith(
-                  color: hc.textSecondary,
-                ),
-              ),
-              const SizedBox(width: 4),
-              ..._speeds.map((speed) {
-                final isActive = _playbackSpeed == speed;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() => _playbackSpeed = speed);
-                      _controller.setPlaybackSpeed(speed);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? AppColors.secondary
-                            : hc.surfaceVariant,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${speed}x',
-                        style: AppTypography.labelSmall.copyWith(
-                          fontSize: 10,
-                          fontWeight: isActive
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: isActive ? Colors.white : hc.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Replay & Close — equal-width cells that stack on a narrow width
-          // (or XL font scale) instead of overflowing horizontally.
-          AppActionBar(
-            equalWidth: true,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  _controller.seekTo(Duration.zero);
-                  _controller.play();
-                },
-                icon: const Icon(Icons.replay_rounded),
-                label: Text(AppLocalizations.of(context)!.replay),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(AppLocalizations.of(context)!.close),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

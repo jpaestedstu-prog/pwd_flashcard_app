@@ -59,8 +59,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _showLoginRewardIfNeeded(String profileId) async {
     // Skip daily login reward when stars feature is disabled (control group)
-    final starsEnabled =
-        ref.read(gamificationFeatureProvider(GamificationFeature.stars));
+    final starsEnabled = ref.read(
+      gamificationFeatureProvider(GamificationFeature.stars),
+    );
     if (!starsEnabled) return;
 
     if (DailyLoginReward.hasClaimedToday(profileId)) return;
@@ -78,10 +79,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _DailyLoginRewardDialog(
-        starsEarned: stars,
-        streakDay: streak,
-      ),
+      builder: (ctx) =>
+          _DailyLoginRewardDialog(starsEarned: stars, streakDay: streak),
     );
   }
 
@@ -102,53 +101,61 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return AnimatedGradientBackground(
       child: Stack(
-      children: [
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          body: SafeArea(
-            child: CustomScrollView(
-              slivers: [
-                // ─── App Bar ──────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
-                    child: Row(
-                      children: [
-                        ProfileAvatar(profile: profile, radius: 24),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Semantics(
-                                    header: true,
-                                    child: Text(
-                                      AppLocalizations.of(context)?.greeting(profile?.name ?? 'Learner') ?? 'Hi, ${profile?.name ?? 'Learner'}! 👋',
-                                      style: AppTypography.headlineLarge
-                                          .copyWith(color: hc.textPrimary),
-                                    ),
-                                  )
-                                  .animate()
-                                  .fadeIn(duration: 400.ms)
-                                  .slideX(begin: -0.05, end: 0),
-                              const SizedBox(height: 4),
-                              Text(
-                                AppLocalizations.of(context)?.readyToLearn ?? 'Ready to learn new words today?',
-                                style: AppTypography.bodyMedium.copyWith(
-                                  color: hc.textSecondary,
+        children: [
+          Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              child: CustomScrollView(
+                slivers: [
+                  // ─── App Bar ──────────────────────────
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
+                      child: Row(
+                        children: [
+                          ProfileAvatar(profile: profile, radius: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Semantics(
+                                      header: true,
+                                      child: Text(
+                                        AppLocalizations.of(context)?.greeting(
+                                              profile?.name ?? 'Learner',
+                                            ) ??
+                                            'Hi, ${profile?.name ?? 'Learner'}! 👋',
+                                        style: AppTypography.headlineLarge
+                                            .copyWith(color: hc.textPrimary),
+                                      ),
+                                    )
+                                    .animate()
+                                    .fadeIn(duration: 400.ms)
+                                    .slideX(begin: -0.05, end: 0),
+                                const SizedBox(height: 4),
+                                Text(
+                                  AppLocalizations.of(context)?.readyToLearn ??
+                                      'Ready to learn new words today?',
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    color: hc.textSecondary,
+                                  ),
+                                ).animate().fadeIn(
+                                  duration: 400.ms,
+                                  delay: 100.ms,
                                 ),
-                              ).animate().fadeIn(
-                                duration: 400.ms,
-                                delay: 100.ms,
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        // Connectivity indicator (visible only when offline)
-                        const ConnectivityIndicator(),
-                        // Settings gear
-                        if (ref.watch(gamificationFeatureProvider(GamificationFeature.shop)))
-                        Semantics(
+                          // Connectivity indicator (visible only when offline)
+                          const ConnectivityIndicator(),
+                          // Settings gear
+                          if (ref.watch(
+                            gamificationFeatureProvider(
+                              GamificationFeature.shop,
+                            ),
+                          ))
+                            Semantics(
                               button: true,
                               label: 'Open star shop',
                               child: IconButton(
@@ -157,252 +164,284 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 iconSize: 28,
                                 color: hc.textSecondary,
                               ),
-                            )
-                            .animate()
-                            .fadeIn(delay: 190.ms),
-                        Semantics(
-                              button: true,
-                              label: 'Open settings',
-                              child: IconButton(
-                                onPressed: () => context.push('/settings'),
-                                icon: const Icon(Icons.settings_rounded),
-                                iconSize: 28,
-                                color: hc.textSecondary,
-                              ),
-                            )
-                            .animate()
-                            .fadeIn(delay: 200.ms)
-                            .rotate(begin: -0.1, end: 0, duration: 500.ms),
-                      ],
+                            ).animate().fadeIn(delay: 190.ms),
+                          Semantics(
+                                button: true,
+                                label: 'Open settings',
+                                child: IconButton(
+                                  onPressed: () => context.push('/settings'),
+                                  icon: const Icon(Icons.settings_rounded),
+                                  iconSize: 28,
+                                  color: hc.textSecondary,
+                                ),
+                              )
+                              .animate()
+                              .fadeIn(delay: 200.ms)
+                              .rotate(begin: -0.1, end: 0, duration: 500.ms),
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                // ─── Streak & Stats Banner ────────────
-                SliverToBoxAdapter(
-                  child: RepaintBoundary(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: padding,
-                        vertical: 20,
+                  // ─── Streak & Stats Banner ────────────
+                  SliverToBoxAdapter(
+                    child: RepaintBoundary(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: padding,
+                          vertical: 20,
+                        ),
+                        child: _StatsBanner(progress: progress)
+                            .animate()
+                            .fadeIn(duration: 400.ms, delay: 150.ms)
+                            .slideY(begin: 0.08, end: 0),
                       ),
-                      child: _StatsBanner(progress: progress)
+                    ),
+                  ),
+
+                  // ─── Player Mode CTA: upgrade to a class ─
+                  if (profile?.isGuestPlayer == true)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
+                        child: _JoinClassCta(
+                          onJoin: () => context.push('/join-class'),
+                        ).animate().fadeIn(duration: 400.ms, delay: 180.ms),
+                      ),
+                    ),
+
+                  // ─── Live Class CTA: join the live activity ─
+                  // Shown when the learner belongs to a classroom or home group,
+                  // so they can jump into a teacher/parent-run live session and
+                  // raise their hand.
+                  if (profile != null &&
+                      !profile.isGuestPlayer &&
+                      (profile.classroomId != null ||
+                          profile.homeGroupId != null))
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
+                        child: _LiveClassCta(
+                          onTap: () => context.push('/live-session'),
+                        ).animate().fadeIn(duration: 400.ms, delay: 180.ms),
+                      ),
+                    ),
+
+                  // ─── XP & Level Bar ───────────────────
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
+                      child: _XpLevelBar(progress: progress)
                           .animate()
-                          .fadeIn(duration: 400.ms, delay: 150.ms)
+                          .fadeIn(duration: 400.ms, delay: 175.ms)
                           .slideY(begin: 0.08, end: 0),
                     ),
                   ),
-                ),
 
-                // ─── Player Mode CTA: upgrade to a class ─
-                if (profile?.isGuestPlayer == true)
+                  // ─── Player Profile / Gamification Dashboard ──
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding:
-                          EdgeInsets.fromLTRB(padding, 0, padding, 16),
-                      child: _JoinClassCta(
-                        onJoin: () => context.push('/join-class'),
-                      ).animate().fadeIn(duration: 400.ms, delay: 180.ms),
-                    ),
-                  ),
-
-                // ─── Live Class CTA: join the live activity ─
-                // Shown when the learner belongs to a classroom or home group,
-                // so they can jump into a teacher/parent-run live session and
-                // raise their hand.
-                if (profile != null &&
-                    !profile.isGuestPlayer &&
-                    (profile.classroomId != null ||
-                        profile.homeGroupId != null))
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding:
-                          EdgeInsets.fromLTRB(padding, 0, padding, 16),
-                      child: _LiveClassCta(
-                        onTap: () => context.push('/live-session'),
-                      ).animate().fadeIn(duration: 400.ms, delay: 180.ms),
-                    ),
-                  ),
-
-                // ─── XP & Level Bar ───────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
-                    child: _XpLevelBar(progress: progress)
-                        .animate()
-                        .fadeIn(duration: 400.ms, delay: 175.ms)
-                        .slideY(begin: 0.08, end: 0),
-                  ),
-                ),
-
-                // ─── Player Profile / Gamification Dashboard ──
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
-                    child: Semantics(
-                      button: true,
-                      label: 'View your Player Profile with stats and rewards',
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => context.push('/gamification-dashboard'),
-                          borderRadius: BorderRadius.circular(16),
-                          child: Ink(
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  AppColors.playerAccent,
-                                  AppColors.playerAccentLight,
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                const Text('🎮', style: TextStyle(fontSize: 24)),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Player Profile',
-                                        style: AppTypography.labelLarge.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
+                      padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
+                      child:
+                          Semantics(
+                                button: true,
+                                label:
+                                    'View your Player Profile with stats and rewards',
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () =>
+                                        context.push('/gamification-dashboard'),
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Ink(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            AppColors.playerAccent,
+                                            AppColors.playerAccentLight,
+                                          ],
                                         ),
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
-                                      Text(
-                                        'View your stats, rewards & achievements',
-                                        style: AppTypography.bodySmall.copyWith(
-                                          color: Colors.white70,
-                                        ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 14,
                                       ),
-                                    ],
+                                      child: Row(
+                                        children: [
+                                          const Text(
+                                            '🎮',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 24,
+                                              height: 1.0,
+                                              leadingDistribution:
+                                                  TextLeadingDistribution.even,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Player Profile',
+                                                  style: AppTypography
+                                                      .labelLarge
+                                                      .copyWith(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                ),
+                                                Text(
+                                                  'View your stats, rewards & achievements',
+                                                  style: AppTypography.bodySmall
+                                                      .copyWith(
+                                                        color: Colors.white70,
+                                                      ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.chevron_right_rounded,
+                                            color: Colors.white70,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right_rounded, color: Colors.white70),
-                              ],
-                            ),
-                          ),
+                              )
+                              .animate()
+                              .fadeIn(duration: 400.ms, delay: 185.ms)
+                              .slideY(begin: 0.08, end: 0),
+                    ),
+                  ),
+
+                  // ─── Daily Word Card (gated by dailyChallenge experiment flag) ──
+                  if (ref.watch(
+                    gamificationFeatureProvider(
+                      GamificationFeature.dailyChallenge,
+                    ),
+                  ))
+                    SliverToBoxAdapter(
+                      child: RepaintBoundary(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: padding),
+                          child: _DailyWordCard()
+                              .animate()
+                              .fadeIn(duration: 400.ms, delay: 200.ms)
+                              .slideY(begin: 0.08, end: 0),
                         ),
                       ),
-                    )
-                    .animate()
-                    .fadeIn(duration: 400.ms, delay: 185.ms)
-                    .slideY(begin: 0.08, end: 0),
-                  ),
-                ),
+                    ),
 
-                // ─── Daily Word Card (gated by dailyChallenge experiment flag) ──
-                if (ref.watch(gamificationFeatureProvider(GamificationFeature.dailyChallenge)))
-                SliverToBoxAdapter(
-                  child: RepaintBoundary(
+                  // ─── Pending Assignments Banner ────────
+                  SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: padding),
-                      child: _DailyWordCard()
-                          .animate()
-                          .fadeIn(duration: 400.ms, delay: 200.ms)
-                          .slideY(begin: 0.08, end: 0),
+                      padding: EdgeInsets.fromLTRB(padding, 20, padding, 0),
+                      child: _PendingAssignmentsBanner(
+                        profileId: profile?.id,
+                      ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
                     ),
                   ),
-                ),
 
-                // ─── Pending Assignments Banner ────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding, 20, padding, 0),
-                    child: _PendingAssignmentsBanner(profileId: profile?.id)
-                        .animate()
-                        .fadeIn(duration: 400.ms, delay: 250.ms),
+                  // ═══════════════════════════════════════
+                  // ─── ▶ Play & Learn (core game hub) ────
+                  // ═══════════════════════════════════════
+                  _sectionHeaderSliver(
+                    context,
+                    padding: padding,
+                    title: 'Play & Learn',
+                    icon: Icons.sports_esports_rounded,
+                    color: AppColors.playerAccent,
                   ),
-                ),
+                  _tileGridSliver(
+                    context,
+                    padding: padding,
+                    columns: _coreColumns(context),
+                    extent: context.hubTileHeight(),
+                    tiles: _coreTiles(context),
+                  ),
 
-                // ═══════════════════════════════════════
-                // ─── ▶ Play & Learn (core game hub) ────
-                // ═══════════════════════════════════════
-                _sectionHeaderSliver(
-                  context,
-                  padding: padding,
-                  title: 'Play & Learn',
-                  icon: Icons.sports_esports_rounded,
-                  color: AppColors.playerAccent,
-                ),
-                _tileGridSliver(
-                  context,
-                  padding: padding,
-                  columns: _coreColumns(context),
-                  extent: context.hubTileHeight(),
-                  tiles: _coreTiles(context),
-                ),
+                  // ═══════════════════════════════════════
+                  // ─── More tools, grouped & organized ───
+                  // ═══════════════════════════════════════
+                  ..._moreSections(context, padding),
 
-                // ═══════════════════════════════════════
-                // ─── More tools, grouped & organized ───
-                // ═══════════════════════════════════════
-                ..._moreSections(context, padding),
-
-                // ─── Categories Header ────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding, 28, padding, 4),
-                    child: SectionHeader(
-                      title: AppLocalizations.of(context)?.vocabularyCategories ?? 'Vocabulary Categories',
-                      onSeeAll: () => context.go('/flashcards'),
+                  // ─── Categories Header ────────────────
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(padding, 28, padding, 4),
+                      child: SectionHeader(
+                        title:
+                            AppLocalizations.of(
+                              context,
+                            )?.vocabularyCategories ??
+                            'Vocabulary Categories',
+                        onSeeAll: () => context.go('/flashcards'),
+                      ),
                     ),
                   ),
-                ),
 
-                // ─── Category Grid ────────────────────
-                SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: padding),
-                  sliver: SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: _coreColumns(context),
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      // Fixed, text-scale-aware cell height instead of an aspect
-                      // ratio: the card fills the cell via Expanded/Flexible, so
-                      // it can never collapse or overflow at large font sizes.
-                      mainAxisExtent: context.hubTileHeight(),
+                  // ─── Category Grid ────────────────────
+                  SliverPadding(
+                    padding: EdgeInsets.symmetric(horizontal: padding),
+                    sliver: SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: _coreColumns(context),
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        // Fixed, text-scale-aware cell height instead of an aspect
+                        // ratio: the card fills the cell via Expanded/Flexible, so
+                        // it can never collapse or overflow at large font sizes.
+                        // Category cards are richer than hub tiles, so they get a
+                        // taller, roomier extent (matching the Flashcards decks).
+                        mainAxisExtent: context.categoryTileHeight(),
+                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final category = FlashcardCategory.values[index];
+                        final catCards = SeedData.getByCategory(category);
+                        return RepaintBoundary(
+                          child:
+                              EnhancedCategoryCard(
+                                    category: category,
+                                    wordCount: catCards.length,
+                                    progress:
+                                        progress.categoryProgress[category
+                                            .label] ??
+                                        0,
+                                    onTap: () => context.go(
+                                      '/flashcards/viewer/${category.index}',
+                                    ),
+                                  )
+                                  .animate()
+                                  .fadeIn(duration: 350.ms)
+                                  .slideY(begin: 0.1, end: 0),
+                        );
+                      }, childCount: FlashcardCategory.values.length),
                     ),
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final category = FlashcardCategory.values[index];
-                      final catCards = SeedData.getByCategory(category);
-                      return RepaintBoundary(
-                        child: EnhancedCategoryCard(
-                              category: category,
-                              wordCount: catCards.length,
-                              progress:
-                                  progress.categoryProgress[category.label] ?? 0,
-                              onTap: () => context.go(
-                                '/flashcards/viewer/${category.index}',
-                              ),
-                            )
-                            .animate()
-                            .fadeIn(duration: 350.ms)
-                            .slideY(begin: 0.1, end: 0),
-                      );
-                    }, childCount: FlashcardCategory.values.length),
                   ),
-                ),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 40)),
-              ],
+                  const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                ],
+              ),
             ),
           ),
-        ),
-        if (_showTutorial)
-          TutorialOverlay(
-            steps: tutorialStepsForRole(profile?.role),
-            onComplete: _completeTutorial,
-          ),
-        // Mascot companion
-        const AnimatedMascotBuddy(),
-        // Seasonal event decorations
-        const SeasonalDecorations(),
-      ],
-    ),
+          if (_showTutorial)
+            TutorialOverlay(
+              steps: tutorialStepsForRole(profile?.role),
+              onComplete: _completeTutorial,
+            ),
+          // Mascot companion
+          const AnimatedMascotBuddy(),
+          // Seasonal event decorations
+          const SeasonalDecorations(),
+        ],
+      ),
     );
   }
 
@@ -412,15 +451,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _coreColumns(BuildContext context) => context.screenWidth >= 1200
       ? 4
       : context.screenWidth >= 600
-          ? 3
-          : 2;
+      ? 3
+      : 2;
 
   /// Columns for the compact "More" tiles.
   int _moreColumns(BuildContext context) => context.screenWidth >= 1200
       ? 5
       : context.screenWidth >= 600
-          ? 4
-          : 3;
+      ? 4
+      : 3;
 
   /// A [SectionHeader] wrapped as a sliver.
   Widget _sectionHeaderSliver(
@@ -489,7 +528,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         subtitle: 'Flashcards',
         gradient: const [
           AppColors.bannerLearningStart,
-          AppColors.bannerLearningEnd
+          AppColors.bannerLearningEnd,
         ],
         onTap: () => context.go('/flashcards'),
       ),
@@ -499,7 +538,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         subtitle: 'Read & answer',
         gradient: const [
           AppColors.bannerStickerStart,
-          AppColors.bannerStickerEnd
+          AppColors.bannerStickerEnd,
         ],
         onTap: () => context.go('/stories'),
       ),
@@ -516,7 +555,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         subtitle: weak > 0 ? '$weak to practice' : 'Review words',
         gradient: const [
           AppColors.bannerSmartReviewStart,
-          AppColors.bannerSmartReviewEnd
+          AppColors.bannerSmartReviewEnd,
         ],
         onTap: () => context.push('/smart-review'),
       ),
@@ -526,7 +565,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         subtitle: 'Your journey',
         gradient: const [
           AppColors.bannerLearningGainStart,
-          AppColors.bannerLearningGainEnd
+          AppColors.bannerLearningGainEnd,
         ],
         onTap: () => context.go('/progress'),
       ),
@@ -539,22 +578,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   List<Widget> _moreSections(BuildContext context, double padding) {
     final columns = _moreColumns(context);
     final extent = context.hubTileHeight(large: false);
-    final stickersOn =
-        ref.watch(gamificationFeatureProvider(GamificationFeature.stickers));
+    final stickersOn = ref.watch(
+      gamificationFeatureProvider(GamificationFeature.stickers),
+    );
 
     HomeTile tile({
       required String emoji,
       required String label,
       required List<Color> gradient,
       required VoidCallback onTap,
-    }) =>
-        HomeTile(
-          emoji: emoji,
-          label: label,
-          gradient: gradient,
-          onTap: onTap,
-          compact: true,
-        );
+    }) => HomeTile(
+      emoji: emoji,
+      label: label,
+      gradient: gradient,
+      onTap: onTap,
+      compact: true,
+    );
 
     return [
       // ── Learning & Study ──
@@ -576,7 +615,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Learning Paths',
             gradient: const [
               AppColors.bannerLearningStart,
-              AppColors.bannerLearningEnd
+              AppColors.bannerLearningEnd,
             ],
             onTap: () => context.push('/learning-paths'),
           ),
@@ -585,7 +624,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Guided Practice',
             gradient: const [
               AppColors.bannerGuidedStart,
-              AppColors.bannerGuidedEnd
+              AppColors.bannerGuidedEnd,
             ],
             onTap: () => context.push('/guided-practice'),
           ),
@@ -594,7 +633,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Hard Words',
             gradient: const [
               AppColors.bannerHardWordsStart,
-              AppColors.bannerHardWordsEnd
+              AppColors.bannerHardWordsEnd,
             ],
             onTap: () => context.push('/hard-words'),
           ),
@@ -603,7 +642,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'What to Study',
             gradient: const [
               AppColors.bannerRecommendStart,
-              AppColors.bannerRecommendEnd
+              AppColors.bannerRecommendEnd,
             ],
             onTap: () => context.push('/recommendations'),
           ),
@@ -612,7 +651,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Word Hunt',
             gradient: const [
               AppColors.bannerWordHuntStart,
-              AppColors.bannerWordHuntEnd
+              AppColors.bannerWordHuntEnd,
             ],
             onTap: () => context.push('/object-scan'),
           ),
@@ -638,7 +677,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Assessments',
             gradient: const [
               AppColors.bannerAssessmentStart,
-              AppColors.bannerAssessmentEnd
+              AppColors.bannerAssessmentEnd,
             ],
             onTap: () => context.push('/assessment'),
           ),
@@ -647,7 +686,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Learning Gains',
             gradient: const [
               AppColors.bannerLearningGainStart,
-              AppColors.bannerLearningGainEnd
+              AppColors.bannerLearningGainEnd,
             ],
             onTap: () => context.push('/learning-gain'),
           ),
@@ -656,7 +695,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'My Portfolio',
             gradient: const [
               AppColors.bannerShowcaseStart,
-              AppColors.bannerShowcaseEnd
+              AppColors.bannerShowcaseEnd,
             ],
             onTap: () => context.push('/showcase'),
           ),
@@ -665,7 +704,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'My Goals',
             gradient: const [
               AppColors.bannerGoalsStart,
-              AppColors.bannerGoalsEnd
+              AppColors.bannerGoalsEnd,
             ],
             onTap: () => context.push('/goals'),
           ),
@@ -674,7 +713,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'How was it?',
             gradient: const [
               AppColors.bannerLearningStart,
-              AppColors.bannerLearningEnd
+              AppColors.bannerLearningEnd,
             ],
             onTap: () => context.push('/smileyometer'),
           ),
@@ -706,7 +745,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Talk Board',
             gradient: const [
               AppColors.bannerCommBoardStart,
-              AppColors.bannerCommBoardEnd
+              AppColors.bannerCommBoardEnd,
             ],
             onTap: () => context.push('/communication-board'),
           ),
@@ -715,7 +754,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'AI Tutor',
             gradient: const [
               AppColors.bannerAiTutorStart,
-              AppColors.bannerAiTutorEnd
+              AppColors.bannerAiTutorEnd,
             ],
             onTap: () => context.push('/ai-tutor'),
           ),
@@ -741,7 +780,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Play Together',
             gradient: const [
               AppColors.playerAccent,
-              AppColors.playerAccentLight
+              AppColors.playerAccentLight,
             ],
             onTap: () => context.push('/multiplayer'),
           ),
@@ -750,7 +789,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Messages',
             gradient: const [
               AppColors.bannerMessagingStart,
-              AppColors.bannerMessagingEnd
+              AppColors.bannerMessagingEnd,
             ],
             onTap: () => context.push('/messages'),
           ),
@@ -759,7 +798,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Peer Collab',
             gradient: const [
               AppColors.bannerPeerStart,
-              AppColors.bannerPeerEnd
+              AppColors.bannerPeerEnd,
             ],
             onTap: () => context.push('/peer-collab'),
           ),
@@ -783,7 +822,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           tile(
             emoji: '😊',
             label: 'Mood Check-In',
-            gradient: const [AppColors.bannerMoodStart, AppColors.bannerMoodEnd],
+            gradient: const [
+              AppColors.bannerMoodStart,
+              AppColors.bannerMoodEnd,
+            ],
             onTap: () => context.push('/mood-check-in'),
           ),
           if (stickersOn)
@@ -792,7 +834,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               label: 'Sticker Album',
               gradient: const [
                 AppColors.bannerStickerStart,
-                AppColors.bannerStickerEnd
+                AppColors.bannerStickerEnd,
               ],
               onTap: () => context.push('/sticker-album'),
             ),
@@ -801,7 +843,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'My Notebook',
             gradient: const [
               AppColors.bannerNotebookStart,
-              AppColors.bannerNotebookEnd
+              AppColors.bannerNotebookEnd,
             ],
             onTap: () => context.push('/notebook'),
           ),
@@ -952,10 +994,7 @@ class _XpLevelBar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: Text(
-                level.emoji,
-                style: const TextStyle(fontSize: 22),
-              ),
+              child: Text(level.emoji, style: const TextStyle(fontSize: 22)),
             ),
             const SizedBox(width: 12),
             // Level info + XP bar
@@ -1022,7 +1061,10 @@ class _DailyLoginRewardDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Show the 7-day reward cycle
-    final rewards = List.generate(7, (i) => DailyLoginReward.rewardForDay(i + 1));
+    final rewards = List.generate(
+      7,
+      (i) => DailyLoginReward.rewardForDay(i + 1),
+    );
     final currentDayIndex = ((streakDay - 1) % 7);
 
     return AlertDialog(
@@ -1056,7 +1098,11 @@ class _DailyLoginRewardDialog extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.star_rounded, color: AppColors.warning, size: 32),
+              const Icon(
+                Icons.star_rounded,
+                color: AppColors.warning,
+                size: 32,
+              ),
               const SizedBox(width: 4),
               Text(
                 '+$starsEarned',
@@ -1083,8 +1129,8 @@ class _DailyLoginRewardDialog extends StatelessWidget {
                       color: isCurrent
                           ? AppColors.warning
                           : isPast
-                              ? AppColors.success.withValues(alpha: 0.3)
-                              : AppColors.border.withValues(alpha: 0.3),
+                          ? AppColors.success.withValues(alpha: 0.3)
+                          : AppColors.border.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(8),
                       border: isCurrent
                           ? Border.all(color: AppColors.warning, width: 2)
@@ -1092,14 +1138,18 @@ class _DailyLoginRewardDialog extends StatelessWidget {
                     ),
                     alignment: Alignment.center,
                     child: isPast
-                        ? const Icon(Icons.check_rounded,
-                            size: 16, color: AppColors.success)
+                        ? const Icon(
+                            Icons.check_rounded,
+                            size: 16,
+                            color: AppColors.success,
+                          )
                         : Text(
                             '${rewards[i]}',
                             style: AppTypography.labelSmall.copyWith(
                               fontWeight: FontWeight.w700,
-                              color:
-                                  isCurrent ? AppColors.textOnPrimary : HCColor.of(context).textSecondary,
+                              color: isCurrent
+                                  ? AppColors.textOnPrimary
+                                  : HCColor.of(context).textSecondary,
                             ),
                           ),
                   ),
@@ -1500,7 +1550,8 @@ class _PendingAssignmentsBanner extends StatelessWidget {
           ? const [AppColors.error, AppColors.sectionAssessment]
           : const [AppColors.info, AppColors.sectionLearning],
       onTap: () => context.push('/assessment'),
-      semanticLabel: '$count pending assessment${count > 1 ? 's' : ''} assigned to you',
+      semanticLabel:
+          '$count pending assessment${count > 1 ? 's' : ''} assigned to you',
     );
   }
 }
@@ -1547,8 +1598,11 @@ class _LiveClassCta extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.arrow_forward_ios_rounded,
-              size: 16, color: HCColor.of(context).textSecondary),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 16,
+            color: HCColor.of(context).textSecondary,
+          ),
         ],
       ),
     );
@@ -1576,16 +1630,14 @@ class _JoinClassCta extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.school_rounded,
-                color: AppColors.primary),
+            child: const Icon(Icons.school_rounded, color: AppColors.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Have a class code?',
-                    style: AppTypography.titleMedium),
+                Text('Have a class code?', style: AppTypography.titleMedium),
                 const SizedBox(height: 2),
                 Text(
                   'Join a class to save your progress and let your teacher follow along.',
@@ -1596,9 +1648,11 @@ class _JoinClassCta extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.arrow_forward_ios_rounded,
-              size: 16,
-              color: HCColor.of(context).textSecondary),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 16,
+            color: HCColor.of(context).textSecondary,
+          ),
         ],
       ),
     );

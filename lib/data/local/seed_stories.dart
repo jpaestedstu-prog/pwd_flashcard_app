@@ -1,5 +1,22 @@
 import '../models/enums.dart';
 
+/// A cartoon ⇄ real-life illustration pair for a tap-to-flip picture on a story
+/// page or quiz item.
+///
+/// Both fields are friendly *share-page* URLs (e.g. `https://postimg.cc/<id>`),
+/// resolved to direct images at display time by `MediaUrlResolver` and cached
+/// by `StoryImageService`. A null pair on a page/question/option simply means
+/// "no flip illustration here", so the rest of the UI is unaffected.
+class StoryImagePair {
+  /// Cartoon (illustrated) version — shown first, before the user taps.
+  final String cartoonUrl;
+
+  /// Real-life photograph — revealed when the user taps the cartoon.
+  final String realUrl;
+
+  const StoryImagePair({required this.cartoonUrl, required this.realUrl});
+}
+
 /// A question within a story for reading comprehension.
 class StoryQuestion {
   final String questionEn;
@@ -19,6 +36,15 @@ class StoryQuestion {
   /// lookups.
   final List<String?> optionFslUrls;
 
+  /// Optional cartoon ⇄ real-life flip illustration for the question prompt.
+  /// Null when this question has no picture.
+  final StoryImagePair? image;
+
+  /// Optional flip illustrations for each answer option, parallel to
+  /// [optionsEn] / [optionsFil]. Empty when unavailable; individual entries may
+  /// be null. Use [imageForOption] for safe, bounds-checked lookups.
+  final List<StoryImagePair?> optionImages;
+
   const StoryQuestion({
     required this.questionEn,
     required this.questionFil,
@@ -27,6 +53,8 @@ class StoryQuestion {
     required this.correctIndex,
     this.fslVideoUrl,
     this.optionFslUrls = const [],
+    this.image,
+    this.optionImages = const [],
   });
 
   /// FSL clip share-page URL for option [index], or null when none is
@@ -34,6 +62,13 @@ class StoryQuestion {
   String? fslForOption(int index) =>
       (index >= 0 && index < optionFslUrls.length)
           ? optionFslUrls[index]
+          : null;
+
+  /// Cartoon/real-life flip pair for option [index], or null when none is
+  /// registered (out of range or explicitly absent).
+  StoryImagePair? imageForOption(int index) =>
+      (index >= 0 && index < optionImages.length)
+          ? optionImages[index]
           : null;
 }
 
@@ -55,6 +90,12 @@ class Story {
   /// for safe, bounds-checked lookups.
   final List<String?> sentenceFslUrls;
 
+  /// Optional cartoon ⇄ real-life flip illustrations, parallel to
+  /// [sentencesEn] / [sentencesFil] — one per story page. Empty when the story
+  /// has no pictures; individual entries may be null. Use [imageForSentence]
+  /// for safe, bounds-checked lookups.
+  final List<StoryImagePair?> sentenceImages;
+
   const Story({
     required this.id,
     required this.titleEn,
@@ -66,6 +107,7 @@ class Story {
     required this.category,
     required this.emoji,
     this.sentenceFslUrls = const [],
+    this.sentenceImages = const [],
   });
 
   /// FSL clip share-page URL for the sentence at [index], or null when none is
@@ -73,6 +115,13 @@ class Story {
   String? fslForSentence(int index) =>
       (index >= 0 && index < sentenceFslUrls.length)
           ? sentenceFslUrls[index]
+          : null;
+
+  /// Cartoon/real-life flip pair for the sentence at [index], or null when none
+  /// is registered (out of range or explicitly absent).
+  StoryImagePair? imageForSentence(int index) =>
+      (index >= 0 && index < sentenceImages.length)
+          ? sentenceImages[index]
           : null;
 }
 
@@ -131,6 +180,30 @@ class SeedStories {
         'https://streamable.com/minocz',
         'https://streamable.com/unpqjf',
       ],
+      // Cartoon ⇄ real-life tap-to-flip picture per story page (parallel to the
+      // sentences above). Tap the cartoon to reveal the real photograph.
+      sentenceImages: [
+        StoryImagePair(
+          cartoonUrl: 'https://postimg.cc/8fcqh6SR',
+          realUrl: 'https://postimg.cc/k6f06ykB',
+        ),
+        StoryImagePair(
+          cartoonUrl: 'https://postimg.cc/dk4bk9gN',
+          realUrl: 'https://postimg.cc/ZBVGBL1z',
+        ),
+        StoryImagePair(
+          cartoonUrl: 'https://postimg.cc/WFXBF7x9',
+          realUrl: 'https://postimg.cc/GBJwrRKP',
+        ),
+        StoryImagePair(
+          cartoonUrl: 'https://postimg.cc/7Cy8ph3L',
+          realUrl: 'https://postimg.cc/wtc8Hz2d',
+        ),
+        StoryImagePair(
+          cartoonUrl: 'https://postimg.cc/jWr0G2Hx',
+          realUrl: 'https://postimg.cc/67NJDqrx',
+        ),
+      ],
       questions: [
         StoryQuestion(
           questionEn: 'Where did Anna visit?',
@@ -143,6 +216,24 @@ class SeedStories {
             'https://streamable.com/tlhmz6', // A
             'https://streamable.com/8m0bqs', // B
             'https://streamable.com/90ksoc', // C
+          ],
+          image: StoryImagePair(
+            cartoonUrl: 'https://postimg.cc/xqjYfXWJ',
+            realUrl: 'https://postimg.cc/14WSf9Qf',
+          ),
+          optionImages: [
+            StoryImagePair(
+              cartoonUrl: 'https://postimg.cc/14WSf9Qy',
+              realUrl: 'https://postimg.cc/rzycVD77',
+            ), // A
+            StoryImagePair(
+              cartoonUrl: 'https://postimg.cc/Ny1YMmsH',
+              realUrl: 'https://postimg.cc/zb8NRvvV',
+            ), // B
+            StoryImagePair(
+              cartoonUrl: 'https://postimg.cc/cKQZHwxy',
+              realUrl: 'https://postimg.cc/f3xZLmzS',
+            ), // C
           ],
         ),
         StoryQuestion(
@@ -157,6 +248,24 @@ class SeedStories {
             'https://streamable.com/lvkgai', // B
             'https://streamable.com/ht2tzz', // C
           ],
+          image: StoryImagePair(
+            cartoonUrl: 'https://postimg.cc/CZFq0WfW',
+            realUrl: 'https://postimg.cc/cr2pVS2V',
+          ),
+          optionImages: [
+            StoryImagePair(
+              cartoonUrl: 'https://postimg.cc/G4PyZc9Y',
+              realUrl: 'https://postimg.cc/YvNWJpjF',
+            ), // A
+            StoryImagePair(
+              cartoonUrl: 'https://postimg.cc/HVy590g3',
+              realUrl: 'https://postimg.cc/3kjvPKWJ',
+            ), // B
+            StoryImagePair(
+              cartoonUrl: 'https://postimg.cc/K44tRSsh',
+              realUrl: 'https://postimg.cc/ctK3jw8y',
+            ), // C
+          ],
         ),
         StoryQuestion(
           questionEn: 'What was the pig doing?',
@@ -169,6 +278,24 @@ class SeedStories {
             'https://streamable.com/l3zy1k', // A
             'https://streamable.com/gh1tsy', // B
             'https://streamable.com/vlzc39', // C
+          ],
+          image: StoryImagePair(
+            cartoonUrl: 'https://postimg.cc/dkNd443B',
+            realUrl: 'https://postimg.cc/rK0GYXSr',
+          ),
+          optionImages: [
+            StoryImagePair(
+              cartoonUrl: 'https://postimg.cc/cgkYXXCc',
+              realUrl: 'https://postimg.cc/w7y5b8hD',
+            ), // A
+            StoryImagePair(
+              cartoonUrl: 'https://postimg.cc/sQHSwwxY',
+              realUrl: 'https://postimg.cc/GH8PSwk9',
+            ), // B
+            StoryImagePair(
+              cartoonUrl: 'https://postimg.cc/w1DXgX4q',
+              realUrl: 'https://postimg.cc/7fG1Q8gg',
+            ), // C
           ],
         ),
       ],

@@ -51,6 +51,36 @@ void main() {
     });
   });
 
+  group('TvCastSession fullscreen ("fill the whole TV")', () {
+    test('defaults to on; toApiJson emits fullscreen:true', () {
+      const session = TvCastSession();
+      expect(session.fullscreenOnTv, isTrue);
+      expect(session.toApiJson()['fullscreen'], isTrue);
+    });
+
+    test('fullscreen flag flows through toApiJson when turned off', () {
+      final json = const TvCastSession(fullscreenOnTv: false).toApiJson();
+      expect(json['fullscreen'], isFalse);
+    });
+
+    test('copyWith toggles fullscreen without disturbing the content', () {
+      const base = TvCastSession(mode: CastMode.story, storyPageIndex: 2);
+      final off = base.copyWith(fullscreenOnTv: false);
+      expect(off.fullscreenOnTv, isFalse);
+      expect(off.mode, CastMode.story);
+      expect(off.storyPageIndex, 2);
+      // And back on, leaving the rest intact.
+      final on = off.copyWith(fullscreenOnTv: true);
+      expect(on.fullscreenOnTv, isTrue);
+      expect(on.storyPageIndex, 2);
+    });
+
+    test('copyWith without fullscreenOnTv preserves the current value', () {
+      const base = TvCastSession(fullscreenOnTv: false);
+      expect(base.copyWith(slideIndex: 1).fullscreenOnTv, isFalse);
+    });
+  });
+
   group('TvCastSession away ("teacher is out")', () {
     test('defaults to not away; toApiJson emits away:false', () {
       const session = TvCastSession();

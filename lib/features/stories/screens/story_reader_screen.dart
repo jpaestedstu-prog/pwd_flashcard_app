@@ -13,7 +13,10 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/app_action_bar.dart';
 import '../../../widgets/app_icon_button.dart';
 import '../../../widgets/language_replay_bar.dart';
+import '../../../widgets/page_turn_switcher.dart';
+import '../../../widgets/square_action_button.dart';
 import '../widgets/story_fsl_button.dart';
+import '../widgets/story_image_flip.dart';
 
 /// Paginated story reader with TTS and vocabulary highlights.
 class StoryReaderScreen extends ConsumerStatefulWidget {
@@ -28,6 +31,10 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
   Story? _story;
   int _currentSentence = 0;
   TtsService? _ttsRef;
+
+  /// Direction of the latest page move — drives which way the page-turn
+  /// transition rotates (Next turns forward, Back turns backward).
+  bool _forward = true;
 
   @override
   void initState() {
@@ -75,13 +82,19 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
 
   void _nextSentence() {
     if (_isLastSentence) return;
-    setState(() => _currentSentence++);
+    setState(() {
+      _forward = true; // turn the page forward
+      _currentSentence++;
+    });
     if (_isLastSentence) _markStoryRead();
   }
 
   void _prevSentence() {
     if (_currentSentence <= 0) return;
-    setState(() => _currentSentence--);
+    setState(() {
+      _forward = false; // turn the page backward
+      _currentSentence--;
+    });
   }
 
   void _goToQuiz() {
@@ -95,14 +108,23 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
   Widget build(BuildContext context) {
     if (_story == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(AppLocalizations.of(context)!.storyNotFound)),
+        appBar: AppBar(
+          title: Text(AppLocalizations.of(context)!.storyNotFound),
+        ),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline_rounded, size: 64, color: HCColor.of(context).textSecondary),
+              Icon(
+                Icons.error_outline_rounded,
+                size: 64,
+                color: HCColor.of(context).textSecondary,
+              ),
               const SizedBox(height: 16),
-              Text(AppLocalizations.of(context)!.storyNotFoundMsg, style: AppTypography.headlineSmall),
+              Text(
+                AppLocalizations.of(context)!.storyNotFoundMsg,
+                style: AppTypography.headlineSmall,
+              ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => context.pop(),
@@ -123,6 +145,12 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     // Sign-language clip for this page, if the story has one. Shown
     // independently of the TTS setting so Deaf learners always have it.
     final sentenceFslUrl = _story!.fslForSentence(_currentSentence);
+    // Cartoon ⇄ real-life flip picture for this page, if the story has one.
+    // Visual aid — shown regardless of the TTS / audio settings.
+    final sentenceImage = _story!.imageForSentence(_currentSentence);
+    final reducedMotion = ref.watch(
+      settingsProvider.select((s) => s.reducedMotion),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -134,295 +162,384 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
         title: Text(_story!.titleEn),
       ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: context.maxContentWidth),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.pagePadding,
-                vertical: 16,
-              ),
-              child: Column(
-                children: [
-                  // Storybook page-dot indicator (fixed at top). Horizontally
-                  // scrollable so any sentence count stays on one row and can
-                  // never overflow.
-                  Semantics(
-                    label:
-                        'Page ${_currentSentence + 1} of ${_story!.sentencesEn.length}',
-                    child: SizedBox(
-                      height: 8,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(
-                            _story!.sentencesEn.length,
-                            (i) => AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              width: i == _currentSentence ? 20 : 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: i <= _currentSentence
-                                    ? _story!.category.color
-                                    : _story!.category.color
-                                        .withValues(alpha: 0.22),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ),
-                        ),
+        child: Column(
+          children: [
+            // ─── Story content (page indicator + card) ───────────────
+            // The whole page sits in one scroll view so it can never force an
+            // overflow: when the bottom bar grows tall (small landscape / XL
+            // font) the content scrolls, and it stays vertically centered
+            // whenever there is room. The English / Filipino / FSL controls
+            // used to live on the card below the sentence; they now sit in the
+            // fixed bottom bar (see [_buildBottomBar]), mirroring how
+            // Flashcards → Cards groups its controls.
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: context.maxContentWidth,
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Page ${_currentSentence + 1} of ${_story!.sentencesEn.length}',
-                    style: AppTypography.labelSmall
-                        .copyWith(color: hc.textSecondary),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // ─── Story Card (centered when it fits, scrolls when not) ──
-                  // Expanded + SingleChildScrollView guarantees the card can
-                  // never force a RenderFlex overflow: extra height becomes
-                  // scrollable instead of overflowing the bottom. The min-height
-                  // box keeps the card vertically centered when there is room.
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) => SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
                         ),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.pagePadding,
+                            vertical: 16,
                           ),
-                          child: Center(
-                            child: Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.all(
-                                context.responsiveTier(
-                                  phone: 20.0,
-                                  tablet: 28.0,
-                                  large: 32.0,
-                                ),
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    hc.surface,
-                                    _story!.category.color.withValues(alpha: 0.04),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(28),
-                                border: hc.hc
-                                    ? Border.all(color: AppColors.hcPrimary, width: 2)
-                                    : Border.all(
-                                        color: _story!.category.color
-                                            .withValues(alpha: 0.3)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _story!.category.color
-                                        .withValues(alpha: 0.08),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 6),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Storybook page-dot indicator. Horizontally
+                              // scrollable so any sentence count stays on one
+                              // row and can never overflow.
+                              Semantics(
+                                label:
+                                    'Page ${_currentSentence + 1} of ${_story!.sentencesEn.length}',
+                                child: SizedBox(
+                                  height: 8,
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    physics: const BouncingScrollPhysics(),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: List.generate(
+                                        _story!.sentencesEn.length,
+                                        (i) => AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 250,
+                                          ),
+                                          margin: const EdgeInsets.symmetric(
+                                            horizontal: 3,
+                                          ),
+                                          width: i == _currentSentence ? 20 : 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: i <= _currentSentence
+                                                ? _story!.category.color
+                                                : _story!.category.color
+                                                      .withValues(alpha: 0.22),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ],
+                                ),
                               ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Emoji
-                                  Container(
+                              const SizedBox(height: 10),
+                              Text(
+                                'Page ${_currentSentence + 1} of ${_story!.sentencesEn.length}',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: hc.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // ─── Story Card ───────────────────────────
+                              // The whole card turns like a storybook page on
+                              // navigation — Next turns it forward, Back turns
+                              // it backward. The per-sentence KeyedSubtree is
+                              // what triggers each turn.
+                              PageTurnSwitcher(
+                                forward: _forward,
+                                reducedMotion: reducedMotion,
+                                child: KeyedSubtree(
+                                  key: ValueKey(_currentSentence),
+                                  child: Container(
+                                    width: double.infinity,
                                     padding: EdgeInsets.all(
-                                      context.scaledHeightCapped(16),
+                                      context.responsiveTier(
+                                        phone: 20.0,
+                                        tablet: 28.0,
+                                        large: 32.0,
+                                      ),
                                     ),
                                     decoration: BoxDecoration(
-                                      color: _story!.category.color
-                                          .withValues(alpha: 0.1),
-                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          hc.surface,
+                                          _story!.category.color.withValues(
+                                            alpha: 0.04,
+                                          ),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(28),
+                                      border: hc.hc
+                                          ? Border.all(
+                                              color: AppColors.hcPrimary,
+                                              width: 2,
+                                            )
+                                          : Border.all(
+                                              color: _story!.category.color
+                                                  .withValues(alpha: 0.3),
+                                            ),
                                       boxShadow: [
                                         BoxShadow(
                                           color: _story!.category.color
-                                              .withValues(alpha: 0.2),
-                                          blurRadius: 12,
+                                              .withValues(alpha: 0.08),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 6),
                                         ),
                                       ],
                                     ),
-                                    child: Text(
-                                      _story!.emoji,
-                                      style: TextStyle(
-                                        fontSize: context.scaledHeightCapped(
-                                          kidMode
-                                              ? (context.isTablet ? 72 : 60)
-                                              : (context.isTablet ? 56 : 48),
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                      .animate()
-                                      .scale(
-                                        begin: const Offset(0.8, 0.8),
-                                        end: const Offset(1, 1),
-                                        duration: 400.ms,
-                                        curve: Curves.easeOutBack,
-                                      ),
-                                  const SizedBox(height: 24),
-                                  // Sentence — both languages are shown together
-                                  // (English as the main line, the Tagalog
-                                  // translation beneath it), mirroring the
-                                  // Flashcards → Cards layout where the English
-                                  // word sits above its smaller Filipino word.
-                                  AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 300),
-                                    transitionBuilder: (child, animation) =>
-                                        FadeTransition(
-                                      opacity: animation,
-                                      child: SlideTransition(
-                                        position: Tween<Offset>(
-                                          begin: const Offset(0.05, 0),
-                                          end: Offset.zero,
-                                        ).animate(animation),
-                                        child: child,
-                                      ),
-                                    ),
                                     child: Column(
-                                      key: ValueKey(_currentSentence),
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        // English — the main, large line.
-                                        Text(
-                                          sentenceEn,
-                                          style: (kidMode
-                                                  ? AppTypography.headlineMedium
-                                                  : AppTypography.headlineSmall)
-                                              .copyWith(
-                                            height: 1.6,
-                                            fontWeight: FontWeight.w600,
+                                        // Emoji
+                                        Container(
+                                          padding: EdgeInsets.all(
+                                            context.scaledHeightCapped(16),
                                           ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        const SizedBox(height: 10),
-                                        // Tagalog translation — secondary, in the
-                                        // category accent colour, like the
-                                        // flashcard card's Filipino word.
-                                        Text(
-                                          sentenceFil,
-                                          style: (kidMode
-                                                  ? AppTypography.titleMedium
-                                                  : AppTypography.bodyLarge)
-                                              .copyWith(
-                                            color: _story!.category.darkColor,
-                                            fontWeight: FontWeight.w600,
-                                            height: 1.5,
+                                          decoration: BoxDecoration(
+                                            color: _story!.category.color
+                                                .withValues(alpha: 0.1),
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: _story!.category.color
+                                                    .withValues(alpha: 0.2),
+                                                blurRadius: 12,
+                                              ),
+                                            ],
                                           ),
-                                          textAlign: TextAlign.center,
+                                          child: Text(
+                                            _story!.emoji,
+                                            style: TextStyle(
+                                              fontSize: context
+                                                  .scaledHeightCapped(
+                                                    kidMode
+                                                        ? (context.isTablet
+                                                              ? 72
+                                                              : 60)
+                                                        : (context.isTablet
+                                                              ? 56
+                                                              : 48),
+                                                  ),
+                                            ),
+                                          ),
+                                        ).animate().scale(
+                                          begin: const Offset(0.8, 0.8),
+                                          end: const Offset(1, 1),
+                                          duration: 400.ms,
+                                          curve: Curves.easeOutBack,
                                         ),
+                                        const SizedBox(height: 24),
+                                        // Both languages stacked (English as the
+                                        // main line, the Tagalog translation
+                                        // beneath). The page-turn transition now
+                                        // animates the whole card on navigation, so
+                                        // this no longer needs its own per-sentence
+                                        // switcher.
+                                        Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            // English — the main, large line.
+                                            Text(
+                                              sentenceEn,
+                                              style:
+                                                  (kidMode
+                                                          ? AppTypography
+                                                                .headlineMedium
+                                                          : AppTypography
+                                                                .headlineSmall)
+                                                      .copyWith(
+                                                        height: 1.6,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            const SizedBox(height: 10),
+                                            // Tagalog translation — secondary, in
+                                            // the category accent colour, like the
+                                            // flashcard card's Filipino word.
+                                            Text(
+                                              sentenceFil,
+                                              style:
+                                                  (kidMode
+                                                          ? AppTypography
+                                                                .titleMedium
+                                                          : AppTypography
+                                                                .bodyLarge)
+                                                      .copyWith(
+                                                        color: _story!
+                                                            .category
+                                                            .darkColor,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        height: 1.5,
+                                                      ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
+                                        ),
+                                        // Cartoon ⇄ real-life tap-to-flip picture
+                                        // for this page. Tap the cartoon to reveal
+                                        // the real photograph (and back), with a
+                                        // caption that updates to match the face.
+                                        if (sentenceImage != null) ...[
+                                          const SizedBox(height: 24),
+                                          StoryImageFlip(
+                                            key: ValueKey(
+                                              'story_${_story!.id}_page$_currentSentence',
+                                            ),
+                                            pair: sentenceImage,
+                                            cacheKey:
+                                                '${_story!.id}_page$_currentSentence',
+                                            color: _story!.category.color,
+                                            semanticLabel: sentenceEn,
+                                            reducedMotion: reducedMotion,
+                                            maxWidth: context.responsiveTier(
+                                              phone: 320.0,
+                                              tablet: 420.0,
+                                              large: 480.0,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
-                                  // Two-language "read aloud" — the learner can
-                                  // hear this page in either language with one
-                                  // tap; both languages are shown on the page.
-                                  if (ttsEnabled) ...[
-                                    const SizedBox(height: 24),
-                                    LanguageReplayBar(
-                                      onEnglish: () =>
-                                          _speakLang(sentenceEn, filipino: false),
-                                      onFilipino: () => _speakLang(
-                                        sentenceFil,
-                                        filipino: true,
-                                      ),
-                                    ),
-                                  ],
-                                  // Sign-language replay for this page. Always
-                                  // shown when available — independent of TTS —
-                                  // so Deaf learners can watch the page signed.
-                                  if (sentenceFslUrl != null) ...[
-                                    const SizedBox(height: 12),
-                                    StoryFslButton(
-                                      pageUrl: sentenceFslUrl,
-                                      cacheKey:
-                                          'story_${_story!.id}_s$_currentSentence',
-                                      label: sentenceEn,
-                                      secondaryLabel: sentenceFil,
-                                      color: _story!.category.color,
-                                    ),
-                                  ],
-                                ],
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ),
                     ),
                   ),
-
-                  const SizedBox(height: 16),
-
-                  // ─── Navigation Controls (fixed at bottom) ─────────────
-                  // Equal-width cells that stack instead of overflowing when a
-                  // narrow split-screen or XL font scale would push them past
-                  // the viewport width.
-                  AppActionBar(
-                    equalWidth: true,
-                    spacing: 16,
-                    children: [
-                      // Previous
-                      OutlinedButton.icon(
-                        onPressed: _currentSentence > 0 ? _prevSentence : null,
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        label: Text(
-                          AppLocalizations.of(context)!.back,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        style: kidMode
-                            ? OutlinedButton.styleFrom(
-                                minimumSize: const Size(0, 60))
-                            : null,
-                      ),
-                      // Next or Quiz
-                      if (_isLastSentence)
-                        ElevatedButton.icon(
-                          onPressed: _goToQuiz,
-                          icon: const Icon(Icons.quiz_rounded),
-                          label: Text(
-                            AppLocalizations.of(context)!.takeQuiz,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _story!.category.color,
-                            foregroundColor: Colors.white,
-                            minimumSize: kidMode ? const Size(0, 60) : null,
-                          ),
-                        )
-                      else
-                        ElevatedButton.icon(
-                          onPressed: _nextSentence,
-                          icon: const Icon(Icons.arrow_forward_rounded),
-                          label: Text(
-                            AppLocalizations.of(context)!.next,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          style: kidMode
-                              ? ElevatedButton.styleFrom(
-                                  minimumSize: const Size(0, 60))
-                              : null,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
+                ),
               ),
             ),
+
+            // ─── Bottom navigation bar (mirrors Flashcards → Cards) ────
+            // English / Filipino read-aloud + Watch-in-FSL live here now,
+            // stacked above the Back / Next-or-Quiz row, instead of on the
+            // story card.
+            _buildBottomBar(
+              context,
+              hc,
+              ttsEnabled: ttsEnabled,
+              sentenceEn: sentenceEn,
+              sentenceFil: sentenceFil,
+              sentenceFslUrl: sentenceFslUrl,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The fixed bottom navigation bar.
+  ///
+  /// Mirroring Flashcards → Cards, the English / Filipino read-aloud pair and
+  /// the Watch-in-FSL control sit here (not on the card), stacked above the
+  /// Back / Next-or-Quiz row. Overflow-safe at every size and font scale: the
+  /// replay bar and nav row use [AppActionBar]'s equal-width wrapping, the FSL
+  /// chip is a single full-width button, and the bar is constrained to the
+  /// content width so the controls never stretch awkwardly on a wide tablet.
+  Widget _buildBottomBar(
+    BuildContext context,
+    HCColor hc, {
+    required bool ttsEnabled,
+    required String sentenceEn,
+    required String sentenceFil,
+    required String? sentenceFslUrl,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        context.pagePadding,
+        12,
+        context.pagePadding,
+        12,
+      ),
+      decoration: BoxDecoration(
+        color: hc.surface,
+        border: Border(
+          top: BorderSide(
+            color: _story!.category.color.withValues(alpha: 0.15),
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: context.maxContentWidth),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Two-language read-aloud — hear this page in either language
+              // with one tap. Hidden when Text-to-Speech is off (e.g. the
+              // hearing preset, which leans on FSL instead of audio).
+              if (ttsEnabled) ...[
+                LanguageReplayBar(
+                  onEnglish: () => _speakLang(sentenceEn, filipino: false),
+                  onFilipino: () => _speakLang(sentenceFil, filipino: true),
+                ),
+                const SizedBox(height: 12),
+              ],
+              // Bottom nav row — square icon-over-label buttons
+              // (Back · FSL · Next/Quiz), matching the Flashcards → Cards
+              // bottom bar. Laid out with AppActionBar's wrap so they flow onto
+              // a second line instead of overflowing on a narrow width / XL
+              // font scale.
+              AppActionBar(
+                alignment: WrapAlignment.spaceEvenly,
+                children: [
+                  // Back (←)
+                  SquareActionButton(
+                    icon: Icons.arrow_back_rounded,
+                    label: AppLocalizations.of(context)!.back,
+                    color: _story!.category.color,
+                    enabled: _currentSentence > 0,
+                    onTap: _prevSentence,
+                  ),
+                  // Watch this page signed — shown when available, independent
+                  // of TTS so Deaf learners always have it.
+                  if (sentenceFslUrl != null)
+                    StoryFslButton(
+                      square: true,
+                      pageUrl: sentenceFslUrl,
+                      cacheKey: 'story_${_story!.id}_s$_currentSentence',
+                      label: sentenceEn,
+                      secondaryLabel: sentenceFil,
+                      color: _story!.category.color,
+                    ),
+                  // Next (→) or, on the last page, Take Quiz.
+                  if (_isLastSentence)
+                    SquareActionButton(
+                      icon: Icons.quiz_rounded,
+                      label: AppLocalizations.of(context)!.takeQuiz,
+                      color: _story!.category.color,
+                      onTap: _goToQuiz,
+                    )
+                  else
+                    SquareActionButton(
+                      icon: Icons.arrow_forward_rounded,
+                      label: AppLocalizations.of(context)!.next,
+                      color: _story!.category.color,
+                      onTap: _nextSentence,
+                    ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

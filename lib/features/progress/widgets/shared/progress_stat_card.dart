@@ -48,23 +48,48 @@ class ProgressStatCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: color.withValues(alpha: 0.2)),
           boxShadow: [
+            // Layered: a colour-tinted glow plus a soft neutral drop for depth.
             BoxShadow(
-              color: color.withValues(alpha: 0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
+              color: color.withValues(alpha: 0.18),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+              spreadRadius: -2,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Raised, colour 3D "coin": a domed radial fill, a colour drop
+            // shadow, and a white top highlight lift it off the card.
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  center: const Alignment(-0.3, -0.4),
+                  colors: [
+                    color.withValues(alpha: 0.28),
+                    color.withValues(alpha: 0.14),
+                  ],
+                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
                 boxShadow: [
-                  BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 8),
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.30),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    blurRadius: 3,
+                    offset: const Offset(0, -1),
+                  ),
                 ],
               ),
               child: Icon(icon, color: color, size: 22),

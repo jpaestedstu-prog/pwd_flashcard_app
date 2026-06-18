@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:pwdpwdpwd/core/utils/responsive_utils.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/features/progress/theme/progress_layout.dart';
 import 'package:pwdpwdpwd/features/progress/widgets/shared/category_progress_row.dart';
@@ -165,6 +166,49 @@ void main() {
           ),
         ),
       ),
+    );
+  });
+
+  testWidgets(
+      'Home Vocabulary Categories grid survives the device matrix',
+      (tester) async {
+    // Renders the real Home "Vocabulary Categories" grid: every category at
+    // the production cell height (context.categoryTileHeight()) and the real
+    // responsive column count. This covers the tightest real cell — the narrow
+    // 2-up phone column — end to end, not just a single representative box,
+    // so a regression in the helper or the card's inner layout is caught.
+    await expectNoOverflowAcrossDevices(
+      tester,
+      (context) {
+        final width = MediaQuery.sizeOf(context).width;
+        final columns = width >= 1200
+            ? 4
+            : width >= 600
+                ? 3
+                : 2;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.symmetric(horizontal: context.pagePadding),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            mainAxisExtent: context.categoryTileHeight(),
+          ),
+          itemCount: FlashcardCategory.values.length,
+          itemBuilder: (context, i) => EnhancedCategoryCard(
+            category: FlashcardCategory.values[i],
+            wordCount: 24,
+            progress: 0.66,
+            onTap: () {},
+          ),
+        );
+      },
+      // A grid of every category grows vertically and lives in a scrolling
+      // page, so a scrollable host matches real usage and isolates horizontal
+      // RenderFlex overflow from expected vertical growth.
+      host: LayoutHost.scrollable,
     );
   });
 

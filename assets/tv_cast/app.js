@@ -17,6 +17,9 @@
   var lastVideoUrl = null;
   var lastFlashcardKey = null; // identifies the flashcard currently painted, so
                                // a Flip press animates instead of rebuilding.
+  var lastStoryKey = null;     // identifies the story page currently painted with
+                               // its flip picture, so a "Tap to Flip Animation"
+                               // press animates instead of rebuilding the DOM.
   var failCount = 0;          // consecutive failed /api/state polls
   var reconnecting = false;   // currently showing the "connecting" overlay
   var FAIL_THRESHOLD = 2;     // ~3s of failures before the overlay appears
@@ -528,6 +531,14 @@
       renderStoryFsl(state);
       return;
     }
+    // Pages that ship a cartoon ⇄ real-life picture pair drop the emoji and show
+    // BOTH pictures as a tap-to-flip card — the TV analog of the in-app Stories
+    // illustration. Pages / stories without a pair keep the classic emoji page.
+    var img = story.image;
+    if (img && img.available && img.cartoonUrl && img.realUrl) {
+      renderStoryImage(state);
+      return;
+    }
     setStage(
       '<div class="story">' +
       '<div class="story-emoji">' + escapeHtml(story.emoji) + '</div>' +
@@ -539,6 +550,96 @@
       '</div>'
     );
     lastVideoUrl = null;
+    lastStoryKey = null; // next flip-picture page rebuilds from scratch
+  }
+
+  // A story page showing the cartoon ⇄ real-life flip picture instead of the
+  // emoji — the TV counterpart of the in-app Stories "tap to flip" illustration.
+  // Both faces are pictures resolved + cached by the server (/api/story-image):
+  // the cartoon is the front face (shown first) and the real photo the back.
+  // Which face shows is driven by the phone's "Tap to Flip Animation (Cartoon ↔
+  // Picture)" button (state.storyImageFlipped), so the flip works on ANY
+  // receiver — including TVs you can't touch — and the 3D flip animates when it
+  // changes. A new page does a full rebuild (and always starts on the cartoon);
+  // when only the flip flag changes for the SAME page we toggle the class on the
+  // existing card so the rotation animates instead of snapping. The flip motion
+  // lives in style.css, so old TV browsers / reduced-motion / Calm degrade to a
+  // clean cross-fade or static picture.
+  function renderStoryImage(state) {
+    var story = state.story;
+    var img = story.image;
+    var flipped = !!state.storyImageFlipped;
+    // Identifies the page (story + page index) so a flip press (same key)
+    // animates via a class toggle instead of rebuilding the DOM.
+    var key = (story.titleEn || '') + '#' + story.pageIndex;
+
+    // Same page re-rendering (typically the teacher pressed the flip button):
+    // just sync the is-flipped class so the CSS transition animates. A full
+    // rebuild would drop the animation. Guarded on the flip element still being
+    // present (it isn't after an FSL / mode switch → falls through to a rebuild).
+    if (key === lastStoryKey) {
+      var flipEl = document.getElementById('story-flip');
+      var backEl = document.getElementById('story-real');
+      if (flipEl && backEl) {
+        if (flipped && !backEl.style.backgroundImage) {
+          backEl.style.backgroundImage = 'url("' + img.realUrl + '")';
+        }
+        flipEl.className = flipped ? 'story-flip is-flipped' : 'story-flip';
+        return;
+      }
+    }
+
+    setStage(
+      '<div class="story">' +
+      '<div class="story-pic">' +
+      '<div class="story-flip" id="story-flip">' +
+      '<div class="story-flip-face story-flip-front" id="story-cartoon"></div>' +
+      '<div class="story-flip-face story-flip-back" id="story-real"></div>' +
+      '</div>' +
+      '</div>' +
+      '<h1 class="story-title">' + escapeHtml(story.titleEn) + '</h1>' +
+      '<p class="story-text-en">' + escapeHtml(story.textEn) + '</p>' +
+      (story.textFil
+        ? '<p class="story-text-fil">' + escapeHtml(story.textFil) + '</p>'
+        : '') +
+      '</div>'
+    );
+    lastVideoUrl = null;
+    lastStoryKey = key;
+    applyStoryImages(img.cartoonUrl, img.realUrl, flipped);
+  }
+
+  // Loads both faces of the story flip picture: the cartoon paints onto the
+  // front face and the real photo onto the back, so the reveal is instant when
+  // the teacher flips. Both are CSS backgrounds (background-size: cover) so they
+  // scale cleanly back to old Android WebKit and animated GIFs animate too. A
+  // failed load just leaves that face's neutral tint; the page text stays
+  // readable. `flipped` is normally false on a fresh page (the flag resets on
+  // every page change), so this paints the cartoon first with no motion; the
+  // animated flip happens later via the same-page class toggle above.
+  function applyStoryImages(cartoonUrl, realUrl, flipped) {
+    var front = document.getElementById('story-cartoon');
+    var back = document.getElementById('story-real');
+    if (!front || !back) return;
+
+    var c = new Image();
+    c.onload = function () {
+      if (front.parentNode) {
+        front.style.backgroundImage = 'url("' + cartoonUrl + '")';
+      }
+    };
+    c.onerror = function () { /* keep the neutral tint */ };
+    c.src = cartoonUrl;
+
+    var r = new Image();
+    r.onload = function () {
+      if (back.parentNode) back.style.backgroundImage = 'url("' + realUrl + '")';
+    };
+    r.onerror = function () { /* keep the neutral tint */ };
+    r.src = realUrl;
+
+    var flip = document.getElementById('story-flip');
+    if (flip) flip.className = flipped ? 'story-flip is-flipped' : 'story-flip';
   }
 
   // Plays the current story page's FSL sign-language video across the whole
@@ -816,6 +917,10 @@
   function render(state) {
     lastState = state;
     applyTheme(state);
+    // Honour the phone's "Fullscreen on TV" toggle (default on for older
+    // payloads that don't send the flag). Browsers that allow it fill now;
+    // stricter ones fill on the next remote OK / tap (see onActivation).
+    applyFullscreen(state.fullscreen !== false);
     // The raised-hands banner, branding, and seasonal accents show in every
     // mode (including "away") so the TV always feels designed and a learner
     // asking for help is always visible.
@@ -897,12 +1002,137 @@
     xhr.send();
   }
 
-  // Unlock TV audio on the first interaction (remote OK / tap / click).
-  if (document.addEventListener) {
-    document.addEventListener('keydown', primeTts, false);
-    document.addEventListener('click', primeTts, false);
-    document.addEventListener('touchstart', primeTts, false);
+  // ─── Fullscreen + auto-fit ("fill any TV, edge to edge") ───────
+  // The teacher controls this from the phone (the "Fullscreen on TV" toggle),
+  // exactly like every other cast control: the phone sends a `fullscreen` flag
+  // in /api/state and the TV enters/exits browser fullscreen to match — no
+  // button is drawn on the TV itself. Two moving parts:
+  //   1. Fullscreen API (every vendor prefix, back to 2013 WebKit) drops the
+  //      browser chrome. Lenient casting devices (most Smart-TV browsers, Fire
+  //      TV Silk, WebView dongles) honour a programmatic request immediately;
+  //      stricter ones (Chrome on Chromecast / Google TV) only enter from a user
+  //      gesture, so we retry on the first remote OK / tap. Exiting never needs a
+  //      gesture, so turning the toggle off always works. TVs with no Fullscreen
+  //      API are already edge-to-edge — we just no-op there.
+  //   2. fitViewport() pins the stage to the real visible pixels on every size
+  //      change, so the layout re-fits instantly after the resolution switches
+  //      (1080p⇄4K), fullscreen toggles, or the window rotates/resizes. This is
+  //      the "automatic screen resizing to fit any TV" and runs regardless of
+  //      the fullscreen flag.
+
+  var wantFs = true;       // phone's desired fullscreen state (default fill)
+  var lastFsWant = null;   // last applied desire — avoids re-spamming requests
+
+  // Cross-browser current-fullscreen element (null when windowed). Includes the
+  // older capital-S WebKit names used by some smart-TV browsers.
+  function fsElement() {
+    return document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.webkitCurrentFullScreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement ||
+      null;
   }
+
+  function fsRequestFn(el) {
+    return el.requestFullscreen ||
+      el.webkitRequestFullscreen ||
+      el.webkitRequestFullScreen ||
+      el.mozRequestFullScreen ||
+      el.msRequestFullscreen ||
+      null;
+  }
+
+  function fsExitFn() {
+    return document.exitFullscreen ||
+      document.webkitExitFullscreen ||
+      document.webkitCancelFullScreen ||
+      document.mozCancelFullScreen ||
+      document.msExitFullscreen ||
+      null;
+  }
+
+  function enterFullscreen() {
+    var el = document.documentElement;
+    var fn = fsRequestFn(el);
+    if (!fn) return;
+    try {
+      // Newer engines return a Promise that rejects when no gesture is active;
+      // swallow it so a blocked attempt stays silent (a later gesture retries).
+      var r = fn.call(el);
+      if (r && typeof r.catch === 'function') r.catch(function () {});
+    } catch (e) {}
+  }
+
+  function exitFullscreen() {
+    var fn = fsExitFn();
+    if (!fn) return;
+    try { fn.call(document); } catch (e) {}
+  }
+
+  // Drives the TV to match the phone's toggle. Only acts on a change of desire
+  // (so a slide change doesn't re-request every poll); the gesture handler
+  // covers stricter browsers that ignored the programmatic enter.
+  function applyFullscreen(want) {
+    wantFs = want;
+    if (want === lastFsWant) return;
+    lastFsWant = want;
+    if (want && !fsElement()) enterFullscreen();
+    else if (!want && fsElement()) exitFullscreen();
+  }
+
+  // Pins the stage to the actual visible pixels. The stylesheet's vw/vh already
+  // scale the content; this is the belt-and-suspenders fit for TV browsers that
+  // miscompute 100vh (some webOS / Tizen builds) and the instant re-fit after a
+  // resolution change or a fullscreen enter/exit, so the frame always reaches
+  // every edge.
+  function fitViewport() {
+    var w = window.innerWidth || document.documentElement.clientWidth || 0;
+    var h = window.innerHeight || document.documentElement.clientHeight || 0;
+    if (!w || !h) return;
+    var s = document.getElementById('stage');
+    if (s) {
+      s.style.width = w + 'px';
+      s.style.height = h + 'px';
+    }
+  }
+
+  // Re-fit whenever fullscreen flips, under every vendor event name so old
+  // smart-TV WebKit fires too.
+  function bindFsChange() {
+    if (!document.addEventListener) return;
+    var names = [
+      'fullscreenchange', 'webkitfullscreenchange',
+      'mozfullscreenchange', 'MSFullscreenChange'
+    ];
+    for (var i = 0; i < names.length; i++) {
+      document.addEventListener(names[i], fitViewport, false);
+    }
+  }
+
+  // A real activation gesture (remote OK / tap / touch) unlocks audio and, on
+  // stricter browsers that blocked the programmatic request, finishes filling
+  // the screen when the phone wants it. Never forces fullscreen when the teacher
+  // turned the toggle off.
+  function onActivation() {
+    primeTts();
+    if (wantFs && !fsElement()) enterFullscreen();
+  }
+
+  if (document.addEventListener) {
+    document.addEventListener('keydown', onActivation, false);
+    document.addEventListener('click', onActivation, false);
+    document.addEventListener('touchstart', onActivation, false);
+  }
+
+  // Fit the current screen and keep re-fitting on every size change (resolution
+  // switch, rotation, fullscreen enter/exit).
+  fitViewport();
+  if (window.addEventListener) {
+    window.addEventListener('resize', fitViewport, false);
+    window.addEventListener('orientationchange', fitViewport, false);
+  }
+  bindFsChange();
 
   // First paint + poll loop
   poll();

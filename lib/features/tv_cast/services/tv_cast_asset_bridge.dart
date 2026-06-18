@@ -8,6 +8,7 @@ import '../../../core/constants/flashcard_emojis.dart';
 import '../../../core/services/action_clip_service.dart';
 import '../../../core/services/flashcard_photo_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
+import '../../../core/services/story_image_service.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../data/local/seed_stories.dart';
 import '../../../data/models/enums.dart';
@@ -250,6 +251,37 @@ class TvCastAssetBridge {
   /// server streams this file off disk (with Range support).
   static Future<File?> storyFslVideoFile(String pageUrl, String cacheKey) =>
       FslAssetsService.cachedVideoFileForUrl(pageUrl, cacheKey: cacheKey);
+
+  // ─── Story cartoon ⇄ real-life flip pictures (mirrors the in-app reader) ──
+  // Each story page can carry a cartoon + real-life picture pair
+  // (`Story.sentenceImages`). The in-app reader shows them as a tap-to-flip
+  // illustration; the TV shows the same pair (cartoon front, real back), with
+  // the flip driven by the phone's "Tap to Flip Animation" button. These mirror
+  // the flashcard photo helpers above, for the Stories mode.
+
+  /// Cartoon ⇄ real-life picture pair for [story]'s page [pageIndex], or null
+  /// when that page has no picture. Bounds-checked via [Story.imageForSentence].
+  /// Gates the cast `story.image` block + the `/api/story-image/...` URLs so the
+  /// TV only drops the emoji when a real picture pair exists.
+  static StoryImagePair? storyImagePair(Story story, int pageIndex) =>
+      story.imageForSentence(pageIndex);
+
+  /// Stable, unique on-disk cache key for a story page's cartoon / real picture.
+  /// MUST match the key the in-app reader's `StoryImageFlip` uses
+  /// (`<storyId>_page<page>_cartoon` / `_real`) so the cast and the reader reuse
+  /// the exact same cached file and display offline.
+  static String storyImageCacheKey(
+    String storyId,
+    int pageIndex, {
+    required bool real,
+  }) => '${storyId}_page${pageIndex}_${real ? 'real' : 'cartoon'}';
+
+  /// On-device cached file for a story picture, resolving its share-page URL
+  /// (e.g. `postimg.cc`) and downloading + caching it on first request. Null when
+  /// [pageUrl] is blank, can't be resolved, or the fetch fails. The TV Cast
+  /// server reads this file's bytes; the in-app reader shares the same cache.
+  static Future<File?> storyImageFile(String pageUrl, String cacheKey) =>
+      StoryImageService.imageFile(pageUrl, cacheKey: cacheKey);
 
   static String _slugify(String input) {
     final buf = StringBuffer();

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import 'depth_3d.dart';
 import 'tilt_3d.dart';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -89,34 +90,46 @@ class _FlashcardNavButtonState extends State<FlashcardNavButton>
           enabled: widget.onPressed != null,
           maxTilt: 0.08,
           pressScale: 1.0,
-          child: Material(
-            color: widget.color,
-            borderRadius: BorderRadius.circular(20),
-            elevation: 4,
-            shadowColor: widget.color.withValues(alpha: 0.35),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-              // FittedBox lets the icon+label shrink as one unit when the
-              // user's Font Size setting (XL = 1.5x) would otherwise push past
-              // the available width.
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(widget.icon, color: Colors.white, size: 26),
-                    const SizedBox(width: 10),
-                    Text(
-                      widget.label,
-                      style: AppTypography.buttonText.copyWith(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
+          // Vibrant 3D fill: a deep gradient with a glossy top sheen and lit
+          // rim (the shared Cards look) lifted by a colour-tinted depth shadow,
+          // replacing the old flat fill. The white icon + label keep strong
+          // contrast against the deep anchor tone in every theme.
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: Depth3D.shadows(Depth3D.anchor(widget.color)),
+            ),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Depth3DFill(color: widget.color, radius: 20),
                 ),
-              ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                  // FittedBox lets the icon+label shrink as one unit when the
+                  // user's Font Size setting (XL = 1.5x) would otherwise push
+                  // past the available width.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(widget.icon, color: Colors.white, size: 26),
+                        const SizedBox(width: 10),
+                        Text(
+                          widget.label,
+                          style: AppTypography.buttonText.copyWith(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -219,38 +232,60 @@ class _GameStartButtonState extends State<GameStartButton>
             child: child,
           ),
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: _onTap,
-            borderRadius: BorderRadius.circular(40),
-            splashColor: Colors.white24,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 18),
-              // FittedBox keeps the icon+label as a single unit that shrinks
-              // when font scaling (1.5x) would otherwise overflow the pill.
-              // Icon size stays 32 (no scaleIcon) to avoid double-scaling.
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(widget.icon, color: Colors.white, size: 32),
-                    const SizedBox(width: 12),
-                    Text(
-                      widget.label,
-                      style: AppTypography.buttonText.copyWith(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
+        // Glossy sheen + lit rim over the gradient pill give it the same
+        // rounded, 3D form as the Cards — added as non-interactive overlays so
+        // the InkWell ripple and tap target are unchanged.
+        child: Stack(
+          children: [
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.all(Radius.circular(40)),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      GlossySheen(),
+                      RimLight(radius: 40),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _onTap,
+                borderRadius: BorderRadius.circular(40),
+                splashColor: Colors.white24,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 36, vertical: 18),
+                  // FittedBox keeps the icon+label as a single unit that shrinks
+                  // when font scaling (1.5x) would otherwise overflow the pill.
+                  // Icon size stays 32 (no scaleIcon) to avoid double-scaling.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(widget.icon, color: Colors.white, size: 32),
+                        const SizedBox(width: 12),
+                        Text(
+                          widget.label,
+                          style: AppTypography.buttonText.copyWith(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -383,10 +418,43 @@ class _RewardFeedbackButtonState extends State<RewardFeedbackButton>
                           ),
                         ],
                       ),
-                      child: Icon(
-                        widget.icon,
-                        color: Colors.white,
-                        size: widget.size * 0.5,
+                      // Glossy sheen + lit rim turn the flat gradient disc into
+                      // a domed 3D coin. Both are non-interactive overlays sized
+                      // to the button, so the tap target is unchanged.
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: widget.isCircle
+                                  ? const ClipOval(child: GlossySheen())
+                                  : ClipRRect(
+                                      borderRadius: radius!,
+                                      child: const GlossySheen(),
+                                    ),
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  shape: shape,
+                                  borderRadius: radius,
+                                  border: Border.all(
+                                    color:
+                                        Colors.white.withValues(alpha: 0.30),
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            widget.icon,
+                            color: Colors.white,
+                            size: widget.size * 0.5,
+                          ),
+                        ],
                       ),
                     ),
                   ),

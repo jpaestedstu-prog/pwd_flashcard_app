@@ -29,6 +29,7 @@ import '../widgets/fsl_empty_state.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
+import '../../break_time/break_time.dart';
 
 /// FSL Word → Sign game.
 ///
@@ -847,6 +848,10 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
             ),
           ),
           if (_openingFullscreen) const FslLoadingOverlay(),
+          GameBreakButton(
+            onHold: holdForBreak,
+            onResume: resumeFromBreak,
+          ),
           if (isPaused)
             PauseOverlay(
               onResume: resumeGame,

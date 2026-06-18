@@ -27,6 +27,7 @@ import '../../../data/local/spaced_repetition_service.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
+import '../../break_time/break_time.dart';
 
 /// Picture-Word Association Game
 ///
@@ -366,6 +367,10 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
         ),
       ),
     ),
+        GameBreakButton(
+          onHold: holdForBreak,
+          onResume: resumeFromBreak,
+        ),
         if (isPaused)
           PauseOverlay(
             onResume: resumeGame,

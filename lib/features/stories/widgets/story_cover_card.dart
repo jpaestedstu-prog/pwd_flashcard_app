@@ -5,6 +5,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/local/seed_stories.dart' show Story;
 import '../../../data/models/enums.dart';
+import '../../../widgets/depth_3d.dart';
+import '../../../widgets/tilt_3d.dart';
 import 'story_meta.dart';
 
 /// A themed, vertical "cover" card for a single story.
@@ -44,13 +46,11 @@ class StoryCoverCard extends StatefulWidget {
 }
 
 class _StoryCoverCardState extends State<StoryCoverCard> {
-  bool _pressed = false;
-
   Color _difficultyColor(HCColor hc) => switch (widget.story.difficulty) {
-        StoryDifficulty.easy => hc.success,
-        StoryDifficulty.medium => hc.warning,
-        StoryDifficulty.hard => hc.error,
-      };
+    StoryDifficulty.easy => hc.success,
+    StoryDifficulty.medium => hc.warning,
+    StoryDifficulty.hard => hc.error,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -65,20 +65,13 @@ class _StoryCoverCardState extends State<StoryCoverCard> {
       label: locked
           ? '${story.titleEn} — locked'
           : '${story.titleEn} — tap to read'
-              '${widget.read ? ', read' : ''}',
+                '${widget.read ? ', read' : ''}',
       child: GestureDetector(
         onTap: widget.unlocked ? () => widget.onTap?.call() : null,
-        onTapDown:
-            widget.unlocked ? (_) => setState(() => _pressed = true) : null,
-        onTapUp: widget.unlocked
-            ? (_) => setState(() => _pressed = false)
-            : null,
-        onTapCancel:
-            widget.unlocked ? () => setState(() => _pressed = false) : null,
-        child: AnimatedScale(
-          scale: _pressed ? 0.97 : 1.0,
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
+        // Pressable3D adds the press-scale + gentle tilt (reduced-motion aware);
+        // disabled on locked cards so they stay completely static.
+        child: Pressable3D(
+          enabled: widget.unlocked,
           child: Container(
             decoration: BoxDecoration(
               color: hc.surface,
@@ -86,16 +79,25 @@ class _StoryCoverCardState extends State<StoryCoverCard> {
               border: Border.all(
                 color: locked
                     ? AppColors.border
-                    : (hc.hc ? AppColors.hcPrimary : accent.withValues(alpha: 0.4)),
+                    : (hc.hc
+                          ? AppColors.hcPrimary
+                          : accent.withValues(alpha: 0.4)),
                 width: 1.5,
               ),
               boxShadow: locked
                   ? null
                   : [
+                      // Layered: category-tinted glow + soft neutral drop.
                       BoxShadow(
-                        color: accent.withValues(alpha: 0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        color: accent.withValues(alpha: 0.22),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
+                        spreadRadius: -2,
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
                       ),
                     ],
             ),
@@ -130,12 +132,15 @@ class _StoryCoverCardState extends State<StoryCoverCard> {
                           story.titleEn,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: (kid
-                                  ? AppTypography.titleMedium
-                                  : AppTypography.titleSmall)
-                              .copyWith(
-                            color: locked ? hc.textSecondary : hc.textPrimary,
-                          ),
+                          style:
+                              (kid
+                                      ? AppTypography.titleMedium
+                                      : AppTypography.titleSmall)
+                                  .copyWith(
+                                    color: locked
+                                        ? hc.textSecondary
+                                        : hc.textPrimary,
+                                  ),
                         ),
                         if (!kid) ...[
                           const SizedBox(height: 2),
@@ -195,51 +200,59 @@ class _CoverBand extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Gradient backdrop
+        // Gradient backdrop — vibrant & dimensional when unlocked, muted grey
+        // when locked.
         DecoratedBox(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: locked
-                  ? [
+            gradient: locked
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
                       AppColors.border.withValues(alpha: 0.35),
                       AppColors.border.withValues(alpha: 0.15),
-                    ]
-                  : [
-                      accent.withValues(alpha: 0.30),
-                      accent.withValues(alpha: 0.10),
                     ],
-            ),
+                  )
+                : Depth3D.vibrantGradient(accent),
           ),
         ),
-        // Medallion
-        Center(
-          child: Container(
-            width: medallion,
-            height: medallion,
-            decoration: BoxDecoration(
-              color: hc.surface.withValues(alpha: 0.85),
-              shape: BoxShape.circle,
-              boxShadow: locked
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.25),
-                        blurRadius: 10,
-                      ),
-                    ],
-            ),
-            child: Center(
-              child: locked
-                  ? Icon(Icons.lock_rounded,
-                      color: hc.textSecondary, size: medallion * 0.5)
-                  : Text(
-                      story.emoji,
-                      style: TextStyle(fontSize: medallion * 0.52),
-                    ),
-            ),
+        // Floating bubbles + glossy sheen (unlocked only)
+        if (!locked) ...[
+          const Positioned(
+            top: -14,
+            right: -12,
+            child: DepthBubble(size: 56, light: 0.18),
           ),
+          const Positioned(
+            bottom: -10,
+            left: -10,
+            child: DepthBubble(size: 38, light: 0.13),
+          ),
+          const Positioned.fill(child: GlossySheen()),
+        ],
+        // Medallion — raised 3D coin
+        Center(
+          child: locked
+              ? Container(
+                  width: medallion,
+                  height: medallion,
+                  decoration: BoxDecoration(
+                    color: hc.surface.withValues(alpha: 0.85),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.lock_rounded,
+                      color: hc.textSecondary,
+                      size: medallion * 0.5,
+                    ),
+                  ),
+                )
+              : Badge3D(
+                  size: medallion,
+                  emoji: story.emoji,
+                  iconSize: medallion * 0.52,
+                ),
         ),
         // Read badge (top-right)
         if (read && !locked)
@@ -254,11 +267,7 @@ class _CoverBand extends StatelessWidget {
           ),
         // Stars (bottom-left)
         if (stars > 0 && !locked)
-          Positioned(
-            left: 8,
-            bottom: 8,
-            child: _StarRow(stars: stars),
-          ),
+          Positioned(left: 8, bottom: 8, child: _StarRow(stars: stars)),
       ],
     );
   }
@@ -320,10 +329,7 @@ class _Chip extends StatelessWidget {
         children: [
           Icon(icon, size: 13, color: color),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(color: color),
-          ),
+          Text(label, style: AppTypography.labelSmall.copyWith(color: color)),
         ],
       ),
     );
@@ -345,10 +351,7 @@ class _Pill extends StatelessWidget {
         color: color,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 4,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 4),
         ],
       ),
       child: Row(

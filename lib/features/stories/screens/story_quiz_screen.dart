@@ -19,6 +19,7 @@ import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
 import '../../../widgets/language_replay_bar.dart';
 import '../widgets/story_fsl_button.dart';
+import '../widgets/story_image_flip.dart';
 
 /// Reading-comprehension quiz — 3 multiple-choice questions per story.
 class StoryQuizScreen extends ConsumerStatefulWidget {
@@ -190,6 +191,8 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
     final settings = ref.watch(settingsProvider);
     // Read-aloud buttons hidden when Text-to-Speech is off.
     final ttsEnabled = settings.ttsEnabled;
+    // Drives the cartoon ⇄ real-life flip animation speed (accessibility).
+    final reducedMotion = settings.reducedMotion;
     final question = _question!;
 
     return Scaffold(
@@ -296,6 +299,30 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                               .fadeIn(duration: 300.ms)
                               .slideY(begin: 0.05, end: 0),
 
+                          // Cartoon ⇄ real-life tap-to-flip picture for the
+                          // question. Tap the cartoon to reveal the real photo
+                          // (and back); the caption updates to match the face.
+                          if (question.image != null) ...[
+                            const SizedBox(height: 20),
+                            Center(
+                              child: StoryImageFlip(
+                                key: ValueKey(
+                                  'story_${_story!.id}_q$_currentQ',
+                                ),
+                                pair: question.image!,
+                                cacheKey: '${_story!.id}_q$_currentQ',
+                                color: _story!.category.color,
+                                semanticLabel: question.questionEn,
+                                reducedMotion: reducedMotion,
+                                maxWidth: context.responsiveTier(
+                                  phone: 300.0,
+                                  tablet: 380.0,
+                                  large: 420.0,
+                                ),
+                              ),
+                            ),
+                          ],
+
                           // Read the question aloud in either language — a
                           // read-aloud accommodation for learners who find the
                           // text hard to read or understand one language better.
@@ -391,6 +418,30 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                           CrossAxisAlignment.start,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
+                                        // Cartoon ⇄ real-life tap-to-flip
+                                        // picture for this choice. Its own tap
+                                        // target (it flips the picture); it
+                                        // never selects the answer.
+                                        if (question.imageForOption(idx) !=
+                                            null) ...[
+                                          Center(
+                                            child: StoryImageFlip(
+                                              key: ValueKey(
+                                                'story_${_story!.id}_q${_currentQ}_o$idx',
+                                              ),
+                                              pair:
+                                                  question.imageForOption(idx)!,
+                                              cacheKey:
+                                                  '${_story!.id}_q${_currentQ}_o$idx',
+                                              color: _story!.category.color,
+                                              semanticLabel: text,
+                                              reducedMotion: reducedMotion,
+                                              compact: true,
+                                              maxWidth: 220,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                        ],
                                         Row(
                                           children: [
                                             // Option letter

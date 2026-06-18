@@ -27,6 +27,7 @@ import '../../../data/local/spaced_repetition_service.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
+import '../../break_time/break_time.dart';
 
 class JigsawPuzzleScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -484,6 +485,10 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
         ),
       ),
     ),
+        GameBreakButton(
+          onHold: holdForBreak,
+          onResume: resumeFromBreak,
+        ),
         if (isPaused)
           PauseOverlay(
             onResume: resumeGame,

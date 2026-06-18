@@ -354,6 +354,10 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                 const _SectionLabel('Audio'),
                 const SizedBox(height: 6),
                 _AudioControls(state: state),
+                const SizedBox(height: 20),
+                const _SectionLabel('Fullscreen'),
+                const SizedBox(height: 8),
+                _FullscreenControl(state: state),
                 const SizedBox(height: 24),
                 const _TroubleshootPanel(),
               ],
@@ -657,14 +661,16 @@ class _ModeConfig extends ConsumerWidget {
             if (id != null) notifier.setStory(id);
           },
         );
-        // Story mode adds a "Watch in FSL" button below the story picker when
-        // the current page has a sign-language clip — mirroring the in-app
-        // Stories "Watch in FSL" button and the Flashcards "Show Me" button. It
-        // hides itself on pages / stories without an FSL clip.
+        // Story mode adds two controls below the picker, each shown only when
+        // the current page supports it: the cartoon ⇄ real-life picture flip
+        // (mirrors the in-app Stories tap-to-flip illustration) and the "Watch
+        // in FSL" sign-language button (mirrors the Flashcards "Show Me"). Each
+        // hides itself on pages / stories that lack that content.
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             dropdown,
+            _StoryImageFlipControl(state: state),
             _StoryFslControl(state: state),
           ],
         );
@@ -713,6 +719,58 @@ class _ModeConfig extends ConsumerWidget {
   }
 }
 
+// ─── Fullscreen toggle ──────────────────────────────────
+
+/// A single toggle (default on) that fills the whole TV — browser fullscreen,
+/// no address bar / chrome — for every connected TV. Driven from this phone /
+/// tablet and applied on the TV by `app.js`, exactly like the other cast
+/// controls. Lenient casting devices (most Smart-TV browsers, Fire TV Silk,
+/// WebView dongles) fill the instant it's turned on; stricter ones (Chrome on
+/// Chromecast / Google TV only enter fullscreen from a user gesture) fill on the
+/// first remote OK / tap on the TV. Turning it off exits everywhere. The cast
+/// page auto-resizes to fit any TV either way — this only controls the chrome.
+class _FullscreenControl extends ConsumerWidget {
+  final TvCastSession state;
+  const _FullscreenControl({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hc = HCColor.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+
+    final subtitle = state.fullscreenOnTv
+        ? 'The TV fills the whole screen and auto-resizes to fit any TV — Smart '
+              'TV, Chromecast / Google TV, Fire TV, projector or HDMI laptop. On '
+              'some TVs, press OK on the remote once to finish filling the screen.'
+        : 'The TV keeps the browser bars. Turn on to fill the whole screen.';
+
+    return Material(
+      color: hc.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
+      ),
+      child: SwitchListTile(
+        value: state.fullscreenOnTv,
+        onChanged: notifier.setFullscreenOnTv,
+        secondary: const Icon(Icons.fullscreen_rounded),
+        title: Text(
+          'Fullscreen on TV',
+          style: AppTypography.titleSmall.copyWith(
+            fontWeight: FontWeight.w700,
+            color: hc.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Troubleshoot panel ────────────────────────────────
 
 class _TroubleshootPanel extends StatelessWidget {
@@ -748,6 +806,12 @@ class _TroubleshootPanel extends StatelessWidget {
         ),
         _Tip(
           text: 'Apple TV: AirPlay-mirror a laptop browser showing the URL.',
+        ),
+        _Tip(
+          text:
+              'Not filling the whole TV? Make sure "Fullscreen on TV" is on '
+              'above. On some TVs (e.g. Chromecast / Google TV) press OK on the '
+              'remote once to finish filling the screen.',
         ),
         _Tip(
           text:
@@ -1218,6 +1282,67 @@ class _ShowMeControl extends ConsumerWidget {
             active
                 ? 'Playing the clip on the TV. Tap to go back to the card.'
                 : 'Play a short clip of "${card.wordEnglish}" in motion on the TV.',
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Story "Tap to Flip Animation" (cartoon ⇄ real picture) ────
+
+/// A "Tap to Flip Animation (Cartoon ↔ Picture)" button shown only when the
+/// current story page ships a cartoon + real-life picture pair. Tapping it flips
+/// the TV story illustration between the cartoon and the real photograph —
+/// driven from the phone so it works on any receiver, including TVs you can't
+/// touch. For these pages the TV drops the emoji and shows both pictures,
+/// mirroring the in-app Stories tap-to-flip illustration. Hides itself on pages
+/// / stories without a picture pair (currently only "A Day at the Farm" ships
+/// the full set).
+class _StoryImageFlipControl extends ConsumerWidget {
+  final TvCastSession state;
+  const _StoryImageFlipControl({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stories = SeedStories.all.where((s) => s.id == state.storyId);
+    if (stories.isEmpty) return const SizedBox.shrink();
+    final story = stories.first;
+    final total = story.sentencesEn.length;
+    if (total == 0) return const SizedBox.shrink();
+    final pageIdx = state.storyPageIndex.clamp(0, total - 1);
+    if (TvCastAssetBridge.storyImagePair(story, pageIdx) == null) {
+      return const SizedBox.shrink();
+    }
+
+    final hc = HCColor.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+    final showingReal = state.storyImageFlipped;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OutlinedButton.icon(
+            onPressed: notifier.flipStoryImage,
+            icon: const Icon(Icons.flip_rounded),
+            label: const Text('Tap to Flip Animation (Cartoon ↔ Picture)'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            showingReal
+                ? 'The TV is showing the real picture. Tap to flip back to the '
+                      'cartoon.'
+                : 'The TV is showing the cartoon. Tap to flip to the real '
+                      'picture on the TV.',
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             textAlign: TextAlign.center,
           ),

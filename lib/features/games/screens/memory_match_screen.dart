@@ -24,6 +24,7 @@ import '../../../core/constants/flashcard_emojis.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
+import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
 
 class MemoryMatchScreen extends ConsumerStatefulWidget {
@@ -429,6 +430,10 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
         ),
       ),
     ),
+        GameBreakButton(
+          onHold: holdForBreak,
+          onResume: resumeFromBreak,
+        ),
         if (isPaused)
           PauseOverlay(
             onResume: resumeGame,

@@ -116,6 +116,7 @@ class TvCastServer {
     r.get('/api/state', _serveState);
     r.get('/api/video/<catIdx>/<wordSlug>', _serveVideo);
     r.get('/api/story-video/<storyId>/<pageIdx>', _serveStoryVideo);
+    r.get('/api/story-image/<storyId>/<pageIdx>/<face>', _serveStoryImage);
     r.get('/api/image/<catIdx>/<wordSlug>', _serveImage);
     r.get('/api/clip/<catIdx>/<wordSlug>', _serveClip);
     r.get('/healthz', (Request _) => Response.ok('ok'));
@@ -239,7 +240,7 @@ class TvCastServer {
         final pages = story.sentencesEn;
         final pagesFil = story.sentencesFil;
         final pageIdx = session.storyPageIndex.clamp(0, pages.length - 1);
-        map['story'] = {
+        final storyMap = <String, dynamic>{
           'titleEn': story.titleEn,
           'titleFil': story.titleFil,
           'emoji': story.emoji,
@@ -248,6 +249,22 @@ class TvCastServer {
           'textEn': pages[pageIdx],
           'textFil': pageIdx < pagesFil.length ? pagesFil[pageIdx] : '',
         };
+        // Cartoon ⇄ real-life flip picture for the current page (mirrors the
+        // in-app reader's tap-to-flip illustration). When present the TV drops
+        // the emoji and shows BOTH pictures, flipping between them on the
+        // phone's "Tap to Flip Animation" button (`storyImageFlipped`). Each
+        // face downloads + caches on its first /api/story-image request (same
+        // host-and-download model as the flashcard photo), keyed so the cast and
+        // the in-app reader reuse one file.
+        final imagePair = TvCastAssetBridge.storyImagePair(story, pageIdx);
+        if (imagePair != null) {
+          storyMap['image'] = {
+            'available': true,
+            'cartoonUrl': '/api/story-image/${story.id}/$pageIdx/cartoon',
+            'realUrl': '/api/story-image/${story.id}/$pageIdx/real',
+          };
+        }
+        map['story'] = storyMap;
         // FSL sign-language clip for the current page (mirrors the in-app
         // "Watch in FSL" button). Played on the TV only when the teacher
         // activates the story FSL toggle (`storyFsl` flag). The file may not be
@@ -356,6 +373,53 @@ class TvCastServer {
       return Response.notFound('story video not ready for ${story.titleEn}');
     }
     return _streamFileRanged(request, file, 'video/mp4', 'story video');
+  }
+
+  /// Serves a story page's cartoon or real-life flip picture so the TV can show
+  /// the same pair as the in-app reader's tap-to-flip illustration. [face] is
+  /// `cartoon` (the front, shown first) or `real` (the back, revealed on flip).
+  /// The picture's share-page URL (from the story's `sentenceImages`) is resolved
+  /// + cached on first request under a key shared with the reader, so cast +
+  /// reader reuse one file and replay offline. Photos are small, so the whole
+  /// image is sent in one response (no Range) with the MIME type sniffed from its
+  /// bytes; not ready yet (download in flight / unresolvable) → 404 and the TV
+  /// retries on its next poll, keeping the page text fully usable meanwhile.
+  Future<Response> _serveStoryImage(
+    Request request,
+    String storyId,
+    String pageIdxStr,
+    String face,
+  ) async {
+    final pageIdx = int.tryParse(pageIdxStr);
+    if (pageIdx == null) return Response(400, body: 'bad page');
+
+    final story = TvCastAssetBridge.findStory(storyId);
+    if (story == null) return Response.notFound('story not found');
+
+    final pair = TvCastAssetBridge.storyImagePair(story, pageIdx);
+    if (pair == null) return Response.notFound('no picture for this page');
+
+    final real = face == 'real';
+    final url = real ? pair.realUrl : pair.cartoonUrl;
+    final cacheKey =
+        TvCastAssetBridge.storyImageCacheKey(story.id, pageIdx, real: real);
+
+    final File? file = await TvCastAssetBridge.storyImageFile(url, cacheKey);
+    if (file == null || !await file.exists()) {
+      return Response.notFound('story image not ready for ${story.titleEn}');
+    }
+    final bytes = await file.readAsBytes();
+    if (bytes.isEmpty) return Response.notFound('empty story image');
+
+    return Response.ok(
+      bytes,
+      headers: {
+        HttpHeaders.contentTypeHeader:
+            TvCastAssetBridge.imageContentType(bytes, file.path),
+        HttpHeaders.contentLengthHeader: bytes.length.toString(),
+        HttpHeaders.cacheControlHeader: 'public, max-age=86400',
+      },
+    );
   }
 
   /// Streams [file] off disk with HTTP Range support, so older TV browsers can

@@ -210,6 +210,16 @@ class TvCastSession {
   /// disable entrance/transition animations for motion-sensitive viewers.
   final bool reducedMotion;
 
+  /// Whether the TV should fill the whole screen (browser fullscreen, no
+  /// address bar / chrome). Default on. Driven from the phone's "Fullscreen on
+  /// TV" toggle and sent to the TV as `fullscreen`; the TV-side `app.js` enters
+  /// or exits fullscreen to match. Casting devices that allow it (most Smart-TV
+  /// browsers, Fire TV Silk, WebView dongles) fill instantly; stricter ones
+  /// (Chrome on Chromecast / Google TV only enter fullscreen from a user
+  /// gesture) fill on the first remote OK / tap. The page always auto-resizes to
+  /// the screen regardless of this flag — this only controls the browser chrome.
+  final bool fullscreenOnTv;
+
   /// Whether the photo-flip feature is enabled for the TV flashcard (the "Tap
   /// Only" control). When true (default) the educator's phone shows a "Flip"
   /// button that reveals the real photograph on the TV; when false the TV shows
@@ -238,6 +248,17 @@ class TvCastSession {
   /// only when the current page actually has an FSL clip. Mirrors [showMeActive]
   /// for the Flashcards "Show Me" button.
   final bool storyFslActive;
+
+  /// Which face the TV story illustration is currently showing: false = the
+  /// cartoon picture (default, shown first), true = the real-life photograph.
+  /// Toggled by the phone-side "Tap to Flip Animation (Cartoon ↔ Picture)"
+  /// button so the flip works on any receiver — including TVs you can't touch —
+  /// and the 3D flip animates when this changes. Sent to the TV as
+  /// `storyImageFlipped`; auto-reset to the cartoon when the page / story
+  /// changes. Only meaningful in story mode and only when the current page
+  /// actually has a picture pair. Mirrors [cardFlipped] for the Flashcards
+  /// emoji⇄photo flip.
+  final bool storyImageFlipped;
 
   const TvCastSession({
     this.mode = CastMode.idle,
@@ -271,10 +292,12 @@ class TvCastSession {
     this.seasonalEmoji,
     this.seasonalAccent,
     this.reducedMotion = false,
+    this.fullscreenOnTv = true,
     this.flipTapOnly = true,
     this.cardFlipped = false,
     this.showMeActive = false,
     this.storyFslActive = false,
+    this.storyImageFlipped = false,
   });
 
   TvCastSession copyWith({
@@ -316,10 +339,12 @@ class TvCastSession {
     String? seasonalAccent,
     bool clearSeasonal = false,
     bool? reducedMotion,
+    bool? fullscreenOnTv,
     bool? flipTapOnly,
     bool? cardFlipped,
     bool? showMeActive,
     bool? storyFslActive,
+    bool? storyImageFlipped,
   }) {
     return TvCastSession(
       mode: mode ?? this.mode,
@@ -361,10 +386,12 @@ class TvCastSession {
       seasonalAccent:
           clearSeasonal ? null : (seasonalAccent ?? this.seasonalAccent),
       reducedMotion: reducedMotion ?? this.reducedMotion,
+      fullscreenOnTv: fullscreenOnTv ?? this.fullscreenOnTv,
       flipTapOnly: flipTapOnly ?? this.flipTapOnly,
       cardFlipped: cardFlipped ?? this.cardFlipped,
       showMeActive: showMeActive ?? this.showMeActive,
       storyFslActive: storyFslActive ?? this.storyFslActive,
+      storyImageFlipped: storyImageFlipped ?? this.storyImageFlipped,
     );
   }
 
@@ -382,6 +409,9 @@ class TvCastSession {
           : '',
       // Lets the TV disable entrance/transition animations.
       'reducedMotion': reducedMotion,
+      // Whether the TV browser should fill the screen (no chrome). The TV-side
+      // app.js enters/exits fullscreen to match; the layout auto-fits either way.
+      'fullscreen': fullscreenOnTv,
       // Photo-flip feature gate (the "Tap Only" control). When false the TV
       // shows the emoji only; there is no auto-flip.
       'tapOnly': flipTapOnly,
@@ -395,6 +425,10 @@ class TvCastSession {
       // When true the TV plays the current story page's FSL sign-language video
       // (resolved as `storyVideo`) instead of the story text.
       'storyFsl': storyFslActive,
+      // Which face the TV story illustration shows — false = cartoon (default),
+      // true = the real-life photo. Driven by the phone's "Tap to Flip
+      // Animation" button; the TV animates the 3D flip when this changes.
+      'storyImageFlipped': storyImageFlipped,
       // Festive accents for the `seasonal` template (null on other templates).
       // Carried in the payload because the TV CSS avoids `var()` for old
       // browsers, so dynamic colours must be applied inline by app.js.

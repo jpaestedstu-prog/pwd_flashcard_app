@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_typography.dart';
+import '../../../widgets/depth_3d.dart';
 import '../../../widgets/shared_widgets.dart';
 
 /// A colorful, icon-first tile for the game-style Home hub.
@@ -62,54 +63,63 @@ class HomeTile extends StatelessWidget {
       ),
       borderRadius: compact ? 18 : 22,
       padding: EdgeInsets.all(compact ? 10 : 14),
+      // Vibrant 3D depth: glossy sheen, lit rim, layered shadow. Bubbles only on
+      // the larger tiles where there's room (compact tiles stay clean).
+      depth: true,
+      depthBubbles: !compact,
       semanticLabel:
           semanticLabel ?? (subtitle == null ? label : '$label. $subtitle'),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Fixed-size icon badge — never grows, so it always fits the cell.
-          Container(
-            width: badge,
-            height: badge,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(compact ? 12 : 16),
+      // Center the badge + labels both vertically and horizontally inside the
+      // fixed-height grid cell. AppCard's depth mode lays its content out in a
+      // Stack that defaults to top-start, so without this the content would hug
+      // the top of the tile (the "misaligned / unevenly spaced" look). Center
+      // expands to fill the bounded cell and centres the min-size column.
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Fixed-size 3D "coin" badge — never grows, so it always fits the cell.
+            Badge3D(
+              size: badge,
+              emoji: emoji,
+              iconSize: emojiSize,
+              circle: false,
+              borderRadius: compact ? 12 : 16,
             ),
-            alignment: Alignment.center,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(emoji, style: TextStyle(fontSize: emojiSize)),
-            ),
-          ),
-          SizedBox(height: compact ? 6 : 10),
-          Flexible(
-            child: Text(
-              label,
-              style: (compact
-                      ? AppTypography.labelMedium
-                      : AppTypography.titleSmall)
-                  .copyWith(color: Colors.white, fontWeight: FontWeight.w800),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (!compact && subtitle != null) ...[
-            const SizedBox(height: 2),
+            SizedBox(height: compact ? 6 : 10),
             Flexible(
               child: Text(
-                subtitle!,
-                style: AppTypography.bodySmall.copyWith(
-                  color: Colors.white.withValues(alpha: 0.92),
-                ),
+                label,
+                style:
+                    (compact
+                            ? AppTypography.labelMedium
+                            : AppTypography.titleSmall)
+                        .copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (!compact && subtitle != null) ...[
+              const SizedBox(height: 2),
+              Flexible(
+                child: Text(
+                  subtitle!,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

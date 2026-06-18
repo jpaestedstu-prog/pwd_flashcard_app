@@ -29,6 +29,7 @@ import '../../../widgets/accessibility_visual_feedback.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
+import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
 
 class SpellingBeeScreen extends ConsumerStatefulWidget {
@@ -741,6 +742,10 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
         ),
       ),
     ),
+        GameBreakButton(
+          onHold: holdForBreak,
+          onResume: resumeFromBreak,
+        ),
         if (isPaused)
           PauseOverlay(
             onResume: resumeGame,

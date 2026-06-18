@@ -49,6 +49,25 @@ mixin GamePauseMixin<T extends StatefulWidget> on TimedGameMixin<T> {
     onResume();
   }
 
+  /// Pauses the countdown + host media for a full-screen calming break, WITHOUT
+  /// showing the pause overlay (the break screen covers the game). Unlike
+  /// [pauseGame] this leaves [isPaused] false, so when the student returns from
+  /// the break they go straight back to playing. Pair with [resumeFromBreak].
+  /// Backs the always-visible floating "Break" button during gameplay.
+  void holdForBreak() {
+    if (!mounted) return;
+    pauseTimer();
+    onPause();
+  }
+
+  /// Resumes the countdown + host media after a calming break opened via
+  /// [holdForBreak]. Safe no-op if the screen was disposed during the break.
+  void resumeFromBreak() {
+    if (!mounted) return;
+    resumeTimer();
+    onResume();
+  }
+
   /// Override to pause host-owned controllers (video, animation, speech).
   /// Default: no-op.
   @protected

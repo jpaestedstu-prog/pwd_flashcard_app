@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_colors.dart';
+import 'depth_3d.dart';
 import 'tilt_3d.dart';
 
 /// Project-wide card surface.
@@ -48,6 +49,20 @@ class AppCard extends StatelessWidget {
   /// the child is an image or gradient. Defaults to false.
   final bool clip;
 
+  /// Opt-in "vibrant 3D depth" treatment for gradient/colour cards: a glossy
+  /// top sheen, a lit inner rim, and layered colour-tinted shadows (see
+  /// [Depth3D]). Implies clipping. Defaults to false so existing cards are
+  /// untouched.
+  final bool depth;
+
+  /// Shadow-glow tint for [depth] mode. Defaults to a deep, saturated anchor of
+  /// the gradient's first colour (or [color]).
+  final Color? depthTint;
+
+  /// In [depth] mode, add soft floating corner bubbles for extra dimension.
+  /// Skip on tiny/compact tiles where they'd crowd the content.
+  final bool depthBubbles;
+
   /// Optional tap handler. When set, the card becomes interactive with
   /// a Material ripple respecting the rounded corners.
   final VoidCallback? onTap;
@@ -64,6 +79,9 @@ class AppCard extends StatelessWidget {
     this.borderWidth = 1.5,
     this.elevated = true,
     this.clip = false,
+    this.depth = false,
+    this.depthTint,
+    this.depthBubbles = false,
     this.onTap,
   });
 
@@ -73,18 +91,55 @@ class AppCard extends StatelessWidget {
     final hc = HCColor.of(context);
     final resolvedColor = gradient != null ? null : (color ?? hc.surface);
 
+    final glowTint = depth
+        ? Depth3D.anchor(
+            depthTint ??
+                (gradient != null && gradient!.colors.isNotEmpty
+                    ? gradient!.colors.first
+                    : (color ?? hc.primary)),
+          )
+        : null;
+
     final decoration = BoxDecoration(
       color: resolvedColor,
       gradient: gradient,
       borderRadius: radius,
-      boxShadow: elevated ? AppColors.softShadow : null,
+      boxShadow: depth
+          ? Depth3D.shadows(glowTint!)
+          : (elevated ? AppColors.softShadow : null),
       border: borderColor != null
           ? Border.all(color: borderColor!, width: borderWidth)
           : null,
     );
 
     Widget content = Padding(padding: padding, child: child);
-    if (clip) {
+    if (depth) {
+      // Layer the glossy sheen + lit rim over the gradient, clipped to shape.
+      // The padded content sizes the Stack; the overlays are IgnorePointer so
+      // taps still reach the InkWell/GestureDetector below.
+      content = ClipRRect(
+        borderRadius: radius,
+        child: Stack(
+          children: [
+            if (depthBubbles) ...[
+              const Positioned(
+                top: -14,
+                right: -12,
+                child: DepthBubble(size: 60),
+              ),
+              const Positioned(
+                bottom: -12,
+                left: -10,
+                child: DepthBubble(size: 40, light: 0.12),
+              ),
+            ],
+            const Positioned.fill(child: GlossySheen()),
+            content,
+            Positioned.fill(child: RimLight(radius: borderRadius)),
+          ],
+        ),
+      );
+    } else if (clip) {
       content = ClipRRect(borderRadius: radius, child: content);
     }
 
@@ -112,6 +167,8 @@ class AppCard extends StatelessWidget {
         ),
       ),
     );
-    return margin == null ? tappable : Padding(padding: margin!, child: tappable);
+    return margin == null
+        ? tappable
+        : Padding(padding: margin!, child: tappable);
   }
 }

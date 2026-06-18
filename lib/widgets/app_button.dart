@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/accessibility/haptic_service.dart';
 import '../core/accessibility/sound_service.dart';
+import 'depth_3d.dart';
 import 'tilt_3d.dart';
 
 /// Visual styling for an [AppButton]. Maps onto Material3's button family
@@ -133,16 +134,43 @@ class AppButton extends ConsumerWidget {
       pressed();
     }
 
+    // The vibrant 3D fill is a *light-theme* treatment for the primary CTA: it
+    // deepens the button colour and draws white-on-deep, the same look as the
+    // Cards / Home / Stories 3D cards. In dark / high-contrast themes the
+    // filled button already uses a bright fill with a dark label for maximum
+    // contrast, so we leave it flat there (honouring the accessibility
+    // palette). A disabled button also stays flat so it reads as unavailable
+    // rather than as a vivid CTA.
+    final use3D = variant == AppButtonVariant.primary &&
+        onPressed != null &&
+        Theme.of(context).brightness == Brightness.light;
+
+    // When skinning, the FilledButton becomes a transparent shell over the
+    // painted gradient: no fill, no Material elevation/shadow (the depth shadow
+    // is drawn below), white label. Padding, shape, min-size, ripple and
+    // semantics all still come from the theme, so layout is byte-for-byte the
+    // same as the flat button at every font scale.
+    final filledStyle = use3D
+        ? FilledButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            elevation: 0,
+            foregroundColor: Colors.white,
+          )
+        : null;
+
     final iconWidget = icon == null ? null : Icon(icon, size: 20);
     final labelWidget = Text(label, semanticsLabel: semanticLabel);
     final button = switch (variant) {
       AppButtonVariant.primary => iconWidget == null
           ? FilledButton(
               onPressed: onPressed == null ? null : handlePress,
+              style: filledStyle,
               child: labelWidget,
             )
           : FilledButton.icon(
               onPressed: onPressed == null ? null : handlePress,
+              style: filledStyle,
               icon: iconWidget,
               label: labelWidget,
             ),
@@ -181,11 +209,39 @@ class AppButton extends ConsumerWidget {
     final sized =
         fullWidth ? SizedBox(width: double.infinity, child: button) : button;
 
+    // Paint the gradient + glossy sheen + lit rim behind the transparent
+    // primary button and lift it with a colour-tinted depth shadow. The skin
+    // is a `Positioned.fill` so it tracks the button's size exactly (including
+    // the full-width SizedBox); only `sized` drives layout.
+    final Widget content;
+    if (use3D) {
+      // Match the themed FilledButton fill + corner radius so the gloss and rim
+      // hug the same edges the flat button would have had.
+      final base = Theme.of(context).filledButtonTheme.style?.backgroundColor
+              ?.resolve(const <WidgetState>{}) ??
+          Theme.of(context).colorScheme.primary;
+      const radius = 20.0;
+      content = DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: Depth3D.shadows(Depth3D.anchor(base)),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(child: Depth3DFill(color: base, radius: radius)),
+            sized,
+          ],
+        ),
+      );
+    } else {
+      content = sized;
+    }
+
     return Pressable3D(
       enabled: onPressed != null,
       maxTilt: 0.05,
       pressScale: 0.96,
-      child: sized,
+      child: content,
     );
   }
 }

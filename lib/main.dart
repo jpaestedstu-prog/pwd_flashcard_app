@@ -35,6 +35,7 @@ import 'core/utils/error_handler.dart';
 import 'data/local/hive_service.dart';
 import 'data/local/local_repository.dart';
 import 'data/remote/firestore_repository.dart';
+
 import 'data/models/shop_data.dart';
 import 'navigation/app_router.dart';
 import 'providers/app_providers.dart';

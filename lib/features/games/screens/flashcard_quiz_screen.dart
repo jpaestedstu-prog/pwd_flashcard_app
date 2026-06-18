@@ -23,6 +23,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
+import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
 
 class FlashcardQuizScreen extends ConsumerStatefulWidget {
@@ -381,6 +382,10 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
         ],
       ),
     ),
+        GameBreakButton(
+          onHold: holdForBreak,
+          onResume: resumeFromBreak,
+        ),
         if (isPaused)
           PauseOverlay(
             onResume: resumeGame,

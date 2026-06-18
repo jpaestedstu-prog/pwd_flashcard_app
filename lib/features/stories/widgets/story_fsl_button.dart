@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
-import '../../../widgets/fsl_fullscreen_player.dart';
+import '../../../widgets/fsl_video_sheet.dart';
+import '../../../widgets/square_action_button.dart';
 
 /// A self-contained "watch in Filipino Sign Language" control for the Stories
 /// feature.
@@ -19,7 +20,11 @@ import '../../../widgets/fsl_fullscreen_player.dart';
 /// hard-of-hearing learners typically run with TTS off, yet still need the
 /// sign-language path — so callers must NOT gate this button on `ttsEnabled`.
 ///
-/// Two shapes:
+/// Three shapes:
+///   • [square] = true   → an icon-over-label square button ("FSL") that sits in
+///     the Stories reader's bottom navigation bar beside Back / Next, matching
+///     the Flashcards → Cards bottom-bar buttons. Takes precedence over
+///     [compact].
 ///   • [compact] = false → a labelled "Watch in FSL" chip, for a story page or
 ///     a quiz question prompt.
 ///   • [compact] = true  → a single sign-language icon button, sized to sit at
@@ -46,6 +51,10 @@ class StoryFslButton extends StatefulWidget {
   /// Icon-only trailing button (true) vs. a full labelled chip (false).
   final bool compact;
 
+  /// Render as an icon-over-label square ("FSL") for the reader's bottom
+  /// navigation bar. Takes precedence over [compact] when true.
+  final bool square;
+
   const StoryFslButton({
     super.key,
     required this.pageUrl,
@@ -54,6 +63,7 @@ class StoryFslButton extends StatefulWidget {
     this.secondaryLabel = '',
     required this.color,
     this.compact = false,
+    this.square = false,
   });
 
   @override
@@ -82,18 +92,17 @@ class _StoryFslButtonState extends State<StoryFslButton> {
     setState(() => _loading = false);
 
     if (source == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'FSL video is unavailable right now. Please check your '
-            'connection and try again.',
-          ),
-        ),
-      );
+      // Mirror Flashcards → Cards → FSL: a friendly bottom sheet rather than a
+      // SnackBar, which is easy to miss for the Deaf / hard-of-hearing learners
+      // who rely on the signing path.
+      showFslUnavailableSheet(context, wordEnglish: widget.label);
       return;
     }
 
-    await openFslFullscreenPlayer(
+    // Mirror Flashcards → Cards → FSL: open the inline bottom-sheet player
+    // (speed selector, replay, close, and a fullscreen button) instead of
+    // jumping straight to fullscreen, so both surfaces behave identically.
+    await showFslVideoSheet(
       context,
       videoSource: source,
       wordEnglish: widget.label,
@@ -103,6 +112,20 @@ class _StoryFslButtonState extends State<StoryFslButton> {
 
   @override
   Widget build(BuildContext context) {
+    // Square icon-over-label button for the reader's bottom navigation bar —
+    // visually identical to the Back / Next squares it sits beside. The shared
+    // [SquareActionButton] surfaces its own loading spinner via [loading].
+    if (widget.square) {
+      return SquareActionButton(
+        icon: Icons.sign_language_rounded,
+        label: 'FSL',
+        color: widget.color,
+        loading: _loading,
+        onTap: _play,
+        semanticLabel: 'Watch in Filipino Sign Language',
+      );
+    }
+
     if (widget.compact) {
       return Semantics(
         button: true,

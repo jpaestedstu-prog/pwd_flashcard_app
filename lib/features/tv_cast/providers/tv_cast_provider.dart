@@ -241,6 +241,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       isPaused: false,
       showMeActive: false,
       storyFslActive: false,
+      storyImageFlipped: false,
       cardFlipped: false,
       revision: state.revision + 1,
     );
@@ -255,7 +256,10 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         _autoplay?.stop();
       }
       if (mode == CastMode.fslVideo) _prefetchFslAround();
-      if (mode == CastMode.story) _prefetchStoryFslAround();
+      if (mode == CastMode.story) {
+        _prefetchStoryFslAround();
+        _prefetchStoryImagesAround();
+      }
       _narrateCurrent();
     } else if (mode == CastMode.progress) {
       _refreshProgress();
@@ -383,6 +387,20 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     );
   }
 
+  /// Turns "fill the whole TV" (browser fullscreen) on or off for connected
+  /// TVs. Bumps the revision so they pick it up on their next poll (~1.5s): the
+  /// TV-side app.js enters or exits fullscreen to match. Turning it off reliably
+  /// exits everywhere; turning it on fills instantly on lenient casting devices
+  /// and on the first remote OK / tap on stricter ones (e.g. Chrome on
+  /// Chromecast). The TV always auto-resizes to the screen regardless.
+  void setFullscreenOnTv(bool enabled) {
+    if (state.fullscreenOnTv == enabled) return;
+    state = state.copyWith(
+      fullscreenOnTv: enabled,
+      revision: state.revision + 1,
+    );
+  }
+
   /// Turns the auto-advance slideshow timer on or off. When enabled, resumes
   /// ticking for the current auto-advanceable mode (flashcards / FSL / story)
   /// unless paused or the teacher is away; when disabled, stops the timer so
@@ -475,6 +493,25 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     }
   }
 
+  /// Flips the current TV story illustration between the cartoon and the
+  /// real-life photograph (the phone-side "Tap to Flip Animation (Cartoon ↔
+  /// Picture)" button). Works on any receiver — including TVs you can't touch —
+  /// because the TV renders the face from this flag and animates the 3D flip
+  /// when it changes. No-op unless the current page actually has a picture pair
+  /// (the phone only shows the button then). Mirrors [flipCard] for Flashcards.
+  void flipStoryImage() {
+    final story = _currentStory();
+    if (story == null) return;
+    final total = story.sentencesEn.length;
+    if (total == 0) return;
+    final idx = state.storyPageIndex.clamp(0, total - 1);
+    if (TvCastAssetBridge.storyImagePair(story, idx) == null) return;
+    state = state.copyWith(
+      storyImageFlipped: !state.storyImageFlipped,
+      revision: state.revision + 1,
+    );
+  }
+
   void setStory(String storyId) {
     final story = SeedStories.all.firstWhere(
       (s) => s.id == storyId,
@@ -486,6 +523,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       storyPageIndex: 0,
       isPaused: false,
       storyFslActive: false,
+      storyImageFlipped: false,
       revision: state.revision + 1,
     );
     if (state.autoAdvanceEnabled) {
@@ -495,6 +533,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       _autoplay?.stop();
     }
     _prefetchStoryFslAround();
+    _prefetchStoryImagesAround();
     _narrateCurrent();
   }
 
@@ -522,9 +561,11 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
           state = state.copyWith(
             storyPageIndex: state.storyPageIndex + 1,
             storyFslActive: false,
+            storyImageFlipped: false,
             revision: state.revision + 1,
           );
           _prefetchStoryFslAround();
+          _prefetchStoryImagesAround();
           _narrateCurrent();
         }
         break;
@@ -558,9 +599,11 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
           state = state.copyWith(
             storyPageIndex: state.storyPageIndex - 1,
             storyFslActive: false,
+            storyImageFlipped: false,
             revision: state.revision + 1,
           );
           _prefetchStoryFslAround();
+          _prefetchStoryImagesAround();
           _narrateCurrent();
         }
         break;
@@ -668,6 +711,39 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         FslAssetsService.prefetchUrl(
           url,
           cacheKey: TvCastAssetBridge.storyFslCacheKey(story.id, idx),
+        ),
+      );
+    }
+
+    warm(i);
+    warm(i + 1);
+  }
+
+  /// Warms the story-picture disk cache for the current page and the next so the
+  /// cartoon paints immediately and the real photo is ready the moment the
+  /// teacher flips. Fire-and-forget; [TvCastAssetBridge.storyImageFile] no-ops
+  /// when a picture is already resolved this session. Keyed identically to the
+  /// in-app reader so a picture the learner already saw is reused instantly.
+  void _prefetchStoryImagesAround() {
+    final story = _currentStory();
+    if (story == null) return;
+    final total = story.sentencesEn.length;
+    if (total == 0) return;
+    final i = state.storyPageIndex.clamp(0, total - 1);
+    void warm(int idx) {
+      if (idx < 0 || idx >= total) return;
+      final pair = TvCastAssetBridge.storyImagePair(story, idx);
+      if (pair == null) return;
+      unawaited(
+        TvCastAssetBridge.storyImageFile(
+          pair.cartoonUrl,
+          TvCastAssetBridge.storyImageCacheKey(story.id, idx, real: false),
+        ),
+      );
+      unawaited(
+        TvCastAssetBridge.storyImageFile(
+          pair.realUrl,
+          TvCastAssetBridge.storyImageCacheKey(story.id, idx, real: true),
         ),
       );
     }

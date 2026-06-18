@@ -161,4 +161,59 @@ void main() {
       expect(TvCastAssetBridge.storyFslUrl(withoutFsl.first, 0), isNull);
     });
   });
+
+  // Story cartoon ⇄ real flip pictures: the cast serves each face from
+  // /api/story-image keyed by a cache key that MUST match the in-app reader's
+  // `StoryImageFlip` (`<id>_page<page>_cartoon` / `_real`) so the cast and the
+  // reader reuse one cached file and replay offline.
+  group('TvCastAssetBridge story image', () {
+    test('storyImageCacheKey matches the in-app reader convention', () {
+      // The reader passes StoryImageFlip cacheKey `<id>_page<page>`; the widget
+      // then appends `_cartoon` / `_real`. The bridge must produce the same.
+      expect(
+        TvCastAssetBridge.storyImageCacheKey('s_a01', 0, real: false),
+        's_a01_page0_cartoon',
+      );
+      expect(
+        TvCastAssetBridge.storyImageCacheKey('s_a01', 0, real: true),
+        's_a01_page0_real',
+      );
+      expect(
+        TvCastAssetBridge.storyImageCacheKey('s_a01', 4, real: false),
+        's_a01_page4_cartoon',
+      );
+    });
+
+    test('storyImagePair returns the page pair when present, null otherwise',
+        () {
+      final withImage = SeedStories.all
+          .where((s) => s.imageForSentence(0) != null)
+          .toList();
+      expect(
+        withImage,
+        isNotEmpty,
+        reason: 'expected at least one story with a page-0 flip picture',
+      );
+      final story = withImage.first;
+      final pair = TvCastAssetBridge.storyImagePair(story, 0);
+      expect(pair, isNotNull);
+      expect(pair!.cartoonUrl, isNotEmpty);
+      expect(pair.realUrl, isNotEmpty);
+      // Out of range → null (never throws).
+      expect(TvCastAssetBridge.storyImagePair(story, 9999), isNull);
+      expect(TvCastAssetBridge.storyImagePair(story, -1), isNull);
+    });
+
+    test('storyImagePair is null for a story page without a picture', () {
+      final withoutImage = SeedStories.all
+          .where((s) => s.imageForSentence(0) == null)
+          .toList();
+      expect(
+        withoutImage,
+        isNotEmpty,
+        reason: 'expected at least one story without a page-0 flip picture',
+      );
+      expect(TvCastAssetBridge.storyImagePair(withoutImage.first, 0), isNull);
+    });
+  });
 }

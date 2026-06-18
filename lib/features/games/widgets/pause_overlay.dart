@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/app_providers.dart';
+import '../../break_time/break_time.dart';
 
 /// Modal pause overlay shown over a paused game.
 ///
@@ -99,6 +100,15 @@ class PauseOverlay extends ConsumerWidget {
                         label: 'Resume',
                         primary: true,
                         onTap: onResume,
+                      ),
+                      AppSpacing.gapMd,
+                      // "I Need a Break" — the game is already fully paused here
+                      // (timer + media stopped), so a calming break leaves it
+                      // exactly as it was; returning resumes the same round.
+                      _OverlayButton(
+                        icon: Icons.self_improvement_rounded,
+                        label: 'I Need a Break',
+                        onTap: () => showBreakTime(context),
                       ),
                       AppSpacing.gapMd,
                       _OverlayButton(

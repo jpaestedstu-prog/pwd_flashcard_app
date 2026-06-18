@@ -98,6 +98,29 @@ extension ResponsiveExtension on BuildContext {
     return base * scale;
   }
 
+  /// Fixed, text-scale-aware height for a Vocabulary Category card.
+  ///
+  /// Category cards carry more than a hub tile — a raised 3D badge, a title, a
+  /// word-count + progress row and a progress bar — so they need more height
+  /// than [hubTileHeight] to keep every element comfortably spaced, matching
+  /// the roomy proportions of the Flashcards deck cards. Like [hubTileHeight],
+  /// this is a fixed extent (used as a grid `mainAxisExtent`, never a
+  /// width-derived aspect ratio), so the card's height never depends on its
+  /// width: it can't throw a RenderFlex overflow on any phone, tablet,
+  /// orientation, or font scale — the page simply scrolls when space is tight.
+  double categoryTileHeight() {
+    final double base = screenWidth >= 1200
+        ? 200.0
+        : screenWidth >= 600
+            ? 188.0
+            : 172.0;
+    // Grow with the Font Size setting (clamped) so large fonts get more room
+    // instead of clipping; the card content also self-protects via
+    // FittedBox + ellipsis.
+    final scale = MediaQuery.textScalerOf(this).scale(1.0).clamp(1.0, 1.6);
+    return base * scale;
+  }
+
   /// Adaptive font size multiplier based on screen width
   double get fontScaleFactor {
     if (screenWidth >= 1600) return 1.25;

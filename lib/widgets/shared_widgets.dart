@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import 'animated_dialogs.dart';
+import 'depth_3d.dart';
+import 'tilt_3d.dart';
 
 /// Animated button with scale press effect and optional icon
 class AnimatedPressButton extends StatefulWidget {
@@ -45,9 +47,10 @@ class _AnimatedPressButtonState extends State<AnimatedPressButton>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -68,10 +71,8 @@ class _AnimatedPressButtonState extends State<AnimatedPressButton>
       onTapCancel: () => _controller.reverse(),
       child: AnimatedBuilder(
         animation: _scaleAnimation,
-        builder: (context, child) => Transform.scale(
-          scale: _scaleAnimation.value,
-          child: child,
-        ),
+        builder: (context, child) =>
+            Transform.scale(scale: _scaleAnimation.value, child: child),
         child: Material(
           color: bgColor,
           borderRadius: radius,
@@ -81,7 +82,8 @@ class _AnimatedPressButtonState extends State<AnimatedPressButton>
           child: Container(
             width: widget.width,
             height: widget.height,
-            padding: widget.padding ??
+            padding:
+                widget.padding ??
                 const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
             child: DefaultTextStyle(
               style: TextStyle(
@@ -125,10 +127,7 @@ class EmojiAvatar extends StatelessWidget {
         boxShadow: AppColors.softShadow,
       ),
       child: Center(
-        child: Text(
-          emoji,
-          style: TextStyle(fontSize: size * 0.45),
-        ),
+        child: Text(emoji, style: TextStyle(fontSize: size * 0.45)),
       ),
     );
 
@@ -260,7 +259,8 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = color ??
+    final textColor =
+        color ??
         Theme.of(context).textTheme.bodyLarge?.color ??
         AppColors.textPrimary;
     return Padding(
@@ -327,9 +327,7 @@ class FeatureBanner extends StatelessWidget {
         elevation: 0,
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
@@ -407,6 +405,19 @@ class AppCard extends StatelessWidget {
   final double elevation;
   final String? semanticLabel;
 
+  /// Opt-in "vibrant 3D depth" treatment for gradient cards: a glossy top
+  /// sheen, a lit inner rim, layered colour-tinted shadows (see [Depth3D]), and
+  /// a gentle finger-tracking press tilt that honours reduced motion. Defaults
+  /// to false so existing cards are untouched.
+  final bool depth;
+
+  /// Shadow-glow tint for [depth] mode. Defaults to a deep, saturated anchor of
+  /// the gradient's first colour.
+  final Color? depthTint;
+
+  /// In [depth] mode, add soft floating corner bubbles for extra dimension.
+  final bool depthBubbles;
+
   const AppCard({
     super.key,
     required this.child,
@@ -418,6 +429,9 @@ class AppCard extends StatelessWidget {
     this.margin,
     this.elevation = 2,
     this.semanticLabel,
+    this.depth = false,
+    this.depthTint,
+    this.depthBubbles = false,
   });
 
   @override
@@ -427,7 +441,57 @@ class AppCard extends StatelessWidget {
     );
 
     Widget card;
-    if (gradient != null) {
+    if (depth && gradient != null) {
+      // 3D depth path: colour-tinted layered shadow on the outer box, then the
+      // gradient + glossy sheen + lit rim (+ optional bubbles) clipped to the
+      // rounded shape, wrapped in a Pressable3D tilt. The overlays are
+      // IgnorePointer so taps still reach the InkWell.
+      final radius = BorderRadius.circular(borderRadius);
+      final glow = Depth3D.anchor(depthTint ?? gradient!.colors.first);
+      card = Pressable3D(
+        maxTilt: 0.045,
+        child: Container(
+          margin: margin ?? EdgeInsets.zero,
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            boxShadow: Depth3D.shadows(glow),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            clipBehavior: Clip.antiAlias,
+            shape: shape,
+            child: InkWell(
+              onTap: onTap,
+              child: Ink(
+                decoration: BoxDecoration(gradient: gradient),
+                child: Stack(
+                  children: [
+                    if (depthBubbles) ...[
+                      const Positioned(
+                        top: -14,
+                        right: -12,
+                        child: DepthBubble(size: 60),
+                      ),
+                      const Positioned(
+                        bottom: -12,
+                        left: -10,
+                        child: DepthBubble(size: 40, light: 0.12),
+                      ),
+                    ],
+                    const Positioned.fill(child: GlossySheen()),
+                    Padding(
+                      padding: padding ?? const EdgeInsets.all(16),
+                      child: child,
+                    ),
+                    Positioned.fill(child: RimLight(radius: borderRadius)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else if (gradient != null) {
       card = Card(
         elevation: 0,
         margin: margin ?? EdgeInsets.zero,
@@ -463,7 +527,11 @@ class AppCard extends StatelessWidget {
     }
 
     if (semanticLabel != null) {
-      return Semantics(button: onTap != null, label: semanticLabel, child: card);
+      return Semantics(
+        button: onTap != null,
+        label: semanticLabel,
+        child: card,
+      );
     }
     return card;
   }
