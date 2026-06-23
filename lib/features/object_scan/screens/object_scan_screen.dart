@@ -8,6 +8,7 @@ import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
 import '../../../core/theme/app_colors.dart';
 import '../../../data/local/spaced_repetition_service.dart';
+import '../../gaze_control/providers/gaze_camera_owners.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../models/object_scan_models.dart';
@@ -79,6 +80,9 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     super.initState();
     _labeler = widget.labelerFactory();
     WidgetsBinding.instance.addObserver(this);
+    // Claim the single camera so the shell's background nav-gaze stands its
+    // camera down while Word Hunt's scanner is open (one camera at a time).
+    gazeCameraOwners.acquire();
     _initCamera();
   }
 
@@ -89,6 +93,7 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     _controller = null;
     _labeler.close();
     _deletePhoto();
+    gazeCameraOwners.release();
     super.dispose();
   }
 

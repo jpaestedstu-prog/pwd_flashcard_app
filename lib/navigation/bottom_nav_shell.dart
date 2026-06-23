@@ -10,6 +10,7 @@ import '../providers/app_providers.dart';
 import '../providers/level_up_provider.dart';
 import '../providers/experiment_provider.dart';
 import '../features/experiment/models/experiment_models.dart';
+import '../features/gaze_control/widgets/nav_gaze_scope.dart';
 import '../widgets/level_up_celebration_screen.dart';
 
 /// Route prefixes that trigger immersive mode (bottom nav hidden).
@@ -222,7 +223,22 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       );
     }
 
-    return Stack(
+    final navShown = !_isImmersiveRoute(widget.state.uri.toString());
+    final items = _isEducator
+        ? _educatorNavItems()
+        : _isChild
+            ? _childNavItems()
+            : _studentNavItems();
+
+    // Hands-free bottom-nav: look ◀ ▶ to move the highlight, blink to open the
+    // tab. Inert unless Gaze Control is enabled; runs the single camera only
+    // while a nav-bar screen is on top (see [NavGazeScope]).
+    return NavGazeScope(
+      currentIndex: currentIndex,
+      itemCount: items.length,
+      enabled: navShown,
+      onCommit: (index) => _onTap(context, index),
+      builder: (context, gaze) => Stack(
       children: [
         Scaffold(
           body: RepaintBoundary(child: widget.child),
@@ -283,11 +299,9 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
                         ),
                         child: _AnimatedNavBar(
                           currentIndex: currentIndex,
-                          items: _isEducator
-                              ? _educatorNavItems()
-                              : _isChild
-                                  ? _childNavItems()
-                                  : _studentNavItems(),
+                          gazeTargetIndex:
+                              gaze.active ? gaze.targetIndex : null,
+                          items: items,
                           onTap: (index) => _onTap(context, index),
                           bounceControllers: _bounceControllers,
                           vsync: this,
@@ -302,6 +316,16 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
           ),
     ),
 
+        // Gaze-navigation hint, sitting just above the bar while gaze nav runs.
+        if (gaze.active)
+          _GazeNavHint(
+            ready: gaze.ready,
+            faceVisible: gaze.faceVisible,
+            featureTilesActive: gaze.featureTilesActive,
+            bottomOffset: _computeMetrics(context).bar +
+                MediaQuery.paddingOf(context).bottom,
+          ),
+
         // Level-up celebration overlay
         if (_celebratingLevel != null)
           LevelUpCelebrationScreen(
@@ -310,6 +334,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
             onDismiss: () => setState(() => _celebratingLevel = null),
           ),
       ],
+      ),
     );
   }
 
@@ -386,6 +411,10 @@ class _NavMetrics {
 
 class _AnimatedNavBar extends StatelessWidget {
   final int currentIndex;
+
+  /// The tab the gaze cursor is resting on, drawn as a bright ring. Null when
+  /// gaze navigation isn't active.
+  final int? gazeTargetIndex;
   final List<_NavItem> items;
   final ValueChanged<int> onTap;
   final Map<int, AnimationController> bounceControllers;
@@ -399,6 +428,7 @@ class _AnimatedNavBar extends StatelessWidget {
     required this.bounceControllers,
     required this.vsync,
     required this.metrics,
+    this.gazeTargetIndex,
   });
 
   @override
@@ -425,6 +455,38 @@ class _AnimatedNavBar extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
+              // Bright gaze-cursor ring framing the highlighted tab — distinct
+              // from the soft selection pill, so a learner can see where the
+              // head-driven highlight is before blinking to open it.
+              if (gazeTargetIndex != null)
+                AnimatedPositioned(
+                  left: gazeTargetIndex! * itemWidth + 4,
+                  top: 4,
+                  width: itemWidth - 8,
+                  height: barHeight - 8,
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppColors.accent,
+                          width: 2.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accent.withValues(alpha: 0.45),
+                            blurRadius: 12,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
               // Sliding pill indicator behind the selected icon
               AnimatedPositioned(
                 left: pillLeft,
@@ -638,6 +700,76 @@ class _AnimatedNavItemState extends State<_AnimatedNavItem> {
                             ),
                           ]
                         : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Gaze-navigation hint ─────────────────────────────
+
+/// A small instructional chip shown just above the bottom bar while gaze
+/// navigation is active, telling the learner how to drive the tabs hands-free.
+/// Purely informational ([IgnorePointer]) — touch falls straight through.
+class _GazeNavHint extends StatelessWidget {
+  final bool ready;
+  final bool faceVisible;
+
+  /// The D-pad is currently extended over the foreground hub's feature tiles, so
+  /// the hint mentions the up/down moves too.
+  final bool featureTilesActive;
+
+  /// Distance from the bottom of the screen to the top of the nav bar, so the
+  /// chip floats just above it at any text scale / device.
+  final double bottomOffset;
+
+  const _GazeNavHint({
+    required this.ready,
+    required this.faceVisible,
+    required this.bottomOffset,
+    this.featureTilesActive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final (IconData icon, String text) = !ready
+        ? (Icons.hourglass_top_rounded, 'Starting gaze…')
+        : !faceVisible
+            ? (Icons.face_retouching_natural_rounded, 'Look at the screen')
+            : (
+                Icons.visibility_rounded,
+                featureTilesActive
+                    ? 'Look ◀ ▶ ▲ ▼ to choose · blink to open'
+                    : 'Look ◀ ▶ to choose · blink to open',
+              );
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: bottomOffset + 8,
+      child: IgnorePointer(
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: Colors.white, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  text,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],

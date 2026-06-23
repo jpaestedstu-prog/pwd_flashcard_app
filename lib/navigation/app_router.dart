@@ -93,6 +93,8 @@ import '../features/guided_practice/screens/guided_practice_screen.dart';
 import '../features/ai_tutor/screens/ai_tutor_screen.dart';
 import '../features/messaging/screens/messaging_screen.dart';
 import '../features/object_scan/screens/object_scan_screen.dart';
+import '../features/gaze_control/screens/gaze_control_screen.dart';
+import '../features/gaze_control/screens/gaze_settings_screen.dart';
 import '../features/peer_collaboration/screens/peer_collaboration_screen.dart';
 import '../features/progress/screens/worksheet_screen.dart';
 import '../features/notebook/screens/notebook_screen.dart';
@@ -1371,6 +1373,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
           child: const ObjectScanScreen(),
+        ),
+      ),
+      // ─── Gaze Control (experimental head/blink accessibility) ──
+      // Settings → Accessibility opens the config screen (`/gaze-settings`),
+      // which launches the full-screen live preview (`/gaze-control`). Both
+      // sit outside the bottom-nav shell.
+      GoRoute(
+        path: '/gaze-settings',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const GazeSettingsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/gaze-control',
+        pageBuilder: (context, state) => AppPageTransitions.slideUp(
+          key: state.pageKey,
+          child: const GazeControlScreen(),
         ),
       ),
       // ─── Messaging ─────────────────────────────────

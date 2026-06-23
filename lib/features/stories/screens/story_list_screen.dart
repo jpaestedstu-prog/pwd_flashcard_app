@@ -9,6 +9,9 @@ import '../../../data/local/seed_stories.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
+import '../../gaze_control/providers/gaze_home_grid.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../widgets/story_cover_card.dart';
 
 /// Lists all stories grouped by category as a responsive grid of themed
@@ -39,7 +42,19 @@ class StoryListScreen extends ConsumerWidget {
     );
     final spacing = context.gridSpacing;
 
-    return Scaffold(
+    // Hands-free "Bottom nav + feature tiles" reach: when enabled, each story
+    // cover registers with the shell's gaze D-pad and shows a focus ring. A pure
+    // pass-through otherwise, so touch / the gaze-off layout are unchanged. The
+    // per-category grids each append their rows (top-to-bottom) to one builder.
+    final gazeOn = ref.watch(
+      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+    );
+    final gazeGrid = GazeTileGridBuilder(active: gazeOn);
+
+    return GazeHomeRegistrar(
+      active: gazeGrid.active,
+      rows: gazeGrid.rows,
+      child: Scaffold(
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -91,11 +106,10 @@ class StoryListScreen extends ConsumerWidget {
                       ).animate().fadeIn(duration: 300.ms),
                       const SizedBox(height: 12),
                       // Story cover cards
-                      GridView.builder(
+                      GridView(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         padding: EdgeInsets.zero,
-                        itemCount: stories.length,
                         gridDelegate:
                             SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: columns,
@@ -103,23 +117,46 @@ class StoryListScreen extends ConsumerWidget {
                           crossAxisSpacing: spacing,
                           mainAxisSpacing: spacing,
                         ),
-                        itemBuilder: (context, index) {
-                          final story = stories[index];
-                          final unlocked = _isUnlocked(story, wordsLearned);
-                          return StoryCoverCard(
-                            story: story,
-                            unlocked: unlocked,
-                            read: progress.completedStoryIds.contains(story.id),
-                            stars: progress.storyBestStars[story.id] ?? 0,
-                            kidMode: kidMode,
-                            onTap: unlocked
-                                ? () => context.push('/stories/read/${story.id}')
-                                : null,
-                          )
-                              .animate()
-                              .fadeIn(duration: 350.ms, delay: (80 * index).ms)
-                              .slideY(begin: 0.08, end: 0);
-                        },
+                        children: gazeGrid.section(
+                          columns: columns,
+                          entries: [
+                            for (final (index, story) in stories.indexed)
+                              () {
+                                final unlocked =
+                                    _isUnlocked(story, wordsLearned);
+                                return (
+                                  tile: StoryCoverCard(
+                                    story: story,
+                                    unlocked: unlocked,
+                                    read: progress.completedStoryIds
+                                        .contains(story.id),
+                                    stars:
+                                        progress.storyBestStars[story.id] ?? 0,
+                                    kidMode: kidMode,
+                                    onTap: unlocked
+                                        ? () => context
+                                            .push('/stories/read/${story.id}')
+                                        : null,
+                                  )
+                                      .animate()
+                                      .fadeIn(
+                                        duration: 350.ms,
+                                        delay: (80 * index).ms,
+                                      )
+                                      .slideY(begin: 0.08, end: 0),
+                                  // Locked covers stay focusable for consistent
+                                  // navigation but do nothing when opened.
+                                  cell: GazeTileCell(
+                                    label: story.titleEn,
+                                    onActivate: unlocked
+                                        ? () => context
+                                            .push('/stories/read/${story.id}')
+                                        : () {},
+                                  ),
+                                );
+                              }(),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -130,6 +167,7 @@ class StoryListScreen extends ConsumerWidget {
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),
+      ),
       ),
     );
   }

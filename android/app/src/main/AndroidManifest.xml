@@ -20,6 +20,12 @@
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
 
+    <!-- Voice input: pronunciation games + Gaze Control voice commands
+         (speech_to_text). Declared explicitly; the microphone isn't required
+         so a device without one still installs. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-feature android:name="android.hardware.microphone" android:required="false"/>
+
     <!-- Explicit tablet support declaration. Defaults already cover
          these on modern Android, but declaring them suppresses Play
          Store warnings about "designed for phones" and makes the

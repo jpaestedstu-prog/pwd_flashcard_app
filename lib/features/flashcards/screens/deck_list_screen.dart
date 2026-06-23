@@ -14,6 +14,9 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/depth_3d.dart';
 import '../../../widgets/tilt_3d.dart';
+import '../../gaze_control/providers/gaze_home_grid.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_home_tiles.dart';
 
 class DeckListScreen extends ConsumerWidget {
   const DeckListScreen({super.key});
@@ -26,7 +29,18 @@ class DeckListScreen extends ConsumerWidget {
     final isTeacherOrParent =
         profile?.role == UserRole.teacher || profile?.role == UserRole.parent;
 
-    return Scaffold(
+    // Hands-free "Bottom nav + feature tiles" reach: when enabled, each deck
+    // card registers with the shell's gaze D-pad and shows a focus ring. A pure
+    // pass-through otherwise, so touch / the gaze-off layout are unchanged.
+    final gazeOn = ref.watch(
+      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+    );
+    final gazeGrid = GazeTileGridBuilder(active: gazeOn);
+
+    return GazeHomeRegistrar(
+      active: gazeGrid.active,
+      rows: gazeGrid.rows,
+      child: Scaffold(
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -124,29 +138,45 @@ class DeckListScreen extends ConsumerWidget {
                               MediaQuery.textScalerOf(context).scale(1.0))
                           .clamp(0.9, 1.7),
                 ),
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final category = FlashcardCategory.values[index];
-                  final cards = SeedData.getByCategory(category);
-                  final prog =
-                      progress.categoryProgress[category.label] ??
-                      progress.categoryProgress[category.name] ??
-                      0.0;
-
-                  return _DeckCard(
-                        category: category,
-                        cardCount: cards.length,
-                        progress: prog,
-                        onTap: () =>
-                            context.go('/flashcards/viewer/${category.index}'),
-                      )
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: (200 + index * 80).ms)
-                      .slideY(begin: 0.12, end: 0)
-                      .scale(
-                        begin: const Offset(0.95, 0.95),
-                        end: const Offset(1.0, 1.0),
-                      );
-                }, childCount: FlashcardCategory.values.length),
+                delegate: SliverChildListDelegate(
+                  gazeGrid.section(
+                    columns: context.gridColumns,
+                    entries: [
+                      for (final (index, category)
+                          in FlashcardCategory.values.indexed)
+                        (
+                          tile: _DeckCard(
+                                category: category,
+                                cardCount:
+                                    SeedData.getByCategory(category).length,
+                                progress:
+                                    progress.categoryProgress[category.label] ??
+                                    progress.categoryProgress[category.name] ??
+                                    0.0,
+                                onTap: () => context.go(
+                                  '/flashcards/viewer/${category.index}',
+                                ),
+                              )
+                              .animate()
+                              .fadeIn(
+                                duration: 400.ms,
+                                delay: (200 + index * 80).ms,
+                              )
+                              .slideY(begin: 0.12, end: 0)
+                              .scale(
+                                begin: const Offset(0.95, 0.95),
+                                end: const Offset(1.0, 1.0),
+                              ),
+                          cell: GazeTileCell(
+                            label: category.label,
+                            onActivate: () => context.go(
+                              '/flashcards/viewer/${category.index}',
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
@@ -166,6 +196,7 @@ class DeckListScreen extends ConsumerWidget {
               curve: Curves.elasticOut,
             )
           : null,
+      ),
     );
   }
 }

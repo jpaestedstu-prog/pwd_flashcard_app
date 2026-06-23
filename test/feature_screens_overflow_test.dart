@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:pwdpwdpwd/core/services/sync_queue/sync_queue_storage.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/goals/screens/goals_screen.dart';
@@ -60,6 +61,12 @@ void main() {
     ]) {
       if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
     }
+    // SettingsScreen renders the Cloud Sync tile (SyncStatusWidget), which reads
+    // the sync-queue box. The real app opens it in HiveService.init(); mirror
+    // that here so the box-backed status read doesn't assert. (The student
+    // variant happened to keep this tile below the lazy ListView fold, but the
+    // trimmed Teacher/Parent variant pulls it into the first frame.)
+    await SyncQueueStorage.init();
   });
 
   // Some of these screens subscribe to providers backed by a never-connecting
@@ -111,6 +118,22 @@ void main() {
       overrides: _asRole(UserRole.parent),
     );
   });
+
+  // SettingsScreen is shared across roles, but the Teacher / Parent monitoring
+  // profiles get a trimmed variant: the learner-only sections (Learning Modes,
+  // Audio, Reminders, Adaptive Difficulty, Gaze Control, accessibility wizard,
+  // tutorial replays) are hidden. Render that trimmed variant across the matrix
+  // so the role-conditional layout stays overflow-safe.
+  for (final role in const [UserRole.teacher, UserRole.parent]) {
+    testWidgets('SettingsScreen (${role.name}) survives the device matrix',
+        (tester) async {
+      await expectScreenNoOverflowAcrossDevices(
+        tester,
+        () => const SettingsScreen(),
+        overrides: _asRole(role),
+      );
+    });
+  }
 
   // The educator Home renders the large "Primary + More" action grids for both
   // teacher and parent roles. Without Firebase the roster resolves to the empty

@@ -28,6 +28,9 @@ import '../../../widgets/seasonal_decorations.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../../core/constants/flashcard_emojis.dart';
 import '../../assessment/services/assessment_service.dart';
+import '../../gaze_control/providers/gaze_home_grid.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../widgets/home_tile.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -99,7 +102,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final padding = context.pagePadding;
     final hc = HCColor.of(context);
 
-    return AnimatedGradientBackground(
+    // Hands-free "Bottom nav + Home tiles" reach: when enabled, the feature
+    // tiles register with the shell's gaze D-pad and show a focus ring. Inert
+    // (a pure pass-through) otherwise, so touch / the gaze-off layout are
+    // unchanged.
+    final gazeHomeOn = ref.watch(
+      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+    );
+    final gazeGrid = GazeTileGridBuilder(active: gazeHomeOn);
+
+    return GazeHomeRegistrar(
+      active: gazeGrid.active,
+      rows: gazeGrid.rows,
+      child: AnimatedGradientBackground(
       child: Stack(
         children: [
           Scaffold(
@@ -364,13 +379,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     padding: padding,
                     columns: _coreColumns(context),
                     extent: context.hubTileHeight(),
-                    tiles: _coreTiles(context),
+                    tiles: _coreTiles(context, gazeGrid),
                   ),
 
                   // ═══════════════════════════════════════
                   // ─── More tools, grouped & organized ───
                   // ═══════════════════════════════════════
-                  ..._moreSections(context, padding),
+                  ..._moreSections(context, gazeGrid, padding),
 
                   // ─── Categories Header ────────────────
                   SliverToBoxAdapter(
@@ -442,6 +457,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const SeasonalDecorations(),
         ],
       ),
+      ),
     );
   }
 
@@ -509,85 +525,115 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   /// The six primary "Play & Learn" tiles.
-  List<Widget> _coreTiles(BuildContext context) {
+  List<Widget> _coreTiles(BuildContext context, GazeTileGridBuilder gaze) {
     final profile = ref.read(profileProvider);
     final weak = profile != null
         ? ReviewReminderService.countWordsToReview(profile.id)
         : 0;
-    return [
-      HomeTile(
-        emoji: '🎮',
-        label: 'Games',
-        subtitle: 'Play & learn',
-        gradient: const [AppColors.playerAccent, AppColors.playerAccentLight],
-        onTap: () => context.go('/games'),
+    return gaze.section(
+      columns: _coreColumns(context),
+      entries: [
+        _entry(
+          emoji: '🎮',
+          label: 'Games',
+          subtitle: 'Play & learn',
+          gradient: const [AppColors.playerAccent, AppColors.playerAccentLight],
+          onTap: () => context.go('/games'),
+        ),
+        _entry(
+          emoji: '📚',
+          label: 'Words',
+          subtitle: 'Flashcards',
+          gradient: const [
+            AppColors.bannerLearningStart,
+            AppColors.bannerLearningEnd,
+          ],
+          onTap: () => context.go('/flashcards'),
+        ),
+        _entry(
+          emoji: '📖',
+          label: 'Stories',
+          subtitle: 'Read & answer',
+          gradient: const [
+            AppColors.bannerStickerStart,
+            AppColors.bannerStickerEnd,
+          ],
+          onTap: () => context.go('/stories'),
+        ),
+        _entry(
+          emoji: '🤟',
+          label: 'FSL Practice',
+          subtitle: 'Sign language',
+          gradient: const [AppColors.bannerFslStart, AppColors.bannerFslEnd],
+          onTap: () => context.go('/games/fsl-practice'),
+        ),
+        _entry(
+          emoji: '🧠',
+          label: 'Smart Review',
+          subtitle: weak > 0 ? '$weak to practice' : 'Review words',
+          gradient: const [
+            AppColors.bannerSmartReviewStart,
+            AppColors.bannerSmartReviewEnd,
+          ],
+          onTap: () => context.push('/smart-review'),
+        ),
+        _entry(
+          emoji: '🏆',
+          label: 'Progress',
+          subtitle: 'Your journey',
+          gradient: const [
+            AppColors.bannerLearningGainStart,
+            AppColors.bannerLearningGainEnd,
+          ],
+          onTap: () => context.go('/progress'),
+        ),
+      ],
+    );
+  }
+
+  /// Builds a [GazeTileEntry]: the visual [HomeTile] paired with the gaze cell
+  /// (label + open callback) the D-pad activates, so both always agree.
+  GazeTileEntry _entry({
+    required String emoji,
+    required String label,
+    required List<Color> gradient,
+    required VoidCallback onTap,
+    String? subtitle,
+    bool compact = false,
+  }) {
+    return (
+      tile: HomeTile(
+        emoji: emoji,
+        label: label,
+        subtitle: subtitle,
+        gradient: gradient,
+        onTap: onTap,
+        compact: compact,
       ),
-      HomeTile(
-        emoji: '📚',
-        label: 'Words',
-        subtitle: 'Flashcards',
-        gradient: const [
-          AppColors.bannerLearningStart,
-          AppColors.bannerLearningEnd,
-        ],
-        onTap: () => context.go('/flashcards'),
-      ),
-      HomeTile(
-        emoji: '📖',
-        label: 'Stories',
-        subtitle: 'Read & answer',
-        gradient: const [
-          AppColors.bannerStickerStart,
-          AppColors.bannerStickerEnd,
-        ],
-        onTap: () => context.go('/stories'),
-      ),
-      HomeTile(
-        emoji: '🤟',
-        label: 'FSL Practice',
-        subtitle: 'Sign language',
-        gradient: const [AppColors.bannerFslStart, AppColors.bannerFslEnd],
-        onTap: () => context.go('/games/fsl-practice'),
-      ),
-      HomeTile(
-        emoji: '🧠',
-        label: 'Smart Review',
-        subtitle: weak > 0 ? '$weak to practice' : 'Review words',
-        gradient: const [
-          AppColors.bannerSmartReviewStart,
-          AppColors.bannerSmartReviewEnd,
-        ],
-        onTap: () => context.push('/smart-review'),
-      ),
-      HomeTile(
-        emoji: '🏆',
-        label: 'Progress',
-        subtitle: 'Your journey',
-        gradient: const [
-          AppColors.bannerLearningGainStart,
-          AppColors.bannerLearningGainEnd,
-        ],
-        onTap: () => context.go('/progress'),
-      ),
-    ];
+      cell: GazeTileCell(label: label, onActivate: onTap),
+    );
   }
 
   /// The grouped, compact "More" sections — every remaining feature, organized
   /// under the five original category labels. Returns a flat list of slivers
   /// (a header + a compact tile grid per group) to spread into the main list.
-  List<Widget> _moreSections(BuildContext context, double padding) {
+  List<Widget> _moreSections(
+    BuildContext context,
+    GazeTileGridBuilder gaze,
+    double padding,
+  ) {
     final columns = _moreColumns(context);
     final extent = context.hubTileHeight(large: false);
     final stickersOn = ref.watch(
       gamificationFeatureProvider(GamificationFeature.stickers),
     );
 
-    HomeTile tile({
+    GazeTileEntry tile({
       required String emoji,
       required String label,
       required List<Color> gradient,
       required VoidCallback onTap,
-    }) => HomeTile(
+    }) => _entry(
       emoji: emoji,
       label: label,
       gradient: gradient,
@@ -609,7 +655,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: padding,
         columns: columns,
         extent: extent,
-        tiles: [
+        tiles: gaze.section(
+          columns: columns,
+          entries: [
           tile(
             emoji: '🗺️',
             label: 'Learning Paths',
@@ -655,7 +703,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
             onTap: () => context.push('/object-scan'),
           ),
-        ],
+        ]),
       ),
 
       // ── Assessment & Progress ──
@@ -671,7 +719,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: padding,
         columns: columns,
         extent: extent,
-        tiles: [
+        tiles: gaze.section(
+          columns: columns,
+          entries: [
           tile(
             emoji: '📝',
             label: 'Assessments',
@@ -717,7 +767,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
             onTap: () => context.push('/smileyometer'),
           ),
-        ],
+        ]),
       ),
 
       // ── Communication & Language ──
@@ -733,7 +783,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: padding,
         columns: columns,
         extent: extent,
-        tiles: [
+        tiles: gaze.section(
+          columns: columns,
+          entries: [
           tile(
             emoji: '🤟',
             label: 'FSL Dictionary',
@@ -758,7 +810,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
             onTap: () => context.push('/ai-tutor'),
           ),
-        ],
+        ]),
       ),
 
       // ── Social & Collaboration ──
@@ -774,7 +826,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: padding,
         columns: columns,
         extent: extent,
-        tiles: [
+        tiles: gaze.section(
+          columns: columns,
+          entries: [
           tile(
             emoji: '🎮',
             label: 'Play Together',
@@ -802,7 +856,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
             onTap: () => context.push('/peer-collab'),
           ),
-        ],
+        ]),
       ),
 
       // ── Personal & Wellbeing ──
@@ -818,7 +872,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: padding,
         columns: columns,
         extent: extent,
-        tiles: [
+        tiles: gaze.section(
+          columns: columns,
+          entries: [
           tile(
             emoji: '😊',
             label: 'Mood Check-In',
@@ -847,7 +903,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
             onTap: () => context.push('/notebook'),
           ),
-        ],
+        ]),
       ),
     ];
   }

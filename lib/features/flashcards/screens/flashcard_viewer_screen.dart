@@ -28,6 +28,7 @@ import '../../../widgets/fsl_video_sheet.dart';
 import '../../break_time/break_time.dart';
 import '../widgets/show_me_button.dart';
 import '../widgets/examples_gallery.dart';
+import '../../gaze_control/widgets/gaze_dpad_scope.dart';
 
 class FlashcardViewerScreen extends ConsumerStatefulWidget {
   final FlashcardCategory category;
@@ -274,318 +275,353 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     // affordance: the prominent Replay button is hidden when Text-to-Speech is
     // off (e.g. the hearing preset, which prioritises FSL video over audio).
     final ttsEnabled = ref.watch(settingsProvider).ttsEnabled;
+    final l10n = AppLocalizations.of(context)!;
+    final card = _cards.isNotEmpty ? _cards[_currentIndex] : null;
 
-    return Stack(
-      children: [
-        Scaffold(
-          // Opaque base so nothing composites over black on root-level routes
-          // (e.g. opened from Word Hunt). The colourful depth lives in the
-          // _CardsBackdrop layered behind the body; this just guarantees an
-          // opaque floor that follows the real light/dark setting.
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          appBar: AppBar(
-            leading: const AppBackButton(fallbackRoute: '/flashcards'),
-            title: Text(widget.category.label),
-            actions: [
-              // "I Need a Break" — always visible so a student who feels
-              // overwhelmed can pause the lesson and choose a calming activity,
-              // then return to this exact card. Pauses/restores auto-play.
-              BreakButton(
-                color: AppColors.secondary,
-                onBreakStart: _onBreakStart,
-                onBreakEnd: _onBreakEnd,
-              ),
-              // Auto-play toggle
-              IconButton(
-                icon: Icon(
-                  _autoPlay
-                      ? Icons.pause_circle_rounded
-                      : Icons.play_circle_rounded,
-                  color: _autoPlay
-                      ? AppColors.accent
-                      : HCColor.of(context).textSecondary,
-                ),
-                onPressed: _toggleAutoPlay,
-                tooltip: _autoPlay ? 'Pause auto-play' : 'Start auto-play',
-              ),
-              // Card counter
-              Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: widget.category.color.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${_currentIndex + 1} / ${_cards.length}',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: widget.category.darkColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          body: Stack(
-            children: [
-              // Colourful, lit, depth-rich background behind everything.
-              _CardsBackdrop(category: widget.category),
-              Column(
-                children: [
-                  // ─── Progress dots ──────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: List.generate(_cards.length, (i) {
-                        final isActive = i == _currentIndex;
-                        final isPast = i < _currentIndex;
-                        return Expanded(
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            height: isActive ? 6 : 4,
-                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                            decoration: BoxDecoration(
-                              color: isActive
-                                  ? widget.category.color
-                                  : isPast
-                                  ? widget.category.color.withValues(alpha: 0.5)
-                                  : widget.category.color.withValues(
-                                      alpha: 0.15,
-                                    ),
-                              borderRadius: BorderRadius.circular(3),
-                              boxShadow: isActive
-                                  ? [
-                                      BoxShadow(
-                                        color: widget.category.color.withValues(
-                                          alpha: 0.4,
-                                        ),
-                                        blurRadius: 6,
-                                      ),
-                                    ]
-                                  : [],
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-
-                  // ─── Card Area ──────────────────────────
-                  Expanded(
-                    child: PageView.builder(
-                      controller: _pageController,
-                      itemCount: _cards.length,
-                      onPageChanged: (index) {
-                        setState(() {
-                          _currentIndex = index;
-                          _isFlipped = false;
-                        });
-                      },
-                      itemBuilder: (context, index) {
-                        final card = _cards[index];
-                        // When the user reaches the last card, mark step complete
-                        if (_isLearningPathMode &&
-                            index == _cards.length - 1 &&
-                            _currentIndex == index) {
-                          _markStepCompleteIfNeeded();
-                        }
-                        return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 16,
-                              ),
-                              child: _FlipCard(
-                                card: card,
-                                category: widget.category,
-                                isFlipped: _isFlipped && index == _currentIndex,
-                                reducedMotion: ref.watch(
-                                  settingsProvider.select(
-                                    (s) => s.reducedMotion,
-                                  ),
-                                ),
-                                onFlip: () {
-                                  if (index == _currentIndex) {
-                                    setState(() => _isFlipped = !_isFlipped);
-                                  }
-                                },
-                                onSpeak: () => _speakEnglish(card.wordEnglish),
-                                onSpeakFilipino: () =>
-                                    _speakFilipino(card.wordFilipino),
-                              ),
-                            )
-                            .animate()
-                            .scale(
-                              begin: const Offset(0.92, 0.92),
-                              end: const Offset(1, 1),
-                              duration: 400.ms,
-                              curve: Curves.easeOutBack,
-                            )
-                            .fadeIn(duration: 300.ms);
-                      },
-                    ),
-                  ),
-
-                  // ─── Bottom Action Bar ──────────────────
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: HCColor.of(context).surface,
-                      border: Border(
-                        top: BorderSide(
-                          color: widget.category.color.withValues(alpha: 0.15),
-                        ),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 12,
-                          offset: const Offset(0, -4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Prominent, single-tap audio replay — the accessible
-                        // alternative to a shake/motion gesture (motion actuation is
-                        // unreliable for motor-impaired learners and discouraged by
-                        // WCAG 2.1 SC 2.5.4). Both languages are shown explicitly so
-                        // a student who only understands one can hear it directly.
-                        if (ttsEnabled && _cards.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: LanguageReplayBar(
-                              onEnglish: () => _speakEnglish(
-                                _cards[_currentIndex].wordEnglish,
-                              ),
-                              onFilipino: () => _speakFilipino(
-                                _cards[_currentIndex].wordFilipino,
-                              ),
-                            ),
-                          ),
-                        // Edit / Delete row for custom cards
-                        if (_cards.isNotEmpty && _cards[_currentIndex].isCustom)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: AppActionBar(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.info.withValues(
-                                      alpha: 0.12,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    AppLocalizations.of(context)!.customCard,
-                                    style: AppTypography.labelSmall.copyWith(
-                                      color: AppColors.info,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                _ActionButton(
-                                  icon: Icons.edit_rounded,
-                                  label: AppLocalizations.of(context)!.edit,
-                                  color: AppColors.info,
-                                  onTap: () => _editCard(_cards[_currentIndex]),
-                                ),
-                                _ActionButton(
-                                  icon: Icons.delete_rounded,
-                                  label: AppLocalizations.of(context)!.delete,
-                                  color: AppColors.error,
-                                  onTap: () =>
-                                      _deleteCard(_cards[_currentIndex]),
-                                ),
-                              ],
-                            ),
-                          ),
-                        AppActionBar(
-                          alignment: WrapAlignment.spaceEvenly,
-                          children: [
-                            _ActionButton(
-                              icon: Icons.arrow_back_rounded,
-                              label: AppLocalizations.of(context)!.previous,
-                              onTap: _prevCard,
-                              enabled: _currentIndex > 0,
-                            ),
-                            _ActionButton(
-                              icon: Icons.sign_language_rounded,
-                              label: AppLocalizations.of(context)!.fsl,
-                              color: AppColors.secondary,
-                              onTap: () => _showFslVideo(_cards[_currentIndex]),
-                            ),
-                            // "Show Me" action demo — only appears for cards that
-                            // have a clip configured (e.g. action words). Dormant
-                            // builds simply never show it, so the bar is unchanged.
-                            if (ActionClipService.hasClip(
-                              _cards[_currentIndex],
-                            ))
-                              _ActionButton(
-                                icon: Icons.play_circle_fill_rounded,
-                                label: 'Show Me',
-                                color: AppColors.secondaryDark,
-                                onTap: () => showActionClipSheet(
-                                  context,
-                                  _cards[_currentIndex],
-                                ),
-                              ),
-                            // "Examples" gallery — appears for cards enriched with
-                            // several real-world photos (e.g. colors, numbers).
-                            if (FlashcardPhotoService.hasGallery(
-                              _cards[_currentIndex],
-                            ))
-                              _ActionButton(
-                                icon: Icons.photo_library_rounded,
-                                label: 'Examples',
-                                color: AppColors.accentDark,
-                                onTap: () => showExamplesGallery(
-                                  context,
-                                  _cards[_currentIndex],
-                                ),
-                              ),
-                            _ActionButton(
-                              icon: Icons.flip_rounded,
-                              label: AppLocalizations.of(context)!.flip,
-                              color: AppColors.accent,
-                              onTap: () =>
-                                  setState(() => _isFlipped = !_isFlipped),
-                            ),
-                            _ActionButton(
-                              icon: Icons.arrow_forward_rounded,
-                              label: AppLocalizations.of(context)!.next,
-                              onTap: _nextCard,
-                              enabled: _currentIndex < _cards.length - 1,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+    // The bottom action bar as one hands-free D-pad row: look ◀ ▶ to move the
+    // highlight across the controls, blink (or look-up) to open the focused one
+    // — the same discrete D-pad as the navigation shell. Built once so the
+    // visible buttons and the gaze cells can never disagree, and the focus ring
+    // always lands on the right button.
+    final actions = <_ViewerAction>[
+      _ViewerAction(
+        icon: Icons.arrow_back_rounded,
+        label: l10n.previous,
+        onTap: _prevCard,
+        enabled: _currentIndex > 0,
+      ),
+      _ViewerAction(
+        icon: Icons.sign_language_rounded,
+        label: l10n.fsl,
+        color: AppColors.secondary,
+        onTap: card != null ? () => _showFslVideo(card) : null,
+      ),
+      if (card != null && ActionClipService.hasClip(card))
+        _ViewerAction(
+          icon: Icons.play_circle_fill_rounded,
+          label: 'Show Me',
+          color: AppColors.secondaryDark,
+          onTap: () => showActionClipSheet(context, card),
         ),
-        if (_isLoadingFsl) const FslLoadingOverlay(),
+      if (card != null && FlashcardPhotoService.hasGallery(card))
+        _ViewerAction(
+          icon: Icons.photo_library_rounded,
+          label: 'Examples',
+          color: AppColors.accentDark,
+          onTap: () => showExamplesGallery(context, card),
+        ),
+      _ViewerAction(
+        icon: Icons.flip_rounded,
+        label: l10n.flip,
+        color: AppColors.accent,
+        onTap: () => setState(() => _isFlipped = !_isFlipped),
+      ),
+      _ViewerAction(
+        icon: Icons.arrow_forward_rounded,
+        label: l10n.next,
+        onTap: _nextCard,
+        enabled: _currentIndex < _cards.length - 1,
+      ),
+    ];
+    final dpadRows = [
+      [
+        for (final a in actions)
+          GazeDpadCell(
+            label: a.label,
+            enabled: a.enabled && a.onTap != null,
+            onActivate: a.onTap ?? () {},
+          ),
       ],
+    ];
+
+    return GazeDpadScope(
+      rows: dpadRows,
+      builder: (context, gaze) => Stack(
+        children: [
+          Scaffold(
+            // Opaque base so nothing composites over black on root-level routes
+            // (e.g. opened from Word Hunt). The colourful depth lives in the
+            // _CardsBackdrop layered behind the body; this just guarantees an
+            // opaque floor that follows the real light/dark setting.
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            appBar: AppBar(
+              leading: const AppBackButton(fallbackRoute: '/flashcards'),
+              title: Text(widget.category.label),
+              actions: [
+                // "I Need a Break" — always visible so a student who feels
+                // overwhelmed can pause the lesson and choose a calming activity,
+                // then return to this exact card. Pauses/restores auto-play.
+                BreakButton(
+                  color: AppColors.secondary,
+                  onBreakStart: _onBreakStart,
+                  onBreakEnd: _onBreakEnd,
+                ),
+                // Auto-play toggle
+                IconButton(
+                  icon: Icon(
+                    _autoPlay
+                        ? Icons.pause_circle_rounded
+                        : Icons.play_circle_rounded,
+                    color: _autoPlay
+                        ? AppColors.accent
+                        : HCColor.of(context).textSecondary,
+                  ),
+                  onPressed: _toggleAutoPlay,
+                  tooltip: _autoPlay ? 'Pause auto-play' : 'Start auto-play',
+                ),
+                // Card counter
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: widget.category.color.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${_currentIndex + 1} / ${_cards.length}',
+                        style: AppTypography.labelMedium.copyWith(
+                          color: widget.category.darkColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            body: Stack(
+              children: [
+                // Colourful, lit, depth-rich background behind everything.
+                _CardsBackdrop(category: widget.category),
+                Column(
+                  children: [
+                    // ─── Progress dots ──────────────────────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: List.generate(_cards.length, (i) {
+                          final isActive = i == _currentIndex;
+                          final isPast = i < _currentIndex;
+                          return Expanded(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              height: isActive ? 6 : 4,
+                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? widget.category.color
+                                    : isPast
+                                    ? widget.category.color.withValues(
+                                        alpha: 0.5,
+                                      )
+                                    : widget.category.color.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                borderRadius: BorderRadius.circular(3),
+                                boxShadow: isActive
+                                    ? [
+                                        BoxShadow(
+                                          color: widget.category.color
+                                              .withValues(alpha: 0.4),
+                                          blurRadius: 6,
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+
+                    // ─── Card Area ──────────────────────────
+                    Expanded(
+                      child: PageView.builder(
+                        controller: _pageController,
+                        itemCount: _cards.length,
+                        onPageChanged: (index) {
+                          setState(() {
+                            _currentIndex = index;
+                            _isFlipped = false;
+                          });
+                        },
+                        itemBuilder: (context, index) {
+                          final card = _cards[index];
+                          // When the user reaches the last card, mark step complete
+                          if (_isLearningPathMode &&
+                              index == _cards.length - 1 &&
+                              _currentIndex == index) {
+                            _markStepCompleteIfNeeded();
+                          }
+                          return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 16,
+                                ),
+                                child: _FlipCard(
+                                  card: card,
+                                  category: widget.category,
+                                  isFlipped:
+                                      _isFlipped && index == _currentIndex,
+                                  reducedMotion: ref.watch(
+                                    settingsProvider.select(
+                                      (s) => s.reducedMotion,
+                                    ),
+                                  ),
+                                  onFlip: () {
+                                    if (index == _currentIndex) {
+                                      setState(() => _isFlipped = !_isFlipped);
+                                    }
+                                  },
+                                  onSpeak: () =>
+                                      _speakEnglish(card.wordEnglish),
+                                  onSpeakFilipino: () =>
+                                      _speakFilipino(card.wordFilipino),
+                                ),
+                              )
+                              .animate()
+                              .scale(
+                                begin: const Offset(0.92, 0.92),
+                                end: const Offset(1, 1),
+                                duration: 400.ms,
+                                curve: Curves.easeOutBack,
+                              )
+                              .fadeIn(duration: 300.ms);
+                        },
+                      ),
+                    ),
+
+                    // ─── Bottom Action Bar ──────────────────
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: HCColor.of(context).surface,
+                        border: Border(
+                          top: BorderSide(
+                            color: widget.category.color.withValues(
+                              alpha: 0.15,
+                            ),
+                          ),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 12,
+                            offset: const Offset(0, -4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Hands-free hint, shown only while gaze is driving.
+                          if (gaze.active)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _GazeViewerHint(
+                                ready: gaze.ready,
+                                faceVisible: gaze.faceVisible,
+                              ),
+                            ),
+                          // Prominent, single-tap audio replay — the accessible
+                          // alternative to a shake/motion gesture (motion actuation is
+                          // unreliable for motor-impaired learners and discouraged by
+                          // WCAG 2.1 SC 2.5.4). Both languages are shown explicitly so
+                          // a student who only understands one can hear it directly.
+                          if (ttsEnabled && _cards.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: LanguageReplayBar(
+                                onEnglish: () => _speakEnglish(
+                                  _cards[_currentIndex].wordEnglish,
+                                ),
+                                onFilipino: () => _speakFilipino(
+                                  _cards[_currentIndex].wordFilipino,
+                                ),
+                              ),
+                            ),
+                          // Edit / Delete row for custom cards
+                          if (_cards.isNotEmpty &&
+                              _cards[_currentIndex].isCustom)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: AppActionBar(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.info.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      AppLocalizations.of(context)!.customCard,
+                                      style: AppTypography.labelSmall.copyWith(
+                                        color: AppColors.info,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  _ActionButton(
+                                    icon: Icons.edit_rounded,
+                                    label: AppLocalizations.of(context)!.edit,
+                                    color: AppColors.info,
+                                    onTap: () =>
+                                        _editCard(_cards[_currentIndex]),
+                                  ),
+                                  _ActionButton(
+                                    icon: Icons.delete_rounded,
+                                    label: AppLocalizations.of(context)!.delete,
+                                    color: AppColors.error,
+                                    onTap: () =>
+                                        _deleteCard(_cards[_currentIndex]),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          // Main controls — also the hands-free D-pad row. Each
+                          // button shows a bright ring while the head-driven
+                          // highlight rests on it (blink / look-up opens it).
+                          AppActionBar(
+                            alignment: WrapAlignment.spaceEvenly,
+                            children: [
+                              for (final (i, a) in actions.indexed)
+                                _ActionButton(
+                                  icon: a.icon,
+                                  label: a.label,
+                                  color: a.color,
+                                  onTap: a.onTap,
+                                  enabled: a.enabled,
+                                  focused: gaze.isFocused(0, i),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (_isLoadingFsl) const FslLoadingOverlay(),
+        ],
+      ),
     );
   }
 
@@ -1306,12 +1342,18 @@ class _ActionButton extends StatelessWidget {
   final Color? color;
   final bool enabled;
 
+  /// True while the hands-free gaze D-pad highlight rests on this button — draws
+  /// a bright accent ring (the same affordance as the navigation shell) so the
+  /// learner can see what a blink / look-up would open.
+  final bool focused;
+
   const _ActionButton({
     required this.icon,
     required this.label,
     this.onTap,
     this.color,
     this.enabled = true,
+    this.focused = false,
   });
 
   @override
@@ -1332,25 +1374,51 @@ class _ActionButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: box,
-              height: box,
-              decoration: BoxDecoration(
-                color: c.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: c.withValues(alpha: 0.15)),
-                boxShadow: enabled
-                    ? [
-                        BoxShadow(
-                          color: c.withValues(alpha: 0.15),
-                          blurRadius: 8,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: box,
+                  height: box,
+                  decoration: BoxDecoration(
+                    color: c.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: c.withValues(alpha: 0.15)),
+                    boxShadow: enabled
+                        ? [
+                            BoxShadow(
+                              color: c.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  // Icon scales with the box (text-scale aware) so it never
+                  // clips, and never grows past the box at XL font sizes.
+                  child: Icon(icon, color: c, size: box * 0.48),
+                ),
+                if (focused)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.accent,
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.accent.withValues(alpha: 0.5),
+                              blurRadius: 12,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
-                      ]
-                    : [],
-              ),
-              // Icon scales with the box (which is itself text-scale aware) so
-              // it never clips, and never grows past the box at XL font sizes.
-              child: Icon(icon, color: c, size: box * 0.48),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             // Fixed-width label that scales DOWN to fit (FittedBox) instead of
@@ -1368,6 +1436,75 @@ class _ActionButton extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Viewer action spec ───────────────────────────────
+/// One bottom-bar control, used to build both the visible [_ActionButton] and
+/// its matching [GazeDpadCell] from a single source so the focus ring can never
+/// land on the wrong button.
+class _ViewerAction {
+  final IconData icon;
+  final String label;
+  final Color? color;
+  final VoidCallback? onTap;
+  final bool enabled;
+
+  const _ViewerAction({
+    required this.icon,
+    required this.label,
+    this.onTap,
+    this.color,
+    this.enabled = true,
+  });
+}
+
+// ─── Gaze hint chip (viewer) ──────────────────────────
+/// A small instructional chip shown above the action bar while the head D-pad
+/// is driving the viewer — mirrors the navigation shell's hint. Purely
+/// informational ([IgnorePointer]); touch falls straight through.
+class _GazeViewerHint extends StatelessWidget {
+  final bool ready;
+  final bool faceVisible;
+
+  const _GazeViewerHint({required this.ready, required this.faceVisible});
+
+  @override
+  Widget build(BuildContext context) {
+    final (IconData icon, String text) = !ready
+        ? (Icons.hourglass_top_rounded, 'Starting gaze…')
+        : !faceVisible
+            ? (Icons.face_retouching_natural_rounded, 'Look at the screen')
+            : (
+                Icons.visibility_rounded,
+                'Look ◀ ▶ to choose · blink to open',
+              );
+    return IgnorePointer(
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

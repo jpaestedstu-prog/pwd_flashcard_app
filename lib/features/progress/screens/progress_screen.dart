@@ -14,6 +14,9 @@ import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/experiment_provider.dart';
 import '../../../features/experiment/models/experiment_models.dart';
+import '../../gaze_control/providers/gaze_home_grid.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../theme/progress_theme_provider.dart';
 import '../theme/progress_layout_provider.dart';
 import '../theme/progress_theme_picker.dart';
@@ -71,7 +74,29 @@ class ProgressScreen extends ConsumerWidget {
     final headerTextColor = useTheme ? theme.onHeader : Colors.white;
     final accent = useTheme ? theme.accent : HCColor.of(context).primary;
 
-    return Scaffold(
+    // Hands-free "Bottom nav + feature tiles" reach: when enabled, each action
+    // button registers with the shell's gaze D-pad (one per row, top-to-bottom)
+    // and shows a focus ring. A pure pass-through otherwise, so touch / the
+    // gaze-off layout are unchanged.
+    final gazeOn = ref.watch(
+      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+    );
+    final gazeGrid = GazeTileGridBuilder(active: gazeOn);
+    // Wraps a single full-width action button as its own gaze row (the buttons
+    // sit in an unbounded SliverList, so the ring must size to the child).
+    Widget gazeButton(String label, VoidCallback onTap, Widget button) =>
+        gazeGrid.section(
+          columns: 1,
+          expand: false,
+          entries: [
+            (tile: button, cell: GazeTileCell(label: label, onActivate: onTap)),
+          ],
+        ).first;
+
+    return GazeHomeRegistrar(
+      active: gazeGrid.active,
+      rows: gazeGrid.rows,
+      child: Scaffold(
       body: CustomScrollView(
         slivers: [
           // ─── App Bar ────────────────────────
@@ -217,7 +242,10 @@ class ProgressScreen extends ConsumerWidget {
 
                 // ─── Leaderboard Button (gated by experiment config) ─────────
                 if (ref.watch(gamificationFeatureProvider(GamificationFeature.leaderboard)))
-                FilledButton.icon(
+                gazeButton(
+                  AppLocalizations.of(context)!.viewLeaderboard,
+                  () => context.push('/leaderboard'),
+                  FilledButton.icon(
                       onPressed: () => context.push('/leaderboard'),
                       icon: const Icon(Icons.leaderboard_rounded),
                       label: Text(AppLocalizations.of(context)!.viewLeaderboard),
@@ -232,10 +260,14 @@ class ProgressScreen extends ConsumerWidget {
                     .animate()
                     .fadeIn(duration: 400.ms, delay: 350.ms)
                     .slideY(begin: 0.1, end: 0),
+                ),
 
                 const SizedBox(height: 12),
 
-                OutlinedButton.icon(
+                gazeButton(
+                  AppLocalizations.of(context)!.detailedAnalytics,
+                  () => context.push('/analytics'),
+                  OutlinedButton.icon(
                       onPressed: () => context.push('/analytics'),
                       icon: const Icon(Icons.analytics_rounded),
                       label: Text(AppLocalizations.of(context)!.detailedAnalytics),
@@ -250,10 +282,14 @@ class ProgressScreen extends ConsumerWidget {
                     .animate()
                     .fadeIn(duration: 400.ms, delay: 400.ms)
                     .slideY(begin: 0.1, end: 0),
+                ),
 
                 const SizedBox(height: 12),
 
-                OutlinedButton.icon(
+                gazeButton(
+                  'Streak Calendar',
+                  () => context.push('/streak-calendar'),
+                  OutlinedButton.icon(
                       onPressed: () => context.push('/streak-calendar'),
                       icon: const Icon(Icons.calendar_month_rounded),
                       label: const Text('Streak Calendar'),
@@ -268,10 +304,14 @@ class ProgressScreen extends ConsumerWidget {
                     .animate()
                     .fadeIn(duration: 400.ms, delay: 450.ms)
                     .slideY(begin: 0.1, end: 0),
+                ),
 
                 const SizedBox(height: 12),
 
-                OutlinedButton.icon(
+                gazeButton(
+                  'Certificates',
+                  () => context.push('/certificates'),
+                  OutlinedButton.icon(
                       onPressed: () => context.push('/certificates'),
                       icon: const Icon(Icons.workspace_premium_rounded),
                       label: const Text('Certificates'),
@@ -286,6 +326,7 @@ class ProgressScreen extends ConsumerWidget {
                     .animate()
                     .fadeIn(duration: 400.ms, delay: 500.ms)
                     .slideY(begin: 0.1, end: 0),
+                ),
 
                 SizedBox(height: layout.sectionGap),
 
@@ -444,6 +485,7 @@ class ProgressScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

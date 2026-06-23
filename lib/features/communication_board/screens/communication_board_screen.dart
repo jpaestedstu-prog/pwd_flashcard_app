@@ -10,6 +10,17 @@ import '../../../providers/app_providers.dart';
 import '../models/board_models.dart';
 import '../models/board_seed_data.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../gaze_control/models/gaze_action.dart';
+import '../../gaze_control/models/gaze_models.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_scope.dart';
+
+/// Wraps [index] into 0…count-1, handling negatives so a left move from the
+/// first tile lands on the last. Returns 0 for an empty set. Pure + testable.
+int wrapBoardIndex(int index, int count) {
+  if (count <= 0) return 0;
+  return ((index % count) + count) % count;
+}
 
 /// AAC Communication Board — tap picture tiles to build sentences,
 /// then press the speak button to hear them via TTS.
@@ -34,6 +45,98 @@ class _CommunicationBoardScreenState
 
   /// Whether the TTS is currently speaking.
   bool _isSpeaking = false;
+
+  /// Gaze cursor: the index of the highlighted tile in the active category.
+  /// Only visible / used when Gaze Control is enabled; touch ignores it.
+  int _cursorIndex = 0;
+
+  /// Stable keys per tile index so the gaze cursor can scroll itself into view.
+  final Map<int, GlobalKey> _tileKeys = {};
+
+  GlobalKey _tileKey(int index) => _tileKeys.putIfAbsent(index, GlobalKey.new);
+
+  // ─── Gaze cursor navigation (hands-free) ─────────
+  // The four head zones drive a moving highlight: left/right scrub the tiles,
+  // up speaks the sentence, down adds the highlighted tile. A blink cycles to
+  // the next category so a gaze-only learner can reach every word. Touch is
+  // unaffected — this state is inert unless Gaze Control is on.
+
+  void _moveCursor(int delta) {
+    final count = BoardSeedData.forCategory(_activeCategory).length;
+    setState(() => _cursorIndex = wrapBoardIndex(_cursorIndex + delta, count));
+    _scrollCursorIntoView();
+  }
+
+  void _addCursorTile() {
+    final tiles = BoardSeedData.forCategory(_activeCategory);
+    if (_cursorIndex < 0 || _cursorIndex >= tiles.length) return;
+    _addTile(tiles[_cursorIndex]);
+  }
+
+  void _gazeNextCategory() {
+    const cats = BoardTileCategory.values;
+    final next = cats[(cats.indexOf(_activeCategory) + 1) % cats.length];
+    _setCategory(next);
+  }
+
+  void _setCategory(BoardTileCategory cat) {
+    setState(() {
+      _activeCategory = cat;
+      _cursorIndex = 0;
+    });
+  }
+
+  void _scrollCursorIntoView() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _tileKeys[_cursorIndex]?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.5,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+  }
+
+  List<GazeAction> _gazeActions() {
+    final hasTiles = BoardSeedData.forCategory(_activeCategory).isNotEmpty;
+    return [
+      GazeAction(
+        zone: GazeZone.left,
+        label: 'Prev',
+        icon: Icons.chevron_left_rounded,
+        color: AppColors.secondary,
+        enabled: hasTiles,
+        onSelect: () => _moveCursor(-1),
+      ),
+      GazeAction(
+        zone: GazeZone.right,
+        label: 'Next',
+        icon: Icons.chevron_right_rounded,
+        color: AppColors.secondary,
+        enabled: hasTiles,
+        onSelect: () => _moveCursor(1),
+      ),
+      GazeAction(
+        zone: GazeZone.up,
+        label: 'Speak',
+        icon: Icons.play_circle_filled_rounded,
+        color: AppColors.success,
+        enabled: _sentence.isNotEmpty,
+        onSelect: _speakSentence,
+      ),
+      GazeAction(
+        zone: GazeZone.down,
+        label: 'Add',
+        icon: Icons.add_circle_rounded,
+        color: AppColors.primary,
+        enabled: hasTiles,
+        onSelect: _addCursorTile,
+      ),
+    ];
+  }
 
   // ─── Sentence Strip Actions ──────────────────────
 
@@ -99,112 +202,124 @@ class _CommunicationBoardScreenState
     final hc = HCColor.of(context);
     final padding = context.pagePadding;
     final tiles = BoardSeedData.forCategory(_activeCategory);
+    // Only show the moving gaze cursor when hands-free control is enabled.
+    final gazeEnabled = ref.watch(
+      gazeSettingsProvider.select((s) => s.enabled),
+    );
 
-    return Scaffold(
-      backgroundColor: hc.background,
-      appBar: AppBar(
-        title: Text(
-          'Communication Board',
-          style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: const AppBackButton(),
-        actions: [
-          // Language toggle
-          Semantics(
-            button: true,
-            label: _useFilipino ? 'Switch to English' : 'Switch to Filipino',
-            child: Tooltip(
-              message: _useFilipino ? 'Switch to English' : 'Switch to Filipino',
-              child: TextButton.icon(
-                onPressed: () => setState(() => _useFilipino = !_useFilipino),
-                icon: Icon(
-                  Icons.translate_rounded,
-                  size: 20,
-                  color: hc.primary,
-                ),
-                label: Text(
-                  _useFilipino ? 'FIL' : 'EN',
-                  style: AppTypography.labelMedium.copyWith(
+    return GazeScope(
+      actions: _gazeActions(),
+      onBlink: _gazeNextCategory,
+      child: Scaffold(
+        backgroundColor: hc.background,
+        appBar: AppBar(
+          title: Text(
+            'Communication Board',
+            style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          leading: const AppBackButton(),
+          actions: [
+            // Language toggle
+            Semantics(
+              button: true,
+              label: _useFilipino ? 'Switch to English' : 'Switch to Filipino',
+              child: Tooltip(
+                message: _useFilipino
+                    ? 'Switch to English'
+                    : 'Switch to Filipino',
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _useFilipino = !_useFilipino),
+                  icon: Icon(
+                    Icons.translate_rounded,
+                    size: 20,
                     color: hc.primary,
-                    fontWeight: FontWeight.w700,
+                  ),
+                  label: Text(
+                    _useFilipino ? 'FIL' : 'EN',
+                    style: AppTypography.labelMedium.copyWith(
+                      color: hc.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // ─── Sentence Strip ─────────────────────
-          _SentenceStrip(
-            sentence: _sentence,
-            useFilipino: _useFilipino,
-            isSpeaking: _isSpeaking,
-            onSpeak: _speakSentence,
-            onRemoveLast: _removeLast,
-            onClear: _clearSentence,
-            onTapTile: _speakSingleTile,
-          ),
-
-          const SizedBox(height: 8),
-
-          // ─── Category Tabs ──────────────────────
-          SizedBox(
-            height: 52,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(horizontal: padding),
-              itemCount: BoardTileCategory.values.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final cat = BoardTileCategory.values[index];
-                final isActive = cat == _activeCategory;
-                return _CategoryChip(
-                  category: cat,
-                  isActive: isActive,
-                  useFilipino: _useFilipino,
-                  onTap: () => setState(() => _activeCategory = cat),
-                );
-              },
+          ],
+        ),
+        body: Column(
+          children: [
+            // ─── Sentence Strip ─────────────────────
+            _SentenceStrip(
+              sentence: _sentence,
+              useFilipino: _useFilipino,
+              isSpeaking: _isSpeaking,
+              onSpeak: _speakSentence,
+              onRemoveLast: _removeLast,
+              onClear: _clearSentence,
+              onTapTile: _speakSingleTile,
             ),
-          ),
 
-          const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
-          // ─── Tile Grid ──────────────────────────
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: padding),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: GridView.builder(
-                  key: ValueKey(_activeCategory),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: context.isTablet ? 4 : 3,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.9,
+            // ─── Category Tabs ──────────────────────
+            SizedBox(
+              height: 52,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.symmetric(horizontal: padding),
+                itemCount: BoardTileCategory.values.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final cat = BoardTileCategory.values[index];
+                  final isActive = cat == _activeCategory;
+                  return _CategoryChip(
+                    category: cat,
+                    isActive: isActive,
+                    useFilipino: _useFilipino,
+                    onTap: () => _setCategory(cat),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ─── Tile Grid ──────────────────────────
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: padding),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: GridView.builder(
+                    key: ValueKey(_activeCategory),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: context.isTablet ? 4 : 3,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 0.9,
+                    ),
+                    itemCount: tiles.length,
+                    itemBuilder: (context, index) {
+                      final tile = tiles[index];
+                      return _BoardTileWidget(
+                        key: _tileKey(index),
+                        tile: tile,
+                        useFilipino: _useFilipino,
+                        highlighted: gazeEnabled && index == _cursorIndex,
+                        onTap: () => _addTile(tile),
+                        onLongPress: () => _speakSingleTile(tile),
+                        delay: index * 40,
+                      );
+                    },
                   ),
-                  itemCount: tiles.length,
-                  itemBuilder: (context, index) {
-                    final tile = tiles[index];
-                    return _BoardTileWidget(
-                      tile: tile,
-                      useFilipino: _useFilipino,
-                      onTap: () => _addTile(tile),
-                      onLongPress: () => _speakSingleTile(tile),
-                      delay: index * 40,
-                    );
-                  },
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -278,7 +393,10 @@ class _SentenceStrip extends StatelessWidget {
                             child: GestureDetector(
                               onTap: () => onTapTile(tile),
                               child: Chip(
-                                avatar: Text(tile.emoji, style: const TextStyle(fontSize: 18)),
+                                avatar: Text(
+                                  tile.emoji,
+                                  style: const TextStyle(fontSize: 18),
+                                ),
                                 label: Text(
                                   useFilipino ? tile.labelFil : tile.label,
                                   style: AppTypography.labelMedium.copyWith(
@@ -313,9 +431,7 @@ class _SentenceStrip extends StatelessWidget {
                   icon: isSpeaking
                       ? Icons.volume_up_rounded
                       : Icons.play_circle_filled_rounded,
-                  color: sentence.isEmpty
-                      ? Colors.grey
-                      : AppColors.success,
+                  color: sentence.isEmpty ? Colors.grey : AppColors.success,
                   onTap: sentence.isEmpty ? null : onSpeak,
                   size: 44,
                 ),
@@ -393,11 +509,7 @@ class _CircleButton extends StatelessWidget {
                 ]
               : null,
         ),
-        child: Icon(
-          icon,
-          color: AppColors.textOnPrimary,
-          size: size * 0.55,
-        ),
+        child: Icon(icon, color: AppColors.textOnPrimary, size: size * 0.55),
       ),
     );
   }
@@ -477,12 +589,18 @@ class _BoardTileWidget extends StatelessWidget {
   final VoidCallback onLongPress;
   final int delay;
 
+  /// True when the gaze cursor is on this tile — draws a bold highlight ring so
+  /// the learner can see where a "look down / Add" will land.
+  final bool highlighted;
+
   const _BoardTileWidget({
+    super.key,
     required this.tile,
     required this.useFilipino,
     required this.onTap,
     required this.onLongPress,
     this.delay = 0,
+    this.highlighted = false,
   });
 
   @override
@@ -495,55 +613,63 @@ class _BoardTileWidget extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         onLongPress: onLongPress,
-        child: Container(
-          decoration: BoxDecoration(
-            color: hc.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: hc.primary.withValues(alpha: 0.2),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: hc.primary.withValues(alpha: 0.08),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                tile.emoji,
-                style: const TextStyle(fontSize: 36),
-              ),
-              const SizedBox(height: 6),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Text(
-                  useFilipino ? tile.labelFil : tile.label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: hc.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    height: 1.2,
+        child:
+            AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  decoration: BoxDecoration(
+                    color: highlighted
+                        ? hc.primary.withValues(alpha: 0.12)
+                        : hc.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: highlighted
+                          ? hc.primary
+                          : hc.primary.withValues(alpha: 0.2),
+                      width: highlighted ? 3 : 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: hc.primary.withValues(
+                          alpha: highlighted ? 0.35 : 0.08,
+                        ),
+                        blurRadius: highlighted ? 16 : 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(tile.emoji, style: const TextStyle(fontSize: 36)),
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          useFilipino ? tile.labelFil : tile.label,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: hc.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                .animate()
+                .fadeIn(
+                  duration: 250.ms,
+                  delay: Duration(milliseconds: delay),
+                )
+                .scale(
+                  begin: const Offset(0.9, 0.9),
+                  end: const Offset(1, 1),
+                  duration: 250.ms,
+                  delay: Duration(milliseconds: delay),
                 ),
-              ),
-            ],
-          ),
-        )
-            .animate()
-            .fadeIn(duration: 250.ms, delay: Duration(milliseconds: delay))
-            .scale(
-              begin: const Offset(0.9, 0.9),
-              end: const Offset(1, 1),
-              duration: 250.ms,
-              delay: Duration(milliseconds: delay),
-            ),
       ),
     );
   }

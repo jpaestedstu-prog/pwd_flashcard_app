@@ -389,12 +389,9 @@ class FlashLearnApp extends ConsumerWidget {
           data: mediaQuery.copyWith(
             textScaler: TextScaler.linear(combined),
           ),
-          // Wrap in ErrorBoundary to show snackbar for global errors
-          // and ConnectivityBanner for offline indicator. The
-          // MembershipEvictionGate sits above LockEnforcerGate so an
-          // educator-driven removal wins over a time-driven lock —
-          // no point showing a lock screen for a profile that just
-          // got signed out anyway.
+          // ErrorBoundary (global error snackbars), ConnectivityBanner (offline
+          // indicator), then MembershipEvictionGate above LockEnforcerGate so an
+          // educator-driven removal wins over a time-driven lock.
           child: ErrorBoundary(
             child: ConnectivityBanner(
               child: MembershipEvictionGate(

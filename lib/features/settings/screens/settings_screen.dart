@@ -30,6 +30,16 @@ class SettingsScreen extends ConsumerWidget {
     final profile = ref.watch(profileProvider);
     final settingsNotifier = ref.read(settingsProvider.notifier);
 
+    // Teacher / Parent are monitoring-only roles: they review student progress
+    // via the Dashboard, Analytics, and Reports rather than using the learning
+    // features themselves. So the learner-focused settings (Learning Modes,
+    // game/flashcard Audio, study Reminders, Adaptive Difficulty, Gaze Control,
+    // the accessibility setup wizard, and tutorial replays) are hidden for them.
+    // Display accessibility (contrast, font size, etc.), language, data/backup,
+    // and the monitoring tools below remain available.
+    final isMonitor =
+        profile?.role == UserRole.teacher || profile?.role == UserRole.parent;
+
     // Cap the form width on tablets so it doesn't sprawl across the
     // full landscape viewport (1600+ dp). [maxContentWidth] returns
     // `double.infinity` on phones so this is a no-op there.
@@ -278,137 +288,147 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          _SettingsTile(
-            icon: Icons.auto_awesome_rounded,
-            title: 'Adaptive Difficulty',
-            subtitle: settings.adaptiveDifficulty
-                ? 'Auto-suggests difficulty based on progress'
-                : 'Manual difficulty selection only',
-            trailing: Switch.adaptive(
-              value: settings.adaptiveDifficulty,
-              activeTrackColor: AppColors.primary,
-              onChanged: (v) =>
-                  settingsNotifier.update(settings.copyWith(adaptiveDifficulty: v)),
+          if (!isMonitor)
+            _SettingsTile(
+              icon: Icons.auto_awesome_rounded,
+              title: 'Adaptive Difficulty',
+              subtitle: settings.adaptiveDifficulty
+                  ? 'Auto-suggests difficulty based on progress'
+                  : 'Manual difficulty selection only',
+              trailing: Switch.adaptive(
+                value: settings.adaptiveDifficulty,
+                activeTrackColor: AppColors.primary,
+                onChanged: (v) => settingsNotifier
+                    .update(settings.copyWith(adaptiveDifficulty: v)),
+              ),
             ),
-          ),
 
           const SizedBox(height: 28),
 
           // ─── Learning Modes Section ────────
-          const _SectionHeader(title: 'Learning Modes'),
-          const SizedBox(height: 8),
+          // Learner-only — hidden for Teacher / Parent monitoring profiles.
+          if (!isMonitor) ...[
+            const _SectionHeader(title: 'Learning Modes'),
+            const SizedBox(height: 8),
 
-          _SettingsTile(
-            icon: Icons.slow_motion_video_rounded,
-            title: 'Slow-Motion Mode',
-            subtitle: settings.slowMotionEnabled
-                ? 'Games & flashcards animate at half speed'
-                : 'Slow gameplay & flashcard animations down',
-            trailing: Switch.adaptive(
-              value: settings.slowMotionEnabled,
-              activeTrackColor: AppColors.primary,
-              onChanged: (v) =>
-                  settingsNotifier.update(settings.copyWith(slowMotionEnabled: v)),
-            ),
-          ),
-
-          _SettingsTile(
-            icon: Icons.support_rounded,
-            title: 'Learning Assist',
-            subtitle: settings.learningAssistEnabled
-                ? 'Shows "why" hints and a 50/50 helper in quizzes'
-                : 'Plain quizzes — no hints or explanations',
-            trailing: Switch.adaptive(
-              value: settings.learningAssistEnabled,
-              activeTrackColor: AppColors.primary,
-              onChanged: (v) => settingsNotifier
-                  .update(settings.copyWith(learningAssistEnabled: v)),
-            ),
-          ),
-
-          _SettingsTile(
-            icon: Icons.flag_rounded,
-            title: 'Daily Mission Size',
-            subtitle: '${settings.dailyMissionSize} words per day',
-            trailing: SizedBox(
-              width: 150,
-              child: Slider(
-                value: settings.dailyMissionSize.clamp(3, 5).toDouble(),
-                min: 3,
-                max: 5,
-                divisions: 2,
-                label: '${settings.dailyMissionSize}',
-                onChanged: (v) =>
-                    settingsNotifier.setDailyMissionSize(v.round()),
+            _SettingsTile(
+              icon: Icons.slow_motion_video_rounded,
+              title: 'Slow-Motion Mode',
+              subtitle: settings.slowMotionEnabled
+                  ? 'Games & flashcards animate at half speed'
+                  : 'Slow gameplay & flashcard animations down',
+              trailing: Switch.adaptive(
+                value: settings.slowMotionEnabled,
+                activeTrackColor: AppColors.primary,
+                onChanged: (v) => settingsNotifier
+                    .update(settings.copyWith(slowMotionEnabled: v)),
               ),
             ),
-          ),
 
-          const SizedBox(height: 28),
+            _SettingsTile(
+              icon: Icons.support_rounded,
+              title: 'Learning Assist',
+              subtitle: settings.learningAssistEnabled
+                  ? 'Shows "why" hints and a 50/50 helper in quizzes'
+                  : 'Plain quizzes — no hints or explanations',
+              trailing: Switch.adaptive(
+                value: settings.learningAssistEnabled,
+                activeTrackColor: AppColors.primary,
+                onChanged: (v) => settingsNotifier
+                    .update(settings.copyWith(learningAssistEnabled: v)),
+              ),
+            ),
+
+            _SettingsTile(
+              icon: Icons.flag_rounded,
+              title: 'Daily Mission Size',
+              subtitle: '${settings.dailyMissionSize} words per day',
+              trailing: SizedBox(
+                width: 150,
+                child: Slider(
+                  value: settings.dailyMissionSize.clamp(3, 5).toDouble(),
+                  min: 3,
+                  max: 5,
+                  divisions: 2,
+                  label: '${settings.dailyMissionSize}',
+                  onChanged: (v) =>
+                      settingsNotifier.setDailyMissionSize(v.round()),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 28),
+          ],
 
           // ─── Audio Section ─────────────────
-          _SectionHeader(title: AppLocalizations.of(context)?.audio ?? 'Audio'),
-          const SizedBox(height: 8),
+          // Game / flashcard audio — learner-only, hidden for monitoring roles.
+          if (!isMonitor) ...[
+            _SectionHeader(
+                title: AppLocalizations.of(context)?.audio ?? 'Audio'),
+            const SizedBox(height: 8),
 
-          _SettingsTile(
-            icon: Icons.record_voice_over_rounded,
-            title: AppLocalizations.of(context)?.textToSpeech ?? 'Text-to-Speech',
-            subtitle: 'Hear words spoken aloud',
-            trailing: Switch.adaptive(
-              value: settings.ttsEnabled,
-              activeTrackColor: AppColors.primary,
-              onChanged: (v) =>
-                  settingsNotifier.update(settings.copyWith(ttsEnabled: v)),
-            ),
-          ),
-
-          _SettingsTile(
-            icon: Icons.speed_rounded,
-            title: AppLocalizations.of(context)?.speechSpeed ?? 'Speech Speed',
-            subtitle: _speedLabel(settings.ttsSpeed),
-            trailing: SizedBox(
-              width: 150,
-              child: Slider(
-                value: settings.ttsSpeed,
-                min: 0.3,
-                divisions: 7,
-                label: _speedLabel(settings.ttsSpeed),
-                onChanged: settings.ttsEnabled
-                    ? (v) => settingsNotifier.update(
-                        settings.copyWith(ttsSpeed: v),
-                      )
-                    : null,
+            _SettingsTile(
+              icon: Icons.record_voice_over_rounded,
+              title:
+                  AppLocalizations.of(context)?.textToSpeech ?? 'Text-to-Speech',
+              subtitle: 'Hear words spoken aloud',
+              trailing: Switch.adaptive(
+                value: settings.ttsEnabled,
+                activeTrackColor: AppColors.primary,
+                onChanged: (v) =>
+                    settingsNotifier.update(settings.copyWith(ttsEnabled: v)),
               ),
             ),
-          ),
 
-          _SettingsTile(
-            icon: Icons.volume_up_rounded,
-            title: AppLocalizations.of(context)?.soundEffects ?? 'Sound Effects',
-            subtitle: 'Game sounds & feedback',
-            trailing: Switch.adaptive(
-              value: settings.soundEffects,
-              activeTrackColor: AppColors.primary,
-              onChanged: (v) =>
-                  settingsNotifier.update(settings.copyWith(soundEffects: v)),
+            _SettingsTile(
+              icon: Icons.speed_rounded,
+              title: AppLocalizations.of(context)?.speechSpeed ?? 'Speech Speed',
+              subtitle: _speedLabel(settings.ttsSpeed),
+              trailing: SizedBox(
+                width: 150,
+                child: Slider(
+                  value: settings.ttsSpeed,
+                  min: 0.3,
+                  divisions: 7,
+                  label: _speedLabel(settings.ttsSpeed),
+                  onChanged: settings.ttsEnabled
+                      ? (v) => settingsNotifier.update(
+                            settings.copyWith(ttsSpeed: v),
+                          )
+                      : null,
+                ),
+              ),
             ),
-          ),
 
-          _SettingsTile(
-            icon: Icons.mic_rounded,
-            title: 'Speech-to-Text',
-            subtitle: settings.speechToText
-                ? 'Voice input enabled in games'
-                : 'Tap to enable voice input for games',
-            trailing: Switch.adaptive(
-              value: settings.speechToText,
-              activeTrackColor: AppColors.primary,
-              onChanged: (v) =>
-                  settingsNotifier.update(settings.copyWith(speechToText: v)),
+            _SettingsTile(
+              icon: Icons.volume_up_rounded,
+              title:
+                  AppLocalizations.of(context)?.soundEffects ?? 'Sound Effects',
+              subtitle: 'Game sounds & feedback',
+              trailing: Switch.adaptive(
+                value: settings.soundEffects,
+                activeTrackColor: AppColors.primary,
+                onChanged: (v) =>
+                    settingsNotifier.update(settings.copyWith(soundEffects: v)),
+              ),
             ),
-          ),
 
-          const SizedBox(height: 28),
+            _SettingsTile(
+              icon: Icons.mic_rounded,
+              title: 'Speech-to-Text',
+              subtitle: settings.speechToText
+                  ? 'Voice input enabled in games'
+                  : 'Tap to enable voice input for games',
+              trailing: Switch.adaptive(
+                value: settings.speechToText,
+                activeTrackColor: AppColors.primary,
+                onChanged: (v) =>
+                    settingsNotifier.update(settings.copyWith(speechToText: v)),
+              ),
+            ),
+
+            const SizedBox(height: 28),
+          ],
 
           // ─── Language Section ──────────────
           _SectionHeader(title: AppLocalizations.of(context)?.language ?? 'Language'),
@@ -437,93 +457,102 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 28),
 
           // ─── Reminders Section ─────────────
-          _SectionHeader(title: AppLocalizations.of(context)?.reminders ?? 'Reminders'),
-          const SizedBox(height: 8),
+          // Study reminders are learner-only — hidden for monitoring roles.
+          if (!isMonitor) ...[
+            _SectionHeader(
+                title: AppLocalizations.of(context)?.reminders ?? 'Reminders'),
+            const SizedBox(height: 8),
 
-          _SettingsTile(
-            icon: Icons.notifications_active_rounded,
-            title: AppLocalizations.of(context)?.dailyReminder ?? 'Daily Reminder',
-            subtitle: settings.notificationsEnabled
-                ? _formatTime(settings.reminderHour, settings.reminderMinute)
-                : 'Off',
-            trailing: Switch.adaptive(
-              value: settings.notificationsEnabled,
-              activeTrackColor: AppColors.primary,
-              onChanged: (v) async {
-                if (v) {
-                  final granted = await NotificationService.requestPermission();
-                  if (!granted) return;
-                  settingsNotifier.update(
-                    settings.copyWith(notificationsEnabled: true),
-                  );
-                  await NotificationService.scheduleDailyReminder(
-                    hour: settings.reminderHour,
-                    minute: settings.reminderMinute,
-                  );
-                } else {
-                  settingsNotifier.update(
-                    settings.copyWith(notificationsEnabled: false),
-                  );
-                  await NotificationService.cancelDailyReminder();
-                }
-              },
-            ),
-          ),
-
-          if (settings.notificationsEnabled)
             _SettingsTile(
-              icon: Icons.access_time_rounded,
-              title: AppLocalizations.of(context)?.reminderTime ?? 'Reminder Time',
-              subtitle: _formatTime(settings.reminderHour, settings.reminderMinute),
-              trailing: TextButton(
-                onPressed: () async {
-                  final picked = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay(
-                      hour: settings.reminderHour,
-                      minute: settings.reminderMinute,
-                    ),
-                  );
-                  if (picked != null) {
-                    settingsNotifier.updateReminderTime(picked.hour, picked.minute);
-                    await NotificationService.scheduleDailyReminder(
-                      hour: picked.hour,
-                      minute: picked.minute,
-                    );
-                  }
-                },
-                child: const Text('Change'),
-              ),
-            ),
-
-          // Vocabulary Review Reminder
-          if (settings.notificationsEnabled)
-            _SettingsTile(
-              icon: Icons.psychology_rounded,
-              title: 'Vocab Review Reminder',
-              subtitle: settings.vocabReviewEnabled
-                  ? 'Reminds you to review weak words'
+              icon: Icons.notifications_active_rounded,
+              title:
+                  AppLocalizations.of(context)?.dailyReminder ?? 'Daily Reminder',
+              subtitle: settings.notificationsEnabled
+                  ? _formatTime(settings.reminderHour, settings.reminderMinute)
                   : 'Off',
               trailing: Switch.adaptive(
-                value: settings.vocabReviewEnabled,
-                activeTrackColor: const Color(0xFF7C4DFF),
+                value: settings.notificationsEnabled,
+                activeTrackColor: AppColors.primary,
                 onChanged: (v) async {
-                  settingsNotifier.update(
-                    settings.copyWith(vocabReviewEnabled: v),
-                  );
-                  if (profile != null) {
-                    await ReviewReminderService.scheduleIfNeeded(
-                      profileId: profile.id,
-                      enabled: v,
+                  if (v) {
+                    final granted =
+                        await NotificationService.requestPermission();
+                    if (!granted) return;
+                    settingsNotifier.update(
+                      settings.copyWith(notificationsEnabled: true),
+                    );
+                    await NotificationService.scheduleDailyReminder(
                       hour: settings.reminderHour,
                       minute: settings.reminderMinute,
                     );
+                  } else {
+                    settingsNotifier.update(
+                      settings.copyWith(notificationsEnabled: false),
+                    );
+                    await NotificationService.cancelDailyReminder();
                   }
                 },
               ),
             ),
 
-          const SizedBox(height: 28),
+            if (settings.notificationsEnabled)
+              _SettingsTile(
+                icon: Icons.access_time_rounded,
+                title: AppLocalizations.of(context)?.reminderTime ??
+                    'Reminder Time',
+                subtitle:
+                    _formatTime(settings.reminderHour, settings.reminderMinute),
+                trailing: TextButton(
+                  onPressed: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay(
+                        hour: settings.reminderHour,
+                        minute: settings.reminderMinute,
+                      ),
+                    );
+                    if (picked != null) {
+                      settingsNotifier.updateReminderTime(
+                          picked.hour, picked.minute);
+                      await NotificationService.scheduleDailyReminder(
+                        hour: picked.hour,
+                        minute: picked.minute,
+                      );
+                    }
+                  },
+                  child: const Text('Change'),
+                ),
+              ),
+
+            // Vocabulary Review Reminder
+            if (settings.notificationsEnabled)
+              _SettingsTile(
+                icon: Icons.psychology_rounded,
+                title: 'Vocab Review Reminder',
+                subtitle: settings.vocabReviewEnabled
+                    ? 'Reminds you to review weak words'
+                    : 'Off',
+                trailing: Switch.adaptive(
+                  value: settings.vocabReviewEnabled,
+                  activeTrackColor: const Color(0xFF7C4DFF),
+                  onChanged: (v) async {
+                    settingsNotifier.update(
+                      settings.copyWith(vocabReviewEnabled: v),
+                    );
+                    if (profile != null) {
+                      await ReviewReminderService.scheduleIfNeeded(
+                        profileId: profile.id,
+                        enabled: v,
+                        hour: settings.reminderHour,
+                        minute: settings.reminderMinute,
+                      );
+                    }
+                  },
+                ),
+              ),
+
+            const SizedBox(height: 28),
+          ],
 
           // ─── Backup & Restore Section ──────
           const _SectionHeader(title: 'Data'),
@@ -553,7 +582,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          if (profile?.role == UserRole.teacher || profile?.role == UserRole.parent)
+          if (isMonitor)
             _SettingsTile(
               icon: Icons.cloud_sync_rounded,
               title: 'Backup & Link Account',
@@ -574,17 +603,30 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          _SettingsTile(
-            icon: Icons.accessibility_new_rounded,
-            title: 'Re-run Accessibility Setup',
-            subtitle: 'Restart the accessibility wizard',
-            trailing: IconButton(
-              icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-              onPressed: () => context.push('/accessibility-setup'),
+          // Accessibility wizard & gaze input are learner-facing onboarding /
+          // input aids — hidden for Teacher / Parent monitoring profiles.
+          if (!isMonitor) ...[
+            _SettingsTile(
+              icon: Icons.accessibility_new_rounded,
+              title: 'Re-run Accessibility Setup',
+              subtitle: 'Restart the accessibility wizard',
+              trailing: IconButton(
+                icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+                onPressed: () => context.push('/accessibility-setup'),
+              ),
             ),
-          ),
+            _SettingsTile(
+              icon: Icons.remove_red_eye_rounded,
+              title: 'Gaze Control (Preview)',
+              subtitle: 'Hands-free: move your head or blink to select',
+              trailing: IconButton(
+                icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+                onPressed: () => context.push('/gaze-settings'),
+              ),
+            ),
+          ],
 
-          if (profile?.role == UserRole.teacher || profile?.role == UserRole.parent)
+          if (isMonitor)
             _SettingsTile(
               icon: Icons.family_restroom_rounded,
               title: 'Parental Controls',
@@ -595,26 +637,29 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
 
-          if (profile?.role == UserRole.teacher || profile?.role == UserRole.parent)
+          if (isMonitor)
             const _TelemetryToggle(),
 
-          _SettingsTile(
-            icon: Icons.replay_rounded,
-            title: 'Replay Tutorials',
-            subtitle: 'Show tutorial guides again on all screens',
-            trailing: IconButton(
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              onPressed: () async {
-                final profile = ref.read(profileProvider);
-                if (profile != null) {
-                  await HiveService.resetAllTutorials(profile.id);
-                  if (context.mounted) {
-                    AppSnackBar.success(context, message: 'Tutorials will appear again on each screen!');
+          // Tutorial replays are learner-facing — hidden for monitoring roles.
+          if (!isMonitor)
+            _SettingsTile(
+              icon: Icons.replay_rounded,
+              title: 'Replay Tutorials',
+              subtitle: 'Show tutorial guides again on all screens',
+              trailing: IconButton(
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+                onPressed: () async {
+                  final profile = ref.read(profileProvider);
+                  if (profile != null) {
+                    await HiveService.resetAllTutorials(profile.id);
+                    if (context.mounted) {
+                      AppSnackBar.success(context,
+                          message: 'Tutorials will appear again on each screen!');
+                    }
                   }
-                }
-              },
+                },
+              ),
             ),
-          ),
 
           const SizedBox(height: 28),
 

@@ -28,6 +28,10 @@ import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
+import '../../gaze_control/models/gaze_action.dart';
+import '../../gaze_control/models/gaze_models.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_scope.dart';
 
 /// Picture-Word Association Game
 ///
@@ -59,6 +63,10 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
   int _score = 0;
   int? _selectedIndex;
   bool _answered = false;
+
+  /// Gaze cursor: index of the highlighted choice. Only used/visible when Gaze
+  /// Control is enabled; touch ignores it.
+  int _cursorIndex = 0;
   bool _showResult = false;
   List<Achievement> _newAchievements = [];
   final List<GameReviewItem> _reviewItems = [];
@@ -81,8 +89,9 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
     super.initState();
     var source = List.of(SeedData.allFlashcards);
     if (widget.categories.isNotEmpty) {
-      source =
-          source.where((c) => widget.categories.contains(c.category)).toList();
+      source = source
+          .where((c) => widget.categories.contains(c.category))
+          .toList();
     }
     _allCards = source..shuffle(_random);
     _generateRounds();
@@ -109,7 +118,11 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
     final celebType = _starsEarned >= 3
         ? CelebrationType.perfectScore
         : CelebrationType.gameComplete;
-    AccessibleCelebrationOverlay.show(context: context, ref: ref, type: celebType);
+    AccessibleCelebrationOverlay.show(
+      context: context,
+      ref: ref,
+      type: celebType,
+    );
     ref.read(hapticServiceProvider).gameComplete();
     setState(() => _showResult = true);
   }
@@ -128,12 +141,14 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
         ..shuffle(_random);
       final choices = [correct, ...others.take(_numChoices - 1)]
         ..shuffle(_random);
-      _rounds.add(_PictureWordRound(
-        correctCard: correct,
-        choices: choices,
-        correctIndex: choices.indexOf(correct),
-        isPictureMode: i % 2 == 0, // alternate modes
-      ));
+      _rounds.add(
+        _PictureWordRound(
+          correctCard: correct,
+          choices: choices,
+          correctIndex: choices.indexOf(correct),
+          isPictureMode: i % 2 == 0, // alternate modes
+        ),
+      );
     }
   }
 
@@ -145,13 +160,15 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
       _answered = true;
       final round = _rounds[_currentRound];
       final isCorrect = index == round.correctIndex;
-      _reviewItems.add(GameReviewItem(
-        wordEnglish: round.correctCard.wordEnglish,
-        wordFilipino: round.correctCard.wordFilipino,
-        category: round.correctCard.category,
-        isCorrect: isCorrect,
-        userAnswer: isCorrect ? null : round.choices[index].wordEnglish,
-      ));
+      _reviewItems.add(
+        GameReviewItem(
+          wordEnglish: round.correctCard.wordEnglish,
+          wordFilipino: round.correctCard.wordFilipino,
+          category: round.correctCard.category,
+          isCorrect: isCorrect,
+          userAnswer: isCorrect ? null : round.choices[index].wordEnglish,
+        ),
+      );
       if (isCorrect) {
         _score++;
         sound.playCorrect();
@@ -169,13 +186,18 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
           _currentRound++;
           _selectedIndex = null;
           _answered = false;
+          _cursorIndex = 0;
         });
       } else {
         _saveProgress();
         final celebType = _starsEarned >= 3
             ? CelebrationType.perfectScore
             : CelebrationType.gameComplete;
-        AccessibleCelebrationOverlay.show(context: context, ref: ref, type: celebType);
+        AccessibleCelebrationOverlay.show(
+          context: context,
+          ref: ref,
+          type: celebType,
+        );
         ref.read(hapticServiceProvider).gameComplete();
         setState(() => _showResult = true);
       }
@@ -188,6 +210,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
       _score = 0;
       _selectedIndex = null;
       _answered = false;
+      _cursorIndex = 0;
       _showResult = false;
       _reviewItems.clear();
       _allCards.shuffle(_random);
@@ -205,29 +228,81 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
   }
 
   void _saveProgress() {
-    final categories =
-        _rounds.map((r) => r.correctCard.category).toSet().toList();
-    ref.read(progressProvider.notifier).recordGameResult(
-      gameType: GameType.pictureWord,
-      score: _score,
-      total: _rounds.length,
-      starsEarned: _starsEarned,
-      categoriesPlayed: categories,
-    );
-    _newAchievements =
-        ref.read(progressProvider.notifier).checkAchievements();
+    final categories = _rounds
+        .map((r) => r.correctCard.category)
+        .toSet()
+        .toList();
+    ref
+        .read(progressProvider.notifier)
+        .recordGameResult(
+          gameType: GameType.pictureWord,
+          score: _score,
+          total: _rounds.length,
+          starsEarned: _starsEarned,
+          categoriesPlayed: categories,
+        );
+    _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
     final profile = ref.read(profileProvider);
     if (profile != null) {
       final srResults = <String, bool>{};
       for (final r in _reviewItems) {
-        final card =
-            _allCards.where((c) => c.wordEnglish == r.wordEnglish).firstOrNull;
+        final card = _allCards
+            .where((c) => c.wordEnglish == r.wordEnglish)
+            .firstOrNull;
         if (card != null) srResults[card.id] = r.isCorrect;
       }
       SpacedRepetitionService.recordBatch(
-          profileId: profile.id, results: srResults);
+        profileId: profile.id,
+        results: srResults,
+      );
     }
+  }
+
+  // ─── Gaze cursor (hands-free) ────────────────────
+  // Look left/right to move the highlight across the answer choices, then look
+  // down or blink to choose. Disabled while a result is showing or paused.
+  // Inert unless the learner enabled Gaze Control.
+
+  void _moveCursor(int delta) {
+    final n = _rounds[_currentRound].choices.length;
+    if (n <= 0) return;
+    setState(() => _cursorIndex = (((_cursorIndex + delta) % n) + n) % n);
+  }
+
+  void _selectCursor() {
+    if (_answered || isPaused) return;
+    _selectAnswer(_cursorIndex);
+  }
+
+  List<GazeAction> _gazeActions() {
+    final canMove = !_answered && !isPaused;
+    return [
+      GazeAction(
+        zone: GazeZone.left,
+        label: 'Prev',
+        icon: Icons.chevron_left_rounded,
+        color: AppColors.secondary,
+        enabled: canMove,
+        onSelect: () => _moveCursor(-1),
+      ),
+      GazeAction(
+        zone: GazeZone.right,
+        label: 'Next',
+        icon: Icons.chevron_right_rounded,
+        color: AppColors.secondary,
+        enabled: canMove,
+        onSelect: () => _moveCursor(1),
+      ),
+      GazeAction(
+        zone: GazeZone.down,
+        label: 'Choose',
+        icon: Icons.check_circle_rounded,
+        color: AppColors.success,
+        enabled: canMove,
+        onSelect: _selectCursor,
+      ),
+    ];
   }
 
   @override
@@ -280,161 +355,179 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
 
   Widget _buildGameScreen(BuildContext context) {
     final round = _rounds[_currentRound];
+    // Show the gaze cursor only when hands-free control is on and the round
+    // hasn't been answered yet (the answer colours take over after that).
+    final showCursor =
+        ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) pauseGame();
-      },
-      child: Stack(children: [
-        Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
-          onPressed: pauseGame,
-        ),
-        title: Text(
-            'Picture-Word  •  ${_currentRound + 1}/${_rounds.length}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.pause_circle_outline_rounded),
-            tooltip: 'Pause',
-            onPressed: pauseGame,
-          ),
-          if (isTimedMode)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GameTimerWidget(
-                remainingSeconds: remainingSeconds,
-                totalSeconds: totalTimerSeconds,
-                size: 44,
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+    return GazeScope(
+      actions: _gazeActions(),
+      onBlink: _selectCursor,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) pauseGame();
+        },
+        child: Stack(
+          children: [
+            Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  tooltip: 'Close',
+                  onPressed: pauseGame,
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.star_rounded,
-                        size: 20, color: AppColors.warning),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_score',
-                      style: AppTypography.labelLarge
-                          .copyWith(color: AppColors.warning),
+                title: Text(
+                  'Picture-Word  •  ${_currentRound + 1}/${_rounds.length}',
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.pause_circle_outline_rounded),
+                    tooltip: 'Pause',
+                    onPressed: pauseGame,
+                  ),
+                  if (isTimedMode)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GameTimerWidget(
+                        remainingSeconds: remainingSeconds,
+                        totalSeconds: totalTimerSeconds,
+                        size: 44,
+                      ),
                     ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 20,
+                              color: AppColors.warning,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$_score',
+                              style: AppTypography.labelLarge.copyWith(
+                                color: AppColors.warning,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              body: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    // ─── Progress bar ─────────────────────
+                    Semantics(
+                      label: 'Round ${_currentRound + 1} of ${_rounds.length}',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (_currentRound + 1) / _rounds.length,
+                          minHeight: 6,
+                          backgroundColor: AppColors.primaryLight.withValues(
+                            alpha: 0.3,
+                          ),
+                          valueColor: const AlwaysStoppedAnimation(
+                            AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    if (round.isPictureMode)
+                      _buildPictureMode(round, showCursor)
+                    else
+                      _buildWordMode(round, showCursor),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // ─── Progress bar ─────────────────────
-            Semantics(
-              label: 'Round ${_currentRound + 1} of ${_rounds.length}',
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: (_currentRound + 1) / _rounds.length,
-                  minHeight: 6,
-                  backgroundColor:
-                      AppColors.primaryLight.withValues(alpha: 0.3),
-                  valueColor:
-                      const AlwaysStoppedAnimation(AppColors.primary),
-                ),
+            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
+            if (isPaused)
+              PauseOverlay(
+                onResume: resumeGame,
+                onRestart: () {
+                  resumeGame();
+                  _restart();
+                },
+                onQuit: () async {
+                  await savePartialProgress();
+                  if (context.mounted) context.go('/games');
+                },
               ),
-            ),
-            const SizedBox(height: 20),
-
-            if (round.isPictureMode)
-              _buildPictureMode(round)
-            else
-              _buildWordMode(round),
           ],
         ),
       ),
-    ),
-        GameBreakButton(
-          onHold: holdForBreak,
-          onResume: resumeFromBreak,
-        ),
-        if (isPaused)
-          PauseOverlay(
-            onResume: resumeGame,
-            onRestart: () {
-              resumeGame();
-              _restart();
-            },
-            onQuit: () async {
-              await savePartialProgress();
-              if (context.mounted) context.go('/games');
-            },
-          ),
-      ]),
     );
   }
 
   /// Mode A: Show word prompt at top, show 4 pictures as choices
-  Widget _buildPictureMode(_PictureWordRound round) {
+  Widget _buildPictureMode(_PictureWordRound round, bool showCursor) {
     return Expanded(
       child: Column(
         children: [
           // ─── Word prompt ────────────────────
           Semantics(
-            label: 'Find the picture for: ${round.correctCard.wordEnglish}',
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              decoration: BoxDecoration(
-                color: round.correctCard.category.color
-                    .withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: round.correctCard.category.color
-                      .withValues(alpha: 0.3),
-                  width: 2,
+                label: 'Find the picture for: ${round.correctCard.wordEnglish}',
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    color: round.correctCard.category.color.withValues(
+                      alpha: 0.12,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: round.correctCard.category.color.withValues(
+                        alpha: 0.3,
+                      ),
+                      width: 2,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Find the picture for:',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: HCColor.of(context).textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        round.correctCard.wordEnglish,
+                        style: AppTypography.headlineMedium.copyWith(
+                          color: round.correctCard.category.darkColor,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        round.correctCard.wordFilipino,
+                        style: AppTypography.titleSmall.copyWith(
+                          color: HCColor.of(context).textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'Find the picture for:',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: HCColor.of(context).textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    round.correctCard.wordEnglish,
-                    style: AppTypography.headlineMedium.copyWith(
-                      color: round.correctCard.category.darkColor,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    round.correctCard.wordFilipino,
-                    style: AppTypography.titleSmall.copyWith(
-                      color: HCColor.of(context).textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
+              )
               .animate(key: ValueKey(_currentRound))
               .fadeIn(duration: 300.ms)
               .slideX(begin: 0.1, end: 0),
@@ -462,14 +555,17 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                 final isCorrect = index == round.correctIndex;
                 final showCorrect = _answered && isCorrect;
                 final showWrong = _answered && isSelected && !isCorrect;
+                final highlighted = showCursor && index == _cursorIndex;
 
                 Color borderColor = AppColors.primary.withValues(alpha: 0.2);
+                if (highlighted) borderColor = AppColors.primary;
                 if (showCorrect) borderColor = AppColors.success;
                 if (showWrong) borderColor = AppColors.error;
 
                 return Semantics(
                   button: true,
-                  label: 'Picture of ${choice.wordEnglish}'
+                  label:
+                      'Picture of ${choice.wordEnglish}'
                       '${showCorrect ? ', correct answer' : ''}'
                       '${showWrong ? ', wrong answer' : ''}',
                   child: GestureDetector(
@@ -480,17 +576,20 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                         color: showCorrect
                             ? AppColors.successLight
                             : showWrong
-                                ? AppColors.errorLight
-                                : HCColor.of(context).surface,
+                            ? AppColors.errorLight
+                            : HCColor.of(context).surface,
                         borderRadius: BorderRadius.circular(20),
-                        border:
-                            Border.all(color: borderColor, width: 3),
+                        border: Border.all(
+                          color: borderColor,
+                          width: highlighted ? 4 : 3,
+                        ),
                         boxShadow: [
-                          if (isSelected && !_answered)
+                          if ((isSelected || highlighted) && !_answered)
                             BoxShadow(
-                              color: AppColors.primary
-                                  .withValues(alpha: 0.2),
-                              blurRadius: 8,
+                              color: AppColors.primary.withValues(
+                                alpha: highlighted ? 0.35 : 0.2,
+                              ),
+                              blurRadius: highlighted ? 14 : 8,
                               offset: const Offset(0, 4),
                             ),
                         ],
@@ -515,51 +614,57 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
   }
 
   /// Mode B: Show 1 picture at top, show 4 word choices at bottom
-  Widget _buildWordMode(_PictureWordRound round) {
+  Widget _buildWordMode(_PictureWordRound round, bool showCursor) {
     return Expanded(
       child: Column(
         children: [
           // ─── Picture prompt ─────────────────
           Expanded(
             flex: 3,
-            child: Semantics(
-              label:
-                  'Which word matches this picture? ${round.correctCard.wordEnglish}',
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: round.correctCard.category.color
-                      .withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: round.correctCard.category.color
-                        .withValues(alpha: 0.3),
-                    width: 2,
-                  ),
-                ),
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        FlashcardImage(card: round.correctCard, size: 112),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Which word matches?',
-                          style: AppTypography.titleMedium.copyWith(
-                            color: HCColor.of(context).textSecondary,
+            child:
+                Semantics(
+                      label:
+                          'Which word matches this picture? ${round.correctCard.wordEnglish}',
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: round.correctCard.category.color.withValues(
+                            alpha: 0.12,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: round.correctCard.category.color.withValues(
+                              alpha: 0.3,
+                            ),
+                            width: 2,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            )
-                .animate(key: ValueKey(_currentRound))
-                .fadeIn(duration: 300.ms)
-                .slideX(begin: 0.1, end: 0),
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                FlashcardImage(
+                                  card: round.correctCard,
+                                  size: 112,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Which word matches?',
+                                  style: AppTypography.titleMedium.copyWith(
+                                    color: HCColor.of(context).textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                    .animate(key: ValueKey(_currentRound))
+                    .fadeIn(duration: 300.ms)
+                    .slideX(begin: 0.1, end: 0),
           ),
           const SizedBox(height: 24),
 
@@ -579,9 +684,10 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                 crossAxisSpacing: 12,
                 // Shrink aspect ratio as text scales up so answer cells
                 // stay tall enough to hold scaled label text at XL font.
-                childAspectRatio: ((context.isLargeTablet ? 3.0 : 2.5) /
-                        MediaQuery.textScalerOf(context).scale(1.0))
-                    .clamp(1.4, 3.0),
+                childAspectRatio:
+                    ((context.isLargeTablet ? 3.0 : 2.5) /
+                            MediaQuery.textScalerOf(context).scale(1.0))
+                        .clamp(1.4, 3.0),
               ),
               itemCount: round.choices.length,
               itemBuilder: (context, index) {
@@ -589,12 +695,11 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                 final isSelected = _selectedIndex == index;
                 final isCorrect = index == round.correctIndex;
                 final showCorrect = _answered && isCorrect;
-                final showWrong =
-                    _answered && isSelected && !isCorrect;
+                final showWrong = _answered && isSelected && !isCorrect;
+                final highlighted = showCursor && index == _cursorIndex;
 
                 Color bgColor = HCColor.of(context).surface;
-                Color borderColor =
-                    AppColors.primary.withValues(alpha: 0.2);
+                Color borderColor = AppColors.primary.withValues(alpha: 0.2);
                 Color textColor = HCColor.of(context).textPrimary;
 
                 if (showCorrect) {
@@ -605,11 +710,14 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                   bgColor = AppColors.errorLight;
                   borderColor = AppColors.error;
                   textColor = AppColors.errorDark;
+                } else if (highlighted) {
+                  borderColor = AppColors.primary;
                 }
 
                 return Semantics(
                   button: true,
-                  label: 'Answer: ${choice.wordEnglish}'
+                  label:
+                      'Answer: ${choice.wordEnglish}'
                       '${showCorrect ? ', correct' : ''}'
                       '${showWrong ? ', wrong' : ''}',
                   child: GestureDetector(
@@ -620,7 +728,9 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                         color: bgColor,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                            color: borderColor, width: 2),
+                          color: borderColor,
+                          width: highlighted ? 4 : 2,
+                        ),
                       ),
                       child: Center(
                         child: Column(
@@ -628,18 +738,15 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                           children: [
                             Text(
                               choice.wordEnglish,
-                              style:
-                                  AppTypography.titleMedium.copyWith(
+                              style: AppTypography.titleMedium.copyWith(
                                 color: textColor,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             Text(
                               choice.wordFilipino,
-                              style:
-                                  AppTypography.bodySmall.copyWith(
-                                color: textColor
-                                    .withValues(alpha: 0.7),
+                              style: AppTypography.bodySmall.copyWith(
+                                color: textColor.withValues(alpha: 0.7),
                               ),
                             ),
                           ],

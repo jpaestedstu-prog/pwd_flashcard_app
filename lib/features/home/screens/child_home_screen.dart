@@ -8,6 +8,9 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/app_providers.dart';
 import '../../../core/widgets/hub_scaffold.dart';
 import '../../../widgets/profile_avatar.dart';
+import '../../gaze_control/providers/gaze_home_grid.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../widgets/home_tile.dart';
 
 /// Gamified home for the Child role.
@@ -35,7 +38,34 @@ class ChildHomeScreen extends ConsumerWidget {
     // large tablets where there's room.
     final columns = context.screenWidth >= 900 ? 4 : 2;
 
-    return HubScaffold(
+    // Hands-free "Bottom nav + Home tiles" reach: when enabled, these tiles
+    // register with the shell's gaze D-pad and show a focus ring. Pure
+    // pass-through otherwise, so the gaze-off layout / touch are unchanged.
+    final gazeHomeOn = ref.watch(
+      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+    );
+    final gazeGrid = GazeTileGridBuilder(active: gazeHomeOn);
+
+    GazeTileEntry entry({
+      required String emoji,
+      required String label,
+      required List<Color> gradient,
+      required VoidCallback onTap,
+    }) =>
+        (
+          tile: HomeTile(
+            emoji: emoji,
+            label: label,
+            gradient: gradient,
+            onTap: onTap,
+          ),
+          cell: GazeTileCell(label: label, onActivate: onTap),
+        );
+
+    return GazeHomeRegistrar(
+      active: gazeGrid.active,
+      rows: gazeGrid.rows,
+      child: HubScaffold(
       intensity: 0.30,
       slivers: [
                   // ─── Greeting strip ──────────────────────
@@ -83,62 +113,67 @@ class ChildHomeScreen extends ConsumerWidget {
                         crossAxisSpacing: context.gridSpacing,
                         mainAxisExtent: context.hubTileHeight(),
                       ),
-                      delegate: SliverChildListDelegate([
-                        HomeTile(
-                          emoji: '🎮',
-                          label: 'Play',
-                          gradient: const [
-                            AppColors.playerAccent,
-                            AppColors.playerAccentLight,
+                      delegate: SliverChildListDelegate(
+                        gazeGrid.section(
+                          columns: columns,
+                          entries: [
+                            entry(
+                              emoji: '🎮',
+                              label: 'Play',
+                              gradient: const [
+                                AppColors.playerAccent,
+                                AppColors.playerAccentLight,
+                              ],
+                              onTap: () => context.go('/games'),
+                            ),
+                            entry(
+                              emoji: '🧑‍🤝‍🧑',
+                              label: 'Play Together',
+                              gradient: const [
+                                AppColors.bannerPeerStart,
+                                AppColors.bannerPeerEnd,
+                              ],
+                              onTap: () => context.push('/multiplayer'),
+                            ),
+                            entry(
+                              emoji: '🔤',
+                              label: 'Words',
+                              gradient: const [
+                                AppColors.bannerLearningStart,
+                                AppColors.bannerLearningEnd,
+                              ],
+                              onTap: () => context.go('/flashcards'),
+                            ),
+                            entry(
+                              emoji: '📖',
+                              label: 'Stories',
+                              gradient: const [
+                                AppColors.bannerFslStart,
+                                AppColors.bannerFslEnd,
+                              ],
+                              onTap: () => context.go('/stories'),
+                            ),
+                            entry(
+                              emoji: '⭐',
+                              label: 'Stickers',
+                              gradient: const [
+                                AppColors.bannerStickerStart,
+                                AppColors.bannerStickerEnd,
+                              ],
+                              onTap: () => context.push('/sticker-album'),
+                            ),
+                            entry(
+                              emoji: '😊',
+                              label: 'How was it?',
+                              gradient: const [
+                                AppColors.bannerLearningStart,
+                                AppColors.bannerLearningEnd,
+                              ],
+                              onTap: () => context.push('/smileyometer'),
+                            ),
                           ],
-                          onTap: () => context.go('/games'),
                         ),
-                        HomeTile(
-                          emoji: '🧑‍🤝‍🧑',
-                          label: 'Play Together',
-                          gradient: const [
-                            AppColors.bannerPeerStart,
-                            AppColors.bannerPeerEnd,
-                          ],
-                          onTap: () => context.push('/multiplayer'),
-                        ),
-                        HomeTile(
-                          emoji: '🔤',
-                          label: 'Words',
-                          gradient: const [
-                            AppColors.bannerLearningStart,
-                            AppColors.bannerLearningEnd,
-                          ],
-                          onTap: () => context.go('/flashcards'),
-                        ),
-                        HomeTile(
-                          emoji: '📖',
-                          label: 'Stories',
-                          gradient: const [
-                            AppColors.bannerFslStart,
-                            AppColors.bannerFslEnd,
-                          ],
-                          onTap: () => context.go('/stories'),
-                        ),
-                        HomeTile(
-                          emoji: '⭐',
-                          label: 'Stickers',
-                          gradient: const [
-                            AppColors.bannerStickerStart,
-                            AppColors.bannerStickerEnd,
-                          ],
-                          onTap: () => context.push('/sticker-album'),
-                        ),
-                        HomeTile(
-                          emoji: '😊',
-                          label: 'How was it?',
-                          gradient: const [
-                            AppColors.bannerLearningStart,
-                            AppColors.bannerLearningEnd,
-                          ],
-                          onTap: () => context.push('/smileyometer'),
-                        ),
-                      ]),
+                      ),
                     ),
                   ),
 
@@ -159,6 +194,7 @@ class ChildHomeScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+      ),
     );
   }
 }

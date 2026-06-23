@@ -25,6 +25,9 @@ import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../gaze_control/models/gaze_action.dart';
+import '../../gaze_control/models/gaze_models.dart';
+import '../../gaze_control/widgets/gaze_scope.dart';
 
 class FlashcardQuizScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -107,7 +110,9 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
   void onTimeUp() {
     _saveProgress();
     AccessibleCelebrationOverlay.show(
-      context: context, ref: ref, type: CelebrationType.gameComplete,
+      context: context,
+      ref: ref,
+      type: CelebrationType.gameComplete,
     );
     setState(() => _showResult = true);
   }
@@ -141,12 +146,14 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
     final sound = ref.read(soundServiceProvider);
     final haptic = ref.read(hapticServiceProvider);
     final card = _cards[_currentIndex];
-    _reviewItems.add(GameReviewItem(
-      wordEnglish: card.wordEnglish,
-      wordFilipino: card.wordFilipino,
-      category: card.category,
-      isCorrect: isKnow,
-    ));
+    _reviewItems.add(
+      GameReviewItem(
+        wordEnglish: card.wordEnglish,
+        wordFilipino: card.wordFilipino,
+        category: card.category,
+        isCorrect: isKnow,
+      ),
+    );
     setState(() {
       if (isKnow) {
         _knowCount++;
@@ -173,7 +180,9 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
       } else {
         _saveProgress();
         AccessibleCelebrationOverlay.show(
-          context: context, ref: ref, type: CelebrationType.gameComplete,
+          context: context,
+          ref: ref,
+          type: CelebrationType.gameComplete,
         );
         _showResult = true;
       }
@@ -188,17 +197,16 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
   }
 
   void _saveProgress() {
-    final categories = _cards
-        .map((c) => c.category)
-        .toSet()
-        .toList();
-    ref.read(progressProvider.notifier).recordGameResult(
-      gameType: GameType.flashcardQuiz,
-      score: _knowCount,
-      total: _totalCards,
-      starsEarned: _starsEarned,
-      categoriesPlayed: categories,
-    );
+    final categories = _cards.map((c) => c.category).toSet().toList();
+    ref
+        .read(progressProvider.notifier)
+        .recordGameResult(
+          gameType: GameType.flashcardQuiz,
+          score: _knowCount,
+          total: _totalCards,
+          starsEarned: _starsEarned,
+          categoriesPlayed: categories,
+        );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
     // Record per-word accuracy for spaced repetition
@@ -206,11 +214,43 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
     if (profile != null) {
       final srResults = <String, bool>{};
       for (final r in _reviewItems) {
-        final card = _cards.where((c) => c.wordEnglish == r.wordEnglish).firstOrNull;
+        final card = _cards
+            .where((c) => c.wordEnglish == r.wordEnglish)
+            .firstOrNull;
         if (card != null) srResults[card.id] = r.isCorrect;
       }
-      SpacedRepetitionService.recordBatch(profileId: profile.id, results: srResults);
+      SpacedRepetitionService.recordBatch(
+        profileId: profile.id,
+        results: srResults,
+      );
     }
+  }
+
+  /// Hands-free answers: look left for "Still Learning", right for "I Know" —
+  /// matching the swipe directions. Disabled while paused so a stray gaze can't
+  /// answer. Inert unless the learner enabled Gaze Control. (Blink is left
+  /// unbound on purpose, so an involuntary blink never submits an answer.)
+  List<GazeAction> _gazeActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final canAnswer = !isPaused;
+    return [
+      GazeAction(
+        zone: GazeZone.left,
+        label: l10n.learning,
+        icon: Icons.school_rounded,
+        color: AppColors.error,
+        enabled: canAnswer,
+        onSelect: () => _handleSwipe(false),
+      ),
+      GazeAction(
+        zone: GazeZone.right,
+        label: l10n.iKnow,
+        icon: Icons.check_rounded,
+        color: AppColors.success,
+        enabled: canAnswer,
+        onSelect: () => _handleSwipe(true),
+      ),
+    ];
   }
 
   @override
@@ -249,156 +289,166 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
 
     final card = _cards[_currentIndex];
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) pauseGame();
-      },
-      child: Stack(children: [
-        Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
-          onPressed: pauseGame,
-        ),
-        title: Text('${_currentIndex + 1} / $_totalCards'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.pause_circle_outline_rounded),
-            tooltip: 'Pause',
-            onPressed: pauseGame,
-          ),
-          if (isTimedMode)
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: GameTimerWidget(
-                remainingSeconds: remainingSeconds,
-                totalSeconds: totalTimerSeconds,
-                size: 44,
-              ),
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // ─── Single status block: rounded progress + score chips ───
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Semantics(
-              label:
-                  'Card ${_currentIndex + 1} of $_totalCards, $_knowCount known, $_learningCount still learning',
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: (_currentIndex + 1) / _totalCards,
-                  backgroundColor: AppColors.border,
-                  color: AppColors.primary,
-                  minHeight: 6,
+    return GazeScope(
+      actions: _gazeActions(context),
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) pauseGame();
+        },
+        child: Stack(
+          children: [
+            Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  tooltip: 'Close',
+                  onPressed: pauseGame,
                 ),
+                title: Text('${_currentIndex + 1} / $_totalCards'),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.pause_circle_outline_rounded),
+                    tooltip: 'Pause',
+                    onPressed: pauseGame,
+                  ),
+                  if (isTimedMode)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: GameTimerWidget(
+                        remainingSeconds: remainingSeconds,
+                        totalSeconds: totalTimerSeconds,
+                        size: 44,
+                      ),
+                    ),
+                ],
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _StatChip(
-                icon: Icons.check_circle_rounded,
-                color: AppColors.success,
-                value: _knowCount,
-                semanticLabel: '$_knowCount known',
-              ),
-              const SizedBox(width: 12),
-              _StatChip(
-                icon: Icons.school_rounded,
-                color: AppColors.warning,
-                value: _learningCount,
-                semanticLabel: '$_learningCount still learning',
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // ─── Swipeable Card ───────────────────
-          // ConstrainedBox + AspectRatio keep a stable card footprint; the
-          // card body sizes its words consistently (see [_QuizCard]) so every
-          // card looks the same regardless of content length.
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: context.responsive(phone: 320, tablet: 420),
-                  maxHeight: context.responsive(phone: 440, tablet: 560),
-                ),
-                child: AspectRatio(
-                  aspectRatio: 3 / 4,
-                  child: Semantics(
-                    label:
-                        'Flashcard: ${card.wordEnglish}, ${card.wordFilipino}, category ${card.category.label}. Swipe right for I Know, left for Still Learning',
-                    child: GestureDetector(
-                      onHorizontalDragUpdate: _onDragUpdate,
-                      onHorizontalDragEnd: _onDragEnd,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 100),
-                        transform: Matrix4.identity()
-                          ..storage[12] = _dragOffset.dx
-                          ..rotateZ(_dragRotation),
-                        transformAlignment: Alignment.center,
-                        child: _QuizCard(card: card, dragX: _dragOffset.dx),
+              body: Column(
+                children: [
+                  // ─── Single status block: rounded progress + score chips ───
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Semantics(
+                      label:
+                          'Card ${_currentIndex + 1} of $_totalCards, $_knowCount known, $_learningCount still learning',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: (_currentIndex + 1) / _totalCards,
+                          backgroundColor: AppColors.border,
+                          color: AppColors.primary,
+                          minHeight: 6,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _StatChip(
+                        icon: Icons.check_circle_rounded,
+                        color: AppColors.success,
+                        value: _knowCount,
+                        semanticLabel: '$_knowCount known',
+                      ),
+                      const SizedBox(width: 12),
+                      _StatChip(
+                        icon: Icons.school_rounded,
+                        color: AppColors.warning,
+                        value: _learningCount,
+                        semanticLabel: '$_learningCount still learning',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ─── Swipeable Card ───────────────────
+                  // ConstrainedBox + AspectRatio keep a stable card footprint; the
+                  // card body sizes its words consistently (see [_QuizCard]) so every
+                  // card looks the same regardless of content length.
+                  Expanded(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: context.responsive(phone: 320, tablet: 420),
+                          maxHeight: context.responsive(
+                            phone: 440,
+                            tablet: 560,
+                          ),
+                        ),
+                        child: AspectRatio(
+                          aspectRatio: 3 / 4,
+                          child: Semantics(
+                            label:
+                                'Flashcard: ${card.wordEnglish}, ${card.wordFilipino}, category ${card.category.label}. Swipe right for I Know, left for Still Learning',
+                            child: GestureDetector(
+                              onHorizontalDragUpdate: _onDragUpdate,
+                              onHorizontalDragEnd: _onDragEnd,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 100),
+                                transform: Matrix4.identity()
+                                  ..storage[12] = _dragOffset.dx
+                                  ..rotateZ(_dragRotation),
+                                transformAlignment: Alignment.center,
+                                child: _QuizCard(
+                                  card: card,
+                                  dragX: _dragOffset.dx,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: context.responsive(phone: 16, tablet: 24)),
+
+                  // ─── Action Buttons (carry the directional swipe hints) ──────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _ActionButton(
+                          icon: Icons.close_rounded,
+                          label: AppLocalizations.of(
+                            context,
+                          )!.stillLearningSwipe,
+                          color: AppColors.error,
+                          onTap: () => _handleSwipe(false),
+                        ),
+                        _ActionButton(
+                          icon: Icons.check_rounded,
+                          label: AppLocalizations.of(context)!.iKnowThisSwipe,
+                          color: AppColors.success,
+                          onTap: () => _handleSwipe(true),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: context.responsive(phone: 12, tablet: 20)),
+                ],
               ),
             ),
-          ),
-
-          SizedBox(height: context.responsive(phone: 16, tablet: 24)),
-
-          // ─── Action Buttons (carry the directional swipe hints) ──────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _ActionButton(
-                  icon: Icons.close_rounded,
-                  label: AppLocalizations.of(context)!.stillLearningSwipe,
-                  color: AppColors.error,
-                  onTap: () => _handleSwipe(false),
-                ),
-                _ActionButton(
-                  icon: Icons.check_rounded,
-                  label: AppLocalizations.of(context)!.iKnowThisSwipe,
-                  color: AppColors.success,
-                  onTap: () => _handleSwipe(true),
-                ),
-              ],
-            ),
-          ),
-
-          SizedBox(height: context.responsive(phone: 12, tablet: 20)),
-        ],
-      ),
-    ),
-        GameBreakButton(
-          onHold: holdForBreak,
-          onResume: resumeFromBreak,
+            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
+            if (isPaused)
+              PauseOverlay(
+                onResume: resumeGame,
+                onRestart: () {
+                  resumeGame();
+                  setState(_startGame);
+                },
+                onQuit: () async {
+                  await savePartialProgress();
+                  if (context.mounted) context.go('/games');
+                },
+              ),
+          ],
         ),
-        if (isPaused)
-          PauseOverlay(
-            onResume: resumeGame,
-            onRestart: () {
-              resumeGame();
-              setState(_startGame);
-            },
-            onQuit: () async {
-              await savePartialProgress();
-              if (context.mounted) context.go('/games');
-            },
-          ),
-      ]),
+      ),
     );
   }
 }
@@ -427,29 +477,31 @@ class _ActionButton extends StatelessWidget {
       child: Semantics(
         button: true,
         label: '$label button',
-        child: Builder(builder: (context) {
-          final size = context.responsiveSize(60);
-          return Column(
-            children: [
-              Container(
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withValues(alpha: 0.12),
-                  border: Border.all(color: color, width: 2),
+        child: Builder(
+          builder: (context) {
+            final size = context.responsiveSize(60);
+            return Column(
+              children: [
+                Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color.withValues(alpha: 0.12),
+                    border: Border.all(color: color, width: 2),
+                  ),
+                  child: Icon(icon, color: color, size: size * 0.5),
                 ),
-                child: Icon(icon, color: color, size: size * 0.5),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: AppTypography.labelSmall.copyWith(color: color),
-              ),
-            ],
-          );
-        }),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.labelSmall.copyWith(color: color),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -518,8 +570,8 @@ class _QuizCard extends StatelessWidget {
     final borderColor = dragX > 40
         ? AppColors.success
         : dragX < -40
-            ? AppColors.error
-            : cat.color.withValues(alpha: 0.3);
+        ? AppColors.error
+        : cat.color.withValues(alpha: 0.3);
 
     return Stack(
       fit: StackFit.expand,
@@ -769,19 +821,19 @@ class _ResultView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          StarRating(stars: starsEarned)
-              .animate()
-              .scale(
-                  begin: const Offset(0, 0),
-                  end: const Offset(1, 1),
-                  duration: 500.ms,
-                  curve: Curves.elasticOut),
+          StarRating(stars: starsEarned).animate().scale(
+            begin: const Offset(0, 0),
+            end: const Offset(1, 1),
+            duration: 500.ms,
+            curve: Curves.elasticOut,
+          ),
 
           const SizedBox(height: 16),
           Text(
             know >= total * 0.8 ? '🎉 Amazing!' : '💪 Keep Going!',
-            style: AppTypography.headlineSmall
-                .copyWith(fontWeight: FontWeight.w800),
+            style: AppTypography.headlineSmall.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -818,10 +870,12 @@ class _ResultView extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '${(know / total * 100).round()}% mastered',
-            style: AppTypography.labelMedium
-                .copyWith(color: HCColor.of(context).textSecondary),
+            style: AppTypography.labelMedium.copyWith(
+              color: HCColor.of(context).textSecondary,
+            ),
           ),
-          if (onReview != null) ...[            const SizedBox(height: 12),
+          if (onReview != null) ...[
+            const SizedBox(height: 12),
             TextButton.icon(
               onPressed: onReview,
               icon: const Icon(Icons.rate_review_rounded, size: 18),
@@ -880,12 +934,16 @@ class _StatBubble extends StatelessWidget {
           child: Icon(icon, color: color, size: 28),
         ),
         const SizedBox(height: 6),
-        Text(value,
-            style:
-                AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w800)),
-        Text(label,
-            style: AppTypography.labelSmall
-                .copyWith(color: HCColor.of(context).textSecondary)),
+        Text(
+          value,
+          style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w800),
+        ),
+        Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: HCColor.of(context).textSecondary,
+          ),
+        ),
       ],
     );
   }

@@ -15,6 +15,9 @@ import '../../../widgets/game_widgets.dart';
 import '../../../widgets/shared_widgets.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/depth_3d.dart';
+import '../../gaze_control/providers/gaze_home_grid.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_home_tiles.dart';
 
 class GameHubScreen extends ConsumerWidget {
   const GameHubScreen({super.key});
@@ -26,7 +29,18 @@ class GameHubScreen extends ConsumerWidget {
         .where((g) => g != GameType.storyQuiz)
         .toList();
 
-    return AnimatedGradientBackground(
+    // Hands-free "Bottom nav + feature tiles" reach: when enabled, each game
+    // card registers with the shell's gaze D-pad and shows a focus ring. A pure
+    // pass-through otherwise, so touch / the gaze-off layout are unchanged.
+    final gazeOn = ref.watch(
+      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+    );
+    final gazeGrid = GazeTileGridBuilder(active: gazeOn);
+
+    return GazeHomeRegistrar(
+      active: gazeGrid.active,
+      rows: gazeGrid.rows,
+      child: AnimatedGradientBackground(
       preset: GradientPreset.games,
       child: Stack(
         children: [
@@ -100,20 +114,35 @@ class GameHubScreen extends ConsumerWidget {
                                     MediaQuery.textScalerOf(context).scale(1.0))
                                 .clamp(1.1, 2.5),
                       ),
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final game = games[index];
-                        return RepaintBoundary(
-                          child:
-                              _GameCard(
-                                    game: game,
-                                    onTap: () =>
-                                        _navigateToGame(context, ref, game),
-                                  )
-                                  .animate()
-                                  .fadeIn(duration: 350.ms)
-                                  .slideY(begin: 0.1, end: 0),
-                        );
-                      }, childCount: games.length),
+                      delegate: SliverChildListDelegate(
+                        gazeGrid.section(
+                          columns: context.gridColumns,
+                          entries: [
+                            for (final game in games)
+                              (
+                                tile: RepaintBoundary(
+                                  child:
+                                      _GameCard(
+                                            game: game,
+                                            onTap: () => _navigateToGame(
+                                              context,
+                                              ref,
+                                              game,
+                                            ),
+                                          )
+                                          .animate()
+                                          .fadeIn(duration: 350.ms)
+                                          .slideY(begin: 0.1, end: 0),
+                                ),
+                                cell: GazeTileCell(
+                                  label: game.label,
+                                  onActivate: () =>
+                                      _navigateToGame(context, ref, game),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
 
@@ -125,6 +154,7 @@ class GameHubScreen extends ConsumerWidget {
           const AnimatedMascotBuddy(),
           const SeasonalDecorations(showBanner: false),
         ],
+      ),
       ),
     );
   }
