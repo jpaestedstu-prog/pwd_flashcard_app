@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/app_providers.dart';
 import '../../../core/widgets/hub_scaffold.dart';
+import '../../../widgets/accessibility_quick_sheet.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
@@ -98,6 +99,10 @@ class ChildHomeScreen extends ConsumerWidget {
                               ],
                             ),
                           ),
+                          // Inline accessibility shortcut — the Child home has
+                          // no Settings gear, so this gives the learner self-
+                          // service over text size, contrast, read-aloud, etc.
+                          const AccessibilityQuickButton(),
                         ],
                       ),
                     ),

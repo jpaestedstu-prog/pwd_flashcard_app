@@ -268,7 +268,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         for (final route in _educatorOnlyRoutes) {
           if (location.startsWith(route)) return '/home';
         }
-        return null;
+        // Children belong to a parent-run home group, so the device-wide
+        // parental controls (schedule window + shop/multiplayer/messaging
+        // blocks) must reach them just like they reach Students below.
+        return _parentalControlsRedirect(location);
       }
 
       if (role == UserRole.student && !isViewingAsStudent) {
@@ -278,32 +281,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
 
         // Enforce parental controls for students
-        final controls = ParentalControlsService.getControls();
-        if (controls.hasAnyRestriction) {
-          // Schedule enforcement
-          if (controls.scheduleEnabled && !controls.isWithinSchedule) {
-            // Allow home but block other routes
-            if (!location.startsWith('/home') &&
-                !location.startsWith('/splash') &&
-                !location.startsWith('/profile')) {
-              return '/home';
-            }
-          }
-          // Feature blocking
-          if (controls.shopBlocked && location.startsWith('/shop')) {
-            return '/home';
-          }
-          // Covers both the legacy `/multiplayer-quiz` and the new
-          // `/multiplayer` lobby (the former starts with the latter).
-          if (controls.multiplayerBlocked &&
-              location.startsWith('/multiplayer')) {
-            return '/home';
-          }
-          if (controls.messagingBlocked &&
-              location.startsWith('/messages')) {
-            return '/home';
-          }
-        }
+        final pc = _parentalControlsRedirect(location);
+        if (pc != null) return pc;
       } else {
         // Block educators from student-only routes
         for (final route in _studentOnlyRoutes) {
@@ -1631,6 +1610,40 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// the setting is off — see [SlowMotionScope]. Applied only to gameplay,
 /// flashcard, and quiz surfaces, never to navigation/UI chrome.
 Widget _slow(Widget child) => SlowMotionScope(child: child);
+
+/// Applies the device-wide parental controls (schedule window + per-feature
+/// blocks) to a learner's navigation. Returns the redirect target, or `null`
+/// when [location] is allowed. Shared by the Student/Player and Child branches
+/// so a parent's restrictions cover every learner role on the device — the
+/// child branch previously skipped these, letting blocked features stay
+/// reachable for the exact role a parent manages.
+String? _parentalControlsRedirect(String location) {
+  final controls = ParentalControlsService.getControls();
+  if (!controls.hasAnyRestriction) return null;
+
+  // Schedule enforcement: outside the allowed window only home/splash/profile
+  // are reachable.
+  if (controls.scheduleEnabled && !controls.isWithinSchedule) {
+    if (!location.startsWith('/home') &&
+        !location.startsWith('/splash') &&
+        !location.startsWith('/profile')) {
+      return '/home';
+    }
+  }
+  // Feature blocking.
+  if (controls.shopBlocked && location.startsWith('/shop')) {
+    return '/home';
+  }
+  // Covers both the legacy `/multiplayer-quiz` and the new `/multiplayer`
+  // lobby (the former starts with the latter).
+  if (controls.multiplayerBlocked && location.startsWith('/multiplayer')) {
+    return '/home';
+  }
+  if (controls.messagingBlocked && location.startsWith('/messages')) {
+    return '/home';
+  }
+  return null;
+}
 
 /// Parses difficulty from the query parameter, defaulting to medium.
 GameDifficulty _parseDifficulty(GoRouterState state) {

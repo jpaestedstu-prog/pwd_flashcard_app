@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/app_providers.dart';
 import '../../../core/widgets/hub_scaffold.dart';
+import '../../../widgets/accessibility_quick_sheet.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/profile_avatar.dart';
 
@@ -29,7 +30,9 @@ class PlayerHomeScreen extends ConsumerWidget {
     return HubScaffold(
       intensity: 0.18,
       showParticles: false,
-      child: OverflowSafeBody(
+      child: Stack(
+        children: [
+          OverflowSafeBody(
                 padding: EdgeInsets.symmetric(
                   horizontal: context.pagePadding,
                   vertical: AppSpacing.xl,
@@ -142,6 +145,16 @@ class PlayerHomeScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+          // Floating accessibility shortcut — the Guest Player home has no
+          // Settings gear, so this gives the player self-service over text
+          // size, contrast, read-aloud, and reduced motion.
+          const Positioned(
+            top: 4,
+            right: 4,
+            child: AccessibilityQuickButton(),
+          ),
+        ],
+      ),
     );
   }
 }
