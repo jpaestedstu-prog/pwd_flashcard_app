@@ -39,11 +39,20 @@ class _ProfileSwitcherScreenState
 
   void _loadProfiles() {
     final rawProfiles = HiveService.getProfiles();
+    final loaded = rawProfiles
+        .map((data) => HiveService.getProfileById(data['id'] as String))
+        .whereType<UserProfile>()
+        .toList()
+      // Stable, predictable order so the list never reshuffles between
+      // launches. It previously followed Hive's box order, which changed
+      // whenever a profile was re-saved on selection — the just-used profile
+      // drifted to the bottom, breaking muscle memory on a shared tablet
+      // (especially hard for cognitive-disability users). Sorting by creation
+      // time keeps every profile in the same slot, with newly added ones
+      // appended at the end.
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     setState(() {
-      _profiles = rawProfiles
-          .map((data) => HiveService.getProfileById(data['id'] as String))
-          .whereType<UserProfile>()
-          .toList();
+      _profiles = loaded;
     });
   }
 
