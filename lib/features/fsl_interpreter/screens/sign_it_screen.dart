@@ -14,6 +14,7 @@ import '../../../core/services/celebration_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/slow_motion.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -155,6 +156,12 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     if (mounted) setState(() => _loading = false);
   }
 
+  /// Playback speed for the reference sign — half speed when the learner has
+  /// Slow-Motion enabled, normal otherwise. Uses the same [kSlowMotionFactor]
+  /// (2.0) that SlowMotionScope applies to animations.
+  double get _referenceSpeed =>
+      ref.read(settingsProvider).slowMotionEnabled ? 1 / kSlowMotionFactor : 1.0;
+
   Future<void> _prepareVideo() async {
     _videoController?.dispose();
     _videoController = null;
@@ -184,6 +191,10 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
       await controller.initialize();
       if (!mounted || !identical(_videoController, controller)) return;
       controller.setLooping(true);
+      // SlowMotionScope only dilates Flutter's animation clock, not the
+      // platform video player — so honor Slow-Motion on the reference sign
+      // explicitly here, making it easier to study at half speed.
+      controller.setPlaybackSpeed(_referenceSpeed);
       controller.play();
       setState(() => _videoReady = true);
     } catch (_) {
@@ -414,6 +425,16 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
 
   @override
   Widget build(BuildContext context) {
+    // React live if the learner flips Slow-Motion while practising.
+    ref.listen<bool>(
+      settingsProvider.select((s) => s.slowMotionEnabled),
+      (_, slow) {
+        final c = _videoController;
+        if (c != null && c.value.isInitialized) {
+          c.setPlaybackSpeed(slow ? 1 / kSlowMotionFactor : 1.0);
+        }
+      },
+    );
     if (_loading) {
       return Scaffold(
         appBar: AppBar(
