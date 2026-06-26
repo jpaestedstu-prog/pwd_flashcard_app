@@ -199,6 +199,12 @@ const _playerBlockedRoutes = [
 
 /// Engagement tracker that acts as a NavigatorObserver.
 /// Automatically tracks screen visits and durations for research export.
+///
+/// Attached for the Student role ONLY — by design, not an omission. The thesis
+/// study population is PWD students, and Research Export is correspondingly
+/// student-scoped (see ResearchExportService.generateAndShare), so capturing
+/// Child or Player engagement would only collect data the export never reads.
+/// Widening this is a methodology + consent decision, not a code change.
 final engagementTrackerProvider = Provider<EngagementTracker?>((ref) {
   final profile = ref.watch(profileProvider);
   if (profile == null || profile.role != UserRole.student) return null;

@@ -27,6 +27,9 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final allProfiles = HiveService.getAllProfilesWithProgress();
+    // Student-only by design: the thesis study population is PWD students, so
+    // Child and Player profiles are excluded from research capture/export.
+    // See ResearchExportService.generateAndShare for the rationale.
     final students = allProfiles
         .where((p) => p.$1.role == UserRole.student)
         .toList();

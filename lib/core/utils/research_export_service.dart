@@ -40,6 +40,13 @@ class ResearchExportService {
   /// Generate all research CSV files and share as a bundle.
   static Future<void> generateAndShare() async {
     final profiles = HiveService.getAllProfilesWithProgress();
+    // Research data is intentionally scoped to the Student role only — the
+    // study population for this thesis is PWD *students*. Child (family-group)
+    // and Player profiles are deliberately excluded from the dataset, so the
+    // engagement tracker is likewise only attached for Students (see
+    // engagementTrackerProvider in navigation/app_router.dart). This is by
+    // design, not an omission; widening the population is a methodology +
+    // consent decision, not a code change.
     final students = profiles
         .where((p) => p.$1.role == UserRole.student)
         .toList();
