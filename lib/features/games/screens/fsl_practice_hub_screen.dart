@@ -10,9 +10,11 @@ import '../../../widgets/game_widgets.dart';
 
 /// Hub screen for FSL (Filipino Sign Language) Practice.
 ///
-/// Offers two game modes:
+/// Offers three modes:
 /// - **Sign → Word**: Watch a sign language video and pick the correct word.
 /// - **Word → Sign**: See a word and pick which video shows the correct sign.
+/// - **Sign It!**: Watch a reference sign, copy it in a live camera mirror,
+///   then self-assess (production practice — no automatic recognition).
 class FslPracticeHubScreen extends StatelessWidget {
   const FslPracticeHubScreen({super.key});
 
@@ -124,6 +126,18 @@ class FslPracticeHubScreen extends StatelessWidget {
                         .animate()
                         .fadeIn(duration: 400.ms, delay: 450.ms)
                         .slideY(begin: 0.15, end: 0),
+                    const SizedBox(height: 16),
+                    // Sign It! — production practice (watch, copy, self-check)
+                    _FslModeCard(
+                      icon: Icons.front_hand_rounded,
+                      title: 'Sign It!',
+                      subtitle: 'Watch a sign, copy it in the camera, then check yourself.',
+                      gradient: const [Color(0xFFFF8A65), Color(0xFFFFB74D)],
+                      onTap: () => _launchMode(context, 'sign-it', minVideos: 1),
+                    )
+                        .animate()
+                        .fadeIn(duration: 400.ms, delay: 550.ms)
+                        .slideY(begin: 0.15, end: 0),
                   ],
                 ),
             ],
@@ -133,12 +147,14 @@ class FslPracticeHubScreen extends StatelessWidget {
     );
   }
 
-  void _launchMode(BuildContext context, String mode) async {
-    // Word → Sign needs at least 3 videos in a category (1 prompt + 2 distractors);
-    // Sign → Word can run with 2. Use the stricter floor so the user never
-    // lands on an empty-state in either game.
+  void _launchMode(BuildContext context, String mode,
+      {int minVideos = 3}) async {
+    // Word → Sign needs at least 3 videos in a category (1 prompt + 2
+    // distractors); Sign → Word can run with 2; "Sign It!" needs only 1 (no
+    // distractors). Callers pass the right floor via [minVideos] so the user
+    // never lands on an empty-state.
     final availability = await FslAssetsService.load();
-    final playable = availability.playableCategories(min: 3);
+    final playable = availability.playableCategories(min: minVideos);
 
     if (!context.mounted) return;
 

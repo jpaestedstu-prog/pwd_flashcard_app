@@ -27,6 +27,7 @@ const _immersiveRoutePrefixes = [
   '/games/tracing',
   '/games/fsl-practice/sign-to-word',
   '/games/fsl-practice/word-to-sign',
+  '/games/fsl-practice/sign-it',
   '/flashcards/viewer/',
   '/flashcards/create',
   '/flashcards/templates',

@@ -30,6 +30,7 @@ import '../features/games/screens/tracing_screen.dart';
 import '../features/games/screens/fsl_practice_hub_screen.dart';
 import '../features/games/screens/fsl_sign_to_word_screen.dart';
 import '../features/games/screens/fsl_word_to_sign_screen.dart';
+import '../features/fsl_interpreter/screens/sign_it_screen.dart';
 import '../features/games/screens/jigsaw_puzzle_screen.dart';
 import '../features/games/screens/picture_word_screen.dart';
 import '../features/progress/screens/progress_screen.dart';
@@ -833,6 +834,18 @@ final routerProvider = Provider<GoRouter>((ref) {
                       child: _slow(FslWordToSignScreen(
                         categories: _parseCategories(state),
                       )),
+                    ),
+                  ),
+                  // "Sign It!" — production practice: watch the reference sign
+                  // and copy it in a live camera mirror, then self-assess.
+                  GoRoute(
+                    path: 'sign-it',
+                    parentNavigatorKey: rootNavigatorKey,
+                    pageBuilder: (context, state) => AppPageTransitions.scaleUp(
+                      key: state.pageKey,
+                      child: SignItScreen(
+                        categories: _parseCategories(state),
+                      ),
                     ),
                   ),
                 ],
