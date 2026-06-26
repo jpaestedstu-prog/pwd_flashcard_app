@@ -167,7 +167,11 @@ const _educatorOnlyRoutes = [
   '/tv-cast',
 ];
 
-/// Routes only learners (student / child) may access.
+/// Learner reward routes (Star Shop, Sticker Album). Blocked here for
+/// educators (teacher / parent). Students, Children, and progress-keeping
+/// Players reach them via their home surfaces; guest Players are blocked
+/// separately through [_playerBlockedRoutes] since they have no entry point
+/// and no persisted star economy.
 const _studentOnlyRoutes = [
   '/shop',
   '/sticker-album',
@@ -195,6 +199,12 @@ const _playerBlockedRoutes = [
   '/research-export',
   '/showcase/share',
   '/tv-cast',
+  // Learner reward routes: no entry point exists in the guest Player home and
+  // they assume a persisted star economy, so block the latent deep-link too.
+  // (Progress Players keep access — they use the Student home with its shop
+  // gear and never pass through this guest-only guard.)
+  '/shop',
+  '/sticker-album',
 ];
 
 /// Engagement tracker that acts as a NavigatorObserver.
