@@ -276,12 +276,19 @@ class AppColors {
 /// Use `HCColor.of(context)` in widgets to get the correct adaptive color.
 class HCColor {
   final bool hc;
-  const HCColor._(this.hc);
 
-  /// Create from BuildContext — reads the current theme brightness.
+  /// Active color scheme. Lets the accent getters follow the equipped theme
+  /// (the Classroom / Family-group themes, shop themes, dyslexia) without
+  /// touching the default theme — whose scheme already equals [AppColors], so
+  /// this is a no-op there. Null only for legacy const construction.
+  final ColorScheme? _scheme;
+
+  const HCColor._(this.hc, [this._scheme]);
+
+  /// Create from BuildContext — reads the current theme brightness + scheme.
   factory HCColor.of(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    return HCColor._(brightness == Brightness.dark);
+    final theme = Theme.of(context);
+    return HCColor._(theme.brightness == Brightness.dark, theme.colorScheme);
   }
 
   // Backgrounds & surfaces
@@ -294,13 +301,21 @@ class HCColor {
   Color get cardBackground =>
       hc ? AppColors.hcSurface : AppColors.cardBackground;
 
-  // Primary / Secondary / Accent
-  Color get primary => hc ? AppColors.hcPrimary : AppColors.primary;
-  Color get primaryLight =>
-      hc ? const Color(0xFF3E2723) : AppColors.primaryLight;
+  // Primary / Secondary / Accent.
+  // High-contrast keeps its dedicated palette; otherwise follow the active
+  // theme's scheme so the Classroom/Family group themes (and shop/dyslexia
+  // themes) re-tint the custom UI. The default light theme's scheme already
+  // equals these AppColors, so it stays pixel-identical.
+  Color get primary =>
+      hc ? AppColors.hcPrimary : (_scheme?.primary ?? AppColors.primary);
+  Color get primaryLight => hc
+      ? const Color(0xFF3E2723)
+      : (_scheme?.primaryContainer ?? AppColors.primaryLight);
   Color get primaryDark => hc ? AppColors.hcPrimary : AppColors.primaryDark;
-  Color get secondary => hc ? AppColors.hcSecondary : AppColors.secondary;
-  Color get accent => hc ? AppColors.hcAccent : AppColors.accent;
+  Color get secondary =>
+      hc ? AppColors.hcSecondary : (_scheme?.secondary ?? AppColors.secondary);
+  Color get accent =>
+      hc ? AppColors.hcAccent : (_scheme?.tertiary ?? AppColors.accent);
 
   // Text
   Color get textPrimary => hc ? AppColors.hcText : AppColors.textPrimary;
@@ -353,12 +368,35 @@ class HCColor {
         }
       : game.color;
 
-  // Gradients
+  // Gradients.
+  // Non-high-contrast gradients are derived from the theme-aware accent getters
+  // above, so the home's hero cards follow the active group theme (Classroom
+  // blue / Family coral). For the default theme `[primary, secondary]` equals
+  // [AppColors.primary, AppColors.secondary] == the old AppColors.primaryGradient,
+  // so the stock look is unchanged.
   LinearGradient get primaryGradient => hc
       ? const LinearGradient(
           colors: [Color(0xFFFFD740), Color(0xFF69F0AE)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         )
-      : AppColors.primaryGradient;
+      : LinearGradient(
+          colors: [primary, secondary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+
+  /// Spotlight gradient for the home's hero cards (Player Profile, level badge,
+  /// Daily Challenge). Follows the active group theme instead of a fixed hue.
+  LinearGradient get heroGradient => hc
+      ? const LinearGradient(
+          colors: [Color(0xFFFFD740), Color(0xFF40C4FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        )
+      : LinearGradient(
+          colors: [primary, accent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
 }

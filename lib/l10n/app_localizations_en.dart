@@ -1161,19 +1161,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rolePlayer => 'Player';
 
   @override
-  String get roleStudent => 'Student';
+  String get rolePlayerGuest => 'Guest Player';
 
   @override
-  String get roleChild => 'Child';
+  String get rolePlayerProgress => 'Player (with Progress)';
 
   @override
-  String get roleTeacher => 'Teacher';
+  String get roleStudent => 'Student Profile (PWD)';
 
   @override
-  String get roleParent => 'Parent';
+  String get roleChild => 'Child Profile (PWD)';
+
+  @override
+  String get roleTeacher => 'Teacher Profile';
+
+  @override
+  String get roleParent => 'Parent/Guardian Profile';
+
+  @override
+  String get groupPlayerProfiles => 'Player Profiles';
+
+  @override
+  String get groupPlayerProfilesDesc =>
+      'For gameplay and PWD awareness learning.';
+
+  @override
+  String get groupClassroom => 'Classroom';
+
+  @override
+  String get groupClassroomDesc => 'Teacher-managed learning environment.';
+
+  @override
+  String get groupFamily => 'Family Group';
+
+  @override
+  String get groupFamilyDesc => 'Parent/Guardian-managed learning environment.';
 
   @override
   String get rolePlayerTagline => 'Just play — no progress saved';
+
+  @override
+  String get rolePlayerGuestTagline =>
+      'Jump in and play — stays on this device, not backed up';
+
+  @override
+  String get rolePlayerProgressTagline =>
+      'Save your XP, streaks & badges and back them up';
 
   @override
   String get roleStudentTagline => 'Join with a class code';
@@ -1192,10 +1225,28 @@ class AppLocalizationsEn extends AppLocalizations {
       'Guest mode — progress is saved on this device only.';
 
   @override
+  String get roleSetupPlayerGuest =>
+      'Guest mode — play freely. Progress stays on this device and isn\'t backed up.';
+
+  @override
+  String get roleSetupPlayerProgress =>
+      'Your XP, streaks and badges are kept. Add a PIN to back up and restore on another device.';
+
+  @override
   String get roleSetupTeacher => 'Set up your profile to manage learners.';
 
   @override
   String get roleSetupParent => 'Set up your profile to support your child.';
+
+  @override
+  String get pwdAwarenessEntry => 'Learn about PWD awareness';
+
+  @override
+  String get pwdAwarenessTitle => 'PWD Awareness';
+
+  @override
+  String get pwdAwarenessSubtitle =>
+      'Understanding & respecting Persons with Disabilities';
 
   @override
   String youJoined(String name) {

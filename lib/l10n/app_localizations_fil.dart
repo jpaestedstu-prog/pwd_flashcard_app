@@ -1172,19 +1172,54 @@ class AppLocalizationsFil extends AppLocalizations {
   String get rolePlayer => 'Manlalaro';
 
   @override
-  String get roleStudent => 'Mag-aaral';
+  String get rolePlayerGuest => 'Guest na Manlalaro';
 
   @override
-  String get roleChild => 'Bata';
+  String get rolePlayerProgress => 'Manlalaro (may Progreso)';
 
   @override
-  String get roleTeacher => 'Guro';
+  String get roleStudent => 'Profile ng Mag-aaral (PWD)';
 
   @override
-  String get roleParent => 'Magulang';
+  String get roleChild => 'Profile ng Bata (PWD)';
+
+  @override
+  String get roleTeacher => 'Profile ng Guro';
+
+  @override
+  String get roleParent => 'Profile ng Magulang/Tagapag-alaga';
+
+  @override
+  String get groupPlayerProfiles => 'Mga Player Profile';
+
+  @override
+  String get groupPlayerProfilesDesc =>
+      'Para sa paglalaro at pag-aaral tungkol sa PWD awareness.';
+
+  @override
+  String get groupClassroom => 'Classroom';
+
+  @override
+  String get groupClassroomDesc =>
+      'Learning environment na pinamamahalaan ng guro.';
+
+  @override
+  String get groupFamily => 'Family Group';
+
+  @override
+  String get groupFamilyDesc =>
+      'Learning environment na pinamamahalaan ng magulang/tagapag-alaga.';
 
   @override
   String get rolePlayerTagline => 'Maglaro lang — walang itinatabing progreso';
+
+  @override
+  String get rolePlayerGuestTagline =>
+      'Maglaro agad — mananatili sa device na ito, hindi naba-back up';
+
+  @override
+  String get rolePlayerProgressTagline =>
+      'I-save ang iyong XP, streaks at badges at i-back up ang mga ito';
 
   @override
   String get roleStudentTagline => 'Sumali gamit ang class code';
@@ -1203,12 +1238,30 @@ class AppLocalizationsFil extends AppLocalizations {
       'Guest mode — itinatabi ang progreso sa device na ito lamang.';
 
   @override
+  String get roleSetupPlayerGuest =>
+      'Guest mode — malayang maglaro. Mananatili ang progreso sa device na ito at hindi naba-back up.';
+
+  @override
+  String get roleSetupPlayerProgress =>
+      'Itinatabi ang iyong XP, streaks at badges. Maglagay ng PIN para ma-back up at mai-restore sa ibang device.';
+
+  @override
   String get roleSetupTeacher =>
       'I-set up ang iyong profile para pamahalaan ang mga mag-aaral.';
 
   @override
   String get roleSetupParent =>
       'I-set up ang iyong profile para suportahan ang iyong anak.';
+
+  @override
+  String get pwdAwarenessEntry => 'Matuto tungkol sa PWD awareness';
+
+  @override
+  String get pwdAwarenessTitle => 'PWD Awareness';
+
+  @override
+  String get pwdAwarenessSubtitle =>
+      'Pag-unawa at paggalang sa mga Persons with Disabilities';
 
   @override
   String youJoined(String name) {

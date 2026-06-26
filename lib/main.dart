@@ -329,11 +329,18 @@ class FlashLearnApp extends ConsumerWidget {
       ShopItemType.theme,
     );
 
-    // Choose theme based on settings — accessibility first, then shop theme.
+    // Active profile drives the per-group theme below; watch so the app
+    // re-themes when the user switches profiles.
+    final profileForTheme = ref.watch(profileProvider);
+
+    // Choose theme based on settings — accessibility first, then shop theme,
+    // then the profile-group theme (Classroom blue / Family-group coral).
     // Cascade order: high-contrast > dyslexia > (dark mode × shop theme) >
-    // dark mode > shop theme > light. The dark-mode × shop-theme combo
-    // matters because users who paid for a shop theme expect their palette
-    // to follow them into night mode instead of being kicked to stock dark.
+    // dark mode > shop theme > group theme > light. The dark-mode × shop-theme
+    // combo matters because users who paid for a shop theme expect their
+    // palette to follow them into night mode instead of being kicked to stock
+    // dark. Group themes sit at the bottom so accessibility modes and a
+    // purchased shop theme always win.
     final ThemeData baseTheme;
     if (settings.highContrastMode) {
       baseTheme = AppTheme.highContrast;
@@ -342,7 +349,9 @@ class FlashLearnApp extends ConsumerWidget {
     } else if (settings.darkMode) {
       baseTheme = AppTheme.shopThemeDark(equippedThemeId) ?? AppTheme.dark;
     } else {
-      baseTheme = AppTheme.shopTheme(equippedThemeId) ?? AppTheme.light;
+      baseTheme = AppTheme.shopTheme(equippedThemeId) ??
+          AppTheme.groupTheme(profileForTheme?.role) ??
+          AppTheme.light;
     }
 
     // Adjust both status bar AND nav bar icons for dark themes. The

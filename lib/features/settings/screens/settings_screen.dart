@@ -593,15 +593,19 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
 
-          _SettingsTile(
-            icon: Icons.cast_for_education_rounded,
-            title: 'Classroom Mode',
-            subtitle: 'Monitor all students in real time',
-            trailing: IconButton(
-              icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-              onPressed: () => context.push('/classroom'),
+          // "Classroom Mode" (real-time student monitoring + casting) is a
+          // teacher/parent tool — hidden for player profiles, which focus on
+          // gameplay + PWD-awareness learning.
+          if (profile?.isPlayerMode != true)
+            _SettingsTile(
+              icon: Icons.cast_for_education_rounded,
+              title: 'Classroom Mode',
+              subtitle: 'Monitor all students in real time',
+              trailing: IconButton(
+                icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+                onPressed: () => context.push('/classroom'),
+              ),
             ),
-          ),
 
           // Accessibility wizard & gaze input are learner-facing onboarding /
           // input aids — hidden for Teacher / Parent monitoring profiles.
@@ -680,6 +684,18 @@ class SettingsScreen extends ConsumerWidget {
             subtitle:
                 'Interactive vocabulary building app for PWD students using flashcards, games, and Filipino Sign Language.',
             trailing: SizedBox.shrink(),
+          ),
+
+          _SettingsTile(
+            icon: Icons.diversity_3_rounded,
+            title: AppLocalizations.of(context)?.pwdAwarenessTitle ??
+                'PWD Awareness',
+            subtitle: AppLocalizations.of(context)?.pwdAwarenessSubtitle ??
+                'Understanding & respecting Persons with Disabilities',
+            trailing: IconButton(
+              icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+              onPressed: () => context.push('/pwd-awareness'),
+            ),
           ),
 
           const SizedBox(height: 40),

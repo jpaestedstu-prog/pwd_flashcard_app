@@ -146,8 +146,13 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
   UserRole? get _role => ref.read(profileProvider)?.role;
   bool get _isEducator =>
       _role == UserRole.teacher || _role == UserRole.parent;
-  bool get _isChild => _role == UserRole.child;
   bool get _isPlayer => _role == UserRole.player;
+
+  /// Only *guest* players get the nav-less, single-button home. "Player (With
+  /// Progress)" profiles (role == player, isGuestPlayer == false) keep their
+  /// saved progress and navigate like a Student — Home / Cards / Games /
+  /// Stories / Progress — so they fall through to the Student tab set.
+  bool get _isGuestPlayer => ref.read(profileProvider)?.isGuestPlayer ?? false;
 
   // ─── Student tabs: Home, Cards, Games, Stories, Progress
   static const _studentPaths = [
@@ -166,17 +171,12 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
     '/teacher-analytics',
     '/weekly-reports',
   ];
-  // ─── Child tabs: Home, Games, Stories, Stickers (gamified, smaller set)
-  static const _childPaths = [
-    '/home',
-    '/games',
-    '/stories',
-    '/sticker-album',
-  ];
 
   List<String> get _activePaths {
     if (_isEducator) return _educatorPaths;
-    if (_isChild) return _childPaths;
+    // Child, Student, and "Player (With Progress)" learners share the same
+    // five learner tabs. The Child keeps its own gamified Home screen; only the
+    // tab set is unified so the Family Group matches the Classroom feature set.
     return _studentPaths;
   }
 
@@ -206,10 +206,12 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
 
     final currentIndex = _currentIndex(widget.state.uri.toString());
 
-    // Player mode: skip the bottom nav entirely. The PlayerHomeScreen is
-    // self-contained (one big "Start Learning" button); a tab bar would
-    // imply more app surface than the role actually has.
-    if (_isPlayer) {
+    // Guest Player mode: skip the bottom nav entirely. The PlayerHomeScreen is
+    // self-contained (one big "Start Learning" button); a tab bar would imply
+    // more app surface than a guest actually has. "Player (With Progress)"
+    // profiles fall through to the Student tab set (Home / Cards / Games /
+    // Stories / Progress) below.
+    if (_isPlayer && _isGuestPlayer) {
       return Stack(
         children: [
           Scaffold(body: RepaintBoundary(child: widget.child)),
@@ -224,11 +226,8 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
     }
 
     final navShown = !_isImmersiveRoute(widget.state.uri.toString());
-    final items = _isEducator
-        ? _educatorNavItems()
-        : _isChild
-            ? _childNavItems()
-            : _studentNavItems();
+    final items =
+        _isEducator ? _educatorNavItems() : _studentNavItems();
 
     // Hands-free bottom-nav: look ◀ ▶ to move the highlight, blink to open the
     // tab. Inert unless Gaze Control is enabled; runs the single camera only
@@ -354,15 +353,6 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       _NavItem(icon: Icons.people_outlined, selectedIcon: Icons.people_rounded, label: 'Students'),
       _NavItem(icon: Icons.analytics_outlined, selectedIcon: Icons.analytics_rounded, label: 'Analytics'),
       _NavItem(icon: Icons.assessment_outlined, selectedIcon: Icons.assessment_rounded, label: 'Reports'),
-    ];
-  }
-
-  List<_NavItem> _childNavItems() {
-    return const [
-      _NavItem(icon: Icons.home_outlined, selectedIcon: Icons.home_rounded, label: 'Home'),
-      _NavItem(icon: Icons.sports_esports_outlined, selectedIcon: Icons.sports_esports_rounded, label: 'Games'),
-      _NavItem(icon: Icons.auto_stories_outlined, selectedIcon: Icons.auto_stories_rounded, label: 'Stories'),
-      _NavItem(icon: Icons.star_border_rounded, selectedIcon: Icons.star_rounded, label: 'Stickers'),
     ];
   }
 

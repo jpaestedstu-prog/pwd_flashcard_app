@@ -35,13 +35,18 @@ class _OnboardingTutorialScreenState
 
   List<_OnboardingPage> _buildPages(UserProfile profile) {
     final avatar = AvatarData.getAvatar(profile.avatarIndex);
-    final isStudent = profile.role == UserRole.student;
+    // Student, Child, and Player all use the app as learners, so they get the
+    // second-person ("you") walkthrough copy. Only Teacher / Parent get the
+    // observer copy ("your students" / "your child's learning").
+    final isLearner = profile.role == UserRole.student ||
+        profile.role == UserRole.child ||
+        profile.role == UserRole.player;
 
     return [
       // ─── Page 1: Welcome ──────────────────
       _OnboardingPage(
         title: 'Welcome, ${profile.name}! 🎉',
-        description: isStudent
+        description: isLearner
             ? 'You\'re all set up and ready to start learning! '
                 'Let\'s take a quick tour of everything you can do.'
             : 'Your account is ready! Let\'s show you the key features '
@@ -54,7 +59,7 @@ class _OnboardingTutorialScreenState
       // ─── Page 2: Flashcards ───────────────
       _OnboardingPage(
         title: 'Learn with Flashcards 📚',
-        description: isStudent
+        description: isLearner
             ? 'Browse vocabulary categories like Animals, Colors, Numbers, '
                 'and more. Each card has pictures, Filipino Sign Language, '
                 'and text-to-speech to help you learn.'
@@ -67,7 +72,7 @@ class _OnboardingTutorialScreenState
       // ─── Page 3: Games ────────────────────
       _OnboardingPage(
         title: 'Play Fun Games 🎮',
-        description: isStudent
+        description: isLearner
             ? 'Practice what you\'ve learned with Word Match, Spelling Bee, '
                 'Memory Match, Jigsaw Puzzle, and more! Earn stars ⭐ for '
                 'every game you play.'
@@ -80,7 +85,7 @@ class _OnboardingTutorialScreenState
       // ─── Page 4: Progress & Stars ─────────
       _OnboardingPage(
         title: 'Track Your Progress ⭐',
-        description: isStudent
+        description: isLearner
             ? 'See your streak, stars, and words learned on your dashboard. '
                 'Unlock achievement badges and spend stars in the Star Shop '
                 'for cool avatars and themes!'
@@ -105,7 +110,7 @@ class _OnboardingTutorialScreenState
       // ─── Page 6: Let's Go! ────────────────
       _OnboardingPage(
         title: 'You\'re Ready! 🚀',
-        description: isStudent
+        description: isLearner
             ? 'Tap a category on the home screen to learn your first words, '
                 'or jump into a game to start earning stars. Have fun!'
             : 'Explore the home screen to discover all available features. '

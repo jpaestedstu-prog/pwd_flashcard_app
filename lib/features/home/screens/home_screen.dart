@@ -270,12 +270,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     borderRadius: BorderRadius.circular(16),
                                     child: Ink(
                                       decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            AppColors.playerAccent,
-                                            AppColors.playerAccentLight,
-                                          ],
-                                        ),
+                                        gradient:
+                                            HCColor.of(context).heroGradient,
                                         borderRadius: BorderRadius.circular(16),
                                       ),
                                       padding: const EdgeInsets.symmetric(
@@ -627,6 +623,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final stickersOn = ref.watch(
       gamificationFeatureProvider(GamificationFeature.stickers),
     );
+    // Player profiles focus on gameplay + PWD-awareness learning, so the
+    // teacher/parent-style tiles (assessments, analytics, portfolio) are
+    // hidden for them — those belong to the Classroom / Family-group flows.
+    final isPlayer = ref.watch(profileProvider)?.isPlayerMode ?? false;
 
     GazeTileEntry tile({
       required String emoji,
@@ -722,33 +722,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         tiles: gaze.section(
           columns: columns,
           entries: [
-          tile(
-            emoji: '📝',
-            label: 'Assessments',
-            gradient: const [
-              AppColors.bannerAssessmentStart,
-              AppColors.bannerAssessmentEnd,
-            ],
-            onTap: () => context.push('/assessment'),
-          ),
-          tile(
-            emoji: '📊',
-            label: 'Learning Gains',
-            gradient: const [
-              AppColors.bannerLearningGainStart,
-              AppColors.bannerLearningGainEnd,
-            ],
-            onTap: () => context.push('/learning-gain'),
-          ),
-          tile(
-            emoji: '🎨',
-            label: 'My Portfolio',
-            gradient: const [
-              AppColors.bannerShowcaseStart,
-              AppColors.bannerShowcaseEnd,
-            ],
-            onTap: () => context.push('/showcase'),
-          ),
+          // Teacher-assigned assessments + monitoring analytics + portfolio
+          // are educator/parent tools — hidden for player profiles.
+          if (!isPlayer)
+            tile(
+              emoji: '📝',
+              label: 'Assessments',
+              gradient: const [
+                AppColors.bannerAssessmentStart,
+                AppColors.bannerAssessmentEnd,
+              ],
+              onTap: () => context.push('/assessment'),
+            ),
+          if (!isPlayer)
+            tile(
+              emoji: '📊',
+              label: 'Learning Gains',
+              gradient: const [
+                AppColors.bannerLearningGainStart,
+                AppColors.bannerLearningGainEnd,
+              ],
+              onTap: () => context.push('/learning-gain'),
+            ),
+          if (!isPlayer)
+            tile(
+              emoji: '🎨',
+              label: 'My Portfolio',
+              gradient: const [
+                AppColors.bannerShowcaseStart,
+                AppColors.bannerShowcaseEnd,
+              ],
+              onTap: () => context.push('/showcase'),
+            ),
           tile(
             emoji: '🎯',
             label: 'My Goals',
@@ -1041,12 +1046,7 @@ class _XpLevelBar extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    AppColors.playerAccent,
-                    AppColors.playerAccentPurpleLight,
-                  ],
-                ),
+                gradient: HCColor.of(context).heroGradient,
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
@@ -1313,7 +1313,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      gradient: AppColors.warmGradient,
+      gradient: HCColor.of(context).heroGradient,
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

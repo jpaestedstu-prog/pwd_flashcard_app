@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../data/models/enums.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
 import 'semantic_colors.dart';
@@ -849,6 +850,51 @@ class AppTheme {
     card: const Color(0xFFF8F5FF),
     semantic: SemanticColors.galaxy,
   );
+
+  // ─── Profile-group themes (Classroom vs Family) ──────
+  // Distinct palettes so the teacher-managed Classroom (Student + Teacher) and
+  // the parent-managed Family Group (Child + Parent) read as clearly different
+  // environments. Built on the light-theme structure (same shapes / sizes /
+  // accessibility), only the colour scheme differs — and applied BELOW the
+  // accessibility + shop themes in the cascade (see main.dart), so a learner's
+  // accessibility mode or purchased theme always wins.
+
+  /// Classroom group — cool, academic blue / indigo.
+  static final ThemeData _classroom = _buildShopTheme(
+    name: 'Classroom',
+    primary: const Color(0xFF3D5AFE),
+    primaryLight: const Color(0xFFD3DAFF),
+    secondary: const Color(0xFF0094C6),
+    secondaryLight: const Color(0xFFC9EDFB),
+    accent: const Color(0xFF4895EF),
+    accentLight: const Color(0xFFE2F0FF),
+    background: const Color(0xFFF0F3FF),
+    surface: const Color(0xFFFFFFFF),
+    card: const Color(0xFFF6F8FF),
+  );
+
+  /// Family Group — warm, homey coral / orange.
+  static final ThemeData _family = _buildShopTheme(
+    name: 'Family',
+    primary: const Color(0xFFE85D4E),
+    primaryLight: const Color(0xFFFFD8D0),
+    secondary: const Color(0xFFE8843C),
+    secondaryLight: const Color(0xFFFFE3C9),
+    accent: const Color(0xFFF4A300),
+    accentLight: const Color(0xFFFFEFC7),
+    background: const Color(0xFFFFF4EF),
+    surface: const Color(0xFFFFFFFF),
+    card: const Color(0xFFFFF8F4),
+  );
+
+  /// The light group theme for [role], or null for Player / no profile (which
+  /// keep the default theme). Classroom = Student + Teacher; Family Group =
+  /// Child + Parent. Returned by the light branch of the theme cascade.
+  static ThemeData? groupTheme(UserRole? role) => switch (role) {
+        UserRole.student || UserRole.teacher => _classroom,
+        UserRole.child || UserRole.parent => _family,
+        _ => null,
+      };
 
   /// Builds a shop theme from the given color palette.
   /// Reuses the light theme's structure/shapes/sizes, just swaps colors.

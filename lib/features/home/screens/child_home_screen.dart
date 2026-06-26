@@ -108,7 +108,8 @@ class ChildHomeScreen extends ConsumerWidget {
                     ),
                   ),
 
-                  // ─── Big tile grid ───────────────────────
+                  // ─── Section: Play & Learn ───────────────
+                  const _ChildSectionHeader(emoji: '🎮', title: 'Play & Learn'),
                   SliverPadding(
                     padding: EdgeInsets.symmetric(horizontal: pad),
                     sliver: SliverGrid(
@@ -158,6 +159,28 @@ class ChildHomeScreen extends ConsumerWidget {
                               ],
                               onTap: () => context.go('/stories'),
                             ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // ─── Section: Rewards & Feedback ─────────
+                  const _ChildSectionHeader(
+                      emoji: '⭐', title: 'Rewards & Feedback'),
+                  SliverPadding(
+                    padding: EdgeInsets.symmetric(horizontal: pad),
+                    sliver: SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        mainAxisSpacing: context.gridSpacing,
+                        crossAxisSpacing: context.gridSpacing,
+                        mainAxisExtent: context.hubTileHeight(),
+                      ),
+                      delegate: SliverChildListDelegate(
+                        gazeGrid.section(
+                          columns: columns,
+                          entries: [
                             entry(
                               emoji: '⭐',
                               label: 'Stickers',
@@ -199,6 +222,48 @@ class ChildHomeScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+      ),
+    );
+  }
+}
+
+/// Big, friendly section header for the Child home — an emoji plus a bold
+/// title, sized for young learners. Returns a sliver so it can sit directly
+/// in the home's [CustomScrollView] between the tile grids.
+class _ChildSectionHeader extends StatelessWidget {
+  const _ChildSectionHeader({required this.emoji, required this.title});
+
+  final String emoji;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          context.pagePadding,
+          AppSpacing.sm,
+          context.pagePadding,
+          AppSpacing.sm,
+        ),
+        child: Semantics(
+          header: true,
+          child: Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 24)),
+              const SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child: Text(
+                  title,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

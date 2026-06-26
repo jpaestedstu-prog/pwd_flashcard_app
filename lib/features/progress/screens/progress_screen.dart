@@ -240,51 +240,60 @@ class ProgressScreen extends ConsumerWidget {
 
                 SizedBox(height: layout.sectionGap),
 
-                // ─── Leaderboard Button (gated by experiment config) ─────────
-                if (ref.watch(gamificationFeatureProvider(GamificationFeature.leaderboard)))
-                gazeButton(
-                  AppLocalizations.of(context)!.viewLeaderboard,
-                  () => context.push('/leaderboard'),
-                  FilledButton.icon(
-                      onPressed: () => context.push('/leaderboard'),
-                      icon: const Icon(Icons.leaderboard_rounded),
-                      label: Text(AppLocalizations.of(context)!.viewLeaderboard),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                // ─── Leaderboard + Detailed Analytics ────────────────────────
+                // Hidden for player mode: the leaderboard is class-based and
+                // "Detailed Analytics" is a teacher/parent monitoring tool. The
+                // player keeps their own progress (streak calendar, certificates,
+                // category progress) below.
+                if (profile?.isPlayerMode != true &&
+                    ref.watch(gamificationFeatureProvider(
+                        GamificationFeature.leaderboard))) ...[
+                  gazeButton(
+                    AppLocalizations.of(context)!.viewLeaderboard,
+                    () => context.push('/leaderboard'),
+                    FilledButton.icon(
+                        onPressed: () => context.push('/leaderboard'),
+                        icon: const Icon(Icons.leaderboard_rounded),
+                        label:
+                            Text(AppLocalizations.of(context)!.viewLeaderboard),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
-                      ),
-                    )
-                    .animate()
-                    .fadeIn(duration: 400.ms, delay: 350.ms)
-                    .slideY(begin: 0.1, end: 0),
-                ),
+                      )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 350.ms)
+                      .slideY(begin: 0.1, end: 0),
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
-                const SizedBox(height: 12),
-
-                gazeButton(
-                  AppLocalizations.of(context)!.detailedAnalytics,
-                  () => context.push('/analytics'),
-                  OutlinedButton.icon(
-                      onPressed: () => context.push('/analytics'),
-                      icon: const Icon(Icons.analytics_rounded),
-                      label: Text(AppLocalizations.of(context)!.detailedAnalytics),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                if (profile?.isPlayerMode != true) ...[
+                  gazeButton(
+                    AppLocalizations.of(context)!.detailedAnalytics,
+                    () => context.push('/analytics'),
+                    OutlinedButton.icon(
+                        onPressed: () => context.push('/analytics'),
+                        icon: const Icon(Icons.analytics_rounded),
+                        label: Text(
+                            AppLocalizations.of(context)!.detailedAnalytics),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
-                      ),
-                    )
-                    .animate()
-                    .fadeIn(duration: 400.ms, delay: 400.ms)
-                    .slideY(begin: 0.1, end: 0),
-                ),
-
-                const SizedBox(height: 12),
+                      )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 400.ms)
+                      .slideY(begin: 0.1, end: 0),
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
                 gazeButton(
                   'Streak Calendar',

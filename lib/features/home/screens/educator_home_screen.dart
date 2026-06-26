@@ -680,8 +680,8 @@ class _ParentDashboardCta extends StatelessWidget {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          AppColors.primary.withValues(alpha: 0.18),
-          AppColors.accent.withValues(alpha: 0.12),
+          hc.primary.withValues(alpha: 0.18),
+          hc.accent.withValues(alpha: 0.12),
         ],
       ),
       child: Row(

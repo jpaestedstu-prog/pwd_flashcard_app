@@ -2228,35 +2228,95 @@ abstract class AppLocalizations {
   /// **'Player'**
   String get rolePlayer;
 
+  /// No description provided for @rolePlayerGuest.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest Player'**
+  String get rolePlayerGuest;
+
+  /// No description provided for @rolePlayerProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Player (with Progress)'**
+  String get rolePlayerProgress;
+
   /// No description provided for @roleStudent.
   ///
   /// In en, this message translates to:
-  /// **'Student'**
+  /// **'Student Profile (PWD)'**
   String get roleStudent;
 
   /// No description provided for @roleChild.
   ///
   /// In en, this message translates to:
-  /// **'Child'**
+  /// **'Child Profile (PWD)'**
   String get roleChild;
 
   /// No description provided for @roleTeacher.
   ///
   /// In en, this message translates to:
-  /// **'Teacher'**
+  /// **'Teacher Profile'**
   String get roleTeacher;
 
   /// No description provided for @roleParent.
   ///
   /// In en, this message translates to:
-  /// **'Parent'**
+  /// **'Parent/Guardian Profile'**
   String get roleParent;
+
+  /// No description provided for @groupPlayerProfiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Player Profiles'**
+  String get groupPlayerProfiles;
+
+  /// No description provided for @groupPlayerProfilesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'For gameplay and PWD awareness learning.'**
+  String get groupPlayerProfilesDesc;
+
+  /// No description provided for @groupClassroom.
+  ///
+  /// In en, this message translates to:
+  /// **'Classroom'**
+  String get groupClassroom;
+
+  /// No description provided for @groupClassroomDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Teacher-managed learning environment.'**
+  String get groupClassroomDesc;
+
+  /// No description provided for @groupFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Family Group'**
+  String get groupFamily;
+
+  /// No description provided for @groupFamilyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent/Guardian-managed learning environment.'**
+  String get groupFamilyDesc;
 
   /// No description provided for @rolePlayerTagline.
   ///
   /// In en, this message translates to:
   /// **'Just play — no progress saved'**
   String get rolePlayerTagline;
+
+  /// No description provided for @rolePlayerGuestTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump in and play — stays on this device, not backed up'**
+  String get rolePlayerGuestTagline;
+
+  /// No description provided for @rolePlayerProgressTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your XP, streaks & badges and back them up'**
+  String get rolePlayerProgressTagline;
 
   /// No description provided for @roleStudentTagline.
   ///
@@ -2288,6 +2348,18 @@ abstract class AppLocalizations {
   /// **'Guest mode — progress is saved on this device only.'**
   String get roleSetupPlayer;
 
+  /// No description provided for @roleSetupPlayerGuest.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest mode — play freely. Progress stays on this device and isn\'t backed up.'**
+  String get roleSetupPlayerGuest;
+
+  /// No description provided for @roleSetupPlayerProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Your XP, streaks and badges are kept. Add a PIN to back up and restore on another device.'**
+  String get roleSetupPlayerProgress;
+
   /// No description provided for @roleSetupTeacher.
   ///
   /// In en, this message translates to:
@@ -2299,6 +2371,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set up your profile to support your child.'**
   String get roleSetupParent;
+
+  /// No description provided for @pwdAwarenessEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Learn about PWD awareness'**
+  String get pwdAwarenessEntry;
+
+  /// No description provided for @pwdAwarenessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'PWD Awareness'**
+  String get pwdAwarenessTitle;
+
+  /// No description provided for @pwdAwarenessSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Understanding & respecting Persons with Disabilities'**
+  String get pwdAwarenessSubtitle;
 
   /// No description provided for @youJoined.
   ///

@@ -110,8 +110,8 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       });
     });
 
-    // 4. Friend requests badge (student/child only).
-    if (_canAddFriends(profile.role)) {
+    // 4. Friend requests badge (friend-capable learners only).
+    if (_canAddFriends(profile)) {
       _requestsSub = FriendService.instance
           .watchIncomingRequests(profile.id)
           .listen((reqs) {
@@ -224,8 +224,14 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     });
   }
 
-  bool _canAddFriends(UserRole role) =>
-      role == UserRole.student || role == UserRole.child;
+  /// Friend tools (Add Friend, the requests badge, and the username card) are
+  /// for learners with a cloud identity: Students, Children, and "Player (With
+  /// Progress)" profiles. Guest players (local-only, no username) and educators
+  /// (who message via the classroom roster) are excluded.
+  bool _canAddFriends(UserProfile profile) =>
+      profile.role == UserRole.student ||
+      profile.role == UserRole.child ||
+      (profile.role == UserRole.player && !profile.isGuestPlayer);
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +239,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     final isFilipino = settings.locale == 'fil';
     final padding = context.pagePadding;
     final profile = ref.watch(profileProvider);
-    final showFriendTools = profile != null && _canAddFriends(profile.role);
+    final showFriendTools = profile != null && _canAddFriends(profile);
 
     return Scaffold(
       appBar: AppBar(
@@ -285,7 +291,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       bool showFriendTools) {
     final hc = HCColor.of(context);
     final isEducator =
-        profile != null && !_canAddFriends(profile.role);
+        profile != null && !_canAddFriends(profile);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

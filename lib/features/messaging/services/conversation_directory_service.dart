@@ -33,14 +33,19 @@ class ConversationDirectoryService {
   /// underlying friends list, classroom roster, or classroom membership
   /// changes.
   Stream<List<Conversation>> watch(UserProfile me) {
-    final isStudent =
-        me.role == UserRole.student || me.role == UserRole.child;
-    return isStudent ? _watchForStudent(me) : _watchForEducator(me);
+    // Friends-based inbox for learners with a cloud identity: Students,
+    // Children, and "Player (With Progress)". Educators (Teacher/Parent) use
+    // their classroom roster instead. A progress player simply has no
+    // classroom, so the student path resolves to just their friends list.
+    final usesFriends = me.role == UserRole.student ||
+        me.role == UserRole.child ||
+        (me.role == UserRole.player && !me.isGuestPlayer);
+    return usesFriends ? _watchForLearner(me) : _watchForEducator(me);
   }
 
-  // ─── Student / Child ──────────────────────────────────
+  // ─── Learner (Student / Child / Player-with-Progress) ─
 
-  Stream<List<Conversation>> _watchForStudent(UserProfile me) {
+  Stream<List<Conversation>> _watchForLearner(UserProfile me) {
     final controller = StreamController<List<Conversation>>.broadcast();
 
     List<String> friendIds = const [];

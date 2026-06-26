@@ -12,6 +12,7 @@ import '../features/onboarding/screens/accessibility_setup_screen.dart';
 import '../features/onboarding/screens/post_join_setup_screen.dart';
 import '../features/onboarding/screens/role_setup_screen.dart';
 import '../features/onboarding/screens/membership_removed_screen.dart';
+import '../features/awareness/screens/pwd_awareness_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/home/screens/educator_home_screen.dart';
 import '../features/flashcards/screens/deck_list_screen.dart';
@@ -258,9 +259,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (reason != null) return '/time-up-lock';
       }
 
-      // Player guard: hard block on anything that needs Firestore reads
-      // beyond the player's own session.
-      if (role == UserRole.player && !isViewingAsStudent) {
+      // Guest-player guard: hard block on anything that needs Firestore reads
+      // beyond the player's own session. Applies to GUEST players only —
+      // "Player (With Progress)" profiles sync to Firestore and have a public
+      // username, so they get the same learner route access as a Student
+      // (handled by the learner branch below) and are blocked only from
+      // educator-only routes.
+      if (role == UserRole.player &&
+          profile.isGuestPlayer &&
+          !isViewingAsStudent) {
         for (final r in _playerBlockedRoutes) {
           if (location.startsWith(r)) return '/home';
         }
@@ -290,8 +297,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         return _parentalControlsRedirect(location);
       }
 
-      if (role == UserRole.student && !isViewingAsStudent) {
-        // Block students from educator-only routes
+      // Learner branch: Students AND "Player (With Progress)" profiles. Guest
+      // players already returned above, so any remaining `player` here is a
+      // progress-keeping player, which navigates with full learner access.
+      if ((role == UserRole.student || role == UserRole.player) &&
+          !isViewingAsStudent) {
+        // Block learners from educator-only routes
         for (final route in _educatorOnlyRoutes) {
           if (location.startsWith(route)) return '/home';
         }
@@ -506,11 +517,23 @@ final routerProvider = Provider<GoRouter>((ref) {
             'parent' => UserRole.parent,
             _ => UserRole.player,
           };
+          // Player has two flavours, selected via `?mode=`:
+          //   guest    → local-only, never synced (default)
+          //   progress → keeps & backs up XP / streaks / badges
+          final guestPlayer = state.uri.queryParameters['mode'] != 'progress';
           return AppPageTransitions.slideRight(
             key: state.pageKey,
-            child: RoleSetupScreen(role: role),
+            child: RoleSetupScreen(role: role, guestPlayer: guestPlayer),
           );
         },
+      ),
+      // PWD Awareness primer — open from profile selection or Settings → About.
+      GoRoute(
+        path: '/pwd-awareness',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const PwdAwarenessScreen(),
+        ),
       ),
       // Onboarding Tutorial (first-time walkthrough)
       GoRoute(
@@ -583,7 +606,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 );
               }
               final widget = switch (role) {
-                UserRole.player => const PlayerHomeScreen(),
+                // Guest players get the minimal single-button home; "Player
+                // (With Progress)" learners get the full Student-style home
+                // (streak, XP, stats) to match their Home/Cards/Games/Stories/
+                // Progress navigation.
+                UserRole.player => profile?.isGuestPlayer == true
+                    ? const PlayerHomeScreen()
+                    : const HomeScreen(),
                 UserRole.child => const ChildHomeScreen(),
                 UserRole.teacher ||
                 UserRole.parent =>

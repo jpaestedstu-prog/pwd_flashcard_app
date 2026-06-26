@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/avatar_data.dart';
 import '../../../core/security/pin_credential_helper.dart';
+import '../../../core/services/learning_level_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -27,13 +28,24 @@ import '../widgets/profile_setup_form.dart';
 class RoleSetupScreen extends ConsumerStatefulWidget {
   final UserRole role;
 
-  const RoleSetupScreen({super.key, required this.role})
-      : assert(
+  /// For the Player role only: whether to create a guest (local-only,
+  /// never-synced) profile or a progress-keeping one that can be backed up.
+  /// Ignored for Teacher / Parent, which are never guest profiles.
+  final bool guestPlayer;
+
+  const RoleSetupScreen({
+    super.key,
+    required this.role,
+    this.guestPlayer = true,
+  }) : assert(
           role == UserRole.player ||
               role == UserRole.teacher ||
               role == UserRole.parent,
           'RoleSetupScreen is only for player/teacher/parent roles',
         );
+
+  /// True when this setup creates a guest Player profile (no cloud sync).
+  bool get isGuestPlayer => role == UserRole.player && guestPlayer;
 
   @override
   ConsumerState<RoleSetupScreen> createState() => _RoleSetupScreenState();
@@ -48,6 +60,25 @@ class _RoleSetupScreenState extends ConsumerState<RoleSetupScreen> {
   late int _selectedAvatarIndex;
   bool _enablePin = false;
   bool _isSubmitting = false;
+  DateTime? _selectedBirthDate;
+
+  /// The "Player (With Progress)" variant behaves like a Student / Child
+  /// learner profile: it collects a birth date and derives a learning level
+  /// so progress can adapt. The Guest player (and Teacher / Parent) skip this.
+  bool get _collectsBirthDate =>
+      widget.role == UserRole.player && !widget.guestPlayer;
+
+  int? get _computedAge {
+    final dob = _selectedBirthDate;
+    if (dob == null) return null;
+    final now = DateTime.now();
+    var years = now.year - dob.year;
+    if (now.month < dob.month ||
+        (now.month == dob.month && now.day < dob.day)) {
+      years--;
+    }
+    return years;
+  }
 
   @override
   void initState() {
@@ -64,19 +95,45 @@ class _RoleSetupScreenState extends ConsumerState<RoleSetupScreen> {
   }
 
   String _subheader(AppLocalizations l10n) => switch (widget.role) {
-        UserRole.player => l10n.roleSetupPlayer,
+        UserRole.player => widget.guestPlayer
+            ? l10n.roleSetupPlayerGuest
+            : l10n.roleSetupPlayerProgress,
         UserRole.teacher => l10n.roleSetupTeacher,
         UserRole.parent => l10n.roleSetupParent,
         _ => '',
       };
 
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedBirthDate ?? DateTime(now.year - 7),
+      firstDate: DateTime(now.year - 100),
+      lastDate: now,
+      helpText: AppLocalizations.of(context)!.selectBirthDate,
+    );
+    if (picked != null) {
+      setState(() => _selectedBirthDate = picked);
+    }
+  }
+
   Future<void> _createProfile() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_collectsBirthDate && _selectedBirthDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.pleaseSelectBirthDate),
+        ),
+      );
+      return;
+    }
     setState(() => _isSubmitting = true);
 
     final rawPin = _enablePin && _pinController.text.length == 4
         ? _pinController.text
         : null;
+
+    final birth = _collectsBirthDate ? _selectedBirthDate : null;
 
     var profile = UserProfile(
       id: const Uuid().v4(),
@@ -84,7 +141,11 @@ class _RoleSetupScreenState extends ConsumerState<RoleSetupScreen> {
       role: widget.role,
       avatarIndex: _selectedAvatarIndex,
       createdAt: DateTime.now(),
-      isGuestPlayer: widget.role == UserRole.player,
+      isGuestPlayer: widget.isGuestPlayer,
+      birthDate: birth,
+      learningLevel: _collectsBirthDate
+          ? LearningLevelService.suggestLevelFromBirthDate(birth)
+          : null,
     );
 
     String? recoveryCode;
@@ -223,6 +284,14 @@ class _RoleSetupScreenState extends ConsumerState<RoleSetupScreen> {
                         selectedAvatarIndex: _selectedAvatarIndex,
                         onAvatarSelected: (i) =>
                             setState(() => _selectedAvatarIndex = i),
+                        showBirthDate: _collectsBirthDate,
+                        birthDate: _selectedBirthDate,
+                        computedAge: _computedAge,
+                        suggestedLevel: _collectsBirthDate
+                            ? LearningLevelService.suggestLevelFromBirthDate(
+                                _selectedBirthDate)
+                            : null,
+                        onPickBirthDate: _pickBirthDate,
                         enablePin: _enablePin,
                         onTogglePin: (val) {
                           setState(() {
