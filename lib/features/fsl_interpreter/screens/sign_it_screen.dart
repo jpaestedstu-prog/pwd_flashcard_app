@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:camera/camera.dart';
@@ -67,10 +69,18 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
   VideoPlayerController? _videoController;
   bool _videoReady = false;
 
-  // Practice mirror camera (preview only in this phase — no recording).
+  // Practice mirror camera.
   CameraController? _cameraController;
   _CamStatus _camStatus = _CamStatus.initializing;
   bool _camInitInFlight = false;
+
+  // Optional record + replay self-review. Clips are ephemeral: kept only in a
+  // temp file for the current round's review and deleted on advance, re-record,
+  // or exit. Never persisted, uploaded, or shared.
+  bool _recording = false;
+  String? _recordedPath;
+  VideoPlayerController? _replayController;
+  Timer? _recordCapTimer;
 
   @override
   void initState() {
@@ -86,6 +96,11 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _recordCapTimer?.cancel();
+    _replayController?.dispose();
+    // Disposing the camera controller stops any in-flight recording; delete
+    // whatever temp clip we still hold.
+    _deleteRecording();
     _videoController?.dispose();
     _cameraController?.dispose();
     gazeCameraOwners.release();
@@ -98,6 +113,10 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       _videoController?.pause();
+      _replayController?.pause();
+      // A recording in flight must be torn down with the controller; discard
+      // the partial clip rather than leave a dangling recording.
+      if (_recording) _discardRecording();
       // Only tear down a fully-initialized controller — disposing one mid
       // initialize (the permission dialog itself sends `inactive`) crashes the
       // plugin. See the same guard in Word Hunt.
@@ -108,6 +127,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
       }
     } else if (state == AppLifecycleState.resumed) {
       if (_videoReady) _videoController?.play();
+      _replayController?.play();
       if (_cameraController == null &&
           !_camInitInFlight &&
           _camStatus != _CamStatus.noCamera) {
@@ -221,6 +241,101 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     }
   }
 
+  // ─── Record + replay (optional self-review) ────────────
+
+  bool get _canRecord =>
+      _camStatus == _CamStatus.ready &&
+      _cameraController != null &&
+      _cameraController!.value.isInitialized &&
+      !_cameraController!.value.isRecordingVideo;
+
+  Future<void> _startRecording() async {
+    if (!_canRecord) return;
+    // Drop any previous take first (re-record).
+    await _discardRecording();
+    try {
+      await _cameraController!.startVideoRecording();
+      if (!mounted) return;
+      ref.read(hapticServiceProvider).lightTap();
+      setState(() => _recording = true);
+      // Safety cap so a forgotten recording can't grow without bound — signs
+      // are only a few seconds long.
+      _recordCapTimer?.cancel();
+      _recordCapTimer = Timer(const Duration(seconds: 12), () {
+        if (_recording) _stopRecording();
+      });
+    } catch (_) {
+      if (mounted) setState(() => _recording = false);
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    _recordCapTimer?.cancel();
+    final cam = _cameraController;
+    if (cam == null || !cam.value.isRecordingVideo) {
+      if (mounted) setState(() => _recording = false);
+      return;
+    }
+    XFile? file;
+    try {
+      file = await cam.stopVideoRecording();
+    } catch (_) {
+      // Treated as "no clip" below.
+    }
+    if (!mounted) {
+      if (file != null) File(file.path).delete().ignore();
+      return;
+    }
+    // Clear REC immediately so the Stop button can't appear stuck behind the
+    // (occasionally slow) replay decode.
+    setState(() => _recording = false);
+    if (file == null) return;
+
+    // Best-effort replay, bounded by a timeout so a slow or unsupported decode
+    // degrades to "no replay" (keep practising from the live mirror) instead
+    // of hanging the panel.
+    final path = file.path;
+    _recordedPath = path;
+    final controller = VideoPlayerController.file(File(path));
+    try {
+      await controller.initialize().timeout(const Duration(seconds: 8));
+      // Bail if the screen went away, the round advanced, or a newer take
+      // superseded this clip while it was decoding.
+      if (!mounted || _recordedPath != path) {
+        controller.dispose();
+        return;
+      }
+      controller.setLooping(true);
+      controller.play();
+      setState(() => _replayController = controller);
+    } catch (_) {
+      controller.dispose();
+    }
+  }
+
+  /// Stops any in-flight recording, disposes the replay player, and deletes
+  /// the temp clip. Safe to call repeatedly.
+  Future<void> _discardRecording() async {
+    _recordCapTimer?.cancel();
+    final cam = _cameraController;
+    if (cam != null && cam.value.isRecordingVideo) {
+      try {
+        final f = await cam.stopVideoRecording();
+        File(f.path).delete().ignore();
+      } catch (_) {}
+    }
+    _replayController?.dispose();
+    _replayController = null;
+    _deleteRecording();
+    if (mounted) setState(() => _recording = false);
+  }
+
+  void _deleteRecording() {
+    final path = _recordedPath;
+    _recordedPath = null;
+    if (path != null) File(path).delete().ignore();
+  }
+
   // ─── Flow ──────────────────────────────────────────────
 
   void _replay() {
@@ -233,6 +348,8 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
   }
 
   void _confirm(bool gotIt) {
+    // Each take is for this round only — clear it before moving on.
+    _discardRecording();
     if (gotIt) {
       _gotItCount++;
       ref.read(soundServiceProvider).playCorrect();
@@ -280,6 +397,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
   }
 
   void _restart() {
+    _discardRecording();
     setState(() {
       _currentRound = 0;
       _gotItCount = 0;
@@ -405,6 +523,10 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
                     final mirror = _MirrorPanel(
                       status: _camStatus,
                       controller: _cameraController,
+                      recording: _recording,
+                      replay: _replayController,
+                      onRecord: _startRecording,
+                      onStop: _stopRecording,
                     );
                     final children = [
                       Expanded(child: reference),
@@ -546,37 +668,129 @@ class _ReferencePanel extends StatelessWidget {
   }
 }
 
-/// Live front-camera mirror, or a friendly fallback when the camera is
-/// unavailable / denied so the learner can still practise from the reference.
+/// The "You" half: a live front-camera mirror with optional record + replay,
+/// or a friendly fallback when the camera is unavailable / denied so the
+/// learner can still practise from the reference alone.
+///
+/// Three media states: live preview (default), recording (live + REC badge),
+/// and replay (the just-recorded take, looped, for side-by-side self-review).
 class _MirrorPanel extends StatelessWidget {
-  const _MirrorPanel({required this.status, required this.controller});
+  const _MirrorPanel({
+    required this.status,
+    required this.controller,
+    required this.recording,
+    required this.replay,
+    required this.onRecord,
+    required this.onStop,
+  });
 
   final _CamStatus status;
   final CameraController? controller;
+  final bool recording;
+  final VideoPlayerController? replay;
+  final VoidCallback onRecord;
+  final VoidCallback onStop;
+
+  static const Color _accent = Color(0xFF00BFA5);
 
   @override
   Widget build(BuildContext context) {
-    final ready = status == _CamStatus.ready &&
+    final liveReady = status == _CamStatus.ready &&
         controller != null &&
         controller!.value.isInitialized;
+    final replaying = replay != null && replay!.value.isInitialized;
 
-    return _PracticePanel(
-      label: 'You',
-      icon: Icons.videocam_rounded,
-      accent: const Color(0xFF00BFA5),
-      child: ready
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              // Mirror horizontally so it reads like a real mirror while the
-              // learner copies the sign.
-              child: Transform.flip(
-                flipX: true,
-                child: CameraPreview(controller!),
+    final Widget media;
+    final Widget? footer;
+
+    if (replaying) {
+      // Mirror the replay too so it matches what the learner saw while signing.
+      media = _framed(
+        Transform.flip(
+          flipX: true,
+          child: AspectRatio(
+            aspectRatio:
+                replay!.value.aspectRatio == 0 ? 1 : replay!.value.aspectRatio,
+            child: VideoPlayer(replay!),
+          ),
+        ),
+      );
+      footer = TextButton.icon(
+        onPressed: onRecord,
+        icon: const Icon(Icons.replay_rounded, size: 18),
+        label: const Text('Re-record'),
+        style: TextButton.styleFrom(foregroundColor: _accent),
+      );
+    } else if (liveReady) {
+      media = Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          _framed(Transform.flip(flipX: true, child: CameraPreview(controller!))),
+          if (recording)
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.fiber_manual_record_rounded,
+                        color: Colors.redAccent, size: 14),
+                    SizedBox(width: 4),
+                    Text('REC',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      );
+      footer = recording
+          ? FilledButton.icon(
+              onPressed: onStop,
+              icon: const Icon(Icons.stop_rounded, size: 18),
+              label: const Text('Stop'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                visualDensity: VisualDensity.compact,
               ),
             )
-          : _CameraFallback(status: status),
+          : OutlinedButton.icon(
+              onPressed: onRecord,
+              icon: const Icon(Icons.fiber_manual_record_rounded,
+                  size: 16, color: Colors.redAccent),
+              label: const Text('Record'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _accent,
+                visualDensity: VisualDensity.compact,
+              ),
+            );
+    } else {
+      media = _CameraFallback(status: status);
+      footer = null;
+    }
+
+    return _PracticePanel(
+      label: replaying ? 'Your take' : 'You',
+      icon: Icons.videocam_rounded,
+      accent: _accent,
+      footer: footer,
+      child: media,
     );
   }
+
+  Widget _framed(Widget child) => ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: child,
+      );
 }
 
 class _CameraFallback extends StatelessWidget {
