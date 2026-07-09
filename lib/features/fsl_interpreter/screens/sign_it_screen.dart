@@ -45,10 +45,17 @@ class SignItScreen extends ConsumerStatefulWidget {
   /// camera needs platform channels.
   final Future<List<CameraDescription>> Function() camerasLoader;
 
+  /// Reference-video resolver — injectable so widget tests can bypass the
+  /// cache/download stack, whose platform channels (path_provider) don't
+  /// exist under `flutter test` and fail from fire-and-forget futures no
+  /// caller can catch.
+  final Future<VideoSource?> Function(Flashcard card) videoLoader;
+
   const SignItScreen({
     super.key,
     this.categories = const [],
     this.camerasLoader = availableCameras,
+    this.videoLoader = FslAssetsService.videoSourceFor,
   });
 
   @override
@@ -180,7 +187,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
       );
     }
 
-    final source = await FslAssetsService.videoSourceFor(card);
+    final source = await widget.videoLoader(card);
     if (source == null) {
       if (mounted) setState(() => _videoReady = false);
       return;
@@ -845,7 +852,9 @@ class _CameraFallback extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
-        child: Padding(
+        // Scrolls when large font scales outgrow the short landscape panel
+        // instead of overflowing.
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -893,24 +902,41 @@ class _PracticePanel extends StatelessWidget {
         border: Border.all(color: accent.withValues(alpha: 0.3), width: 2),
       ),
       padding: const EdgeInsets.all(10),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: accent, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: AppTypography.labelMedium
-                    .copyWith(color: accent, fontWeight: FontWeight.w700),
+      // Fill the panel when there's room (the media soaks up the slack), but
+      // scroll when extreme font scales on small screens leave less height
+      // than the label + footer chrome needs — controls stay reachable
+      // instead of overflowing.
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, color: accent, size: 18),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.labelMedium.copyWith(
+                              color: accent, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(child: Center(child: child)),
+                  ?footer,
+                ],
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 8),
-          Expanded(child: Center(child: child)),
-          ?footer,
-        ],
+        ),
       ),
     );
   }

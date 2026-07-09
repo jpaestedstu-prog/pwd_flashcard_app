@@ -47,7 +47,9 @@ class FslEmptyStateScaffold extends ConsumerWidget {
         title: Text(title),
       ),
       body: Center(
-        child: Padding(
+        // Scrolls when the category chips outgrow a short viewport (phone
+        // landscape, large font scales) instead of overflowing.
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,

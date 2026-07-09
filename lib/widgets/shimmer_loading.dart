@@ -338,37 +338,43 @@ class ShimmerListSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Decorative placeholder rows: on short viewports (phone landscape,
+    // split-screen) the fixed-height Column can exceed its slot, so let the
+    // extra rows clip instead of overflowing. Never user-scrollable.
     return ShimmerLoading(
-      child: Column(
-        children: List.generate(
-          itemCount,
-          (index) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .surfaceContainerHighest
-                    .withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                children: [
-                  ShimmerBox(width: 56, height: 56, borderRadius: 16),
-                  SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ShimmerBox(width: 120),
-                        SizedBox(height: 8),
-                        ShimmerBox(height: 12),
-                      ],
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        child: Column(
+          children: List.generate(
+            itemCount,
+            (index) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  children: [
+                    ShimmerBox(width: 56, height: 56, borderRadius: 16),
+                    SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShimmerBox(width: 120),
+                          SizedBox(height: 8),
+                          ShimmerBox(height: 12),
+                        ],
+                      ),
                     ),
-                  ),
-                  ShimmerBox(width: 24, height: 24, borderRadius: 12),
-                ],
+                    ShimmerBox(width: 24, height: 24, borderRadius: 12),
+                  ],
+                ),
               ),
             ),
           ),
