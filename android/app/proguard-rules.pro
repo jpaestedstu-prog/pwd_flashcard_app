@@ -32,3 +32,8 @@
 # video_player → ExoPlayer
 -keep class com.google.android.exoplayer2.** { *; }
 -dontwarn com.google.android.exoplayer2.**
+
+# Google Play Core (deferred components / split install). The app does not
+# ship deferred components, but the Flutter engine references these classes;
+# R8 fails the release build without these suppressions.
+-dontwarn com.google.android.play.core.**
