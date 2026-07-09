@@ -1,5 +1,5 @@
 /* FlashLearn PWD site service worker — offline support for the core pages. */
-const CACHE = 'flp-site-v3';
+const CACHE = 'flp-site-v4';
 const CORE = [
   './',
   'index.html',
@@ -58,13 +58,16 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Assets: cache first, then network (and cache what we fetch).
+  // Assets: cache first, then network (and cache complete 200 responses —
+  // video elements fetch byte ranges, and partial 206 responses can't be cached).
   e.respondWith(
     caches.match(req).then((m) =>
       m ||
       fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy));
+        if (res.status === 200) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy));
+        }
         return res;
       })
     )
