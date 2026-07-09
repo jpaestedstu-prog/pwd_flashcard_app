@@ -335,6 +335,7 @@ html.hc .qr-box img{ border:2px solid #12122A; }
 /* ============ Lightbox ============ */
 dialog.lightbox{
   border:none; border-radius:22px; padding:10px; background:#1E1B2E; max-width:min(92vw,560px); width:auto;
+  margin:auto; /* restore native dialog centering lost to the global margin reset */
   box-shadow:0 30px 80px rgba(0,0,0,.5);
 }
 dialog.lightbox::backdrop{ background:rgba(20,16,40,.75); backdrop-filter:blur(4px); }
@@ -344,6 +345,11 @@ dialog.lightbox .close{
   border:none; cursor:pointer; font-size:1.2rem; font-weight:800; color:#fff;
   background:rgba(108,92,231,.9); box-shadow:0 4px 12px rgba(0,0,0,.4);
 }
+/* FSL video dialog (shares the lightbox look; always dark, so text stays readable in every theme) */
+dialog.lightbox video{ display:block; border-radius:14px; width:min(84vw,520px); height:auto; max-height:64vh; background:#000; margin:0 auto; }
+.fsl-controls{ display:flex; justify-content:center; margin-top:10px; }
+#fslSlow[aria-pressed="true"]{ background:var(--purple-deep); color:#fff; border-color:var(--purple-deep); }
+.fsl-cap{ color:#EFEAFE; text-align:center; font-weight:700; font-size:.95em; padding:10px 8px 4px; }
 
 /* ============ Awareness ============ */
 #awareness{ background:
@@ -399,7 +405,8 @@ details .body{ padding:0 22px 18px; color:var(--ink-soft); }
 .try-points li::before{ position:absolute; left:0; top:0; }
 .try-points li:nth-child(1)::before{ content:"👆"; }
 .try-points li:nth-child(2)::before{ content:"🔊"; }
-.try-points li:nth-child(3)::before{ content:"🎴"; }
+.try-points li:nth-child(3)::before{ content:"🤟"; }
+.try-points li:nth-child(4)::before{ content:"🎴"; }
 .try-card{
   display:block; width:min(400px,100%); margin:0 auto; border:none; cursor:pointer;
   background:transparent; padding:0; font:inherit; color:inherit; text-align:center;
@@ -540,6 +547,7 @@ footer .foot-links{ display:flex; gap:18px; flex-wrap:wrap; margin:6px 0; font-w
         <ul class="try-points">
           <li><span class="en"><strong>Tap the card</strong> to flip it and see the word used in a sentence.</span><span class="fil"><strong>I-tap ang card</strong> para baliktarin at makita ang salita sa isang pangungusap.</span></li>
           <li><span class="en"><strong>Press the sound buttons</strong> to hear the word in English or Filipino.</span><span class="fil"><strong>Pindutin ang mga sound button</strong> para marinig ang salita sa English o Filipino.</span></li>
+          <li><span class="en"><strong>Tap 🤟 FSL</strong> to watch the word signed in Filipino Sign Language — real clips from the app.</span><span class="fil"><strong>I-tap ang 🤟 FSL</strong> para mapanood ang salita sa Filipino Sign Language — totoong clips mula sa app.</span></li>
           <li><span class="en">This demo has 10 words — <strong>the full app has 177</strong>, plus games, stories, and FSL practice.</span><span class="fil">May 10 salita ang demo na ito — <strong>177 ang nasa buong app</strong>, pati mga laro, kuwento, at FSL practice.</span></li>
         </ul>
         <a class="btn btn-primary" href="#download">⬇️ <span class="en">Get the full app — it's free</span><span class="fil">Kunin ang buong app — libre ito</span></a>
@@ -549,6 +557,7 @@ footer .foot-links{ display:flex; gap:18px; flex-wrap:wrap; margin:6px 0; font-w
           <span class="try-inner" id="tryInner"></span>
         </button>
         <div class="try-controls" id="tryControls">
+          <button class="btn btn-ghost btn-sm" id="tryFsl" type="button" title="Watch in Filipino Sign Language">🤟 FSL</button>
           <button class="btn btn-ghost btn-sm" id="trySayEn" type="button">🔊 English</button>
           <button class="btn btn-ghost btn-sm" id="trySayFil" type="button">🔊 Filipino</button>
           <button class="btn btn-ghost btn-sm" id="trySaySentence" type="button">🔊 <span class="en">Sentence</span><span class="fil">Pangungusap</span></button>
@@ -918,6 +927,16 @@ footer .foot-links{ display:flex; gap:18px; flex-wrap:wrap; margin:6px 0; font-w
   <img id="lbImg" src="" alt="">
 </dialog>
 
+<dialog class="lightbox" id="fslBox" aria-label="Filipino Sign Language video">
+  <button class="close" id="fslClose" aria-label="Close">✕</button>
+  <video id="fslVideo" playsinline muted loop controls preload="none" width="854" height="480"
+         aria-label="Filipino Sign Language clip"></video>
+  <div class="fsl-controls">
+    <button class="btn btn-ghost btn-sm" id="fslSlow" type="button" aria-pressed="false">🐢 <span class="en">Slow motion</span><span class="fil">Mabagal</span></button>
+  </div>
+  <p class="fsl-cap"><b id="fslWord"></b> — <span class="en">Filipino Sign Language, straight from the app</span><span class="fil">Filipino Sign Language, mula mismo sa app</span></p>
+</dialog>
+
 <script src="assets/site.js"></script>
 <script>
 (function(){
@@ -940,18 +959,19 @@ footer .foot-links{ display:flex; gap:18px; flex-wrap:wrap; margin:6px 0; font-w
 (function(){
   // "Try it in your browser" flashcard demo. Words, Filipino translations,
   // emojis, and example sentences mirror the app's seed data exactly
-  // (lib/data/local/seed_data.dart + flashcard_emojis.dart).
+  // (lib/data/local/seed_data.dart + flashcard_emojis.dart). `v` names the
+  // FSL clip in assets/videos/fsl/ (compressed from the app's own videos).
   var CARDS = [
-    {emoji:'🐕', en:'Dog',       fil:'Aso',        s:'The dog is my best friend.',    catEn:'Animals',            catFil:'Mga Hayop'},
-    {emoji:'🔴', en:'Red',       fil:'Pula',       s:'The apple is red.',             catEn:'Colors & Shapes',    catFil:'Mga Kulay at Hugis'},
-    {emoji:'3️⃣', en:'Three',     fil:'Tatlo',      s:'There are three dogs.',         catEn:'Numbers',            catFil:'Mga Numero'},
-    {emoji:'🤲', en:'Hands',     fil:'Kamay',      s:'I clap my hands.',              catEn:'Body Parts',         catFil:'Mga Bahagi ng Katawan'},
-    {emoji:'💧', en:'Water',     fil:'Tubig',      s:'I drink water.',                catEn:'Food & Drinks',      catFil:'Pagkain at Inumin'},
-    {emoji:'🙏', en:'Thank You', fil:'Salamat',    s:'Thank you for helping me.',     catEn:'Family & Greetings', catFil:'Pamilya at Pagbati'},
-    {emoji:'👟', en:'Shoes',     fil:'Sapatos',    s:'My shoes are new.',             catEn:'Clothing',           catFil:'Mga Damit'},
-    {emoji:'🌈', en:'Rainbow',   fil:'Bahaghari',  s:'I see a beautiful rainbow.',    catEn:'Weather',            catFil:'Panahon'},
-    {emoji:'✏️', en:'Pencil',    fil:'Lapis',      s:'I write with a pencil.',        catEn:'Classroom',          catFil:'Silid-aralan'},
-    {emoji:'😊', en:'Happy',     fil:'Masaya',     s:'I am happy today!',             catEn:'Emotions',           catFil:'Damdamin'}
+    {emoji:'🐕', en:'Dog',       fil:'Aso',        s:'The dog is my best friend.',    catEn:'Animals',            catFil:'Mga Hayop',            v:'dog'},
+    {emoji:'🔴', en:'Red',       fil:'Pula',       s:'The apple is red.',             catEn:'Colors & Shapes',    catFil:'Mga Kulay at Hugis',   v:'red'},
+    {emoji:'3️⃣', en:'Three',     fil:'Tatlo',      s:'There are three dogs.',         catEn:'Numbers',            catFil:'Mga Numero',           v:'three'},
+    {emoji:'🤲', en:'Hands',     fil:'Kamay',      s:'I clap my hands.',              catEn:'Body Parts',         catFil:'Mga Bahagi ng Katawan', v:'hands'},
+    {emoji:'💧', en:'Water',     fil:'Tubig',      s:'I drink water.',                catEn:'Food & Drinks',      catFil:'Pagkain at Inumin',    v:'water'},
+    {emoji:'🙏', en:'Thank You', fil:'Salamat',    s:'Thank you for helping me.',     catEn:'Family & Greetings', catFil:'Pamilya at Pagbati',   v:'thank-you'},
+    {emoji:'👟', en:'Shoes',     fil:'Sapatos',    s:'My shoes are new.',             catEn:'Clothing',           catFil:'Mga Damit',            v:'shoes'},
+    {emoji:'🌈', en:'Rainbow',   fil:'Bahaghari',  s:'I see a beautiful rainbow.',    catEn:'Weather',            catFil:'Panahon',              v:'rainbow'},
+    {emoji:'✏️', en:'Pencil',    fil:'Lapis',      s:'I write with a pencil.',        catEn:'Classroom',          catFil:'Silid-aralan',         v:'pencil'},
+    {emoji:'😊', en:'Happy',     fil:'Masaya',     s:'I am happy today!',             catEn:'Emotions',           catFil:'Damdamin',             v:'happy'}
   ];
   var card = document.getElementById('tryCard');
   if (!card) return;
@@ -978,6 +998,7 @@ footer .foot-links{ display:flex; gap:18px; flex-wrap:wrap; margin:6px 0; font-w
       '</span>';
     card.setAttribute('aria-pressed', 'false');
     count.textContent = (idx + 1) + ' / ' + CARDS.length;
+    if (fslBtn) fslBtn.hidden = !fslOk || !c.v;
     syncFaces();
   }
   function syncFaces(){
@@ -996,10 +1017,42 @@ footer .foot-links{ display:flex; gap:18px; flex-wrap:wrap; margin:6px 0; font-w
     idx = (idx + 1) % CARDS.length; render();
   });
 
+  // FSL: watch the word signed in Filipino Sign Language. Clips are the app's
+  // own videos, compressed for the web; they load only when requested.
+  var fslBtn = document.getElementById('tryFsl');
+  var fslBox = document.getElementById('fslBox');
+  var fslVideo = document.getElementById('fslVideo');
+  var fslSlow = document.getElementById('fslSlow');
+  var fslOk = !!(fslBox && fslBox.showModal);
+  if (fslOk) {
+    fslBtn.addEventListener('click', function(){
+      var c = CARDS[idx];
+      if (!c.v) return;
+      document.getElementById('fslWord').textContent = c.en + ' · ' + c.fil;
+      fslSlow.setAttribute('aria-pressed', 'false');
+      fslVideo.src = 'assets/videos/fsl/' + c.v + '.mp4';
+      fslBox.showModal();
+      fslVideo.playbackRate = 1;
+      fslVideo.play().catch(function(){});
+    });
+    fslSlow.addEventListener('click', function(){
+      var on = fslSlow.getAttribute('aria-pressed') !== 'true';
+      fslSlow.setAttribute('aria-pressed', on ? 'true' : 'false');
+      fslVideo.playbackRate = on ? 0.5 : 1;
+    });
+    document.getElementById('fslClose').addEventListener('click', function(){ fslBox.close(); });
+    fslBox.addEventListener('click', function(e){ if (e.target === fslBox) fslBox.close(); });
+    fslBox.addEventListener('close', function(){
+      fslVideo.pause(); fslVideo.removeAttribute('src'); fslVideo.load();
+    });
+  }
+
   // Speech via the device's built-in voices (same idea as the app's TTS).
   var synth = window.speechSynthesis;
   if (!synth) {
-    document.getElementById('tryControls').hidden = true;
+    document.getElementById('trySayEn').hidden = true;
+    document.getElementById('trySayFil').hidden = true;
+    document.getElementById('trySaySentence').hidden = true;
     document.getElementById('tryTtsNote').hidden = true;
   } else {
     if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = function(){};
