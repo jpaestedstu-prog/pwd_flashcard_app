@@ -1,56 +1,176 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"
+      data-title-en="Teacher's Guide — FlashLearn PWD"
+      data-title-fil="Gabay ng Guro — FlashLearn PWD">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Teacher's Guide — FlashLearn PWD</title>
 <meta name="description" content="A printable classroom guide for FlashLearn PWD: installing the app, setting up your class, student profiles with disability presets, teaching with decks and games, and tracking progress.">
 <meta name="theme-color" content="#6C5CE7">
+<link rel="canonical" href="https://jpaestedstu-prog.github.io/pwd_flashcard_app/teachers-guide.html">
+<!-- Social sharing previews (Facebook / Messenger / X / chat apps) -->
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/teachers-guide.html">
+<meta property="og:site_name" content="FlashLearn PWD">
+<meta property="og:title" content="Teacher's Guide — FlashLearn PWD">
+<meta property="og:description" content="Set up FlashLearn PWD in your classroom: install on many devices offline, create your class, student profiles with disability presets, and track every learner's progress.">
+<meta property="og:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="FlashLearn PWD — free bilingual flashcard app for students with disabilities. Learning made joyful, for every child.">
+<meta property="og:locale" content="en_PH">
+<meta property="og:locale:alternate" content="fil_PH">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Teacher's Guide — FlashLearn PWD">
+<meta name="twitter:description" content="Set up FlashLearn PWD in your classroom — offline installs, class codes, disability presets, and progress tracking.">
+<meta name="twitter:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 <style>
+/* ============ Fonts (bundled from the app itself) ============ */
 @font-face { font-family:'Fredoka'; src:url('assets/fonts/Fredoka-SemiBold.ttf') format('truetype'); font-weight:600; font-display:swap; }
+@font-face { font-family:'Fredoka'; src:url('assets/fonts/Fredoka-Medium.ttf') format('truetype'); font-weight:500; font-display:swap; }
 @font-face { font-family:'Nunito'; src:url('assets/fonts/Nunito-Regular.ttf') format('truetype'); font-weight:400; font-display:swap; }
 @font-face { font-family:'Nunito'; src:url('assets/fonts/Nunito-Bold.ttf') format('truetype'); font-weight:700; font-display:swap; }
+@font-face { font-family:'Nunito'; src:url('assets/fonts/Nunito-ExtraBold.ttf') format('truetype'); font-weight:800; font-display:swap; }
+@font-face { font-family:'Lexend'; src:url('assets/fonts/Lexend-Regular.ttf') format('truetype'); font-weight:400; font-display:swap; }
+@font-face { font-family:'Lexend'; src:url('assets/fonts/Lexend-SemiBold.ttf') format('truetype'); font-weight:600; font-display:swap; }
+
+/* ============ Design tokens (shared with index.html) ============ */
 :root{
-  --bg:#FFF9EF; --card:#FFFFFF; --ink:#3A3A55; --ink-soft:#6B6B85;
-  --purple:#7C6FDE; --purple-deep:#5B4DBE; --pink:#E9739F;
-  --shadow:0 10px 30px rgba(124,111,222,.14), 0 3px 8px rgba(58,58,85,.08);
+  --bg:#FFF9EF;
+  --bg-soft:#FDF3FA;
+  --card:#FFFFFF;
+  --ink:#3A3A55;
+  --ink-soft:#6B6B85;
+  --purple:#7C6FDE;
+  --purple-deep:#5B4DBE;
+  --pink:#E9739F;
+  --teal:#4DB6AC;
+  --orange:#EF8A3C;
+  --blue:#4D9DE0;
+  --green:#5CB85C;
+  --gold:#F2B705;
+  --radius:26px;
+  --shadow-soft:0 10px 30px rgba(124,111,222,.14), 0 3px 8px rgba(58,58,85,.08);
+  --shadow-lift:0 18px 44px rgba(124,111,222,.22), 0 6px 14px rgba(58,58,85,.10);
+  --font-head:'Fredoka','Nunito',system-ui,sans-serif;
+  --font-body:'Nunito',system-ui,sans-serif;
+  --fs-base:1rem;
 }
+/* Dark mode follows the device setting; High Contrast (html.hc) always wins. */
 @media (prefers-color-scheme:dark){
-  :root{ --bg:#221D36; --card:#2E284A; --ink:#EFEBFF; --ink-soft:#BCB4DC; --purple-deep:#C6BCFA;
-         --shadow:0 10px 30px rgba(0,0,0,.45); }
+  html:not(.hc):not(.dys){
+    --bg:#221D36; --bg-soft:#262040; --card:#2E284A;
+    --ink:#EFEBFF; --ink-soft:#BCB4DC;
+    --purple:#9C8CF2; --purple-deep:#C6BCFA; --pink:#F291B5;
+    --shadow-soft:0 10px 30px rgba(0,0,0,.45), 0 3px 8px rgba(0,0,0,.3);
+    --shadow-lift:0 18px 44px rgba(0,0,0,.55), 0 6px 14px rgba(0,0,0,.35);
+  }
+}
+html.fs-lg{ --fs-base:1.14rem; }
+html.fs-xl{ --fs-base:1.3rem; }
+html.dys body{ font-family:'Lexend',var(--font-body); letter-spacing:.03em; word-spacing:.08em; line-height:1.85; }
+html.dys{ --bg:#FBF3E4; --bg-soft:#FBF3E4; }
+html.hc{
+  --bg:#FFFFFF; --bg-soft:#FFFFFF; --card:#FFFFFF;
+  --ink:#12122A; --ink-soft:#2E2E4E;
+  --purple:#4A38C7; --purple-deep:#32229E; --pink:#B2124F; --teal:#0B6E63;
+  --orange:#A85300; --blue:#0F5FA8; --green:#1C7A1C; --gold:#8A6400;
+  --shadow-soft:0 0 0 2px #12122A; --shadow-lift:0 0 0 3px #12122A;
 }
 *{ margin:0; padding:0; box-sizing:border-box; }
-body{ font-family:'Nunito',system-ui,sans-serif; background:var(--bg); color:var(--ink); line-height:1.7; }
+html{ scroll-behavior:smooth; }
+@media (prefers-reduced-motion:reduce){ html{ scroll-behavior:auto; } *,*::before,*::after{ animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+body{
+  font-family:var(--font-body); font-size:var(--fs-base); color:var(--ink);
+  background:var(--bg); line-height:1.7; overflow-x:hidden;
+}
+/* Language toggle: html.fil shows Filipino, default shows English */
+html:not(.fil) .fil{ display:none !important; }
+html.fil .en{ display:none !important; }
+img{ max-width:100%; display:block; }
+h1,h2,h3{ font-family:var(--font-head); font-weight:600; line-height:1.25; }
+a{ color:var(--purple-deep); }
 .wrap{ max-width:860px; margin:0 auto; padding:0 20px 60px; }
-h1,h2,h3{ font-family:'Fredoka','Nunito',sans-serif; font-weight:600; line-height:1.3; }
+:focus-visible{ outline:3px solid var(--purple-deep); outline-offset:2px; }
+
+/* ============ Skip link ============ */
+.skip{ position:absolute; left:-999px; top:8px; background:var(--purple-deep); color:#fff; padding:10px 18px; border-radius:12px; z-index:200; }
+.skip:focus{ left:8px; }
+html.hc .skip{ color:#fff; }
+
+/* ============ Header (shared with index.html) ============ */
+header.site{
+  position:sticky; top:0; z-index:100;
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(124,111,222,.15);
+}
+html.hc header.site{ background:#fff; border-bottom:3px solid #12122A; }
+.nav{ display:flex; align-items:center; gap:16px; padding:12px 20px; max-width:1180px; margin:0 auto; flex-wrap:wrap; }
+@media (max-width:900px){
+  .nav{ gap:8px; padding:10px 14px; }
+  .brand{ order:1; }
+  .a11y-bar{ order:2; margin-left:auto; }
+  nav.links{ order:3; flex-basis:100%; margin-left:0; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
+  nav.links a{ white-space:nowrap; padding:6px 10px; font-size:.9em; }
+}
+.brand{ display:flex; align-items:center; gap:10px; font-family:var(--font-head); font-size:1.25rem; color:var(--purple-deep); text-decoration:none; }
+.brand .logo{
+  width:42px; height:42px; border-radius:14px; display:grid; place-items:center; font-size:1.3rem;
+  background:linear-gradient(145deg,#8F7BF0 0%,#6C5CE7 55%,#5B4DBE 100%);
+  box-shadow:inset 0 2px 3px rgba(255,255,255,.45), inset 0 -3px 5px rgba(0,0,0,.18), 0 6px 14px rgba(108,92,231,.4);
+}
+nav.links{ display:flex; gap:4px; margin-left:auto; flex-wrap:wrap; }
+nav.links a{
+  text-decoration:none; color:var(--ink-soft); font-weight:700; padding:8px 13px; border-radius:12px; font-size:.95em;
+}
+nav.links a:hover,nav.links a:focus-visible{ background:#EFE9FF; color:#5B4DBE; }
+html.hc nav.links a{ color:#12122A; text-decoration:underline; }
+.a11y-bar{ display:flex; gap:6px; margin-left:8px; }
+.a11y-bar button{
+  font-family:var(--font-body); font-weight:800; font-size:.85em; cursor:pointer;
+  border:2px solid rgba(124,111,222,.35); background:var(--card); color:var(--purple-deep);
+  border-radius:10px; padding:6px 10px; min-width:40px; min-height:40px;
+}
+.a11y-bar button[aria-pressed="true"]{ background:var(--purple-deep); color:#fff; border-color:var(--purple-deep); }
+@media (prefers-color-scheme:dark){ html:not(.hc):not(.dys) .a11y-bar button[aria-pressed="true"]{ background:#6C5CE7; border-color:#6C5CE7; } }
+.a11y-bar button:hover{ border-color:var(--purple-deep); }
+
+/* ============ Guide content ============ */
+header.top{ padding:36px 0 8px; }
+.eyebrow{
+  display:inline-flex; align-items:center; gap:.5em; font-family:var(--font-head);
+  background:linear-gradient(135deg,#EFE9FF,#FDE9F3); color:#5B4DBE;
+  padding:.35em 1em; border-radius:999px; font-size:.95em; box-shadow:var(--shadow-soft); margin-bottom:14px;
+}
+html.hc .eyebrow{ background:#fff; color:var(--purple-deep); }
 h1{ font-size:clamp(1.8rem,5vw,2.6rem); }
 h2{ font-size:1.4rem; color:var(--purple-deep); margin:38px 0 12px; }
 h3{ font-size:1.08rem; margin:20px 0 6px; }
 p,li{ color:var(--ink-soft); }
 strong{ color:var(--ink); }
-a{ color:var(--purple-deep); }
-header.top{ padding:36px 0 8px; }
-.eyebrow{ display:inline-block; font-family:'Fredoka',sans-serif; background:linear-gradient(135deg,#EFE9FF,#FDE9F3);
-  color:#5B4DBE; padding:.3em 1em; border-radius:999px; margin-bottom:12px; box-shadow:var(--shadow); }
-@media (prefers-color-scheme:dark){ .eyebrow{ background:var(--card); color:var(--purple-deep); } }
-.fil-note{ font-style:italic; margin-top:8px; }
-.box{ background:var(--card); border-radius:22px; padding:22px 26px; box-shadow:var(--shadow); margin:16px 0; }
+p.lead{ margin-top:8px; }
+.box{ background:var(--card); border-radius:22px; padding:22px 26px; box-shadow:var(--shadow-soft); margin:16px 0; }
 .box ul,.box ol{ margin:8px 0 0 1.3em; }
 .box li{ margin:.4em 0; }
-table{ width:100%; border-collapse:collapse; background:var(--card); border-radius:16px; overflow:hidden; box-shadow:var(--shadow); font-size:.95em; }
+table{ width:100%; border-collapse:collapse; background:var(--card); border-radius:16px; overflow:hidden; box-shadow:var(--shadow-soft); font-size:.95em; }
 th,td{ text-align:left; padding:12px 14px; border-bottom:1px solid rgba(124,111,222,.18); vertical-align:top; }
-th{ font-family:'Fredoka',sans-serif; color:var(--purple-deep); }
+th{ font-family:var(--font-head); color:var(--purple-deep); }
 .actions{ display:flex; gap:12px; margin:22px 0; flex-wrap:wrap; }
 .btn{ display:inline-flex; align-items:center; gap:.5em; text-decoration:none; cursor:pointer; border:none;
-  font-family:'Fredoka',sans-serif; font-size:1em; padding:12px 22px; border-radius:15px; }
+  font-family:var(--font-head); font-size:1em; padding:12px 22px; border-radius:15px; }
 .btn-primary{ color:#fff; background:linear-gradient(160deg,#8F7BF0,#5B4DBE);
   box-shadow:inset 0 2px 3px rgba(255,255,255,.4), inset 0 -3px 5px rgba(0,0,0,.16), 0 8px 18px rgba(108,92,231,.4); }
-.btn-ghost{ color:var(--purple-deep); background:var(--card); border:2px solid rgba(124,111,222,.4); box-shadow:var(--shadow); }
-.tip{ border-left:5px solid var(--pink); background:var(--card); border-radius:14px; padding:12px 18px; margin:14px 0; box-shadow:var(--shadow); font-size:.95em; }
+.btn-ghost{ color:var(--purple-deep); background:var(--card); border:2px solid rgba(124,111,222,.4); box-shadow:var(--shadow-soft); }
+.tip{ border-left:5px solid var(--pink); background:var(--card); border-radius:14px; padding:12px 18px; margin:14px 0; box-shadow:var(--shadow-soft); font-size:.95em; }
+html.hc .tip{ border-left-color:var(--pink); }
 @media print{
   body{ background:#fff; color:#000; font-size:11pt; }
-  .actions,.no-print{ display:none !important; }
+  header.site,.actions,.no-print{ display:none !important; }
   .box,table,.tip{ box-shadow:none; border:1px solid #ccc; }
   h2{ break-after:avoid; }
   .box,tr{ break-inside:avoid; }
@@ -59,107 +179,130 @@ th{ font-family:'Fredoka',sans-serif; color:var(--purple-deep); }
 </style>
 </head>
 <body>
-<div class="wrap">
-<header class="top">
-  <span class="eyebrow">🧑‍🏫 Teacher's Guide</span>
-  <h1>FlashLearn PWD in your classroom</h1>
-  <p class="fil-note">Gabay para sa mga guro — maaaring i-print ang pahinang ito para sa faculty room. 🖨️</p>
-  <div class="actions">
-    <button class="btn btn-primary" onclick="window.print()">🖨️ Print this guide</button>
-    <a class="btn btn-ghost" href="index.html">← Back to main site</a>
+<a class="skip" href="#main"><span class="en">Skip to main content</span><span class="fil">Laktawan papunta sa nilalaman</span></a>
+
+<header class="site">
+  <div class="nav">
+    <a class="brand" href="index.html"><span class="logo" aria-hidden="true">🎴</span> FlashLearn <span style="color:var(--pink)">PWD</span></a>
+    <nav class="links" aria-label="Main navigation">
+      <a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a>
+      <a href="index.html#download"><span class="en">Download</span><span class="fil">I-download</span></a>
+      <a href="index.html#faq"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></a>
+    </nav>
+    <div class="a11y-bar" role="group" aria-label="Accessibility and language options">
+      <button id="btnFont" aria-pressed="false" title="Larger text">A+</button>
+      <button id="btnDys" aria-pressed="false" title="Dyslexia-friendly font">Dys</button>
+      <button id="btnHC" aria-pressed="false" title="High contrast">HC</button>
+      <button id="btnLang" aria-pressed="false" title="Filipino / English">FIL</button>
+    </div>
   </div>
 </header>
 
-<h2>1. Getting the app onto devices</h2>
+<main id="main">
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">🧑‍🏫 <span class="en">Teacher's Guide</span><span class="fil">Gabay ng Guro</span></span>
+  <h1><span class="en">FlashLearn PWD in your classroom</span><span class="fil">FlashLearn PWD sa iyong silid-aralan</span></h1>
+  <p class="lead"><span class="en">A printable guide for teachers — print this page and pin it in the faculty room. 🖨️</span><span class="fil">Gabay para sa mga guro na maaaring i-print — i-print ang pahinang ito para sa faculty room. 🖨️</span></p>
+  <div class="actions">
+    <button class="btn btn-primary" onclick="window.print()">🖨️ <span class="en">Print this guide</span><span class="fil">I-print ang gabay na ito</span></button>
+    <a class="btn btn-ghost" href="index.html">← <span class="en">Back to main site</span><span class="fil">Bumalik sa main site</span></a>
+  </div>
+</header>
+
+<h2>1. <span class="en">Getting the app onto devices</span><span class="fil">Pag-install ng app sa mga device</span></h2>
 <div class="box">
   <ol>
-    <li>Download the APK once from the <a href="index.html#download">download page</a> (69 MB).</li>
-    <li>Copy it to every classroom device with a <strong>USB drive, SD card, or file sharing</strong> — no internet needed on the students' devices.</li>
-    <li>On each device: open the APK → allow "install unknown apps" if asked → <strong>Install</strong>.</li>
-    <li>The app stores everything on the device. Re-installing an update keeps all profiles and progress.</li>
+    <li><span class="en">Download the APK once from the <a href="index.html#download">download page</a> (69 MB).</span><span class="fil">I-download ang APK nang isang beses mula sa <a href="index.html#download">download page</a> (69 MB).</span></li>
+    <li><span class="en">Copy it to every classroom device with a <strong>USB drive, SD card, or file sharing</strong> — no internet needed on the students' devices.</span><span class="fil">Kopyahin ito sa bawat device sa classroom gamit ang <strong>USB drive, SD card, o file sharing</strong> — hindi kailangan ng internet sa mga device ng mag-aaral.</span></li>
+    <li><span class="en">On each device: open the APK → allow "install unknown apps" if asked → <strong>Install</strong>.</span><span class="fil">Sa bawat device: buksan ang APK → payagan ang "install unknown apps" kung tatanungin → <strong>Install</strong>.</span></li>
+    <li><span class="en">The app stores everything on the device. Re-installing an update keeps all profiles and progress.</span><span class="fil">Nakaimbak ang lahat sa mismong device. Kapag nag-install ng update, mananatili ang lahat ng profile at progreso.</span></li>
   </ol>
 </div>
-<div class="tip">💡 Devices shared by several pupils? That's the normal case — FlashLearn supports <strong>many profiles on one device</strong>, and each child's progress stays separate.</div>
+<div class="tip">💡 <span class="en">Devices shared by several pupils? That's the normal case — FlashLearn supports <strong>many profiles on one device</strong>, and each child's progress stays separate.</span><span class="fil">Iisang device para sa maraming mag-aaral? Normal lang iyan — sumusuporta ang FlashLearn sa <strong>maraming profile sa iisang device</strong>, at hiwalay ang progreso ng bawat bata.</span></div>
 
-<h2>2. Create your Teacher profile and class</h2>
+<h2>2. <span class="en">Create your Teacher profile and class</span><span class="fil">Gumawa ng Teacher profile at klase</span></h2>
 <div class="box">
   <ol>
-    <li>Open the app → <strong>Add New Profile</strong> → choose <strong>Teacher</strong>.</li>
-    <li>From your teacher dashboard, <strong>create a class</strong>. The app generates a short <strong>class code</strong>.</li>
-    <li>Write the class code on the board — students (or you) enter it when creating their Student profiles.</li>
-    <li>Students who join with your code appear automatically in your class list and reports.</li>
+    <li><span class="en">Open the app → <strong>Add New Profile</strong> → choose <strong>Teacher</strong>.</span><span class="fil">Buksan ang app → <strong>Add New Profile</strong> → piliin ang <strong>Teacher</strong>.</span></li>
+    <li><span class="en">From your teacher dashboard, <strong>create a class</strong>. The app generates a short <strong>class code</strong>.</span><span class="fil">Mula sa iyong teacher dashboard, <strong>gumawa ng klase</strong>. Gagawa ang app ng maikling <strong>class code</strong>.</span></li>
+    <li><span class="en">Write the class code on the board — students (or you) enter it when creating their Student profiles.</span><span class="fil">Isulat ang class code sa pisara — ilalagay ito ng mga mag-aaral (o ninyo) kapag gumagawa ng kanilang Student profile.</span></li>
+    <li><span class="en">Students who join with your code appear automatically in your class list and reports.</span><span class="fil">Awtomatikong lalabas sa iyong class list at reports ang mga mag-aaral na sumali gamit ang iyong code.</span></li>
   </ol>
 </div>
-<div class="tip">🔒 You can set a <strong>PIN</strong> on your Teacher profile (Settings → Profile → Set PIN) so pupils can't open your dashboard.</div>
+<div class="tip">🔒 <span class="en">You can set a <strong>PIN</strong> on your Teacher profile (Settings → Profile → Set PIN) so pupils can't open your dashboard.</span><span class="fil">Maaari kang maglagay ng <strong>PIN</strong> sa iyong Teacher profile (Settings → Profile → Set PIN) para hindi mabuksan ng mga mag-aaral ang iyong dashboard.</span></div>
 
-<h2>3. Set up each Student profile</h2>
+<h2>3. <span class="en">Set up each Student profile</span><span class="fil">I-set up ang bawat Student profile</span></h2>
 <div class="box">
-  <p>When creating a <strong>Student</strong> profile you can record the learner's age and, if applicable, a disability. Choosing one <strong>pre-configures the whole app</strong> — you can still fine-tune everything in Settings afterwards.</p>
+  <p><span class="en">When creating a <strong>Student</strong> profile you can record the learner's age and, if applicable, a disability. Choosing one <strong>pre-configures the whole app</strong> — you can still fine-tune everything in Settings afterwards.</span><span class="fil">Kapag gumagawa ng <strong>Student</strong> profile, maaaring itala ang edad ng mag-aaral at, kung naaangkop, ang kapansanan. Ang pagpili nito ay <strong>awtomatikong nagse-set up ng buong app</strong> — maaari pa ring i-fine-tune ang lahat sa Settings pagkatapos.</span></p>
 </div>
 <table>
-  <tr><th>Preset</th><th>What the app turns on</th></tr>
-  <tr><td>👁️ Visual impairment</td><td>High-contrast theme, larger text, voice-guided navigation, spoken words everywhere</td></tr>
-  <tr><td>👂 Hearing impairment</td><td>Filipino Sign Language content first, picture-led cards, visual-only games</td></tr>
-  <tr><td>🦽 Motor impairment</td><td>Gaze control &amp; voice commands (uses camera/microphone), extra-large touch targets</td></tr>
-  <tr><td>🧠 Cognitive / learning disability</td><td>Dyslexia-friendly font, calm reduced-motion screens, adaptive difficulty, gentle pacing</td></tr>
+  <tr><th><span class="en">Preset</span><span class="fil">Preset</span></th><th><span class="en">What the app turns on</span><span class="fil">Ano ang bubuksan ng app</span></th></tr>
+  <tr><td>👁️ <span class="en">Visual impairment</span><span class="fil">Kapansanan sa paningin</span></td><td><span class="en">High-contrast theme, larger text, voice-guided navigation, spoken words everywhere</span><span class="fil">High-contrast na tema, mas malaking teksto, voice-guided navigation, binibigkas na salita kahit saan</span></td></tr>
+  <tr><td>👂 <span class="en">Hearing impairment</span><span class="fil">Kapansanan sa pandinig</span></td><td><span class="en">Filipino Sign Language content first, picture-led cards, visual-only games</span><span class="fil">Unang-una ang Filipino Sign Language, mga card na nakabatay sa larawan, mga larong puro visual</span></td></tr>
+  <tr><td>🦽 <span class="en">Motor impairment</span><span class="fil">Kapansanan sa paggalaw</span></td><td><span class="en">Gaze control &amp; voice commands (uses camera/microphone), extra-large touch targets</span><span class="fil">Gaze control at voice commands (gumagamit ng camera/mikropono), sobrang laki ng touch targets</span></td></tr>
+  <tr><td>🧠 <span class="en">Cognitive / learning disability</span><span class="fil">Kapansanang kognitibo / sa pagkatuto</span></td><td><span class="en">Dyslexia-friendly font, calm reduced-motion screens, adaptive difficulty, gentle pacing</span><span class="fil">Dyslexia-friendly na font, kalmadong reduced-motion na screen, adaptive difficulty, banayad na bilis</span></td></tr>
 </table>
 
-<h2>4. Teaching with FlashLearn</h2>
+<h2>4. <span class="en">Teaching with FlashLearn</span><span class="fil">Pagtuturo gamit ang FlashLearn</span></h2>
 <div class="box">
-  <h3>🃏 Flashcards (Cards tab)</h3>
+  <h3>🃏 <span class="en">Flashcards (Cards tab)</span><span class="fil">Flashcards (Cards tab)</span></h3>
   <ul>
-    <li>10 decks · 177 words, each with picture, real photo, English &amp; Filipino audio, and FSL.</li>
-    <li>Great for <strong>guided vocabulary time</strong>: project one device, or let pairs explore a deck.</li>
+    <li><span class="en">10 decks · 177 words, each with picture, real photo, English &amp; Filipino audio, and FSL.</span><span class="fil">10 deck · 177 salita, bawat isa ay may larawan, totoong litrato, English at Filipino audio, at FSL.</span></li>
+    <li><span class="en">Great for <strong>guided vocabulary time</strong>: project one device, or let pairs explore a deck.</span><span class="fil">Mainam para sa <strong>guided vocabulary time</strong>: i-project ang isang device, o hayaang mag-explore ng deck ang magkapares.</span></li>
   </ul>
-  <h3>🎮 Games (Games tab)</h3>
+  <h3>🎮 <span class="en">Games (Games tab)</span><span class="fil">Mga Laro (Games tab)</span></h3>
   <ul>
-    <li>Each game has <strong>Easy / Medium / Hard</strong> — start Easy, level up when ready.</li>
-    <li><strong>Play Together</strong> is a two-player race on one screen — perfect for pair work.</li>
-    <li>Tracing and Spelling Bee double as fine-motor and phonics practice.</li>
+    <li><span class="en">Each game has <strong>Easy / Medium / Hard</strong> — start Easy, level up when ready.</span><span class="fil">Bawat laro ay may <strong>Easy / Medium / Hard</strong> — magsimula sa Easy, umangat kapag handa na.</span></li>
+    <li><span class="en"><strong>Play Together</strong> is a two-player race on one screen — perfect for pair work.</span><span class="fil">Ang <strong>Play Together</strong> ay karera ng dalawang manlalaro sa iisang screen — perpekto para sa pares.</span></li>
+    <li><span class="en">Tracing and Spelling Bee double as fine-motor and phonics practice.</span><span class="fil">Ang Tracing at Spelling Bee ay nagsisilbi ring pagsasanay sa fine-motor at phonics.</span></li>
   </ul>
-  <h3>📚 Stories (Stories tab)</h3>
+  <h3>📚 <span class="en">Stories (Stories tab)</span><span class="fil">Mga Kuwento (Stories tab)</span></h3>
   <ul>
-    <li>Short bilingual stories reuse deck vocabulary; comprehension questions earn stars.</li>
-    <li>The harder story in each category unlocks after the easy one — a built-in reading ladder.</li>
+    <li><span class="en">Short bilingual stories reuse deck vocabulary; comprehension questions earn stars.</span><span class="fil">Gumagamit ang maiikling kuwento ng bokabularyo mula sa mga deck; ang mga tanong sa pag-unawa ay nagbibigay ng stars.</span></li>
+    <li><span class="en">The harder story in each category unlocks after the easy one — a built-in reading ladder.</span><span class="fil">Nabubuksan ang mas mahirap na kuwento sa bawat kategorya pagkatapos ng madali — parang hagdan ng pagbasa.</span></li>
   </ul>
-  <h3>🌟 Daily Challenge (Home)</h3>
-  <ul><li>One quick question a day — a lovely 5-minute class opener.</li></ul>
+  <h3>🌟 <span class="en">Daily Challenge (Home)</span><span class="fil">Daily Challenge (Home)</span></h3>
+  <ul><li><span class="en">One quick question a day — a lovely 5-minute class opener.</span><span class="fil">Isang mabilis na tanong bawat araw — magandang 5-minutong panimula ng klase.</span></li></ul>
 </div>
 
-<h2>5. Tracking progress</h2>
+<h2>5. <span class="en">Tracking progress</span><span class="fil">Pagsubaybay sa progreso</span></h2>
 <div class="box">
   <ul>
-    <li>The <strong>Progress</strong> tab shows each learner's words mastered, streaks, stars, and per-deck bars.</li>
-    <li><strong>Certificates</strong> can be shown or printed when a learner reaches milestones.</li>
-    <li>Your <strong>teacher dashboard</strong> aggregates the whole class — spot who needs help at a glance.</li>
-    <li>Use <strong>notes</strong> to leave encouragement that parents can read from a Parent profile.</li>
+    <li><span class="en">The <strong>Progress</strong> tab shows each learner's words mastered, streaks, stars, and per-deck bars.</span><span class="fil">Ipinapakita ng <strong>Progress</strong> tab ang mga salitang natutunan, streaks, stars, at progress bar ng bawat deck para sa bawat mag-aaral.</span></li>
+    <li><span class="en"><strong>Certificates</strong> can be shown or printed when a learner reaches milestones.</span><span class="fil">Maaaring ipakita o i-print ang <strong>certificates</strong> kapag nakaabot ang mag-aaral sa milestones.</span></li>
+    <li><span class="en">Your <strong>teacher dashboard</strong> aggregates the whole class — spot who needs help at a glance.</span><span class="fil">Pinagsasama-sama ng iyong <strong>teacher dashboard</strong> ang buong klase — agad makikita kung sino ang nangangailangan ng tulong.</span></li>
+    <li><span class="en">Use <strong>notes</strong> to leave encouragement that parents can read from a Parent profile.</span><span class="fil">Gamitin ang <strong>notes</strong> para mag-iwan ng mensahe ng suporta na mababasa ng magulang mula sa Parent profile.</span></li>
   </ul>
 </div>
 
-<h2>6. Accessibility cheat-sheet</h2>
+<h2>6. <span class="en">Accessibility cheat-sheet</span><span class="fil">Accessibility cheat-sheet</span></h2>
 <table>
-  <tr><th>If a learner…</th><th>Try turning on…</th></tr>
-  <tr><td>squints, sits very close to the screen</td><td>High Contrast + font size L/XL (Settings → Accessibility)</td></tr>
-  <tr><td>is Deaf or hard of hearing</td><td>Rely on FSL buttons on cards + visual games; skip pronunciation games</td></tr>
-  <tr><td>struggles to tap small buttons</td><td>Gaze Control and Voice Commands (Settings → Gaze Control; needs camera/mic permission)</td></tr>
-  <tr><td>reverses letters, tires when reading</td><td>Dyslexia-friendly mode (cream background, Lexend font, wide spacing)</td></tr>
-  <tr><td>is distracted or overwhelmed by motion</td><td>Reduced Motion; consider Focus Mode and shorter sessions</td></tr>
-  <tr><td>can't yet read menus</td><td>Voice-Guided Navigation (reads screens aloud)</td></tr>
+  <tr><th><span class="en">If a learner…</span><span class="fil">Kung ang mag-aaral ay…</span></th><th><span class="en">Try turning on…</span><span class="fil">Subukang buksan ang…</span></th></tr>
+  <tr><td><span class="en">squints, sits very close to the screen</span><span class="fil">nakapikit-pikit o sobrang lapit sa screen</span></td><td><span class="en">High Contrast + font size L/XL (Settings → Accessibility)</span><span class="fil">High Contrast + font size L/XL (Settings → Accessibility)</span></td></tr>
+  <tr><td><span class="en">is Deaf or hard of hearing</span><span class="fil">Bingi o may kahinaan sa pandinig</span></td><td><span class="en">Rely on FSL buttons on cards + visual games; skip pronunciation games</span><span class="fil">Gamitin ang FSL buttons sa cards + visual games; laktawan ang pronunciation games</span></td></tr>
+  <tr><td><span class="en">struggles to tap small buttons</span><span class="fil">nahihirapang pumindot ng maliliit na button</span></td><td><span class="en">Gaze Control and Voice Commands (Settings → Gaze Control; needs camera/mic permission)</span><span class="fil">Gaze Control at Voice Commands (Settings → Gaze Control; kailangan ng camera/mic permission)</span></td></tr>
+  <tr><td><span class="en">reverses letters, tires when reading</span><span class="fil">nababaligtad ang mga letra, napapagod sa pagbasa</span></td><td><span class="en">Dyslexia-friendly mode (cream background, Lexend font, wide spacing)</span><span class="fil">Dyslexia-friendly mode (cream na background, Lexend font, maluwag na espasyo)</span></td></tr>
+  <tr><td><span class="en">is distracted or overwhelmed by motion</span><span class="fil">nadidistract o nao-overwhelm sa galaw</span></td><td><span class="en">Reduced Motion; consider Focus Mode and shorter sessions</span><span class="fil">Reduced Motion; subukan din ang Focus Mode at mas maiikling session</span></td></tr>
+  <tr><td><span class="en">can't yet read menus</span><span class="fil">hindi pa nakakabasa ng menu</span></td><td><span class="en">Voice-Guided Navigation (reads screens aloud)</span><span class="fil">Voice-Guided Navigation (binabasa nang malakas ang screen)</span></td></tr>
 </table>
 
-<h2>7. Classroom tips</h2>
+<h2>7. <span class="en">Classroom tips</span><span class="fil">Mga tip sa classroom</span></h2>
 <div class="box">
   <ul>
-    <li><strong>Everything works offline</strong> — no Wi-Fi worries during class.</li>
-    <li>Charge tablets beforehand; the app keeps the screen awake during activities.</li>
-    <li>Rotate "device captains" who hand out tablets and open the right profile.</li>
-    <li>Celebrate streaks and certificates publicly — the reward system is designed for it.</li>
-    <li>Found a bug or have a request? <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">Send feedback here</a>.</li>
+    <li><span class="en"><strong>Everything works offline</strong> — no Wi-Fi worries during class.</span><span class="fil"><strong>Gumagana ang lahat nang offline</strong> — walang aalalahaning Wi-Fi sa klase.</span></li>
+    <li><span class="en">Charge tablets beforehand; the app keeps the screen awake during activities.</span><span class="fil">I-charge ang mga tablet bago ang klase; pinapanatiling gising ng app ang screen habang may aktibidad.</span></li>
+    <li><span class="en">Rotate "device captains" who hand out tablets and open the right profile.</span><span class="fil">Magpalit-palit ng "device captains" na mamimigay ng tablet at magbubukas ng tamang profile.</span></li>
+    <li><span class="en">Celebrate streaks and certificates publicly — the reward system is designed for it.</span><span class="fil">Ipagdiwang ang streaks at certificates sa harap ng klase — para diyan ginawa ang reward system.</span></li>
+    <li><span class="en">Found a bug or have a request? <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">Send feedback here</a>.</span><span class="fil">May nakitang bug o may kahilingan? <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">Magpadala ng feedback dito</a>.</span></li>
   </ul>
 </div>
 
-<p class="no-print" style="margin-top:30px"><a href="index.html">← Back to the FlashLearn PWD site</a></p>
-<p style="margin-top:10px"><small>© 2026 FlashLearn PWD — college thesis / capstone project. Made with 💜 for inclusive education in the Philippines.</small></p>
+<p class="no-print" style="margin-top:30px"><a href="index.html">← <span class="en">Back to the FlashLearn PWD site</span><span class="fil">Bumalik sa FlashLearn PWD site</span></a></p>
+<p style="margin-top:10px"><small>© 2026 FlashLearn PWD — <span class="en">college thesis / capstone project. Made with 💜 for inclusive education in the Philippines.</span><span class="fil">college thesis / capstone project. Ginawa nang may 💜 para sa inklusibong edukasyon sa Pilipinas.</span></small></p>
 </div>
+</main>
+
+<script src="assets/site.js"></script>
 </body>
 </html>

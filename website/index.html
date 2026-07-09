@@ -1,11 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"
+      data-title-en="FlashLearn PWD — Learning for Every Child"
+      data-title-fil="FlashLearn PWD — Masayang Pagkatuto para sa Bawat Bata">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FlashLearn PWD — Learning for Every Child</title>
 <meta name="description" content="FlashLearn PWD is a free bilingual (English/Filipino) flashcard learning app designed for students with disabilities. Download the app, learn how to use it, and discover PWD awareness resources — no sign-up needed.">
 <meta name="theme-color" content="#6C5CE7">
+<link rel="canonical" href="https://jpaestedstu-prog.github.io/pwd_flashcard_app/">
+<!-- Social sharing previews (Facebook / Messenger / X / chat apps) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/">
+<meta property="og:site_name" content="FlashLearn PWD">
+<meta property="og:title" content="FlashLearn PWD — Learning for Every Child">
+<meta property="og:description" content="Free bilingual (English/Filipino) flashcard learning app for students with disabilities — FSL, games, stories, and a full accessibility suite. Works offline, no sign-up needed.">
+<meta property="og:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="FlashLearn PWD — free bilingual flashcard app for students with disabilities. Learning made joyful, for every child.">
+<meta property="og:locale" content="en_PH">
+<meta property="og:locale:alternate" content="fil_PH">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="FlashLearn PWD — Learning for Every Child">
+<meta name="twitter:description" content="Free bilingual flashcard learning app for students with disabilities — works offline, no sign-up needed.">
+<meta name="twitter:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
@@ -448,7 +467,7 @@ footer .foot-links{ display:flex; gap:18px; flex-wrap:wrap; margin:6px 0; font-w
         <h3 style="font-size:1.5rem"><span class="en">FlashLearn PWD for Android</span><span class="fil">FlashLearn PWD para sa Android</span></h3>
         <ul class="dl-meta">
           <li>📦 <span><b><span class="en">Version:</span><span class="fil">Bersyon:</span></b> 1.0.0</span></li>
-          <li>🤖 <span><b><span class="en">Requires:</span><span class="fil">Kailangan:</span></b> <span class="en">Android 10 or newer</span><span class="fil">Android 10 pataas</span></b></span></li>
+          <li>🤖 <span><b><span class="en">Requires:</span><span class="fil">Kailangan:</span></b> <span class="en">Android 10 or newer</span><span class="fil">Android 10 pataas</span></span></li>
           <li>💾 <span><b><span class="en">Size:</span><span class="fil">Laki:</span></b> 69 MB</span></li>
           <li>🔓 <span><b>Account:</b> <span class="en">none needed — open and learn</span><span class="fil">hindi kailangan — buksan at matuto</span></span></li>
         </ul>
@@ -738,53 +757,9 @@ footer .foot-links{ display:flex; gap:18px; flex-wrap:wrap; margin:6px 0; font-w
   <img id="lbImg" src="" alt="">
 </dialog>
 
+<script src="assets/site.js"></script>
 <script>
 (function(){
-  var html = document.documentElement;
-  var prefs = {};
-  try { prefs = JSON.parse(localStorage.getItem('flp-a11y') || '{}'); } catch(e){}
-  function save(){ try{ localStorage.setItem('flp-a11y', JSON.stringify(prefs)); }catch(e){} }
-
-  var btnFont = document.getElementById('btnFont');
-  var btnDys  = document.getElementById('btnDys');
-  var btnHC   = document.getElementById('btnHC');
-  var btnLang = document.getElementById('btnLang');
-
-  // font size cycles: normal -> lg -> xl -> normal
-  function applyFont(){
-    html.classList.toggle('fs-lg', prefs.font === 'lg');
-    html.classList.toggle('fs-xl', prefs.font === 'xl');
-    btnFont.setAttribute('aria-pressed', prefs.font ? 'true' : 'false');
-    btnFont.textContent = prefs.font === 'lg' ? 'A++' : (prefs.font === 'xl' ? 'A' : 'A+');
-    btnFont.title = prefs.font === 'xl' ? 'Reset text size' : 'Larger text';
-  }
-  function applyDys(){
-    html.classList.toggle('dys', !!prefs.dys);
-    btnDys.setAttribute('aria-pressed', prefs.dys ? 'true' : 'false');
-  }
-  function applyHC(){
-    html.classList.toggle('hc', !!prefs.hc);
-    btnHC.setAttribute('aria-pressed', prefs.hc ? 'true' : 'false');
-  }
-  function applyLang(){
-    var fil = !!prefs.fil;
-    html.classList.toggle('fil', fil);
-    html.setAttribute('lang', fil ? 'fil' : 'en');
-    btnLang.setAttribute('aria-pressed', fil ? 'true' : 'false');
-    btnLang.textContent = fil ? 'EN' : 'FIL';
-    btnLang.title = fil ? 'Switch to English' : 'Lumipat sa Filipino';
-    document.title = fil ? 'FlashLearn PWD — Masayang Pagkatuto para sa Bawat Bata'
-                         : 'FlashLearn PWD — Learning for Every Child';
-  }
-  btnFont.addEventListener('click', function(){
-    prefs.font = prefs.font === 'lg' ? 'xl' : (prefs.font === 'xl' ? '' : 'lg');
-    applyFont(); save();
-  });
-  btnDys.addEventListener('click', function(){ prefs.dys = !prefs.dys; applyDys(); save(); });
-  btnHC.addEventListener('click', function(){ prefs.hc = !prefs.hc; applyHC(); save(); });
-  btnLang.addEventListener('click', function(){ prefs.fil = !prefs.fil; applyLang(); save(); });
-  applyFont(); applyDys(); applyHC(); applyLang();
-
   // Lightbox: tap any app screenshot to enlarge
   var lb = document.getElementById('lightbox');
   var lbImg = document.getElementById('lbImg');
@@ -798,11 +773,6 @@ footer .foot-links{ display:flex; gap:18px; flex-wrap:wrap; margin:6px 0; font-w
     document.getElementById('lbClose').addEventListener('click', function(){ lb.close(); });
     lb.addEventListener('click', function(e){ if (e.target === lb) lb.close(); });
     lb.addEventListener('close', function(){ lbImg.src = ''; });
-  }
-
-  // PWA: register the service worker (http/https only)
-  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
-    navigator.serviceWorker.register('sw.js').catch(function(){});
   }
 })();
 </script>
