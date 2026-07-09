@@ -39,6 +39,17 @@
     btnLang.title = fil ? 'Switch to English' : 'Lumipat sa Filipino';
     var title = html.getAttribute(fil ? 'data-title-fil' : 'data-title-en');
     if (title) document.title = title;
+    // Video captions follow the site language (only tracks the visitor hasn't
+    // manually disabled with the CC button stay in sync).
+    document.querySelectorAll('video').forEach(function(v){
+      var tracks = v.textTracks || [];
+      var anyShowing = false;
+      for (var i = 0; i < tracks.length; i++) anyShowing = anyShowing || tracks[i].mode === 'showing';
+      for (var j = 0; j < tracks.length; j++) {
+        var want = tracks[j].language === (fil ? 'fil' : 'en');
+        if (anyShowing || tracks[j].mode !== 'disabled') tracks[j].mode = want ? 'showing' : 'hidden';
+      }
+    });
   }
   btnFont.addEventListener('click', function(){
     prefs.font = prefs.font === 'lg' ? 'xl' : (prefs.font === 'xl' ? '' : 'lg');
