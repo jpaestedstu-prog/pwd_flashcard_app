@@ -346,72 +346,78 @@ class _TutorialStepCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Icon in glowing circle
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: step.color.withValues(alpha: 0.15),
-              border: Border.all(
-                color: step.color.withValues(alpha: 0.4),
-                width: 3,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: step.color.withValues(alpha: 0.3),
-                  blurRadius: 30,
-                  spreadRadius: 5,
-                ),
+      // Centre the step content when it fits, but let it scroll instead of
+      // overflowing when a large accessibility font scale makes it taller than
+      // the page (regression: overflowed by a few px at 2.0x on short tablets).
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Icon in glowing circle
+                Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: step.color.withValues(alpha: 0.15),
+                        border: Border.all(
+                          color: step.color.withValues(alpha: 0.4),
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: step.color.withValues(alpha: 0.3),
+                            blurRadius: 30,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: Icon(step.icon, size: 56, color: step.color),
+                    )
+                    .animate(key: ValueKey(index))
+                    .scale(
+                      begin: const Offset(0.5, 0.5),
+                      end: const Offset(1, 1),
+                      duration: 500.ms,
+                      curve: Curves.elasticOut,
+                    ),
+
+                const SizedBox(height: 36),
+
+                // Title
+                Text(
+                      step.title,
+                      style: AppTypography.headlineSmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      textAlign: TextAlign.center,
+                    )
+                    .animate(key: ValueKey('title_$index'))
+                    .fadeIn(duration: 400.ms, delay: 150.ms)
+                    .slideY(begin: 0.15, end: 0),
+
+                const SizedBox(height: 16),
+
+                // Description
+                Text(
+                      step.description,
+                      style: AppTypography.bodyLarge.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    )
+                    .animate(key: ValueKey('desc_$index'))
+                    .fadeIn(duration: 400.ms, delay: 300.ms)
+                    .slideY(begin: 0.1, end: 0),
               ],
             ),
-            child: Icon(
-              step.icon,
-              size: 56,
-              color: step.color,
-            ),
-          )
-              .animate(key: ValueKey(index))
-              .scale(
-                begin: const Offset(0.5, 0.5),
-                end: const Offset(1, 1),
-                duration: 500.ms,
-                curve: Curves.elasticOut,
-              ),
-
-          const SizedBox(height: 36),
-
-          // Title
-          Text(
-            step.title,
-            style: AppTypography.headlineSmall.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-            ),
-            textAlign: TextAlign.center,
-          )
-              .animate(key: ValueKey('title_$index'))
-              .fadeIn(duration: 400.ms, delay: 150.ms)
-              .slideY(begin: 0.15, end: 0),
-
-          const SizedBox(height: 16),
-
-          // Description
-          Text(
-            step.description,
-            style: AppTypography.bodyLarge.copyWith(
-              color: Colors.white.withValues(alpha: 0.85),
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          )
-              .animate(key: ValueKey('desc_$index'))
-              .fadeIn(duration: 400.ms, delay: 300.ms)
-              .slideY(begin: 0.1, end: 0),
-        ],
+          ),
+        ),
       ),
     );
   }

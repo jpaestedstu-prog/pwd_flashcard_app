@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -25,9 +26,17 @@ class GameHubScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final padding = context.pagePadding;
-    final games = GameType.values
-        .where((g) => g != GameType.storyQuiz)
-        .toList();
+    // Content gating by the learner's assigned accessibility category:
+    // FSL Practice is hidden where signing isn't the right modality, and the
+    // audio-only Pronunciation game is hidden for Deaf / hard-of-hearing
+    // learners. (Story Quiz always lives in the Stories tab.)
+    final policy = ref.watch(accessibilityContentPolicyProvider);
+    final games = GameType.values.where((g) {
+      if (g == GameType.storyQuiz) return false;
+      if (g == GameType.fslPractice && !policy.showFsl) return false;
+      if (g == GameType.pronunciation && !policy.showAudioGame) return false;
+      return true;
+    }).toList();
 
     // Hands-free "Bottom nav + feature tiles" reach: when enabled, each game
     // card registers with the shell's gaze D-pad and shows a focus ring. A pure
@@ -84,12 +93,26 @@ class GameHubScreen extends ConsumerWidget {
                   ),
 
                   // ─── Play Together CTA (star-free multiplayer) ──
+                  // Its own gaze row above the game cards, so the D-pad
+                  // reaches it too.
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
-                      child: _PlayTogetherBanner(
-                        onTap: () => context.push('/multiplayer'),
-                      ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
+                      child: gazeGrid.section(
+                        columns: 1,
+                        expand: false,
+                        entries: [
+                          (
+                            tile: _PlayTogetherBanner(
+                              onTap: () => context.push('/multiplayer'),
+                            ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
+                            cell: GazeTileCell(
+                              label: 'Play Together',
+                              onActivate: () => context.push('/multiplayer'),
+                            ),
+                          ),
+                        ],
+                      ).first,
                     ),
                   ),
 

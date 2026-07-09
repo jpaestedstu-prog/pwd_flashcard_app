@@ -36,11 +36,24 @@ class SoundService {
       await _player.stop();
       await _player.play(AssetSource(path));
     } catch (e, stack) {
-      // Suppress AbortError on web — this is a harmless race condition where
-      // stop() interrupts a pending play() promise in the browser.
+      // Swallow harmless playback races that fire when stop() interrupts a
+      // play() while the player is still spinning up:
+      //   • web: "AbortError" / "interrupted" — stop() aborts a pending
+      //     play() promise in the browser.
+      //   • native: "Bad state: No element" — audioplayers' internal
+      //     event-stream `firstWhere().timeout()` completes empty when the
+      //     player is (re)created mid-setup. Common on the very first sound
+      //     after launch (e.g. the profile-creation chime).
+      // These are non-actionable, so don't even log them.
       final msg = e.toString();
-      if (msg.contains('AbortError') || msg.contains('interrupted')) return;
-      // Log but don't interrupt UX — audio is non-critical
+      if (msg.contains('AbortError') ||
+          msg.contains('interrupted') ||
+          msg.contains('Bad state: No element')) {
+        return;
+      }
+      // Other audio failures: log for diagnostics but never interrupt UX —
+      // audio is non-critical. 'SoundService' is a silent ErrorHandler source,
+      // so this records to the Hive log without firing the global snackbar.
       ErrorHandler.report(e, stack, 'SoundService');
     }
   }

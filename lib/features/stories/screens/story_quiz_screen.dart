@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../core/accessibility/haptic_service.dart' show hapticServiceProvider;
@@ -191,6 +192,11 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
     final settings = ref.watch(settingsProvider);
     // Read-aloud buttons hidden when Text-to-Speech is off.
     final ttsEnabled = settings.ttsEnabled;
+    // FSL "watch signed" buttons hidden for non-signing accessibility
+    // categories (e.g. visual / cognitive), per the content policy.
+    final showFsl = ref.watch(
+      accessibilityContentPolicyProvider.select((p) => p.showFsl),
+    );
     // Drives the cartoon ⇄ real-life flip animation speed (accessibility).
     final reducedMotion = settings.reducedMotion;
     final question = _question!;
@@ -343,7 +349,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                           // Watch the question signed. Always available when
                           // the story has an FSL track — independent of TTS so
                           // Deaf learners can sign-read the prompt.
-                          if (question.fslVideoUrl != null) ...[
+                          if (showFsl && question.fslVideoUrl != null) ...[
                             const SizedBox(height: 12),
                             StoryFslButton(
                               pageUrl: question.fslVideoUrl!,
@@ -552,8 +558,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                                 ],
                                                 // Watch this choice signed (when
                                                 // the story has an FSL track).
-                                                if (question.fslForOption(idx) !=
-                                                    null)
+                                                if (showFsl &&
+                                                    question.fslForOption(idx) !=
+                                                        null)
                                                   StoryFslButton(
                                                     pageUrl: question
                                                         .fslForOption(idx)!,

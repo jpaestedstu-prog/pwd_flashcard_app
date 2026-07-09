@@ -44,9 +44,11 @@ Future<Duration?> openFslFullscreenPlayer(
   );
 }
 
-/// A deaf-friendly fullscreen video player with portrait↔landscape rotation,
-/// gesture controls, progress bar, auto-hiding controls, subtitle labels,
-/// speed selector, and visual-only status cues.
+/// A deaf-friendly fullscreen video player: gesture controls, progress bar,
+/// auto-hiding controls, subtitle labels, speed selector, pinch-to-zoom, and
+/// visual-only status cues. Portrait-only — the whole app is locked to
+/// portrait for spatial consistency, so the video is shown letterboxed rather
+/// than rotating the device.
 class FslFullscreenPlayer extends StatefulWidget {
   final VideoSource videoSource;
   final String wordEnglish;
@@ -92,10 +94,9 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
   String? _speedFeedback;
   Timer? _speedFeedbackTimer;
 
-  // Rotation hint (show once)
-  bool _showRotationHint = true;
-
-  // Orientation tracking
+  // Orientation tracking. The app is portrait-locked, so this stays false in
+  // practice; it's kept only so layout math degrades gracefully on the rare
+  // large-screen device that letterboxes instead of honoring the lock.
   bool _isLandscape = false;
 
   // Pinch-to-zoom
@@ -110,15 +111,10 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Unlock all orientations for this screen
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    // The app is globally portrait-locked (see main.dart), so we don't touch
+    // orientation here — the video simply plays letterboxed in portrait.
 
-    // Immersive mode — hide system UI
+    // Immersive mode — hide system UI for a distraction-free fullscreen video.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     _controller = widget.videoSource.createController()
@@ -139,11 +135,6 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
       if (mounted) setState(() {});
     };
     _controller.addListener(_positionListener);
-
-    // Auto-dismiss rotation hint after 2.5 seconds
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) setState(() => _showRotationHint = false);
-    });
   }
 
   @override
@@ -156,11 +147,9 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
     _transformController.dispose();
     WidgetsBinding.instance.removeObserver(this);
 
-    // Re-lock to portrait & restore system UI
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    // Restore the normal (non-immersive) system UI. Orientation was never
+    // changed — the app stays portrait-locked throughout — so there's nothing
+    // to unwind there.
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
       overlays: SystemUiOverlay.values,
@@ -255,40 +244,12 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
     _startHideControlsTimer();
   }
 
-  // ─── Double-tap: force orientation toggle ───────────
+  // ─── Double-tap: reset pinch-zoom ───────────────────
 
-  void _doubleTapRotate() {
-    HapticFeedback.mediumImpact();
-    if (_isLandscape) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-      // Re-unlock after a moment so auto-rotate works again
-      Future.delayed(const Duration(milliseconds: 600), () {
-        if (!mounted) return;
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown,
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ]);
-      });
-    } else {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-      Future.delayed(const Duration(milliseconds: 600), () {
-        if (!mounted) return;
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown,
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ]);
-      });
-    }
+  void _resetZoom() {
+    if (_transformController.value == Matrix4.identity()) return;
+    HapticFeedback.selectionClick();
+    setState(() => _transformController.value = Matrix4.identity());
   }
 
   // ─── Replay ─────────────────────────────────────────
@@ -307,11 +268,15 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
     Navigator.of(context).pop(pos);
   }
 
-  // ─── Swipe down (landscape → portrait) ──────────────
+  // ─── Swipe down to close ────────────────────────────
 
   void _onVerticalDragEnd(DragEndDetails details) {
-    if (_isLandscape && details.velocity.pixelsPerSecond.dy > 200) {
-      _doubleTapRotate(); // triggers portrait
+    // A firm downward flick dismisses the fullscreen player. Ignore it while
+    // the video is zoomed in so panning a zoomed frame doesn't close it.
+    final zoomed = _transformController.value != Matrix4.identity();
+    if (!zoomed && details.velocity.pixelsPerSecond.dy > 300) {
+      HapticFeedback.lightImpact();
+      _close();
     }
   }
 
@@ -346,7 +311,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
           backgroundColor: Colors.black,
           body: GestureDetector(
             onTap: _toggleControls,
-            onDoubleTap: _doubleTapRotate,
+            onDoubleTap: _resetZoom,
             onHorizontalDragEnd: _onHorizontalDragEnd,
             onVerticalDragEnd: _onVerticalDragEnd,
             behavior: HitTestBehavior.opaque,
@@ -368,9 +333,6 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                 // ─── Speed feedback ─────────────
                 if (_speedFeedback != null)
                   _buildCenterFeedback(_speedFeedback!),
-
-                // ─── Rotation hint ──────────────
-                if (_showRotationHint && !_isLandscape) _buildRotationHint(),
 
                 // ─── Buffering indicator ────────
                 if (_initialized && _controller.value.isBuffering)
@@ -799,28 +761,6 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                   fontSize: 12,
                 ),
               ),
-              const SizedBox(width: 4),
-              // Fullscreen exit / orientation toggle
-              Semantics(
-                button: true,
-                label: _isLandscape
-                    ? 'Switch to portrait'
-                    : 'Switch to landscape',
-                child: IconButton(
-                  onPressed: _doubleTapRotate,
-                  icon: Icon(
-                    _isLandscape
-                        ? Icons.fullscreen_exit_rounded
-                        : Icons.fullscreen_rounded,
-                  ),
-                  color: Colors.white,
-                  iconSize: 24,
-                  constraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 40,
-                  ),
-                ),
-              ),
             ],
           ),
         ],
@@ -850,45 +790,6 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
             .animate()
             .fadeIn(duration: 150.ms)
             .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1)),
-      ),
-    );
-  }
-
-  // ─── Rotation hint ──────────────────────────────────
-
-  Widget _buildRotationHint() {
-    return Positioned(
-      bottom: 160,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: IgnorePointer(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.screen_rotation_rounded,
-                    color: Colors.white70, size: 22),
-                const SizedBox(width: 10),
-                Text(
-                  'Rotate or double-tap for landscape',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
-            ),
-          )
-              .animate()
-              .fadeIn(duration: 600.ms)
-              .then(delay: 1500.ms)
-              .fadeOut(duration: 600.ms),
-        ),
       ),
     );
   }

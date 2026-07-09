@@ -51,119 +51,125 @@ class PauseOverlay extends ConsumerWidget {
       children: [
         // Dim and block input below.
         const Positioned.fill(
-          child: ModalBarrier(
-            color: Color(0x99000000),
-            dismissible: false,
-          ),
+          child: ModalBarrier(color: Color(0x99000000), dismissible: false),
         ),
         Center(
           child: Material(
             color: Colors.transparent,
+            // Cap the card to the viewport (short landscape / small phones at a
+            // large Font Size can make the stacked buttons + toggle taller than
+            // the screen) and let the contents scroll instead of overflowing.
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: width),
+              constraints: BoxConstraints(
+                maxWidth: width,
+                maxHeight: context.screenHeight * 0.92,
+              ),
               child: Card(
                 elevation: 12,
                 clipBehavior: Clip.antiAlias,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xl,
-                    vertical: AppSpacing.xl,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.pause_circle_filled_rounded,
-                            size: 32,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xl,
+                      vertical: AppSpacing.xl,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.pause_circle_filled_rounded,
+                              size: 32,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                title,
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      AppSpacing.gapLg,
-                      _OverlayButton(
-                        icon: Icons.play_arrow_rounded,
-                        label: 'Resume',
-                        primary: true,
-                        onTap: onResume,
-                      ),
-                      AppSpacing.gapMd,
-                      // "I Need a Break" — the game is already fully paused here
-                      // (timer + media stopped), so a calming break leaves it
-                      // exactly as it was; returning resumes the same round.
-                      _OverlayButton(
-                        icon: Icons.self_improvement_rounded,
-                        label: 'I Need a Break',
-                        onTap: () => showBreakTime(context),
-                      ),
-                      AppSpacing.gapMd,
-                      _OverlayButton(
-                        icon: Icons.refresh_rounded,
-                        label: 'Restart',
-                        onTap: () {
-                          // Confirm before discarding the in-progress run.
-                          showDialog<void>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text('Restart this game?'),
-                              content: const Text(
-                                'Your current progress in this round will be lost.',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(),
-                                  child: const Text('Cancel'),
-                                ),
-                                FilledButton(
-                                  onPressed: () {
-                                    Navigator.of(ctx).pop();
-                                    onRestart();
-                                  },
-                                  child: const Text('Restart'),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      AppSpacing.gapMd,
-                      _OverlayButton(
-                        icon: Icons.exit_to_app_rounded,
-                        label: 'Quit to Games',
-                        onTap: () async {
-                          await onQuit();
-                        },
-                      ),
-                      AppSpacing.gapLg,
-                      const Divider(height: 1),
-                      AppSpacing.gapMd,
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        secondary: Icon(
-                          soundOn
-                              ? Icons.volume_up_rounded
-                              : Icons.volume_off_rounded,
+                          ],
                         ),
-                        title: const Text('Sound effects'),
-                        value: soundOn,
-                        onChanged: (_) =>
-                            ref.read(settingsProvider.notifier).toggleSoundEffects(),
-                      ),
-                    ],
+                        AppSpacing.gapLg,
+                        _OverlayButton(
+                          icon: Icons.play_arrow_rounded,
+                          label: 'Resume',
+                          primary: true,
+                          onTap: onResume,
+                        ),
+                        AppSpacing.gapMd,
+                        // "I Need a Break" — the game is already fully paused here
+                        // (timer + media stopped), so a calming break leaves it
+                        // exactly as it was; returning resumes the same round.
+                        _OverlayButton(
+                          icon: Icons.self_improvement_rounded,
+                          label: 'I Need a Break',
+                          onTap: () => showBreakTime(context),
+                        ),
+                        AppSpacing.gapMd,
+                        _OverlayButton(
+                          icon: Icons.refresh_rounded,
+                          label: 'Restart',
+                          onTap: () {
+                            // Confirm before discarding the in-progress run.
+                            showDialog<void>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Restart this game?'),
+                                content: const Text(
+                                  'Your current progress in this round will be lost.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () {
+                                      Navigator.of(ctx).pop();
+                                      onRestart();
+                                    },
+                                    child: const Text('Restart'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        AppSpacing.gapMd,
+                        _OverlayButton(
+                          icon: Icons.exit_to_app_rounded,
+                          label: 'Quit to Games',
+                          onTap: () async {
+                            await onQuit();
+                          },
+                        ),
+                        AppSpacing.gapLg,
+                        const Divider(height: 1),
+                        AppSpacing.gapMd,
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          secondary: Icon(
+                            soundOn
+                                ? Icons.volume_up_rounded
+                                : Icons.volume_off_rounded,
+                          ),
+                          title: const Text('Sound effects'),
+                          value: soundOn,
+                          onChanged: (_) => ref
+                              .read(settingsProvider.notifier)
+                              .toggleSoundEffects(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -209,9 +215,9 @@ class _OverlayButton extends StatelessWidget {
         EdgeInsets.symmetric(vertical: AppSpacing.md),
       ),
       textStyle: WidgetStatePropertyAll(
-        Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+        Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
     return Semantics(

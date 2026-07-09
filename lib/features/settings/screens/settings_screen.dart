@@ -111,7 +111,7 @@ class SettingsScreen extends ConsumerWidget {
                               ),
                             ),
                             Text(
-                              profile?.role.label ?? '',
+                              profile?.profileTypeLabel ?? '',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: AppTypography.bodySmall.copyWith(
@@ -424,6 +424,20 @@ class SettingsScreen extends ConsumerWidget {
                 activeTrackColor: AppColors.primary,
                 onChanged: (v) =>
                     settingsNotifier.update(settings.copyWith(speechToText: v)),
+              ),
+            ),
+
+            _SettingsTile(
+              icon: Icons.smart_toy_rounded,
+              title: 'AI Companion',
+              subtitle: settings.aiCompanionEnabled
+                  ? 'Floating buddy — tap it any time for help'
+                  : 'Turn on your floating learning buddy',
+              trailing: Switch.adaptive(
+                value: settings.aiCompanionEnabled,
+                activeTrackColor: AppColors.primary,
+                onChanged: (v) => settingsNotifier
+                    .update(settings.copyWith(aiCompanionEnabled: v)),
               ),
             ),
 

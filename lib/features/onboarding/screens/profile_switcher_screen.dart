@@ -241,7 +241,7 @@ class _ProfileCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    profile.role.label,
+                    profile.profileTypeLabel,
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textSecondary,
                     ),

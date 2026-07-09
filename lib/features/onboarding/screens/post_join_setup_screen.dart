@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/accessibility/accessibility_presets.dart';
 import '../../../core/security/pin_credential_helper.dart';
 import '../../../core/services/learning_level_service.dart';
+import '../../../data/local/hive_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -138,6 +140,14 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
     final classroomId = ctx is ClassJoinContext ? ctx.classroom.id : null;
     final homeGroupId = ctx is HomeGroupJoinContext ? ctx.group.id : null;
 
+    // Accessibility is decided by the teacher / parent at class / home-group
+    // creation and inherited here, so the learner never sees the setup
+    // wizard. The resolved container travels on the JoinContext.
+    final accessibility = switch (ctx) {
+      ClassJoinContext(:final classroom) => classroom.accessibility,
+      HomeGroupJoinContext(:final group) => group.accessibility,
+    };
+
     final upgrading = _upgradingFrom;
     if (upgrading != null) {
       return upgrading.copyWith(
@@ -145,6 +155,7 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
         role: role,
         avatarIndex: _selectedAvatarIndex,
         isGuestPlayer: false,
+        disabilityType: accessibility,
         birthDate: () => birth,
         learningLevel: () => level,
         classroomId: () => classroomId,
@@ -158,6 +169,7 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
       role: role,
       avatarIndex: _selectedAvatarIndex,
       createdAt: DateTime.now(),
+      disabilityType: accessibility,
       birthDate: birth,
       learningLevel: level,
       classroomId: classroomId,
@@ -195,13 +207,24 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
     };
 
     if (!ok || !mounted) return;
-    // Hand off to the accessibility setup wizard. We deliberately do
-    // *not* pass `extra: profile`: completeJoin() has already set the new
-    // profile as the active one, so the wizard's non-educator branch
-    // applies the accessibility preset to global settings — which is what
-    // we want for the learner. Passing extra would steer it into the
-    // educator-setup branch and skip the settings update.
-    context.go('/accessibility-setup');
+
+    // Accessibility is assigned by the class / home group the learner just
+    // joined, so we skip the old self-classification wizard entirely. Apply
+    // the matching preset to global settings here — the same effect the
+    // wizard's non-educator branch used to have — so TTS / contrast /
+    // FSL-vs-audio emphasis are configured before the first screen renders.
+    final type = profile.disabilityType;
+    if (type != DisabilityType.none) {
+      final preset = AccessibilityPresets.presetFor(
+        type,
+        current: ref.read(settingsProvider),
+      );
+      ref.read(settingsProvider.notifier).update(preset);
+    }
+
+    final pid = ref.read(profileProvider)?.id ?? '';
+    final seen = HiveService.hasSeenTutorial(pid);
+    context.go(seen ? '/home' : '/onboarding-tutorial');
   }
 
   @override

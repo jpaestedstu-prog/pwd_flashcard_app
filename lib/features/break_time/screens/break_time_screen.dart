@@ -95,7 +95,7 @@ class _BreakTimeScreenState extends ConsumerState<BreakTimeScreen> {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    final isHc = hc.hc; // dark / high-contrast theme
+    final isHc = hc.isDark; // dark / high-contrast theme
     final reducedMotion = ref.watch(
       settingsProvider.select((s) => s.reducedMotion),
     );

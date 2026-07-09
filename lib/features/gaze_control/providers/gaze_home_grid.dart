@@ -1,12 +1,22 @@
 import 'package:flutter/foundation.dart';
 
+import '../logic/voice_commands.dart' show VoiceTarget;
+
 /// One gaze-navigable Home feature tile: a [label] (for accessibility / the
 /// hint chip) and what to do when the learner opens it ([onActivate]).
+///
+/// Implements [VoiceTarget] so the same tiles the shell's D-pad drives are also
+/// the ones spoken commands open by [label] (e.g. "flashcards", "games").
 @immutable
-class GazeTileCell {
+class GazeTileCell implements VoiceTarget {
+  @override
   final String label;
   final VoidCallback onActivate;
   const GazeTileCell({required this.label, required this.onActivate});
+
+  /// Published tiles are always tappable (a hub never publishes a greyed tile).
+  @override
+  bool get enabled => true;
 }
 
 /// App-wide bridge between the long-lived navigation shell's gaze D-pad and the

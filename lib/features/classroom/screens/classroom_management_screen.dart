@@ -7,9 +7,11 @@ import '../../../core/services/firebase_service.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/classroom.dart';
 import '../../../data/models/classroom_member.dart';
+import '../../../data/models/enums.dart';
 import '../../../features/parent/services/child_unlock_override_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/classroom_management_provider.dart';
+import '../widgets/accessibility_category_picker.dart';
 import '../widgets/cloud_aware_text_dialog.dart';
 import '../widgets/cloud_retry_banner.dart';
 import '../widgets/cloud_sync_error_view.dart';
@@ -117,9 +119,10 @@ class ClassroomManagementScreen extends ConsumerWidget {
       inputHint: 'e.g. Grade 3 - Math',
       submitLabel: 'Create',
       emptyError: 'Class name is required',
-      onSubmit: (name) => ref
+      initialAccessibility: DisabilityType.none,
+      onSubmitWithAccessibility: (name, accessibility) => ref
           .read(classroomManagementProvider(teacherId).notifier)
-          .createClass(name),
+          .createClass(name, accessibility: accessibility),
     );
     if (created == true && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -153,7 +156,10 @@ class _ClassRow extends ConsumerWidget {
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Row(
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Container(
                 padding:
@@ -170,7 +176,7 @@ class _ClassRow extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              AccessibilityCategoryChip(type: classroom.accessibility),
               Text(
                 memberCount != null
                     ? '$memberCount student${memberCount == 1 ? "" : "s"}'
@@ -202,6 +208,12 @@ class _ClassRow extends ConsumerWidget {
                   onPressed: () => _rename(context, ref, classroom),
                   icon: const Icon(Icons.edit, size: 16),
                   label: Text('Rename', style: AppTypography.labelLarge),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _setAccessibility(context, ref, classroom),
+                  icon: const Icon(Icons.accessibility_new, size: 16),
+                  label:
+                      Text('Accessibility', style: AppTypography.labelLarge),
                 ),
                 ElevatedButton.icon(
                   onPressed: () => context.push(
@@ -298,6 +310,31 @@ class _ClassRow extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Class renamed.')),
       );
+    }
+  }
+
+  Future<void> _setAccessibility(
+      BuildContext context, WidgetRef ref, Classroom c) async {
+    final picked = await showAccessibilityCategoryDialog(
+      context,
+      current: c.accessibility,
+    );
+    if (picked == null || !context.mounted) return;
+    try {
+      await ref
+          .read(classroomManagementProvider(teacherId).notifier)
+          .setClassAccessibility(c, picked);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Accessibility set to ${picked.label}.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update: $e')),
+        );
+      }
     }
   }
 

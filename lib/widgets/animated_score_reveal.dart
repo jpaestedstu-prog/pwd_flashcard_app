@@ -146,7 +146,7 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                         painter: _ScoreGaugePainter(
                           progress: gaugeValue * (rating / 3),
                           tier: tier,
-                          backgroundColor: hc.hc
+                          backgroundColor: hc.isDark
                               ? AppColors.hcSurface
                               : AppColors.surfaceLight,
                         ),

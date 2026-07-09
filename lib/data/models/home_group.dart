@@ -1,3 +1,5 @@
+import 'enums.dart';
+
 /// A home group owned by a parent (the family equivalent of a classroom).
 ///
 /// Children join by entering [code]. The code can be regenerated without
@@ -12,6 +14,12 @@ class HomeGroup {
   /// (not auth uid) to match how classrooms reference their teacher,
   /// which lets the same security-rule helper pattern work for both.
   final String ownerProfileId;
+
+  /// Accessibility audience this group serves. Chosen by the parent at
+  /// creation time and auto-assigned to every child who joins via [code],
+  /// mirroring [Classroom.accessibility]. Defaults to [DisabilityType.none]
+  /// for legacy groups that predate this field.
+  final DisabilityType accessibility;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -20,6 +28,7 @@ class HomeGroup {
     required this.code,
     required this.name,
     required this.ownerProfileId,
+    this.accessibility = DisabilityType.none,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -29,6 +38,7 @@ class HomeGroup {
     String? code,
     String? name,
     String? ownerProfileId,
+    DisabilityType? accessibility,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -37,6 +47,7 @@ class HomeGroup {
       code: code ?? this.code,
       name: name ?? this.name,
       ownerProfileId: ownerProfileId ?? this.ownerProfileId,
+      accessibility: accessibility ?? this.accessibility,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -48,6 +59,7 @@ class HomeGroup {
         'code': code,
         'name': name,
         'owner_profile_id': ownerProfileId,
+        'accessibility': accessibility.index,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -58,6 +70,9 @@ class HomeGroup {
       code: json['code'] as String,
       name: json['name'] as String,
       ownerProfileId: json['owner_profile_id'] as String,
+      accessibility: DisabilityType.values[
+          ((json['accessibility'] as int?) ?? DisabilityType.none.index)
+              .clamp(0, DisabilityType.values.length - 1)],
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );

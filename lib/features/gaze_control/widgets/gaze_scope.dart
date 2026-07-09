@@ -1,16 +1,13 @@
 import 'dart:async';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/gestures.dart' show PointerScrollEvent;
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
-import '../../../core/accessibility/stt_service.dart' show sttServiceProvider;
-import '../../../providers/app_providers.dart' show settingsProvider;
 import '../controllers/gaze_controller.dart';
-import '../controllers/voice_command_controller.dart';
 import '../services/gaze_detector.dart';
 import '../logic/scan_cycler.dart';
 import '../logic/voice_commands.dart';
@@ -20,6 +17,7 @@ import '../models/gaze_settings.dart';
 import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_settings_provider.dart';
 import 'gaze_overlay.dart';
+import 'voice_control_mixin.dart';
 
 /// Wrap any screen in a [GazeScope] to make it controllable by gaze in a few
 /// lines: pass the up-to-four [GazeAction]s (one per edge) plus an optional
@@ -61,9 +59,9 @@ class GazeScope extends ConsumerStatefulWidget {
   ConsumerState<GazeScope> createState() => _GazeScopeState();
 }
 
-class _GazeScopeState extends ConsumerState<GazeScope> {
+class _GazeScopeState extends ConsumerState<GazeScope>
+    with VoiceControlMixin {
   GazeController? _gaze;
-  VoiceCommandController? _voice;
   GazeSettings? _settings;
   ScanCycler? _scanner;
   Timer? _scanTimer;
@@ -72,9 +70,6 @@ class _GazeScopeState extends ConsumerState<GazeScope> {
   /// True once this scope has claimed the shared camera owner count, so the
   /// shell's nav-gaze stands its camera down. Released exactly once on dispose.
   bool _ownsCamera = false;
-
-  /// Logical pixels a voice "scroll up/down" moves the list.
-  static const double _voiceScrollStep = 320;
 
   /// True while items auto-highlight (camera blink-scan).
   bool get _scanning => _settings?.scanMode ?? false;
@@ -99,37 +94,28 @@ class _GazeScopeState extends ConsumerState<GazeScope> {
     controller.start();
     if (settings.scanMode) _startScanning(settings);
     // Voice is additive — it layers on top of the targets.
-    if (settings.voiceCommands) _startVoice();
+    if (settings.voiceCommands) startVoiceControl();
   }
 
-  void _startVoice() {
-    final stt = ref.read(sttServiceProvider);
-    final locale =
-        ref.read(settingsProvider).locale == 'fil' ? 'fil-PH' : 'en-US';
-    final voice = VoiceCommandController(
-      stt: stt,
-      locale: locale,
-      onCommand: _onVoiceCommand,
-    );
-    voice.addListener(_onVoiceUpdate);
-    _voice = voice;
-    voice.start();
-  }
-
-  void _onVoiceUpdate() {
-    if (mounted) setState(() {});
-  }
-
-  void _onVoiceCommand(String text) {
+  /// A spoken phrase → the target on a matching edge / label, a "select" that
+  /// fires the screen's blink action (mirroring the camera), or a global
+  /// scroll / leave-screen action.
+  @override
+  void onVoiceCommand(String text) {
     if (!mounted) return;
     final result = resolveVoiceCommand(text, widget.actions);
+    if (kDebugMode) {
+      debugPrint('VoiceCmd scope "$text" → ${result.intent}');
+    }
     switch (result.intent) {
       case VoiceIntent.action:
         _fireActionAt(result.actionIndex);
+      case VoiceIntent.select:
+        _onBlink();
       case VoiceIntent.scrollUp:
-        _voiceScroll(-1);
+        voiceScroll(-1);
       case VoiceIntent.scrollDown:
-        _voiceScroll(1);
+        voiceScroll(1);
       case VoiceIntent.goBack:
         Navigator.of(context).maybePop();
       case VoiceIntent.none:
@@ -146,16 +132,6 @@ class _GazeScopeState extends ConsumerState<GazeScope> {
     }
   }
 
-  void _voiceScroll(int dir) {
-    final size = MediaQuery.sizeOf(context);
-    WidgetsBinding.instance.handlePointerEvent(
-      PointerScrollEvent(
-        position: Offset(size.width / 2, size.height / 2),
-        scrollDelta: Offset(0, dir * _voiceScrollStep),
-      ),
-    );
-  }
-
   void _startScanning(GazeSettings settings) {
     _scanner = ScanCycler(count: widget.actions.length);
     _scanTimer = Timer.periodic(settings.scanStepDuration, (_) {
@@ -169,8 +145,7 @@ class _GazeScopeState extends ConsumerState<GazeScope> {
   void dispose() {
     _scanTimer?.cancel();
     _gaze?.dispose();
-    _voice?.removeListener(_onVoiceUpdate);
-    _voice?.dispose();
+    disposeVoiceControl();
     if (_ownsCamera) gazeCameraOwners.release();
     super.dispose();
   }
@@ -212,9 +187,9 @@ class _GazeScopeState extends ConsumerState<GazeScope> {
   @override
   Widget build(BuildContext context) {
     final hasGaze = _gaze != null;
-    final hasVoice = _voice != null;
+    final chip = voiceChip();
     // Nothing active → totally transparent (no wrapper, no behaviour change).
-    if (!hasGaze && !hasVoice) return widget.child;
+    if (!hasGaze && chip == null) return widget.child;
 
     // Expand to fill the screen so overlays always have room, regardless of how
     // large the wrapped child reports itself to be.
@@ -232,50 +207,17 @@ class _GazeScopeState extends ConsumerState<GazeScope> {
       );
     }
 
-    if (hasVoice) {
+    if (chip != null) {
       children.add(
         Positioned(
           left: 0,
           right: 0,
           bottom: 8,
-          child: IgnorePointer(child: Center(child: _voiceChip())),
+          child: IgnorePointer(child: Center(child: chip)),
         ),
       );
     }
 
     return Stack(fit: StackFit.expand, children: children);
-  }
-
-  Widget _voiceChip() {
-    final voice = _voice!;
-    final text = voice.lastHeard.isNotEmpty
-        ? voice.lastHeard
-        : (voice.isListening ? 'Listening…' : 'Voice ready');
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            voice.isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
-            color: Colors.white,
-            size: 16,
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

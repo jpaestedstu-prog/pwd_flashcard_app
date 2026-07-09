@@ -891,4 +891,57 @@ void main() {
       expect(routeForTutorialStatus(true), '/home');
     });
   });
+
+  group('profileTypeLabel (Switch Profiles)', () {
+    UserProfile learner(UserRole role, DisabilityType type) => UserProfile(
+          id: 'p-${role.name}-${type.name}',
+          name: 'Jules',
+          role: role,
+          createdAt: DateTime(2025),
+          disabilityType: type,
+        );
+
+    test('Student profiles combine role with accessibility category', () {
+      expect(learner(UserRole.student, DisabilityType.visual).profileTypeLabel,
+          'Student - Visual Impairment');
+      expect(learner(UserRole.student, DisabilityType.hearing).profileTypeLabel,
+          'Student - Hearing Impairment');
+      expect(learner(UserRole.student, DisabilityType.motor).profileTypeLabel,
+          'Student - Motor Impairment');
+      expect(
+          learner(UserRole.student, DisabilityType.cognitive).profileTypeLabel,
+          'Student - Cognitive/Learning Disability');
+      expect(
+          learner(UserRole.student, DisabilityType.multiple).profileTypeLabel,
+          'Student - Multiple Disabilities');
+      expect(learner(UserRole.student, DisabilityType.none).profileTypeLabel,
+          'Student - No Accessibility Needs');
+    });
+
+    test('Child profiles combine role with accessibility category', () {
+      expect(learner(UserRole.child, DisabilityType.visual).profileTypeLabel,
+          'Child - Visual Impairment');
+      expect(learner(UserRole.child, DisabilityType.hearing).profileTypeLabel,
+          'Child - Hearing Impairment');
+      expect(learner(UserRole.child, DisabilityType.motor).profileTypeLabel,
+          'Child - Motor Impairment');
+      expect(learner(UserRole.child, DisabilityType.cognitive).profileTypeLabel,
+          'Child - Cognitive/Learning Disability');
+      expect(learner(UserRole.child, DisabilityType.multiple).profileTypeLabel,
+          'Child - Multiple Disabilities');
+      expect(learner(UserRole.child, DisabilityType.none).profileTypeLabel,
+          'Child - No Accessibility Needs');
+    });
+
+    test('non-learner roles keep their plain role label', () {
+      // Teacher/Parent/Player never self-classify, so the disability category
+      // is not appended even if one happens to be set.
+      expect(learner(UserRole.teacher, DisabilityType.visual).profileTypeLabel,
+          'Teacher');
+      expect(learner(UserRole.parent, DisabilityType.none).profileTypeLabel,
+          'Parent');
+      expect(learner(UserRole.player, DisabilityType.none).profileTypeLabel,
+          'Player');
+    });
+  });
 }

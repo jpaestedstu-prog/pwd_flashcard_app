@@ -202,6 +202,39 @@ class _GameStartButtonState extends State<GameStartButton>
     widget.onPressed?.call();
   }
 
+  /// Icon + label as one unit. The FittedBox shrinks the pair when font
+  /// scaling (1.5x) would otherwise overflow the pill; icon size stays 32
+  /// (no scaleIcon) to avoid double-scaling.
+  ///
+  /// With a fixed [GameStartButton.width] the Material would otherwise hug the
+  /// content and sit at the pill's start — leaving the label off-center and
+  /// the rest of the pill untappable — so the content is centered in (and the
+  /// ink stretched across) the full pill. `heightFactor: 1` keeps the pill's
+  /// height driven by the content, not the parent constraints.
+  Widget _buildContent() {
+    final content = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(widget.icon, color: Colors.white, size: 32),
+          const SizedBox(width: 12),
+          Text(
+            widget.label,
+            style: AppTypography.buttonText.copyWith(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (widget.width == null) return content;
+    return Center(heightFactor: 1, child: content);
+  }
+
   @override
   Widget build(BuildContext context) {
     final grad = widget.gradient ?? _defaultGradient;
@@ -260,28 +293,7 @@ class _GameStartButtonState extends State<GameStartButton>
                 child: Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 36, vertical: 18),
-                  // FittedBox keeps the icon+label as a single unit that shrinks
-                  // when font scaling (1.5x) would otherwise overflow the pill.
-                  // Icon size stays 32 (no scaleIcon) to avoid double-scaling.
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(widget.icon, color: Colors.white, size: 32),
-                        const SizedBox(width: 12),
-                        Text(
-                          widget.label,
-                          style: AppTypography.buttonText.copyWith(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: _buildContent(),
                 ),
               ),
             ),

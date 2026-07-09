@@ -55,8 +55,14 @@ class EducatorHomeScreen extends ConsumerWidget {
             .round()
         : 0;
 
+    // Distinct educator identities: the Teacher (Classroom, indigo theme)
+    // gets the calm academic "assessment" backdrop with bubbles, while the
+    // Parent (Family Group, coral theme) keeps the warm "home" backdrop with
+    // sparkles — so the two roles read as clearly different environments
+    // beyond their color schemes.
     return AnimatedGradientBackground(
       intensity: 0.25,
+      preset: isParent ? GradientPreset.home : GradientPreset.assessment,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(

@@ -85,7 +85,9 @@ class GazeSettingsScreen extends ConsumerWidget {
             secondary: const Icon(Icons.mic_rounded),
             title: const Text('Voice commands'),
             subtitle: const Text(
-                'Say "next", "back", "flip", "scroll down"… alongside gaze.'),
+                'Say "left", "right", "up", "down" to move the highlight, '
+                '"select" to open it — or a button\'s name ("next", "flip", '
+                '"games"), "scroll down", "go back".'),
             onChanged: notifier.setVoiceCommands,
           ),
 

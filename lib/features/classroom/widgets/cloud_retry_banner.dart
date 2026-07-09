@@ -40,9 +40,9 @@ class _CloudRetryBannerState extends State<CloudRetryBanner> {
     setState(() => _retrying = false);
     if (ok) {
       widget.onRetrySucceeded?.call();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cloud sync reconnected.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Cloud sync reconnected.')));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -60,13 +60,22 @@ class _CloudRetryBannerState extends State<CloudRetryBanner> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       color: Colors.red.shade50,
+      // Headline + detail stack, with the Retry action on its own line below.
+      // Keeping the button out of the headline Row is what makes the banner
+      // safe at large accessibility font scales: an in-Row button would starve
+      // the Expanded headline of width and wrap it into a runaway-tall column
+      // that overflows the screen. See profile_screens_overflow_test.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.cloud_off_rounded,
-                  color: Colors.red.shade900, size: 20),
+              Icon(
+                Icons.cloud_off_rounded,
+                color: Colors.red.shade900,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -77,27 +86,30 @@ class _CloudRetryBannerState extends State<CloudRetryBanner> {
                   ),
                 ),
               ),
-              TextButton.icon(
-                onPressed: _retrying ? null : _retry,
-                icon: _retrying
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh_rounded, size: 16),
-                label: Text(_retrying ? 'Retrying…' : 'Retry now'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red.shade900,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             'Codes you create here can\'t be joined from other devices. '
             '${FirebaseService.lastInitError ?? ""}',
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(color: Colors.red.shade900, fontSize: 12),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _retrying ? null : _retry,
+              icon: _retrying
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh_rounded, size: 16),
+              label: Text(_retrying ? 'Retrying…' : 'Retry now'),
+              style: TextButton.styleFrom(foregroundColor: Colors.red.shade900),
+            ),
           ),
         ],
       ),

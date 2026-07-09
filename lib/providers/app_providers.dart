@@ -53,77 +53,97 @@ final fslAvailabilityProvider = FutureProvider<FslAvailability>((ref) {
 
 class SettingsNotifier extends Notifier<AppSettings> {
   @override
-  AppSettings build() => HiveService.getSettings();
+  AppSettings build() {
+    // Settings are per-profile: watch the active profile's id so switching
+    // profiles loads that profile's own accessibility settings. A learner's
+    // auto-applied class preset is saved under their id and never affects the
+    // teacher / parent (or any other) profile on a shared device.
+    final profileId = ref.watch(profileProvider.select((p) => p?.id));
+    return HiveService.getSettings(profileId: profileId);
+  }
+
+  /// Persist the current state under the active profile's id. Read fresh each
+  /// time (rather than caching) so a save that lands right after a profile
+  /// switch always targets the correct profile.
+  void _save() {
+    final profileId = ref.read(profileProvider)?.id;
+    HiveService.saveSettings(state, profileId: profileId);
+  }
 
   void updateFontScale(double scale) {
     state = state.copyWith(fontScale: scale);
-    HiveService.saveSettings(state);
+    _save();
   }
 
   void toggleHighContrast() {
     state = state.copyWith(highContrastMode: !state.highContrastMode);
-    HiveService.saveSettings(state);
+    _save();
   }
 
   void toggleTts() {
     state = state.copyWith(ttsEnabled: !state.ttsEnabled);
-    HiveService.saveSettings(state);
+    _save();
   }
 
   void updateTtsSpeed(double speed) {
     state = state.copyWith(ttsSpeed: speed);
-    HiveService.saveSettings(state);
+    _save();
   }
 
   void toggleReducedMotion() {
     state = state.copyWith(reducedMotion: !state.reducedMotion);
-    HiveService.saveSettings(state);
+    _save();
   }
 
   void toggleSlowMotion() {
     state = state.copyWith(slowMotionEnabled: !state.slowMotionEnabled);
-    HiveService.saveSettings(state);
+    _save();
   }
 
   void toggleLearningAssist() {
     state = state.copyWith(learningAssistEnabled: !state.learningAssistEnabled);
-    HiveService.saveSettings(state);
+    _save();
   }
 
   /// Sets the Daily Mission size, clamped to the supported 3–5 range.
   void setDailyMissionSize(int size) {
     state = state.copyWith(dailyMissionSize: size.clamp(3, 5));
-    HiveService.saveSettings(state);
+    _save();
   }
 
   void toggleSoundEffects() {
     state = state.copyWith(soundEffects: !state.soundEffects);
-    HiveService.saveSettings(state);
+    _save();
   }
 
   void toggleSpeechToText() {
     state = state.copyWith(speechToText: !state.speechToText);
-    HiveService.saveSettings(state);
+    _save();
+  }
+
+  void toggleAiCompanion() {
+    state = state.copyWith(aiCompanionEnabled: !state.aiCompanionEnabled);
+    _save();
   }
 
   void updateLocale(String locale) {
     state = state.copyWith(locale: locale);
-    HiveService.saveSettings(state);
+    _save();
   }
 
   void toggleNotifications() {
     state = state.copyWith(notificationsEnabled: !state.notificationsEnabled);
-    HiveService.saveSettings(state);
+    _save();
   }
 
   void updateReminderTime(int hour, int minute) {
     state = state.copyWith(reminderHour: hour, reminderMinute: minute);
-    HiveService.saveSettings(state);
+    _save();
   }
 
   void update(AppSettings newSettings) {
     state = newSettings;
-    HiveService.saveSettings(state);
+    _save();
   }
 }
 

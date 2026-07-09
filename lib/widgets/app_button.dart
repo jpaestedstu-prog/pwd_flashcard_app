@@ -160,7 +160,11 @@ class AppButton extends ConsumerWidget {
         : null;
 
     final iconWidget = icon == null ? null : Icon(icon, size: 20);
-    final labelWidget = Text(label, semanticsLabel: semanticLabel);
+    // textAlign center: a fullWidth label that wraps at large font scales
+    // must center each line; the default start-alignment leaves line 2
+    // left-ragged inside the otherwise-centered paragraph box.
+    final labelWidget =
+        Text(label, semanticsLabel: semanticLabel, textAlign: TextAlign.center);
     final button = switch (variant) {
       AppButtonVariant.primary => iconWidget == null
           ? FilledButton(

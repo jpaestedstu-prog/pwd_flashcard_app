@@ -1,5 +1,5 @@
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show kDebugMode, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,18 +7,25 @@ import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
 import '../controllers/gaze_controller.dart';
 import '../logic/gaze_grid_cursor.dart';
+import '../logic/voice_commands.dart';
 import '../models/gaze_models.dart';
 import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_settings_provider.dart';
 import '../services/gaze_detector.dart';
+import 'voice_control_mixin.dart';
 
 /// One gaze-navigable control in a [GazeDpadScope] row: a [label] (for the hint
 /// / accessibility) and what to run when the learner opens it ([onActivate]).
 /// A disabled cell can still be highlighted but won't activate (so a Previous
 /// button on the first card behaves like its greyed touch state).
+///
+/// Implements [VoiceTarget] so the same cells the head D-pad drives are also the
+/// ones spoken commands address by [label] (e.g. "next", "flip").
 @immutable
-class GazeDpadCell {
+class GazeDpadCell implements VoiceTarget {
+  @override
   final String label;
+  @override
   final bool enabled;
   final VoidCallback onActivate;
   const GazeDpadCell({
@@ -109,7 +116,8 @@ class GazeDpadScope extends ConsumerStatefulWidget {
   ConsumerState<GazeDpadScope> createState() => _GazeDpadScopeState();
 }
 
-class _GazeDpadScopeState extends ConsumerState<GazeDpadScope> {
+class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
+    with VoiceControlMixin {
   GazeController? _gaze;
   late GazeGridCursor _cursor;
   List<int> _appliedLengths = const [];
@@ -140,6 +148,8 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope> {
     _ownsCamera = true;
     gazeCameraOwners.acquire();
     controller.start();
+    // Voice is additive — it addresses the same cells by their label.
+    if (settings.voiceCommands) startVoiceControl();
   }
 
   @override
@@ -159,6 +169,7 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope> {
 
   @override
   void dispose() {
+    disposeVoiceControl();
     final controller = _gaze;
     _gaze = null;
     if (controller != null) {
@@ -167,6 +178,47 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope> {
     }
     if (_ownsCamera) gazeCameraOwners.release();
     super.dispose();
+  }
+
+  /// A spoken phrase → the same cell its label names (fired like a blink), a
+  /// D-pad cursor move ("left" / "up" / "kanan"…) identical to the matching
+  /// head gesture, a "select" that commits the focused cell like a blink, or a
+  /// global scroll / leave-screen action. Reads the live [widget.rows] so the
+  /// enabled flags and callbacks are always current.
+  @override
+  void onVoiceCommand(String text) {
+    if (!mounted) return;
+    final result = resolveDpadVoiceCommand(text, widget.rows);
+    if (kDebugMode) {
+      debugPrint(
+          'VoiceCmd dpad "$text" → ${result.intent} (${result.row},${result.col})');
+    }
+    switch (result.intent) {
+      case DpadVoiceIntent.activate:
+        final cell = _cellAt(result.row, result.col);
+        if (cell != null && cell.enabled) {
+          ref.read(hapticServiceProvider).success();
+          cell.onActivate();
+        }
+      case DpadVoiceIntent.moveLeft:
+        _move(() => _cursor.moveHoriz(-1));
+      case DpadVoiceIntent.moveRight:
+        _move(() => _cursor.moveHoriz(1));
+      case DpadVoiceIntent.moveUp:
+        _move(() => _cursor.moveVert(-1));
+      case DpadVoiceIntent.moveDown:
+        _move(() => _cursor.moveVert(1));
+      case DpadVoiceIntent.select:
+        _commit();
+      case DpadVoiceIntent.scrollUp:
+        voiceScroll(-1);
+      case DpadVoiceIntent.scrollDown:
+        voiceScroll(1);
+      case DpadVoiceIntent.goBack:
+        Navigator.of(context).maybePop();
+      case DpadVoiceIntent.none:
+        break;
+    }
   }
 
   List<int> _lengths() => [for (final r in widget.rows) r.length];
@@ -226,19 +278,43 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope> {
     // Settings are snapshotted on mount (like GazeScope): re-enter the screen to
     // apply a Gaze Control toggle. When off, this is a pure pass-through.
     final gaze = _gaze;
+    final Widget content;
     if (gaze == null) {
-      return widget.builder(context, GazeDpadState.inactive);
+      content = widget.builder(context, GazeDpadState.inactive);
+    } else {
+      final ready = gaze.status == GazeStatus.ready;
+      content = widget.builder(
+        context,
+        GazeDpadState(
+          active: true,
+          ready: ready,
+          faceVisible: ready && gaze.faceVisible,
+          focusRow: _cursor.row,
+          focusCol: _cursor.col,
+        ),
+      );
     }
-    final ready = gaze.status == GazeStatus.ready;
-    return widget.builder(
-      context,
-      GazeDpadState(
-        active: true,
-        ready: ready,
-        faceVisible: ready && gaze.faceVisible,
-        focusRow: _cursor.row,
-        focusCol: _cursor.col,
-      ),
+
+    // While voice is listening, float a small mic status chip near the top so it
+    // never collides with the screen's bottom action bar. Informational only.
+    final chip = voiceChip();
+    if (chip == null) return content;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        content,
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: IgnorePointer(child: Center(child: chip)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

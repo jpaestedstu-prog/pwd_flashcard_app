@@ -20,6 +20,13 @@ class ErrorHandler {
   /// alarm scheduler's plugin init. Genuine user-actionable errors keep
   /// raising inline failures (per-feature snackbars, the join failure
   /// banner) so we don't lose visibility on real problems.
+  ///
+  /// Non-critical *feedback* services (sound effects, celebration sound +
+  /// haptics) also belong here: their own contracts promise "log but never
+  /// interrupt UX", so a missing/clipped sound asset or a harmless audio
+  /// plugin race must never raise the generic "Something went wrong"
+  /// snackbar at a PWD learner — most visibly on the very first sound after
+  /// launch (e.g. profile-creation success chime).
   static const Set<String> _silentSources = {
     'applyLifecycle:silent',
     'AlarmScheduler:silent',
@@ -31,6 +38,13 @@ class ErrorHandler {
     'OnAlarmFired:silent',
     'PinUnlockGrace:silent',
     'OverflowSilent',
+    // Recoverable Flutter framework assertions (overflow, ListTile ink-hidden,
+    // duplicate GlobalKey, hero conflicts, setState-during-build, …). Logged
+    // for the developer but never surfaced as the user-facing snackbar — see
+    // the FlutterError.onError handler in [init].
+    'FrameworkDiagnostic:silent',
+    'SoundService',
+    'CelebrationService',
   };
 
   static final _errorStreamController =
@@ -43,26 +57,38 @@ class ErrorHandler {
   static void init() {
     // 1. Catch Flutter framework errors (widget build errors, etc.)
     FlutterError.onError = (FlutterErrorDetails details) {
-      // Layout overflow errors ("A RenderFlex overflowed by …") are
-      // recoverable incidents, not crashes. Suppress the yellow/black
-      // striped banner in release so end-users never see it; still print
-      // it in debug so the developer fixes the source.
       final exception = details.exception;
-      final isOverflow = exception is FlutterError &&
-          exception.message.contains('overflowed by');
+      // Framework *diagnostics* — layout overflow ("A RenderFlex overflowed
+      // by …"), the ListTile ink/background-hidden warning, duplicate
+      // GlobalKey, hero conflicts, "setState() during build", etc. — surface
+      // here as `FlutterError` instances. They are recoverable, developer-
+      // facing assertions: the app keeps running and most are compiled out of
+      // release builds entirely. They must be logged for the developer but
+      // must NEVER raise the user-facing "Something went wrong" snackbar at a
+      // PWD learner (e.g. the ListTile warning that fires on the student home
+      // right after joining a class). Genuine runtime exceptions thrown in
+      // build/layout/paint arrive as their original type (e.g. _TypeError,
+      // StateError, NoSuchMethodError) and DO still surface to the user.
+      final isFrameworkDiagnostic = exception is FlutterError;
+      final isOverflow =
+          isFrameworkDiagnostic && exception.message.contains('overflowed by');
+      // Suppress the yellow/black overflow banner in release; otherwise print
+      // so the developer still sees and fixes the source.
       if (!isOverflow || kDebugMode) {
         FlutterError.presentError(details);
       }
       _handleError(
         details.exception,
         details.stack,
-        source: isOverflow ? 'OverflowSilent' : 'FlutterError',
+        source: isFrameworkDiagnostic
+            ? 'FrameworkDiagnostic:silent'
+            : 'FlutterError',
         context: details.context?.toString(),
       );
       // Forward to Crashlytics with full FlutterErrorDetails so the
       // remote report keeps the framework's context (widget tree, build
-      // phase). Internally gated by AnalyticsService.isOptIn — no-op
-      // until an educator explicitly enables telemetry.
+      // phase). Skip the layout-overflow spam. Internally gated by
+      // AnalyticsService.isOptIn — no-op until an educator enables telemetry.
       if (!isOverflow) {
         AnalyticsService.recordFlutterError(details);
       }

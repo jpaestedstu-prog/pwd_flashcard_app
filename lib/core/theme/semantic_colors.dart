@@ -98,6 +98,19 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
     infoLight: Color(0xFFD1C4E9),
   );
 
+  /// High-contrast palette — maximum-luminance signals on black, matching
+  /// the dedicated hc* colors in [AppColors].
+  static const SemanticColors highContrast = SemanticColors(
+    success: AppColors.hcSuccess,
+    successLight: Color(0xFF003D1F),
+    warning: AppColors.hcWarning,
+    warningLight: Color(0xFF4A3B00),
+    error: AppColors.hcError,
+    errorLight: Color(0xFF4A0F0F),
+    info: AppColors.hcInfo,
+    infoLight: Color(0xFF00344A),
+  );
+
   /// Dyslexia-friendly palette — muted saturation so success/error
   /// signals stand out on a warm cream surface without glare.
   static const SemanticColors dyslexia = SemanticColors(

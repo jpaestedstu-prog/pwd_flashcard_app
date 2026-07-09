@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/firebase_service.dart';
+import '../../../data/models/enums.dart';
 import '../../../data/models/home_group.dart';
 import '../../../data/models/home_group_member.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/home_group_provider.dart';
+import '../../classroom/widgets/accessibility_category_picker.dart';
 import '../../classroom/widgets/cloud_aware_text_dialog.dart';
 import '../../classroom/widgets/cloud_retry_banner.dart';
 import '../../classroom/widgets/cloud_sync_error_view.dart';
@@ -25,13 +27,10 @@ class HomeGroupManagementScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider);
     if (profile == null) {
-      return const Scaffold(
-        body: Center(child: Text('No active profile.')),
-      );
+      return const Scaffold(body: Center(child: Text('No active profile.')));
     }
 
-    final groupsAsync =
-        ref.watch(homeGroupManagementProvider(profile.id));
+    final groupsAsync = ref.watch(homeGroupManagementProvider(profile.id));
 
     return Scaffold(
       appBar: AppBar(
@@ -63,26 +62,39 @@ class HomeGroupManagementScreen extends ConsumerWidget {
               ),
               data: (groups) {
                 if (groups.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.family_restroom_rounded, size: 56),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'No home groups yet.\nCreate one to invite your child.',
-                            textAlign: TextAlign.center,
+                  // Centre the empty state, but let it scroll instead of
+                  // bottom-overflowing when a large accessibility font scale
+                  // makes the icon + copy + button taller than the viewport.
+                  return LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.family_restroom_rounded,
+                                size: 56,
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'No home groups yet.\nCreate one to invite your child.',
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.add_rounded),
+                                label: const Text('Create home group'),
+                                onPressed: () =>
+                                    _showCreateDialog(context, ref, profile.id),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.add_rounded),
-                            label: const Text('Create home group'),
-                            onPressed: () =>
-                                _showCreateDialog(context, ref, profile.id),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   );
@@ -105,7 +117,10 @@ class HomeGroupManagementScreen extends ConsumerWidget {
   }
 
   Future<void> _showCreateDialog(
-      BuildContext context, WidgetRef ref, String parentProfileId) async {
+    BuildContext context,
+    WidgetRef ref,
+    String parentProfileId,
+  ) async {
     final created = await CloudAwareTextDialog.show(
       context: context,
       title: 'New home group',
@@ -113,14 +128,15 @@ class HomeGroupManagementScreen extends ConsumerWidget {
       inputHint: 'e.g. The Smith Family',
       submitLabel: 'Create',
       emptyError: 'Group name is required',
-      onSubmit: (name) => ref
+      initialAccessibility: DisabilityType.none,
+      onSubmitWithAccessibility: (name, accessibility) => ref
           .read(homeGroupManagementProvider(parentProfileId).notifier)
-          .createGroup(name),
+          .createGroup(name, accessibility: accessibility),
     );
     if (created == true && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Home group created.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Home group created.')));
     }
   }
 }
@@ -129,10 +145,7 @@ class _HomeGroupCard extends ConsumerWidget {
   final HomeGroup group;
   final String parentProfileId;
 
-  const _HomeGroupCard({
-    required this.group,
-    required this.parentProfileId,
-  });
+  const _HomeGroupCard({required this.group, required this.parentProfileId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -151,32 +164,39 @@ class _HomeGroupCard extends ConsumerWidget {
                   ),
                 ),
                 PopupMenuButton<String>(
-                  onSelected: (action) =>
-                      _handleMenu(context, ref, action),
+                  onSelected: (action) => _handleMenu(context, ref, action),
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 'rename', child: Text('Rename')),
                     PopupMenuItem(
-                        value: 'regen', child: Text('New code')),
+                      value: 'accessibility',
+                      child: Text('Accessibility'),
+                    ),
+                    PopupMenuItem(value: 'regen', child: Text('New code')),
                     PopupMenuItem(
-                        value: 'leaderboard', child: Text('Leaderboard')),
-                    PopupMenuItem(
-                        value: 'delete', child: Text('Delete group')),
+                      value: 'leaderboard',
+                      child: Text('Leaderboard'),
+                    ),
+                    PopupMenuItem(value: 'delete', child: Text('Delete group')),
                   ],
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            // ─── Code reveal + copy ────────────────────
-            Row(
+            // ─── Code reveal + copy + accessibility audience ──────
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primaryContainer
-                        .withValues(alpha: 0.5),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -188,7 +208,6 @@ class _HomeGroupCard extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
                 IconButton(
                   tooltip: 'Copy code',
                   icon: const Icon(Icons.copy_rounded, size: 20),
@@ -199,6 +218,7 @@ class _HomeGroupCard extends ConsumerWidget {
                     );
                   },
                 ),
+                AccessibilityCategoryChip(type: group.accessibility),
               ],
             ),
             const SizedBox(height: 12),
@@ -214,9 +234,13 @@ class _HomeGroupCard extends ConsumerWidget {
   }
 
   Future<void> _handleMenu(
-      BuildContext context, WidgetRef ref, String action) async {
-    final notifier =
-        ref.read(homeGroupManagementProvider(parentProfileId).notifier);
+    BuildContext context,
+    WidgetRef ref,
+    String action,
+  ) async {
+    final notifier = ref.read(
+      homeGroupManagementProvider(parentProfileId).notifier,
+    );
     switch (action) {
       case 'rename':
         final renamed = await CloudAwareTextDialog.show(
@@ -230,22 +254,40 @@ class _HomeGroupCard extends ConsumerWidget {
           onSubmit: (name) => notifier.renameGroup(group, name),
         );
         if (renamed == true && context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Group renamed.')));
+        }
+      case 'accessibility':
+        final picked = await showAccessibilityCategoryDialog(
+          context,
+          current: group.accessibility,
+        );
+        if (picked == null || !context.mounted) return;
+        try {
+          await notifier.setGroupAccessibility(group, picked);
+          if (!context.mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Group renamed.')),
+            SnackBar(content: Text('Accessibility set to ${picked.label}.')),
           );
+        } catch (e) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Could not update: $e')));
         }
       case 'regen':
         try {
           await notifier.regenerateCode(group);
           if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('New code generated.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('New code generated.')));
         } catch (e) {
           if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not regenerate: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Could not regenerate: $e')));
         }
       case 'leaderboard':
         context.push(
@@ -259,8 +301,9 @@ class _HomeGroupCard extends ConsumerWidget {
           builder: (ctx) => AlertDialog(
             title: const Text('Delete this group?'),
             content: const Text(
-                'All children will be unenrolled. Their profiles stay '
-                'on their devices.'),
+              'All children will be unenrolled. Their profiles stay '
+              'on their devices.',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
@@ -324,16 +367,15 @@ class _HomeGroupMembersSectionState
 
   @override
   Widget build(BuildContext context) {
-    final membersAsync =
-        ref.watch(homeGroupMembersProvider(widget.group.id));
+    final membersAsync = ref.watch(homeGroupMembersProvider(widget.group.id));
 
     return membersAsync.when(
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(vertical: 8),
         child: LinearProgressIndicator(),
       ),
-      error: (e, _) => Text('Roster error: $e',
-          style: const TextStyle(color: Colors.red)),
+      error: (e, _) =>
+          Text('Roster error: $e', style: const TextStyle(color: Colors.red)),
       data: (members) {
         if (members.isEmpty) {
           return Text(
@@ -351,7 +393,9 @@ class _HomeGroupMembersSectionState
               Container(
                 color: Colors.orange.shade50,
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 child: Row(
                   children: [
                     Text('${_selected.length} selected'),
@@ -406,9 +450,9 @@ class _HomeGroupMembersSectionState
           .renameMember(widget.group, m.profileId, name),
     );
     if (renamed == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Child renamed.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Child renamed.')));
     }
   }
 
@@ -431,15 +475,16 @@ class _HomeGroupMembersSectionState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                '${m.displayName} unlocked for ${_formatUnlockDuration(picked)}.'),
+              '${m.displayName} unlocked for ${_formatUnlockDuration(picked)}.',
+            ),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not unlock: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not unlock: $e')));
       }
     }
   }
@@ -450,8 +495,9 @@ class _HomeGroupMembersSectionState
       builder: (ctx) => AlertDialog(
         title: Text('Remove ${m.displayName}?'),
         content: const Text(
-            "They'll be unenrolled from this group. Their profile and "
-            "progress are kept on their device."),
+          "They'll be unenrolled from this group. Their profile and "
+          "progress are kept on their device.",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -478,8 +524,9 @@ class _HomeGroupMembersSectionState
       builder: (ctx) => AlertDialog(
         title: Text('Remove $n child${n == 1 ? "" : "ren"}?'),
         content: const Text(
-            'Their profiles and progress are kept on their devices; they '
-            'just lose this home-group linkage.'),
+          'Their profiles and progress are kept on their devices; they '
+          'just lose this home-group linkage.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -503,9 +550,9 @@ class _HomeGroupMembersSectionState
       // homeGroupMembersProvider is a Firestore stream — no manual refresh needed.
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not remove: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not remove: $e')));
     }
   }
 }
@@ -546,10 +593,7 @@ class _HomeGroupMemberRow extends StatelessWidget {
       title: Text(member.displayName),
       subtitle: Text(joinedAtLabel),
       trailing: selectionMode
-          ? Checkbox(
-              value: selected,
-              onChanged: (_) => onTapInSelection(),
-            )
+          ? Checkbox(value: selected, onChanged: (_) => onTapInSelection())
           : PopupMenuButton<String>(
               tooltip: 'Member actions',
               onSelected: (action) {
@@ -574,12 +618,13 @@ class _HomeGroupMemberRow extends StatelessWidget {
               },
               itemBuilder: (_) => const [
                 PopupMenuItem(value: 'rename', child: Text('Rename')),
-                PopupMenuItem(
-                    value: 'time_limits', child: Text('Time limits')),
+                PopupMenuItem(value: 'time_limits', child: Text('Time limits')),
                 PopupMenuItem(value: 'alarms', child: Text('Alarms')),
                 PopupMenuItem(value: 'unlock', child: Text('Unlock screen')),
                 PopupMenuItem(
-                    value: 'remove', child: Text('Remove from group')),
+                  value: 'remove',
+                  child: Text('Remove from group'),
+                ),
               ],
             ),
     );
@@ -589,15 +634,15 @@ class _HomeGroupMemberRow extends StatelessWidget {
 /// Show a duration picker for "Unlock screen". Mirror of the helper in
 /// `classroom_management_screen.dart` — kept file-private so neither
 /// screen has to depend on the other.
-Future<Duration?> _pickUnlockDuration(
-    BuildContext context, String memberName) {
+Future<Duration?> _pickUnlockDuration(BuildContext context, String memberName) {
   return showDialog<Duration>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text('Unlock $memberName'),
       content: const Text(
-          'How long should the lock screen stay off? The screen will '
-          'lock again automatically when this window expires.'),
+        'How long should the lock screen stay off? The screen will '
+        'lock again automatically when this window expires.',
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),

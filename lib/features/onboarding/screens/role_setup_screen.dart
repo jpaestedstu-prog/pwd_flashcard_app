@@ -12,6 +12,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/role_theme.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../l10n/app_localizations.dart';
@@ -22,7 +23,14 @@ import '../widgets/profile_setup_form.dart';
 /// Profile-setup screen for the three non-join roles: Player, Teacher,
 /// Parent. Mirrors the structure of [PostJoinSetupScreen] (used by Student
 /// and Child after a join code) so all five roles converge on the same
-/// "Name → Avatar → PIN" UX before reaching the accessibility wizard.
+/// "Name → Avatar → PIN" UX.
+///
+/// After setup, only **learner** roles (Player) continue to the
+/// accessibility wizard. Teachers / Parents are educators — they don't
+/// self-classify a disability, so they skip straight to their home /
+/// onboarding tutorial. Accessibility for the learners they manage is set
+/// per-class in Manage Classes / Home Groups; their own display preferences
+/// live in Settings.
 ///
 /// No birth date / grade level — those are student-only.
 class RoleSetupScreen extends ConsumerStatefulWidget {
@@ -163,7 +171,17 @@ class _RoleSetupScreenState extends ConsumerState<RoleSetupScreen> {
       if (!mounted) return;
     }
 
-    context.go('/accessibility-setup');
+    // Educators (Teacher / Parent) don't self-classify a disability, so they
+    // skip the learner accessibility wizard — their classes' accessibility is
+    // assigned in Manage Classes / Home Groups and their own display prefs
+    // live in Settings. Players are independent learners and still self-select.
+    if (widget.role.isEducator) {
+      final pid = ref.read(profileProvider)?.id ?? '';
+      final seen = HiveService.hasSeenTutorial(pid);
+      context.go(seen ? '/home' : '/onboarding-tutorial');
+    } else {
+      context.go('/accessibility-setup');
+    }
   }
 
   Future<void> _showRecoveryCodeOnce(String code) async {

@@ -107,6 +107,40 @@ void main() {
     });
   });
 
+  group('ErrorHandler silent sources', () {
+    // Regression: non-critical / recoverable failures must NOT raise the
+    // global "Something went wrong" snackbar at a PWD learner —
+    //   • feedback: the audioplayers "Bad state: No element" race on the
+    //     first sound after launch (SoundService / CelebrationService).
+    //   • framework diagnostics: a benign FlutterError assertion such as the
+    //     ListTile ink/background-hidden warning that fires on the student
+    //     home right after joining a class (FrameworkDiagnostic:silent).
+    // These sources are logged for diagnostics but suppressed from
+    // errorStream, while genuine user-actionable sources still surface.
+    test('non-critical sources are suppressed; real sources still surface',
+        () async {
+      final received = <String>[];
+      final sub =
+          ErrorHandler.errorStream.listen((e) => received.add(e.source));
+      addTearDown(sub.cancel);
+
+      ErrorHandler.report(
+          StateError('Bad state: No element'), null, 'SoundService');
+      ErrorHandler.report(Exception('haptic glitch'), null, 'CelebrationService');
+      ErrorHandler.report(
+          Exception('ListTile ink hidden'), null, 'FrameworkDiagnostic:silent');
+      ErrorHandler.report(Exception('real problem'), null, 'SomeFeature');
+
+      // Broadcast streams deliver asynchronously — let the queue drain.
+      await Future<void>.delayed(Duration.zero);
+
+      expect(received, isNot(contains('SoundService')));
+      expect(received, isNot(contains('CelebrationService')));
+      expect(received, isNot(contains('FrameworkDiagnostic:silent')));
+      expect(received, contains('SomeFeature'));
+    });
+  });
+
   // ═══════════════════════════════════════════════════════════
   // UserProfile PIN Tests
   // ═══════════════════════════════════════════════════════════

@@ -282,52 +282,71 @@ class HiveService {
 
   static Box get _settBox => Hive.box(_settingsBox);
 
-  static AppSettings getSettings() {
+  /// Namespace a settings key to a profile, so each profile keeps its own
+  /// accessibility settings. A `null` [profileId] uses the legacy unprefixed
+  /// keys — kept for the no-active-profile state (splash / profile picker)
+  /// and for backward-compatible reads.
+  static String _settKey(String key, String? profileId) =>
+      profileId == null ? key : '$profileId::$key';
+
+  /// Reads the accessibility / app settings for [profileId].
+  ///
+  /// Settings are **per-profile**: a learner's auto-applied class preset is
+  /// saved under that learner's id and never leaks into the teacher / parent
+  /// (or any other) profile on a shared device. A profile that hasn't
+  /// customised anything yet gets the app defaults below — NOT the device's
+  /// legacy global values — so the isolation is clean from day one.
+  static AppSettings getSettings({String? profileId}) {
+    T g<T>(String key, T fallback) =>
+        _settBox.get(_settKey(key, profileId), defaultValue: fallback) as T;
     return AppSettings(
-      fontScale: _settBox.get('fontScale', defaultValue: 1.0),
-      highContrastMode: _settBox.get('highContrastMode', defaultValue: false),
-      darkMode: _settBox.get('darkMode', defaultValue: false),
-      ttsEnabled: _settBox.get('ttsEnabled', defaultValue: true),
-      ttsSpeed: _settBox.get('ttsSpeed', defaultValue: 0.5),
-      reducedMotion: _settBox.get('reducedMotion', defaultValue: false),
-      soundEffects: _settBox.get('soundEffects', defaultValue: true),
-      speechToText: _settBox.get('speechToText', defaultValue: false),
-      locale: _settBox.get('locale', defaultValue: 'en'),
-      notificationsEnabled: _settBox.get('notificationsEnabled', defaultValue: true),
-      reminderHour: _settBox.get('reminderHour', defaultValue: 9),
-      reminderMinute: _settBox.get('reminderMinute', defaultValue: 0),
-      voiceNavigation: _settBox.get('voiceNavigation', defaultValue: false),
-      adaptiveDifficulty: _settBox.get('adaptiveDifficulty', defaultValue: true),
-      vocabReviewEnabled: _settBox.get('vocabReviewEnabled', defaultValue: false),
-      dyslexiaMode: _settBox.get('dyslexiaMode', defaultValue: false),
-      slowMotionEnabled:
-          _settBox.get('slowMotionEnabled', defaultValue: false),
-      dailyMissionSize: _settBox.get('dailyMissionSize', defaultValue: 4),
-      learningAssistEnabled:
-          _settBox.get('learningAssistEnabled', defaultValue: true),
+      fontScale: g('fontScale', 1.0),
+      highContrastMode: g('highContrastMode', false),
+      darkMode: g('darkMode', false),
+      ttsEnabled: g('ttsEnabled', true),
+      ttsSpeed: g('ttsSpeed', 0.5),
+      reducedMotion: g('reducedMotion', false),
+      soundEffects: g('soundEffects', true),
+      speechToText: g('speechToText', false),
+      locale: g('locale', 'en'),
+      notificationsEnabled: g('notificationsEnabled', true),
+      reminderHour: g('reminderHour', 9),
+      reminderMinute: g('reminderMinute', 0),
+      voiceNavigation: g('voiceNavigation', false),
+      adaptiveDifficulty: g('adaptiveDifficulty', true),
+      vocabReviewEnabled: g('vocabReviewEnabled', false),
+      dyslexiaMode: g('dyslexiaMode', false),
+      slowMotionEnabled: g('slowMotionEnabled', false),
+      dailyMissionSize: g('dailyMissionSize', 4),
+      learningAssistEnabled: g('learningAssistEnabled', true),
+      aiCompanionEnabled: g('aiCompanionEnabled', true),
     );
   }
 
-  static Future<void> saveSettings(AppSettings settings) async {
-    await _settBox.put('fontScale', settings.fontScale);
-    await _settBox.put('highContrastMode', settings.highContrastMode);
-    await _settBox.put('darkMode', settings.darkMode);
-    await _settBox.put('ttsEnabled', settings.ttsEnabled);
-    await _settBox.put('ttsSpeed', settings.ttsSpeed);
-    await _settBox.put('reducedMotion', settings.reducedMotion);
-    await _settBox.put('soundEffects', settings.soundEffects);
-    await _settBox.put('speechToText', settings.speechToText);
-    await _settBox.put('locale', settings.locale);
-    await _settBox.put('notificationsEnabled', settings.notificationsEnabled);
-    await _settBox.put('reminderHour', settings.reminderHour);
-    await _settBox.put('reminderMinute', settings.reminderMinute);
-    await _settBox.put('voiceNavigation', settings.voiceNavigation);
-    await _settBox.put('adaptiveDifficulty', settings.adaptiveDifficulty);
-    await _settBox.put('vocabReviewEnabled', settings.vocabReviewEnabled);
-    await _settBox.put('dyslexiaMode', settings.dyslexiaMode);
-    await _settBox.put('slowMotionEnabled', settings.slowMotionEnabled);
-    await _settBox.put('dailyMissionSize', settings.dailyMissionSize);
-    await _settBox.put('learningAssistEnabled', settings.learningAssistEnabled);
+  static Future<void> saveSettings(AppSettings settings,
+      {String? profileId}) async {
+    Future<void> p(String key, dynamic value) =>
+        _settBox.put(_settKey(key, profileId), value);
+    await p('fontScale', settings.fontScale);
+    await p('highContrastMode', settings.highContrastMode);
+    await p('darkMode', settings.darkMode);
+    await p('ttsEnabled', settings.ttsEnabled);
+    await p('ttsSpeed', settings.ttsSpeed);
+    await p('reducedMotion', settings.reducedMotion);
+    await p('soundEffects', settings.soundEffects);
+    await p('speechToText', settings.speechToText);
+    await p('locale', settings.locale);
+    await p('notificationsEnabled', settings.notificationsEnabled);
+    await p('reminderHour', settings.reminderHour);
+    await p('reminderMinute', settings.reminderMinute);
+    await p('voiceNavigation', settings.voiceNavigation);
+    await p('adaptiveDifficulty', settings.adaptiveDifficulty);
+    await p('vocabReviewEnabled', settings.vocabReviewEnabled);
+    await p('dyslexiaMode', settings.dyslexiaMode);
+    await p('slowMotionEnabled', settings.slowMotionEnabled);
+    await p('dailyMissionSize', settings.dailyMissionSize);
+    await p('learningAssistEnabled', settings.learningAssistEnabled);
+    await p('aiCompanionEnabled', settings.aiCompanionEnabled);
   }
 
   /// Generic setting getter — read any key from the settings box.

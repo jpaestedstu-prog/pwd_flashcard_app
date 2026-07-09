@@ -3,12 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:pwdpwdpwd/data/models/models.dart' show AppSettings;
 import 'package:pwdpwdpwd/features/gaze_control/models/gaze_models.dart';
 import 'package:pwdpwdpwd/features/gaze_control/models/gaze_settings.dart';
 import 'package:pwdpwdpwd/features/gaze_control/providers/gaze_camera_owners.dart';
 import 'package:pwdpwdpwd/features/gaze_control/providers/gaze_settings_provider.dart';
 import 'package:pwdpwdpwd/features/gaze_control/services/gaze_detector.dart';
 import 'package:pwdpwdpwd/features/gaze_control/widgets/gaze_dpad_scope.dart';
+import 'package:pwdpwdpwd/features/gaze_control/widgets/voice_control_mixin.dart';
+import 'package:pwdpwdpwd/providers/app_providers.dart'
+    show SettingsNotifier, settingsProvider;
 
 class _FakeDetector implements GazeDetector {
   @override
@@ -23,6 +27,13 @@ class _FixedSettings extends GazeSettingsNotifier {
   final GazeSettings _value;
   @override
   GazeSettings build() => _value;
+}
+
+/// Default [AppSettings] without touching Hive (the haptic service reads it
+/// when a voice command moves the cursor).
+class _StubAppSettings extends SettingsNotifier {
+  @override
+  AppSettings build() => const AppSettings();
 }
 
 void main() {
@@ -109,5 +120,78 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
     expect(gazeCameraOwners.isBusy, isFalse);
+  });
+
+  testWidgets('voice movement + select drive the same cursor as the head D-pad',
+      (tester) async {
+    final fired = <String>[];
+    List<List<GazeDpadCell>> liveRows() => [
+          [
+            GazeDpadCell(
+                label: 'Previous',
+                enabled: false,
+                onActivate: () => fired.add('Previous')),
+            GazeDpadCell(label: 'Flip', onActivate: () => fired.add('Flip')),
+            GazeDpadCell(label: 'Next', onActivate: () => fired.add('Next')),
+          ],
+        ];
+
+    final container = ProviderContainer(overrides: [
+      gazeSettingsProvider.overrideWith(() => _FixedSettings(
+            const GazeSettings(enabled: true),
+          )),
+      settingsProvider.overrideWith(_StubAppSettings.new),
+    ]);
+    addTearDown(container.dispose);
+
+    late GazeDpadState last;
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: GazeDpadScope(
+            rows: liveRows(),
+            camerasLoader: () async => const <CameraDescription>[],
+            detectorFactory: _FakeDetector.new,
+            builder: (context, gaze) {
+              last = gaze;
+              return const Scaffold(body: Text('viewer-body'));
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(last.isFocused(0, 0), isTrue);
+
+    final voice =
+        tester.state(find.byType(GazeDpadScope)) as VoiceControlMixin;
+
+    // "right" moves the highlight exactly like looking right.
+    voice.onVoiceCommand('right');
+    await tester.pump();
+    expect(last.isFocused(0, 1), isTrue);
+
+    // "select" commits the focused control, like a blink.
+    voice.onVoiceCommand('select');
+    await tester.pump(const Duration(milliseconds: 200)); // haptic pattern
+    expect(fired, ['Flip']);
+
+    // "next" opens the button actually labelled Next, wherever the cursor is.
+    voice.onVoiceCommand('next');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(fired, ['Flip', 'Next']);
+
+    // "left" moves back; "select" on the disabled Previous does nothing.
+    voice.onVoiceCommand('left');
+    await tester.pump();
+    expect(last.isFocused(0, 0), isTrue);
+    voice.onVoiceCommand('select');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(fired, ['Flip', 'Next']);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
   });
 }

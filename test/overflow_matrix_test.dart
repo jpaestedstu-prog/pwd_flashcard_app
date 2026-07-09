@@ -37,8 +37,11 @@ void main() {
   setUpAll(() async {
     // RichEmptyState/EnhancedCategoryCard embed the 3D motion kit, which
     // reads the reduced-motion setting from the Hive-backed settingsProvider.
+    // Settings are per-profile, so settingsProvider also resolves the active
+    // profile from the 'profiles' box.
     Hive.init('./build/test_cache/overflow_matrix');
     if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings');
+    if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles');
   });
 
   tearDownAll(() async => Hive.deleteFromDisk());

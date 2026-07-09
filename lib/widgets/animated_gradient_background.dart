@@ -168,6 +168,12 @@ class _AnimatedGradientBackgroundState
           scheme.tertiaryContainer.withValues(alpha: 0.45),
           scheme.primary.withValues(alpha: 0.3),
         ],
+      GradientPreset.stories => [
+          const Color(0xFFFFB74D).withValues(alpha: 0.35),
+          scheme.tertiaryContainer.withValues(alpha: 0.45),
+          scheme.primary.withValues(alpha: 0.3),
+          const Color(0xFFCE93D8).withValues(alpha: 0.35),
+        ],
       GradientPreset.assessment => [
           AppColors.info.withValues(alpha: 0.35),
           scheme.primary.withValues(alpha: 0.3),
@@ -190,6 +196,7 @@ class _AnimatedGradientBackgroundState
       GradientPreset.games => ParticleStyle.stars,
       GradientPreset.shop => ParticleStyle.stars,
       GradientPreset.flashcards => ParticleStyle.bubbles,
+      GradientPreset.stories => ParticleStyle.sparkles,
       GradientPreset.assessment => ParticleStyle.bubbles,
       GradientPreset.celebration => ParticleStyle.confetti,
     };
@@ -202,6 +209,7 @@ class _AnimatedGradientBackgroundState
       GradientPreset.games => 20,
       GradientPreset.shop => 18,
       GradientPreset.flashcards => 12,
+      GradientPreset.stories => 10,
       GradientPreset.assessment => 10,
       GradientPreset.celebration => 25,
     };
@@ -221,6 +229,9 @@ enum GradientPreset {
 
   /// Flashcards — soft, study-oriented.
   flashcards,
+
+  /// Stories — warm storybook amber/violet with gentle sparkles.
+  stories,
 
   /// Assessment — calm, focused blues/greens.
   assessment,

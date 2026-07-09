@@ -11,6 +11,7 @@ import '../../../data/local/seed_data.dart';
 import '../../../data/local/flashcard_export_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
+import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/depth_3d.dart';
 import '../../../widgets/tilt_3d.dart';
@@ -40,7 +41,15 @@ class DeckListScreen extends ConsumerWidget {
     return GazeHomeRegistrar(
       active: gazeGrid.active,
       rows: gazeGrid.rows,
+      // Section identity: the Cards hub gets its own soft "study" backdrop
+      // (bubbles), distinct from Home (sparkles) and Games (stars). The
+      // gradient reads the active color scheme, so every profile theme
+      // re-tints it automatically.
+      child: AnimatedGradientBackground(
+      preset: GradientPreset.flashcards,
+      intensity: 0.28,
       child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -196,6 +205,7 @@ class DeckListScreen extends ConsumerWidget {
               curve: Curves.elasticOut,
             )
           : null,
+      ),
       ),
     );
   }

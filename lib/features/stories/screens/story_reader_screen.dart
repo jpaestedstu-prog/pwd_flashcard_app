@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../data/local/seed_stories.dart' show SeedStories, Story;
 import '../../../data/models/enums.dart';
@@ -143,8 +144,13 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     final sentenceEn = _story!.sentencesEn[_currentSentence];
     final sentenceFil = _story!.sentencesFil[_currentSentence];
     // Sign-language clip for this page, if the story has one. Shown
-    // independently of the TTS setting so Deaf learners always have it.
-    final sentenceFslUrl = _story!.fslForSentence(_currentSentence);
+    // independently of the TTS setting so Deaf learners always have it, but
+    // hidden for accessibility categories that don't use signing.
+    final showFsl = ref.watch(
+      accessibilityContentPolicyProvider.select((p) => p.showFsl),
+    );
+    final sentenceFslUrl =
+        showFsl ? _story!.fslForSentence(_currentSentence) : null;
     // Cartoon ⇄ real-life flip picture for this page, if the story has one.
     // Visual aid — shown regardless of the TTS / audio settings.
     final sentenceImage = _story!.imageForSentence(_currentSentence);

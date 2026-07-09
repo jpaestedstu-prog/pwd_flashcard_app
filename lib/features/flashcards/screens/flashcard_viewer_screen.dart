@@ -13,6 +13,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_action_bar.dart';
+import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/enums.dart';
@@ -275,6 +276,11 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     // affordance: the prominent Replay button is hidden when Text-to-Speech is
     // off (e.g. the hearing preset, which prioritises FSL video over audio).
     final ttsEnabled = ref.watch(settingsProvider).ttsEnabled;
+    // FSL video is hidden for learners whose accessibility category doesn't
+    // use signing (e.g. visual / cognitive), per the content policy.
+    final showFsl = ref.watch(
+      accessibilityContentPolicyProvider.select((p) => p.showFsl),
+    );
     final l10n = AppLocalizations.of(context)!;
     final card = _cards.isNotEmpty ? _cards[_currentIndex] : null;
 
@@ -290,12 +296,13 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
         onTap: _prevCard,
         enabled: _currentIndex > 0,
       ),
-      _ViewerAction(
-        icon: Icons.sign_language_rounded,
-        label: l10n.fsl,
-        color: AppColors.secondary,
-        onTap: card != null ? () => _showFslVideo(card) : null,
-      ),
+      if (showFsl)
+        _ViewerAction(
+          icon: Icons.sign_language_rounded,
+          label: l10n.fsl,
+          color: AppColors.secondary,
+          onTap: card != null ? () => _showFslVideo(card) : null,
+        ),
       if (card != null && ActionClipService.hasClip(card))
         _ViewerAction(
           icon: Icons.play_circle_fill_rounded,

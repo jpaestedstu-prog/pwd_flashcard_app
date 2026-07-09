@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_typography.dart';
+import '../../../data/models/enums.dart';
+import 'accessibility_category_picker.dart';
 import 'cloud_sync_error_view.dart';
 
 /// Shared "single text field → submit → wait → success/error" dialog
@@ -67,7 +69,22 @@ class CloudAwareTextDialog extends ConsumerStatefulWidget {
   /// Called when the user taps the action button with a non-empty,
   /// changed name. Throws on failure; the dialog catches and displays
   /// the error inline without popping.
-  final Future<void> Function(String name) onSubmit;
+  ///
+  /// Exactly one of [onSubmit] / [onSubmitWithAccessibility] is used: the
+  /// latter takes precedence and is the path used by the create-class /
+  /// create-home-group dialogs (which also collect an accessibility
+  /// category). Plain rename / add-member dialogs keep using [onSubmit].
+  final Future<void> Function(String name)? onSubmit;
+
+  /// Like [onSubmit] but also passes the accessibility category the user
+  /// picked. When set, [initialAccessibility] must be non-null so the
+  /// picker is rendered.
+  final Future<void> Function(String name, DisabilityType accessibility)?
+      onSubmitWithAccessibility;
+
+  /// When non-null, an [AccessibilityCategoryPicker] is shown under the
+  /// name field, seeded with this value.
+  final DisabilityType? initialAccessibility;
 
   const CloudAwareTextDialog({
     super.key,
@@ -76,10 +93,19 @@ class CloudAwareTextDialog extends ConsumerStatefulWidget {
     required this.inputHint,
     required this.submitLabel,
     required this.emptyError,
-    required this.onSubmit,
+    this.onSubmit,
+    this.onSubmitWithAccessibility,
+    this.initialAccessibility,
     this.initialValue,
     this.helperText,
-  });
+  }) : assert(
+          (onSubmit != null) ^ (onSubmitWithAccessibility != null),
+          'Provide exactly one of onSubmit / onSubmitWithAccessibility.',
+        ),
+        assert(
+          onSubmitWithAccessibility == null || initialAccessibility != null,
+          'onSubmitWithAccessibility requires initialAccessibility.',
+        );
 
   /// Convenience launcher. Returns `true` when the submit succeeded
   /// (caller can show a confirmation SnackBar), `null` if the user
@@ -91,7 +117,10 @@ class CloudAwareTextDialog extends ConsumerStatefulWidget {
     required String inputHint,
     required String submitLabel,
     required String emptyError,
-    required Future<void> Function(String name) onSubmit,
+    Future<void> Function(String name)? onSubmit,
+    Future<void> Function(String name, DisabilityType accessibility)?
+        onSubmitWithAccessibility,
+    DisabilityType? initialAccessibility,
     String? initialValue,
     String? helperText,
   }) {
@@ -105,6 +134,8 @@ class CloudAwareTextDialog extends ConsumerStatefulWidget {
         submitLabel: submitLabel,
         emptyError: emptyError,
         onSubmit: onSubmit,
+        onSubmitWithAccessibility: onSubmitWithAccessibility,
+        initialAccessibility: initialAccessibility,
         initialValue: initialValue,
         helperText: helperText,
       ),
@@ -118,6 +149,7 @@ class CloudAwareTextDialog extends ConsumerStatefulWidget {
 
 class _CloudAwareTextDialogState extends ConsumerState<CloudAwareTextDialog> {
   late final TextEditingController _controller;
+  late DisabilityType _accessibility;
   bool _busy = false;
   String? _validationError;
   Object? _submitError;
@@ -126,6 +158,7 @@ class _CloudAwareTextDialogState extends ConsumerState<CloudAwareTextDialog> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.initialValue ?? '');
+    _accessibility = widget.initialAccessibility ?? DisabilityType.none;
   }
 
   @override
@@ -153,7 +186,12 @@ class _CloudAwareTextDialogState extends ConsumerState<CloudAwareTextDialog> {
       _submitError = null;
     });
     try {
-      await widget.onSubmit(name);
+      final withAccessibility = widget.onSubmitWithAccessibility;
+      if (withAccessibility != null) {
+        await withAccessibility(name, _accessibility);
+      } else {
+        await widget.onSubmit!(name);
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
@@ -170,7 +208,10 @@ class _CloudAwareTextDialogState extends ConsumerState<CloudAwareTextDialog> {
     final submitErr = _submitError;
     return AlertDialog(
       title: Text(widget.title),
-      content: Column(
+      // Scrollable so the optional accessibility picker (6 chips) can't
+      // overflow the dialog on a small screen or at a large font scale.
+      content: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -201,6 +242,14 @@ class _CloudAwareTextDialogState extends ConsumerState<CloudAwareTextDialog> {
               ),
             ),
           ],
+          if (widget.initialAccessibility != null) ...[
+            const SizedBox(height: 16),
+            AccessibilityCategoryPicker(
+              selected: _accessibility,
+              enabled: !_busy,
+              onChanged: (type) => setState(() => _accessibility = type),
+            ),
+          ],
           if (submitErr != null) ...[
             const SizedBox(height: 16),
             _InlineCloudError(
@@ -212,6 +261,7 @@ class _CloudAwareTextDialogState extends ConsumerState<CloudAwareTextDialog> {
             ),
           ],
         ],
+        ),
       ),
       actions: [
         TextButton(

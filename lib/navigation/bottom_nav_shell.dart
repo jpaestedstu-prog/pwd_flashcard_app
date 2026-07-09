@@ -206,27 +206,37 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
     });
 
     final currentIndex = _currentIndex(widget.state.uri.toString());
+    final navShown = !_isImmersiveRoute(widget.state.uri.toString());
 
     // Guest Player mode: skip the bottom nav entirely. The PlayerHomeScreen is
     // self-contained (one big "Start Learning" button); a tab bar would imply
     // more app surface than a guest actually has. "Player (With Progress)"
     // profiles fall through to the Student tab set (Home / Cards / Games /
     // Stories / Progress) below.
+    //
+    // Gaze + voice still apply: itemCount 0 tells [NavGazeScope] there is no
+    // nav row, so the hands-free D-pad and spoken commands drive whatever grid
+    // the visible screen publishes (the guest home's buttons, the Games / Cards
+    // hub tiles) plus the global scroll / go-back commands.
     if (_isPlayer && _isGuestPlayer) {
-      return Stack(
-        children: [
-          Scaffold(body: RepaintBoundary(child: widget.child)),
-          if (_celebratingLevel != null)
-            LevelUpCelebrationScreen(
-              newLevel: _celebratingLevel!,
-              reducedMotion: ref.read(settingsProvider).reducedMotion,
-              onDismiss: () => setState(() => _celebratingLevel = null),
-            ),
-        ],
+      return NavGazeScope(
+        currentIndex: 0,
+        itemCount: 0,
+        enabled: navShown,
+        onCommit: (_) {},
+        builder: (context, gaze) => Stack(
+          children: [
+            Scaffold(body: RepaintBoundary(child: widget.child)),
+            if (_celebratingLevel != null)
+              LevelUpCelebrationScreen(
+                newLevel: _celebratingLevel!,
+                reducedMotion: ref.read(settingsProvider).reducedMotion,
+                onDismiss: () => setState(() => _celebratingLevel = null),
+              ),
+          ],
+        ),
       );
     }
-
-    final navShown = !_isImmersiveRoute(widget.state.uri.toString());
     final items =
         _isEducator ? _educatorNavItems() : _studentNavItems();
 
@@ -236,6 +246,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
     return NavGazeScope(
       currentIndex: currentIndex,
       itemCount: items.length,
+      navLabels: [for (final item in items) item.label],
       enabled: navShown,
       onCommit: (index) => _onTap(context, index),
       builder: (context, gaze) => Stack(

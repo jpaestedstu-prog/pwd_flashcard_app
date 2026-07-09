@@ -43,6 +43,21 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
+        <!-- Portrait-only on large screens too. Android 16 (API 36) ignores an
+             app's orientation/resizability request on displays ≥ sw600dp by
+             default, which would let this app rotate to landscape on tablets
+             despite the `screenOrientation="portrait"` lock below. This
+             property opts back into compatibility mode so the portrait lock is
+             honored (the app is letterboxed on a landscape-held tablet instead
+             of stretching to landscape) — required for the fixed-portrait
+             spatial layout the Gaze Control D-pad depends on. The opt-out is
+             available through targetSdk 36; API 37 removes it, at which point
+             the app must adopt an adaptive layout. Unknown to Android ≤ 15,
+             which safely ignores the element. -->
+        <property
+            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+            android:value="true" />
+
         <!-- Boot receiver to reschedule notifications after reboot -->
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
             <intent-filter>
@@ -58,6 +73,7 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
+            android:screenOrientation="portrait"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -96,6 +112,14 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Voice commands (speech_to_text): on Android 11+ (the app targets
+             SDK 36) package-visibility filtering hides the on-device speech
+             recognition service unless it's declared here. Without this,
+             SpeechToText.initialize() returns false and every spoken command
+             (Gaze Control voice, pronunciation games) silently does nothing. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
         </intent>
     </queries>
 </manifest>

@@ -7,6 +7,7 @@ import '../core/services/educator_policy_cascade.dart';
 import '../core/services/firebase_service.dart';
 import '../core/services/home_group_code_service.dart';
 import '../data/local/hive_service.dart';
+import '../data/models/enums.dart';
 import '../data/models/home_group.dart';
 import '../data/models/home_group_member.dart';
 import '../data/remote/firestore_repository.dart';
@@ -55,7 +56,14 @@ class HomeGroupManagementNotifier
   }
 
   /// Create a new home group with a unique join code.
-  Future<HomeGroup> createGroup(String name) async {
+  ///
+  /// [accessibility] is the audience the parent is creating this group for;
+  /// it's stored on the group doc and auto-assigned to every child who joins
+  /// via the code, so children skip the accessibility-setup wizard.
+  Future<HomeGroup> createGroup(
+    String name, {
+    DisabilityType accessibility = DisabilityType.none,
+  }) async {
     if (!FirebaseService.isConfigured) {
       throw Exception(
           'Cloud sync not connected. Restart the app or check Firebase setup.');
@@ -86,6 +94,7 @@ class HomeGroupManagementNotifier
       code: code,
       name: name.trim().isEmpty ? 'My Family' : name.trim(),
       ownerProfileId: parentProfileId,
+      accessibility: accessibility,
       createdAt: now,
       updatedAt: now,
     );
@@ -128,6 +137,32 @@ class HomeGroupManagementNotifier
         .doc(updated.id)
         .set({
       'name': updated.name,
+      'updated_at': updated.updatedAt.toIso8601String(),
+    }, SetOptions(merge: true));
+    await HiveService.cacheHomeGroup(updated);
+  }
+
+  /// Change the accessibility audience for [group].
+  ///
+  /// Affects **future** joiners only — children already enrolled keep the
+  /// accessibility profile assigned when they joined. Sparse-merges just the
+  /// changed fields. Mirror of [ClassroomManagementNotifier.setClassAccessibility].
+  Future<void> setGroupAccessibility(
+      HomeGroup group, DisabilityType accessibility) async {
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
+    if (accessibility == group.accessibility) return;
+    final updated = group.copyWith(
+      accessibility: accessibility,
+      updatedAt: DateTime.now(),
+    );
+    await FirebaseService.db
+        .collection('home_groups')
+        .doc(updated.id)
+        .set({
+      'accessibility': updated.accessibility.index,
       'updated_at': updated.updatedAt.toIso8601String(),
     }, SetOptions(merge: true));
     await HiveService.cacheHomeGroup(updated);

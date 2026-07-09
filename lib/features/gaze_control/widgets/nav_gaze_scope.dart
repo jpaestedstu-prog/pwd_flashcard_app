@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show kDebugMode, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,11 +9,13 @@ import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
 import '../controllers/gaze_controller.dart';
 import '../logic/gaze_grid_cursor.dart';
+import '../logic/voice_commands.dart';
 import '../models/gaze_models.dart';
 import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_home_grid.dart';
 import '../providers/gaze_settings_provider.dart';
 import '../services/gaze_detector.dart';
+import 'voice_control_mixin.dart';
 
 /// Snapshot of the gaze-navigation state handed to [NavGazeScope.builder] so the
 /// bottom navigation bar can draw the moving highlight and a hint.
@@ -84,8 +86,15 @@ class NavGazeScope extends ConsumerStatefulWidget {
   /// The currently-selected tab (drives where the highlight starts / re-syncs).
   final int currentIndex;
 
-  /// How many tabs the bar shows (varies by role).
+  /// How many tabs the bar shows (varies by role). **0 is allowed** — the
+  /// nav-less Guest Player shell passes 0, dropping the nav row entirely so
+  /// the D-pad + voice drive only the grid the visible screen publishes.
   final int itemCount;
+
+  /// The tabs' visible labels (same order as the bar). Lets spoken commands
+  /// open a tab by name ("games", "stories"); may be empty (tests / callers
+  /// without voice), which only disables addressing tabs by voice.
+  final List<String> navLabels;
 
   /// Route-level gate: the bottom nav bar is currently shown (i.e. not an
   /// immersive activity). When false the camera stands down. Combined with the
@@ -108,6 +117,7 @@ class NavGazeScope extends ConsumerStatefulWidget {
     required this.itemCount,
     required this.onCommit,
     required this.builder,
+    this.navLabels = const [],
     this.enabled = true,
     this.camerasLoader,
     this.detectorFactory,
@@ -117,7 +127,8 @@ class NavGazeScope extends ConsumerStatefulWidget {
   ConsumerState<NavGazeScope> createState() => _NavGazeScopeState();
 }
 
-class _NavGazeScopeState extends ConsumerState<NavGazeScope> {
+class _NavGazeScopeState extends ConsumerState<NavGazeScope>
+    with VoiceControlMixin {
   GazeController? _gaze;
   late GazeGridCursor _cursor;
 
@@ -133,7 +144,7 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope> {
   @override
   void initState() {
     super.initState();
-    _appliedRows = [widget.itemCount];
+    _appliedRows = [if (_hasNavRow) widget.itemCount];
     _cursor = GazeGridCursor(rowLengths: _appliedRows, col: widget.currentIndex);
     // Stand the camera up/down as foreground camera surfaces come and go, and
     // re-shape the cursor as the Home tile grid appears / disappears.
@@ -179,17 +190,22 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope> {
   /// and it clears on dispose, so a live grid always belongs to the shown tab.
   bool get _useFeatureGrid => gazeHomeGrid.hasGrid;
 
+  /// Whether a bottom-nav row exists at all (the Guest Player shell has none).
+  bool get _hasNavRow => widget.itemCount > 0;
+
   /// The combined row shape: feature-tile rows (when active) stacked on top of
-  /// the single bottom-nav row, which is always the last row.
-  List<int> _rowLengths() =>
-      _useFeatureGrid ? [...gazeHomeGrid.rowLengths, widget.itemCount]
-                      : [widget.itemCount];
+  /// the single bottom-nav row, which — when present — is always the last row.
+  List<int> _rowLengths() => [
+        if (_useFeatureGrid) ...gazeHomeGrid.rowLengths,
+        if (_hasNavRow) widget.itemCount,
+      ];
 
   /// Index of the bottom-nav row within the cursor (always the last row).
-  int get _navRow => _cursor.rowCount - 1;
+  /// Without a nav row this is one past the end, so no cursor row matches it.
+  int get _navRow => _hasNavRow ? _cursor.rowCount - 1 : _cursor.rowCount;
 
   /// Whether the cursor is resting up in the feature tiles (not on the nav row).
-  bool get _onTileRow => _cursor.rowCount > 1 && _cursor.row < _navRow;
+  bool get _onTileRow => _cursor.rowCount > 0 && _cursor.row < _navRow;
 
   /// Coalesces evaluation to a microtask so it can safely run while a
   /// freshly-pushed camera screen is still building (it bumps the owner count
@@ -243,10 +259,14 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope> {
     // Begin where the learner actually is (on the live tab).
     _syncCursor();
     controller.start();
+    // Voice runs exactly while the shell owns the camera, so it can never fight
+    // a foreground scope's own voice controller over the single microphone.
+    if (settings.voiceCommands) startVoiceControl();
     setState(() {});
   }
 
   void _teardown() {
+    disposeVoiceControl();
     final controller = _gaze;
     _gaze = null;
     if (controller != null) {
@@ -255,6 +275,58 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope> {
     }
     // Drop any Home-tile highlight when the camera stands down.
     gazeHomeGrid.setFocus(null, null);
+  }
+
+  /// A spoken phrase → a feature tile or nav tab by its label, a D-pad cursor
+  /// move ("left" / "up" / "kanan"…) identical to the matching head gesture, a
+  /// "select" that commits the focused cell like a blink, or a global scroll /
+  /// leave-screen action. Reads the live grid + labels at event time, mirroring
+  /// [_commit]. Ignored while another route covers the shell (a dialog / pushed
+  /// screen), exactly like the head D-pad.
+  @override
+  void onVoiceCommand(String text) {
+    if (!mounted || _gaze == null || _shellCovered) return;
+    final tileRows = gazeHomeGrid.rows;
+    final rows = <List<VoiceTarget>>[
+      ...tileRows,
+      [for (final label in widget.navLabels) _NavTabTarget(label)],
+    ];
+    final result = resolveDpadVoiceCommand(text, rows);
+    if (kDebugMode) {
+      debugPrint(
+          'VoiceCmd nav "$text" → ${result.intent} (${result.row},${result.col})');
+    }
+    switch (result.intent) {
+      case DpadVoiceIntent.activate:
+        if (result.row < tileRows.length) {
+          final cell = gazeHomeGrid.cellAt(result.row, result.col);
+          if (cell == null) return;
+          ref.read(hapticServiceProvider).success();
+          cell.onActivate();
+        } else {
+          if (result.col < 0 || result.col >= widget.itemCount) return;
+          ref.read(hapticServiceProvider).success();
+          widget.onCommit(result.col);
+        }
+      case DpadVoiceIntent.moveLeft:
+        _moveHoriz(-1);
+      case DpadVoiceIntent.moveRight:
+        _moveHoriz(1);
+      case DpadVoiceIntent.moveUp:
+        _moveVert(-1);
+      case DpadVoiceIntent.moveDown:
+        _moveVert(1);
+      case DpadVoiceIntent.select:
+        _commit();
+      case DpadVoiceIntent.scrollUp:
+        voiceScroll(-1);
+      case DpadVoiceIntent.scrollDown:
+        voiceScroll(1);
+      case DpadVoiceIntent.goBack:
+        Navigator.of(context).maybePop();
+      case DpadVoiceIntent.none:
+        break;
+    }
   }
 
   void _onControllerUpdate() {
@@ -273,8 +345,10 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope> {
     if (shapeChanged) {
       _cursor.setRows(want);
       _appliedRows = want;
-      _cursor.moveTo(_navRow, widget.currentIndex);
-    } else if (_cursor.row == _navRow) {
+      // Land on the live tab — or, in the nav-less Guest shell, on the first
+      // published row (its top action button).
+      _cursor.moveTo(_hasNavRow ? _navRow : 0, widget.currentIndex);
+    } else if (_hasNavRow && _cursor.row == _navRow) {
       _cursor.moveTo(_navRow, widget.currentIndex);
     }
     _publishFocus();
@@ -356,6 +430,18 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope> {
       gazeSettingsProvider.select((s) => s.enabled),
       (_, _) => _scheduleEvaluate(),
     );
+    // Unlike the per-screen scopes (which re-snapshot on every mount), the
+    // shell lives forever — so the voice toggle must take effect live, without
+    // waiting for the camera to bounce. Deferred to a microtask because
+    // provider listeners can fire mid-build.
+    ref.listen<bool>(
+      gazeSettingsProvider.select((s) => s.voiceCommands),
+      (_, on) => scheduleMicrotask(() {
+        if (!mounted || _gaze == null) return;
+        on ? startVoiceControl() : disposeVoiceControl();
+        setState(() {});
+      }),
+    );
 
     final gaze = _gaze;
     final ready = gaze != null && gaze.status == GazeStatus.ready;
@@ -369,6 +455,39 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope> {
       targetIndex: gaze != null && !onTileRow ? _cursor.col : null,
       featureTilesActive: gaze != null && _useFeatureGrid,
     );
-    return widget.builder(context, state);
+    final content = widget.builder(context, state);
+
+    // While voice is listening, float the small mic status chip near the top
+    // (the bottom belongs to the nav bar). Informational only.
+    final chip = voiceChip();
+    if (chip == null) return content;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        content,
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: IgnorePointer(child: Center(child: chip)),
+            ),
+          ),
+        ),
+      ],
+    );
   }
+}
+
+/// Lets a bottom-nav tab be addressed by voice through the same [VoiceTarget]
+/// matching the feature tiles use (a tab is always openable).
+class _NavTabTarget implements VoiceTarget {
+  @override
+  final String label;
+  const _NavTabTarget(this.label);
+
+  @override
+  bool get enabled => true;
 }

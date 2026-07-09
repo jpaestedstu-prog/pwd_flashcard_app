@@ -107,6 +107,37 @@ class TutorEngine {
     return null;
   }
 
+  /// True when [question] matches none of the engine's structured intents
+  /// (quiz, lesson, hint, practice, progress, favorites, or a named category).
+  ///
+  /// The companion uses this as the boundary for the optional online model:
+  /// structured intents ALWAYS stay on the offline engine (so its quizzes,
+  /// lessons, and favorite-topic chips keep working with no network), and only
+  /// genuinely open-ended questions are eligible to be routed to Gemini.
+  static bool isFreeForm(String question) {
+    final q = question.toLowerCase();
+    if (categoryInText(q) != null) return false;
+    const triggers = [
+      // liking / favorites
+      'i like', 'i love', 'favorite', 'favourite', 'interest',
+      'gusto', 'mahilig', 'paborito',
+      // help / hint
+      'help', 'hint', 'tulong', 'pahiwatig',
+      // quiz
+      'quiz', 'test', 'pagsusulit',
+      // plan / lesson
+      'plan', 'lesson', 'today', 'aralin', 'ngayon',
+      // practice
+      'practice', 'review', 'pagsasanay',
+      // progress
+      'progress', 'score', 'how am i', 'pag-unlad',
+    ];
+    for (final t in triggers) {
+      if (q.contains(t)) return false;
+    }
+    return true;
+  }
+
   /// Generate an initial greeting message
   static TutorMessage greet(String studentName, {bool isFilipino = false}) {
     final greetings = isFilipino

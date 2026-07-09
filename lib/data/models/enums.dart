@@ -99,6 +99,15 @@ extension DisabilityTypeX on DisabilityType {
     DisabilityType.none => 'No Accessibility Needs',
   };
 
+  /// Fuller wording used when this category is shown as part of a learner's
+  /// "profile type" (e.g. "Student - Cognitive/Learning Disability" in the
+  /// profile switcher). Mirrors [label] except the cognitive entry spells out
+  /// "Disability" so the combined phrase reads naturally.
+  String get profileTypeLabel => switch (this) {
+    DisabilityType.cognitive => 'Cognitive/Learning Disability',
+    _ => label,
+  };
+
   String get description => switch (this) {
     DisabilityType.visual => 'Difficulty seeing, low vision, or color blindness',
     DisabilityType.hearing => 'Difficulty hearing or deaf',

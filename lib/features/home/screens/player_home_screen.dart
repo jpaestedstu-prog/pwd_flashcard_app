@@ -10,6 +10,9 @@ import '../../../core/widgets/hub_scaffold.dart';
 import '../../../widgets/accessibility_quick_sheet.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/profile_avatar.dart';
+import '../../gaze_control/providers/gaze_home_grid.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_home_tiles.dart';
 
 /// Minimal home for the Player (guest) role.
 ///
@@ -27,12 +30,47 @@ class PlayerHomeScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return HubScaffold(
+    // Hands-free reach: each action button registers with the guest shell's
+    // gaze D-pad / voice commands (see the guest branch in BottomNavShell) and
+    // shows a focus ring. Pure pass-through when gaze is off. The buttons sit
+    // in a stretched Column, so each tile keeps full width via SizedBox — the
+    // loose focus-ring Stack would otherwise shrink it to intrinsic width.
+    final gazeOn = ref.watch(
+      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+    );
+    final gazeGrid = GazeTileGridBuilder(active: gazeOn);
+    Widget gazeButton(String label, VoidCallback onTap, Widget button) =>
+        gazeGrid.section(
+          columns: 1,
+          expand: false,
+          entries: [
+            (
+              tile: SizedBox(width: double.infinity, child: button),
+              cell: GazeTileCell(label: label, onActivate: onTap),
+            ),
+          ],
+        ).first;
+
+    return GazeHomeRegistrar(
+      active: gazeGrid.active,
+      rows: gazeGrid.rows,
+      child: HubScaffold(
       intensity: 0.18,
       showParticles: false,
       child: Stack(
         children: [
-          OverflowSafeBody(
+          // Centered when the content fits the viewport, scrolls when it
+          // doesn't (small phones, landscape, split-screen, large fonts).
+          // OverflowSafeBody only adds its scroll wrapper at large text
+          // scales, so at normal scales a short window used to bottom-overflow
+          // this stretched Column — the min-height ConstrainedBox keeps the
+          // centered look on tall screens while always allowing scroll.
+          LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: context.pagePadding,
                   vertical: AppSpacing.xl,
@@ -65,27 +103,39 @@ class PlayerHomeScreen extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.xxxl),
 
                     // ▶ Start Learning
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        textStyle: theme.textTheme.titleLarge,
+                    gazeButton(
+                      'Start Learning',
+                      () => context.go('/games'),
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          textStyle: theme.textTheme.titleLarge,
+                        ),
+                        onPressed: () => context.go('/games'),
+                        icon: Icon(Icons.play_circle_fill_rounded,
+                            size: context.scaleIcon(32)),
+                        label: const Text('Start Learning'),
                       ),
-                      onPressed: () => context.go('/games'),
-                      icon: Icon(Icons.play_circle_fill_rounded,
-                          size: context.scaleIcon(32)),
-                      label: const Text('Start Learning'),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    OutlinedButton.icon(
-                      onPressed: () => context.go('/flashcards'),
-                      icon: const Icon(Icons.style_rounded),
-                      label: const Text('Browse flashcards'),
+                    gazeButton(
+                      'Browse flashcards',
+                      () => context.go('/flashcards'),
+                      OutlinedButton.icon(
+                        onPressed: () => context.go('/flashcards'),
+                        icon: const Icon(Icons.style_rounded),
+                        label: const Text('Browse flashcards'),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    OutlinedButton.icon(
-                      onPressed: () => context.push('/smileyometer'),
-                      icon: const Icon(Icons.emoji_emotions_outlined),
-                      label: const Text('How was it?'),
+                    gazeButton(
+                      'How was it?',
+                      () => context.push('/smileyometer'),
+                      OutlinedButton.icon(
+                        onPressed: () => context.push('/smileyometer'),
+                        icon: const Icon(Icons.emoji_emotions_outlined),
+                        label: const Text('How was it?'),
+                      ),
                     ),
 
                     const SizedBox(height: AppSpacing.xxxl),
@@ -115,45 +165,99 @@ class PlayerHomeScreen extends ConsumerWidget {
                             style: theme.textTheme.bodySmall,
                           ),
                           const SizedBox(height: AppSpacing.md),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () => context.push('/join-class'),
-                                  child: const Text('Join class'),
+                          Builder(builder: (context) {
+                            // One 2-column gaze row for the side-by-side pair.
+                            final pair = gazeGrid.section(
+                              columns: 2,
+                              expand: false,
+                              entries: [
+                                (
+                                  tile: SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton(
+                                      onPressed: () =>
+                                          context.push('/join-class'),
+                                      child: const Text('Join class'),
+                                    ),
+                                  ),
+                                  cell: GazeTileCell(
+                                    label: 'Join class',
+                                    onActivate: () =>
+                                        context.push('/join-class'),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () =>
-                                      context.push('/join-home-group'),
-                                  child: const Text('Join group'),
+                                (
+                                  tile: SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton(
+                                      onPressed: () =>
+                                          context.push('/join-home-group'),
+                                      child: const Text('Join group'),
+                                    ),
+                                  ),
+                                  cell: GazeTileCell(
+                                    label: 'Join group',
+                                    onActivate: () =>
+                                        context.push('/join-home-group'),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            );
+                            return Row(
+                              children: [
+                                Expanded(child: pair[0]),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(child: pair[1]),
+                              ],
+                            );
+                          }),
                         ],
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
-                    TextButton.icon(
-                      onPressed: () => context.push('/profile-switcher'),
-                      icon: const Icon(Icons.person_outline_rounded),
-                      label: const Text('Switch profile'),
+                    gazeButton(
+                      'Switch profile',
+                      () => context.push('/profile-switcher'),
+                      TextButton.icon(
+                        onPressed: () => context.push('/profile-switcher'),
+                        icon: const Icon(Icons.person_outline_rounded),
+                        label: const Text('Switch profile'),
+                      ),
                     ),
                   ],
                 ),
+                ),
               ),
+            ),
+          ),
           // Floating accessibility shortcut — the Guest Player home has no
           // Settings gear, so this gives the player self-service over text
-          // size, contrast, read-aloud, and reduced motion.
-          const Positioned(
+          // size, contrast, read-aloud, and reduced motion. Registered as its
+          // own gaze row so the D-pad reaches it — and it lands as the FIRST
+          // row (matching its topmost visual position): this Positioned is
+          // built eagerly while the scroll body's sections register later,
+          // inside the LayoutBuilder's layout-time builder. Not wrapped via
+          // [gazeButton], whose infinite-width SizedBox can't sit in a
+          // Positioned.
+          Positioned(
             top: 4,
             right: 4,
-            child: AccessibilityQuickButton(),
+            child: gazeGrid.section(
+              columns: 1,
+              expand: false,
+              entries: [
+                (
+                  tile: const AccessibilityQuickButton(),
+                  cell: GazeTileCell(
+                    label: 'Accessibility',
+                    onActivate: () => showAccessibilityQuickSheet(context),
+                  ),
+                ),
+              ],
+            ).first,
           ),
         ],
+      ),
       ),
     );
   }

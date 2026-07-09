@@ -9,6 +9,7 @@ import '../core/services/join_code_service.dart';
 import '../data/local/hive_service.dart';
 import '../data/models/classroom.dart';
 import '../data/models/classroom_member.dart';
+import '../data/models/enums.dart';
 import '../data/remote/firestore_repository.dart';
 import 'firestore_stream_helpers.dart';
 
@@ -55,7 +56,14 @@ class ClassroomManagementNotifier
   }
 
   /// Create a new classroom with a unique join code.
-  Future<Classroom> createClass(String name) async {
+  ///
+  /// [accessibility] is the audience the teacher is creating this class for;
+  /// it's stored on the classroom doc and auto-assigned to every student who
+  /// joins via the code, so learners skip the accessibility-setup wizard.
+  Future<Classroom> createClass(
+    String name, {
+    DisabilityType accessibility = DisabilityType.none,
+  }) async {
     if (!FirebaseService.isConfigured) {
       throw Exception(
           'Cloud sync not connected. Restart the app or check Firebase setup.');
@@ -91,6 +99,7 @@ class ClassroomManagementNotifier
       code: code,
       name: name.trim().isEmpty ? 'Untitled class' : name.trim(),
       teacherId: teacherId,
+      accessibility: accessibility,
       createdAt: now,
       updatedAt: now,
     );
@@ -137,6 +146,34 @@ class ClassroomManagementNotifier
         .doc(updated.id)
         .set({
       'name': updated.name,
+      'updated_at': updated.updatedAt.toIso8601String(),
+    }, SetOptions(merge: true));
+    await HiveService.cacheClassroom(updated);
+  }
+
+  /// Change the accessibility audience for [classroom].
+  ///
+  /// Affects **future** joiners only — students already enrolled keep the
+  /// accessibility profile they were assigned when they joined (changing it
+  /// would mean writing to other learners' profile docs, which the security
+  /// rules don't allow). Sparse-merges just the changed fields so any
+  /// forward-compat fields on the doc survive.
+  Future<void> setClassAccessibility(
+      Classroom classroom, DisabilityType accessibility) async {
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
+    if (accessibility == classroom.accessibility) return;
+    final updated = classroom.copyWith(
+      accessibility: accessibility,
+      updatedAt: DateTime.now(),
+    );
+    await FirebaseService.db
+        .collection('classrooms')
+        .doc(updated.id)
+        .set({
+      'accessibility': updated.accessibility.index,
       'updated_at': updated.updatedAt.toIso8601String(),
     }, SetOptions(merge: true));
     await HiveService.cacheClassroom(updated);

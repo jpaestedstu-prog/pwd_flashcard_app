@@ -4,6 +4,7 @@ import '../../data/models/enums.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
 import 'semantic_colors.dart';
+import 'theme_marker.dart';
 
 /// Main app theme — Soft & Playful (Pastel) theme
 /// With rounded shapes, large touch targets, and warm feel.
@@ -230,23 +231,72 @@ class AppTheme {
     ),
 
     // Theme extensions — palette-aware semantic colors so
-    // SemanticColors.of(context) always resolves on the active theme.
-    extensions: const [SemanticColors.defaults],
+    // SemanticColors.of(context) always resolves on the active theme,
+    // plus the marker that tells HCColor which theme family is active.
+    extensions: const [SemanticColors.defaults, ThemeMarker.light],
   );
 
   // ─── High Contrast Theme (Accessibility) ─────────────
-  static final ThemeData _highContrastTheme = _buildHighContrastTheme();
+  //
+  // One bright accent on pure black. The accent varies per accessibility
+  // profile (see [highContrastFor]) so that Visual / Hearing / Multiple
+  // learners — whose presets all enable high contrast — each get a clearly
+  // distinct look instead of one identical yellow theme.
+  static final ThemeData _highContrastTheme =
+      _buildHighContrastTheme(AppColors.hcPrimary);
   static ThemeData get highContrast => _highContrastTheme;
 
-  static ThemeData _buildHighContrastTheme() => light.copyWith(
+  /// Cached per-profile high-contrast variants.
+  static final Map<DisabilityType, ThemeData> _hcVariants = {};
+
+  /// High-contrast theme with the accessibility profile's signature accent:
+  /// Visual → yellow (maximum luminance contrast), Hearing → cyan,
+  /// Motor → orange, Cognitive → mint green, Multiple → magenta,
+  /// None / null → the classic yellow.
+  static ThemeData highContrastFor(DisabilityType? type) {
+    if (type == null) return _highContrastTheme;
+    return _hcVariants.putIfAbsent(type, () {
+      final accent = switch (type) {
+        DisabilityType.visual => AppColors.hcPrimary, // yellow
+        DisabilityType.hearing => const Color(0xFF00E5FF), // cyan
+        DisabilityType.motor => const Color(0xFFFFAB40), // orange
+        DisabilityType.cognitive => const Color(0xFF69F0AE), // mint
+        DisabilityType.multiple => const Color(0xFFEA80FC), // magenta
+        DisabilityType.none => AppColors.hcPrimary, // yellow
+      };
+      return accent == AppColors.hcPrimary
+          ? _highContrastTheme
+          : _buildHighContrastTheme(accent);
+    });
+  }
+
+  static ThemeData _buildHighContrastTheme(Color accent) => light.copyWith(
     brightness: Brightness.dark,
     scaffoldBackgroundColor: AppColors.hcBackground,
-    colorScheme: const ColorScheme.dark(
-      primary: AppColors.hcPrimary,
-      primaryContainer: Color(0xFF3E2723),
-      secondary: AppColors.hcSecondary,
-      secondaryContainer: Color(0xFF1B5E20),
-      tertiary: AppColors.hcAccent,
+    extensions: const [SemanticColors.highContrast, ThemeMarker.highContrast],
+    // The base light theme's textTheme carries BLACK default colors (merged
+    // in by ThemeData for light brightness). Without this override, any Text
+    // that doesn't set an explicit color renders black-on-black in high
+    // contrast — re-ink the whole ramp white.
+    textTheme: AppTypography.textTheme.apply(
+      bodyColor: AppColors.hcText,
+      displayColor: AppColors.hcText,
+      decorationColor: AppColors.hcText,
+    ),
+    // Same story for bare Icon()s — the light base leaves them near-black.
+    iconTheme: const IconThemeData(color: AppColors.hcText),
+    colorScheme: ColorScheme.dark(
+      primary: accent,
+      primaryContainer: const Color(0xFF3E2723),
+      // Keep the companion accents distinct from the profile accent so
+      // success chips / FABs never blend into the primary.
+      secondary: accent == AppColors.hcSecondary
+          ? AppColors.hcPrimary
+          : AppColors.hcSecondary,
+      secondaryContainer: const Color(0xFF1B5E20),
+      tertiary: accent == AppColors.hcAccent
+          ? AppColors.hcPrimary
+          : AppColors.hcAccent,
       surface: AppColors.hcSurface,
       error: AppColors.hcError,
     ),
@@ -255,7 +305,7 @@ class AppTheme {
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        side: const BorderSide(color: AppColors.hcPrimary, width: 2),
+        side: BorderSide(color: accent, width: 2),
       ),
     ),
     appBarTheme: AppBarTheme(
@@ -269,10 +319,10 @@ class AppTheme {
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.hcSurface,
-      indicatorColor: AppColors.hcPrimary.withValues(alpha: 0.3),
+      indicatorColor: accent.withValues(alpha: 0.3),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const IconThemeData(color: AppColors.hcPrimary, size: 24);
+          return IconThemeData(color: accent, size: 24);
         }
         return const IconThemeData(color: AppColors.hcTextSecondary, size: 24);
       }),
@@ -280,7 +330,7 @@ class AppTheme {
         if (states.contains(WidgetState.selected)) {
           return AppTypography.labelSmall.copyWith(
             fontWeight: FontWeight.w700,
-            color: AppColors.hcPrimary,
+            color: accent,
           );
         }
         return AppTypography.labelSmall.copyWith(
@@ -293,7 +343,7 @@ class AppTheme {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         elevation: 4,
-        backgroundColor: AppColors.hcPrimary,
+        backgroundColor: accent,
         foregroundColor: Colors.black,
         textStyle: AppTypography.buttonText,
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
@@ -303,17 +353,17 @@ class AppTheme {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.hcPrimary,
+        foregroundColor: accent,
         textStyle: AppTypography.buttonText,
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
         minimumSize: const Size(56, 56),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        side: const BorderSide(color: AppColors.hcPrimary, width: 2),
+        side: BorderSide(color: accent, width: 2),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: AppColors.hcPrimary,
+        foregroundColor: accent,
         textStyle: AppTypography.buttonText,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         minimumSize: const Size(56, 56),
@@ -321,7 +371,9 @@ class AppTheme {
       ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: AppColors.hcAccent,
+      backgroundColor: accent == AppColors.hcAccent
+          ? AppColors.hcPrimary
+          : AppColors.hcAccent,
       foregroundColor: Colors.black,
       elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -332,7 +384,7 @@ class AppTheme {
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: AppColors.hcPrimary, width: 2),
+        borderSide: BorderSide(color: accent, width: 2),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -340,7 +392,7 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: AppColors.hcPrimary, width: 2),
+        borderSide: BorderSide(color: accent, width: 2),
       ),
       hintStyle: AppTypography.bodyMedium.copyWith(
         color: AppColors.hcTextSecondary,
@@ -350,26 +402,26 @@ class AppTheme {
       backgroundColor: AppColors.hcSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(28),
-        side: const BorderSide(color: AppColors.hcPrimary, width: 2),
+        side: BorderSide(color: accent, width: 2),
       ),
       elevation: 8,
     ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? AppColors.hcPrimary
+            ? accent
             : AppColors.hcTextSecondary,
       ),
       trackColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? AppColors.hcPrimary.withValues(alpha: 0.4)
+            ? accent.withValues(alpha: 0.4)
             : AppColors.hcBorder,
       ),
     ),
-    sliderTheme: const SliderThemeData(
-      activeTrackColor: AppColors.hcPrimary,
+    sliderTheme: SliderThemeData(
+      activeTrackColor: accent,
       inactiveTrackColor: AppColors.hcBorder,
-      thumbColor: AppColors.hcPrimary,
+      thumbColor: accent,
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
@@ -379,12 +431,12 @@ class AppTheme {
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.hcPrimary),
+        side: BorderSide(color: accent),
       ),
     ),
     chipTheme: ChipThemeData(
       backgroundColor: AppColors.hcSurface,
-      selectedColor: AppColors.hcPrimary,
+      selectedColor: accent,
       labelStyle: AppTypography.labelMedium.copyWith(color: AppColors.hcText),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -396,8 +448,8 @@ class AppTheme {
       thickness: 1,
       space: 24,
     ),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(
-      color: AppColors.hcPrimary,
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: accent,
       linearTrackColor: AppColors.hcBorder,
     ),
   );
@@ -598,7 +650,7 @@ class AppTheme {
         TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
       },
     ),
-    extensions: const [SemanticColors.defaults],
+    extensions: const [SemanticColors.defaults, ThemeMarker.dark],
   );
 
   // ─── Dyslexia-Friendly Theme ─────────────────────────
@@ -632,7 +684,12 @@ class AppTheme {
           onSurface: AppColors.dyslexiaText,
         ),
         scaffoldBackgroundColor: AppColors.dyslexiaBackground,
-        textTheme: AppTypography.dyslexiaTextTheme,
+        // Soft black instead of the pure-black brightness default — per the
+        // BDA style guide, lower contrast halo on the cream background.
+        textTheme: AppTypography.dyslexiaTextTheme.apply(
+          bodyColor: AppColors.dyslexiaText,
+          displayColor: AppColors.dyslexiaText,
+        ),
         appBarTheme: AppBarTheme(
           elevation: 0,
           centerTitle: true,
@@ -755,7 +812,7 @@ class AppTheme {
           thickness: 1,
           space: 24,
         ),
-        extensions: const [SemanticColors.dyslexia],
+        extensions: const [SemanticColors.dyslexia, ThemeMarker.dyslexia],
       );
 
   // ─── Shop Themes ─────────────────────────────────────
@@ -896,6 +953,200 @@ class AppTheme {
         _ => null,
       };
 
+  // ─── Accessibility-profile themes (learners) ─────────
+  // Every accessibility category gets its own signature palette so the six
+  // profiles are clearly distinct from one another (and from the educator
+  // themes). Student (Classroom) profiles keep the cool/neutral backdrop;
+  // Child (Family Group) profiles get a visibly warmer wash of the same
+  // palette, so Student vs Child stay distinct within each category too.
+  //
+  //   Visual    → indigo + amber   (high-legibility)
+  //   Hearing   → teal + sky       (visual-first)
+  //   Motor     → coral + sand     (big & bold)
+  //   Cognitive → honey + cream    (calm focus)
+  //   Multiple  → violet + rose    (all access)
+  //   None      → meadow green     (fresh)
+  //
+  // Sits below accessibility MODES and shop themes in the cascade, so high
+  // contrast / dyslexia / an equipped shop theme always win.
+
+  /// Warm Family-Group wash applied to the Child variant of each palette.
+  static Color _warmed(Color base, [int alpha = 0x2E]) =>
+      Color.alphaBlend(const Color(0xFFFFA726).withAlpha(alpha), base);
+
+  /// Cached learner themes, keyed by "type-isChild".
+  static final Map<String, ThemeData> _learnerThemes = {};
+  static final Map<DisabilityType, ThemeData> _learnerDarkThemes = {};
+
+  /// The light theme for a learner's accessibility profile, or null for
+  /// educators / players / no profile (they fall through to [groupTheme]).
+  static ThemeData? learnerTheme(DisabilityType? type, UserRole? role) {
+    if (type == null) return null;
+    if (role != UserRole.student && role != UserRole.child) return null;
+    final isChild = role == UserRole.child;
+    return _learnerThemes.putIfAbsent('${type.name}-$isChild', () {
+      final p = _learnerPalette(type);
+      return _buildShopTheme(
+        name: 'Learner-${type.name}',
+        primary: p.primary,
+        primaryLight: p.primaryLight,
+        secondary: p.secondary,
+        secondaryLight: p.secondaryLight,
+        accent: p.accent,
+        accentLight: p.accentLight,
+        background: isChild ? _warmed(p.background) : p.background,
+        surface: isChild ? const Color(0xFFFFFDF6) : const Color(0xFFFFFFFF),
+        card: isChild ? _warmed(p.card, 0x16) : p.card,
+      );
+    });
+  }
+
+  /// The dark variant of a learner's accessibility-profile theme, or null
+  /// when there is no learner profile (falls through to stock [dark]).
+  static ThemeData? learnerThemeDark(DisabilityType? type) {
+    if (type == null) return null;
+    return _learnerDarkThemes.putIfAbsent(type, () {
+      final p = _learnerPalette(type);
+      return _buildShopThemeDark(
+        primary: p.dkPrimary,
+        primaryContainer: p.dkPrimaryContainer,
+        secondary: p.dkSecondary,
+        accent: p.dkAccent,
+        background: p.dkBackground,
+        surface: p.dkSurface,
+        card: p.dkCard,
+        border: p.dkBorder,
+        semantic: p.dkSemantic,
+      );
+    });
+  }
+
+  static _LearnerPalette _learnerPalette(DisabilityType type) =>
+      switch (type) {
+        // Visual — indigo + amber, strong hue steps for low vision.
+        DisabilityType.visual => const _LearnerPalette(
+            primary: Color(0xFF3F51B5),
+            primaryLight: Color(0xFFC5CAE9),
+            secondary: Color(0xFF00695C),
+            secondaryLight: Color(0xFFB2DFDB),
+            accent: Color(0xFFFFB300),
+            accentLight: Color(0xFFFFECB3),
+            background: Color(0xFFEDF0FA),
+            card: Color(0xFFF6F8FF),
+            dkPrimary: Color(0xFF9FA8DA),
+            dkPrimaryContainer: Color(0xFF3949AB),
+            dkSecondary: Color(0xFF80CBC4),
+            dkAccent: Color(0xFFFFD54F),
+            dkBackground: Color(0xFF0E1126),
+            dkSurface: Color(0xFF181D3A),
+            dkCard: Color(0xFF20264A),
+            dkBorder: Color(0xFF2E3560),
+            dkSemantic: SemanticColors.galaxyDark,
+          ),
+        // Hearing — teal + sky, crisp visual-first identity.
+        DisabilityType.hearing => const _LearnerPalette(
+            primary: Color(0xFF00838F),
+            primaryLight: Color(0xFFB2EBF2),
+            secondary: Color(0xFF0277BD),
+            secondaryLight: Color(0xFFB3E5FC),
+            accent: Color(0xFF26C6DA),
+            accentLight: Color(0xFFE0F7FA),
+            background: Color(0xFFE9F6F8),
+            card: Color(0xFFF3FBFC),
+            dkPrimary: Color(0xFF4DD0E1),
+            dkPrimaryContainer: Color(0xFF00838F),
+            dkSecondary: Color(0xFF81D4FA),
+            dkAccent: Color(0xFF80DEEA),
+            dkBackground: Color(0xFF06222A),
+            dkSurface: Color(0xFF0E3440),
+            dkCard: Color(0xFF14424F),
+            dkBorder: Color(0xFF1D4C5A),
+            dkSemantic: SemanticColors.oceanDark,
+          ),
+        // Motor — coral + sand, generous and bold.
+        DisabilityType.motor => const _LearnerPalette(
+            primary: Color(0xFFD84315),
+            primaryLight: Color(0xFFFFCCBC),
+            secondary: Color(0xFF8D6E63),
+            secondaryLight: Color(0xFFD7CCC8),
+            accent: Color(0xFFFF8A65),
+            accentLight: Color(0xFFFBE9E7),
+            background: Color(0xFFFDF1EC),
+            card: Color(0xFFFFF7F3),
+            dkPrimary: Color(0xFFFFAB91),
+            dkPrimaryContainer: Color(0xFFBF360C),
+            dkSecondary: Color(0xFFBCAAA4),
+            dkAccent: Color(0xFFFF8A65),
+            dkBackground: Color(0xFF23120C),
+            dkSurface: Color(0xFF33201A),
+            dkCard: Color(0xFF3E2822),
+            dkBorder: Color(0xFF4E3129),
+            dkSemantic: SemanticColors.sunsetDark,
+          ),
+        // Cognitive — honey + cream, low-stimulation warmth. (The preset
+        // also enables Dyslexia mode, which then takes precedence; this
+        // palette shows when that mode is switched off.)
+        DisabilityType.cognitive => const _LearnerPalette(
+            primary: Color(0xFF8F5F00),
+            primaryLight: Color(0xFFFFE0B2),
+            secondary: Color(0xFF6D5B43),
+            secondaryLight: Color(0xFFE3D9C6),
+            accent: Color(0xFFFFB74D),
+            accentLight: Color(0xFFFFF3E0),
+            background: Color(0xFFFAF3E3),
+            card: Color(0xFFFFFBF0),
+            dkPrimary: Color(0xFFFFCC80),
+            dkPrimaryContainer: Color(0xFF8F5F00),
+            dkSecondary: Color(0xFFD7CCC8),
+            dkAccent: Color(0xFFFFB74D),
+            dkBackground: Color(0xFF201808),
+            dkSurface: Color(0xFF2E2410),
+            dkCard: Color(0xFF382C16),
+            dkBorder: Color(0xFF4A3B1E),
+            dkSemantic: SemanticColors.sunsetDark,
+          ),
+        // Multiple — violet + rose, every modality welcome.
+        DisabilityType.multiple => const _LearnerPalette(
+            primary: Color(0xFF7E57C2),
+            primaryLight: Color(0xFFD1C4E9),
+            secondary: Color(0xFFAD1457),
+            secondaryLight: Color(0xFFF8BBD0),
+            accent: Color(0xFFBA68C8),
+            accentLight: Color(0xFFF3E5F5),
+            background: Color(0xFFF4EFFB),
+            card: Color(0xFFFAF6FF),
+            dkPrimary: Color(0xFFB39DDB),
+            dkPrimaryContainer: Color(0xFF5E35B1),
+            dkSecondary: Color(0xFFF48FB1),
+            dkAccent: Color(0xFFCE93D8),
+            dkBackground: Color(0xFF17102A),
+            dkSurface: Color(0xFF241A3E),
+            dkCard: Color(0xFF2D224C),
+            dkBorder: Color(0xFF383060),
+            dkSemantic: SemanticColors.galaxyDark,
+          ),
+        // None — meadow green, fresh and standard.
+        DisabilityType.none => const _LearnerPalette(
+            primary: Color(0xFF2E7D32),
+            primaryLight: Color(0xFFC8E6C9),
+            secondary: Color(0xFF00695C),
+            secondaryLight: Color(0xFFB2DFDB),
+            accent: Color(0xFF9CCC65),
+            accentLight: Color(0xFFF1F8E9),
+            background: Color(0xFFF0F7EE),
+            card: Color(0xFFF7FBF4),
+            dkPrimary: Color(0xFF81C784),
+            dkPrimaryContainer: Color(0xFF2E7D32),
+            dkSecondary: Color(0xFF80CBC4),
+            dkAccent: Color(0xFFA5D6A7),
+            dkBackground: Color(0xFF0F1B12),
+            dkSurface: Color(0xFF1A2B1F),
+            dkCard: Color(0xFF223528),
+            dkBorder: Color(0xFF2E4636),
+            dkSemantic: SemanticColors.forestDark,
+          ),
+      };
+
   /// Builds a shop theme from the given color palette.
   /// Reuses the light theme's structure/shapes/sizes, just swaps colors.
   static ThemeData _buildShopTheme({
@@ -912,7 +1163,7 @@ class AppTheme {
     SemanticColors semantic = SemanticColors.defaults,
   }) {
     return light.copyWith(
-      extensions: [semantic],
+      extensions: [semantic, ThemeMarker.light],
       colorScheme: ColorScheme.light(
         primary: primary,
         primaryContainer: primaryLight,
@@ -1255,7 +1506,7 @@ class AppTheme {
         inactiveTrackColor: border,
         thumbColor: primary,
       ),
-      extensions: [semantic],
+      extensions: [semantic, ThemeMarker.dark],
     );
   }
 
@@ -1274,6 +1525,48 @@ class AppTheme {
     });
     return theme.copyWith(pageTransitionsTheme: instant);
   }
+}
+
+/// Signature palette for one accessibility category — light + dark colors
+/// consumed by [AppTheme.learnerTheme] / [AppTheme.learnerThemeDark].
+class _LearnerPalette {
+  final Color primary;
+  final Color primaryLight;
+  final Color secondary;
+  final Color secondaryLight;
+  final Color accent;
+  final Color accentLight;
+  final Color background;
+  final Color card;
+  final Color dkPrimary;
+  final Color dkPrimaryContainer;
+  final Color dkSecondary;
+  final Color dkAccent;
+  final Color dkBackground;
+  final Color dkSurface;
+  final Color dkCard;
+  final Color dkBorder;
+  final SemanticColors dkSemantic;
+
+  const _LearnerPalette({
+    required this.primary,
+    required this.primaryLight,
+    required this.secondary,
+    required this.secondaryLight,
+    required this.accent,
+    required this.accentLight,
+    required this.background,
+    required this.card,
+    required this.dkPrimary,
+    required this.dkPrimaryContainer,
+    required this.dkSecondary,
+    required this.dkAccent,
+    required this.dkBackground,
+    required this.dkSurface,
+    required this.dkCard,
+    required this.dkBorder,
+    required this.dkSemantic,
+  });
 }
 
 /// Page transition builder that returns the destination immediately,

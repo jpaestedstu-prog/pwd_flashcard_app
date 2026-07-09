@@ -1,18 +1,20 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_colors.dart';
+import '../data/models/enums.dart';
 import '../providers/app_providers.dart';
 
 /// The mascot's current emotional expression / action.
 enum MascotMood {
-  idle,       // Default gentle floating
-  happy,      // After correct answer or star earned
-  excited,    // After level-up or game complete
-  thinking,   // During quiz/assessment
-  cheering,   // Perfect score or achievement
-  sleeping,   // Idle for too long
-  waving,     // First visit / greeting
+  idle, // Default gentle floating
+  happy, // After correct answer or star earned
+  excited, // After level-up or game complete
+  thinking, // During quiz/assessment
+  cheering, // Perfect score or achievement
+  sleeping, // Idle for too long
+  waving, // First visit / greeting
 }
 
 /// Riverpod provider to control the mascot mood from anywhere.
@@ -49,6 +51,11 @@ class _AnimatedMascotBuddyState extends ConsumerState<AnimatedMascotBuddy>
   late final AnimationController _reactionController;
   late final AnimationController _blinkController;
 
+  /// Pending timer for the next blink. Held so it can be cancelled in
+  /// [dispose] — otherwise the one-shot delay outlives the widget (a leak the
+  /// framework flags as a still-pending timer after the tree is disposed).
+  Timer? _blinkTimer;
+
   late Offset _position;
   bool _isDragging = false;
 
@@ -75,23 +82,29 @@ class _AnimatedMascotBuddyState extends ConsumerState<AnimatedMascotBuddy>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
-    _startBlinkLoop();
+    _scheduleBlink();
   }
 
-  void _startBlinkLoop() async {
-    while (mounted) {
-      await Future.delayed(
-        Duration(milliseconds: 2500 + math.Random().nextInt(3000)),
-      );
-      if (!mounted) return;
-      await _blinkController.forward();
-      if (!mounted) return;
-      await _blinkController.reverse();
-    }
+  /// Schedules a single blink after a random idle delay, then reschedules
+  /// itself. Uses a cancellable [Timer] (not a `Future.delayed` loop) so the
+  /// pending delay is torn down in [dispose] instead of firing after unmount.
+  void _scheduleBlink() {
+    _blinkTimer = Timer(
+      Duration(milliseconds: 2500 + math.Random().nextInt(3000)),
+      () async {
+        if (!mounted) return;
+        await _blinkController.forward();
+        if (!mounted) return;
+        await _blinkController.reverse();
+        if (!mounted) return;
+        _scheduleBlink();
+      },
+    );
   }
 
   @override
   void dispose() {
+    _blinkTimer?.cancel();
     _floatController.dispose();
     _reactionController.dispose();
     _blinkController.dispose();
@@ -108,6 +121,14 @@ class _AnimatedMascotBuddyState extends ConsumerState<AnimatedMascotBuddy>
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     if (settings.reducedMotion) return const SizedBox.shrink();
+
+    // Defer to the floating AI Companion when it's active for this learner, so
+    // the two buddies never overlap in the bottom-right. Turning the companion
+    // off brings the standalone owl back as the lightweight fallback mascot.
+    final role = ref.watch(profileProvider.select((p) => p?.role));
+    if (settings.aiCompanionEnabled && (role?.isLearner ?? false)) {
+      return const SizedBox.shrink();
+    }
 
     final mood = ref.watch(mascotMoodProvider);
 
@@ -140,10 +161,14 @@ class _AnimatedMascotBuddyState extends ConsumerState<AnimatedMascotBuddy>
                 onPanUpdate: (details) {
                   setState(() {
                     _position = Offset(
-                      (_position.dx + details.delta.dx)
-                          .clamp(0, constraints.maxWidth - widget.size),
-                      (_position.dy + details.delta.dy)
-                          .clamp(0, constraints.maxHeight - widget.size),
+                      (_position.dx + details.delta.dx).clamp(
+                        0,
+                        constraints.maxWidth - widget.size,
+                      ),
+                      (_position.dy + details.delta.dy).clamp(
+                        0,
+                        constraints.maxHeight - widget.size,
+                      ),
                     );
                   });
                 },
@@ -171,7 +196,8 @@ class _AnimatedMascotBuddyState extends ConsumerState<AnimatedMascotBuddy>
                   ]),
                   builder: (context, _) {
                     // Float offset
-                    final floatY = math.sin(_floatController.value * math.pi) * 4;
+                    final floatY =
+                        math.sin(_floatController.value * math.pi) * 4;
 
                     // Reaction bounce
                     final reactionT = _reactionController.value;
@@ -182,8 +208,8 @@ class _AnimatedMascotBuddyState extends ConsumerState<AnimatedMascotBuddy>
                     final tilt = mood == MascotMood.excited
                         ? math.sin(reactionT * math.pi * 4) * 0.1
                         : mood == MascotMood.thinking
-                            ? 0.05
-                            : 0.0;
+                        ? 0.05
+                        : 0.0;
 
                     return Transform.translate(
                       offset: Offset(0, -floatY + bounce),
@@ -236,10 +262,7 @@ class _MascotBody extends StatelessWidget {
           ],
         ),
         child: CustomPaint(
-          painter: _MascotPainter(
-            mood: mood,
-            blinkProgress: blinkProgress,
-          ),
+          painter: _MascotPainter(mood: mood, blinkProgress: blinkProgress),
           child: _speechBubble,
         ),
       ),
@@ -300,21 +323,27 @@ class _MascotPainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [
-          AppColors.primary,
-          AppColors.primaryDark,
-        ],
+        colors: [AppColors.primary, AppColors.primaryDark],
       ).createShader(Rect.fromLTWH(0, 0, w, h));
 
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, cy + h * 0.05), width: w * 0.85, height: h * 0.8),
+      Rect.fromCenter(
+        center: Offset(cx, cy + h * 0.05),
+        width: w * 0.85,
+        height: h * 0.8,
+      ),
       bodyPaint,
     );
 
     // Belly — lighter oval
-    final bellyPaint = Paint()..color = AppColors.primaryLight.withValues(alpha: 0.6);
+    final bellyPaint = Paint()
+      ..color = AppColors.primaryLight.withValues(alpha: 0.6);
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, cy + h * 0.15), width: w * 0.5, height: h * 0.4),
+      Rect.fromCenter(
+        center: Offset(cx, cy + h * 0.15),
+        width: w * 0.5,
+        height: h * 0.4,
+      ),
       bellyPaint,
     );
 
@@ -366,11 +395,12 @@ class _MascotPainter extends CustomPainter {
     if (blinkProgress < 0.5) {
       // Pupil position based on mood
       final pupilOffsetX = mood == MascotMood.thinking ? -2.0 : 0.0;
-      final pupilOffsetY = mood == MascotMood.happy || mood == MascotMood.excited
+      final pupilOffsetY =
+          mood == MascotMood.happy || mood == MascotMood.excited
           ? -1.0
           : mood == MascotMood.sleeping
-              ? 2.0
-              : 0.0;
+          ? 2.0
+          : 0.0;
 
       canvas.drawCircle(
         Offset(leftEyeX + pupilOffsetX, eyeY + pupilOffsetY),
@@ -413,19 +443,22 @@ class _MascotPainter extends CustomPainter {
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round;
 
-    if (mood == MascotMood.happy || mood == MascotMood.excited || mood == MascotMood.cheering) {
+    if (mood == MascotMood.happy ||
+        mood == MascotMood.excited ||
+        mood == MascotMood.cheering) {
       // Smile
       final smilePath = Path();
       smilePath.moveTo(cx - w * 0.08, cy + h * 0.16);
-      smilePath.quadraticBezierTo(cx, cy + h * 0.22, cx + w * 0.08, cy + h * 0.16);
+      smilePath.quadraticBezierTo(
+        cx,
+        cy + h * 0.22,
+        cx + w * 0.08,
+        cy + h * 0.16,
+      );
       canvas.drawPath(smilePath, mouthPaint);
     } else if (mood == MascotMood.thinking) {
       // Small 'o' mouth
-      canvas.drawCircle(
-        Offset(cx, cy + h * 0.17),
-        w * 0.03,
-        mouthPaint,
-      );
+      canvas.drawCircle(Offset(cx, cy + h * 0.17), w * 0.03, mouthPaint);
     } else if (mood == MascotMood.sleeping) {
       // Flat line
       canvas.drawLine(
@@ -438,23 +471,42 @@ class _MascotPainter extends CustomPainter {
     // Feet
     final feetPaint = Paint()..color = AppColors.warning;
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx - w * 0.12, cy + h * 0.4), width: w * 0.18, height: h * 0.08),
+      Rect.fromCenter(
+        center: Offset(cx - w * 0.12, cy + h * 0.4),
+        width: w * 0.18,
+        height: h * 0.08,
+      ),
       feetPaint,
     );
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx + w * 0.12, cy + h * 0.4), width: w * 0.18, height: h * 0.08),
+      Rect.fromCenter(
+        center: Offset(cx + w * 0.12, cy + h * 0.4),
+        width: w * 0.18,
+        height: h * 0.08,
+      ),
       feetPaint,
     );
 
     // Cheek blush (when happy/excited)
-    if (mood == MascotMood.happy || mood == MascotMood.excited || mood == MascotMood.cheering) {
-      final blushPaint = Paint()..color = AppColors.accent.withValues(alpha: 0.3);
+    if (mood == MascotMood.happy ||
+        mood == MascotMood.excited ||
+        mood == MascotMood.cheering) {
+      final blushPaint = Paint()
+        ..color = AppColors.accent.withValues(alpha: 0.3);
       canvas.drawOval(
-        Rect.fromCenter(center: Offset(cx - w * 0.25, cy + h * 0.06), width: w * 0.12, height: h * 0.06),
+        Rect.fromCenter(
+          center: Offset(cx - w * 0.25, cy + h * 0.06),
+          width: w * 0.12,
+          height: h * 0.06,
+        ),
         blushPaint,
       );
       canvas.drawOval(
-        Rect.fromCenter(center: Offset(cx + w * 0.25, cy + h * 0.06), width: w * 0.12, height: h * 0.06),
+        Rect.fromCenter(
+          center: Offset(cx + w * 0.25, cy + h * 0.06),
+          width: w * 0.12,
+          height: h * 0.06,
+        ),
         blushPaint,
       );
     }

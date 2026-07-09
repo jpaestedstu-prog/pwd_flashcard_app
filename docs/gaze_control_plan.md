@@ -299,6 +299,108 @@ highlight navigates ◀ ▶ ▲ ▼ consistently throughout. (The setting is rel
   a non-Home-tab case in `gaze_nav_test`, and a stale-owner guard in
   `gaze_home_grid_test`. `flutter analyze` clean; full suite green.
 
+#### Phase 6d — D-pad reaches **all content** on every hub ✅ *(done)*
+Phase 6c covered the feature-tile grids; 6d extends the same reach to every
+remaining actionable element on the five tab screens, so nothing a finger can
+tap on a hub is unreachable hands-free:
+- ✅ **Home (Student / Player-with-Progress):** the Star Shop + Settings app-bar
+  buttons (topmost gaze row), the Player Profile banner, the Join-a-class /
+  Join-the-class CTAs, the Daily Challenge card (opens the full
+  `/daily-challenge` screen, same as its "View All"), the Pending Assignments
+  banner (only registered while visible), and the **entire Vocabulary
+  Categories grid** (switched to an eager `SliverChildListDelegate`, exactly
+  like the Cards hub, so every category card is a cell in visual order).
+- ✅ **Child Home:** the Accessibility quick button (topmost row) and the
+  "Switch profile" footer. **Games:** the Play Together banner (row above the
+  game cards). **Progress:** the Customize (palette) app-bar action (topmost
+  row). **Guest Player home:** the floating Accessibility quick button (first
+  row — it is the topmost control; the scroll body's sections register at
+  layout time, after it). Cards/Stories already published everything
+  learner-facing.
+- ✅ Rows are registered strictly in **visual top-to-bottom order** (source
+  order of the sliver lists), so ▲ ▼ walks the screen the way it reads.
+- ✅ Tests: `gaze_hub_coverage_test` pumps all six hub screens with gaze +
+  feature tiles on and asserts the published labels (incl. Learning Paths,
+  Guided Practice, every category/deck) and no ghost cells for hidden banners.
+  Verified on-device (Xiaomi tablet, Player-with-Progress + Student profiles):
+  camera held by the shell, hint chip + tab ring on all five tabs, layouts
+  unchanged with gaze on.
+
+#### Phase 6e — Voice commands get D-pad parity ✅ *(done)*
+Before 6e, spoken commands could only *name* a target (a tile/tab/button label)
+plus "scroll up/down" and "go back" — the directional words did nothing on the
+hubs, so voice felt broken next to the head D-pad. 6e gives voice the same
+movement model as the camera:
+- ✅ **Movement intents** in `resolveDpadVoiceCommand`
+  (lib/features/gaze_control/logic/voice_commands.dart): "left" / "right" /
+  "up" / "down" (and "move/go/look ‹dir›", Filipino *kaliwa / kanan / taas /
+  itaas / baba / ibaba*) move the same `GazeGridCursor` the head gestures move,
+  in both `NavGazeScope` (hubs + tabs) and `GazeDpadScope` (flashcard viewer).
+- ✅ **"select"** (also *open / choose / press / ok / piliin / buksan /
+  pindutin / ito*…) commits the focused cell like a blink; on `GazeScope`
+  edge screens it fires the screen's blink action.
+- ✅ **"next" / "back"** prefer a button *actually labelled* that way (the
+  viewer's Next / Previous, bilingually) and degrade to a ▶ / ◀ cursor move on
+  grids without one — so the words work everywhere.
+- ✅ **Safer matching:** directional words match whole words only ("Groups" ≠
+  "up", "Countdown" ≠ "down"), movement phrases must be the whole utterance
+  (a story titled "The Way Back Home" still opens by name; bare "back" moves
+  the cursor), and the Next/Previous bridge only accepts ≤2-word labels.
+- ✅ Tests: `gaze_voice_test` (resolver semantics incl. the collision cases) +
+  new widget tests in `gaze_nav_test` / `gaze_dpad_scope_test` that feed
+  phrases through `VoiceControlMixin.onVoiceCommand` exactly as the speech
+  recogniser would, asserting cursor movement, select-commit, label activation
+  and disabled-cell safety.
+
+**Field fixes (same day, after on-device testing showed commands being
+dropped):** the failure layer was *transcript arrival*, not resolution.
+`VoiceCommandController` now:
+- fires a command from the **first stable partial** (~0.7 s of no hypothesis
+  change) instead of waiting for a final result — on real devices many
+  sessions die (`error_no_match` / `error_speech_timeout`) without ever
+  delivering a final, silently dropping what was heard, and a final otherwise
+  needs the full silence window;
+- **flushes the last partial when a session dies**, deduplicates the final
+  that follows a dispatched partial (incl. fuzzy re-spellings "lift"→"left"),
+  and dispatches only the **new suffix** of a session's accumulating
+  transcript ("left … right" fires left, then right);
+- **backs off exponentially on rejection storms**: the Honor tablet's
+  recogniser kills sessions ~50 ms after arming with `error_client` when
+  re-armed too soon after 'done' — every session end now gets a settle tick
+  (400 ms) and instant deaths back off 0.8→4.8 s until a session survives;
+- logs `VoiceCmd heard/dispatch/skip` + each scope logs `VoiceCmd nav/dpad/
+  scope "<text>" → intent` (debug builds) — `adb logcat | grep VoiceCmd`
+  shows the whole chain.
+
+The resolver additionally tolerates what recognisers actually emit:
+punctuation/casing ("Left."), split Filipino words ("kali wa"→kaliwa),
+same-length one-edit near-misses ("lift"→left, "dawn"→down — never
+"black"→"back"), homophones ("write"→right, "cannon"/"canon"→kanan), and an
+accumulated multi-command final resolves to the **most recently spoken**
+directional. Controller behaviour is unit-tested with a scriptable fake
+recogniser (`test/voice_command_controller_test.dart`, `fake_async`).
+
+More hardening layers from the same session:
+- a **4 s timeout on the listen start** (mid-storm the platform can simply
+  never confirm the session, which used to latch the `_arming` guard and kill
+  voice until the screen was re-entered) and a **zombie watchdog** (a session
+  holding the mic ~15 s with no results is cancelled so the loop can re-arm);
+- **`FLAG_KEEP_SCREEN_ON`** in `MainActivity`: hands-free learners never touch
+  the screen, so the touch-based display timeout blanked it mid-use — and
+  Honor's power manager then *froze the whole process* (camera, mic, every
+  timer; logcat goes totally silent). Foreground-only, no wakelock permission
+  needed;
+- **recogniser recreate on a persistent storm** (`SttService.reset`): on the
+  Honor tablet the on-device recogniser (`GoogleTTSRecognitionService`) can
+  wedge into `error_client` on *every* session — each dies ~50 ms after arming
+  regardless of spacing (verified: 28/30 sessions rejected over 150 s even at
+  4.8 s backoff). The plugin's `initialize()` short-circuits once it has
+  succeeded, so re-`listen()` never re-binds; only a **fresh `SpeechToText`
+  instance** re-creates the underlying Android `SpeechRecognizer` client. After
+  `_resetAfterRejections` (4) consecutive rejections the controller calls
+  `reset()` (cancel → new instance → re-init) before the next attempt, so a
+  client-side wedge self-heals instead of needing an app restart.
+
 ---
 
 ## 4. Free-tier / cost confirmation

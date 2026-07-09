@@ -6,7 +6,9 @@ import 'package:pwdpwdpwd/core/services/sync_queue/sync_queue_storage.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/goals/screens/goals_screen.dart';
+import 'package:pwdpwdpwd/features/home/screens/child_home_screen.dart';
 import 'package:pwdpwdpwd/features/home/screens/educator_home_screen.dart';
+import 'package:pwdpwdpwd/features/home/screens/player_home_screen.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/screens/mood_check_in_screen.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/screens/mood_history_screen.dart';
 import 'package:pwdpwdpwd/features/notebook/screens/notebook_screen.dart';
@@ -31,20 +33,23 @@ import 'support/screen_matrix.dart';
 /// `profile.id` / branch on role build — without dragging in
 /// `ProfileNotifier.build`'s Firebase remote-changes stream.
 class _StubProfileNotifier extends ProfileNotifier {
-  _StubProfileNotifier(this._role);
+  _StubProfileNotifier(this._role, {this.guest = false});
   final UserRole _role;
+  final bool guest;
 
   @override
   UserProfile? build() => UserProfile(
         id: 'test-profile',
         name: 'Test User',
         role: _role,
+        isGuestPlayer: guest,
         createdAt: DateTime(2026),
       );
 }
 
-List<Override> _asRole(UserRole role) =>
-    [profileProvider.overrideWith(() => _StubProfileNotifier(role))];
+List<Override> _asRole(UserRole role, {bool guest = false}) => [
+      profileProvider.overrideWith(() => _StubProfileNotifier(role, guest: guest))
+    ];
 
 void main() {
   setUpAll(() async {
@@ -149,4 +154,28 @@ void main() {
       );
     });
   }
+
+  // The Guest Player home is a centered, stretched Column (not a sliver hub),
+  // so short viewports are its risk case: it must scroll instead of
+  // bottom-overflowing on phones / landscape / split-screen (regression: it
+  // used to overflow below ~750 dp of height at normal text scale).
+  testWidgets('PlayerHomeScreen (guest) survives the device matrix',
+      (tester) async {
+    await expectScreenNoOverflowAcrossDevices(
+      tester,
+      () => const PlayerHomeScreen(),
+      overrides: _asRole(UserRole.player, guest: true),
+    );
+  });
+
+  // The Child home mirrors the Student hub structure (scrolling sliver grids),
+  // rendered here across the matrix so its kid-sized tiles stay overflow-safe
+  // on phones and at large font scales.
+  testWidgets('ChildHomeScreen survives the device matrix', (tester) async {
+    await expectScreenNoOverflowAcrossDevices(
+      tester,
+      () => const ChildHomeScreen(),
+      overrides: _asRole(UserRole.child),
+    );
+  });
 }

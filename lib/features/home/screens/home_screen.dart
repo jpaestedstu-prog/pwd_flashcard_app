@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -164,35 +165,59 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                           // Connectivity indicator (visible only when offline)
                           const ConnectivityIndicator(),
-                          // Settings gear
-                          if (ref.watch(
-                            gamificationFeatureProvider(
-                              GamificationFeature.shop,
-                            ),
-                          ))
-                            Semantics(
-                              button: true,
-                              label: 'Open star shop',
-                              child: IconButton(
-                                onPressed: () => context.push('/shop'),
-                                icon: const Icon(Icons.store_rounded),
-                                iconSize: 28,
-                                color: hc.textSecondary,
-                              ),
-                            ).animate().fadeIn(delay: 190.ms),
-                          Semantics(
-                                button: true,
-                                label: 'Open settings',
-                                child: IconButton(
-                                  onPressed: () => context.push('/settings'),
-                                  icon: const Icon(Icons.settings_rounded),
-                                  iconSize: 28,
-                                  color: hc.textSecondary,
+                          // Shop + Settings — one gaze row so the D-pad can
+                          // reach them (they're the topmost tile row).
+                          ...gazeGrid.section(
+                            columns: 2,
+                            expand: false,
+                            entries: [
+                              if (ref.watch(
+                                gamificationFeatureProvider(
+                                  GamificationFeature.shop,
                                 ),
-                              )
-                              .animate()
-                              .fadeIn(delay: 200.ms)
-                              .rotate(begin: -0.1, end: 0, duration: 500.ms),
+                              ))
+                                (
+                                  tile: Semantics(
+                                    button: true,
+                                    label: 'Open star shop',
+                                    child: IconButton(
+                                      onPressed: () => context.push('/shop'),
+                                      icon: const Icon(Icons.store_rounded),
+                                      iconSize: 28,
+                                      color: hc.textSecondary,
+                                    ),
+                                  ).animate().fadeIn(delay: 190.ms),
+                                  cell: GazeTileCell(
+                                    label: 'Star Shop',
+                                    onActivate: () => context.push('/shop'),
+                                  ),
+                                ),
+                              (
+                                tile: Semantics(
+                                      button: true,
+                                      label: 'Open settings',
+                                      child: IconButton(
+                                        onPressed: () =>
+                                            context.push('/settings'),
+                                        icon: const Icon(Icons.settings_rounded),
+                                        iconSize: 28,
+                                        color: hc.textSecondary,
+                                      ),
+                                    )
+                                    .animate()
+                                    .fadeIn(delay: 200.ms)
+                                    .rotate(
+                                      begin: -0.1,
+                                      end: 0,
+                                      duration: 500.ms,
+                                    ),
+                                cell: GazeTileCell(
+                                  label: 'Settings',
+                                  onActivate: () => context.push('/settings'),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -219,9 +244,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
-                        child: _JoinClassCta(
-                          onJoin: () => context.push('/join-class'),
-                        ).animate().fadeIn(duration: 400.ms, delay: 180.ms),
+                        child: gazeGrid.section(
+                          columns: 1,
+                          expand: false,
+                          entries: [
+                            (
+                              tile: _JoinClassCta(
+                                onJoin: () => context.push('/join-class'),
+                              ).animate().fadeIn(
+                                duration: 400.ms,
+                                delay: 180.ms,
+                              ),
+                              cell: GazeTileCell(
+                                label: 'Join a class',
+                                onActivate: () => context.push('/join-class'),
+                              ),
+                            ),
+                          ],
+                        ).first,
                       ),
                     ),
 
@@ -236,9 +276,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
-                        child: _LiveClassCta(
-                          onTap: () => context.push('/live-session'),
-                        ).animate().fadeIn(duration: 400.ms, delay: 180.ms),
+                        child: gazeGrid.section(
+                          columns: 1,
+                          expand: false,
+                          entries: [
+                            (
+                              tile: _LiveClassCta(
+                                onTap: () => context.push('/live-session'),
+                              ).animate().fadeIn(
+                                duration: 400.ms,
+                                delay: 180.ms,
+                              ),
+                              cell: GazeTileCell(
+                                label: 'Join the class',
+                                onActivate: () => context.push('/live-session'),
+                              ),
+                            ),
+                          ],
+                        ).first,
                       ),
                     ),
 
@@ -257,7 +312,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
-                      child:
+                      child: gazeGrid.section(
+                        columns: 1,
+                        expand: false,
+                        entries: [
+                          (
+                            cell: GazeTileCell(
+                              label: 'Player Profile',
+                              onActivate: () =>
+                                  context.push('/gamification-dashboard'),
+                            ),
+                            tile:
                           Semantics(
                                 button: true,
                                 label:
@@ -301,7 +366,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                   style: AppTypography
                                                       .labelLarge
                                                       .copyWith(
-                                                        color: Colors.white,
+                                                        color: hc.textOnPrimary,
                                                         fontWeight:
                                                             FontWeight.bold,
                                                       ),
@@ -310,15 +375,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                   'View your stats, rewards & achievements',
                                                   style: AppTypography.bodySmall
                                                       .copyWith(
-                                                        color: Colors.white70,
+                                                        color: hc.textOnPrimary
+                                                            .withValues(
+                                                                alpha: 0.7),
                                                       ),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                          const Icon(
+                                          Icon(
                                             Icons.chevron_right_rounded,
-                                            color: Colors.white70,
+                                            color: hc.textOnPrimary
+                                                .withValues(alpha: 0.7),
                                           ),
                                         ],
                                       ),
@@ -329,6 +397,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               .animate()
                               .fadeIn(duration: 400.ms, delay: 185.ms)
                               .slideY(begin: 0.08, end: 0),
+                          ),
+                        ],
+                      ).first,
                     ),
                   ),
 
@@ -342,23 +413,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: RepaintBoundary(
                         child: Padding(
                           padding: EdgeInsets.symmetric(horizontal: padding),
-                          child: _DailyWordCard()
-                              .animate()
-                              .fadeIn(duration: 400.ms, delay: 200.ms)
-                              .slideY(begin: 0.08, end: 0),
+                          // One gaze cell for the whole card: opening it goes
+                          // to the full Daily Challenge screen (same as the
+                          // card's "View All"), where the quiz can be played.
+                          child: gazeGrid.section(
+                            columns: 1,
+                            expand: false,
+                            entries: [
+                              (
+                                tile: _DailyWordCard()
+                                    .animate()
+                                    .fadeIn(duration: 400.ms, delay: 200.ms)
+                                    .slideY(begin: 0.08, end: 0),
+                                cell: GazeTileCell(
+                                  label: 'Daily Challenge',
+                                  onActivate: () =>
+                                      context.push('/daily-challenge'),
+                                ),
+                              ),
+                            ],
+                          ).first,
                         ),
                       ),
                     ),
 
                   // ─── Pending Assignments Banner ────────
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(padding, 20, padding, 0),
-                      child: _PendingAssignmentsBanner(
-                        profileId: profile?.id,
-                      ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
+                  // Only a gaze target while it's actually visible (the widget
+                  // renders nothing when there are no pending assignments).
+                  if (profile != null &&
+                      AssessmentService.getPendingAssignments(
+                        profile.id,
+                      ).isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 20, padding, 0),
+                        child: gazeGrid.section(
+                          columns: 1,
+                          expand: false,
+                          entries: [
+                            (
+                              tile: _PendingAssignmentsBanner(
+                                profileId: profile.id,
+                              ).animate().fadeIn(
+                                duration: 400.ms,
+                                delay: 250.ms,
+                              ),
+                              cell: GazeTileCell(
+                                label: 'Assignments',
+                                onActivate: () => context.push('/assessment'),
+                              ),
+                            ),
+                          ],
+                        ).first,
+                      ),
                     ),
-                  ),
 
                   // ═══════════════════════════════════════
                   // ─── ▶ Play & Learn (core game hub) ────
@@ -413,27 +521,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         // taller, roomier extent (matching the Flashcards decks).
                         mainAxisExtent: context.categoryTileHeight(),
                       ),
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final category = FlashcardCategory.values[index];
-                        final catCards = SeedData.getByCategory(category);
-                        return RepaintBoundary(
-                          child:
-                              EnhancedCategoryCard(
-                                    category: category,
-                                    wordCount: catCards.length,
-                                    progress:
-                                        progress.categoryProgress[category
-                                            .label] ??
-                                        0,
-                                    onTap: () => context.go(
-                                      '/flashcards/viewer/${category.index}',
-                                    ),
-                                  )
-                                  .animate()
-                                  .fadeIn(duration: 350.ms)
-                                  .slideY(begin: 0.1, end: 0),
-                        );
-                      }, childCount: FlashcardCategory.values.length),
+                      // Eager list (like the Cards hub) so every category card
+                      // registers with the gaze D-pad in visual order.
+                      delegate: SliverChildListDelegate(
+                        gazeGrid.section(
+                          columns: _coreColumns(context),
+                          entries: [
+                            for (final category in FlashcardCategory.values)
+                              (
+                                tile: RepaintBoundary(
+                                  child:
+                                      EnhancedCategoryCard(
+                                            category: category,
+                                            wordCount: SeedData.getByCategory(
+                                              category,
+                                            ).length,
+                                            progress:
+                                                progress.categoryProgress[
+                                                    category.label] ??
+                                                0,
+                                            onTap: () => context.go(
+                                              '/flashcards/viewer/${category.index}',
+                                            ),
+                                          )
+                                          .animate()
+                                          .fadeIn(duration: 350.ms)
+                                          .slideY(begin: 0.1, end: 0),
+                                ),
+                                cell: GazeTileCell(
+                                  label: category.label,
+                                  onActivate: () => context.go(
+                                    '/flashcards/viewer/${category.index}',
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
 
@@ -526,6 +650,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final weak = profile != null
         ? ReviewReminderService.countWordsToReview(profile.id)
         : 0;
+    // Hide the FSL Practice tile for accessibility categories that don't use
+    // signing (e.g. visual / cognitive), per the content policy.
+    final showFsl = ref.read(accessibilityContentPolicyProvider).showFsl;
     return gaze.section(
       columns: _coreColumns(context),
       entries: [
@@ -556,13 +683,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
           onTap: () => context.go('/stories'),
         ),
-        _entry(
-          emoji: '🤟',
-          label: 'FSL Practice',
-          subtitle: 'Sign language',
-          gradient: const [AppColors.bannerFslStart, AppColors.bannerFslEnd],
-          onTap: () => context.go('/games/fsl-practice'),
-        ),
+        if (showFsl)
+          _entry(
+            emoji: '🤟',
+            label: 'FSL Practice',
+            subtitle: 'Sign language',
+            gradient: const [AppColors.bannerFslStart, AppColors.bannerFslEnd],
+            onTap: () => context.go('/games/fsl-practice'),
+          ),
         _entry(
           emoji: '🧠',
           label: 'Smart Review',
@@ -791,12 +919,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         tiles: gaze.section(
           columns: columns,
           entries: [
-          tile(
-            emoji: '🤟',
-            label: 'FSL Dictionary',
-            gradient: const [AppColors.bannerFslStart, AppColors.bannerFslEnd],
-            onTap: () => context.push('/fsl-dictionary'),
-          ),
+          // FSL Dictionary hidden for non-signing accessibility categories.
+          if (ref.read(accessibilityContentPolicyProvider).showFsl)
+            tile(
+              emoji: '🤟',
+              label: 'FSL Dictionary',
+              gradient: const [AppColors.bannerFslStart, AppColors.bannerFslEnd],
+              onTap: () => context.push('/fsl-dictionary'),
+            ),
           tile(
             emoji: '💬',
             label: 'Talk Board',
@@ -987,10 +1117,17 @@ class _StatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Ink over the banner gradient: white on the pastel/deep gradients,
+    // black on the bright high-contrast one.
+    final onGradient = HCColor.of(context).textOnPrimary;
+    // In high contrast the banner gradient is itself bright yellow/green, so
+    // the pastel accent icons would vanish — use the black ink instead.
+    final iconOnGradient =
+        HCColor.of(context).hc ? onGradient : iconColor;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: iconColor, size: 28),
+        Icon(icon, color: iconOnGradient, size: 28),
         const SizedBox(height: 6),
         // Scale the value down rather than overflow when the number is large
         // or the font scale is high.
@@ -1000,7 +1137,7 @@ class _StatItem extends StatelessWidget {
             value,
             maxLines: 1,
             style: AppTypography.titleLarge.copyWith(
-              color: AppColors.textOnPrimary,
+              color: onGradient,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1008,7 +1145,7 @@ class _StatItem extends StatelessWidget {
         Text(
           label,
           style: AppTypography.labelSmall.copyWith(
-            color: AppColors.textOnPrimary.withValues(alpha: 0.8),
+            color: onGradient.withValues(alpha: 0.8),
           ),
           textAlign: TextAlign.center,
           maxLines: 1,
@@ -1312,6 +1449,9 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
 
   @override
   Widget build(BuildContext context) {
+    // Ink over the hero gradient: white normally, black in high contrast
+    // (where the gradient itself is bright yellow/cyan).
+    final onGrad = HCColor.of(context).textOnPrimary;
     return AppCard(
       gradient: HCColor.of(context).heroGradient,
       padding: const EdgeInsets.all(24),
@@ -1333,7 +1473,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                 child: Text(
                   '🏆 Daily Challenge',
                   style: AppTypography.labelMedium.copyWith(
-                    color: Colors.white,
+                    color: onGrad,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1342,14 +1482,14 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
               if (_streak > 0) ...[
                 Icon(
                   Icons.local_fire_department_rounded,
-                  color: AppColors.textOnPrimary.withValues(alpha: 0.9),
+                  color: onGrad.withValues(alpha: 0.9),
                   size: 18,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   '$_streak day streak',
                   style: AppTypography.labelSmall.copyWith(
-                    color: AppColors.textOnPrimary.withValues(alpha: 0.9),
+                    color: onGrad.withValues(alpha: 0.9),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1376,14 +1516,14 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                         Text(
                           'View All',
                           style: AppTypography.labelSmall.copyWith(
-                            color: AppColors.textOnPrimary,
+                            color: onGrad,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(width: 4),
-                        const Icon(
+                        Icon(
                           Icons.arrow_forward_rounded,
-                          color: AppColors.textOnPrimary,
+                          color: onGrad,
                           size: 14,
                         ),
                       ],
@@ -1411,7 +1551,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                     Text(
                       _card.wordEnglish,
                       style: AppTypography.displaySmall.copyWith(
-                        color: AppColors.textOnPrimary,
+                        color: onGrad,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -1419,7 +1559,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                     Text(
                       _card.exampleSentence ?? '',
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textOnPrimary.withValues(alpha: 0.85),
+                        color: onGrad.withValues(alpha: 0.85),
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -1440,7 +1580,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
             Text(
               'What is this in Filipino?',
               style: AppTypography.labelMedium.copyWith(
-                color: AppColors.textOnPrimary.withValues(alpha: 0.9),
+                color: onGrad.withValues(alpha: 0.9),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1490,7 +1630,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                           child: Text(
                             _choices[i],
                             style: AppTypography.titleMedium.copyWith(
-                              color: AppColors.textOnPrimary,
+                              color: onGrad,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1522,7 +1662,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                     _isCorrect
                         ? Icons.celebration_rounded
                         : Icons.lightbulb_rounded,
-                    color: AppColors.textOnPrimary,
+                    color: onGrad,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -1531,7 +1671,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                         ? 'Correct! +2 bonus stars ⭐'
                         : 'The answer is: ${_card.wordFilipino}',
                     style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.textOnPrimary,
+                      color: onGrad,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1545,6 +1685,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
   }
 
   Widget _buildCompletedBanner() {
+    final onGrad = HCColor.of(context).textOnPrimary;
     return AppCard(
       elevation: 0,
       color: Colors.white.withValues(alpha: 0.2),
@@ -1565,14 +1706,14 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                 Text(
                   'Challenge Complete! ✨',
                   style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.textOnPrimary,
+                    color: onGrad,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 Text(
                   'The answer was: ${_card.wordFilipino}',
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textOnPrimary.withValues(alpha: 0.85),
+                    color: onGrad.withValues(alpha: 0.85),
                   ),
                 ),
               ],

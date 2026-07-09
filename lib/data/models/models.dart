@@ -193,6 +193,17 @@ class UserProfile {
     this.username,
   });
 
+  /// Human-readable "profile type" shown in the profile switcher.
+  ///
+  /// Student and Child are learner roles that self-classify an accessibility
+  /// category, so their type combines the role with that category —
+  /// e.g. "Student - Hearing Impairment" or "Child - No Accessibility Needs".
+  /// Every other role (Teacher / Parent / Player) just shows its role label.
+  String get profileTypeLabel =>
+      (role == UserRole.student || role == UserRole.child)
+          ? '${role.label} - ${disabilityType.profileTypeLabel}'
+          : role.label;
+
   /// Whether this profile requires a PIN to switch to. Covers both migrated
   /// (pinHash) and pre-migration (legacy plaintext pin) profiles so unlock
   /// gating still works during the brief startup window before migration.
@@ -438,6 +449,18 @@ class AppSettings {
   /// removes two wrong options. Default on; turn off for a plain quiz.
   final bool learningAssistEnabled;
 
+  /// Floating AI Companion ("Buddy") — a live, always-reachable assistant that
+  /// wraps the on-device [TutorEngine]. Its *presentation* (motion, sound,
+  /// voice, captions, haptics) adapts to the learner's accessibility profile
+  /// via `CompanionPresentation`; this flag just turns the whole surface on or
+  /// off. Default on so it's discoverable; hidden entirely for non-learners.
+  ///
+  /// Note: when a Gemini key is compiled in, the companion automatically
+  /// answers free-form questions online and falls back to the offline
+  /// [TutorEngine] whenever the device is offline or the request fails —
+  /// there is deliberately no separate setting for that (it "just works").
+  final bool aiCompanionEnabled;
+
   const AppSettings({
     this.fontScale = 1.0,
     this.highContrastMode = false,
@@ -458,6 +481,7 @@ class AppSettings {
     this.slowMotionEnabled = false,
     this.dailyMissionSize = 4,
     this.learningAssistEnabled = true,
+    this.aiCompanionEnabled = true,
   });
 
   AppSettings copyWith({
@@ -480,6 +504,7 @@ class AppSettings {
     bool? slowMotionEnabled,
     int? dailyMissionSize,
     bool? learningAssistEnabled,
+    bool? aiCompanionEnabled,
   }) {
     return AppSettings(
       fontScale: fontScale ?? this.fontScale,
@@ -502,6 +527,7 @@ class AppSettings {
       dailyMissionSize: dailyMissionSize ?? this.dailyMissionSize,
       learningAssistEnabled:
           learningAssistEnabled ?? this.learningAssistEnabled,
+      aiCompanionEnabled: aiCompanionEnabled ?? this.aiCompanionEnabled,
     );
   }
 }

@@ -6,6 +6,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/widgets/hub_header.dart';
 import '../../../data/local/seed_stories.dart';
+import '../../../widgets/animated_gradient_background.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
@@ -54,7 +55,14 @@ class StoryListScreen extends ConsumerWidget {
     return GazeHomeRegistrar(
       active: gazeGrid.active,
       rows: gazeGrid.rows,
+      // Section identity: the Stories hub gets a warm storybook backdrop
+      // (amber/violet + gentle sparkles), distinct from Cards (bubbles) and
+      // Games (stars). Scheme-aware, so every profile theme re-tints it.
+      child: AnimatedGradientBackground(
+      preset: GradientPreset.stories,
+      intensity: 0.28,
       child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -167,6 +175,7 @@ class StoryListScreen extends ConsumerWidget {
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),
+      ),
       ),
       ),
     );

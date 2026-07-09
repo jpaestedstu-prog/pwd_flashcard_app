@@ -93,6 +93,18 @@ class ProgressScreen extends ConsumerWidget {
           ],
         ).first;
 
+    // Opens the theme/layout customize sheet — shared by the palette button's
+    // tap and its gaze cell so both always agree.
+    void openCustomizeSheet() => showProgressCustomizeSheet(
+          context,
+          selectedThemeId: theme.id,
+          selectedLayoutId: layout.id,
+          onThemeSelected: (id) =>
+              ref.read(progressThemeProvider.notifier).select(id),
+          onLayoutSelected: (id) =>
+              ref.read(progressLayoutProvider.notifier).select(id),
+        );
+
     return GazeHomeRegistrar(
       active: gazeGrid.active,
       rows: gazeGrid.rows,
@@ -104,19 +116,25 @@ class ProgressScreen extends ConsumerWidget {
             expandedHeight: 150,
             pinned: true,
             actions: [
-              IconButton(
-                tooltip: 'Customize progress',
-                icon: Icon(Icons.palette_rounded, color: headerTextColor),
-                onPressed: () => showProgressCustomizeSheet(
-                  context,
-                  selectedThemeId: theme.id,
-                  selectedLayoutId: layout.id,
-                  onThemeSelected: (id) =>
-                      ref.read(progressThemeProvider.notifier).select(id),
-                  onLayoutSelected: (id) =>
-                      ref.read(progressLayoutProvider.notifier).select(id),
-                ),
-              ),
+              // Its own gaze row (the topmost), so the D-pad reaches the
+              // customize sheet too.
+              gazeGrid.section(
+                columns: 1,
+                expand: false,
+                entries: [
+                  (
+                    tile: IconButton(
+                      tooltip: 'Customize progress',
+                      icon: Icon(Icons.palette_rounded, color: headerTextColor),
+                      onPressed: openCustomizeSheet,
+                    ),
+                    cell: GazeTileCell(
+                      label: 'Customize',
+                      onActivate: openCustomizeSheet,
+                    ),
+                  ),
+                ],
+              ).first,
             ],
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsetsDirectional.only(

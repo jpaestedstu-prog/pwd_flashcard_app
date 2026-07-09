@@ -107,6 +107,9 @@ dev_dependencies:
   # Direct dev dep so tests can install a fake ConnectivityPlatform
   # (already in the dependency graph via connectivity_plus).
   connectivity_plus_platform_interface: ^2.1.0
+  # Direct dev dep so the voice-command controller tests can drive its
+  # timers on a fake clock (already in the graph via flutter_test).
+  fake_async: ^1.3.3
 
 flutter:
   generate: true

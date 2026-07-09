@@ -49,13 +49,15 @@ class AssessmentHubScreen extends ConsumerWidget {
                         children: [
                           Text(
                             'Assessment Center',
-                            style: AppTypography.headlineLarge
-                                .copyWith(color: hc.textPrimary),
+                            style: AppTypography.headlineLarge.copyWith(
+                              color: hc.textPrimary,
+                            ),
                           ),
                           Text(
                             'Measure your learning progress',
-                            style: AppTypography.bodyMedium
-                                .copyWith(color: hc.textSecondary),
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: hc.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -66,8 +68,11 @@ class AssessmentHubScreen extends ConsumerWidget {
                         label: 'View assessment results and analytics',
                         child: IconButton(
                           onPressed: () => context.push('/assessment/results'),
-                          icon: Icon(Icons.analytics_rounded,
-                              color: hc.primary, size: 28),
+                          icon: Icon(
+                            Icons.analytics_rounded,
+                            color: hc.primary,
+                            size: 28,
+                          ),
                         ),
                       ),
                   ],
@@ -79,8 +84,10 @@ class AssessmentHubScreen extends ConsumerWidget {
             if (gainReport != null)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: padding, vertical: 16),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: padding,
+                    vertical: 16,
+                  ),
                   child: _LearningGainBanner(report: gainReport)
                       .animate()
                       .fadeIn(duration: 500.ms, delay: 100.ms)
@@ -104,8 +111,9 @@ class AssessmentHubScreen extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(horizontal: padding),
                 child: Text(
                   'Take a pre-test before studying, then a post-test after — see your growth!',
-                  style: AppTypography.bodySmall
-                      .copyWith(color: hc.textSecondary),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: hc.textSecondary,
+                  ),
                 ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
               ),
             ),
@@ -121,32 +129,47 @@ class AssessmentHubScreen extends ConsumerWidget {
                 ),
                 delegate: SliverChildListDelegate([
                   _AssessmentTypeCard(
-                    type: AssessmentType.preTest,
-                    isCompleted: hasPreTest,
-                    latestScore: hasPreTest
-                        ? AssessmentService.getLatestPreTest(profileId)
-                            ?.percentage
-                        : null,
-                    onTap: () {
-                      _startAssessment(context, ref, AssessmentType.preTest);
-                    },
-                  ).animate().fadeIn(duration: 400.ms, delay: 250.ms).slideY(begin: 0.1, end: 0),
+                        type: AssessmentType.preTest,
+                        isCompleted: hasPreTest,
+                        latestScore: hasPreTest
+                            ? AssessmentService.getLatestPreTest(
+                                profileId,
+                              )?.percentage
+                            : null,
+                        onTap: () {
+                          _startAssessment(
+                            context,
+                            ref,
+                            AssessmentType.preTest,
+                          );
+                        },
+                      )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 250.ms)
+                      .slideY(begin: 0.1, end: 0),
                   _AssessmentTypeCard(
-                    type: AssessmentType.postTest,
-                    isCompleted: hasPostTest,
-                    latestScore: hasPostTest
-                        ? AssessmentService.getLatestPostTest(profileId)
-                            ?.percentage
-                        : null,
-                    isLocked: !hasPreTest,
-                    lockMessage: 'Complete a Pre-Test first',
-                    onTap: hasPreTest
-                        ? () {
-                            _startAssessment(
-                                context, ref, AssessmentType.postTest);
-                          }
-                        : null,
-                  ).animate().fadeIn(duration: 400.ms, delay: 300.ms).slideY(begin: 0.1, end: 0),
+                        type: AssessmentType.postTest,
+                        isCompleted: hasPostTest,
+                        latestScore: hasPostTest
+                            ? AssessmentService.getLatestPostTest(
+                                profileId,
+                              )?.percentage
+                            : null,
+                        isLocked: !hasPreTest,
+                        lockMessage: 'Complete a Pre-Test first',
+                        onTap: hasPreTest
+                            ? () {
+                                _startAssessment(
+                                  context,
+                                  ref,
+                                  AssessmentType.postTest,
+                                );
+                              }
+                            : null,
+                      )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 300.ms)
+                      .slideY(begin: 0.1, end: 0),
                 ]),
               ),
             ),
@@ -167,8 +190,9 @@ class AssessmentHubScreen extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(horizontal: padding),
                 child: Text(
                   'Test your knowledge in specific vocabulary categories',
-                  style: AppTypography.bodySmall
-                      .copyWith(color: hc.textSecondary),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: hc.textSecondary,
+                  ),
                 ).animate().fadeIn(duration: 400.ms, delay: 380.ms),
               ),
             ),
@@ -182,37 +206,35 @@ class AssessmentHubScreen extends ConsumerWidget {
                   crossAxisSpacing: 12,
                   childAspectRatio: 1.4,
                 ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final category = FlashcardCategory.values[index];
-                    final categoryResults = results
-                        .where((r) =>
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final category = FlashcardCategory.values[index];
+                  final categoryResults = results
+                      .where(
+                        (r) =>
                             r.type == AssessmentType.categoryMastery &&
-                            r.categories.contains(category))
-                        .toList();
-                    final bestScore = categoryResults.isEmpty
-                        ? null
-                        : categoryResults
+                            r.categories.contains(category),
+                      )
+                      .toList();
+                  final bestScore = categoryResults.isEmpty
+                      ? null
+                      : categoryResults
                             .map((r) => r.percentage)
                             .reduce((a, b) => a > b ? a : b);
 
-                    return _CategoryMasteryCard(
-                      category: category,
-                      bestScore: bestScore,
-                      attemptCount: categoryResults.length,
-                      onTap: () {
-                        context.push('/assessment/category/${category.index}');
-                      },
-                    )
-                        .animate()
-                        .fadeIn(
-                          duration: 400.ms,
-                          delay: (400 + index * 60).ms,
-                        )
-                        .slideY(begin: 0.1, end: 0);
-                  },
-                  childCount: FlashcardCategory.values.length,
-                ),
+                  return _CategoryMasteryCard(
+                        category: category,
+                        bestScore: bestScore,
+                        attemptCount: categoryResults.length,
+                        onTap: () {
+                          context.push(
+                            '/assessment/category/${category.index}',
+                          );
+                        },
+                      )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: (400 + index * 60).ms)
+                      .slideY(begin: 0.1, end: 0);
+                }, childCount: FlashcardCategory.values.length),
               ),
             ),
 
@@ -228,7 +250,10 @@ class AssessmentHubScreen extends ConsumerWidget {
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade600],
+                          colors: [
+                            Colors.deepPurple.shade400,
+                            Colors.deepPurple.shade600,
+                          ],
                         ),
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -240,21 +265,28 @@ class AssessmentHubScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Quiz Builder',
-                                    style: AppTypography.titleMedium.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700)),
+                                Text(
+                                  'Quiz Builder',
+                                  style: AppTypography.titleMedium.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'Create custom quizzes from any flashcards',
-                                  style: AppTypography.bodySmall
-                                      .copyWith(color: Colors.white70),
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: Colors.white70,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(Icons.arrow_forward_ios_rounded,
-                              color: Colors.white70, size: 20),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
                         ],
                       ),
                     ),
@@ -273,18 +305,21 @@ class AssessmentHubScreen extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           '✏️ Custom Assessments',
-                          style: AppTypography.titleLarge
-                              .copyWith(color: hc.textPrimary),
+                          style: AppTypography.titleLarge.copyWith(
+                            color: hc.textPrimary,
+                          ),
                         ),
                       ),
                       Semantics(
                         button: true,
                         label: 'Create a new custom assessment',
                         child: IconButton(
-                          onPressed: () =>
-                              context.push('/assessment/builder'),
-                          icon: Icon(Icons.add_circle_rounded,
-                              color: hc.primary, size: 32),
+                          onPressed: () => context.push('/assessment/builder'),
+                          icon: Icon(
+                            Icons.add_circle_rounded,
+                            color: hc.primary,
+                            size: 32,
+                          ),
                         ),
                       ),
                     ],
@@ -297,7 +332,9 @@ class AssessmentHubScreen extends ConsumerWidget {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.symmetric(
-                        horizontal: padding, vertical: 16),
+                      horizontal: padding,
+                      vertical: 16,
+                    ),
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -307,19 +344,20 @@ class AssessmentHubScreen extends ConsumerWidget {
                       ),
                       child: Column(
                         children: [
-                          const Text('📝',
-                              style: TextStyle(fontSize: 40)),
+                          const Text('📝', style: TextStyle(fontSize: 40)),
                           const SizedBox(height: 12),
                           Text(
                             'No custom assessments yet',
-                            style: AppTypography.titleSmall
-                                .copyWith(color: hc.textSecondary),
+                            style: AppTypography.titleSmall.copyWith(
+                              color: hc.textSecondary,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'Tap + to create one for your students',
-                            style: AppTypography.bodySmall
-                                .copyWith(color: hc.textHint),
+                            style: AppTypography.bodySmall.copyWith(
+                              color: hc.textHint,
+                            ),
                           ),
                         ],
                       ),
@@ -329,7 +367,9 @@ class AssessmentHubScreen extends ConsumerWidget {
               else
                 SliverPadding(
                   padding: EdgeInsets.symmetric(
-                      horizontal: padding, vertical: 8),
+                    horizontal: padding,
+                    vertical: 8,
+                  ),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
@@ -338,15 +378,16 @@ class AssessmentHubScreen extends ConsumerWidget {
                             .toList();
                         final assessment = customs[index];
                         return _CustomAssessmentTile(
-                          assessment: assessment,
-                          onTap: () => context.push(
-                              '/assessment/take/${assessment.id}'),
-                          onDelete: () {
-                            ref
-                                .read(customAssessmentsProvider.notifier)
-                                .deleteAssessment(assessment.id);
-                          },
-                        )
+                              assessment: assessment,
+                              onTap: () => context.push(
+                                '/assessment/take/${assessment.id}',
+                              ),
+                              onDelete: () {
+                                ref
+                                    .read(customAssessmentsProvider.notifier)
+                                    .deleteAssessment(assessment.id);
+                              },
+                            )
                             .animate()
                             .fadeIn(
                               duration: 400.ms,
@@ -372,16 +413,16 @@ class AssessmentHubScreen extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           '📈 Recent Results',
-                          style: AppTypography.titleLarge
-                              .copyWith(color: hc.textPrimary),
+                          style: AppTypography.titleLarge.copyWith(
+                            color: hc.textPrimary,
+                          ),
                         ),
                       ),
                       Semantics(
                         button: true,
                         label: 'View all results',
                         child: TextButton(
-                          onPressed: () =>
-                              context.push('/assessment/results'),
+                          onPressed: () => context.push('/assessment/results'),
                           child: const Text('See All'),
                         ),
                       ),
@@ -392,22 +433,15 @@ class AssessmentHubScreen extends ConsumerWidget {
               SliverPadding(
                 padding: EdgeInsets.symmetric(horizontal: padding),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final sorted = List.of(results)
-                        ..sort((a, b) =>
-                            b.completedAt.compareTo(a.completedAt));
-                      final result = sorted[index];
-                      return _RecentResultTile(result: result)
-                          .animate()
-                          .fadeIn(
-                            duration: 400.ms,
-                            delay: (750 + index * 60).ms,
-                          )
-                          .slideX(begin: 0.05, end: 0);
-                    },
-                    childCount: results.length.clamp(0, 5),
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final sorted = List.of(results)
+                      ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
+                    final result = sorted[index];
+                    return _RecentResultTile(result: result)
+                        .animate()
+                        .fadeIn(duration: 400.ms, delay: (750 + index * 60).ms)
+                        .slideX(begin: 0.05, end: 0);
+                  }, childCount: results.length.clamp(0, 5)),
                 ),
               ),
             ],
@@ -420,7 +454,10 @@ class AssessmentHubScreen extends ConsumerWidget {
   }
 
   void _startAssessment(
-      BuildContext context, WidgetRef ref, AssessmentType type) {
+    BuildContext context,
+    WidgetRef ref,
+    AssessmentType type,
+  ) {
     final profile = ref.read(profileProvider);
     if (profile == null) return;
     final assessment = AssessmentService.generateStandardAssessment(
@@ -453,8 +490,7 @@ class _LearningGainBanner extends StatelessWidget {
           );
 
     return Semantics(
-      label:
-          'Learning gain report. ${report.summary}',
+      label: 'Learning gain report. ${report.summary}',
       child: AppCard(
         gradient: gradient,
         padding: const EdgeInsets.all(20),
@@ -463,8 +499,10 @@ class _LearningGainBanner extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(improved ? '🚀' : '📊',
-                    style: const TextStyle(fontSize: 28)),
+                Text(
+                  improved ? '🚀' : '📊',
+                  style: const TextStyle(fontSize: 28),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -480,10 +518,7 @@ class _LearningGainBanner extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                _ScorePill(
-                  label: 'Pre-Test',
-                  score: report.preTestPercentage,
-                ),
+                _ScorePill(label: 'Pre-Test', score: report.preTestPercentage),
                 const SizedBox(width: 12),
                 Icon(
                   improved
@@ -572,20 +607,20 @@ class _AssessmentTypeCard extends StatelessWidget {
     final hc = HCColor.of(context);
     final gradient = switch (type) {
       AssessmentType.preTest => const LinearGradient(
-          colors: [Color(0xFF5C6BC0), Color(0xFF7986CB)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        colors: [Color(0xFF5C6BC0), Color(0xFF7986CB)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       AssessmentType.postTest => const LinearGradient(
-          colors: [Color(0xFF00897B), Color(0xFF4DB6AC)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        colors: [Color(0xFF00897B), Color(0xFF4DB6AC)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       _ => LinearGradient(
-          colors: [hc.primary, hc.secondary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        colors: [hc.primary, hc.secondary],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
     };
 
     return Semantics(
@@ -612,34 +647,49 @@ class _AssessmentTypeCard extends StatelessWidget {
                     children: [
                       Text(
                         type.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.titleSmall.copyWith(
                           color: AppColors.textOnPrimary,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 2),
+                      // Bounded to one line (full text is in the Semantics label
+                      // above) so the card can't overflow its fixed-ratio grid
+                      // cell at large accessibility font scales.
                       Text(
                         isLocked
                             ? lockMessage ?? ''
                             : isCompleted
-                                ? 'Best: ${((latestScore ?? 0) * 100).round()}%'
-                                : 'Tap to start',
+                            ? 'Best: ${((latestScore ?? 0) * 100).round()}%'
+                            : 'Tap to start',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textOnPrimary.withValues(alpha: 0.85),
+                          color: AppColors.textOnPrimary.withValues(
+                            alpha: 0.85,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
                 if (isLocked)
-                  Icon(Icons.lock_rounded,
-                      color: AppColors.textOnPrimary.withValues(alpha: 0.6))
+                  Icon(
+                    Icons.lock_rounded,
+                    color: AppColors.textOnPrimary.withValues(alpha: 0.6),
+                  )
                 else if (isCompleted)
-                  Icon(Icons.check_circle_rounded,
-                      color: AppColors.textOnPrimary.withValues(alpha: 0.9))
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: AppColors.textOnPrimary.withValues(alpha: 0.9),
+                  )
                 else
-                  Icon(Icons.arrow_forward_rounded,
-                      color: AppColors.textOnPrimary.withValues(alpha: 0.8)),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: AppColors.textOnPrimary.withValues(alpha: 0.8),
+                  ),
               ],
             ),
           ),
@@ -678,10 +728,10 @@ class _CategoryMasteryCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: catColor.withValues(alpha: hc.hc ? 0.3 : 0.15),
+            color: catColor.withValues(alpha: hc.isDark ? 0.3 : 0.15),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: catColor.withValues(alpha: hc.hc ? 0.8 : 0.4),
+              color: catColor.withValues(alpha: hc.isDark ? 0.8 : 0.4),
               width: 2,
             ),
           ),
@@ -721,9 +771,7 @@ class _CategoryMasteryCard extends StatelessWidget {
               else
                 Text(
                   'Not tested',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: hc.textHint,
-                  ),
+                  style: AppTypography.labelSmall.copyWith(color: hc.textHint),
                 ),
             ],
           ),
@@ -754,7 +802,8 @@ class _CustomAssessmentTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Semantics(
         button: true,
-        label: '${assessment.title}. ${assessment.questions.length} questions. Tap to take.',
+        label:
+            '${assessment.title}. ${assessment.questions.length} questions. Tap to take.',
         child: GestureDetector(
           onTap: onTap,
           child: Container(
@@ -762,8 +811,7 @@ class _CustomAssessmentTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: hc.surface,
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: hc.border),
+              border: Border.all(color: hc.border),
               boxShadow: AppColors.softShadow,
             ),
             child: Row(
@@ -775,8 +823,7 @@ class _CustomAssessmentTile extends StatelessWidget {
                     color: hc.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.assignment_rounded,
-                      color: hc.primary),
+                  child: Icon(Icons.assignment_rounded, color: hc.primary),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -785,26 +832,30 @@ class _CustomAssessmentTile extends StatelessWidget {
                     children: [
                       Text(
                         assessment.title,
-                        style: AppTypography.titleSmall
-                            .copyWith(color: hc.textPrimary),
+                        style: AppTypography.titleSmall.copyWith(
+                          color: hc.textPrimary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         '${assessment.questions.length} questions • ${assessment.difficulty.label}',
-                        style: AppTypography.bodySmall
-                            .copyWith(color: hc.textSecondary),
+                        style: AppTypography.bodySmall.copyWith(
+                          color: hc.textSecondary,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
                   onPressed: () => _confirmDelete(context),
-                  icon: Icon(Icons.delete_outline_rounded,
-                      color: hc.error, size: 22),
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    color: hc.error,
+                    size: 22,
+                  ),
                 ),
-                Icon(Icons.chevron_right_rounded,
-                    color: hc.textHint),
+                Icon(Icons.chevron_right_rounded, color: hc.textHint),
               ],
             ),
           ),
@@ -819,7 +870,8 @@ class _CustomAssessmentTile extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Assessment?'),
         content: Text(
-            'Are you sure you want to delete "${assessment.title}"? This cannot be undone.'),
+          'Are you sure you want to delete "${assessment.title}"? This cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -853,7 +905,8 @@ class _RecentResultTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Semantics(
-        label: '${result.type.label}. Score: $pct percent. ${result.grade}. Completed ${_formatDate(result.completedAt)}.',
+        label:
+            '${result.type.label}. Score: $pct percent. ${result.grade}. Completed ${_formatDate(result.completedAt)}.',
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
@@ -863,8 +916,7 @@ class _RecentResultTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(result.gradeEmoji,
-                  style: const TextStyle(fontSize: 24)),
+              Text(result.gradeEmoji, style: const TextStyle(fontSize: 24)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -872,23 +924,26 @@ class _RecentResultTile extends StatelessWidget {
                   children: [
                     Text(
                       result.type.label,
-                      style: AppTypography.labelMedium
-                          .copyWith(color: hc.textPrimary),
+                      style: AppTypography.labelMedium.copyWith(
+                        color: hc.textPrimary,
+                      ),
                     ),
                     Text(
                       _formatDate(result.completedAt),
-                      style: AppTypography.labelSmall
-                          .copyWith(color: hc.textHint),
+                      style: AppTypography.labelSmall.copyWith(
+                        color: hc.textHint,
+                      ),
                     ),
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: _scoreColor(result.percentage)
-                      .withValues(alpha: 0.15),
+                  color: _scoreColor(result.percentage).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -910,8 +965,18 @@ class _RecentResultTile extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }

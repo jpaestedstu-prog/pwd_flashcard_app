@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/models/enums.dart';
+import 'theme_marker.dart';
 
 /// App color palette — Soft & Playful (Pastel) theme
 /// Designed for readability and accessibility with
@@ -272,64 +273,150 @@ class AppColors {
   static const Color galaxyDkBorder = Color(0xFF2A3258);
 }
 
-/// Helper to resolve colors based on the current high-contrast mode.
-/// Use `HCColor.of(context)` in widgets to get the correct adaptive color.
+/// Helper that resolves the app's custom-widget colors for the ACTIVE theme
+/// family. Use `HCColor.of(context)` in widgets to get the correct adaptive
+/// color.
+///
+/// Four families, each visually distinct (see [ThemeKind]):
+///   • high contrast → dedicated bright-on-black palette (per-profile accent
+///     comes from the scheme, so Visual / Hearing / Multiple profiles differ);
+///   • dark → the dark scheme's soft pastels (NOT the high-contrast palette —
+///     historically dark mode borrowed it, making the two modes identical);
+///   • dyslexia → cream surfaces with muted text per the BDA style guide;
+///   • light → the classic pastel palette, re-tinted by the scheme so shop /
+///     group / accessibility-profile themes follow through automatically.
 class HCColor {
-  final bool hc;
+  final ThemeKind _kind;
 
   /// Active color scheme. Lets the accent getters follow the equipped theme
-  /// (the Classroom / Family-group themes, shop themes, dyslexia) without
-  /// touching the default theme — whose scheme already equals [AppColors], so
-  /// this is a no-op there. Null only for legacy const construction.
+  /// (group themes, shop themes, accessibility-profile themes, dyslexia)
+  /// without touching the default theme — whose scheme already equals
+  /// [AppColors], so this is a no-op there. Null only for legacy const
+  /// construction.
   final ColorScheme? _scheme;
 
-  const HCColor._(this.hc, [this._scheme]);
+  /// The theme's scaffold background, so [background] matches the real page
+  /// color under every theme (dark shop themes, learner palettes, …).
+  final Color? _scaffoldBackground;
 
-  /// Create from BuildContext — reads the current theme brightness + scheme.
+  /// The theme's card color (from `cardTheme.color`).
+  final Color? _cardColor;
+
+  const HCColor._(
+    this._kind, [
+    this._scheme,
+    this._scaffoldBackground,
+    this._cardColor,
+  ]);
+
+  /// Create from BuildContext — reads the current theme kind + scheme.
   factory HCColor.of(BuildContext context) {
     final theme = Theme.of(context);
-    return HCColor._(theme.brightness == Brightness.dark, theme.colorScheme);
+    return HCColor._(
+      theme.extension<ThemeMarker>()?.kind ??
+          (theme.brightness == Brightness.dark
+              ? ThemeKind.dark
+              : ThemeKind.light),
+      theme.colorScheme,
+      theme.scaffoldBackgroundColor,
+      theme.cardTheme.color,
+    );
   }
 
+  /// True ONLY for the high-contrast theme (bright accents on black).
+  bool get hc => _kind == ThemeKind.highContrast;
+
+  /// True for any dark-background theme family (dark mode, dark shop and
+  /// learner variants, high contrast). Use this — not [hc] — when picking
+  /// "light ink on dark paper" rendering.
+  bool get isDark => hc || _kind == ThemeKind.dark;
+
+  /// True for the dyslexia-friendly (cream + Lexend) theme.
+  bool get isDyslexia => _kind == ThemeKind.dyslexia;
+
   // Backgrounds & surfaces
-  Color get background => hc ? AppColors.hcBackground : AppColors.background;
-  Color get surface => hc ? AppColors.hcSurface : AppColors.surface;
-  Color get surfaceVariant =>
-      hc ? const Color(0xFF2C2C2C) : AppColors.surfaceVariant;
-  Color get surfaceLight =>
-      hc ? const Color(0xFF262626) : AppColors.surfaceLight;
-  Color get cardBackground =>
-      hc ? AppColors.hcSurface : AppColors.cardBackground;
+  Color get background =>
+      hc ? AppColors.hcBackground : (_scaffoldBackground ?? AppColors.background);
+  Color get surface =>
+      hc ? AppColors.hcSurface : (_scheme?.surface ?? AppColors.surface);
+  Color get surfaceVariant => switch (_kind) {
+        ThemeKind.highContrast => const Color(0xFF2C2C2C),
+        // Lift the surface slightly so chips/inputs read on dark cards.
+        ThemeKind.dark => Color.alphaBlend(
+            Colors.white.withValues(alpha: 0.07),
+            _scheme?.surface ?? const Color(0xFF1E1E2A)),
+        ThemeKind.dyslexia => AppColors.dyslexiaSurfaceVariant,
+        ThemeKind.light => AppColors.surfaceVariant,
+      };
+  Color get surfaceLight => switch (_kind) {
+        ThemeKind.highContrast => const Color(0xFF262626),
+        ThemeKind.dark => Color.alphaBlend(
+            Colors.white.withValues(alpha: 0.05),
+            _scheme?.surface ?? const Color(0xFF1E1E2A)),
+        ThemeKind.dyslexia => AppColors.dyslexiaSurface,
+        ThemeKind.light => AppColors.surfaceLight,
+      };
+  Color get cardBackground => hc
+      ? AppColors.hcSurface
+      : (_cardColor ?? _scheme?.surface ?? AppColors.cardBackground);
 
   // Primary / Secondary / Accent.
-  // High-contrast keeps its dedicated palette; otherwise follow the active
-  // theme's scheme so the Classroom/Family group themes (and shop/dyslexia
-  // themes) re-tint the custom UI. The default light theme's scheme already
-  // equals these AppColors, so it stays pixel-identical.
+  // Always follow the active theme's scheme so the group / shop / dyslexia /
+  // accessibility-profile themes (and the per-profile high-contrast accents)
+  // re-tint the custom UI. The default light theme's scheme already equals
+  // these AppColors, so it stays pixel-identical.
   Color get primary =>
-      hc ? AppColors.hcPrimary : (_scheme?.primary ?? AppColors.primary);
+      _scheme?.primary ?? (hc ? AppColors.hcPrimary : AppColors.primary);
   Color get primaryLight => hc
       ? const Color(0xFF3E2723)
       : (_scheme?.primaryContainer ?? AppColors.primaryLight);
-  Color get primaryDark => hc ? AppColors.hcPrimary : AppColors.primaryDark;
+  Color get primaryDark => switch (_kind) {
+        ThemeKind.highContrast ||
+        ThemeKind.dark =>
+          _scheme?.primary ?? AppColors.hcPrimary,
+        _ => AppColors.primaryDark,
+      };
   Color get secondary =>
-      hc ? AppColors.hcSecondary : (_scheme?.secondary ?? AppColors.secondary);
+      _scheme?.secondary ?? (hc ? AppColors.hcSecondary : AppColors.secondary);
   Color get accent =>
-      hc ? AppColors.hcAccent : (_scheme?.tertiary ?? AppColors.accent);
+      _scheme?.tertiary ?? (hc ? AppColors.hcAccent : AppColors.accent);
 
-  // Text
-  Color get textPrimary => hc ? AppColors.hcText : AppColors.textPrimary;
-  Color get textSecondary =>
-      hc ? AppColors.hcTextSecondary : AppColors.textSecondary;
-  Color get textHint => hc ? const Color(0xFF757575) : AppColors.textHint;
-  Color get textOnPrimary => hc ? Colors.black : AppColors.textOnPrimary;
+  // Text — resolved per theme family so copy is always legible: white on
+  // black (HC), soft off-white on dark, muted soft-black on cream (dyslexia),
+  // dark blue-grey on pastel (light).
+  Color get textPrimary => switch (_kind) {
+        ThemeKind.highContrast => AppColors.hcText,
+        ThemeKind.dark => _scheme?.onSurface ?? const Color(0xFFE8E8F0),
+        ThemeKind.dyslexia => AppColors.dyslexiaText,
+        ThemeKind.light => AppColors.textPrimary,
+      };
+  Color get textSecondary => switch (_kind) {
+        ThemeKind.highContrast => AppColors.hcTextSecondary,
+        ThemeKind.dark => const Color(0xFFB0B0C8),
+        ThemeKind.dyslexia => AppColors.dyslexiaTextSecondary,
+        ThemeKind.light => AppColors.textSecondary,
+      };
+  Color get textHint => switch (_kind) {
+        ThemeKind.highContrast => const Color(0xFF757575),
+        ThemeKind.dark => const Color(0xFF8888A0),
+        ThemeKind.dyslexia => const Color(0xFF8A8271),
+        ThemeKind.light => AppColors.textHint,
+      };
+  Color get textOnPrimary => hc
+      ? Colors.black
+      : (_scheme?.onPrimary ?? AppColors.textOnPrimary);
 
   // Semantic
   Color get success => hc ? AppColors.hcSuccess : AppColors.success;
   Color get error => hc ? AppColors.hcError : AppColors.error;
   Color get warning => hc ? AppColors.hcWarning : AppColors.warning;
   Color get info => hc ? AppColors.hcInfo : AppColors.info;
-  Color get border => hc ? AppColors.hcBorder : AppColors.border;
+  Color get border => switch (_kind) {
+        ThemeKind.highContrast => AppColors.hcBorder,
+        ThemeKind.dark => const Color(0xFF3A3A4E),
+        ThemeKind.dyslexia => AppColors.dyslexiaBorder,
+        ThemeKind.light => _scheme?.outline ?? AppColors.border,
+      };
 
   // Category colors
   Color categoryColor(FlashcardCategory cat) => hc
@@ -373,30 +460,58 @@ class HCColor {
   // above, so the home's hero cards follow the active group theme (Classroom
   // blue / Family coral). For the default theme `[primary, secondary]` equals
   // [AppColors.primary, AppColors.secondary] == the old AppColors.primaryGradient,
-  // so the stock look is unchanged.
-  LinearGradient get primaryGradient => hc
-      ? const LinearGradient(
-          colors: [Color(0xFFFFD740), Color(0xFF69F0AE)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        )
-      : LinearGradient(
-          colors: [primary, secondary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
+  // so the stock look is unchanged. In dark mode the gradients use the DEEP
+  // container colors instead of the light pastels, so the white copy painted
+  // over the hero cards stays clearly readable.
+  LinearGradient get primaryGradient => switch (_kind) {
+        ThemeKind.highContrast => const LinearGradient(
+            colors: [Color(0xFFFFD740), Color(0xFF69F0AE)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ThemeKind.dark => LinearGradient(
+            colors: [
+              _scheme?.primaryContainer ?? const Color(0xFF3D2E5E),
+              Color.alphaBlend(
+                (_scheme?.secondary ?? AppColors.secondary)
+                    .withValues(alpha: 0.35),
+                _scheme?.surface ?? const Color(0xFF1E1E2A),
+              ),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        _ => LinearGradient(
+            colors: [primary, secondary],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+      };
 
   /// Spotlight gradient for the home's hero cards (Player Profile, level badge,
   /// Daily Challenge). Follows the active group theme instead of a fixed hue.
-  LinearGradient get heroGradient => hc
-      ? const LinearGradient(
-          colors: [Color(0xFFFFD740), Color(0xFF40C4FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        )
-      : LinearGradient(
-          colors: [primary, accent],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
+  LinearGradient get heroGradient => switch (_kind) {
+        ThemeKind.highContrast => const LinearGradient(
+            colors: [Color(0xFFFFD740), Color(0xFF40C4FF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ThemeKind.dark => LinearGradient(
+            colors: [
+              _scheme?.primaryContainer ?? const Color(0xFF3D2E5E),
+              Color.alphaBlend(
+                (_scheme?.tertiary ?? AppColors.accent)
+                    .withValues(alpha: 0.40),
+                _scheme?.surface ?? const Color(0xFF1E1E2A),
+              ),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        _ => LinearGradient(
+            colors: [primary, accent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+      };
 }
