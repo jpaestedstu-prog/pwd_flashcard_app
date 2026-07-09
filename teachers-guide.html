@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teacher's Guide — FlashLearn PWD</title>
+<meta name="description" content="A printable classroom guide for FlashLearn PWD: installing the app, setting up your class, student profiles with disability presets, teaching with decks and games, and tracking progress.">
+<meta name="theme-color" content="#6C5CE7">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<style>
+@font-face { font-family:'Fredoka'; src:url('assets/fonts/Fredoka-SemiBold.ttf') format('truetype'); font-weight:600; font-display:swap; }
+@font-face { font-family:'Nunito'; src:url('assets/fonts/Nunito-Regular.ttf') format('truetype'); font-weight:400; font-display:swap; }
+@font-face { font-family:'Nunito'; src:url('assets/fonts/Nunito-Bold.ttf') format('truetype'); font-weight:700; font-display:swap; }
+:root{
+  --bg:#FFF9EF; --card:#FFFFFF; --ink:#3A3A55; --ink-soft:#6B6B85;
+  --purple:#7C6FDE; --purple-deep:#5B4DBE; --pink:#E9739F;
+  --shadow:0 10px 30px rgba(124,111,222,.14), 0 3px 8px rgba(58,58,85,.08);
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#221D36; --card:#2E284A; --ink:#EFEBFF; --ink-soft:#BCB4DC; --purple-deep:#C6BCFA;
+         --shadow:0 10px 30px rgba(0,0,0,.45); }
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:'Nunito',system-ui,sans-serif; background:var(--bg); color:var(--ink); line-height:1.7; }
+.wrap{ max-width:860px; margin:0 auto; padding:0 20px 60px; }
+h1,h2,h3{ font-family:'Fredoka','Nunito',sans-serif; font-weight:600; line-height:1.3; }
+h1{ font-size:clamp(1.8rem,5vw,2.6rem); }
+h2{ font-size:1.4rem; color:var(--purple-deep); margin:38px 0 12px; }
+h3{ font-size:1.08rem; margin:20px 0 6px; }
+p,li{ color:var(--ink-soft); }
+strong{ color:var(--ink); }
+a{ color:var(--purple-deep); }
+header.top{ padding:36px 0 8px; }
+.eyebrow{ display:inline-block; font-family:'Fredoka',sans-serif; background:linear-gradient(135deg,#EFE9FF,#FDE9F3);
+  color:#5B4DBE; padding:.3em 1em; border-radius:999px; margin-bottom:12px; box-shadow:var(--shadow); }
+@media (prefers-color-scheme:dark){ .eyebrow{ background:var(--card); color:var(--purple-deep); } }
+.fil-note{ font-style:italic; margin-top:8px; }
+.box{ background:var(--card); border-radius:22px; padding:22px 26px; box-shadow:var(--shadow); margin:16px 0; }
+.box ul,.box ol{ margin:8px 0 0 1.3em; }
+.box li{ margin:.4em 0; }
+table{ width:100%; border-collapse:collapse; background:var(--card); border-radius:16px; overflow:hidden; box-shadow:var(--shadow); font-size:.95em; }
+th,td{ text-align:left; padding:12px 14px; border-bottom:1px solid rgba(124,111,222,.18); vertical-align:top; }
+th{ font-family:'Fredoka',sans-serif; color:var(--purple-deep); }
+.actions{ display:flex; gap:12px; margin:22px 0; flex-wrap:wrap; }
+.btn{ display:inline-flex; align-items:center; gap:.5em; text-decoration:none; cursor:pointer; border:none;
+  font-family:'Fredoka',sans-serif; font-size:1em; padding:12px 22px; border-radius:15px; }
+.btn-primary{ color:#fff; background:linear-gradient(160deg,#8F7BF0,#5B4DBE);
+  box-shadow:inset 0 2px 3px rgba(255,255,255,.4), inset 0 -3px 5px rgba(0,0,0,.16), 0 8px 18px rgba(108,92,231,.4); }
+.btn-ghost{ color:var(--purple-deep); background:var(--card); border:2px solid rgba(124,111,222,.4); box-shadow:var(--shadow); }
+.tip{ border-left:5px solid var(--pink); background:var(--card); border-radius:14px; padding:12px 18px; margin:14px 0; box-shadow:var(--shadow); font-size:.95em; }
+@media print{
+  body{ background:#fff; color:#000; font-size:11pt; }
+  .actions,.no-print{ display:none !important; }
+  .box,table,.tip{ box-shadow:none; border:1px solid #ccc; }
+  h2{ break-after:avoid; }
+  .box,tr{ break-inside:avoid; }
+  a{ color:#000; text-decoration:none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">🧑‍🏫 Teacher's Guide</span>
+  <h1>FlashLearn PWD in your classroom</h1>
+  <p class="fil-note">Gabay para sa mga guro — maaaring i-print ang pahinang ito para sa faculty room. 🖨️</p>
+  <div class="actions">
+    <button class="btn btn-primary" onclick="window.print()">🖨️ Print this guide</button>
+    <a class="btn btn-ghost" href="index.html">← Back to main site</a>
+  </div>
+</header>
+
+<h2>1. Getting the app onto devices</h2>
+<div class="box">
+  <ol>
+    <li>Download the APK once from the <a href="index.html#download">download page</a> (69 MB).</li>
+    <li>Copy it to every classroom device with a <strong>USB drive, SD card, or file sharing</strong> — no internet needed on the students' devices.</li>
+    <li>On each device: open the APK → allow "install unknown apps" if asked → <strong>Install</strong>.</li>
+    <li>The app stores everything on the device. Re-installing an update keeps all profiles and progress.</li>
+  </ol>
+</div>
+<div class="tip">💡 Devices shared by several pupils? That's the normal case — FlashLearn supports <strong>many profiles on one device</strong>, and each child's progress stays separate.</div>
+
+<h2>2. Create your Teacher profile and class</h2>
+<div class="box">
+  <ol>
+    <li>Open the app → <strong>Add New Profile</strong> → choose <strong>Teacher</strong>.</li>
+    <li>From your teacher dashboard, <strong>create a class</strong>. The app generates a short <strong>class code</strong>.</li>
+    <li>Write the class code on the board — students (or you) enter it when creating their Student profiles.</li>
+    <li>Students who join with your code appear automatically in your class list and reports.</li>
+  </ol>
+</div>
+<div class="tip">🔒 You can set a <strong>PIN</strong> on your Teacher profile (Settings → Profile → Set PIN) so pupils can't open your dashboard.</div>
+
+<h2>3. Set up each Student profile</h2>
+<div class="box">
+  <p>When creating a <strong>Student</strong> profile you can record the learner's age and, if applicable, a disability. Choosing one <strong>pre-configures the whole app</strong> — you can still fine-tune everything in Settings afterwards.</p>
+</div>
+<table>
+  <tr><th>Preset</th><th>What the app turns on</th></tr>
+  <tr><td>👁️ Visual impairment</td><td>High-contrast theme, larger text, voice-guided navigation, spoken words everywhere</td></tr>
+  <tr><td>👂 Hearing impairment</td><td>Filipino Sign Language content first, picture-led cards, visual-only games</td></tr>
+  <tr><td>🦽 Motor impairment</td><td>Gaze control &amp; voice commands (uses camera/microphone), extra-large touch targets</td></tr>
+  <tr><td>🧠 Cognitive / learning disability</td><td>Dyslexia-friendly font, calm reduced-motion screens, adaptive difficulty, gentle pacing</td></tr>
+</table>
+
+<h2>4. Teaching with FlashLearn</h2>
+<div class="box">
+  <h3>🃏 Flashcards (Cards tab)</h3>
+  <ul>
+    <li>10 decks · 177 words, each with picture, real photo, English &amp; Filipino audio, and FSL.</li>
+    <li>Great for <strong>guided vocabulary time</strong>: project one device, or let pairs explore a deck.</li>
+  </ul>
+  <h3>🎮 Games (Games tab)</h3>
+  <ul>
+    <li>Each game has <strong>Easy / Medium / Hard</strong> — start Easy, level up when ready.</li>
+    <li><strong>Play Together</strong> is a two-player race on one screen — perfect for pair work.</li>
+    <li>Tracing and Spelling Bee double as fine-motor and phonics practice.</li>
+  </ul>
+  <h3>📚 Stories (Stories tab)</h3>
+  <ul>
+    <li>Short bilingual stories reuse deck vocabulary; comprehension questions earn stars.</li>
+    <li>The harder story in each category unlocks after the easy one — a built-in reading ladder.</li>
+  </ul>
+  <h3>🌟 Daily Challenge (Home)</h3>
+  <ul><li>One quick question a day — a lovely 5-minute class opener.</li></ul>
+</div>
+
+<h2>5. Tracking progress</h2>
+<div class="box">
+  <ul>
+    <li>The <strong>Progress</strong> tab shows each learner's words mastered, streaks, stars, and per-deck bars.</li>
+    <li><strong>Certificates</strong> can be shown or printed when a learner reaches milestones.</li>
+    <li>Your <strong>teacher dashboard</strong> aggregates the whole class — spot who needs help at a glance.</li>
+    <li>Use <strong>notes</strong> to leave encouragement that parents can read from a Parent profile.</li>
+  </ul>
+</div>
+
+<h2>6. Accessibility cheat-sheet</h2>
+<table>
+  <tr><th>If a learner…</th><th>Try turning on…</th></tr>
+  <tr><td>squints, sits very close to the screen</td><td>High Contrast + font size L/XL (Settings → Accessibility)</td></tr>
+  <tr><td>is Deaf or hard of hearing</td><td>Rely on FSL buttons on cards + visual games; skip pronunciation games</td></tr>
+  <tr><td>struggles to tap small buttons</td><td>Gaze Control and Voice Commands (Settings → Gaze Control; needs camera/mic permission)</td></tr>
+  <tr><td>reverses letters, tires when reading</td><td>Dyslexia-friendly mode (cream background, Lexend font, wide spacing)</td></tr>
+  <tr><td>is distracted or overwhelmed by motion</td><td>Reduced Motion; consider Focus Mode and shorter sessions</td></tr>
+  <tr><td>can't yet read menus</td><td>Voice-Guided Navigation (reads screens aloud)</td></tr>
+</table>
+
+<h2>7. Classroom tips</h2>
+<div class="box">
+  <ul>
+    <li><strong>Everything works offline</strong> — no Wi-Fi worries during class.</li>
+    <li>Charge tablets beforehand; the app keeps the screen awake during activities.</li>
+    <li>Rotate "device captains" who hand out tablets and open the right profile.</li>
+    <li>Celebrate streaks and certificates publicly — the reward system is designed for it.</li>
+    <li>Found a bug or have a request? <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">Send feedback here</a>.</li>
+  </ul>
+</div>
+
+<p class="no-print" style="margin-top:30px"><a href="index.html">← Back to the FlashLearn PWD site</a></p>
+<p style="margin-top:10px"><small>© 2026 FlashLearn PWD — college thesis / capstone project. Made with 💜 for inclusive education in the Philippines.</small></p>
+</div>
+</body>
+</html>
