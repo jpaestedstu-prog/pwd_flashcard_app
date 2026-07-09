@@ -1,11 +1,13 @@
 /* FlashLearn PWD site service worker — offline support for the core pages. */
-const CACHE = 'flp-site-v2';
+const CACHE = 'flp-site-v3';
 const CORE = [
   './',
   'index.html',
   'teachers-guide.html',
   'manifest.webmanifest',
   'assets/site.js',
+  'assets/videos/app-demo.en.vtt',
+  'assets/videos/app-demo.fil.vtt',
   'assets/icon-192.png',
   'assets/icon-512.png',
   'assets/qr-site.png',
