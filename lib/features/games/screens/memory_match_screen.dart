@@ -240,22 +240,25 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
         .map((c) => c.category)
         .toSet()
         .toList();
+    // Per-word results (all correct in memory match) — feeds both
+    // wordsLearned and spaced repetition.
+    final srResults = <String, bool>{};
+    for (final c in _sourceCards) {
+      srResults[c.id] = true;
+    }
+
     ref.read(progressProvider.notifier).recordGameResult(
       gameType: GameType.memoryMatch,
       score: _pairs,
       total: _pairs,
       starsEarned: _starsEarned,
       categoriesPlayed: categories,
+      correctWordIds: srResults.correctWordIds,
     );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
-    // Record per-word accuracy for spaced repetition (all correct in memory match)
     final profile = ref.read(profileProvider);
     if (profile != null) {
-      final srResults = <String, bool>{};
-      for (final c in _sourceCards) {
-        srResults[c.id] = true;
-      }
       SpacedRepetitionService.recordBatch(profileId: profile.id, results: srResults);
     }
   }

@@ -115,12 +115,19 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
 
   void _completeSession() {
     if (_session == null) return;
+    // A card counts as learned once any step targeting it was answered
+    // correctly — several steps can drill the same card.
+    final correctWordIds = _session!.steps
+        .where((s) => s.wasCorrect == true)
+        .map((s) => s.targetCard.id)
+        .toSet();
     ref.read(progressProvider.notifier).recordGameResult(
           gameType: GameType.flashcardQuiz,
           score: _session!.correctCount,
           total: _session!.totalSteps,
           starsEarned: _session!.starsEarned,
           categoriesPlayed: [widget.category],
+          correctWordIds: correctWordIds,
         );
 
     setState(() {

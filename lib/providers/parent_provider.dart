@@ -150,7 +150,7 @@ ParentDashboardSnapshot _buildSnapshot(
     List<(UserProfile, LearningProgress)> profilesWithProgress) {
   final children = profilesWithProgress
       .where((pair) =>
-          pair.$1.role == UserRole.student && !pair.$1.isGuestPlayer)
+          pair.$1.role.isEnrollableLearner && !pair.$1.isGuestPlayer)
       .map((pair) {
     final profile = pair.$1;
     final progress = pair.$2;

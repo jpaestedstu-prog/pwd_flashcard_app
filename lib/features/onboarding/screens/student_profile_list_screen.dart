@@ -27,7 +27,7 @@ class _StudentProfileListScreenState
   /// Returns sorted-by-createdAt-desc list of student profiles.
   Future<List<UserProfile>> _fetchStudents() async {
     final active = ref.read(profileProvider);
-    if (active != null && active.role != UserRole.student) {
+    if (active != null && active.role.isEducator) {
       // Educator: fetch students from their Firestore classrooms.
       final pairs = await ref.read(educatorRosterProvider(active.id).future);
       final list = pairs.map((p) => p.$1).toList()
@@ -39,14 +39,14 @@ class _StudentProfileListScreenState
     return raw
         .map((data) => HiveService.getProfileById(data['id'] as String))
         .whereType<UserProfile>()
-        .where((p) => p.role == UserRole.student && !p.isGuestPlayer)
+        .where((p) => p.role.isEnrollableLearner && !p.isGuestPlayer)
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   void _refresh() {
     final active = ref.read(profileProvider);
-    if (active != null && active.role != UserRole.student) {
+    if (active != null && active.role.isEducator) {
       // ignore: unused_result
       ref.refresh(educatorRosterProvider(active.id));
     }

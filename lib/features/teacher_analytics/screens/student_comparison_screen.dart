@@ -37,7 +37,7 @@ class _StudentComparisonScreenState
   void _loadStudents() {
     final allData = HiveService.getAllProfilesWithProgress();
     _allStudents = allData
-        .where((d) => d.$1.role == UserRole.student)
+        .where((d) => d.$1.role.isEnrollableLearner)
         .map((d) => StudentAnalytics.from(d.$1, d.$2))
         .toList()
       ..sort((a, b) => a.name.compareTo(b.name));

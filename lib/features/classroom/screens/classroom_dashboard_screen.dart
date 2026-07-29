@@ -30,7 +30,7 @@ class _ClassroomDashboardScreenState
   /// Manual refresh — kept as a safety net for the IconButton.
   void _refresh() {
     final profile = ref.read(profileProvider);
-    if (profile != null && profile.role != UserRole.student) {
+    if (profile != null && profile.role.isEducator) {
       ref.invalidate(teacherDashboardSnapshotProvider(profile.id));
     } else {
       ref.read(classroomProvider.notifier).refresh();
@@ -43,8 +43,7 @@ class _ClassroomDashboardScreenState
     // Educators (teacher/parent) read student data from Firestore so the
     // dashboard reflects students enrolled from any device. Students/players
     // fall back to the local snapshot.
-    final isEducator =
-        profile != null && profile.role != UserRole.student;
+    final isEducator = profile != null && profile.role.isEducator;
     final snapshotAsync = isEducator
         ? ref.watch(teacherDashboardSnapshotProvider(profile.id))
         : AsyncData<ClassroomSnapshot>(ref.watch(classroomProvider));

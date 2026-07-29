@@ -26,7 +26,8 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
   ClassAnalytics _analyticsFrom(
       List<(dynamic, dynamic)> pairs) {
     final studentData = pairs
-        .where((d) => d.$1.role == UserRole.student && !d.$1.isGuestPlayer)
+        .where((d) =>
+            (d.$1.role as UserRole).isEnrollableLearner && !d.$1.isGuestPlayer)
         .toList();
     final studentAnalytics = studentData
         .map((d) => StudentAnalytics.from(d.$1, d.$2))
@@ -37,8 +38,7 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeProfile = ref.watch(profileProvider);
-    final isEducator = activeProfile != null &&
-        activeProfile.role != UserRole.student;
+    final isEducator = activeProfile != null && activeProfile.role.isEducator;
 
     // Educators read from Firestore (cross-device); everyone else reads
     // local Hive.
@@ -312,8 +312,10 @@ class _NeedHelpAlert extends StatelessWidget {
                 ),
                 Text(
                   isFilipino
-                      ? 'Accuracy na mas mababa sa 50%'
-                      : 'Accuracy below 50%',
+                      ? 'Mas mababa sa 50% accuracy sa '
+                          '${StudentStanding.minGradedGames}+ na laro'
+                      : 'Below 50% accuracy over '
+                          '${StudentStanding.minGradedGames}+ games',
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.error.withValues(alpha: 0.7),
                     fontSize: 11,
@@ -458,12 +460,19 @@ class _StudentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    final accuracyPct = (student.averageAccuracy * 100).round();
-    final accuracyColor = student.averageAccuracy >= 0.7
-        ? AppColors.success
-        : student.averageAccuracy >= 0.5
-            ? AppColors.warning
-            : AppColors.error;
+    // A learner with no graded games has no accuracy to report — showing a
+    // red "0%" made "hasn't started" look identical to "getting everything
+    // wrong". Show a neutral dash instead.
+    final hasAccuracy = student.hasGradedActivity;
+    final accuracyLabel =
+        hasAccuracy ? '${(student.averageAccuracy * 100).round()}%' : '—';
+    final accuracyColor = !hasAccuracy
+        ? hc.textHint
+        : student.averageAccuracy >= 0.7
+            ? AppColors.success
+            : student.averageAccuracy >= 0.5
+                ? AppColors.warning
+                : AppColors.error;
     final isTopThree = rank <= 3;
 
     return GestureDetector(
@@ -600,7 +609,7 @@ class _StudentRow extends StatelessWidget {
                 ),
               ),
               child: Text(
-                '$accuracyPct%',
+                accuracyLabel,
                 style: AppTypography.labelSmall.copyWith(
                   color: accuracyColor,
                   fontWeight: FontWeight.w800,
@@ -613,16 +622,10 @@ class _StudentRow extends StatelessWidget {
           ],
         ),
       ),
-    )
-        .animate()
-        .fadeIn(duration: 300.ms, delay: (80 + index * 60).ms)
-        .slideX(
-          begin: 0.03,
-          end: 0,
-          delay: (80 + index * 60).ms,
-          duration: 300.ms,
-          curve: Curves.easeOutCubic,
-        );
+    );
+    // No per-row entrance animation: these rows live in a lazy sliver and are
+    // rebuilt whenever they scroll back into view, so a staggered `.animate()`
+    // replays from opacity 0 every time and the table flickers.
   }
 }
 

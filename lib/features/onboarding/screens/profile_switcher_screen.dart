@@ -110,6 +110,12 @@ class _ProfileSwitcherScreenState
                 ),
               ).animate().fadeIn(duration: 500.ms, delay: 200.ms),
               const SizedBox(height: 32),
+              // The entrance animation lives on the list, NOT on each row.
+              // `ListView.builder` rebuilds a row every time it scrolls back
+              // into view, so a per-row `.animate()` restarted from opacity 0
+              // on every recycle — with a stagger of `200 + index * 80` ms,
+              // scrolling a full roster left rows blank for up to a second
+              // and made it easy to tap the wrong profile.
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -124,14 +130,9 @@ class _ProfileSwitcherScreenState
                         avatar: avatar,
                         onTap: () => _selectProfile(profile),
                       ),
-                    )
-                        .animate()
-                        .fadeIn(
-                            duration: 400.ms, delay: (200 + index * 80).ms)
-                        .slideX(
-                            begin: index.isEven ? -0.1 : 0.1, end: 0);
+                    );
                   },
-                ),
+                ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
               ),
               // Add new profile button
               Padding(

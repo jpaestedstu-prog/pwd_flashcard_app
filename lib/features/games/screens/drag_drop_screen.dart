@@ -161,22 +161,25 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
         .map((c) => c.category)
         .toSet()
         .toList();
+    // Per-word results — feeds both wordsLearned and spaced repetition.
+    final srResults = <String, bool>{};
+    for (final c in _flashcards) {
+      srResults[c.id] = true;
+    }
+
     ref.read(progressProvider.notifier).recordGameResult(
       gameType: GameType.dragAndDrop,
       score: _correctCount,
       total: _totalItems,
       starsEarned: _starsEarned,
       categoriesPlayed: categories,
+      correctWordIds: srResults.correctWordIds,
     );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
     // Record per-word accuracy for spaced repetition
     final profile = ref.read(profileProvider);
     if (profile != null) {
-      final srResults = <String, bool>{};
-      for (final c in _flashcards) {
-        srResults[c.id] = true;
-      }
       SpacedRepetitionService.recordBatch(profileId: profile.id, results: srResults);
     }
   }

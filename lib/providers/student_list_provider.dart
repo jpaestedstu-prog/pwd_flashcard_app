@@ -70,7 +70,7 @@ final studentFilterProvider =
 final _rosterSourceProvider =
     Provider<List<(UserProfile, LearningProgress)>>((ref) {
   final active = ref.watch(profileProvider);
-  if (active != null && active.role != UserRole.student) {
+  if (active != null && active.role.isEducator) {
     final remote = ref.watch(educatorRosterProvider(active.id));
     final remoteList = remote.value;
     if (remoteList != null) return remoteList;
@@ -84,9 +84,10 @@ final filteredStudentsProvider =
   final allData = ref.watch(_rosterSourceProvider);
   final filter = ref.watch(studentFilterProvider);
 
-  // Start with only student-role profiles, excluding guest players.
+  // Start with enrollable learners (classroom students + home-group
+  // children), excluding guest players.
   var students = allData
-      .where((d) => d.$1.role == UserRole.student && !d.$1.isGuestPlayer)
+      .where((d) => d.$1.role.isEnrollableLearner && !d.$1.isGuestPlayer)
       .toList();
 
   // Search filter

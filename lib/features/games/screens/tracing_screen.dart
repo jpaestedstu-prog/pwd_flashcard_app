@@ -270,6 +270,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
       total: _totalItems,
       starsEarned: _starsEarned,
       categoriesPlayed: categories,
+      correctWordIds: _wordResults.correctWordIds,
     );
     _newAchievements =
         ref.read(progressProvider.notifier).checkAchievements();

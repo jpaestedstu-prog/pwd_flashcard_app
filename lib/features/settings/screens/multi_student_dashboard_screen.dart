@@ -32,15 +32,13 @@ class MultiStudentDashboardScreen extends ConsumerWidget {
     // Use the same roster source as the filter pipeline so educators see
     // their Firestore-backed student count.
     final activeProfile = ref.watch(profileProvider);
-    final isEducator = activeProfile != null &&
-        activeProfile.role != UserRole.student;
+    final isEducator = activeProfile != null && activeProfile.role.isEducator;
     final rosterAsync = isEducator
         ? ref.watch(educatorRosterProvider(activeProfile.id))
         : AsyncData(ref.watch(allProfilesWithProgressProvider));
     final allData = rosterAsync.value ?? const [];
     final totalStudents = allData
-        .where((d) =>
-            d.$1.role == UserRole.student && !d.$1.isGuestPlayer)
+        .where((d) => d.$1.role.isEnrollableLearner && !d.$1.isGuestPlayer)
         .length;
     final totalWords = ref.watch(allFlashcardsProvider).length;
 

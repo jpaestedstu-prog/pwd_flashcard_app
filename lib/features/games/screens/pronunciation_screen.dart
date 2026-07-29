@@ -319,26 +319,29 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
       if (!awarded) stars = 0;
     }
     _finalStars = stars;
+    // Per-word results — feeds both wordsLearned and spaced repetition.
+    final sr = <String, bool>{};
+    for (final r in _reviewItems) {
+      final card = _rounds
+          .map((rd) => rd.correctCard)
+          .where((c) => c.wordEnglish == r.wordEnglish)
+          .firstOrNull;
+      if (card != null) sr[card.id] = r.isCorrect;
+    }
+
     ref.read(progressProvider.notifier).recordGameResult(
       gameType: GameType.pronunciation,
       score: _score,
       total: _rounds.length,
       starsEarned: _finalStars,
       categoriesPlayed: categories,
+      correctWordIds: sr.correctWordIds,
     );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
     // Spaced repetition
     final profile = ref.read(profileProvider);
     if (profile != null) {
-      final sr = <String, bool>{};
-      for (final r in _reviewItems) {
-        final card = _rounds
-            .map((rd) => rd.correctCard)
-            .where((c) => c.wordEnglish == r.wordEnglish)
-            .firstOrNull;
-        if (card != null) sr[card.id] = r.isCorrect;
-      }
       SpacedRepetitionService.recordBatch(profileId: profile.id, results: sr);
     }
 

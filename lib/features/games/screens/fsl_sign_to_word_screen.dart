@@ -313,6 +313,15 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
         .map((r) => r.correctCard.category)
         .toSet()
         .toList();
+    // Per-word results — feeds both wordsLearned and spaced repetition.
+    final srResults = <String, bool>{};
+    for (final r in _reviewItems) {
+      final card = _cardsWithVideo
+          .where((c) => c.wordEnglish == r.wordEnglish)
+          .firstOrNull;
+      if (card != null) srResults[card.id] = r.isCorrect;
+    }
+
     ref
         .read(progressProvider.notifier)
         .recordGameResult(
@@ -321,19 +330,13 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
           total: _rounds.length,
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
+          correctWordIds: srResults.correctWordIds,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
     // Record per-word accuracy for spaced repetition
     final profile = ref.read(profileProvider);
     if (profile != null) {
-      final srResults = <String, bool>{};
-      for (final r in _reviewItems) {
-        final card = _cardsWithVideo
-            .where((c) => c.wordEnglish == r.wordEnglish)
-            .firstOrNull;
-        if (card != null) srResults[card.id] = r.isCorrect;
-      }
       SpacedRepetitionService.recordBatch(
         profileId: profile.id,
         results: srResults,

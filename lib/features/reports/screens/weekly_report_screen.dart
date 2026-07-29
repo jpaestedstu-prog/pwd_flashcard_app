@@ -192,7 +192,12 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
               onGenerate: () => _generateReport(child),
               onPreview: () => _previewReport(child),
             ),
-          ).animate(delay: (100 * index).ms).fadeIn(duration: 300.ms).slideX(begin: 0.05, end: 0);
+            // Eagerly built (List.generate), so this plays once — but cap the
+            // stagger so a large class doesn't take seconds to finish
+            // revealing. Beyond the 6th card everything lands together.
+          ).animate(delay: (100 * (index.clamp(0, 6))).ms)
+              .fadeIn(duration: 300.ms)
+              .slideX(begin: 0.05, end: 0);
         }),
       ],
     );

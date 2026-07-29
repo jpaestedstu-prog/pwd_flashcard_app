@@ -295,7 +295,7 @@ class _ParentDashboardScreenState
           // roster first (cross-device), fall back to local Hive.
           final active = ref.read(profileProvider);
           List<(UserProfile, LearningProgress)> allData = const [];
-          if (active != null && active.role != UserRole.student) {
+          if (active != null && active.role.isEducator) {
             try {
               allData =
                   await ref.read(educatorRosterProvider(active.id).future);
@@ -761,16 +761,10 @@ class _ChildCard extends ConsumerWidget {
             ),
           ],
         ),
-    )
-        .animate()
-        .fadeIn(duration: 350.ms, delay: (150 + index * 80).ms)
-        .slideY(
-          begin: 0.05,
-          end: 0,
-          delay: (150 + index * 80).ms,
-          duration: 350.ms,
-          curve: Curves.easeOutCubic,
-        );
+    );
+    // No per-card entrance animation: child cards live in a lazy sliver and
+    // are rebuilt on every scroll-back, so a staggered `.animate()` replays
+    // from opacity 0 each time and cards blink out mid-scroll.
   }
 }
 

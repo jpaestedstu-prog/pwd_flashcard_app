@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/pro_surface.dart';
@@ -76,15 +75,9 @@ class ParentRecommendationCard extends StatelessWidget {
               size: 16, color: color.withValues(alpha: 0.4)),
         ],
       ),
-    )
-        .animate()
-        .fadeIn(duration: 300.ms, delay: (200 + index * 80).ms)
-        .slideX(
-          begin: 0.03,
-          end: 0,
-          delay: (200 + index * 80).ms,
-          duration: 300.ms,
-          curve: Curves.easeOutCubic,
-        );
+    );
+    // No per-card entrance animation: recommendation cards are built by a
+    // lazy sliver and rebuilt on scroll-back, so a staggered `.animate()`
+    // replays from opacity 0 every time.
   }
 }

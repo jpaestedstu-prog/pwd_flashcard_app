@@ -1,5 +1,30 @@
 import '../../../data/models/models.dart';
 
+/// How a learner is doing, as an educator would triage them.
+///
+/// Replaces a bare `accuracy < 50%` test, which silently swept in every
+/// learner who had simply never played (their accuracy defaults to 0) — a
+/// teacher opening Analytics saw most of the class in a red alert.
+enum StudentStanding {
+  /// No graded activity yet — nothing to judge, so never "needs help".
+  notStarted,
+
+  /// Has activity, but none in the last 7 days.
+  inactive,
+
+  /// Enough evidence ([minGradedGames]+ games) and still below 50%.
+  struggling,
+
+  /// Has recent activity and acceptable accuracy.
+  onTrack;
+
+  /// Games needed before low accuracy is treated as a real signal rather
+  /// than a small-sample artifact.
+  static const int minGradedGames = 3;
+
+  bool get needsHelp => this == StudentStanding.struggling;
+}
+
 /// Aggregated analytics for a single student
 class StudentAnalytics {
   final String profileId;
@@ -31,6 +56,25 @@ class StudentAnalytics {
     required this.totalStudyTime,
     required this.lastActive,
   });
+
+  /// True once the learner has any graded game — i.e. [averageAccuracy]
+  /// means something. Without this, "0% accuracy" is indistinguishable
+  /// between "got everything wrong" and "never played".
+  bool get hasGradedActivity => gamesPlayed > 0;
+
+  /// Triage bucket for this learner. [now] is injectable for tests.
+  StudentStanding standing({DateTime? now}) {
+    if (!hasGradedActivity) return StudentStanding.notStarted;
+    final reference = now ?? DateTime.now();
+    if (lastActive.isBefore(reference.subtract(const Duration(days: 7)))) {
+      return StudentStanding.inactive;
+    }
+    if (gamesPlayed >= StudentStanding.minGradedGames &&
+        averageAccuracy < 0.5) {
+      return StudentStanding.struggling;
+    }
+    return StudentStanding.onTrack;
+  }
 
   /// Build from a profile + progress pair
   factory StudentAnalytics.from(UserProfile profile, LearningProgress progress,
@@ -128,9 +172,14 @@ class ClassAnalytics {
     final active =
         students.where((s) => s.lastActive.isAfter(weekAgo)).length;
 
-    final avgAccuracy = students.fold<double>(
-            0, (s, a) => s + a.averageAccuracy) /
-        students.length;
+    // Average over learners who actually have graded games. Including
+    // never-played learners (accuracy 0.0) dragged the class average toward
+    // zero and made an active class look like it was failing.
+    final graded = students.where((s) => s.hasGradedActivity).toList();
+    final avgAccuracy = graded.isEmpty
+        ? 0.0
+        : graded.fold<double>(0, (s, a) => s + a.averageAccuracy) /
+            graded.length;
     final totalWords =
         students.fold<int>(0, (s, a) => s + a.wordsLearned);
     final totalStars =
@@ -151,22 +200,44 @@ class ClassAnalytics {
       (key, value) => MapEntry(key, value / (catCounts[key] ?? 1)),
     );
 
+    // Strongest / weakest only mean something when the categories actually
+    // differ. With every category tied (e.g. a class that hasn't started,
+    // all at 0%) the old first-wins scan still crowned an arbitrary winner
+    // and red-flagged an arbitrary loser. Ties now resolve by name so the
+    // pick is at least deterministic, and a flat spread reports neither.
     String? strongest;
     String? weakest;
-    double maxVal = -1;
-    double minVal = 2;
-    for (final entry in catAvgs.entries) {
-      if (entry.value > maxVal) {
-        maxVal = entry.value;
-        strongest = entry.key;
-      }
-      if (entry.value < minVal) {
-        minVal = entry.value;
-        weakest = entry.key;
+    if (catAvgs.isNotEmpty) {
+      final ordered = catAvgs.entries.toList()
+        ..sort((a, b) {
+          final byValue = b.value.compareTo(a.value);
+          return byValue != 0 ? byValue : a.key.compareTo(b.key);
+        });
+      if (ordered.first.value > ordered.last.value) {
+        strongest = ordered.first.key;
+        weakest = ordered.last.key;
       }
     }
 
-    final needHelp = students.where((s) => s.averageAccuracy < 0.5).toList();
+    final needHelp =
+        students.where((s) => s.standing(now: now).needsHelp).toList();
+
+    // Rank by demonstrated learning, then break ties so the order is stable
+    // and meaningful: words → accuracy → stars → games → name. Sorting on
+    // words alone put learners with identical (often zero) word counts in
+    // arbitrary order, which handed the top medals to inactive learners
+    // while a 100%-accuracy learner ranked near the bottom.
+    final ranked = [...students]..sort((a, b) {
+        final byWords = b.wordsLearned.compareTo(a.wordsLearned);
+        if (byWords != 0) return byWords;
+        final byAccuracy = b.averageAccuracy.compareTo(a.averageAccuracy);
+        if (byAccuracy != 0) return byAccuracy;
+        final byStars = b.totalStars.compareTo(a.totalStars);
+        if (byStars != 0) return byStars;
+        final byGames = b.gamesPlayed.compareTo(a.gamesPlayed);
+        if (byGames != 0) return byGames;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
 
     return ClassAnalytics(
       totalStudents: students.length,
@@ -178,7 +249,7 @@ class ClassAnalytics {
       categoryAverages: catAvgs,
       classStrongestCategory: strongest,
       classWeakestCategory: weakest,
-      students: students..sort((a, b) => b.wordsLearned.compareTo(a.wordsLearned)),
+      students: ranked,
       studentsNeedingHelp: needHelp,
     );
   }

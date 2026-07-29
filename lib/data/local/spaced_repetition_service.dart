@@ -124,6 +124,9 @@ class SpacedRepetitionService {
   }
 
   /// Batch record after a game (list of word IDs and whether each was correct).
+  ///
+  /// Games build the same `wordId -> wasCorrect` map for
+  /// [LearningProgress.wordsLearned] — see [GameWordResults.correctWordIds].
   static Future<void> recordBatch({
     required String profileId,
     required Map<String, bool> results, // wordId -> wasCorrect
@@ -202,4 +205,21 @@ class SpacedRepetitionService {
       wordsStruggling: struggling,
     );
   }
+}
+
+/// Bridges the per-word results a game already builds for spaced repetition
+/// into the unique-word count behind `LearningProgress.wordsLearned`.
+///
+/// Historically every game built this map but only handed it to
+/// [SpacedRepetitionService.recordBatch]; `recordGameResult`'s
+/// `correctWordIds` parameter was never passed by any caller, so
+/// `wordsLearned` was permanently 0 — which in turn zeroed the educator
+/// "Words Learned" tiles, the class ranking, XP word bonuses, the `words_*`
+/// stickers and the word-count achievements.
+extension GameWordResults on Map<String, bool> {
+  /// The word IDs answered correctly this session.
+  Set<String> get correctWordIds => entries
+      .where((e) => e.value)
+      .map((e) => e.key)
+      .toSet();
 }

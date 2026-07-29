@@ -16,6 +16,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/slow_motion.dart';
 import '../../../data/local/hive_service.dart';
+import '../../../data/local/spaced_repetition_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
@@ -70,6 +71,11 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
   List<Flashcard> _cards = const [];
   int _currentRound = 0;
   int _gotItCount = 0;
+
+  /// Per-card self-assessment (cardId → "I got it"). Feeds `wordsLearned`;
+  /// Sign It is production practice, so the learner's own "Got it" is the
+  /// correctness signal.
+  final Map<String, bool> _cardResults = {};
   bool _loading = true;
   bool _showResult = false;
 
@@ -368,6 +374,9 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
   void _confirm(bool gotIt) {
     // Each take is for this round only — clear it before moving on.
     _discardRecording();
+    if (_currentRound < _cards.length) {
+      _cardResults[_cards[_currentRound].id] = gotIt;
+    }
     if (gotIt) {
       _gotItCount++;
       ref.read(soundServiceProvider).playCorrect();
@@ -411,6 +420,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
           total: _rounds,
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
+          correctWordIds: _cardResults.correctWordIds,
         );
   }
 
@@ -419,6 +429,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     setState(() {
       _currentRound = 0;
       _gotItCount = 0;
+      _cardResults.clear();
       _showResult = false;
       _videoReady = false;
       _cards = List.of(_cards)..shuffle(_random);

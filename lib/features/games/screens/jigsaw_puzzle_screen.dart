@@ -230,22 +230,25 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
   void _saveProgress() {
     final categories =
         _puzzleCards.map((c) => c.category).toSet().toList();
+    // Per-word results — feeds both wordsLearned and spaced repetition.
+    final srResults = <String, bool>{};
+    for (final card in _puzzleCards) {
+      srResults[card.id] = true; // completed puzzles count as correct
+    }
+
     ref.read(progressProvider.notifier).recordGameResult(
       gameType: GameType.jigsawPuzzle,
       score: _score,
       total: _totalPuzzles,
       starsEarned: _starsEarned,
       categoriesPlayed: categories,
+      correctWordIds: srResults.correctWordIds,
     );
     _newAchievements =
         ref.read(progressProvider.notifier).checkAchievements();
 
     final profile = ref.read(profileProvider);
     if (profile != null) {
-      final srResults = <String, bool>{};
-      for (final card in _puzzleCards) {
-        srResults[card.id] = true; // completed puzzles count as correct
-      }
       SpacedRepetitionService.recordBatch(
           profileId: profile.id, results: srResults);
     }

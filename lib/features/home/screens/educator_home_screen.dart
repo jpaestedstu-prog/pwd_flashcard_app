@@ -28,8 +28,7 @@ class EducatorHomeScreen extends ConsumerWidget {
     final padding = context.pagePadding;
     final hc = HCColor.of(context);
     final isParent = profile?.role == UserRole.parent;
-    final isEducator =
-        profile != null && profile.role != UserRole.student;
+    final isEducator = profile != null && profile.role.isEducator;
 
     // Use Firestore-backed roster for educator views so cross-device joined
     // students appear consistently in Home/Students/Analytics/Reports.
@@ -39,7 +38,7 @@ class EducatorHomeScreen extends ConsumerWidget {
         : null;
     final allData = rosterAsync?.valueOrNull ?? fallback;
     final students = allData
-        .where((d) => d.$1.role == UserRole.student && !d.$1.isGuestPlayer)
+        .where((d) => d.$1.role.isEnrollableLearner && !d.$1.isGuestPlayer)
         .toList();
     final showRosterLoading = rosterAsync != null &&
         rosterAsync.isLoading &&
@@ -311,6 +310,10 @@ class EducatorHomeScreen extends ConsumerWidget {
               ),
               SliverList(
                 delegate: SliverChildBuilderDelegate(
+                  // No per-row entrance animation: rows in a lazy sliver are
+                  // rebuilt on every scroll-back, so a staggered `.animate()`
+                  // replays from opacity 0 each time and the roster flickers.
+                  // Section headers above still animate.
                   (context, index) {
                     final (studentProfile, studentProgress) =
                         students[index];
@@ -331,10 +334,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                           context.push('/dashboard');
                         },
                       ),
-                    )
-                        .animate()
-                        .fadeIn(duration: 300.ms, delay: (100 * index).ms)
-                        .slideY(begin: 0.05, end: 0);
+                    );
                   },
                   childCount: students.length.clamp(0, 5),
                 ),

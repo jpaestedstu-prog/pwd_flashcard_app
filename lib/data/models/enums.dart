@@ -178,6 +178,21 @@ extension UserRoleX on UserRole {
 
   bool get isEducator =>
       this == UserRole.teacher || this == UserRole.parent;
+
+  /// Roles that can be *enrolled* by an educator: a classroom `student` and a
+  /// home-group `child`. Narrower than [isLearner], which also covers Player
+  /// Mode — a standalone surface that never belongs to a class or home group.
+  ///
+  /// Every educator roster / analytics / report consumer must filter on this,
+  /// not on `== UserRole.student`. `educatorRosterProvider` deliberately
+  /// returns students AND children, so filtering on `student` alone silently
+  /// drops every home-group child — which is what made a Parent with five
+  /// populated home groups see "No children yet".
+  ///
+  /// Deliberate exception: research capture / export stays student-scoped —
+  /// see the rationale on `engagementTrackerProvider`.
+  bool get isEnrollableLearner =>
+      this == UserRole.student || this == UserRole.child;
 }
 
 extension LearningLevelX on LearningLevel {
