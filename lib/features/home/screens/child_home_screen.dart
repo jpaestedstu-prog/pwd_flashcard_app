@@ -288,6 +288,18 @@ class ChildHomeScreen extends ConsumerWidget {
               ],
               onTap: () => context.push('/messages'),
             ),
+            // Read-only for the child: the notes screen hides its "New Note"
+            // button for non-educators, so this is where they see what their
+            // parent and teacher have written about them.
+            entry(
+              emoji: '📝',
+              label: 'My Notes',
+              gradient: const [
+                AppColors.bannerRecommendStart,
+                AppColors.bannerRecommendEnd,
+              ],
+              onTap: () => context.push('/parent-teacher-notes'),
+            ),
           ]),
 
           // ─── Section: Rewards & Feelings ─────────

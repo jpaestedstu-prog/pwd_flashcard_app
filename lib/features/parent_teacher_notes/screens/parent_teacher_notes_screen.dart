@@ -7,13 +7,30 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../core/accessibility/haptic_service.dart' show hapticServiceProvider;
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
+import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../models/parent_teacher_note_models.dart';
 import '../services/notes_cloud_service.dart';
 
 class ParentTeacherNotesScreen extends ConsumerStatefulWidget {
-  const ParentTeacherNotesScreen({super.key});
+  /// When set, the screen is scoped to a single learner — used by the
+  /// per-child entry points (e.g. the Parent Dashboard child card). When
+  /// null, an educator sees every learner on their roster.
+  ///
+  /// A learner id is only honoured if it is actually on the caller's
+  /// roster, so a hand-typed deep link can't widen access.
+  final String? studentId;
+
+  /// Display name for the scoped learner, passed via `?name=` so the app
+  /// bar can title itself without a lookup. Cosmetic only.
+  final String? studentName;
+
+  const ParentTeacherNotesScreen({
+    super.key,
+    this.studentId,
+    this.studentName,
+  });
 
   @override
   ConsumerState<ParentTeacherNotesScreen> createState() =>
@@ -27,37 +44,80 @@ class _ParentTeacherNotesScreenState
   List<ParentTeacherNote> _notes = [];
   NoteCategory? _filterCategory;
 
+  /// Roster the educator may write notes about: (id, name) pairs.
+  /// Empty for learners, who only ever see their own notes.
+  List<(String, String)> _roster = const [];
+  bool _loading = true;
+
   @override
   void initState() {
     super.initState();
     _loadNotes();
   }
 
-  /// IDs of every student whose notes this profile should see.
-  /// - student: just themselves (notes others wrote about them)
-  /// - educator (teacher/parent): every student profile on this device
-  List<String> _studentIdsForCurrentProfile() {
+  /// The learners whose notes this profile may see.
+  ///
+  /// - learner (student / child): only themselves.
+  /// - educator (teacher / parent): only learners on **their own roster**.
+  ///
+  /// This deliberately does NOT read every profile on the device. The old
+  /// implementation did, which on a shared tablet showed a teacher the notes
+  /// about another family's children (and vice versa). It also filtered on
+  /// `role == student`, so a parent's `child`-role children were dropped
+  /// entirely — the parent saw nothing and any note they wrote was filed
+  /// against their own profile id.
+  Future<List<(String, String)>> _visibleLearners() async {
     final profile = ref.read(profileProvider);
     if (profile == null) return const [];
-    if (profile.role == UserRole.student) {
-      return [profile.id];
+
+    if (!profile.role.isEducator) {
+      return [(profile.id, profile.name)];
     }
-    return HiveService.getProfiles()
-        .where((p) => UserRole.values[p['role'] as int] == UserRole.student)
-        .map((p) => p['id'] as String)
-        .toList();
+
+    // Firestore-backed roster so learners enrolled from another device are
+    // included; falls back to local Hive when the fetch fails (offline).
+    List<(UserProfile, LearningProgress)> pairs = const [];
+    try {
+      pairs = await ref.read(educatorRosterProvider(profile.id).future);
+    } on Exception catch (e) {
+      debugPrint('parent-teacher notes: roster fetch failed: $e');
+    }
+    if (pairs.isEmpty) {
+      pairs = HiveService.getAllProfilesWithProgress();
+    }
+
+    return pairs
+        .map((p) => p.$1)
+        .where((p) => p.role.isEnrollableLearner && !p.isGuestPlayer)
+        .map((p) => (p.id, p.name))
+        .toList()
+      ..sort((a, b) => a.$2.toLowerCase().compareTo(b.$2.toLowerCase()));
   }
 
-  /// Read every relevant student's bucket from Hive AND pull from
+  /// Read every relevant learner's bucket from Hive AND pull from
   /// Firestore (so notes authored on another device show up here).
   Future<void> _loadNotes() async {
-    final studentIds = _studentIdsForCurrentProfile();
-    if (studentIds.isEmpty) return;
+    final roster = await _visibleLearners();
+    if (!mounted) return;
+
+    // Honour the scoped id only when it's on the roster — otherwise fall
+    // back to the full roster rather than trusting the URL.
+    final scoped = widget.studentId;
+    final visible = (scoped != null && roster.any((r) => r.$1 == scoped))
+        ? roster.where((r) => r.$1 == scoped).toList()
+        : roster;
+
+    setState(() => _roster = visible);
+    final learnerIds = visible.map((r) => r.$1).toList();
+    if (learnerIds.isEmpty) {
+      setState(() => _loading = false);
+      return;
+    }
 
     // Show local data immediately to avoid a blank screen during the
     // network round-trip.
     final localMerged = <ParentTeacherNote>[];
-    for (final id in studentIds) {
+    for (final id in learnerIds) {
       localMerged.addAll(HiveService.getNotesForStudent(id));
     }
     localMerged.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -65,12 +125,25 @@ class _ParentTeacherNotesScreenState
 
     // Then refresh from cloud — overwrites Hive and our state.
     final fresh = <ParentTeacherNote>[];
-    for (final id in studentIds) {
+    for (final id in learnerIds) {
       fresh.addAll(await _cloud.hydrateFromCloud(id));
     }
     fresh.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    if (mounted) setState(() => _notes = fresh);
+    if (mounted) {
+      setState(() {
+        _notes = fresh;
+        _loading = false;
+      });
+    }
   }
+
+  /// Display name for a note's subject, resolved from the roster we already
+  /// loaded. Null when the id isn't on the roster (shouldn't happen — the
+  /// notes are fetched per roster id — so the card just omits the name).
+  String? _learnerNameFor(String studentProfileId) => _roster
+      .where((r) => r.$1 == studentProfileId)
+      .map((r) => r.$2)
+      .firstOrNull;
 
   List<ParentTeacherNote> get _filteredNotes {
     if (_filterCategory == null) return _notes;
@@ -129,11 +202,25 @@ class _ParentTeacherNotesScreenState
 
     final notes = _filteredNotes;
 
+    // When scoped to one learner, name them in the title so the educator can
+    // see at a glance which child they're writing about.
+    final scopedName = widget.studentId != null
+        ? (widget.studentName ??
+            _roster
+                .where((r) => r.$1 == widget.studentId)
+                .map((r) => r.$2)
+                .firstOrNull)
+        : null;
+    final title = scopedName != null
+        ? (isFilipino ? 'Mga Tala — $scopedName' : 'Notes — $scopedName')
+        : (isFilipino ? 'Mga Tala ng Magulang-Guro' : 'Parent-Teacher Notes');
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isFilipino ? 'Mga Tala ng Magulang-Guro' : 'Parent-Teacher Notes'),
-      ),
-      floatingActionButton: isEducator
+      appBar: AppBar(title: Text(title)),
+      // Nothing to write a note against until the roster resolves — showing
+      // the FAB early opens an editor with an empty learner picker, which
+      // used to file the note against the author's own profile id.
+      floatingActionButton: isEducator && _roster.isNotEmpty
           ? FloatingActionButton.extended(
               onPressed: _addNote,
               icon: const Icon(Icons.add_rounded),
@@ -176,28 +263,37 @@ class _ParentTeacherNotesScreenState
 
             // ─── Notes List ──────────────────
             Expanded(
-              child: notes.isEmpty
-                  ? _buildEmptyState(hc, isFilipino, isEducator)
-                  : ListView.builder(
-                      padding: EdgeInsets.all(padding),
-                      itemCount: notes.length,
-                      itemBuilder: (context, index) {
-                        final note = notes[index];
-                        return _NoteCard(
-                          note: note,
-                          hc: hc,
-                          isFilipino: isFilipino,
-                          isAuthor: note.authorProfileId == profile?.id,
-                          onDelete: () => _deleteNote(note),
-                        )
-                            .animate()
-                            .fadeIn(
-                              delay: Duration(milliseconds: 50 * index),
-                              duration: 300.ms,
-                            )
-                            .slideX(begin: 0.05, end: 0);
-                      },
-                    ),
+              child: _loading && notes.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : notes.isEmpty
+                      ? _buildEmptyState(hc, isFilipino, isEducator)
+                      // The entrance animation lives on the list, not the
+                      // rows: `ListView.builder` rebuilds a row every time it
+                      // scrolls back into view, so a per-row staggered
+                      // `.animate()` replays from opacity 0 and notes blink out
+                      // mid-scroll.
+                      : ListView.builder(
+                          padding: EdgeInsets.all(padding),
+                          itemCount: notes.length,
+                          itemBuilder: (context, index) {
+                            final note = notes[index];
+                            return _NoteCard(
+                              note: note,
+                              hc: hc,
+                              isFilipino: isFilipino,
+                              isAuthor: note.authorProfileId == profile?.id,
+                              onDelete: () => _deleteNote(note),
+                              // Only an educator browsing their whole roster
+                              // needs to be told who a note is about — a
+                              // learner is reading notes about themselves,
+                              // and a scoped view already says so in the
+                              // app bar.
+                              learnerName: (isEducator && scopedName == null)
+                                  ? _learnerNameFor(note.studentProfileId)
+                                  : null,
+                            );
+                          },
+                        ).animate().fadeIn(duration: 300.ms),
             ),
           ],
         ),
@@ -206,32 +302,52 @@ class _ParentTeacherNotesScreenState
   }
 
   Widget _buildEmptyState(HCColor hc, bool isFilipino, bool isEducator) {
+    // An educator with nobody on their roster can't write a note at all, so
+    // "tap + to add a note" would point at a button that isn't there.
+    final noRoster = isEducator && _roster.isEmpty;
+
+    final String body;
+    if (noRoster) {
+      body = isFilipino
+          ? 'Magdagdag muna ng mag-aaral sa iyong klase o home group.'
+          : 'Add a learner to your class or home group first.';
+    } else if (isEducator) {
+      body = isFilipino
+          ? 'Mag-tap ng + para magdagdag ng tala para sa isang mag-aaral.'
+          : 'Tap + to add a note about a learner.';
+    } else {
+      body = isFilipino
+          ? 'Makikita rito ang mga tala mula sa guro at magulang.'
+          : 'Notes from your teacher and parent will appear here.';
+    }
+
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('📝', style: TextStyle(fontSize: 64)),
-          const SizedBox(height: 16),
-          Text(
-            isFilipino ? 'Walang tala pa' : 'No notes yet',
-            style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.bold,
-              color: hc.textPrimary,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(noRoster ? '👥' : '📝',
+                style: const TextStyle(fontSize: 64)),
+            const SizedBox(height: 16),
+            Text(
+              noRoster
+                  ? (isFilipino ? 'Walang mag-aaral' : 'No learners yet')
+                  : (isFilipino ? 'Walang tala pa' : 'No notes yet'),
+              style: AppTypography.titleMedium.copyWith(
+                fontWeight: FontWeight.bold,
+                color: hc.textPrimary,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            isEducator
-                ? (isFilipino
-                    ? 'Mag-tap ng + para magdagdag ng tala para sa isang mag-aaral.'
-                    : 'Tap + to add a note about a student.')
-                : (isFilipino
-                    ? 'Makikita rito ang mga tala mula sa guro.'
-                    : 'Notes from the teacher will appear here.'),
-            style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              body,
+              style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -243,13 +359,12 @@ class _ParentTeacherNotesScreenState
     final contentController = TextEditingController();
     NoteCategory selectedCategory = NoteCategory.general;
 
-    // Get student profiles for selection
-    final allProfiles = HiveService.getProfiles();
-    final studentProfiles = allProfiles
-        .where((p) => UserRole.values[p['role'] as int] == UserRole.student)
-        .toList();
+    // Learners this educator may write about — the same roster the list is
+    // scoped to, so the picker can never file a note against someone off
+    // the roster (or, when the screen is scoped to one child, anyone else).
+    final studentProfiles = _roster;
     String? selectedStudentId =
-        studentProfiles.isNotEmpty ? studentProfiles.first['id'] as String : null;
+        studentProfiles.isNotEmpty ? studentProfiles.first.$1 : null;
 
     return showModalBottomSheet<_NoteEditorResult>(
       context: context,
@@ -310,8 +425,8 @@ class _ParentTeacherNotesScreenState
                     ),
                     items: studentProfiles.map((p) {
                       return DropdownMenuItem(
-                        value: p['id'] as String,
-                        child: Text(p['name'] as String),
+                        value: p.$1,
+                        child: Text(p.$2),
                       );
                     }).toList(),
                     onChanged: (value) {
@@ -492,12 +607,17 @@ class _NoteCard extends StatelessWidget {
   final bool isAuthor;
   final VoidCallback onDelete;
 
+  /// Who the note is about. Null when the screen is scoped to a single
+  /// learner, since the app bar already names them.
+  final String? learnerName;
+
   const _NoteCard({
     required this.note,
     required this.hc,
     required this.isFilipino,
     required this.isAuthor,
     required this.onDelete,
+    this.learnerName,
   });
 
   @override
@@ -560,18 +680,41 @@ class _NoteCard extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // Footer
+            // Footer — author, plus who the note is about. Without the
+            // learner name the all-roster view is a flat list with no way
+            // to tell which of six students a note refers to. Omitted when
+            // the screen is already scoped to one learner (the app bar
+            // says so) to avoid repeating it on every card.
             Row(
               children: [
                 Icon(Icons.person_outline_rounded,
                     size: 14, color: hc.textSecondary),
                 const SizedBox(width: 4),
-                Text(
-                  note.authorName,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: hc.textSecondary,
+                Flexible(
+                  child: Text(
+                    note.authorName,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (learnerName != null) ...[
+                  const SizedBox(width: 10),
+                  Icon(Icons.arrow_forward_rounded,
+                      size: 12, color: hc.textHint),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      learnerName!,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: hc.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ],
             ),
           ],

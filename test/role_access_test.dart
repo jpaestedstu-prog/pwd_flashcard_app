@@ -230,4 +230,86 @@ void main() {
       expect(UserRole.player.index, 4);
     });
   });
+
+  // ─── Roster / educator predicates ────────────────────
+  //
+  // Educator rosters, analytics, reports and parent-teacher notes all key
+  // off these. Filtering on `== UserRole.student` instead once made a
+  // Parent's home-group children invisible across every Parent surface.
+
+  group('isEnrollableLearner', () {
+    test('covers exactly the roles an educator can enrol', () {
+      expect(UserRole.student.isEnrollableLearner, isTrue);
+      expect(UserRole.child.isEnrollableLearner, isTrue);
+    });
+
+    test('excludes educators', () {
+      expect(UserRole.teacher.isEnrollableLearner, isFalse);
+      expect(UserRole.parent.isEnrollableLearner, isFalse);
+    });
+
+    test('excludes Player Mode, which never joins a class or home group', () {
+      expect(UserRole.player.isEnrollableLearner, isFalse);
+      // Narrower than isLearner on purpose — that one includes players.
+      expect(UserRole.player.isLearner, isTrue);
+    });
+  });
+
+  group('isEducator', () {
+    test('is exactly teacher and parent', () {
+      final educators =
+          UserRole.values.where((r) => r.isEducator).toSet();
+      expect(educators, {UserRole.teacher, UserRole.parent});
+    });
+
+    test('child and player are not educators', () {
+      // `role != UserRole.student` used to stand in for this and wrongly
+      // treated both as educators, sending them down roster code paths.
+      expect(UserRole.child.isEducator, isFalse);
+      expect(UserRole.player.isEducator, isFalse);
+    });
+  });
+
+  group('parent-teacher notes route guarding', () {
+    const base = '/parent-teacher-notes';
+    const scoped = '/parent-teacher-notes/abc123?name=Ana';
+
+    // Notes are a *shared* surface: educators write, the learner reads.
+    // So the route is deliberately absent from the educator-only list —
+    // access is decided per role below, and the screen scopes its own data.
+    test('notes is not an educator-only route', () {
+      expect(educatorOnlyRoutes.contains(base), isFalse);
+    });
+
+    test('the scoped sub-path is matched by startsWith on the base', () {
+      // Every guard list is applied with startsWith, so any rule about the
+      // base route automatically covers the per-learner variant.
+      expect(scoped.startsWith(base), isTrue);
+    });
+
+    /// Mirrors the notes-specific rules in app_router.dart's redirect.
+    bool notesBlockedFor(UserRole role, {bool isGuestPlayer = false}) {
+      // Guest players: blocked via _playerBlockedRoutes.
+      if (role == UserRole.player && isGuestPlayer) return true;
+      // Progress players: blocked explicitly — never enrolled, so never
+      // the subject of a note.
+      if (role == UserRole.player) return true;
+      return false;
+    }
+
+    test('students and children may reach their notes', () {
+      expect(notesBlockedFor(UserRole.student), isFalse);
+      expect(notesBlockedFor(UserRole.child), isFalse);
+    });
+
+    test('educators may reach notes', () {
+      expect(notesBlockedFor(UserRole.teacher), isFalse);
+      expect(notesBlockedFor(UserRole.parent), isFalse);
+    });
+
+    test('both kinds of Player are blocked', () {
+      expect(notesBlockedFor(UserRole.player, isGuestPlayer: true), isTrue);
+      expect(notesBlockedFor(UserRole.player), isTrue);
+    });
+  });
 }

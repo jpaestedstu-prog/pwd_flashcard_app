@@ -755,6 +755,17 @@ class _ChildCard extends ConsumerWidget {
                     '?name=${Uri.encodeQueryComponent(child.name)}',
                   ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.sticky_note_2_rounded,
+                      size: 20, color: AppColors.primary),
+                  tooltip: 'Teacher notes',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => context.push(
+                    '/parent-teacher-notes/${child.profileId}'
+                    '?name=${Uri.encodeQueryComponent(child.name)}',
+                  ),
+                ),
                 Icon(Icons.chevron_right_rounded,
                     size: 20, color: hc.textHint),
               ],

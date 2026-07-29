@@ -164,7 +164,12 @@ const _educatorOnlyRoutes = [
   '/alert-settings',
   '/research-export',
   '/experiment-setup',
-  '/parent-teacher-notes',
+  // NOTE: '/parent-teacher-notes' is deliberately NOT here. It is a shared
+  // surface: educators write notes, and the learner they're about reads
+  // them. The screen scopes itself by role — an educator sees their roster,
+  // a learner sees only themselves — so it is safe for both. Guest players
+  // stay blocked via [_playerBlockedRoutes], and progress players are turned
+  // away in the learner branch (they're never enrolled, so never a subject).
   '/backup-account',
   '/tv-cast',
 ];
@@ -306,6 +311,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         // Block learners from educator-only routes
         for (final route in _educatorOnlyRoutes) {
           if (location.startsWith(route)) return '/home';
+        }
+
+        // Player Mode never joins a class or home group, so no educator can
+        // author a note about a player — the notes screen would always be
+        // empty. No entry point exists in their home; block the latent
+        // deep-link too, matching how guest players are handled.
+        if (role == UserRole.player &&
+            location.startsWith('/parent-teacher-notes')) {
+          return '/home';
         }
 
         // Enforce parental controls for students
@@ -1604,6 +1618,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
           child: const ParentTeacherNotesScreen(),
+        ),
+      ),
+      // Scoped to one learner (from a child card / student row). The screen
+      // re-checks the id against the caller's roster, so a hand-typed id
+      // can't widen access.
+      GoRoute(
+        path: '/parent-teacher-notes/:profileId',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: ParentTeacherNotesScreen(
+            studentId: state.pathParameters['profileId'],
+            studentName: state.uri.queryParameters['name'],
+          ),
         ),
       ),
       // ─── Gamification Dashboard (student) ──────────────

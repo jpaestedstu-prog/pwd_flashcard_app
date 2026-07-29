@@ -991,6 +991,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
             onTap: () => context.push('/peer-collab'),
           ),
+          // Read-only for the learner — the notes screen hides "New Note"
+          // for non-educators. Hidden for Player Mode for the same reason
+          // the other educator-relationship tiles are: a player belongs to
+          // no class or home group, so nobody can write notes about them.
+          if (!isPlayer)
+            tile(
+              emoji: '📝',
+              label: 'My Notes',
+              gradient: const [
+                AppColors.bannerRecommendStart,
+                AppColors.bannerRecommendEnd,
+              ],
+              onTap: () => context.push('/parent-teacher-notes'),
+            ),
         ]),
       ),
 
