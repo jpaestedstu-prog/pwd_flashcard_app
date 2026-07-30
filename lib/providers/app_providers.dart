@@ -312,6 +312,25 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     HiveService.saveProgress(state);
   }
 
+  /// Records flashcards answered correctly *outside* a game — currently the AI
+  /// Tutor's quizzes and lessons.
+  ///
+  /// Mirrors how [recordGameResult] tracks vocabulary: dedupes against
+  /// [LearningProgress.learnedWordIds] and derives `wordsLearned` from the set
+  /// size, so a word can never be double-counted. Without this the tutor could
+  /// award stars for a correct answer while the learner's Words total stayed
+  /// at zero. No-op when every id is already known.
+  void recordWordsLearned(Iterable<String> wordIds) {
+    if (wordIds.isEmpty) return;
+    final updated = Set<String>.from(state.learnedWordIds)..addAll(wordIds);
+    if (updated.length == state.learnedWordIds.length) return;
+    state = state.copyWith(
+      learnedWordIds: updated,
+      wordsLearned: updated.length,
+    );
+    _persistProgress();
+  }
+
   void addStars(int stars) {
     state = state.copyWith(totalStars: state.totalStars + stars);
     HiveService.saveProgress(state);

@@ -50,6 +50,13 @@ class TutorMemoryService {
       });
     }
 
+    // Legacy memory (saved before answered bubbles were tracked) has no
+    // 'answeredIds' key. Signal that with null so callers can apply their
+    // migration rule rather than mistaking it for "nothing answered yet".
+    final rawAnswered = map['answeredIds'] as List?;
+    final answeredIds =
+        rawAnswered?.map((e) => '$e').toSet();
+
     return TutorMemory(
       messages: messages,
       stats: stats,
@@ -62,7 +69,24 @@ class TutorMemoryService {
               .toList() ??
           const [],
       interestScores: interestScores,
+      answeredIds: answeredIds,
     );
+  }
+
+  /// Resolves which restored bubbles should render as already-resolved.
+  ///
+  /// With tracked [TutorMemory.answeredIds] the answer is exact. For legacy
+  /// memory it falls back to locking answered-once-only *quizzes* (so old
+  /// questions can't be re-answered for extra stars) while leaving
+  /// favorite-topic pickers live — a stale picker is harmless to re-use, and
+  /// locking it used to strand the learner's first-run topic choice.
+  static Set<String> resolveAnsweredIds(TutorMemory memory) {
+    final tracked = memory.answeredIds;
+    if (tracked != null) return Set<String>.from(tracked);
+    return {
+      for (final m in memory.messages)
+        if (m.action?.type == TutorActionType.quickQuiz) m.id,
+    };
   }
 
   /// Persists [memory], capping the message history to [maxStoredMessages]
@@ -80,6 +104,10 @@ class TutorMemoryService {
       'planWordIds': memory.planWordIds,
       'favoriteCategories': memory.favoriteCategories,
       'interestScores': memory.interestScores,
+      // Only ids still present in the capped history are worth keeping.
+      'answeredIds': (memory.answeredIds ?? const <String>{})
+          .where((id) => capped.any((m) => m.id == id))
+          .toList(),
     });
   }
 

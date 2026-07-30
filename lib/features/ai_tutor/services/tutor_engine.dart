@@ -402,6 +402,60 @@ class TutorEngine {
     );
   }
 
+  /// Looks up a seed flashcard by [id]. Null when the id is unknown (custom or
+  /// removed card), so callers can skip gracefully.
+  static Flashcard? cardById(String id) {
+    for (final c in SeedData.allFlashcards) {
+      if (c.id == id) return c;
+    }
+    return null;
+  }
+
+  /// Re-teaches a word the learner just got wrong.
+  ///
+  /// A miss used to end at "the correct answer is X" and move straight on,
+  /// which tells the learner *that* they were wrong but never re-teaches the
+  /// word. This puts the pair back in front of them with whatever context the
+  /// card carries — an example sentence and a kid-friendly definition — so the
+  /// correction is a teaching moment rather than a verdict.
+  static TutorMessage reteach(Flashcard card, {bool isFilipino = false}) {
+    final buffer = StringBuffer();
+    buffer.write(isFilipino
+        ? '📖 Balikan natin ito. Ang "${card.wordEnglish}" ay "${card.wordFilipino}" ${card.category.emoji}'
+        : '📖 Let\'s look at it again. "${card.wordEnglish}" is "${card.wordFilipino}" ${card.category.emoji}');
+    if (card.exampleSentence != null && card.exampleSentence!.trim().isNotEmpty) {
+      buffer.write('\n\n💬 "${card.exampleSentence!.trim()}"');
+    }
+    if (card.definition != null && card.definition!.trim().isNotEmpty) {
+      buffer.write('\n\nℹ️ ${card.definition!.trim()}');
+    }
+    return TutorMessage(
+      id: _uuid.v4(),
+      role: TutorMessageRole.tutor,
+      content: buffer.toString(),
+      timestamp: DateTime.now(),
+      // Carries the word so the bubble can add the card's picture / sign —
+      // a re-teach is exactly where a second sense is worth the space.
+      action: TutorAction(type: TutorActionType.reteach, wordId: card.id),
+    );
+  }
+
+  /// Announces the end-of-lesson retry round over the words that were missed,
+  /// so "try again next time" actually happens in the same sitting.
+  static TutorMessage reviewRoundIntro(int count, {bool isFilipino = false}) {
+    final word = isFilipino
+        ? (count == 1 ? 'salita' : 'salita')
+        : (count == 1 ? 'word' : 'words');
+    return TutorMessage(
+      id: _uuid.v4(),
+      role: TutorMessageRole.tutor,
+      content: isFilipino
+          ? '🔁 Balikan natin ang $count $word na nahirapan ka. Kaya mo ito! 💪'
+          : '🔁 Let\'s try the $count $word you found tricky one more time. You\'ve got this! 💪',
+      timestamp: DateTime.now(),
+    );
+  }
+
   /// Picks a flashcard, preferring the learner's interest categories when any
   /// exist (a random favorite, then a random card within it). Falls back to
   /// the full pool. Null only when no seed cards exist at all.

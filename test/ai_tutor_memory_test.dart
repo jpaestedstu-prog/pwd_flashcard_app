@@ -110,6 +110,88 @@ void main() {
     });
   });
 
+  group('answered-bubble tracking', () {
+    TutorMessage quiz(String id) => TutorMessage(
+          id: id,
+          role: TutorMessageRole.tutor,
+          content: 'Quick Quiz!',
+          timestamp: DateTime.now(),
+          action: const TutorAction(
+            type: TutorActionType.quickQuiz,
+            options: ['aso', 'pusa'],
+            correctAnswer: 'aso',
+            wordId: 'w_dog',
+          ),
+        );
+
+    TutorMessage picker(String id) => TutorMessage(
+          id: id,
+          role: TutorMessageRole.tutor,
+          content: 'What topic do you love?',
+          timestamp: DateTime.now(),
+          action: const TutorAction(
+            type: TutorActionType.pickInterests,
+            options: ['animals', 'numbers'],
+          ),
+        );
+
+    test('round-trips exactly the ids that were resolved', () async {
+      await TutorMemoryService.saveMemory(
+        'a1',
+        TutorMemory(
+          messages: [quiz('q1'), quiz('q2'), picker('p1')],
+          answeredIds: const {'q1'},
+        ),
+      );
+      final loaded = TutorMemoryService.getMemory('a1');
+      expect(TutorMemoryService.resolveAnsweredIds(loaded), {'q1'});
+    });
+
+    test('an unanswered picker stays live across a reload', () async {
+      // The first-run topic picker used to be locked purely for being
+      // restored, which stranded the learner's very first choice.
+      await TutorMemoryService.saveMemory(
+        'a2',
+        TutorMemory(messages: [picker('p1')], answeredIds: const {}),
+      );
+      final loaded = TutorMemoryService.getMemory('a2');
+      expect(TutorMemoryService.resolveAnsweredIds(loaded), isEmpty);
+    });
+
+    test('legacy memory locks old quizzes but frees the picker', () async {
+      // Simulate memory written before answeredIds existed: no such key.
+      await Hive.box('progress').put('tutor_a3', {
+        'messages': [quiz('q1').toJson(), picker('p1').toJson()],
+        'stats': const TutorStats().toJson(),
+        'planWordIds': const <String>[],
+        'favoriteCategories': const <String>[],
+        'interestScores': const <String, double>{},
+      });
+      final loaded = TutorMemoryService.getMemory('a3');
+      expect(loaded.answeredIds, isNull, reason: 'legacy marker');
+      final resolved = TutorMemoryService.resolveAnsweredIds(loaded);
+      expect(resolved, contains('q1'), reason: 'no re-answering for stars');
+      expect(resolved, isNot(contains('p1')));
+    });
+
+    test('drops ids for messages that fell out of the capped history',
+        () async {
+      final many = List.generate(50, (i) => quiz('q$i'));
+      await TutorMemoryService.saveMemory(
+        'a4',
+        TutorMemory(
+          messages: many,
+          answeredIds: {for (var i = 0; i < 50; i++) 'q$i'},
+        ),
+      );
+      final loaded = TutorMemoryService.getMemory('a4');
+      final ids = loaded.messages.map((m) => m.id).toSet();
+      expect(loaded.answeredIds, isNotNull);
+      expect(loaded.answeredIds!.length, ids.length);
+      expect(loaded.answeredIds!.every(ids.contains), isTrue);
+    });
+  });
+
   group('once-per-day lesson guard', () {
     test('dayKey is stable for the same calendar day', () {
       final a = DateTime(2026, 6, 1, 8);

@@ -55,6 +55,10 @@ enum TutorActionType {
   wordOfTheDay,     // Show a vocabulary word
   startLesson,      // Offer to start today's personalized learning plan
   pickInterests,    // Tappable favorite-topic chips (or a recorded pick)
+  /// A word being re-taught after a wrong answer. Carries only [wordId]; it
+  /// asks nothing, but the id lets the bubble show the card's photo / sign so
+  /// the correction lands through more than one sense.
+  reteach,
 }
 
 class TutorAction {
@@ -190,6 +194,16 @@ class TutorMemory {
   /// category, answering its quizzes), keyed by [FlashcardCategory] name.
   final Map<String, double> interestScores;
 
+  /// Ids of interactive bubbles the learner has actually resolved — answered
+  /// quizzes and used favorite-topic pickers.
+  ///
+  /// Persisted so a restored conversation locks *only* what was really
+  /// answered. Both tutor surfaces share this set, so a picker offered in the
+  /// floating companion is still live after expanding to the full screen.
+  /// Null (rather than empty) marks pre-existing memory saved before this was
+  /// tracked — see [TutorMemoryService.getMemory] for the legacy fallback.
+  final Set<String>? answeredIds;
+
   const TutorMemory({
     this.messages = const [],
     this.stats = const TutorStats(),
@@ -197,6 +211,7 @@ class TutorMemory {
     this.planWordIds = const [],
     this.favoriteCategories = const [],
     this.interestScores = const {},
+    this.answeredIds,
   });
 
   TutorMemory copyWith({
@@ -206,6 +221,7 @@ class TutorMemory {
     List<String>? planWordIds,
     List<String>? favoriteCategories,
     Map<String, double>? interestScores,
+    Set<String>? answeredIds,
   }) =>
       TutorMemory(
         messages: messages ?? this.messages,
@@ -214,5 +230,6 @@ class TutorMemory {
         planWordIds: planWordIds ?? this.planWordIds,
         favoriteCategories: favoriteCategories ?? this.favoriteCategories,
         interestScores: interestScores ?? this.interestScores,
+        answeredIds: answeredIds ?? this.answeredIds,
       );
 }
