@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/models.dart';
@@ -30,17 +32,27 @@ class LocalRepository implements DataRepository {
   /// Run [op] as a fire-and-forget remote write. Local data is already
   /// safe by the time this is called; cloud failures are logged but not
   /// re-thrown so the UI continues smoothly.
+  ///
+  /// The op is deliberately **not awaited**. A Firestore write returns a
+  /// Future that only completes on server acknowledgement, so awaiting it
+  /// meant every caller blocked forever while offline — which froze the
+  /// profile switcher: `setProfile` never returned, so the screen never
+  /// navigated and tapping a profile silently did nothing with no error to
+  /// show for it. Offline-first means the local write is the commit; the
+  /// cloud push is an echo. Firestore preserves per-client write ordering,
+  /// so later mutations still reach the server behind this one.
+  ///
+  /// Returns a completed Future so the existing `await` at each call site
+  /// stays correct and simply resolves immediately.
   Future<void> _remoteWrite(
       String label, Future<void> Function() op) async {
     if (!FirebaseService.isConfigured) return;
-    try {
-      await op();
-    } catch (e, stack) {
+    unawaited(op().catchError((Object e, StackTrace stack) {
       if (kDebugMode) {
         debugPrint('LocalRepository remote write failed ($label): $e');
         debugPrint(stack.toString());
       }
-    }
+    }));
   }
 
   // ─── Profiles ──────────────────────────────────────────
