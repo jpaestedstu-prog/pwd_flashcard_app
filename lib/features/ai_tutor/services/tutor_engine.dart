@@ -572,17 +572,41 @@ class TutorEngine {
   /// Builds a multiple-choice quiz message for a specific [card]. The action
   /// carries [wordId]/[categoryLabel] so a correct answer can be recorded
   /// against spaced-repetition and progress tracking.
+  /// Wrong answers for [card], drawn from its **own category** first.
+  ///
+  /// Mixing categories makes a question answerable without knowing the word:
+  /// asked for the Filipino for "Cat" against *Pusa / Tumayo / Upuan /
+  /// Kumanta*, only one option is even an animal, so elimination scores a
+  /// point the learner has not earned — and that false positive is then fed
+  /// to spaced repetition, which stops resurfacing a word they never learned.
+  /// Same-category options force an actual choice.
+  ///
+  /// Tops up from the wider pool if a category cannot supply enough (custom
+  /// or trimmed decks), so a quiz always has four options.
+  static List<String> distractorsFor(Flashcard card, {int count = 3}) {
+    bool usable(Flashcard c) =>
+        c.id != card.id && c.wordFilipino != card.wordFilipino;
+
+    final picked = <String>{};
+    for (final pool in [
+      SeedData.getByCategory(card.category),
+      SeedData.allFlashcards,
+    ]) {
+      final candidates = pool.where(usable).map((c) => c.wordFilipino).toSet()
+        ..removeAll(picked);
+      final shuffled = candidates.toList()..shuffle(_random);
+      for (final word in shuffled) {
+        if (picked.length >= count) break;
+        picked.add(word);
+      }
+      if (picked.length >= count) break;
+    }
+    return picked.toList();
+  }
+
   static TutorMessage quizForWord(Flashcard card,
       {bool isFilipino = false, String? prefix}) {
-    final allCards = SeedData.allFlashcards;
-    // Generate 3 wrong options
-    final wrongOptions = allCards
-        .where((c) => c.id != card.id)
-        .map((c) => c.wordFilipino)
-        .toSet()
-        .toList()
-      ..shuffle(_random);
-    final options = [card.wordFilipino, ...wrongOptions.take(3)]
+    final options = [card.wordFilipino, ...distractorsFor(card)]
       ..shuffle(_random);
 
     final head = prefix ?? (isFilipino ? '❓ Mabilisang Quiz!' : '❓ Quick Quiz!');
