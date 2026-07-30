@@ -5,15 +5,23 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/pro_surface.dart';
 import '../../../providers/parent_provider.dart';
 
-/// Shows a weekly summary card comparing study times across all children.
+/// Shows a weekly summary card comparing study times across a roster.
+///
+/// Shared by the parent and teacher dashboards, so the per-learner noun in
+/// the "Avg/…" chip is a parameter rather than hard-coded to "child".
 class WeeklyOverviewCard extends StatelessWidget {
   final List<ChildSummary> children;
   final HCColor hc;
+
+  /// Singular noun for one learner — "child" for parents, "student" for
+  /// teachers.
+  final String learnerNoun;
 
   const WeeklyOverviewCard({
     super.key,
     required this.children,
     required this.hc,
+    this.learnerNoun = 'child',
   });
 
   @override
@@ -73,7 +81,7 @@ class WeeklyOverviewCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               _WeekStatChip(
-                label: 'Avg/child',
+                label: 'Avg/$learnerNoun',
                 value: '${avgPerChild}m',
                 color: AppColors.secondary,
               ),

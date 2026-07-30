@@ -13,6 +13,7 @@ void main() {
     '/teacher-analytics',
     '/classroom',
     '/parent-dashboard',
+    '/teacher-dashboard',
     '/weekly-reports',
     '/assessment/builder',
     '/worksheets',

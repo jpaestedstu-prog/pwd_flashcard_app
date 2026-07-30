@@ -20,6 +20,7 @@ import 'package:pwdpwdpwd/features/progress/screens/progress_screen.dart';
 import 'package:pwdpwdpwd/features/progress/screens/streak_calendar_screen.dart';
 import 'package:pwdpwdpwd/features/reports/screens/weekly_report_screen.dart';
 import 'package:pwdpwdpwd/features/settings/screens/settings_screen.dart';
+import 'package:pwdpwdpwd/features/teacher_analytics/screens/teacher_dashboard_screen.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 
 import 'support/screen_matrix.dart';
@@ -105,13 +106,25 @@ void main() {
     });
   }
 
-  // ─── Parent surfaces (need a non-student role) ───────────────────
+  // ─── Educator dashboards (need a non-student role) ───────────────
+  // Same widget, two audiences — see EducatorDashboardScreen. Both are
+  // covered because the role-specific copy ("Your Students" + the counter,
+  // "Class Overview") is what has to fit on the narrowest row.
   testWidgets('ParentDashboardScreen survives the device matrix',
       (tester) async {
     await expectScreenNoOverflowAcrossDevices(
       tester,
       () => const ParentDashboardScreen(),
       overrides: _asRole(UserRole.parent),
+    );
+  });
+
+  testWidgets('TeacherDashboardScreen survives the device matrix',
+      (tester) async {
+    await expectScreenNoOverflowAcrossDevices(
+      tester,
+      () => const TeacherDashboardScreen(),
+      overrides: _asRole(UserRole.teacher),
     );
   });
 

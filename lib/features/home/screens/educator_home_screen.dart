@@ -133,16 +133,15 @@ class EducatorHomeScreen extends ConsumerWidget {
               ),
             ),
 
-            // ─── Parent Dashboard CTA (parents only) ──
-            if (isParent)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
-                  child: _ParentDashboardCta(hc: hc)
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: 175.ms),
-                ),
+            // ─── Dashboard CTA (both educator roles) ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
+                child: _EducatorDashboardCta(hc: hc, isParent: isParent)
+                    .animate()
+                    .fadeIn(duration: 400.ms, delay: 175.ms),
               ),
+            ),
 
             // ─── Quick Actions ────────────────────
             SliverToBoxAdapter(
@@ -684,17 +683,23 @@ class _GroupLabel extends StatelessWidget {
   }
 }
 
-// ─── Parent Dashboard CTA (parents only) ───────────────
+// ─── Dashboard CTA (teacher + parent) ──────────────────
 
-class _ParentDashboardCta extends StatelessWidget {
+/// Hero shortcut into the role's detailed dashboard. Both educator roles get
+/// one — the destination is the same screen with role-specific copy (see
+/// `EducatorDashboardScreen`).
+class _EducatorDashboardCta extends StatelessWidget {
   final HCColor hc;
+  final bool isParent;
 
-  const _ParentDashboardCta({required this.hc});
+  const _EducatorDashboardCta({required this.hc, required this.isParent});
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      onTap: () => context.push('/parent-dashboard'),
+      onTap: () => context.push(
+        isParent ? '/parent-dashboard' : '/teacher-dashboard',
+      ),
       borderRadius: 20,
       gradient: LinearGradient(
         begin: Alignment.topLeft,
@@ -721,7 +726,9 @@ class _ParentDashboardCta extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Parent Dashboard',
+                  isParent ? 'Parent Dashboard' : 'Teacher Dashboard',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hc.textPrimary,

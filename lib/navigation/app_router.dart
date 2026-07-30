@@ -91,6 +91,7 @@ import '../features/mood_tracker/screens/mood_history_screen.dart';
 import '../features/mood_tracker/screens/mood_insights_screen.dart';
 import '../features/stickers/screens/sticker_album_screen.dart';
 import '../features/teacher_analytics/screens/teacher_analytics_screen.dart';
+import '../features/teacher_analytics/screens/teacher_dashboard_screen.dart';
 import '../features/guided_practice/screens/guided_practice_screen.dart';
 import '../features/ai_tutor/screens/ai_tutor_screen.dart';
 import '../features/messaging/screens/messaging_screen.dart';
@@ -151,6 +152,7 @@ const _educatorOnlyRoutes = [
   '/classroom',
   '/classroom-manage',
   '/parent-dashboard',
+  '/teacher-dashboard',
   '/home-group-manage',
   '/weekly-reports',
   '/assessment/builder',
@@ -194,6 +196,7 @@ const _playerBlockedRoutes = [
   '/classroom',
   '/classroom-manage',
   '/parent-dashboard',
+  '/teacher-dashboard',
   '/home-group-manage',
   '/weekly-reports',
   '/leaderboard',
@@ -1193,6 +1196,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
           child: const ParentDashboardScreen(),
+        ),
+      ),
+      // Teacher Dashboard — the same surface as the Parent Dashboard, with
+      // class-facing copy (see EducatorDashboardScreen).
+      GoRoute(
+        path: '/teacher-dashboard',
+        pageBuilder: (context, state) => AppPageTransitions.blurFade(
+          key: state.pageKey,
+          child: const TeacherDashboardScreen(),
         ),
       ),
       // TV Cast — teacher/parent only. Full-screen, outside the bottom-nav
