@@ -46,6 +46,19 @@ class TutorPersona {
   static TutorPersona of(UserRole? role) =>
       role == UserRole.child ? child : student;
 
+  /// Whether this learner should get the tutor's plain-language register.
+  ///
+  /// The persona only ever changed the emoji, the title and the avatar — not
+  /// one word of the copy — so a five-year-old and an adult both read
+  /// "Animals: You've mastered 0%. There are 12 words in this category."
+  /// Short sentences and concrete counts are easier for a young reader, and
+  /// are a documented need for cognitive / learning disabilities, so the
+  /// register follows both role and profile rather than role alone.
+  static bool simpleLanguageFor(UserRole? role, DisabilityType type) =>
+      role == UserRole.child ||
+      type == DisabilityType.cognitive ||
+      type == DisabilityType.multiple;
+
   static const TutorPersona child = TutorPersona(
     emoji: '🧸',
     titleEn: 'Buddy',

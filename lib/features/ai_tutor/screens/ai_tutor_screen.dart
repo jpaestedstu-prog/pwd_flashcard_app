@@ -169,6 +169,7 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
           _profileId,
           isFilipino: _isFilipino,
           interests: _interests,
+          simple: _simpleLanguage,
         ),
       );
     });
@@ -203,6 +204,12 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
     }
     return null;
   }
+
+  /// Whether this learner gets the tutor's plain-language register.
+  bool get _simpleLanguage => TutorPersona.simpleLanguageFor(
+        ref.read(profileProvider)?.role,
+        ref.read(profileProvider)?.disabilityType ?? DisabilityType.none,
+      );
 
   /// The learner's extra channels, read outside `build` for the speech path.
   TutorMediaPolicy get _media => TutorMediaPolicy.forLearner(
@@ -296,6 +303,7 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
       isFilipino: _isFilipino,
       interests: _interests,
       activeCard: _activeQuizCard,
+      simple: _simpleLanguage,
     );
     setState(() => _isTyping = false);
     if (response.action?.type == TutorActionType.startLesson) {

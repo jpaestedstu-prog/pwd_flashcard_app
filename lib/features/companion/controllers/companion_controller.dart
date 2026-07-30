@@ -172,6 +172,12 @@ class CompanionController extends Notifier<CompanionState> {
     return null;
   }
 
+  /// Whether this learner gets the tutor's plain-language register.
+  bool get _simpleLanguage => TutorPersona.simpleLanguageFor(
+        ref.read(profileProvider)?.role,
+        ref.read(profileProvider)?.disabilityType ?? DisabilityType.none,
+      );
+
   List<FlashcardCategory> get _interests => TutorEngine.topInterests(
         TutorMemory(
           favoriteCategories: _favoriteCategories,
@@ -249,6 +255,7 @@ class CompanionController extends Notifier<CompanionState> {
         _profileId,
         isFilipino: _isFilipino,
         interests: _interests,
+        simple: _simpleLanguage,
       ));
     });
   }
@@ -307,6 +314,7 @@ class CompanionController extends Notifier<CompanionState> {
       isFilipino: _isFilipino,
       interests: _interests,
       activeCard: _activeQuizCard,
+      simple: _simpleLanguage,
     );
     if (response.action?.type == TutorActionType.startLesson) {
       _planWordIds = response.action!.planWordIds ?? const [];
