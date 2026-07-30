@@ -265,6 +265,18 @@ class ChildHomeScreen extends ConsumerWidget {
               ],
               onTap: () => context.push('/communication-board'),
             ),
+            // Named for the persona a Child actually meets on the other side
+            // (TutorPersona.child is "Buddy" 🧸). Without this tile the only
+            // way in was the small expand icon inside the floating panel.
+            entry(
+              emoji: '🧸',
+              label: 'Buddy',
+              gradient: const [
+                AppColors.bannerAiTutorStart,
+                AppColors.bannerAiTutorEnd,
+              ],
+              onTap: () => context.push('/ai-tutor'),
+            ),
           ]),
 
           // ─── Section: Friends ────────────────────

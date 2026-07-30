@@ -416,9 +416,12 @@ class TutorEngine {
     final label = isFilipino ? card.category.labelFilipino : card.category.label;
 
     final buffer = StringBuffer();
+    // "a word about X" rather than "a/an X word": category labels are plural
+    // and multi-word ("Colors & Shapes"), so any article in front of them
+    // reads wrong.
     buffer.write(isFilipino
         ? '💡 Isa itong salita tungkol sa $label ${card.category.emoji}.'
-        : '💡 It\'s a $label word ${card.category.emoji}.');
+        : '💡 It\'s a word about $label ${card.category.emoji}.');
     buffer.write(isFilipino
         ? '\nNagsisimula ito sa "${answer[0]}" at may $letters na letra.'
         : '\nIt starts with "${answer[0]}" and has $letters letters.');
