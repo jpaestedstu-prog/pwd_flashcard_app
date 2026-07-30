@@ -159,6 +159,19 @@ class CompanionController extends Notifier<CompanionState> {
         ref.read(profileProvider)?.disabilityType ?? DisabilityType.none,
         ref.read(settingsProvider),
       );
+  /// The word behind the most recent quiz still awaiting an answer, or null
+  /// when nothing is pending. Lets "hint" address the question on screen.
+  /// Mirrors AiTutorScreen.
+  Flashcard? get _activeQuizCard {
+    for (final msg in state.messages.reversed) {
+      if (msg.action?.type != TutorActionType.quickQuiz) continue;
+      if (state.answeredIds.contains(msg.id)) return null; // newest is done
+      final id = msg.action?.wordId;
+      return id == null ? null : TutorEngine.cardById(id);
+    }
+    return null;
+  }
+
   List<FlashcardCategory> get _interests => TutorEngine.topInterests(
         TutorMemory(
           favoriteCategories: _favoriteCategories,
@@ -293,6 +306,7 @@ class CompanionController extends Notifier<CompanionState> {
       _profileId,
       isFilipino: _isFilipino,
       interests: _interests,
+      activeCard: _activeQuizCard,
     );
     if (response.action?.type == TutorActionType.startLesson) {
       _planWordIds = response.action!.planWordIds ?? const [];

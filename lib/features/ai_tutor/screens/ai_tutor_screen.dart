@@ -192,6 +192,18 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
     );
   }
 
+  /// The word behind the most recent quiz still awaiting an answer, or null
+  /// when nothing is pending. Lets "hint" address the question on screen.
+  Flashcard? get _activeQuizCard {
+    for (final msg in _messages.reversed) {
+      if (msg.action?.type != TutorActionType.quickQuiz) continue;
+      if (_answeredQuizIds.contains(msg.id)) return null; // newest is done
+      final id = msg.action?.wordId;
+      return id == null ? null : TutorEngine.cardById(id);
+    }
+    return null;
+  }
+
   /// The learner's extra channels, read outside `build` for the speech path.
   TutorMediaPolicy get _media => TutorMediaPolicy.forLearner(
         ref.read(profileProvider)?.disabilityType ?? DisabilityType.none,
@@ -283,6 +295,7 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
       _profileId,
       isFilipino: _isFilipino,
       interests: _interests,
+      activeCard: _activeQuizCard,
     );
     setState(() => _isTyping = false);
     if (response.action?.type == TutorActionType.startLesson) {

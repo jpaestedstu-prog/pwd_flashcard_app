@@ -30,6 +30,11 @@ class TutorSpeech {
   /// "1/3" → "1 of 3", so a position reads as a position and not a fraction.
   static final RegExp _fraction = RegExp(r'(\d+)\s*/\s*(\d+)');
 
+  /// The masked word in a hint's example sentence. Spoken, a run of
+  /// underscores is either silence or "underscore underscore underscore" —
+  /// neither of which tells the learner a word is missing.
+  static final RegExp _blank = RegExp(r'_{2,}');
+
   /// Leftover punctuation stranded at the start of a line once its emoji is
   /// gone (e.g. "— paborito mo!").
   static final RegExp _leadingJunk = RegExp(r'^[\s\-—–:,.!?]+');
@@ -49,6 +54,8 @@ class TutorSpeech {
   /// the device click.
   static String forSpeech(String content, {bool isFilipino = false}) {
     var text = content.replaceAll(_decoration, ' ');
+
+    text = text.replaceAll(_blank, isFilipino ? 'blangko' : 'blank');
 
     // Position before the line join, so "Lesson 1/3" is still one unit.
     text = text.replaceAllMapped(

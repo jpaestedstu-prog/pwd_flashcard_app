@@ -201,12 +201,17 @@ class TutorEngine {
   }
 
   /// Generate a response to a student question
+  /// Generate a response to a student question.
+  ///
+  /// [activeCard] is the word behind the quiz still waiting for an answer, if
+  /// any. It makes "hint" mean *this* question rather than a study tip.
   static TutorMessage respondToQuestion(
     String question,
     LearningProgress progress,
     String profileId, {
     bool isFilipino = false,
     List<FlashcardCategory> interests = const [],
+    Flashcard? activeCard,
   }) {
     final lowerQ = question.toLowerCase();
     final mentioned = categoryInText(lowerQ);
@@ -234,12 +239,15 @@ class TutorEngine {
       return _categoryInfo(mentioned, progress, isFilipino: isFilipino);
     }
 
-    // Check for help/hint requests
+    // Check for help/hint requests. With a question on screen, help means
+    // help with *that* — the study tips are for when nothing is pending.
     if (lowerQ.contains('help') ||
         lowerQ.contains('hint') ||
         lowerQ.contains('tulong') ||
         lowerQ.contains('pahiwatig')) {
-      return _provideHint(progress, isFilipino: isFilipino);
+      return activeCard != null
+          ? hintForWord(activeCard, isFilipino: isFilipino)
+          : _provideHint(progress, isFilipino: isFilipino);
     }
 
     // Check for quiz requests
@@ -377,6 +385,56 @@ class TutorEngine {
           : '📊 ${cat.label}: You\'ve mastered $pct%. There are ${cards.length} words in this category. ${prog < 0.5 ? 'Let\'s practice more!' : 'Great progress!'}',
       timestamp: DateTime.now(),
     );
+  }
+
+  /// A hint about the question the learner is actually looking at.
+  ///
+  /// "Hint" used to answer with a generic study tip ("Read stories to see how
+  /// words are used"), which is advice for next week, not help with the word
+  /// on screen — the moment a learner asks for a hint is the moment they are
+  /// stuck on *this* question.
+  ///
+  /// Scaffolds without giving the answer away: the topic, then the shape of
+  /// the word (first letter and length), then the example sentence with the
+  /// English word masked. The sentence is a meaning clue — the answer is the
+  /// Filipino word, so showing the English context narrows the meaning
+  /// without revealing what to tap.
+  static TutorMessage hintForWord(Flashcard card, {bool isFilipino = false}) {
+    final answer = card.wordFilipino;
+    final letters = answer.replaceAll(RegExp(r'\s'), '').length;
+    final label = isFilipino ? card.category.labelFilipino : card.category.label;
+
+    final buffer = StringBuffer();
+    buffer.write(isFilipino
+        ? '💡 Isa itong salita tungkol sa $label ${card.category.emoji}.'
+        : '💡 It\'s a $label word ${card.category.emoji}.');
+    buffer.write(isFilipino
+        ? '\nNagsisimula ito sa "${answer[0]}" at may $letters na letra.'
+        : '\nIt starts with "${answer[0]}" and has $letters letters.');
+
+    final masked = _maskWord(card.exampleSentence, card.wordEnglish);
+    if (masked != null) buffer.write('\n\n💬 "$masked"');
+
+    return TutorMessage(
+      id: _uuid.v4(),
+      role: TutorMessageRole.tutor,
+      content: buffer.toString(),
+      timestamp: DateTime.now(),
+    );
+  }
+
+  /// [sentence] with whole-word occurrences of [word] replaced by a blank.
+  /// Null when there is no sentence, or the word does not appear in it (a
+  /// sentence that never mentions the word is no clue at all).
+  static String? _maskWord(String? sentence, String word) {
+    final text = sentence?.trim();
+    if (text == null || text.isEmpty || word.isEmpty) return null;
+    final pattern = RegExp(
+      '\\b${RegExp.escape(word)}\\b',
+      caseSensitive: false,
+    );
+    if (!pattern.hasMatch(text)) return null;
+    return text.replaceAll(pattern, '___');
   }
 
   static TutorMessage _provideHint(LearningProgress progress,
