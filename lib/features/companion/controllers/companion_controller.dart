@@ -8,7 +8,6 @@ import 'package:uuid/uuid.dart';
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/accessibility/stt_service.dart';
 import '../../../core/accessibility/tts_service.dart';
-import '../../../data/local/seed_data.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -16,6 +15,7 @@ import '../../../providers/app_providers.dart';
 import '../../ai_tutor/models/tutor_models.dart';
 import '../../ai_tutor/services/tutor_engine.dart';
 import '../../ai_tutor/services/tutor_memory_service.dart';
+import '../../ai_tutor/services/tutor_speech.dart';
 import '../../ai_tutor/widgets/tutor_persona.dart';
 import '../models/companion_presentation.dart';
 import '../services/gemini_service.dart';
@@ -113,6 +113,17 @@ class CompanionController extends Notifier<CompanionState> {
   int _lessonCorrect = 0;
   bool _inLesson = false;
 
+  /// Words missed on the first pass, re-asked in a retry round before the
+  /// lesson finishes. Never grows during the retry round, so a lesson can only
+  /// ever loop back once. Mirrors AiTutorScreen.
+  final List<String> _missedWordIds = [];
+  bool _inReviewRound = false;
+
+  /// First-pass question count, kept separate from [_lessonCards] because the
+  /// retry round replaces that list.
+  int _lessonTotal = 0;
+  int _reviewCorrect = 0;
+
   // ── Voice ──
   /// True between starting the mic and consuming its transcript, so a final
   /// result and a manual stop can't both fire the same utterance.
@@ -182,19 +193,11 @@ class CompanionController extends Notifier<CompanionState> {
     _interestScores = memory.interestScores;
 
     if (memory.messages.isNotEmpty) {
-      // Restore the conversation; lock any interactive bubbles from the past.
-      final answered = <String>{};
-      for (final m in memory.messages) {
-        final type = m.action?.type;
-        if (type == TutorActionType.quickQuiz ||
-            (type == TutorActionType.pickInterests &&
-                m.action?.options != null)) {
-          answered.add(m.id);
-        }
-      }
+      // Restore the conversation, locking only the bubbles the learner really
+      // resolved — a still-unanswered picker or quiz stays usable.
       state = state.copyWith(
         messages: List.of(memory.messages),
-        answeredIds: answered,
+        answeredIds: TutorMemoryService.resolveAnsweredIds(memory),
         initialized: true,
       );
       // New day → welcome back and offer today's (interest-aware) plan.
@@ -422,6 +425,8 @@ class CompanionController extends Notifier<CompanionState> {
         wordId: action.wordId!,
         wasCorrect: correct,
       );
+      // Count the word towards vocabulary learned, exactly as a game would.
+      if (correct) notifier.recordWordsLearned([action.wordId!]);
     }
     final quizCat = action.categoryLabel == null
         ? null
@@ -462,15 +467,47 @@ class CompanionController extends Notifier<CompanionState> {
     }
     _persist();
 
-    // Continue a running lesson.
-    if (_inLesson) {
-      if (correct) _lessonCorrect++;
+    // Re-teach a missed word before moving on — for standalone quizzes as well
+    // as lessons, so a wrong answer is always followed by the word itself
+    // rather than just a verdict.
+    final missedCard = (!correct && action.wordId != null)
+        ? TutorEngine.cardById(action.wordId!)
+        : null;
+
+    // Advance the lesson cursor, then continue *after* any re-teach card so
+    // the two never land in the same beat.
+    void continueLesson() {
+      if (!_inLesson) return;
+      if (correct) {
+        if (_inReviewRound) {
+          _reviewCorrect++;
+        } else {
+          _lessonCorrect++;
+        }
+      } else if (!_inReviewRound &&
+          action.wordId != null &&
+          !_missedWordIds.contains(action.wordId)) {
+        _missedWordIds.add(action.wordId!);
+      }
       _lessonIndex++;
       if (_lessonIndex < _lessonCards.length) {
         _scheduleFollowUp(_askLessonQuestion);
+      } else if (!_inReviewRound && _missedWordIds.isNotEmpty) {
+        _scheduleFollowUp(_startReviewRound);
       } else {
         _scheduleFollowUp(_finishLesson);
       }
+    }
+
+    if (missedCard != null) {
+      _scheduleFollowUp(() {
+        _addTutorMessage(
+          TutorEngine.reteach(missedCard, isFilipino: _isFilipino),
+        );
+        continueLesson();
+      });
+    } else {
+      continueLesson();
     }
   }
 
@@ -507,29 +544,56 @@ class CompanionController extends Notifier<CompanionState> {
   void startLesson(List<String> wordIds) {
     final cards = <Flashcard>[];
     for (final id in wordIds) {
-      final match = SeedData.allFlashcards.where((c) => c.id == id);
-      if (match.isNotEmpty) cards.add(match.first);
+      final card = TutorEngine.cardById(id);
+      if (card != null) cards.add(card);
     }
     if (cards.isEmpty) return;
     _lessonCards = cards;
     _lessonIndex = 0;
     _lessonCorrect = 0;
     _inLesson = true;
+    _lessonTotal = cards.length;
+    _missedWordIds.clear();
+    _inReviewRound = false;
+    _reviewCorrect = 0;
     _askLessonQuestion();
+  }
+
+  /// Re-asks the words missed on the first pass. Entered once per lesson,
+  /// between the last question and the summary.
+  void _startReviewRound() {
+    final cards = <Flashcard>[];
+    for (final id in _missedWordIds) {
+      final card = TutorEngine.cardById(id);
+      if (card != null) cards.add(card);
+    }
+    if (cards.isEmpty) {
+      _finishLesson();
+      return;
+    }
+    _lessonCards = cards;
+    _lessonIndex = 0;
+    _inReviewRound = true;
+    _reviewCorrect = 0;
+    _addTutorMessage(
+        TutorEngine.reviewRoundIntro(cards.length, isFilipino: _isFilipino));
+    _scheduleFollowUp(_askLessonQuestion);
   }
 
   void _askLessonQuestion() {
     if (_lessonIndex >= _lessonCards.length) return;
     final card = _lessonCards[_lessonIndex];
-    final prefix = _isFilipino
-        ? '📚 Aralin ${_lessonIndex + 1}/${_lessonCards.length}'
-        : '📚 Lesson ${_lessonIndex + 1}/${_lessonCards.length}';
+    final position = '${_lessonIndex + 1}/${_lessonCards.length}';
+    final prefix = _inReviewRound
+        ? (_isFilipino ? '🔁 Balik-aral $position' : '🔁 Review $position')
+        : (_isFilipino ? '📚 Aralin $position' : '📚 Lesson $position');
     _addTutorMessage(
         TutorEngine.quizForWord(card, isFilipino: _isFilipino, prefix: prefix));
   }
 
   void _finishLesson() {
-    final total = _lessonCards.length;
+    // The first-pass length, not _lessonCards — a retry round replaces that.
+    final total = _lessonTotal;
     final alreadyToday =
         _lastPlanDate == TutorMemoryService.dayKey(DateTime.now());
     final notifier = ref.read(progressProvider.notifier);
@@ -546,14 +610,26 @@ class CompanionController extends Notifier<CompanionState> {
         : (_isFilipino
             ? '🌟 +$_kLessonBonus na bituin para sa tapos na aralin!'
             : '🌟 +$_kLessonBonus stars for finishing your lesson!');
+    // Credit the retry round separately so the headline score stays honest
+    // about the first pass while the fix-up still gets celebrated.
+    final reviewed = _missedWordIds.length;
+    final reviewLine = (_inReviewRound && reviewed > 0)
+        ? (_isFilipino
+            ? '\n🔁 Binalikan mo ang $reviewed salitang mahirap — $_reviewCorrect ang tama sa pangalawang subok!'
+            : '\n🔁 You went back over $reviewed tricky '
+                '${reviewed == 1 ? 'word' : 'words'} and got $_reviewCorrect '
+                'right on the second try!')
+        : '';
+
     _inLesson = false;
+    _inReviewRound = false;
     _flashCelebrate();
     _addTutorMessage(TutorMessage(
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
       content: _isFilipino
-          ? '🎉 Tapos na ang aralin! Nakakuha ka ng $_lessonCorrect/$total na tama.\n\n$bonusLine'
-          : '🎉 Lesson complete! You got $_lessonCorrect/$total correct.\n\n$bonusLine',
+          ? '🎉 Tapos na ang aralin! Nakakuha ka ng $_lessonCorrect/$total na tama.$reviewLine\n\n$bonusLine'
+          : '🎉 Lesson complete! You got $_lessonCorrect/$total correct.$reviewLine\n\n$bonusLine',
       timestamp: DateTime.now(),
     ));
   }
@@ -630,11 +706,15 @@ class CompanionController extends Notifier<CompanionState> {
   }
 
   void _speak(String text) {
+    // Speak the sentence, not the decoration — see [TutorSpeech]. Shared with
+    // the full screen so both surfaces sound the same.
+    final spoken = TutorSpeech.forSpeech(text, isFilipino: _isFilipino);
+    if (spoken.isEmpty) return;
     final tts = ref.read(ttsServiceProvider);
     if (_isFilipino) {
-      tts.speakFilipino(text);
+      tts.speakFilipino(spoken);
     } else {
-      tts.speakEnglish(text);
+      tts.speakEnglish(spoken);
     }
   }
 
@@ -654,6 +734,7 @@ class CompanionController extends Notifier<CompanionState> {
         planWordIds: _planWordIds,
         favoriteCategories: _favoriteCategories,
         interestScores: _interestScores,
+        answeredIds: state.answeredIds,
       ),
     );
   }

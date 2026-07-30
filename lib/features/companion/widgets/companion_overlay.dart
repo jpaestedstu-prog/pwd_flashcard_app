@@ -3,10 +3,16 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../navigation/app_router.dart' show routerProvider;
+import '../../../navigation/app_router.dart'
+    show routerProvider, rootNavigatorKey;
 import '../../../providers/app_providers.dart';
+import '../../../data/models/enums.dart';
+import '../../ai_tutor/models/tutor_media_policy.dart';
 import '../../ai_tutor/models/tutor_models.dart';
+import '../../ai_tutor/services/tutor_engine.dart';
+import '../../ai_tutor/services/tutor_sign_launcher.dart';
 import '../../ai_tutor/widgets/tutor_chat.dart';
 import '../../ai_tutor/widgets/tutor_persona.dart';
 import '../controllers/companion_controller.dart';
@@ -66,10 +72,21 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
     final router = ref.watch(routerProvider);
 
     // Rebuild on navigation so the companion appears/disappears with the route.
+    //
+    // Listen to the *delegate* rather than `routeInformationProvider`: the
+    // latter is not refreshed by an imperative `pop()`, so coming back from a
+    // pushed route (e.g. the full AI Tutor) left it still reporting the pushed
+    // location and the launcher stayed hidden on the shell tab underneath —
+    // stranding Player and Child, whose only route to the tutor it is.
+    //
+    // Read the *deepest* match, not `currentConfiguration.uri`: the match
+    // list's own uri stays on the shell location while something is pushed
+    // above it, which would float the companion over the full-screen tutor.
     return ListenableBuilder(
-      listenable: router.routeInformationProvider,
+      listenable: router.routerDelegate,
       builder: (context, _) {
-        final loc = router.routeInformationProvider.value.uri.toString();
+        final loc =
+            router.routerDelegate.currentConfiguration.last.matchedLocation;
         if (!_shellRoots.any(loc.startsWith)) return const SizedBox.shrink();
         return Stack(
           children: [
@@ -287,6 +304,9 @@ class _CompanionPanelState extends State<_CompanionPanel> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
 
+  /// An FSL clip is being resolved — guards against stacked downloads.
+  bool _isLoadingFsl = false;
+
   @override
   void dispose() {
     _textController.dispose();
@@ -316,15 +336,36 @@ class _CompanionPanelState extends State<_CompanionPanel> {
     final state = ref.watch(companionControllerProvider);
     final controller = ref.read(companionControllerProvider.notifier);
     final profile = ref.watch(profileProvider);
-    final isFilipino =
-        ref.watch(settingsProvider.select((s) => s.locale == 'fil'));
+    final settings = ref.watch(settingsProvider);
+    final isFilipino = settings.locale == 'fil';
     final persona = TutorPersona.of(profile?.role);
+    final media = TutorMediaPolicy.forLearner(
+      profile?.disabilityType ?? DisabilityType.none,
+      profile?.role,
+      settings,
+    );
 
     // Auto-scroll to the newest message / typing indicator.
     ref.listen(companionControllerProvider.select((s) => s.messages.length),
         (_, _) => _scrollToBottom());
     ref.listen(companionControllerProvider.select((s) => s.isTyping),
         (_, _) => _scrollToBottom());
+
+    // Watched so sign controls appear once the manifest is parsed.
+    ref.watch(fslAvailabilityProvider);
+
+    /// Offered only when this learner's policy allows signs AND the word has
+    /// a clip somewhere — never a control that leads nowhere.
+    VoidCallback? watchSignFor(TutorMessage msg) {
+      if (!media.sign) return null;
+      final id = msg.action?.wordId;
+      if (id == null) return null;
+      final card = TutorEngine.cardById(id);
+      if (card == null || !FslAssetsService.hasAnyVideoSource(card)) {
+        return null;
+      }
+      return () => _watchSign(ref, id);
+    }
 
     // Screen-reader live region: only when the profile wants announcing AND we
     // are *not* also auto-speaking via our own TTS (avoids double audio).
@@ -384,6 +425,7 @@ class _CompanionPanelState extends State<_CompanionPanel> {
                     message: msg,
                     persona: persona,
                     isFilipino: isFilipino,
+                    media: media,
                     answered: state.answeredIds.contains(msg.id),
                     onQuizAnswer: (a) => controller.answerQuiz(msg, a),
                     onInterestPick: (n) => controller.pickInterest(msg, n),
@@ -393,6 +435,7 @@ class _CompanionPanelState extends State<_CompanionPanel> {
                     onSpeak: presentation.speakReplies
                         ? () => controller.speakMessage(msg.content)
                         : null,
+                    onWatchSign: watchSignFor(msg),
                   );
                 },
               ),
@@ -418,6 +461,34 @@ class _CompanionPanelState extends State<_CompanionPanel> {
         ),
       ),
     );
+  }
+
+  /// Plays the sign for [cardId].
+  ///
+  /// Presented from the **root navigator**, not this panel's context: the
+  /// panel lives in its own nested `Overlay` above the app's Navigator, so a
+  /// modal sheet anchored here would have no Navigator to attach to.
+  Future<void> _watchSign(WidgetRef ref, String cardId) async {
+    if (_isLoadingFsl) return;
+    final card = TutorEngine.cardById(cardId);
+    final rootContext = rootNavigatorKey.currentContext;
+    if (card == null || rootContext == null) return;
+    setState(() => _isLoadingFsl = true);
+    // Dismiss the panel first. It is painted above the app's Navigator, so it
+    // would otherwise sit on top of the video sheet and cover the signer —
+    // and the signer is the whole point for a Deaf learner. Closing also
+    // acknowledges the tap immediately while the clip is fetched. Same move
+    // the panel already makes before a practice redirect.
+    ref.read(companionControllerProvider.notifier).close();
+    try {
+      await showSignForCard(
+        rootContext,
+        card: card,
+        profileId: ref.read(profileProvider)?.id,
+      );
+    } finally {
+      if (mounted) setState(() => _isLoadingFsl = false);
+    }
   }
 
   void _handleAction(BuildContext context, WidgetRef ref, TutorMessage msg) {

@@ -5,6 +5,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
+import '../../../widgets/flashcard_image.dart';
+import '../models/tutor_media_policy.dart';
 import '../models/tutor_models.dart';
 import 'tutor_persona.dart';
 
@@ -94,6 +96,13 @@ class _StatPill extends StatelessWidget {
 }
 
 /// A single quick-action chip ("Lesson", "Quiz", "Hint"…).
+///
+/// Deliberately *not* an [ActionChip]: under Material 3 a themed
+/// `ChipThemeData` wins over the widget's `backgroundColor`, so these rendered
+/// with the theme's light label colour on a near-white M3 chip surface —
+/// invisible in the high-contrast themes, which is exactly where the tutor's
+/// main action row must stay legible. Painting the surface and the label from
+/// the same [HCColor] set keeps them in step in every theme.
 class TutorQuickChip extends StatelessWidget {
   final String label;
   final String emoji;
@@ -108,19 +117,34 @@ class TutorQuickChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 14)),
-          const SizedBox(width: 4),
-          Text(label),
-        ],
+    final hc = HCColor.of(context);
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: hc.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: hc.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style:
+                    AppTypography.labelMedium.copyWith(color: hc.textPrimary),
+              ),
+            ],
+          ),
+        ),
       ),
-      onPressed: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
-      backgroundColor: AppColors.primary.withValues(alpha: 0.06),
     );
   }
 }
@@ -132,6 +156,12 @@ class TutorMessageBubble extends StatelessWidget {
   final TutorPersona persona;
   final bool isFilipino;
   final bool answered;
+
+  /// Which extra channels this learner should get alongside the text. Defaults
+  /// to text-only so every existing call site (and the overflow matrix) keeps
+  /// its current shape.
+  final TutorMediaPolicy media;
+
   final ValueChanged<String>? onQuizAnswer;
 
   /// Called with the picked [FlashcardCategory] enum name when the learner
@@ -140,16 +170,23 @@ class TutorMessageBubble extends StatelessWidget {
   final VoidCallback? onActionTap;
   final VoidCallback? onSpeak;
 
+  /// Play this word's Filipino Sign Language clip. Null hides the control —
+  /// the caller supplies it only when the learner's [media] policy allows
+  /// signs *and* the word has a clip, so it is never a dead end.
+  final VoidCallback? onWatchSign;
+
   const TutorMessageBubble({
     super.key,
     required this.message,
     required this.persona,
     required this.isFilipino,
     this.answered = false,
+    this.media = TutorMediaPolicy.none,
     this.onQuizAnswer,
     this.onInterestPick,
     this.onActionTap,
     this.onSpeak,
+    this.onWatchSign,
   });
 
   @override
@@ -157,6 +194,10 @@ class TutorMessageBubble extends StatelessWidget {
     final isTutor = message.role == TutorMessageRole.tutor;
     final hc = HCColor.of(context);
     final avatarSize = context.scaledHeightCapped(32, max: 1.4);
+
+    // Quizzes and re-teach cards name the flashcard they are about; that id is
+    // the key to every extra channel (photo now, sign next).
+    final mediaCardId = isTutor ? message.action?.wordId : null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -198,34 +239,62 @@ class TutorMessageBubble extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // The card's picture, for learners who benefit from a
+                      // concrete referent. Stacked above the text rather than
+                      // beside it so a large font scale can never squeeze the
+                      // question into a horizontal overflow. Falls back to the
+                      // card's emoji when no photograph exists — which is the
+                      // whole Actions category today, so the fallback is the
+                      // common path, not an edge case.
+                      if (media.photo && mediaCardId != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: ExcludeSemantics(
+                            // The bubble text already names the word; a second
+                            // announcement would just be noise for TalkBack.
+                            child: FlashcardPictureById(
+                              cardId: mediaCardId,
+                              fallback: '📘',
+                              extent: 64,
+                              borderRadius: 14,
+                            ),
+                          ),
+                        ),
                       Text(
                         message.content,
                         style: AppTypography.bodyMedium
                             .copyWith(color: hc.textPrimary),
                       ),
-                      if (isTutor && onSpeak != null)
+                      if (isTutor && (onSpeak != null || onWatchSign != null))
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
-                          child: InkWell(
-                            onTap: onSpeak,
-                            borderRadius: BorderRadius.circular(20),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.volume_up_rounded,
-                                      size: 16, color: AppColors.primary),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    isFilipino ? 'Pakinggan' : 'Listen',
-                                    style: AppTypography.labelSmall
-                                        .copyWith(color: AppColors.primary),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          // Wrap, not Row: at a large font scale two labelled
+                          // controls no longer fit on one line inside the
+                          // bubble, and they must move to a second line
+                          // rather than overflow.
+                          child: Wrap(
+                            spacing: 4,
+                            runSpacing: 2,
+                            children: [
+                              if (onSpeak != null)
+                                _BubbleAction(
+                                  icon: Icons.volume_up_rounded,
+                                  label: isFilipino ? 'Pakinggan' : 'Listen',
+                                  onTap: onSpeak!,
+                                ),
+                              // Only ever present when this learner's policy
+                              // allows signs AND the word actually has a clip
+                              // — the caller decides both, so a Deaf learner
+                              // is never offered a sign that leads nowhere.
+                              if (onWatchSign != null)
+                                _BubbleAction(
+                                  icon: Icons.sign_language_rounded,
+                                  label: isFilipino
+                                      ? 'Panoorin ang senyas'
+                                      : 'Watch the sign',
+                                  onTap: onWatchSign!,
+                                ),
+                            ],
                           ),
                         ),
                     ],
@@ -352,6 +421,48 @@ class TutorMessageBubble extends StatelessWidget {
         ],
       ),
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05, end: 0);
+  }
+}
+
+/// A small icon+label control under a tutor bubble ("Listen", "Watch the
+/// sign"). Kept compact so several fit inside the bubble's width, and marked
+/// as a button for screen readers.
+class _BubbleAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _BubbleAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: AppColors.primary),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style:
+                    AppTypography.labelSmall.copyWith(color: AppColors.primary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

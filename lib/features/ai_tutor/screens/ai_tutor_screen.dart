@@ -1,19 +1,25 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+import '../../companion/services/gemini_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/accessibility/haptic_service.dart' show hapticServiceProvider;
 import '../../../core/accessibility/tts_service.dart' show ttsServiceProvider;
-import '../../../data/local/seed_data.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
+import '../../../core/services/fsl_assets_service.dart';
+import '../../../widgets/fsl_loading_overlay.dart';
+import '../models/tutor_media_policy.dart';
 import '../models/tutor_models.dart';
 import '../services/tutor_engine.dart';
 import '../services/tutor_memory_service.dart';
+import '../services/tutor_sign_launcher.dart';
+import '../services/tutor_speech.dart';
 import '../widgets/tutor_chat.dart';
 import '../widgets/tutor_persona.dart';
 
@@ -52,8 +58,25 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
   int _lessonCorrect = 0;
   bool _inLesson = false;
 
+  /// Words missed on the first pass, re-asked in a retry round before the
+  /// lesson is allowed to finish. Never grows during the retry round itself,
+  /// so a lesson can only ever loop back once.
+  final _missedWordIds = <String>[];
+  bool _inReviewRound = false;
+
+  /// First-pass question count, kept separate from [_lessonCards] because the
+  /// retry round replaces that list — the summary must still report the score
+  /// out of the original lesson length.
+  int _lessonTotal = 0;
+  int _reviewCorrect = 0;
+
   // Avatar mood.
   TutorAvatarState _avatarState = TutorAvatarState.idle;
+
+  /// An FSL clip is being resolved. Guards against stacked downloads / player
+  /// sheets when the control is tapped repeatedly, mirroring the Flashcards
+  /// viewer.
+  bool _isLoadingFsl = false;
 
   late TutorPersona _persona;
   String get _profileId => ref.read(profileProvider)?.id ?? 'guest';
@@ -94,16 +117,10 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
     if (memory.messages.isNotEmpty) {
       setState(() {
         _messages.addAll(memory.messages);
-        for (final m in memory.messages) {
-          final type = m.action?.type;
-          // Interactive bubbles restored from history are already in the
-          // past — lock them (quiz options and favorite-topic pickers).
-          if (type == TutorActionType.quickQuiz ||
-              (type == TutorActionType.pickInterests &&
-                  m.action?.options != null)) {
-            _answeredQuizIds.add(m.id);
-          }
-        }
+        // Lock only the bubbles the learner actually resolved. Blanket-locking
+        // every restored quiz and picker used to kill the first-run
+        // favorite-topic choice the moment it was reloaded here.
+        _answeredQuizIds.addAll(TutorMemoryService.resolveAnsweredIds(memory));
       });
       _scrollToBottom();
 
@@ -170,24 +187,42 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
         planWordIds: _planWordIds,
         favoriteCategories: _favoriteCategories,
         interestScores: _interestScores,
+        answeredIds: _answeredQuizIds,
       ),
     );
   }
 
-  /// Appends a tutor message, optionally reading it aloud (auto for Child).
+  /// The learner's extra channels, read outside `build` for the speech path.
+  TutorMediaPolicy get _media => TutorMediaPolicy.forLearner(
+        ref.read(profileProvider)?.disabilityType ?? DisabilityType.none,
+        ref.read(profileProvider)?.role,
+        ref.read(settingsProvider),
+      );
+
+  /// Appends a tutor message, reading it aloud for the profiles that depend on
+  /// audio.
+  ///
+  /// Driven by [TutorMediaPolicy.speak] rather than the persona's
+  /// `autoReadAloud`: the persona only knows Child vs Student, so a learner
+  /// with a visual impairment — for whom audio is the whole channel — got a
+  /// silent screen here while the floating companion spoke to them. Everyone
+  /// with Text-to-Speech on keeps the manual "Listen" control either way.
   void _addTutorMessage(TutorMessage msg, {bool? speak}) {
     setState(() => _messages.add(msg));
-    if (speak ?? _persona.autoReadAloud) _speak(msg.content);
+    if (speak ?? _media.speak) _speak(msg.content);
     _scrollToBottom();
     _persist();
   }
 
   void _speak(String text) {
+    // Speak the sentence, not the decoration — see [TutorSpeech].
+    final spoken = TutorSpeech.forSpeech(text, isFilipino: _isFilipino);
+    if (spoken.isEmpty) return;
     final tts = ref.read(ttsServiceProvider);
     if (_isFilipino) {
-      tts.speakFilipino(text);
+      tts.speakFilipino(spoken);
     } else {
-      tts.speakEnglish(text);
+      tts.speakEnglish(spoken);
     }
   }
 
@@ -217,38 +252,89 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
     _textController.clear();
     _scrollToBottom();
 
+    // Same routing rule as the floating companion, so one question gets one
+    // answer whichever surface it is asked on: structured intents (quiz,
+    // lesson, hint, progress, favorites, a named category) always stay on the
+    // offline engine; only genuinely open-ended questions may go online, and
+    // any failure falls back to the engine.
+    if (GeminiService.isConfigured && TutorEngine.isFreeForm(text)) {
+      _respondOnline(text);
+      return;
+    }
+
     Future.delayed(const Duration(milliseconds: 800), () {
       if (!mounted) return;
-      // Asking about a topic is itself an interest signal.
-      final mentioned = TutorEngine.categoryInText(text);
-      if (mentioned != null) {
-        _interestScores = TutorEngine.bumpInterest(
-            _interestScores, mentioned, TutorEngine.signalAsk);
-      }
-      final progress = ref.read(progressProvider);
-      final response = TutorEngine.respondToQuestion(
-        text,
-        progress,
-        _profileId,
-        isFilipino: _isFilipino,
-        interests: _interests,
-      );
-      setState(() => _isTyping = false);
-      if (response.action?.type == TutorActionType.startLesson) {
-        _planWordIds = response.action!.planWordIds ?? const [];
-      }
-      _addTutorMessage(response);
-      // "I like animals" → the engine confirmed a favorite; record it.
-      if (response.action?.type == TutorActionType.pickInterests &&
-          response.action!.categoryLabel != null) {
-        final cat =
-            TutorEngine.categoryFromName(response.action!.categoryLabel!);
-        if (cat != null) {
-          _recordFavorite(cat);
-          _celebrateNewFavorite(cat);
-        }
-      }
+      _respondWithEngine(text);
     });
+  }
+
+  /// The default, fully-offline responder: the rule-based [TutorEngine].
+  void _respondWithEngine(String text) {
+    // Asking about a topic is itself an interest signal.
+    final mentioned = TutorEngine.categoryInText(text);
+    if (mentioned != null) {
+      _interestScores = TutorEngine.bumpInterest(
+          _interestScores, mentioned, TutorEngine.signalAsk);
+    }
+    final progress = ref.read(progressProvider);
+    final response = TutorEngine.respondToQuestion(
+      text,
+      progress,
+      _profileId,
+      isFilipino: _isFilipino,
+      interests: _interests,
+    );
+    setState(() => _isTyping = false);
+    if (response.action?.type == TutorActionType.startLesson) {
+      _planWordIds = response.action!.planWordIds ?? const [];
+    }
+    _addTutorMessage(response);
+    // "I like animals" → the engine confirmed a favorite; record it.
+    if (response.action?.type == TutorActionType.pickInterests &&
+        response.action!.categoryLabel != null) {
+      final cat =
+          TutorEngine.categoryFromName(response.action!.categoryLabel!);
+      if (cat != null) {
+        _recordFavorite(cat);
+        _celebrateNewFavorite(cat);
+      }
+    }
+  }
+
+  /// The online responder. On ANY failure (offline, timeout, quota, bad
+  /// response) it falls back to [_respondWithEngine], so the learner always
+  /// gets a helpful reply and the switch stays invisible to them.
+  Future<void> _respondOnline(String text) async {
+    String? answer;
+    try {
+      // Fast local radio check first: with no network at all, skip the HTTP
+      // attempt so the offline reply is instant instead of waiting out a
+      // socket timeout.
+      final radios = await Connectivity().checkConnectivity();
+      final offline =
+          radios.isEmpty || radios.every((r) => r == ConnectivityResult.none);
+      answer = offline
+          ? null
+          : await ref.read(geminiServiceProvider).answer(
+                question: text,
+                learnerName: ref.read(profileProvider)?.name,
+                isFilipino: _isFilipino,
+              );
+    } catch (_) {
+      answer = null;
+    }
+    if (!mounted) return;
+    if (answer == null || answer.trim().isEmpty) {
+      _respondWithEngine(text); // graceful offline fallback
+      return;
+    }
+    setState(() => _isTyping = false);
+    _addTutorMessage(TutorMessage(
+      id: _uuid.v4(),
+      role: TutorMessageRole.tutor,
+      content: answer.trim(),
+      timestamp: DateTime.now(),
+    ));
   }
 
   void _sendQuick(String command) {
@@ -321,6 +407,9 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
         wordId: action.wordId!,
         wasCorrect: correct,
       );
+      // Count the word towards vocabulary learned, exactly as a game would —
+      // otherwise the tutor hands out stars while "words learned" stays at 0.
+      if (correct) notifier.recordWordsLearned([action.wordId!]);
     }
     // Engaging with a topic's quizzes is an implicit interest signal.
     final quizCat = action.categoryLabel == null
@@ -357,16 +446,49 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
     _scrollToBottom();
     _persist();
 
+    // Re-teach a missed word before moving on — for standalone quizzes as well
+    // as lessons, so a wrong answer is always followed by the word itself
+    // rather than just a verdict.
+    final missedCard = (!correct && action.wordId != null)
+        ? TutorEngine.cardById(action.wordId!)
+        : null;
+    if (missedCard != null) {
+      Future.delayed(const Duration(milliseconds: 700), () {
+        if (!mounted) return;
+        _addTutorMessage(
+          TutorEngine.reteach(missedCard, isFilipino: _isFilipino),
+        );
+      });
+    }
+
     // Continue the lesson, if one is running.
     if (_inLesson) {
-      if (correct) _lessonCorrect++;
+      if (correct) {
+        if (_inReviewRound) {
+          _reviewCorrect++;
+        } else {
+          _lessonCorrect++;
+        }
+      } else if (!_inReviewRound &&
+          action.wordId != null &&
+          !_missedWordIds.contains(action.wordId)) {
+        // Queue it for the retry round (first pass only — one loop maximum).
+        _missedWordIds.add(action.wordId!);
+      }
       _lessonIndex++;
+      // Leave room for the re-teach card before the next question lands.
+      final nextDelay =
+          Duration(milliseconds: missedCard != null ? 1800 : 900);
       if (_lessonIndex < _lessonCards.length) {
-        Future.delayed(const Duration(milliseconds: 900), () {
+        Future.delayed(nextDelay, () {
           if (mounted) _askLessonQuestion();
         });
+      } else if (!_inReviewRound && _missedWordIds.isNotEmpty) {
+        Future.delayed(nextDelay, () {
+          if (mounted) _startReviewRound();
+        });
       } else {
-        Future.delayed(const Duration(milliseconds: 900), () {
+        Future.delayed(nextDelay, () {
           if (mounted) _finishLesson();
         });
       }
@@ -388,8 +510,8 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
   void _startLesson(List<String> wordIds) {
     final cards = <Flashcard>[];
     for (final id in wordIds) {
-      final match = SeedData.allFlashcards.where((c) => c.id == id);
-      if (match.isNotEmpty) cards.add(match.first);
+      final card = TutorEngine.cardById(id);
+      if (card != null) cards.add(card);
     }
     if (cards.isEmpty) return;
 
@@ -398,23 +520,55 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
       _lessonIndex = 0;
       _lessonCorrect = 0;
       _inLesson = true;
+      _lessonTotal = cards.length;
+      _missedWordIds.clear();
+      _inReviewRound = false;
+      _reviewCorrect = 0;
     });
     _askLessonQuestion();
+  }
+
+  /// Re-asks the words missed on the first pass. Entered once per lesson,
+  /// between the last question and the summary.
+  void _startReviewRound() {
+    final cards = <Flashcard>[];
+    for (final id in _missedWordIds) {
+      final card = TutorEngine.cardById(id);
+      if (card != null) cards.add(card);
+    }
+    if (cards.isEmpty) {
+      _finishLesson();
+      return;
+    }
+    setState(() {
+      _lessonCards = cards;
+      _lessonIndex = 0;
+      _inReviewRound = true;
+      _reviewCorrect = 0;
+    });
+    _addTutorMessage(
+      TutorEngine.reviewRoundIntro(cards.length, isFilipino: _isFilipino),
+    );
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (mounted) _askLessonQuestion();
+    });
   }
 
   void _askLessonQuestion() {
     if (_lessonIndex >= _lessonCards.length) return;
     final card = _lessonCards[_lessonIndex];
-    final prefix = _isFilipino
-        ? '📚 Aralin ${_lessonIndex + 1}/${_lessonCards.length}'
-        : '📚 Lesson ${_lessonIndex + 1}/${_lessonCards.length}';
+    final position = '${_lessonIndex + 1}/${_lessonCards.length}';
+    final prefix = _inReviewRound
+        ? (_isFilipino ? '🔁 Balik-aral $position' : '🔁 Review $position')
+        : (_isFilipino ? '📚 Aralin $position' : '📚 Lesson $position');
     _addTutorMessage(
       TutorEngine.quizForWord(card, isFilipino: _isFilipino, prefix: prefix),
     );
   }
 
   void _finishLesson() {
-    final total = _lessonCards.length;
+    // The first-pass length, not _lessonCards — a retry round replaces that.
+    final total = _lessonTotal;
     final alreadyToday = _lastPlanDate == TutorMemoryService.dayKey(DateTime.now());
     final notifier = ref.read(progressProvider.notifier);
 
@@ -434,16 +588,45 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
             ? '🌟 +$_kLessonBonus na bituin para sa tapos na aralin!'
             : '🌟 +$_kLessonBonus stars for finishing your lesson!');
 
-    setState(() => _inLesson = false);
+    // Credit the retry round separately so the headline score stays honest
+    // about the first pass while the fix-up still gets celebrated.
+    final reviewed = _missedWordIds.length;
+    final reviewLine = (_inReviewRound && reviewed > 0)
+        ? (_isFilipino
+            ? '\n🔁 Binalikan mo ang $reviewed salitang mahirap — $_reviewCorrect ang tama sa pangalawang subok!'
+            : '\n🔁 You went back over $reviewed tricky '
+                '${reviewed == 1 ? 'word' : 'words'} and got $_reviewCorrect '
+                'right on the second try!')
+        : '';
+
+    setState(() {
+      _inLesson = false;
+      _inReviewRound = false;
+    });
     _flashCelebrate();
     _addTutorMessage(TutorMessage(
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
       content: _isFilipino
-          ? '🎉 Tapos na ang aralin! Nakakuha ka ng $_lessonCorrect/$total na tama.\n\n$bonusLine'
-          : '🎉 Lesson complete! You got $_lessonCorrect/$total correct.\n\n$bonusLine',
+          ? '🎉 Tapos na ang aralin! Nakakuha ka ng $_lessonCorrect/$total na tama.$reviewLine\n\n$bonusLine'
+          : '🎉 Lesson complete! You got $_lessonCorrect/$total correct.$reviewLine\n\n$bonusLine',
       timestamp: DateTime.now(),
     ));
+  }
+
+  /// Resolves and plays the sign for [cardId]. Every clip is a network fetch,
+  /// so this shows a resolving overlay and lands on the "not available" sheet
+  /// when the learner is offline — never an indefinite spinner.
+  Future<void> _watchSign(String cardId) async {
+    if (_isLoadingFsl) return;
+    final card = TutorEngine.cardById(cardId);
+    if (card == null) return;
+    setState(() => _isLoadingFsl = true);
+    try {
+      await showSignForCard(context, card: card, profileId: _profileId);
+    } finally {
+      if (mounted) setState(() => _isLoadingFsl = false);
+    }
   }
 
   void _scrollToBottom() {
@@ -466,6 +649,27 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
     final settings = ref.watch(settingsProvider);
     final isFilipino = settings.locale == 'fil';
     _persona = TutorPersona.of(profile?.role);
+    final media = TutorMediaPolicy.forLearner(
+      profile?.disabilityType ?? DisabilityType.none,
+      profile?.role,
+      settings,
+    );
+    // Watched so the sign controls appear as soon as the manifest is parsed;
+    // until then no word reports a clip and none are offered.
+    ref.watch(fslAvailabilityProvider);
+
+    /// The sign control is offered only when this learner's policy allows it
+    /// AND the word actually has a clip somewhere — bundled, direct, or CDN.
+    VoidCallback? watchSignFor(TutorMessage msg) {
+      if (!media.sign) return null;
+      final id = msg.action?.wordId;
+      if (id == null) return null;
+      final card = TutorEngine.cardById(id);
+      if (card == null || !FslAssetsService.hasAnyVideoSource(card)) {
+        return null;
+      }
+      return () => _watchSign(id);
+    }
     final avatarState =
         _isTyping ? TutorAvatarState.thinking : _avatarState;
 
@@ -486,10 +690,13 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: context.maxContentWidth),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints:
+                    BoxConstraints(maxWidth: context.maxContentWidth),
             child: Column(
               children: [
                 TutorStatsStrip(
@@ -556,11 +763,18 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
                         message: msg,
                         persona: _persona,
                         isFilipino: isFilipino,
+                        media: media,
                         answered: _answeredQuizIds.contains(msg.id),
                         onQuizAnswer: (answer) => _handleQuizAnswer(msg, answer),
                         onInterestPick: (name) => _handleInterestPick(msg, name),
                         onActionTap: () => _handleActionTap(msg),
-                        onSpeak: () => _speak(msg.content),
+                        // Hide the read-aloud affordance for audio-off profiles
+                        // (e.g. hearing) — the chat text already carries
+                        // everything. Mirrors the companion panel.
+                        onSpeak: settings.ttsEnabled
+                            ? () => _speak(msg.content)
+                            : null,
+                        onWatchSign: watchSignFor(msg),
                       );
                     },
                   ),
@@ -620,10 +834,15 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
                     ],
                   ),
                 ),
-              ],
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
+          // Sits above the chat so a repeated tap can't stack downloads while
+          // a clip is being resolved.
+          if (_isLoadingFsl) const FslLoadingOverlay(),
+        ],
       ),
     );
   }

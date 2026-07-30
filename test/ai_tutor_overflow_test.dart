@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/data/local/seed_data.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
+import 'package:pwdpwdpwd/features/ai_tutor/models/tutor_media_policy.dart';
 import 'package:pwdpwdpwd/features/ai_tutor/models/tutor_models.dart';
 import 'package:pwdpwdpwd/features/ai_tutor/widgets/tutor_chat.dart';
 import 'package:pwdpwdpwd/features/ai_tutor/widgets/tutor_persona.dart';
@@ -81,6 +83,40 @@ TutorMessage _practiceMessage() => TutorMessage(
       ),
     );
 
+/// A re-teach card for a real seed word, so the bubble's picture resolves the
+/// way it does in the app.
+TutorMessage _reteachMessage() => TutorMessage(
+      id: 'r',
+      role: TutorMessageRole.tutor,
+      content: '📖 Let\'s look at it again. "Transportation" is '
+          '"Transportasyon" 🚌\n\n💬 "We ride the jeepney to school every '
+          'single morning."\n\nℹ️ Transportation is how people and things '
+          'move from one place to another place.',
+      timestamp: DateTime.now(),
+      action: TutorAction(
+        type: TutorActionType.reteach,
+        wordId: SeedData.allFlashcards.first.id,
+      ),
+    );
+
+/// A quiz whose word id matches no seed card — the picture must fall back to a
+/// bare glyph without disturbing the layout.
+TutorMessage _unknownCardQuizMessage() => TutorMessage(
+      id: 'u',
+      role: TutorMessageRole.tutor,
+      content: '❓ Quick Quiz!\n\nWhat is the Filipino for "transportation"?',
+      timestamp: DateTime.now(),
+      action: const TutorAction(
+        type: TutorActionType.quickQuiz,
+        options: ['sasakyan', 'transportasyon', 'kalsada', 'paaralan'],
+        correctAnswer: 'transportasyon',
+        wordId: 'no_such_card',
+      ),
+    );
+
+/// Pictures on — the channel Phase 1 adds. Signs/audio land in later phases.
+const _photoMedia = TutorMediaPolicy(photo: true, sign: false, speak: false);
+
 const _personas = <TutorPersona>[TutorPersona.child, TutorPersona.student];
 
 void main() {
@@ -110,6 +146,76 @@ void main() {
           persona: persona,
           isFilipino: true,
           answered: true,
+        ),
+        host: LayoutHost.scrollable,
+      );
+    });
+
+    testWidgets('$tag quiz bubble with a picture never overflows',
+        (tester) async {
+      await expectNoOverflowAcrossDevices(
+        tester,
+        (_) => TutorMessageBubble(
+          message: _quizMessage(),
+          persona: persona,
+          isFilipino: false,
+          media: _photoMedia,
+          onQuizAnswer: (_) {},
+          onSpeak: () {},
+        ),
+        host: LayoutHost.scrollable,
+      );
+    });
+
+    testWidgets('$tag re-teach bubble with a picture never overflows',
+        (tester) async {
+      await expectNoOverflowAcrossDevices(
+        tester,
+        (_) => TutorMessageBubble(
+          message: _reteachMessage(),
+          persona: persona,
+          isFilipino: false,
+          media: _photoMedia,
+          onSpeak: () {},
+        ),
+        host: LayoutHost.scrollable,
+      );
+    });
+
+    testWidgets('$tag picture falls back to a glyph for an unknown card',
+        (tester) async {
+      await expectNoOverflowAcrossDevices(
+        tester,
+        (_) => TutorMessageBubble(
+          message: _unknownCardQuizMessage(),
+          persona: persona,
+          isFilipino: false,
+          media: _photoMedia,
+          onQuizAnswer: (_) {},
+        ),
+        host: LayoutHost.scrollable,
+      );
+    });
+
+    testWidgets('$tag bubble with Listen + Watch-the-sign never overflows',
+        (tester) async {
+      // Both controls, in Filipino ("Panoorin ang senyas" is the longest
+      // label), with a picture above them — the densest bubble the tutor can
+      // produce.
+      await expectNoOverflowAcrossDevices(
+        tester,
+        (_) => TutorMessageBubble(
+          message: _quizMessage(),
+          persona: persona,
+          isFilipino: true,
+          media: const TutorMediaPolicy(
+            photo: true,
+            sign: true,
+            speak: false,
+          ),
+          onQuizAnswer: (_) {},
+          onSpeak: () {},
+          onWatchSign: () {},
         ),
         host: LayoutHost.scrollable,
       );
