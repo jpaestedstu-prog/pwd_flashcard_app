@@ -46,9 +46,14 @@ Future<void> showFslVideoSheet(
 /// [wordEnglish]. Shared by every surface that can fail to resolve a clip so
 /// the unavailable path looks the same everywhere (a SnackBar would be easy to
 /// miss for Deaf / hard-of-hearing learners relying on the visual signing path).
+/// Set [unreachable] when a clip IS registered for the word but could not be
+/// resolved — the learner is offline rather than the sign being missing. Left
+/// false by callers that cannot tell the two apart, preserving the original
+/// wording.
 Future<void> showFslUnavailableSheet(
   BuildContext context, {
   required String wordEnglish,
+  bool unreachable = false,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -56,7 +61,10 @@ Future<void> showFslUnavailableSheet(
     // Scroll-controlled so the sheet isn't clamped to ~9/16 of the screen,
     // which would clip its content on short phones and at large font scales.
     isScrollControlled: true,
-    builder: (context) => _FslUnavailableSheet(wordEnglish: wordEnglish),
+    builder: (context) => _FslUnavailableSheet(
+      wordEnglish: wordEnglish,
+      unreachable: unreachable,
+    ),
   );
 }
 
@@ -349,7 +357,16 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
 class _FslUnavailableSheet extends StatelessWidget {
   final String wordEnglish;
 
-  const _FslUnavailableSheet({required this.wordEnglish});
+  /// The clip is registered but could not be fetched — almost always because
+  /// the learner is offline. Nothing is bundled with the app, so this is the
+  /// *usual* reason a sign fails to open, and telling a Deaf learner the sign
+  /// "doesn't exist yet" when it does would be plainly wrong.
+  final bool unreachable;
+
+  const _FslUnavailableSheet({
+    required this.wordEnglish,
+    this.unreachable = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +421,11 @@ class _FslUnavailableSheet extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'No FSL video available yet for "$wordEnglish".',
+                unreachable
+                    ? 'The sign for "$wordEnglish" needs the internet to load '
+                        'the first time. Connect and try again — after that it '
+                        'works offline.'
+                    : 'No FSL video available yet for "$wordEnglish".',
                 style: AppTypography.bodyMedium.copyWith(
                   color: HCColor.of(context).textSecondary,
                 ),
