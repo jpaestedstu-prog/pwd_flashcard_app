@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../data/local/seed_data.dart';
 import '../../../data/models/enums.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../models/tutor_media_policy.dart';
@@ -252,12 +253,7 @@ class TutorMessageBubble extends StatelessWidget {
                           child: ExcludeSemantics(
                             // The bubble text already names the word; a second
                             // announcement would just be noise for TalkBack.
-                            child: FlashcardPictureById(
-                              cardId: mediaCardId,
-                              fallback: '📘',
-                              extent: 64,
-                              borderRadius: 14,
-                            ),
+                            child: _CardPicture(cardId: mediaCardId),
                           ),
                         ),
                       Text(
@@ -421,6 +417,39 @@ class TutorMessageBubble extends StatelessWidget {
         ],
       ),
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05, end: 0);
+  }
+}
+
+/// The flashcard picture for [cardId], in a square that grows with the text
+/// scale, falling back to a glyph when the id resolves to no seed card.
+///
+/// Built on [FlashcardImage] directly rather than a higher-level helper: the
+/// convenience wrappers for "picture by id" live in a version of
+/// `flashcard_image.dart` that is not on this branch, and the tutor must not
+/// depend on code it cannot see. [FlashcardImage] handles the photo-to-emoji
+/// fallback internally, which is the common path — the whole Actions category
+/// has no photographs.
+class _CardPicture extends StatelessWidget {
+  final String cardId;
+
+  /// Box side at 1.0 text scale.
+  static const double extent = 64;
+
+  const _CardPicture({required this.cardId});
+
+  @override
+  Widget build(BuildContext context) {
+    final side = MediaQuery.textScalerOf(context).scale(extent);
+    for (final card in SeedData.allFlashcards) {
+      if (card.id == cardId) {
+        return SizedBox(
+          width: side,
+          height: side,
+          child: FlashcardImage(card: card, expand: true, borderRadius: 14),
+        );
+      }
+    }
+    return Text('📘', style: TextStyle(fontSize: side * 0.85, height: 1.15));
   }
 }
 
