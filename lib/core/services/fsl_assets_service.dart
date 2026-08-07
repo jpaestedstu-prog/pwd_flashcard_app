@@ -17,11 +17,11 @@ import 'media_url_resolver.dart';
 ///   1. Local bundled asset under `assets/videos/fsl/<Category>/<word>.mp4`.
 ///   2. A direct download URL registered in `assets/data/fsl_video_manifest.json`
 ///      as `download_url` (used for the original GitHub-Releases hosting).
-///   3. A Streamable page URL registered in the same manifest as
-///      `streamable_url` — resolved at first play via Streamable's public API
-///      (`https://api.streamable.com/videos/<id>`) to a signed CDN URL, then
-///      downloaded and cached by [_videoCache]. The cache key is the card key,
-///      not the URL, so cached files survive Streamable URL rotations.
+///   3. A secondary CDN URL registered in the same manifest as `stream_url`
+///      (currently Cloudinary) — passed through [MediaUrlResolver] at first
+///      play, then downloaded and cached by [_videoCache]. The cache key is
+///      the card key, not the URL, so cached files survive URL rotations and
+///      a re-host doesn't invalidate anything already on disk.
 ///
 /// Filenames are matched to flashcards case-insensitively, so files can be
 /// `DOG.mp4`, `dog.mp4`, or `Dog.mp4`; the original case is preserved when
@@ -89,8 +89,8 @@ class FslAssetsService {
   /// Card key → optional direct download URL for cloud fallback.
   static final Map<String, String> _downloadUrlByKey = {};
 
-  /// Card key → optional Streamable page URL (resolved at runtime).
-  static final Map<String, String> _streamableUrlByKey = {};
+  /// Card key → optional secondary CDN URL (resolved at runtime).
+  static final Map<String, String> _streamUrlByKey = {};
 
   /// Cache manager dedicated to FSL videos. Separate key namespace from any
   /// other CacheManager use in the app, longer max-age (videos never change
@@ -116,13 +116,13 @@ class FslAssetsService {
     _cache = null;
     _assetPathByKey.clear();
     _downloadUrlByKey.clear();
-    _streamableUrlByKey.clear();
+    _streamUrlByKey.clear();
   }
 
   static Future<FslAvailability> _resolve() async {
     _assetPathByKey.clear();
     _downloadUrlByKey.clear();
-    _streamableUrlByKey.clear();
+    _streamUrlByKey.clear();
 
     // 1. Discover locally bundled videos from the asset manifest.
     final assetPaths = await _scanBundledAssets();
@@ -159,7 +159,7 @@ class FslAssetsService {
       }
     }
 
-    // 4. Pull optional cloud URLs (direct downloads and Streamable pages)
+    // 4. Pull optional cloud URLs (direct downloads and the secondary CDN)
     //    from the cloud manifest. These are used when a card has no local
     //    asset — gives the app a graceful path for cloud-hosted videos.
     await _loadCloudFallbackUrls();
@@ -202,8 +202,8 @@ class FslAssetsService {
         final key = '${category}__$slug';
         final directUrl = (e['download_url'] as String?) ?? '';
         if (directUrl.isNotEmpty) _downloadUrlByKey[key] = directUrl;
-        final streamableUrl = (e['streamable_url'] as String?) ?? '';
-        if (streamableUrl.isNotEmpty) _streamableUrlByKey[key] = streamableUrl;
+        final streamUrl = (e['stream_url'] as String?) ?? '';
+        if (streamUrl.isNotEmpty) _streamUrlByKey[key] = streamUrl;
       }
     } catch (_) {
       // No manifest yet (first run, asset missing) — degrade gracefully.
@@ -218,7 +218,7 @@ class FslAssetsService {
       final available =
           _assetPathByKey.containsKey(key) ||
           _downloadUrlByKey.containsKey(key) ||
-          _streamableUrlByKey.containsKey(key);
+          _streamUrlByKey.containsKey(key);
       if (available) {
         cards.add(card);
         perCategory.update(card.category, (n) => n + 1, ifAbsent: () => 1);
@@ -247,30 +247,28 @@ class FslAssetsService {
   static String? downloadUrlFor(Flashcard card) =>
       _downloadUrlByKey[_keyFor(card)];
 
-  /// Streamable page URL for the card's video, or null if not registered.
-  static String? streamableUrlFor(Flashcard card) =>
-      _streamableUrlByKey[_keyFor(card)];
+  /// Secondary CDN URL for the card's video, or null if not registered.
+  static String? streamUrlFor(Flashcard card) => _streamUrlByKey[_keyFor(card)];
 
   /// True if a video is bundled locally for [card].
   static bool hasVideo(Flashcard card) =>
       _assetPathByKey.containsKey(_keyFor(card));
 
   /// True if any video source exists for the card — bundled, direct download,
-  /// or Streamable. Use this to gate UI that triggers an async resolve.
+  /// or secondary CDN. Use this to gate UI that triggers an async resolve.
   static bool hasAnyVideoSource(Flashcard card) {
     final key = _keyFor(card);
     return _assetPathByKey.containsKey(key) ||
         _downloadUrlByKey.containsKey(key) ||
-        _streamableUrlByKey.containsKey(key);
+        _streamUrlByKey.containsKey(key);
   }
 
   /// Resolves the card's video to a playable [VideoSource], or null if no
   /// source is available. Local bundled assets take precedence over cloud
-  /// sources; direct download URLs take precedence over Streamable.
+  /// sources; `download_url` takes precedence over `stream_url`.
   ///
-  /// May perform an HTTP call (to resolve a Streamable ID) and/or a download
-  /// (via [_videoCache]) on first play. Subsequent calls for the same card
-  /// hit the disk cache and return immediately.
+  /// May perform a download (via [_videoCache]) on first play. Subsequent
+  /// calls for the same card hit the disk cache and return immediately.
   static Future<VideoSource?> videoSourceFor(Flashcard card) async {
     final localPath = assetPathFor(card);
     if (localPath != null) return _AssetVideoSource(localPath);
@@ -279,13 +277,13 @@ class FslAssetsService {
     return file != null ? _FileVideoSource(file) : null;
   }
 
-  /// Resolves an arbitrary FSL *share-page* URL (e.g. a Streamable Story clip)
-  /// to a playable [VideoSource], downloading and caching it on first play.
+  /// Resolves an arbitrary FSL clip URL (e.g. a Story clip) to a playable
+  /// [VideoSource], downloading and caching it on first play.
   ///
   /// Unlike [videoSourceFor], this is not tied to a seed [Flashcard] — it backs
   /// the Stories feature, whose sentence / question / option sign-language
   /// clips are not flashcards. [cacheKey] must be stable and unique per clip so
-  /// the on-disk cache survives Streamable URL rotations and is reused across
+  /// the on-disk cache survives a re-host and is reused across
   /// sessions (offline replay). Shares the same [_videoCache] namespace as the
   /// flashcard videos; the distinct key prefix keeps the two from colliding.
   ///
@@ -299,7 +297,7 @@ class FslAssetsService {
     if (pageUrl.trim().isEmpty) return null;
 
     // Cache hit short-circuits all network work — instant, offline-safe replay
-    // and immunity to Streamable signed-URL expiry.
+    // and immunity to a source URL being rotated or re-hosted.
     try {
       final cached = await _videoCache.getFileFromCache(cacheKey);
       if (cached != null) return _FileVideoSource(cached.file);
@@ -317,8 +315,8 @@ class FslAssetsService {
     }
   }
 
-  /// Resolves an arbitrary FSL *share-page* URL (e.g. a Streamable Story clip)
-  /// to an on-device cached [File], downloading and caching it on first call.
+  /// Resolves an arbitrary FSL clip URL (e.g. a Story clip) to an on-device
+  /// cached [File], downloading and caching it on first call.
   ///
   /// The file-returning counterpart of [videoSourceForUrl]: it always yields a
   /// real file on disk, so the TV Cast server can stream it off disk with Range
@@ -334,7 +332,7 @@ class FslAssetsService {
     if (pageUrl.trim().isEmpty) return null;
 
     // Cache hit short-circuits all network work — instant, offline-safe replay
-    // and immunity to Streamable signed-URL expiry.
+    // and immunity to a source URL being rotated or re-hosted.
     try {
       final cached = await _videoCache.getFileFromCache(cacheKey);
       if (cached != null) return cached.file;
@@ -393,13 +391,13 @@ class FslAssetsService {
   /// handled here — see [assetPathFor].
   ///
   /// Resolution order: in-memory disk cache → direct `download_url` →
-  /// Streamable. The cache key is the card key (not the URL), so cached files
-  /// survive Streamable URL rotations.
+  /// `stream_url`. The cache key is the card key (not the URL), so cached
+  /// files survive a re-host of either source.
   static Future<File?> cachedVideoFile(Flashcard card) async {
     final key = _keyFor(card);
 
     // Cache hit short-circuits any cloud work — important for offline play
-    // and to avoid re-resolving Streamable URLs that may have rotated.
+    // and to avoid re-resolving URLs that may have rotated.
     try {
       final cached = await _videoCache.getFileFromCache(key);
       if (cached != null) return cached.file;
@@ -412,15 +410,15 @@ class FslAssetsService {
       try {
         return await _videoCache.getSingleFile(directUrl, key: key);
       } catch (_) {
-        // fall through to Streamable
+        // fall through to the secondary CDN
       }
     }
 
-    final streamableUrl = streamableUrlFor(card);
-    if (streamableUrl != null) {
+    final streamUrl = streamUrlFor(card);
+    if (streamUrl != null) {
       try {
-        final resolved = await _resolveStreamableDirectUrl(streamableUrl);
-        if (resolved != null) {
+        final resolved = await MediaUrlResolver.resolve(streamUrl);
+        if (resolved != null && resolved.isNotEmpty) {
           return await _videoCache.getSingleFile(resolved, key: key);
         }
       } catch (_) {
@@ -482,59 +480,15 @@ class FslAssetsService {
       } catch (_) {}
     }
 
-    final streamableUrl = streamableUrlFor(card);
-    if (streamableUrl != null) {
+    final streamUrl = streamUrlFor(card);
+    if (streamUrl != null) {
       try {
-        final resolved = await _resolveStreamableDirectUrl(streamableUrl);
-        if (resolved != null) {
+        final resolved = await MediaUrlResolver.resolve(streamUrl);
+        if (resolved != null && resolved.isNotEmpty) {
           await _videoCache.downloadFile(resolved, key: key);
         }
       } catch (_) {}
     }
-  }
-
-  /// Calls Streamable's public API for [streamableUrl] (e.g.
-  /// `https://streamable.com/p34d5t`) and returns the direct mp4 CDN URL.
-  ///
-  /// Returns null on parse failure, missing fields, or HTTP errors. The
-  /// returned URL is signed and expires (~24h) — callers should pipe it
-  /// through [_videoCache.getSingleFile] keyed by the card so the resolved
-  /// content is cached locally and the URL itself doesn't need to be reused.
-  static Future<String?> _resolveStreamableDirectUrl(
-    String streamableUrl,
-  ) async {
-    final id = _extractStreamableId(streamableUrl);
-    if (id == null) return null;
-    final apiUrl = Uri.parse('https://api.streamable.com/videos/$id');
-    final client = HttpClient();
-    try {
-      final req = await client.getUrl(apiUrl);
-      final resp = await req.close();
-      if (resp.statusCode != 200) return null;
-      final body = await resp.transform(utf8.decoder).join();
-      final data = json.decode(body);
-      if (data is! Map<String, dynamic>) return null;
-      final files = data['files'];
-      if (files is! Map<String, dynamic>) return null;
-      final preferred = files['mp4'] ?? files['mp4-mobile'];
-      if (preferred is! Map<String, dynamic>) return null;
-      final url = preferred['url'];
-      if (url is! String || url.isEmpty) return null;
-      return url.startsWith('//') ? 'https:$url' : url;
-    } catch (_) {
-      return null;
-    } finally {
-      client.close(force: true);
-    }
-  }
-
-  /// Pulls the short ID out of a Streamable URL like
-  /// `https://streamable.com/p34d5t` or `https://streamable.com/e/p34d5t`.
-  static String? _extractStreamableId(String url) {
-    final match = RegExp(
-      r'streamable\.com/(?:e/|s/)?([A-Za-z0-9]+)',
-    ).firstMatch(url);
-    return match?.group(1);
   }
 }
 
@@ -568,7 +522,7 @@ class _FileVideoSource implements VideoSource {
 /// to drive category pickers, empty states, and the practice-mode gate.
 class FslAvailability {
   /// Flashcards from [SeedData] that have an available video source —
-  /// bundled locally, a direct download URL, or a Streamable URL.
+  /// bundled locally, a direct download URL, or a secondary CDN URL.
   final List<Flashcard> cardsWithVideo;
 
   /// How many videos each category currently has available.

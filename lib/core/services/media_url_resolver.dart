@@ -4,16 +4,15 @@ import 'dart:io';
 /// Resolves user-friendly *share-page* URLs to the direct media URL that can
 /// actually be downloaded.
 ///
-/// The media manifests let you paste the same link you'd share from a browser:
-///   • Streamable video pages  (`https://streamable.com/<id>`)
-///   • postimg image pages     (`https://postimg.cc/<id>`)
+/// Every shipped manifest now stores direct Cloudinary URLs, which pass through
+/// untouched — this exists so a share page can still be pasted into a manifest
+/// without breaking:
+///   • postimg image pages (`https://postimg.cc/<id>`) → the stable
+///     `https://i.postimg.cc/.../file.png` from the page's `og:image` tag.
 ///
-/// Neither of those is a direct file, so this resolver turns them into one:
-///   • Streamable → the signed CDN `.mp4` (via the public Streamable API).
-///     That URL is short-lived, so callers must download + cache it immediately
-///     (keyed by card, not by URL) — exactly how [FslAssetsService] handles it.
-///   • postimg    → the stable `https://i.postimg.cc/.../file.png` from the
-///     page's `og:image` tag (these do not expire).
+/// Streamable used to be handled here too. That branch is gone along with the
+/// last Streamable URL: its links expire, which is exactly why the media was
+/// re-hosted, so resolving them again would invite the same problem back.
 ///
 /// Any already-direct URL is returned unchanged. All failures return null so
 /// callers degrade gracefully (emoji / hidden button).
@@ -32,13 +31,6 @@ class MediaUrlResolver {
     if (uri == null || uri.host.isEmpty) return null;
     final host = uri.host.toLowerCase();
 
-    // Streamable share/embed page → signed mp4.
-    if (host == 'streamable.com' || host.endsWith('.streamable.com')) {
-      // Already a direct CDN file? leave it.
-      if (host.startsWith('cdn')) return pageUrl;
-      return _resolveStreamable(pageUrl);
-    }
-
     // postimg share page → direct image. (i.postimg.cc is already direct.)
     if (host == 'postimg.cc' || host == 'www.postimg.cc') {
       return _resolvePostimg(pageUrl);
@@ -48,32 +40,35 @@ class MediaUrlResolver {
     return pageUrl;
   }
 
-  // ─── Streamable ───────────────────────────────────────────────────
-  static Future<String?> _resolveStreamable(String url) async {
-    final id = _streamableId(url);
-    if (id == null) return null;
-    final body = await _getString(
-      Uri.parse('https://api.streamable.com/videos/$id'),
-    );
-    if (body == null) return null;
-    try {
-      final data = json.decode(body);
-      if (data is! Map<String, dynamic>) return null;
-      final files = data['files'];
-      if (files is! Map<String, dynamic>) return null;
-      final preferred = files['mp4'] ?? files['mp4-mobile'];
-      if (preferred is! Map<String, dynamic>) return null;
-      final mp4 = preferred['url'];
-      if (mp4 is! String || mp4.isEmpty) return null;
-      return mp4.startsWith('//') ? 'https:$mp4' : mp4;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static String? _streamableId(String url) {
-    final m = RegExp(r'streamable\.com/(?:e/|s/)?([A-Za-z0-9]+)').firstMatch(url);
-    return m?.group(1);
+  /// Rewrites [url] so a **video player** can actually open it.
+  ///
+  /// Today that means one case: an animated GIF hosted on Cloudinary.
+  /// `video_player` cannot decode GIF at all, so a pasted
+  /// `…/image/upload/…/clip.gif` would fail to initialise and the caller
+  /// would show "video unavailable". Cloudinary transcodes on delivery,
+  /// so swapping the extension to `.mp4` on the same `image/upload` path
+  /// returns a real H.264 file — and a far smaller one (the FSL alarm
+  /// clip is 7.7 MB as GIF, 369 KB as MP4).
+  ///
+  /// Deliberately **not** folded into [resolve]: that method is shared
+  /// with the image pipelines (flashcard photos, story illustrations),
+  /// where an animated GIF is a perfectly good result and must pass
+  /// through untouched. Call this only when the consumer is a video
+  /// player.
+  ///
+  /// Anything it doesn't recognise is returned unchanged, so it is safe
+  /// to apply to every URL on a video path.
+  static String asPlayableVideo(String url) {
+    final trimmed = url.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null) return trimmed;
+    if (uri.host.toLowerCase() != 'res.cloudinary.com') return trimmed;
+    if (!uri.path.toLowerCase().endsWith('.gif')) return trimmed;
+    // Only the image delivery type transcodes animated GIF → MP4; the
+    // video type 404s for an asset that was uploaded as an image.
+    if (!uri.path.contains('/image/upload/')) return trimmed;
+    final swapped = '${uri.path.substring(0, uri.path.length - 4)}.mp4';
+    return uri.replace(path: swapped).toString();
   }
 
   // ─── postimg ──────────────────────────────────────────────────────

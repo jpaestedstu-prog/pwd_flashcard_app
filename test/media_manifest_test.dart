@@ -61,13 +61,74 @@ void main() {
         final card = byId(id);
         expect(FlashcardPhotoService.hasPhoto(card), isTrue,
             reason: '${card.wordEnglish} key mismatch');
-        expect(FlashcardPhotoService.urlFor(card), contains('postimg.cc'));
+        expect(FlashcardPhotoService.urlFor(card), contains('res.cloudinary.com'));
       }
     });
 
     test('Actions category has no photos yet (left dormant on purpose)', () {
       for (final card in SeedData.getByCategory(FlashcardCategory.actions)) {
         expect(FlashcardPhotoService.hasPhoto(card), isFalse);
+      }
+    });
+
+    test('every cartoon is paired with a realistic photo', () {
+      // A cartoon with no photo would render a flip hint that leads nowhere.
+      for (final card in SeedData.allFlashcards) {
+        if (FlashcardPhotoService.cartoonUrlFor(card) == null) continue;
+        expect(FlashcardPhotoService.hasPhoto(card), isTrue,
+            reason: '${card.category.label} / ${card.wordEnglish} has a cartoon '
+                'but no photo to flip to');
+      }
+    });
+
+    test('Colors & Shapes and Numbers are realistic-only (no flip)', () {
+      // The photograph *is* the lesson for these, so they deliberately ship
+      // one face and must not offer a tap-to-flip.
+      for (final cat in const [
+        FlashcardCategory.colorsAndShapes,
+        FlashcardCategory.numbers,
+      ]) {
+        for (final card in SeedData.getByCategory(cat).take(12)) {
+          expect(FlashcardPhotoService.cartoonUrlFor(card), isNull,
+              reason: '${card.wordEnglish} should have no cartoon');
+          expect(FlashcardPhotoService.canFlip(card), isFalse);
+        }
+      }
+    });
+
+    test('the other ten categories flip, and every URL is a direct image', () {
+      const flipping = {
+        FlashcardCategory.animals,
+        FlashcardCategory.bodyParts,
+        FlashcardCategory.foodAndDrinks,
+        FlashcardCategory.familyAndGreetings,
+        FlashcardCategory.clothing,
+        FlashcardCategory.weather,
+        FlashcardCategory.classroom,
+        FlashcardCategory.transportation,
+        FlashcardCategory.emotions,
+        FlashcardCategory.daysAndTime,
+      };
+      final seen = <String, String>{};
+      for (final cat in flipping) {
+        for (final card in SeedData.getByCategory(cat).take(12)) {
+          expect(FlashcardPhotoService.canFlip(card), isTrue,
+              reason: '${card.category.label} / ${card.wordEnglish} should '
+                  'have both faces');
+          final urls = {
+            'cartoon': FlashcardPhotoService.cartoonUrlFor(card)!,
+            'photo': FlashcardPhotoService.urlFor(card)!,
+          };
+          urls.forEach((face, url) {
+            final where = '${card.wordEnglish} $face';
+            expect(Uri.parse(url).path.toLowerCase(),
+                anyOf(endsWith('.png'), endsWith('.jpg'), endsWith('.jpeg')),
+                reason: '$where is not a direct image: $url');
+            expect(seen.containsKey(url), isFalse,
+                reason: 'picture reused by ${seen[url]} and $where');
+            seen[url] = where;
+          });
+        }
       }
     });
   });
@@ -106,6 +167,32 @@ void main() {
           expect(ActionClipService.hasClip(card), isFalse,
               reason: '${card.wordEnglish} should not have a clip');
         }
+      }
+    });
+
+    test('no Streamable URLs survive — they expire', () {
+      for (final card in SeedData.allFlashcards) {
+        expect(ActionClipService.urlFor(card) ?? '',
+            isNot(contains('streamable.com')),
+            reason: '${card.category.label} / ${card.wordEnglish} still points '
+                'at Streamable');
+      }
+    });
+
+    test('clips are direct media files, and isGifFor matches the extension', () {
+      // resolveClip picks the decoder (Image.file vs VideoPlayerController)
+      // from the authored extension, so a share-page URL with no extension
+      // would silently be treated as a video.
+      for (final card in SeedData.allFlashcards) {
+        final url = ActionClipService.urlFor(card);
+        if (url == null) continue;
+        final path = Uri.parse(url).path.toLowerCase();
+        expect(path, anyOf(endsWith('.gif'), endsWith('.mp4')),
+            reason: '${card.category.label} / ${card.wordEnglish} clip URL has '
+                'no recognisable media extension');
+        expect(ActionClipService.isGifFor(card), path.endsWith('.gif'),
+            reason: 'isGifFor disagrees with the URL extension for '
+                '${card.category.label} / ${card.wordEnglish}');
       }
     });
   });

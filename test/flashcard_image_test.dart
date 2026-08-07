@@ -4,16 +4,23 @@ import 'package:pwdpwdpwd/core/constants/flashcard_emojis.dart';
 import 'package:pwdpwdpwd/core/services/flashcard_photo_service.dart';
 import 'package:pwdpwdpwd/data/local/seed_data.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
-import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/widgets/flashcard_image.dart';
 
 /// Coverage for FlashcardImage's static rendering, the `expand` layout, the
-/// manual emoji⇄photo tap toggle (now an animated 3D flip), and the optional
-/// black outline effect.
+/// cartoon⇄realistic tap flip (an animated 3D flip), and the optional black
+/// outline effect.
 void main() {
-  // Keep the photo service dormant so emoji-only cards have no photo source.
-  setUp(FlashcardPhotoService.reset);
+  TestWidgetsFlutterBinding.ensureInitialized();
 
+  // Keep the photo service dormant so emoji-only cards have no picture source.
+  setUp(FlashcardPhotoService.reset);
+  tearDown(() {
+    FlashcardPhotoService.debugResolverOverride = null;
+    FlashcardPhotoService.reset();
+  });
+
+  // An Actions verb: no cartoon and no photo, so it exercises the emoji
+  // last-resort path.
   final emojiCard = SeedData.getByCategory(FlashcardCategory.actions).first;
   final emoji = FlashcardEmojis.forId(emojiCard.id);
 
@@ -29,11 +36,11 @@ void main() {
     test('match the requested instructions exactly', () {
       expect(
         FlashcardImage.tapHint(showingPhoto: false),
-        'Tap to see the real photograph (Photo).',
+        'Tap to see the real picture.',
       );
       expect(
         FlashcardImage.tapHint(showingPhoto: true),
-        'Tap to see the emoji (Emoji).',
+        'Tap to see the cartoon picture.',
       );
     });
   });
@@ -90,68 +97,81 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('tap toggles emoji ⇄ photo with the right instructions', (
-      tester,
-    ) async {
-      // A card with a photo source (imageAsset) so interactive mode engages.
-      const card = Flashcard(
-        id: 'tst_apple',
-        wordEnglish: 'Apple',
-        wordFilipino: 'Mansanas',
-        category: FlashcardCategory.foodAndDrinks,
-        imageAsset: 'assets/images/__missing_test_fixture__.png',
-      );
+    group('with the shipped manifest', () {
+      // The manifest load must happen in setUp, not inside testWidgets: asset
+      // reads complete in the real zone, and testWidgets' FakeAsync never
+      // advances them, so an in-test await would hang forever.
+      setUp(() async {
+        FlashcardPhotoService.debugResolverOverride = (_, _) async => null;
+        await FlashcardPhotoService.load();
+      });
 
-      await pump(tester, const FlashcardImage(card: card, interactive: true));
-
-      // Emoji first → instruction invites revealing the photo.
-      expect(
-        find.text('Tap to see the real photograph (Photo).'),
-        findsOneWidget,
-      );
-
-      // Tap the image → photo face → instruction now invites the emoji.
-      // pumpAndSettle drains the 3D-flip animation's ticker (a bare pump()
-      // would leave it pending and fail the test).
-      await tester.tap(find.byType(FlashcardImage));
-      await tester.pumpAndSettle();
-      expect(find.text('Tap to see the emoji (Emoji).'), findsOneWidget);
-
-      // Tap again → back to the emoji face.
-      await tester.tap(find.byType(FlashcardImage));
-      await tester.pumpAndSettle();
-      expect(
-        find.text('Tap to see the real photograph (Photo).'),
-        findsOneWidget,
-      );
-
-      // The missing test fixture triggers a benign asset-load error once the
-      // photo face is shown; absorb it (real photos exist at runtime).
-      tester.takeException();
-    });
-
-    testWidgets('caption survives an unbounded FittedBox (viewer hosts it so)', (
-      tester,
-    ) async {
-      // The flashcard viewer wraps the card face in a FittedBox, which imposes
-      // UNBOUNDED width. The instruction pill must not use a flex child there.
-      const card = Flashcard(
-        id: 'tst_fitted',
-        wordEnglish: 'Apple',
-        wordFilipino: 'Mansanas',
-        category: FlashcardCategory.foodAndDrinks,
-        imageAsset: 'assets/images/__missing_test_fixture__.png',
-      );
-      await pump(
+      testWidgets('realistic-only card shows no toggle instruction', (
         tester,
-        const FittedBox(child: FlashcardImage(card: card, interactive: true)),
-      );
-      await tester.pumpAndSettle(); // drain the initial flip ticker
-      expect(tester.takeException(), isNull);
-      expect(
-        find.text('Tap to see the real photograph (Photo).'),
-        findsOneWidget,
-      );
+      ) async {
+        // Colors & Shapes ships a photo but no cartoon: one face, so tapping
+        // must not offer a flip that would only ever show the same picture.
+        final red = SeedData.getByCategory(
+          FlashcardCategory.colorsAndShapes,
+        ).firstWhere((c) => c.wordEnglish == 'Red');
+        expect(FlashcardPhotoService.hasPhoto(red), isTrue);
+        expect(FlashcardPhotoService.cartoonUrlFor(red), isNull);
+
+        await pump(tester, FlashcardImage(card: red, interactive: true));
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(find.textContaining('Tap to see'), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('tap flips cartoon ⇄ realistic with the right instructions', (
+        tester,
+      ) async {
+        // Animals/dog ships both faces, so interactive mode engages.
+        final dog = SeedData.getByCategory(
+          FlashcardCategory.animals,
+        ).firstWhere((c) => c.wordEnglish == 'Dog');
+        expect(FlashcardPhotoService.canFlip(dog), isTrue);
+
+        await pump(tester, FlashcardImage(card: dog, interactive: true));
+
+        // Cartoon first → instruction invites revealing the real picture.
+        expect(find.text('Tap to see the real picture.'), findsOneWidget);
+
+        // Tap → realistic face → instruction now invites the cartoon back.
+        // Bounded pumps, not pumpAndSettle: the realistic face carries a loading
+        // spinner (the stub never resolves a file), and that animation repeats
+        // forever, so pumpAndSettle would never return. 700ms clears the 650ms
+        // flip.
+        await tester.tap(find.byType(FlashcardImage));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 700));
+        expect(find.text('Tap to see the cartoon picture.'), findsOneWidget);
+
+        // Tap back to the cartoon face, which has no spinner — so the test also
+        // ends with no ticker still running.
+        await tester.tap(find.byType(FlashcardImage));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 700));
+        expect(find.text('Tap to see the real picture.'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('caption survives an unbounded FittedBox (viewer hosts it so)', (
+        tester,
+      ) async {
+        // The flashcard viewer wraps the card face in a FittedBox, which imposes
+        // UNBOUNDED width. The instruction pill must not use a flex child there.
+        final dog = SeedData.getByCategory(
+          FlashcardCategory.animals,
+        ).firstWhere((c) => c.wordEnglish == 'Dog');
+        await pump(
+          tester,
+          FittedBox(child: FlashcardImage(card: dog, interactive: true)),
+        );
+        await tester.pumpAndSettle(); // drain the initial flip ticker
+        expect(tester.takeException(), isNull);
+        expect(find.text('Tap to see the real picture.'), findsOneWidget);
+      });
     });
   });
 

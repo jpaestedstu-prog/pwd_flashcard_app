@@ -1,8 +1,8 @@
 // Regenerate the app's bundled FSL manifest so every entry carries a
 // `download_url` pointing at the GitHub Release (the stable, non-expiring,
-// free primary source). The existing `streamable_url` is preserved as the
-// runtime fallback — FslAssetsService tries download_url first, Streamable
-// second.
+// free primary source). The existing `stream_url` (Cloudinary) is preserved
+// as the runtime fallback — FslAssetsService tries download_url first,
+// stream_url second.
 //
 // This does NOT upload anything: the 143 mp4 assets already live on the
 // release. It only rewrites assets/data/fsl_video_manifest.json, and it
@@ -78,15 +78,15 @@ const rebuilt = entries.map((e) => {
     missing.push({ category: e.category, slug: e.slug, assetName });
   }
   // Re-emit fields in a stable, readable order; download_url before the
-  // streamable_url fallback. Any unexpected extra keys are carried through.
-  const { category, slug, word_english, word_filipino, streamable_url, ...rest } = e;
+  // stream_url fallback. Any unexpected extra keys are carried through.
+  const { category, slug, word_english, word_filipino, stream_url, ...rest } = e;
   return {
     category,
     slug,
     word_english,
     word_filipino,
     download_url: downloadUrlFor(assetName),
-    ...(streamable_url ? { streamable_url } : {}),
+    ...(stream_url ? { stream_url } : {}),
     ...rest,
   };
 });
@@ -113,12 +113,12 @@ manifest.entries = rebuilt;
 manifest.generated_at = new Date().toISOString();
 manifest.video_source = {
   primary: 'github_release',
-  fallback: 'streamable',
+  fallback: 'cloudinary',
   repo: REPO,
   tag: TAG,
 };
 writeFileSync(APP_MANIFEST, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 console.log(
   `Wrote ${APP_MANIFEST}\n  ${rebuilt.length} entries, each with download_url ` +
-    '(GitHub Release) + streamable_url (fallback).',
+    '(GitHub Release) + stream_url (fallback).',
 );

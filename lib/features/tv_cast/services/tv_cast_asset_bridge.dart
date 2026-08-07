@@ -62,13 +62,13 @@ class TvCastAssetBridge {
   }
 
   /// On-device cached file for the card's FSL video, downloading it from the
-  /// cloud manifest (GitHub Releases / Streamable) on first request and
+  /// cloud manifest (GitHub Releases / Cloudinary) on first request and
   /// caching it thereafter. Null if no source is registered or it fails.
   /// The TV Cast server streams this file off disk (with Range support).
   static Future<File?> fslVideoFileFor(Flashcard card) =>
       FslAssetsService.cachedVideoFile(card);
 
-  /// True if any video source — bundled, direct download, or Streamable —
+  /// True if any video source — bundled, direct download, or secondary CDN —
   /// exists for [card]. Used to gate the cast `/api/video/...` URL even
   /// before the clip has been downloaded.
   static bool hasFslVideo(Flashcard card) =>
@@ -101,6 +101,16 @@ class TvCastAssetBridge {
   static Future<File?> photoFileFor(Flashcard card) =>
       FlashcardPhotoService.photoFile(card);
 
+  /// True if [card] has an illustrated face. The TV uses it as the front of the
+  /// flip card, mirroring the in-app cartoon ⇄ real-life tap-to-flip.
+  static bool hasCartoon(Flashcard card) =>
+      FlashcardPhotoService.cartoonUrlFor(card) != null;
+
+  /// On-device cached file for [card]'s cartoon face, downloading it on first
+  /// request. Null when the card has none or the fetch fails.
+  static Future<File?> cartoonFileFor(Flashcard card) =>
+      FlashcardPhotoService.cartoonFile(card);
+
   // ─── "Show Me" action clips (mirrors the in-app "Show Me" button) ───
   // A short looping clip of the word in motion — MP4 (video) or animated GIF —
   // resolved from the action-clip manifest ([ActionClipService]). The in-app
@@ -118,7 +128,7 @@ class TvCastAssetBridge {
       ActionClipService.isGifFor(card);
 
   /// On-device cached file for [card]'s action clip, downloading + caching it
-  /// (resolving share-page URLs like Streamable) on first request. Null when no
+  /// (resolving a share-page URL if one was authored) on first request. Null when no
   /// clip source is registered or the fetch fails. The TV Cast server streams
   /// MP4s off this file (with Range) and serves GIF bytes whole.
   static Future<File?> actionClipFileFor(Flashcard card) async {
@@ -246,7 +256,7 @@ class TvCastAssetBridge {
   }
 
   /// On-device cached file for a story page's FSL clip, resolving its share-page
-  /// URL (e.g. Streamable) and downloading + caching it on first request. Null
+  /// URL and downloading + caching it on first request. Null
   /// when [pageUrl] is blank, can't be resolved, or the fetch fails. The TV Cast
   /// server streams this file off disk (with Range support).
   static Future<File?> storyFslVideoFile(String pageUrl, String cacheKey) =>

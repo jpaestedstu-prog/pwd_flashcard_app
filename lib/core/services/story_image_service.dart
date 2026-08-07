@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
+import 'media_cache_key.dart';
 import 'media_url_resolver.dart';
 
 /// Resolves a story illustration (a cartoon or a real-life photo) from a
@@ -16,8 +17,9 @@ import 'media_url_resolver.dart';
 /// later view — including fully offline — is served from that cache.
 ///
 /// Powers the Stories → Cartoon ⇄ Real-Life tap-to-flip illustrations. Each
-/// face caches under its own stable [cacheKey] (e.g. `s_a01_page0_cartoon`), so
-/// a postimg URL change never invalidates an already-downloaded picture.
+/// face caches under its own [cacheKey] (e.g. `s_a01_page0_cartoon`) combined
+/// with a fingerprint of the source URL — see [_diskKey] for why the URL has to
+/// be part of it.
 class StoryImageService {
   StoryImageService._();
 
@@ -66,11 +68,13 @@ class StoryImageService {
   }
 
   /// Resolves a (possibly share-page) [url] to a direct image URL, then
-  /// downloads + caches it under [cacheKey]. The cache key is stable, so a
-  /// rotated source URL doesn't matter once cached. Never throws.
+  /// downloads + caches it. Re-requesting the same slot with the same URL hits
+  /// the disk cache; a changed URL downloads afresh — see [MediaCacheKey] for
+  /// why the URL has to be part of the key. Never throws.
   static Future<File?> _download(String url, String cacheKey) async {
+    final diskKey = MediaCacheKey.forUrl(cacheKey, url);
     try {
-      final cached = await _cache.getFileFromCache(cacheKey);
+      final cached = await _cache.getFileFromCache(diskKey);
       if (cached != null) return cached.file;
     } catch (_) {
       // fall through to a fresh download
@@ -80,7 +84,7 @@ class StoryImageService {
     if (direct == null) return null;
 
     try {
-      return await _cache.getSingleFile(direct, key: cacheKey);
+      return await _cache.getSingleFile(direct, key: diskKey);
     } catch (_) {
       return null;
     }

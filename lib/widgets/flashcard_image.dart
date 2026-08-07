@@ -5,22 +5,33 @@ import '../core/constants/flashcard_emojis.dart';
 import '../core/services/flashcard_photo_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../data/local/seed_data.dart';
 import '../data/models/enums.dart';
 import '../data/models/models.dart';
 
 /// A reusable widget that renders a visual representation of a flashcard.
 ///
-/// What it shows, in priority order:
-/// 1. [Flashcard.imageAsset] — a bundled asset image, or
-/// 2. a real downloaded photograph configured via [FlashcardPhotoService], or
-/// 3. the mapped emoji in a styled container (fallback / placeholder).
+/// A card has up to two picture faces, both from [FlashcardPhotoService]: an
+/// illustrated **cartoon** and a **realistic** photograph. What it shows, in
+/// priority order:
+/// 1. the cartoon face, else
+/// 2. [Flashcard.imageAsset] (a bundled asset) or the realistic photograph, else
+/// 3. the mapped emoji in a styled container.
+///
+/// The emoji is a **last-resort fallback only** — for the words that have no
+/// picture yet (the Actions verbs and the later extra words), and for the moment
+/// before a picture finishes downloading or when the device is offline. Any card
+/// with a picture shows the picture, never the emoji.
 ///
 /// Two modes:
-///  * **Static** (default) — shows the photo once it's available, otherwise the
-///    emoji. Used inside games and lists where a tap means something else.
-///  * **[interactive]** — shows the emoji first and lets the user **tap to
-///    switch** between the emoji and the real photo (and back again), with a
-///    clear on-screen instruction. Used in the flashcard viewer.
+///  * **Static** (default) — shows the cartoon if there is one, else the
+///    photograph, else the emoji. Used inside games and lists where a tap means
+///    something else.
+///  * **[interactive]** — shows the cartoon first and lets the user **tap to
+///    flip** to the realistic photograph (and back again), with a clear
+///    on-screen instruction. Used in the flashcard viewer. A card with only one
+///    face never flips — Colors & Shapes and Numbers are realistic-only by
+///    design — so it renders statically instead, with no misleading tap hint.
 ///
 /// Sizing: by default the box is [size] × 1.6 (square). Pass [expand] = true to
 /// fill the parent's constraints instead.
@@ -43,9 +54,9 @@ class FlashcardImage extends StatefulWidget {
   /// Fill the parent's constraints instead of using a fixed [size] box.
   final bool expand;
 
-  /// Emoji-first, tap to toggle to the photo and back, with an instruction
-  /// caption. Only takes effect when the card actually has a photo. The toggle
-  /// plays the same smooth 3D flip the viewer's big card uses.
+  /// Cartoon-first, tap to flip to the realistic photograph and back, with an
+  /// instruction caption. Only takes effect when the card actually has *both*
+  /// faces. The toggle plays the same smooth 3D flip the viewer's big card uses.
   final bool interactive;
 
   /// Honour the accessibility "reduced motion" setting for the [interactive]
@@ -53,7 +64,7 @@ class FlashcardImage extends StatefulWidget {
   final bool reducedMotion;
 
   /// Draw a black outline effect on the emoji glyph and a black frame around
-  /// the photo (Color: Black · Size: 25 · Intensity: 50). Used only on the
+  /// the pictures (Color: Black · Size: 25 · Intensity: 50). Used only on the
   /// flashcard viewer's interactive card; off everywhere else.
   final bool outlined;
 
@@ -70,20 +81,26 @@ class FlashcardImage extends StatefulWidget {
     this.outlined = false,
   });
 
-  /// The instruction shown in [interactive] mode for the current face.
+  /// The instruction shown in [interactive] mode for the current face. Worded
+  /// to match the Stories tap-to-flip pictures so both features read the same.
   static String tapHint({required bool showingPhoto}) => showingPhoto
-      ? 'Tap to see the emoji (Emoji).'
-      : 'Tap to see the real photograph (Photo).';
+      ? 'Tap to see the cartoon picture.'
+      : 'Tap to see the real picture.';
 
   @override
   State<FlashcardImage> createState() => _FlashcardImageState();
 }
 
 class _FlashcardImageState extends State<FlashcardImage> {
+  /// The realistic photograph (bundled asset or downloaded).
   ImageProvider? _photo;
   bool _resolving = false;
 
-  /// Interactive toggle — emoji is shown first.
+  /// The illustrated face. Null for realistic-only cards.
+  ImageProvider? _cartoon;
+  bool _resolvingCartoon = false;
+
+  /// Interactive toggle — the cartoon face is shown first.
   bool _showPhoto = false;
 
   // ─── Outline effect (Color: Black · Size: 25 · Intensity: 50) ──────
@@ -97,11 +114,19 @@ class _FlashcardImageState extends State<FlashcardImage> {
       widget.card.imageAsset != null && widget.card.imageAsset!.isNotEmpty;
   bool get _hasManifestPhoto => FlashcardPhotoService.hasPhoto(widget.card);
   bool get _hasPhotoSource => _hasAssetPhoto || _hasManifestPhoto;
+  bool get _hasCartoonSource =>
+      FlashcardPhotoService.cartoonUrlFor(widget.card) != null;
+
+  /// Both faces present — only then does tapping flip between them.
+  bool get _canFlip => _hasCartoonSource && _hasPhotoSource;
 
   @override
   void initState() {
     super.initState();
-    _resolvePhoto();
+    _resolveCartoon();
+    // The photograph is the only face on realistic-only cards, so fetch it up
+    // front there; on flippable cards it can wait until the first flip.
+    if (!_hasCartoonSource) _resolvePhoto();
   }
 
   @override
@@ -109,9 +134,12 @@ class _FlashcardImageState extends State<FlashcardImage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.card.id != widget.card.id) {
       _photo = null;
+      _cartoon = null;
       _resolving = false;
-      _showPhoto = false; // a new card starts on the emoji again
-      _resolvePhoto();
+      _resolvingCartoon = false;
+      _showPhoto = false; // a new card starts on the cartoon again
+      _resolveCartoon();
+      if (!_hasCartoonSource) _resolvePhoto();
     }
   }
 
@@ -138,6 +166,24 @@ class _FlashcardImageState extends State<FlashcardImage> {
     });
   }
 
+  void _resolveCartoon() {
+    if (!_hasCartoonSource || _cartoon != null) return;
+
+    final cached = FlashcardPhotoService.resolvedCartoon(widget.card);
+    if (cached != null) {
+      _cartoon = FileImage(cached);
+      return;
+    }
+
+    if (_resolvingCartoon) return;
+    _resolvingCartoon = true;
+    FlashcardPhotoService.cartoonFile(widget.card).then((file) {
+      _resolvingCartoon = false;
+      if (!mounted || file == null) return;
+      setState(() => _cartoon = FileImage(file));
+    });
+  }
+
   void _toggle() {
     setState(() => _showPhoto = !_showPhoto);
     if (_showPhoto) _resolvePhoto();
@@ -145,10 +191,13 @@ class _FlashcardImageState extends State<FlashcardImage> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.interactive && _hasPhotoSource) return _buildInteractive();
+    if (widget.interactive && _canFlip) return _buildInteractive();
 
-    // Static: show the photo once available, otherwise the emoji.
-    return _photo != null ? _photoFrame(_photo!) : _emoji();
+    // Static: the cartoon is the card's identity face, so prefer it; fall back
+    // to the photograph (the only face on Colors & Shapes / Numbers) and
+    // finally to the emoji for words that have no picture at all.
+    final face = _cartoon ?? _photo;
+    return face != null ? _photoFrame(face) : _emoji();
   }
 
   // ─── Interactive (tap to toggle, animated 3D flip) ────────────────
@@ -160,15 +209,15 @@ class _FlashcardImageState extends State<FlashcardImage> {
           child: Semantics(
             button: true,
             label: _showPhoto
-                ? 'Photo of ${widget.card.wordEnglish}. '
-                      'Tap to see the emoji.'
-                : 'Emoji for ${widget.card.wordEnglish}. '
-                      'Tap to see the real photograph.',
+                ? 'Real picture of ${widget.card.wordEnglish}. '
+                      'Tap to see the cartoon picture.'
+                : 'Cartoon picture of ${widget.card.wordEnglish}. '
+                      'Tap to see the real picture.',
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _toggle,
               // Reuse the same smooth 3D flip the viewer's big card uses
-              // (650ms easeOutBack), so the emoji⇄photo toggle animates
+              // (650ms easeOutBack), so the cartoon⇄photo toggle animates
               // instead of snapping instantly.
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: _showPhoto ? math.pi : 0),
@@ -181,7 +230,7 @@ class _FlashcardImageState extends State<FlashcardImage> {
                 builder: (context, value, child) {
                   final showFront = value < math.pi / 2;
                   final face = showFront
-                      ? _emoji()
+                      ? _cartoonFace()
                       : Transform(
                           // Counter-rotate the back face so the photo isn't
                           // mirrored once the card flips past 90°.
@@ -207,14 +256,24 @@ class _FlashcardImageState extends State<FlashcardImage> {
     );
   }
 
-  /// The photo face for the interactive flip: the real photo once resolved,
-  /// otherwise the emoji with a small spinner while the photo loads.
+  /// Front face of the flip: the cartoon once resolved, otherwise the emoji.
+  ///
+  /// Deliberately no spinner. This face paints the moment the card appears, so
+  /// a slow or offline fetch would leave an indicator spinning indefinitely on
+  /// every card the learner scrolls past. The emoji stands in silently instead
+  /// and is swapped for the picture when it arrives.
+  Widget _cartoonFace() => _cartoon != null ? _photoFrame(_cartoon!) : _emoji();
+
+  /// Back face of the flip: the realistic photo once resolved, otherwise the
+  /// cartoon that's already on screen with a spinner over it. The spinner is
+  /// warranted here — the learner asked for this face by tapping, so it's
+  /// feedback for a wait they initiated.
   Widget _photoFace() {
     if (_photo != null) return _photoFrame(_photo!);
     return Stack(
       alignment: Alignment.center,
       children: [
-        _emoji(),
+        _cartoon != null ? _photoFrame(_cartoon!) : _emoji(),
         const SizedBox(
           width: 28,
           height: 28,
@@ -236,9 +295,7 @@ class _FlashcardImageState extends State<FlashcardImage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            _showPhoto
-                ? Icons.emoji_emotions_rounded
-                : Icons.photo_camera_rounded,
+            _showPhoto ? Icons.brush_rounded : Icons.photo_camera_rounded,
             size: 20,
             color: AppColors.primaryDark,
           ),
@@ -408,6 +465,87 @@ class FlashcardImageSmall extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FlashcardImage(card: card, size: size, borderRadius: 12);
+  }
+}
+
+/// A card's picture sized to a fixed square [extent], for the places that used
+/// to render a bare emoji glyph (game tiles, word rows, result panels).
+///
+/// [extent] is the box side at the default text scale and grows with the user's
+/// text-size setting, exactly as the emoji glyph it replaces did — so low-vision
+/// presets still enlarge the picture and the existing overflow matrices keep
+/// measuring the same thing.
+class FlashcardPicture extends StatelessWidget {
+  final Flashcard card;
+
+  /// Box side at 1.0 text scale.
+  final double extent;
+
+  final double borderRadius;
+
+  const FlashcardPicture({
+    super.key,
+    required this.card,
+    required this.extent,
+    this.borderRadius = 12,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final side = MediaQuery.textScalerOf(context).scale(extent);
+    return SizedBox(
+      width: side,
+      height: side,
+      child: FlashcardImage(
+        card: card,
+        expand: true,
+        borderRadius: borderRadius,
+      ),
+    );
+  }
+}
+
+/// [FlashcardPicture] for a card known only by its id.
+///
+/// Used by the multiplayer race players, whose boards arrive over the wire from
+/// the other device. Falls back to [fallback] — the emoji the peer sent — when
+/// the id matches no seed card, so a peer on an older build (which sends no
+/// `card_id` at all) still shows something rather than an empty tile.
+class FlashcardPictureById extends StatelessWidget {
+  final String? cardId;
+
+  /// Shown when [cardId] is null or unknown.
+  final String fallback;
+
+  final double extent;
+  final double borderRadius;
+
+  const FlashcardPictureById({
+    super.key,
+    required this.cardId,
+    required this.fallback,
+    required this.extent,
+    this.borderRadius = 12,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final id = cardId;
+    if (id != null) {
+      for (final c in SeedData.allFlashcards) {
+        if (c.id == id) {
+          return FlashcardPicture(
+            card: c,
+            extent: extent,
+            borderRadius: borderRadius,
+          );
+        }
+      }
+    }
+    return Text(
+      fallback,
+      style: TextStyle(fontSize: extent * 0.85, height: 1.15),
+    );
   }
 }
 

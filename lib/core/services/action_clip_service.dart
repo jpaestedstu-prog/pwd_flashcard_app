@@ -99,6 +99,18 @@ class ActionClipService {
   static String _keyFor(Flashcard card) =>
       '${card.category.label}__${card.wordEnglish.toLowerCase()}';
 
+  /// On-disk cache key for [card]'s clip at [url].
+  ///
+  /// Deliberately carries the clip's *format* as well as the card, because the
+  /// two are decoded by different widgets ([Image.file] vs [VideoPlayerController]).
+  /// Re-hosting a word from MP4 to GIF (or back) keeps the same card key, so a
+  /// card-only key would hand the previous format's bytes to the new decoder and
+  /// break "Show Me" for anyone who had already viewed that word. Varying the key
+  /// makes the old entry unreachable instead; it ages out via the store's normal
+  /// stale/count limits.
+  static String _cacheKeyFor(Flashcard card, String url) =>
+      '${_keyFor(card)}__${_looksLikeGif(url) ? 'gif' : 'vid'}';
+
   /// Remote URL for [card]'s clip, or null when none is configured.
   static String? urlFor(Flashcard card) {
     final override = _overrides[_keyFor(card)];
@@ -128,16 +140,16 @@ class ActionClipService {
   }
 
   /// Resolves [card]'s clip to a cached on-device file, downloading on first
-  /// call. Share-page URLs (Streamable, postimg) are resolved to a direct media
+  /// call. A postimg share page is resolved to a direct media
   /// URL first. Returns null when there is no source or the fetch fails. Never
   /// throws — the caller shows a friendly message instead.
   static Future<ActionClip?> resolveClip(Flashcard card) async {
     final url = urlFor(card);
     if (url == null) return null;
-    final key = _keyFor(card);
+    final key = _cacheKeyFor(card, url);
 
     // The GIF-vs-video decision is based on the *authored* URL extension, so a
-    // Streamable page (no extension) is treated as video and a `.gif` override
+    // share page (no extension) is treated as video and a `.gif` override
     // as an animated image — independent of the resolved CDN URL's query.
     final isGif = _looksLikeGif(url);
 

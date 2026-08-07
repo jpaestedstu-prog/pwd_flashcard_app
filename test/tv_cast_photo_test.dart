@@ -70,9 +70,9 @@ void main() {
         (c) => c.wordEnglish.toLowerCase() == 'dog',
       );
       expect(TvCastAssetBridge.hasActionClip(dog), isTrue);
-      // The shipped manifest hosts dog on Streamable (a video page, no .gif
-      // extension), so it is served as a video, not a GIF.
-      expect(TvCastAssetBridge.actionClipIsGif(dog), isFalse);
+      // The shipped manifest hosts dog as a direct Cloudinary .gif, so it is
+      // served as an animated image rather than through video_player.
+      expect(TvCastAssetBridge.actionClipIsGif(dog), isTrue);
     });
 
     test('hasActionClip is false once the manifest is reset', () {
