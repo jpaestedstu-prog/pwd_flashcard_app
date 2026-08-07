@@ -66,6 +66,234 @@ enum CastAudioTarget { tv, phone }
 ///   • unsupported — this TV browser has no Web Speech at all
 enum TvAudioStatus { unknown, ready, needsTap, unsupported }
 
+/// How big the TV's words are.
+///
+/// Everything on the TV is sized in `vh`, so it already scales with the
+/// screen — but "fits the screen" is not "readable from the back row with low
+/// vision". This is the educator's override for the text that carries the
+/// lesson (the word, the story line, the sign caption, the answer options);
+/// layout chrome deliberately doesn't grow with it, so nothing overflows.
+enum CastTextSize { normal, large, extraLarge }
+
+extension CastTextSizeX on CastTextSize {
+  String get label => switch (this) {
+    CastTextSize.normal => 'Normal',
+    CastTextSize.large => 'Large',
+    CastTextSize.extraLarge => 'Extra large',
+  };
+
+  /// Sent to the TV, which maps it to a `body.text-<name>` class.
+  String get wireName => switch (this) {
+    CastTextSize.normal => 'normal',
+    CastTextSize.large => 'lg',
+    CastTextSize.extraLarge => 'xl',
+  };
+}
+
+/// Which language the TV shows (and speaks).
+///
+/// Cards and stories carry English + Filipino. Showing both is right for most
+/// lessons, but a teacher drilling one language wants the other out of the way
+/// — and for a learner with a reading or cognitive disability, half the text on
+/// screen being a language they're not working in is noise, not a bonus.
+enum CastLanguage { both, english, filipino }
+
+extension CastLanguageX on CastLanguage {
+  String get label => switch (this) {
+    CastLanguage.both => 'Both',
+    CastLanguage.english => 'English',
+    CastLanguage.filipino => 'Filipino',
+  };
+
+  /// Sent to the TV, which maps it to a `body.lang-<name>` class and uses it
+  /// to decide what to speak.
+  String get wireName => switch (this) {
+    CastLanguage.both => 'both',
+    CastLanguage.english => 'en',
+    CastLanguage.filipino => 'fil',
+  };
+}
+
+/// What a finished cast actually did, shown to the educator when they stop.
+///
+/// Casting is otherwise entirely ephemeral: a teacher runs a 20-minute lesson
+/// off the TV and the app retains nothing about it. This is the receipt — how
+/// long, what was shown, how much of it the class answered.
+class TvCastSessionSummary {
+  /// When the cast started. Null for a summary built in-flight (the live
+  /// getter) — set when the record is persisted.
+  final DateTime? startedAt;
+
+  final Duration duration;
+
+  /// Modes the educator actually cast, in the order they were first used.
+  final List<CastMode> modesUsed;
+
+  /// Flashcards / signs advanced past (autoplay steps included).
+  final int cardsShown;
+  final int storyPagesShown;
+  final int liveQuestionsPushed;
+
+  /// Answers received across every live question in the session.
+  final int liveAnswers;
+
+  /// Most TVs connected at once.
+  final int peakViewers;
+
+  const TvCastSessionSummary({
+    required this.duration,
+    this.startedAt,
+    this.modesUsed = const [],
+    this.cardsShown = 0,
+    this.storyPagesShown = 0,
+    this.liveQuestionsPushed = 0,
+    this.liveAnswers = 0,
+    this.peakViewers = 0,
+  });
+
+  /// Stored form. Modes are written by `.name` (never index) so the enum can
+  /// grow without invalidating history; unknown names are dropped on read.
+  Map<String, dynamic> toJson() => {
+    'startedAt': (startedAt ?? DateTime.now()).toIso8601String(),
+    'seconds': duration.inSeconds,
+    'modes': modesUsed.map((m) => m.name).toList(),
+    'cards': cardsShown,
+    'storyPages': storyPagesShown,
+    'liveQuestions': liveQuestionsPushed,
+    'liveAnswers': liveAnswers,
+    'peakViewers': peakViewers,
+  };
+
+  /// Reads a stored record. Tolerant by design: history written by an older
+  /// build must never crash the list, so every field falls back rather than
+  /// throwing, and modes that no longer exist are skipped.
+  factory TvCastSessionSummary.fromJson(Map<String, dynamic> json) {
+    final rawModes = json['modes'];
+    final modes = <CastMode>[];
+    if (rawModes is List) {
+      for (final m in rawModes) {
+        for (final candidate in CastMode.values) {
+          if (candidate.name == m) {
+            modes.add(candidate);
+            break;
+          }
+        }
+      }
+    }
+    int intOf(String key) {
+      final v = json[key];
+      return v is int ? v : (v is num ? v.toInt() : 0);
+    }
+
+    return TvCastSessionSummary(
+      startedAt: DateTime.tryParse(json['startedAt'] as String? ?? ''),
+      duration: Duration(seconds: intOf('seconds')),
+      modesUsed: modes,
+      cardsShown: intOf('cards'),
+      storyPagesShown: intOf('storyPages'),
+      liveQuestionsPushed: intOf('liveQuestions'),
+      liveAnswers: intOf('liveAnswers'),
+      peakViewers: intOf('peakViewers'),
+    );
+  }
+
+  /// Whether there's anything worth showing. A cast that was started and
+  /// immediately stopped gets no dialog.
+  bool get hasContent =>
+      cardsShown > 0 ||
+      storyPagesShown > 0 ||
+      liveQuestionsPushed > 0 ||
+      duration.inSeconds >= 60;
+}
+
+/// Which face of `progress` mode the TV shows.
+///
+/// The leaderboard ranks learners 1–10 by stars. That is motivating for some
+/// classes and corrosive for others — in a SPED room the same child lands at
+/// the bottom of a wall-sized screen every session, and the ranking measures
+/// pace rather than effort. [classWins] shows the identical data with the
+/// competition removed: what the class achieved together, then every learner
+/// alphabetically with their own numbers and nobody's position implied.
+/// The educator picks per cast; neither is the "real" one.
+enum CastProgressView { leaderboard, classWins }
+
+extension CastProgressViewX on CastProgressView {
+  String get label => switch (this) {
+    CastProgressView.leaderboard => 'Leaderboard',
+    CastProgressView.classWins => 'Class wins',
+  };
+
+  String get description => switch (this) {
+    CastProgressView.leaderboard => 'Top 10 by stars, ranked.',
+    CastProgressView.classWins =>
+      'What the class did together, then everyone A–Z — no ranking.',
+  };
+}
+
+/// Class-wide totals plus every learner in alphabetical order, for the
+/// [CastProgressView.classWins] display. Deliberately carries no rank.
+class TvCastClassSummary {
+  final int learnerCount;
+  final int wordsTotal;
+  final int starsTotal;
+
+  /// How many learners have been active in the last 24 h.
+  final int activeToday;
+
+  /// The longest streak anyone in the class is currently on. Celebrated as a
+  /// class fact, without naming who — that's what keeps this non-competitive.
+  final int bestStreak;
+
+  /// Every learner, sorted by name. Rank on these rows is always 0.
+  final List<TvCastProgressRow> rows;
+
+  const TvCastClassSummary({
+    this.learnerCount = 0,
+    this.wordsTotal = 0,
+    this.starsTotal = 0,
+    this.activeToday = 0,
+    this.bestStreak = 0,
+    this.rows = const [],
+  });
+
+  Map<String, dynamic> toJson() => {
+    'learners': learnerCount,
+    'words': wordsTotal,
+    'stars': starsTotal,
+    'activeToday': activeToday,
+    'bestStreak': bestStreak,
+    'rows': rows.map((r) => r.toJson()).toList(),
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is TvCastClassSummary &&
+      other.learnerCount == learnerCount &&
+      other.wordsTotal == wordsTotal &&
+      other.starsTotal == starsTotal &&
+      other.activeToday == activeToday &&
+      other.bestStreak == bestStreak &&
+      _sameRows(other.rows, rows);
+
+  static bool _sameRows(List<TvCastProgressRow> a, List<TvCastProgressRow> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    learnerCount,
+    wordsTotal,
+    starsTotal,
+    activeToday,
+    bestStreak,
+    Object.hashAll(rows),
+  );
+}
+
 /// One leaderboard row sent to the TV in `progress` mode.
 class TvCastProgressRow {
   final int rank;
@@ -124,9 +352,70 @@ class TvCastSession {
   final bool isServerRunning;
   final String? listenUrl;
   final int port;
+
+  /// The random code guarding this cast (see `TvCastServer.sessionToken`), or
+  /// null while stopped. Already embedded in [listenUrl] / the QR; carried
+  /// separately so the phone can show it in large type for a teacher reading it
+  /// out to someone typing on a TV remote. Phone-side only — never serialized
+  /// to the TV, which already proved it has the code just by being served.
+  final String? castCode;
+  /// Ranked top-10 rows for [CastProgressView.leaderboard].
   final List<TvCastProgressRow> progress;
+
+  /// Class totals + the full alphabetical roster for
+  /// [CastProgressView.classWins]. Computed alongside [progress] from one
+  /// roster read, so switching views on the phone is instant.
+  final TvCastClassSummary classSummary;
+
+  /// Which progress display the TV shows. Defaults to the non-competitive one:
+  /// a shared classroom screen is the worst place to rank children by default,
+  /// and an educator who wants the leaderboard can say so in one tap.
+  final CastProgressView castProgressView;
+
   final int connectedViewers;
   final CastTheme castTheme;
+
+  // ─── Lesson timer ─────────────────────────────────────
+  // A countdown the whole room can see, overlaid on whatever is being cast
+  // rather than replacing it — "4:12 left" while the flashcards keep going is
+  // the useful version. For learners who can't track elapsed time internally
+  // (and for transitions, which is where a SPED classroom spends its friction)
+  // a visible clock does more than a spoken warning.
+  //
+  // Deliberately NOT ticked on the phone: a per-second state change would bump
+  // `revision`, and every revision bump rebuilds the TV's stage — which would
+  // restart a sign clip once a second. Instead the phone stores the *deadline*
+  // and `toApiJson` derives `secondsLeft` fresh on each poll, so the TV re-syncs
+  // ~every 1.5 s for free and counts down locally in between.
+
+  /// When the timer runs out. Null when no timer is set. Not serialized
+  /// directly — the wire carries the derived `secondsLeft` so phone and TV
+  /// never have to agree on a wall clock.
+  final DateTime? timerEndsAt;
+
+  /// What the timer was set to, for the progress ring.
+  final int timerTotalSeconds;
+
+  /// Seconds frozen on the clock while paused; null when running.
+  final int? timerPausedSecondsLeft;
+
+  /// Optional caption ("Clean up", "Silent reading") shown under the clock.
+  final String? timerLabel;
+
+  /// Whether the TV's own remote can drive the cast (◀ ▶ to step, play/pause
+  /// to hold). Lets a teacher standing at the board advance the lesson without
+  /// walking back to the tablet.
+  ///
+  /// Default on, and enforced *server-side* — the phone refuses the nudge when
+  /// this is off rather than trusting the TV not to send one. Off is the answer
+  /// for an unattended screen with a remote lying next to it.
+  final bool tvRemoteEnabled;
+
+  /// Size of the TV's lesson text. See [CastTextSize].
+  final CastTextSize castTextSize;
+
+  /// Which language the TV shows and speaks. See [CastLanguage].
+  final CastLanguage castLanguage;
 
   /// Master switch for spoken word / story narration + cues while casting.
   /// Audible only when the app's `ttsEnabled` / `soundEffects` settings also
@@ -260,6 +549,15 @@ class TvCastSession {
   /// emoji⇄photo flip.
   final bool storyImageFlipped;
 
+  /// Whether the cast story has been read to the end.
+  ///
+  /// Autoplay used to reach the last page and simply stop, leaving the class
+  /// staring at the final sentence with the timer still firing into nothing —
+  /// no signal that the story was over. When this is set the TV shows a
+  /// closing screen and autoplay halts; going Back returns to the last page,
+  /// and picking any story clears it. Sent to the TV as `storyDone`.
+  final bool storyFinished;
+
   const TvCastSession({
     this.mode = CastMode.idle,
     this.revision = 0,
@@ -272,9 +570,19 @@ class TvCastSession {
     this.isServerRunning = false,
     this.listenUrl,
     this.port = 8088,
+    this.castCode,
     this.progress = const [],
+    this.classSummary = const TvCastClassSummary(),
+    this.castProgressView = CastProgressView.classWins,
     this.connectedViewers = 0,
     this.castTheme = CastTheme.dark,
+    this.timerEndsAt,
+    this.timerTotalSeconds = 0,
+    this.timerPausedSecondsLeft,
+    this.timerLabel,
+    this.tvRemoteEnabled = true,
+    this.castTextSize = CastTextSize.normal,
+    this.castLanguage = CastLanguage.both,
     this.castAudioEnabled = true,
     this.castAudioTarget = CastAudioTarget.tv,
     this.tvVideoSoundEnabled = false,
@@ -298,6 +606,7 @@ class TvCastSession {
     this.showMeActive = false,
     this.storyFslActive = false,
     this.storyImageFlipped = false,
+    this.storyFinished = false,
   });
 
   TvCastSession copyWith({
@@ -315,9 +624,22 @@ class TvCastSession {
     String? listenUrl,
     bool clearListenUrl = false,
     int? port,
+    String? castCode,
     List<TvCastProgressRow>? progress,
+    TvCastClassSummary? classSummary,
+    CastProgressView? castProgressView,
     int? connectedViewers,
     CastTheme? castTheme,
+    DateTime? timerEndsAt,
+    int? timerTotalSeconds,
+    int? timerPausedSecondsLeft,
+    String? timerLabel,
+    bool clearTimer = false,
+    /// Un-pauses without disturbing the rest of the timer (see [resumeTimer]).
+    bool clearTimerPause = false,
+    bool? tvRemoteEnabled,
+    CastTextSize? castTextSize,
+    CastLanguage? castLanguage,
     bool? castAudioEnabled,
     CastAudioTarget? castAudioTarget,
     bool? tvVideoSoundEnabled,
@@ -345,6 +667,7 @@ class TvCastSession {
     bool? showMeActive,
     bool? storyFslActive,
     bool? storyImageFlipped,
+    bool? storyFinished,
   }) {
     return TvCastSession(
       mode: mode ?? this.mode,
@@ -358,9 +681,26 @@ class TvCastSession {
       isServerRunning: isServerRunning ?? this.isServerRunning,
       listenUrl: clearListenUrl ? null : (listenUrl ?? this.listenUrl),
       port: port ?? this.port,
+      // The code is a component of listenUrl, so they clear together — a cast
+      // with no URL has no code to show.
+      castCode: clearListenUrl ? null : (castCode ?? this.castCode),
       progress: progress ?? this.progress,
+      classSummary: classSummary ?? this.classSummary,
+      castProgressView: castProgressView ?? this.castProgressView,
       connectedViewers: connectedViewers ?? this.connectedViewers,
       castTheme: castTheme ?? this.castTheme,
+      // The timer's four fields are one value — clearing has to drop them
+      // together or a stale deadline outlives the timer that owned it.
+      timerEndsAt: clearTimer ? null : (timerEndsAt ?? this.timerEndsAt),
+      timerTotalSeconds:
+          clearTimer ? 0 : (timerTotalSeconds ?? this.timerTotalSeconds),
+      timerPausedSecondsLeft: (clearTimer || clearTimerPause)
+          ? null
+          : (timerPausedSecondsLeft ?? this.timerPausedSecondsLeft),
+      timerLabel: clearTimer ? null : (timerLabel ?? this.timerLabel),
+      tvRemoteEnabled: tvRemoteEnabled ?? this.tvRemoteEnabled,
+      castTextSize: castTextSize ?? this.castTextSize,
+      castLanguage: castLanguage ?? this.castLanguage,
       castAudioEnabled: castAudioEnabled ?? this.castAudioEnabled,
       castAudioTarget: castAudioTarget ?? this.castAudioTarget,
       tvVideoSoundEnabled: tvVideoSoundEnabled ?? this.tvVideoSoundEnabled,
@@ -392,7 +732,35 @@ class TvCastSession {
       showMeActive: showMeActive ?? this.showMeActive,
       storyFslActive: storyFslActive ?? this.storyFslActive,
       storyImageFlipped: storyImageFlipped ?? this.storyImageFlipped,
+      storyFinished: storyFinished ?? this.storyFinished,
     );
+  }
+
+  /// Seconds left on the lesson timer right now, or null when none is set.
+  /// Clamped at zero — a finished timer reads "0:00", it doesn't count up.
+  int? get timerSecondsLeft {
+    if (timerPausedSecondsLeft != null) return timerPausedSecondsLeft;
+    final endsAt = timerEndsAt;
+    if (endsAt == null) return null;
+    final left = endsAt.difference(DateTime.now()).inSeconds;
+    return left < 0 ? 0 : left;
+  }
+
+  /// Whether a timer exists and has reached zero.
+  bool get isTimerFinished {
+    final left = timerSecondsLeft;
+    return left != null && left == 0;
+  }
+
+  Map<String, dynamic>? _timerJson() {
+    final left = timerSecondsLeft;
+    if (left == null) return null;
+    return {
+      'secondsLeft': left,
+      'total': timerTotalSeconds,
+      'paused': timerPausedSecondsLeft != null,
+      'label': timerLabel ?? '',
+    };
   }
 
   /// JSON payload served from `/api/state` to the TV browser.
@@ -402,6 +770,17 @@ class TvCastSession {
       'rev': revision,
       'mode': mode.name,
       'theme': castTheme.name,
+      // Accessibility of the TV output itself: how big the lesson text is and
+      // which language(s) to show. The TV maps both to body classes.
+      'textSize': castTextSize.wireName,
+      'lang': castLanguage.wireName,
+      // Whether the TV should bind its remote's arrow / play keys. The phone
+      // enforces this too, so a stale TV can't keep driving after it's off.
+      'remote': tvRemoteEnabled,
+      // Derived per poll rather than stored, so the TV re-syncs roughly every
+      // 1.5 s without the phone bumping `revision` (which would rebuild the
+      // stage and restart any playing clip).
+      'timer': _timerJson(),
       // Optional branding text shown on the TV; empty string when unset so the
       // TV can simply check truthiness.
       'title': (castTitle != null && castTitle!.trim().isNotEmpty)
@@ -429,6 +808,8 @@ class TvCastSession {
       // true = the real-life photo. Driven by the phone's "Tap to Flip
       // Animation" button; the TV animates the 3D flip when this changes.
       'storyImageFlipped': storyImageFlipped,
+      // When true the TV shows the closing screen instead of the page text.
+      'storyDone': storyFinished,
       // Festive accents for the `seasonal` template (null on other templates).
       // Carried in the payload because the TV CSS avoids `var()` for old
       // browsers, so dynamic colours must be applied inline by app.js.
@@ -450,6 +831,12 @@ class TvCastSession {
       // `n` changes (independent of slide changes), in the chosen `lang`.
       'ttsReplay': {'n': ttsReplayNonce, 'lang': ttsReplayLang},
       'progress': progress.map((r) => r.toJson()).toList(),
+      // Which progress display to paint, plus the data for it. Both blocks
+      // ride along on every poll (they come from one roster read and total a
+      // couple of KB), so flipping the view on the phone repaints the TV on
+      // the very next poll with nothing to fetch.
+      'progressView': castProgressView.name,
+      'classSummary': classSummary.toJson(),
       // Always present so the TV can render the raised-hands banner in any
       // mode. `activity` / `board` / `responded` are only meaningful in
       // CastMode.live. The correct answer is deliberately NOT sent — learners
@@ -461,6 +848,11 @@ class TvCastSession {
         'activity': liveActivity == null
             ? null
             : {
+                // Identifies *this* question so the TV can tell "a new question
+                // was pushed" from "one more learner answered". Without it the
+                // responder count (which changes on every answer) would rebuild
+                // the stage and restart the sign clip mid-play.
+                'id': liveActivity!.id,
                 'type': liveActivity!.type.name,
                 'prompt': liveActivity!.prompt,
                 'options': liveActivity!.options,

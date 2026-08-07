@@ -36,8 +36,11 @@ void main() {
     return HttpOverrides.runWithHttpOverrides(() async {
       final client = HttpClient();
       try {
+        // Every route is behind the per-cast session code — see the gate tests
+        // in tv_cast_server_test.dart. The URLs *inside* the payload stay
+        // root-relative; the TV prefixes them itself (app.js `scopeMediaUrls`).
         final req = await client.getUrl(
-          Uri.parse('http://127.0.0.1:$port/api/state'),
+          Uri.parse('http://127.0.0.1:$port${s.basePath}/api/state'),
         );
         final resp = await req.close();
         final body = await resp.transform(utf8.decoder).join();

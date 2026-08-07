@@ -10,6 +10,15 @@
  */
 (function () {
   var POLL_MS = 1500;
+
+  // Every route on the phone lives under a per-cast session code
+  // (`/c/<token>`), so this page is only reachable by a TV the teacher handed
+  // the link to. The server injects the prefix as window.CAST_BASE just above
+  // this script; we prepend it to the state poll and to every media URL the
+  // payload carries (those stay root-relative server-side so the API contract
+  // — and its tests — don't have to know about the code).
+  var BASE = (typeof window !== 'undefined' && window.CAST_BASE) || '';
+
   var stage = document.getElementById('stage');
   var pill = document.getElementById('footer-pill');
   var hint = document.getElementById('sound-hint');
@@ -20,6 +29,9 @@
   var lastStoryKey = null;     // identifies the story page currently painted with
                                // its flip picture, so a "Tap to Flip Animation"
                                // press animates instead of rebuilding the DOM.
+  var lastLiveKey = null;      // identifies the live question currently painted,
+                               // so a new answer coming in updates the counter
+                               // instead of restarting the sign clip.
   var failCount = 0;          // consecutive failed /api/state polls
   var reconnecting = false;   // currently showing the "connecting" overlay
   var FAIL_THRESHOLD = 2;     // ~3s of failures before the overlay appears
@@ -77,8 +89,31 @@
     }
   }
 
-  // Speaks the current Flashcard word / Story page when audio is routed to the
-  // TV. Cancels speech (and clears the hint) when it isn't.
+  // Spoken form of a live question: the prompt (or the type's instruction for
+  // a picture / sign question, where the prompt lives in the media), then the
+  // lettered choices so a learner can answer by ear. The correct answer is
+  // never in the payload, so there is nothing to give away.
+  function liveSpeechText(a) {
+    var parts = [];
+    if (a.type === 'fslSign') {
+      parts.push('Watch the sign, then pick the word.');
+    } else if (a.type === 'pictureChoice') {
+      parts.push('Which word matches the picture?');
+    } else if (a.prompt) {
+      parts.push(a.prompt);
+    }
+    if (a.isTrueFalse) {
+      parts.push('True, or false?');
+    } else if (a.options && a.options.length) {
+      for (var i = 0; i < a.options.length; i++) {
+        parts.push(String.fromCharCode(65 + i) + '. ' + a.options[i]);
+      }
+    }
+    return parts.join(' ');
+  }
+
+  // Speaks the current Flashcard word / Story page / live question when audio
+  // is routed to the TV. Cancels speech (and clears the hint) when it isn't.
   function maybeSpeak(state) {
     if (!ttsSupported()) return;
     if (!state.ttsOnTv) {
@@ -92,10 +127,29 @@
       en = state.slide.wordEn || '';
       fil = state.slide.wordFil || '';
       key = 'f:' + state.slide.index;
-    } else if (state.mode === 'story' && state.story && !state.storyFsl) {
+    } else if (
+      state.mode === 'story' && state.story &&
+      !state.storyFsl && !state.storyDone
+    ) {
+      // `storyDone` matters as much as `storyFsl` here: once the closing screen
+      // is up the last page is no longer on screen, and reading it aloud over
+      // "The End" is worse than silence.
       en = state.story.textEn || '';
       fil = state.story.textFil || '';
       key = 's:' + state.story.pageIndex;
+    } else if (state.mode === 'live' && state.live && state.live.activity) {
+      // Read the question and its choices aloud once per question. A live quiz
+      // on a shared screen is otherwise pure text — nothing for a blind or
+      // low-vision learner to work from. Keyed on the activity id so the
+      // answered-count ticking up doesn't re-read it.
+      var la = state.live.activity;
+      en = liveSpeechText(la);
+      key = 'l:' + (la.id || la.prompt || '');
+      if (!en) {
+        window.speechSynthesis.cancel();
+        lastSpokenKey = null;
+        return;
+      }
     } else {
       // FSL / progress / idle — and a story page showing its sign-language clip
       // (storyFsl) — never speak on the TV.
@@ -105,6 +159,10 @@
     }
     if (key === lastSpokenKey) return;
     lastSpokenKey = key;
+    // The language filter governs speech as well as display — hearing a
+    // language the TV isn't showing is worse than silence.
+    if (state.lang === 'en') fil = '';
+    else if (state.lang === 'fil') en = '';
     speakSequence(en, fil);
     if (!ttsUnlocked) showSoundHint();
   }
@@ -124,11 +182,16 @@
     if (state.mode === 'flashcards' && state.slide) {
       en = state.slide.wordEn || '';
       fil = state.slide.wordFil || '';
-    } else if (state.mode === 'story' && state.story && !state.storyFsl) {
+    } else if (
+      state.mode === 'story' && state.story &&
+      !state.storyFsl && !state.storyDone
+    ) {
       en = state.story.textEn || '';
       fil = state.story.textFil || '';
     } else {
-      return; // nothing speakable in this mode (or the FSL clip is showing)
+      // Nothing speakable here: the FSL clip is showing, the story has closed,
+      // or this mode has no words.
+      return;
     }
     if (rp.lang === 'en') fil = '';
     else if (rp.lang === 'fil') en = '';
@@ -224,6 +287,7 @@
     var cd = document.getElementById('cast-decoration');
     if (cd) cd.style.display = 'none';
     lastVideoUrl = null;
+    lastLiveKey = null;
     reconnecting = true;
   }
 
@@ -266,12 +330,14 @@
   function renderFlashcardCard(state) {
     var slide = state.slide;
     var photo = slide.photo;
+    var cartoon = slide.cartoon;
+    var cartoonUrl = (cartoon && cartoon.available && cartoon.url) ? cartoon.url : null;
     var tapEnabled = state.tapOnly !== false; // default on for older payloads
     var hasPhoto = !!(photo && photo.available && photo.url) && tapEnabled;
     var flipped = hasPhoto && !!state.flipped;
     // Identifies the card + whether it has the flip structure, so a Flip press
     // (same key) animates via a class toggle instead of rebuilding the DOM.
-    var key = (slide.catLabel || '') + '#' + slide.index + (hasPhoto ? '+p' : '');
+    var key = (slide.catLabel || '') + '#' + slide.index + (hasPhoto ? '+p' : '') + (cartoonUrl ? '+c' : '');
 
     // Same card re-rendering (typically the teacher pressed Flip): just sync the
     // is-flipped class on the existing tile so the CSS transition animates. A
@@ -317,15 +383,21 @@
     // that paints first, so a missing/slow/broken photo — or the control
     // switched off — just shows the emoji.
     var emojiSpan = '<span class="fcard-pic-emoji">' + escapeHtml(slide.emoji) + '</span>';
+    // Front face mirrors the app: the illustrated picture where the card has
+    // one, otherwise the emoji. The emoji also stays put until the cartoon
+    // actually loads, so a slow or failed fetch never leaves an empty tile.
+    var frontInner = cartoonUrl
+      ? '<div class="fcard-face-art" id="fcard-cartoon-front">' + emojiSpan + '</div>'
+      : emojiSpan;
     var picInner;
     if (hasPhoto) {
       picInner =
         '<div class="fcard-flip" id="fcard-flip">' +
-        '<div class="fcard-face fcard-face-front">' + emojiSpan + '</div>' +
+        '<div class="fcard-face fcard-face-front">' + frontInner + '</div>' +
         '<div class="fcard-face fcard-face-back" id="fcard-photo-back"></div>' +
         '</div>';
     } else {
-      picInner = emojiSpan;
+      picInner = frontInner;
     }
 
     // Decorative tinted corner blobs (behind the content) + the glossy shine
@@ -354,7 +426,25 @@
     );
     lastVideoUrl = null;
     lastFlashcardKey = key;
+    if (cartoonUrl) applyFlashcardCartoon(cartoonUrl);
     if (hasPhoto) applyFlashcardPhoto(photo.url, flipped);
+  }
+
+  // Paints the card's illustrated face once it has downloaded, replacing the
+  // emoji placeholder in place. A failed or slow load simply leaves the emoji,
+  // so the tile is never blank. Same CSS-background approach as the photo face
+  // for old-WebKit-friendly scaling.
+  function applyFlashcardCartoon(url) {
+    var front = document.getElementById('fcard-cartoon-front');
+    if (!front) return;
+    var img = new Image();
+    img.onload = function () {
+      if (!front.parentNode) return;
+      front.style.backgroundImage = 'url("' + url + '")';
+      front.innerHTML = '';
+    };
+    img.onerror = function () { /* keep the emoji face */ };
+    img.src = url;
   }
 
   // Preloads the card's photo / GIF onto the flip's back face so the reveal is
@@ -520,7 +610,39 @@
   // activates "Watch in FSL" and the current page has a sign-language clip, the
   // clip takes over the whole stage (renderStoryFsl) instead — mirroring the
   // flashcard "Show Me" path.
+  // The closing screen, once the story has been read to the end. Autoplay used
+  // to reach the last page and just stop, leaving the final sentence up with no
+  // signal the story was over — for a learner tracking a routine, "is it
+  // finished?" is exactly the thing the shared screen should answer.
+  function renderStoryEnd(state) {
+    var story = state.story || {};
+    var pages = story.totalPages || 0;
+    setStage(
+      '<div class="story-end">' +
+      '<div class="se-emoji">🎉</div>' +
+      '<h1 class="se-title">The End</h1>' +
+      (story.titleEn
+        ? '<div class="se-story">' + escapeHtml(story.titleEn) +
+          (story.titleFil
+            ? '<span class="fil">' + escapeHtml(story.titleFil) + '</span>'
+            : '') +
+          '</div>'
+        : '') +
+      (pages
+        ? '<div class="se-pages">' + pages +
+          (pages === 1 ? ' page read' : ' pages read') + '</div>'
+        : '') +
+      '</div>'
+    );
+    lastVideoUrl = null;
+    lastStoryKey = null;
+  }
+
   function renderStory(state) {
+    if (state.storyDone) {
+      renderStoryEnd(state);
+      return;
+    }
     var story = state.story;
     if (!story) {
       renderIdle();
@@ -717,6 +839,62 @@
   }
 
   function renderProgress(state) {
+    // Default to the non-competitive view for older payloads that predate the
+    // toggle — a shared screen shouldn't start out ranking children.
+    if (state.progressView !== 'leaderboard') {
+      renderClassWins(state);
+      return;
+    }
+    renderLeaderboard(state);
+  }
+
+  // The class's shared achievement, then every learner A–Z with their own
+  // numbers. No ranks, no medals, no ordering that implies one — the same data
+  // as the leaderboard with the competition taken out.
+  function renderClassWins(state) {
+    var s = state.classSummary || {};
+    var rows = s.rows || [];
+    var html = '<div class="board wins"><h2>Our Class Wins 🎉</h2>';
+
+    if (!rows.length) {
+      html += '<div class="empty">No student data yet.</div></div>';
+      setStage(html);
+      lastVideoUrl = null;
+      return;
+    }
+
+    html +=
+      '<div class="wins-totals">' +
+      '<div class="wins-stat"><span class="v">' + (s.words || 0) + '</span>' +
+      'words learned together</div>' +
+      '<div class="wins-stat"><span class="v">' + (s.stars || 0) + '</span>' +
+      'stars earned</div>' +
+      '<div class="wins-stat"><span class="v">' + (s.activeToday || 0) + ' / ' +
+      (s.learners || 0) + '</span>learning today</div>' +
+      '<div class="wins-stat"><span class="v">' + (s.bestStreak || 0) + '</span>' +
+      'day best streak</div>' +
+      '</div>';
+
+    html += '<div class="wins-grid">';
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      html +=
+        '<div class="wins-card">' +
+        '<div class="wins-name">' + escapeHtml(r.name) + '</div>' +
+        '<div class="wins-line">' +
+        '<span>' + r.words + ' words</span>' +
+        '<span>' + r.streak + '🔥</span>' +
+        '<span>' + r.stars + '⭐</span>' +
+        '</div>' +
+        '</div>';
+    }
+    html += '</div></div>';
+
+    setStage(html);
+    lastVideoUrl = null;
+  }
+
+  function renderLeaderboard(state) {
     var rows = state.progress || [];
     var html = '<div class="board"><h2>Class Leaderboard</h2>';
     if (rows.length === 0) {
@@ -746,71 +924,157 @@
   // Interactive live activity: the educator pushes a question; learners answer
   // on their own devices. The TV shows the question, how many have answered,
   // and the live scoreboard. The correct answer is intentionally never sent.
+  // Builds the scoreboard block (shared by the full render and the in-place
+  // update below, so the two can never drift apart).
+  function liveBoardHtml(live) {
+    var board = live.board || [];
+    if (!board.length) return '';
+    var html = '<div class="live-board"><h2>Scoreboard</h2>';
+    for (var j = 0; j < board.length && j < 6; j++) {
+      var r = board[j];
+      html +=
+        '<div class="live-row">' +
+        '<span class="rk">#' + (j + 1) + '</span>' +
+        '<span class="nm">' + escapeHtml(r.name) + '</span>' +
+        '<span class="sc">' + r.correct + '✔ ' + r.stars + '⭐</span>' +
+        '</div>';
+    }
+    return html + '</div>';
+  }
+
   function renderLive(state) {
     var live = state.live || {};
     var a = live.activity;
-    var html = '<div class="live">';
+
     if (!a) {
-      html +=
+      lastLiveKey = null;
+      lastVideoUrl = null;
+      setStage(
+        '<div class="live">' +
         '<div class="live-wait">' +
         '<div class="splash-emoji">🎮</div>' +
         '<h1>Live Activity</h1>' +
         '<p>Get ready for the next question!</p>' +
-        '</div>';
-    } else {
-      if (a.questionNumber && a.totalQuestions) {
-        html +=
-          '<div class="live-qnum">Question ' + a.questionNumber + ' / ' +
-          a.totalQuestions + '</div>';
-      }
-      if (a.type === 'pictureChoice' || a.type === 'fslSign') {
-        html += '<div class="live-emoji">' + escapeHtml(a.emoji || '❓') + '</div>';
-        html +=
-          '<div class="live-sub">' +
-          (a.type === 'fslSign'
-            ? 'Watch the sign — pick the word on your device'
-            : 'Which word matches the picture?') +
-          '</div>';
-      } else if (a.prompt) {
-        html += '<h1 class="live-prompt">' + escapeHtml(a.prompt) + '</h1>';
-      }
-      if (a.isTrueFalse) {
-        html +=
-          '<div class="live-options">' +
-          '<div class="live-opt">✔ True</div>' +
-          '<div class="live-opt">✘ False</div>' +
-          '</div>';
-      } else if (a.options && a.options.length) {
-        html += '<div class="live-options">';
-        for (var i = 0; i < a.options.length; i++) {
-          html +=
-            '<div class="live-opt">' +
-            String.fromCharCode(65 + i) + '. ' + escapeHtml(a.options[i]) +
-            '</div>';
-        }
-        html += '</div>';
-      }
-      html +=
-        '<div class="live-responded">' + (live.responded || 0) + ' answered</div>';
+        '</div>' +
+        liveBoardHtml(live) +
+        '</div>'
+      );
+      return;
     }
 
-    var board = live.board || [];
-    if (board.length) {
-      html += '<div class="live-board"><h2>Scoreboard</h2>';
-      for (var j = 0; j < board.length && j < 6; j++) {
-        var r = board[j];
+    // Every answer bumps the revision, so a naive rebuild would restart the
+    // sign clip each time a learner responded — the one thing an fslSign
+    // question can't survive. When the question itself hasn't changed we patch
+    // the two volatile bits (answered count, scoreboard) in place and leave the
+    // <video> element completely alone.
+    var key = a.id || (a.type + '|' + (a.prompt || '') + '|' + (a.flashcardId || ''));
+    if (key === lastLiveKey) {
+      var respEl = document.getElementById('live-responded');
+      if (respEl) {
+        respEl.innerHTML = (live.responded || 0) + ' answered';
+      }
+      var boardEl = document.getElementById('live-board-slot');
+      if (boardEl) {
+        var boardHtml = liveBoardHtml(live);
+        if (boardEl.innerHTML !== boardHtml) boardEl.innerHTML = boardHtml;
+      }
+      return;
+    }
+
+    var html = '<div class="live">';
+    if (a.questionNumber && a.totalQuestions) {
+      html +=
+        '<div class="live-qnum">Question ' + a.questionNumber + ' / ' +
+        a.totalQuestions + '</div>';
+    }
+
+    // An fslSign question shows the actual sign when the phone resolved one —
+    // the sign IS the question, and an emoji stand-in makes it unanswerable
+    // from the shared screen. Muted + looping so it autoplays on every TV
+    // browser and repeats for learners who need another look. Falls back to
+    // the emoji when no clip exists (or it's still downloading).
+    var signUrl =
+      a.type === 'fslSign' && a.video && a.video.available && a.video.url
+        ? a.video.url
+        : null;
+    // A picture question shows the real photograph for the same reason.
+    var photoUrl =
+      a.type === 'pictureChoice' && a.photo && a.photo.available && a.photo.url
+        ? a.photo.url
+        : null;
+
+    if (signUrl) {
+      html +=
+        '<div class="live-media">' +
+        '<video autoplay muted loop playsinline webkit-playsinline ' +
+        'preload="auto" src="' + escapeHtml(signUrl) + '"></video>' +
+        '</div>' +
+        '<div class="live-sub">Watch the sign — pick the word on your device</div>';
+    } else if (photoUrl) {
+      html +=
+        '<div class="live-media">' +
+        '<img src="' + escapeHtml(photoUrl) + '" alt="">' +
+        '</div>' +
+        '<div class="live-sub">Which word matches the picture?</div>';
+    } else if (a.type === 'pictureChoice' || a.type === 'fslSign') {
+      html += '<div class="live-emoji">' + escapeHtml(a.emoji || '❓') + '</div>';
+      html +=
+        '<div class="live-sub">' +
+        (a.type === 'fslSign'
+          ? 'Watch the sign — pick the word on your device'
+          : 'Which word matches the picture?') +
+        '</div>';
+    } else if (a.prompt) {
+      html += '<h1 class="live-prompt">' + escapeHtml(a.prompt) + '</h1>';
+    }
+
+    if (a.isTrueFalse) {
+      html +=
+        '<div class="live-options">' +
+        '<div class="live-opt">✔ True</div>' +
+        '<div class="live-opt">✘ False</div>' +
+        '</div>';
+    } else if (a.options && a.options.length) {
+      html += '<div class="live-options">';
+      for (var i = 0; i < a.options.length; i++) {
         html +=
-          '<div class="live-row">' +
-          '<span class="rk">#' + (j + 1) + '</span>' +
-          '<span class="nm">' + escapeHtml(r.name) + '</span>' +
-          '<span class="sc">' + r.correct + '✔ ' + r.stars + '⭐</span>' +
+          '<div class="live-opt">' +
+          String.fromCharCode(65 + i) + '. ' + escapeHtml(a.options[i]) +
           '</div>';
       }
       html += '</div>';
     }
+    html +=
+      '<div class="live-responded" id="live-responded">' +
+      (live.responded || 0) + ' answered</div>';
+    html += '<div id="live-board-slot">' + liveBoardHtml(live) + '</div>';
     html += '</div>';
+
     setStage(html);
+    lastLiveKey = key;
+    // The live <video> is keyed by lastLiveKey, not lastVideoUrl — clear the
+    // latter so returning to Flashcards/FSL mode rebuilds its own player.
     lastVideoUrl = null;
+    if (signUrl) attachLiveSignHandlers(a);
+  }
+
+  // Retry handler for the live sign clip. The phone prefetches it when the
+  // question is pushed, but on a cold cache /api/video can still 404 for a
+  // moment — drop the key (and lastRev, or the poll loop short-circuits) so the
+  // next poll rebuilds and tries again, exactly like attachVideoHandlers.
+  function attachLiveSignHandlers(activity) {
+    var vids = stage.getElementsByTagName('video');
+    if (!vids || !vids.length) return;
+    vids[0].onerror = function () {
+      lastLiveKey = null;
+      lastVideoUrl = null;
+      lastRev = -1;
+      var slot = stage.getElementsByClassName('live-media');
+      if (slot && slot.length) {
+        slot[0].innerHTML =
+          '<div class="live-emoji">' + escapeHtml(activity.emoji || '❓') + '</div>';
+      }
+    };
   }
 
   // Raised-hands banner — overlaid in EVERY mode so a hand raised during any
@@ -839,6 +1103,95 @@
     el.className = 'hands-banner';
   }
 
+  // ─── Lesson timer overlay ─────────────────────────────
+  // Sits on top of whatever is being cast — "4:12 left" while the flashcards
+  // keep running is the useful version, so this is an overlay (like the raised-
+  // hands banner) rather than a mode.
+  //
+  // Driven from `ok()` on EVERY poll, not from `render()`: render only runs
+  // when the revision changes, and the phone deliberately doesn't bump the
+  // revision per second (that would rebuild the stage and restart a playing
+  // sign clip). Between polls we count down locally off the last `secondsLeft`,
+  // and each poll re-syncs — so the clock stays honest without touching the
+  // content underneath it.
+  var timerLocalLeft = null;   // seconds, decremented by our own 1s tick
+  var timerPaused = false;
+  var timerTotal = 0;
+  var timerLabel = '';
+  var timerFinishedShown = false;
+
+  function timerEl() {
+    var el = document.getElementById('lesson-timer');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'lesson-timer';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function formatClock(total) {
+    if (total < 0) total = 0;
+    var m = Math.floor(total / 60);
+    var s = total % 60;
+    return m + ':' + (s < 10 ? '0' + s : s);
+  }
+
+  // Folds a fresh /api/state into the local clock.
+  function syncTimer(state) {
+    var t = state.timer;
+    if (!t) {
+      timerLocalLeft = null;
+      timerFinishedShown = false;
+      paintTimer();
+      return;
+    }
+    timerLocalLeft = t.secondsLeft;
+    timerPaused = !!t.paused;
+    timerTotal = t.total || 0;
+    timerLabel = t.label || '';
+    if (timerLocalLeft > 0) timerFinishedShown = false;
+    paintTimer();
+  }
+
+  // Our own 1s tick between polls, so the clock doesn't visibly stutter at the
+  // 1.5s poll cadence. Never goes below zero; the next poll is authoritative.
+  function tickTimer() {
+    if (timerLocalLeft === null || timerPaused) return;
+    if (timerLocalLeft > 0) {
+      timerLocalLeft--;
+      paintTimer();
+    }
+  }
+
+  function paintTimer() {
+    var el = timerEl();
+    if (timerLocalLeft === null) {
+      el.className = 'lesson-timer hidden';
+      el.innerHTML = '';
+      return;
+    }
+    var done = timerLocalLeft <= 0;
+    var cls = 'lesson-timer';
+    // Last 30 seconds get a warning tint; zero gets the finished treatment.
+    if (done) cls += ' finished';
+    else if (timerLocalLeft <= 30) cls += ' ending';
+    if (timerPaused) cls += ' paused';
+    el.className = cls;
+    el.innerHTML =
+      '<span class="lt-clock">' + (done ? "Time's up!" : formatClock(timerLocalLeft)) + '</span>' +
+      (timerLabel ? '<span class="lt-label">' + escapeHtml(timerLabel) + '</span>' : '') +
+      (timerPaused && !done ? '<span class="lt-label">paused</span>' : '');
+
+    if (done && !timerFinishedShown) {
+      timerFinishedShown = true;
+      // Speak it once, if the TV is the audio target and speech is allowed.
+      if (lastState && lastState.ttsOnTv && ttsSupported()) {
+        speakSequence("Time's up!", '');
+      }
+    }
+  }
+
   function updateFooter(state) {
     var bits = [];
     if (state.slide && typeof state.slide.index === 'number') {
@@ -858,12 +1211,21 @@
     }
   }
 
+  // Single owner of body.className — theme, reduced motion, text size and
+  // language filter all live here. They must be set together: whoever writes
+  // last would otherwise wipe the others' classes on every poll.
+  //
+  // Text size and language are applied as classes (not inline styles) so the
+  // per-theme rules can still override them, and so a TV browser that ignores
+  // an unknown class simply falls back to the default size / both languages.
   function applyTheme(state) {
     var theme = state.theme || 'dark';
     var cls = 'theme-' + theme;
     // Mirror the app's reduced-motion accessibility setting so entrance
     // animations are dropped for motion-sensitive viewers.
     if (state.reducedMotion) cls += ' reduce-motion';
+    cls += ' text-' + (state.textSize || 'normal');
+    cls += ' lang-' + (state.lang || 'both');
     if (document.body.className !== cls) {
       document.body.className = cls;
     }
@@ -924,9 +1286,15 @@
     // The raised-hands banner, branding, and seasonal accents show in every
     // mode (including "away") so the TV always feels designed and a learner
     // asking for help is always visible.
+    // Default on for payloads that predate the switch.
+    remoteOn = state.remote !== false;
     renderHandsBanner(state);
     renderBranding(state);
     renderSeasonal(state);
+    // Anything that replaces the stage invalidates the live question's DOM, so
+    // forget its key — otherwise coming back to the same question would try to
+    // patch elements that no longer exist and paint nothing.
+    if (state.away || state.mode !== 'live') lastLiveKey = null;
     // Away overrides whatever mode is selected; the content stays selected on
     // the phone so it resumes the instant the teacher returns.
     if (state.away) {
@@ -947,6 +1315,37 @@
     maybeReplay(state);
   }
 
+  // Moves every media URL in a freshly-parsed payload into the session-code
+  // namespace. The server emits them root-relative (`/api/image/0/cat`) so the
+  // JSON contract stays code-agnostic; the TV is the side that knows its own
+  // prefix. Mutates in place — `state` is a throwaway parse of this poll's
+  // body — and is a no-op when there's no prefix, so an un-scoped server (and
+  // the asset opened directly) still works.
+  function scopeMediaUrls(state) {
+    if (!BASE || !state) return;
+    function scope(obj, key) {
+      if (obj && typeof obj[key] === 'string' && obj[key].charAt(0) === '/') {
+        obj[key] = BASE + obj[key];
+      }
+    }
+    var slide = state.slide;
+    if (slide) {
+      scope(slide.photo, 'url');
+      scope(slide.cartoon, 'url');
+      scope(slide.clip, 'url');
+    }
+    scope(state.video, 'url');
+    scope(state.storyVideo, 'url');
+    if (state.story) {
+      scope(state.story.image, 'cartoonUrl');
+      scope(state.story.image, 'realUrl');
+    }
+    if (state.live && state.live.activity) {
+      scope(state.live.activity.video, 'url');
+      scope(state.live.activity.photo, 'url');
+    }
+  }
+
   function poll() {
     var xhr = new XMLHttpRequest();
     // Guard so a single poll counts at most once — onreadystatechange and
@@ -964,6 +1363,10 @@
       if (done) return;
       done = true;
       failCount = 0;
+      scopeMediaUrls(state);
+      // Outside the revision short-circuit below: the timer re-syncs on every
+      // poll precisely so the phone never has to bump the revision for it.
+      syncTimer(state);
       // Coming back from a disconnect: the revision may be unchanged, so force a
       // repaint to replace the "connecting" overlay with the live content.
       if (reconnecting) {
@@ -981,7 +1384,7 @@
     var unlockedFlag = ttsUnlocked ? '1' : '0';
     xhr.open(
       'GET',
-      '/api/state?tts=' + ttsFlag + '&unlocked=' + unlockedFlag,
+      BASE + '/api/state?tts=' + ttsFlag + '&unlocked=' + unlockedFlag,
       true
     );
     xhr.timeout = 4000;
@@ -1119,10 +1522,50 @@
     if (wantFs && !fsElement()) enterFullscreen();
   }
 
+  // ─── TV remote as a control surface ───────────────────
+  // A teacher standing at the board can step the lesson with the TV's own
+  // remote instead of walking back to the tablet. Deliberately narrow:
+  //   ◀ / ▶        → previous / next
+  //   play-pause   → hold
+  // OK/Enter is left alone — it's the activation gesture that unlocks audio
+  // and finishes fullscreen on stricter browsers, and hijacking it would cost
+  // more than it gives. Up/Down are left alone too: on many TVs they're volume.
+  //
+  // The phone enforces the on/off switch server-side, so `remoteOn` here is
+  // only about not making pointless requests.
+  var remoteOn = true;
+  var lastNudgeAt = 0;
+
+  function nudge(action) {
+    if (!remoteOn) return;
+    // A held-down remote key repeats fast; one step per press is what a
+    // teacher means, and it keeps us off the phone's back.
+    var now = new Date().getTime();
+    if (now - lastNudgeAt < 350) return;
+    lastNudgeAt = now;
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', BASE + '/api/nudge?a=' + action, true);
+      xhr.timeout = 3000;
+      xhr.send();
+    } catch (e) {}
+  }
+
+  function onRemoteKey(e) {
+    var k = e.keyCode || e.which;
+    // Codes rather than e.key: 2014-era TV browsers predate KeyboardEvent.key.
+    if (k === 39) nudge('next');            // ArrowRight
+    else if (k === 37) nudge('prev');       // ArrowLeft
+    else if (k === 179 || k === 19) nudge('playpause'); // MediaPlayPause / Pause
+    else return;
+    if (e.preventDefault) e.preventDefault();
+  }
+
   if (document.addEventListener) {
     document.addEventListener('keydown', onActivation, false);
     document.addEventListener('click', onActivation, false);
     document.addEventListener('touchstart', onActivation, false);
+    document.addEventListener('keydown', onRemoteKey, false);
   }
 
   // Fit the current screen and keep re-fitting on every size change (resolution
@@ -1137,4 +1580,7 @@
   // First paint + poll loop
   poll();
   setInterval(poll, POLL_MS);
+  // Separate 1s tick just for the countdown, so it doesn't stutter at the
+  // 1.5s poll cadence. Cheap: it only touches the overlay's own node.
+  setInterval(tickTimer, 1000);
 })();

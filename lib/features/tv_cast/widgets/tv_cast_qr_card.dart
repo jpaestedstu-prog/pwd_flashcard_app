@@ -8,10 +8,19 @@ import '../../../widgets/app_snack_bar.dart';
 
 /// Renders the cast URL as a QR code, with a copy-to-clipboard chip and
 /// the plain text URL for hand-typing on TV remotes that can't scan.
+///
+/// The URL ends in a per-cast session code. That code is also shown on its own
+/// line in large, letter-spaced type: the teacher usually reads it aloud while
+/// someone else thumbs it in on a TV remote, and picking `K7M2Q` out of the end
+/// of a URL string at arm's length is exactly the moment people mistype.
 class TvCastQrCard extends StatelessWidget {
   final String url;
 
-  const TvCastQrCard({super.key, required this.url});
+  /// The session code embedded in [url]. Null only for a cast started before
+  /// codes existed, in which case the callout is simply omitted.
+  final String? code;
+
+  const TvCastQrCard({super.key, required this.url, this.code});
 
   @override
   Widget build(BuildContext context) {
@@ -106,8 +115,68 @@ class TvCastQrCard extends StatelessWidget {
               ),
             ),
           ),
+          if (code != null && code!.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _CodeCallout(code: code!),
+          ],
         ],
       ),
+    );
+  }
+}
+
+/// The session code on its own, big and spaced out, with a one-line
+/// explanation of what it's for. Screen readers get the letters spelled out —
+/// "K7M2Q" read as a word is useless to someone dictating it.
+class _CodeCallout extends StatelessWidget {
+  final String code;
+  const _CodeCallout({required this.code});
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    return Column(
+      children: [
+        Text(
+          'Cast code',
+          style: AppTypography.labelMedium.copyWith(
+            color: hc.textSecondary,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Semantics(
+          label: 'Cast code ${code.split('').join(' ')}',
+          excludeSemantics: true,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Text(
+              code,
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 6,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Only TVs opening this exact link can see the cast. '
+          'The code changes every time you start casting.',
+          style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }

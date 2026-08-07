@@ -229,7 +229,23 @@ html, body {
   transform: rotateY(180deg);
 }
 
-/* The emoji⇄photo flip is driven by the phone's "Flip" button (the TV is a
+/* Illustrated front face. Fills the tile the same way the photo face does; it
+   starts out holding the emoji span and app.js swaps in the background image
+   once the picture has downloaded. */
+.fcard-face-art {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+/* The cartoon⇄photo flip is driven by the phone's "Flip" button (the TV is a
    passive display), so the tile itself has no tap target or hint. */
 
 /* "Show Me" action clip rendered as a looping GIF — fills the stage like the
@@ -568,6 +584,314 @@ html, body {
   font-size: 4vh;
 }
 
+/* ─── Story closing screen ("The End") ───────────────────
+   Shown once the story has been read through. Celebratory but calm — this is
+   also the screen a class sees at the end of a wind-down reading session, so
+   it stays quiet enough for the Calm template and the low-stimulation
+   profiles. Honours the language filter like every other story text. */
+.story-end {
+  width: 90vw;
+  max-width: 1500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: fadeIn 0.5s ease both;
+}
+
+.se-emoji {
+  font-size: 22vh;
+  line-height: 1;
+  margin-bottom: 1vh;
+}
+
+.se-title {
+  font-size: 11vh;
+  font-weight: 900;
+  margin: 0 0 2vh 0;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.se-story {
+  font-size: 5vh;
+  font-weight: 700;
+  margin-bottom: 1.5vh;
+}
+
+.se-story .fil {
+  display: block;
+  font-size: 3.4vh;
+  font-weight: 400;
+  font-style: italic;
+  color: #94a3b8;
+  margin-top: 0.6vh;
+}
+
+.se-pages {
+  font-size: 3vh;
+  color: #94a3b8;
+}
+
+body.lang-en .se-story .fil { display: none; }
+body.lang-fil .se-story { font-size: 0; }
+body.lang-fil .se-story .fil {
+  font-size: 5vh;
+  font-weight: 700;
+  font-style: normal;
+  color: inherit;
+}
+
+body.text-lg .se-title { font-size: 13vh; }
+body.text-lg .se-story { font-size: 6vh; }
+body.text-xl .se-title { font-size: 15vh; }
+body.text-xl .se-story { font-size: 7vh; }
+
+body.theme-light .se-story .fil,
+body.theme-light .se-pages,
+body.theme-classroom .se-story .fil,
+body.theme-classroom .se-pages,
+body.theme-playful .se-story .fil,
+body.theme-playful .se-pages,
+body.theme-calm .se-story .fil,
+body.theme-calm .se-pages,
+body.theme-seasonal .se-story .fil,
+body.theme-seasonal .se-pages { color: #475569; }
+
+body.theme-highContrast .se-title { color: #ffff00; }
+body.theme-highContrast .se-story,
+body.theme-highContrast .se-pages { color: #ffffff; }
+
+/* The Calm template drops the celebration emoji's size — a low-stimulation
+   room doesn't need a 22vh party popper. */
+body.theme-calm .se-emoji { font-size: 14vh; }
+
+/* ─── Lesson timer overlay ───────────────────────────────
+   Top-right, above the content but clear of the raised-hands banner (top-left)
+   and the footer pill (bottom). Readable across a room without covering the
+   word being taught. */
+.lesson-timer {
+  position: fixed;
+  top: 2vh;
+  right: 2vw;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.4vh 2vw;
+  border-radius: 2vh;
+  background: rgba(15, 23, 42, 0.82);
+  border: 0.3vh solid rgba(148, 163, 184, 0.4);
+  color: #f8fafc;
+  font-variant-numeric: tabular-nums;
+}
+
+.lesson-timer.hidden { display: none; }
+
+.lesson-timer .lt-clock {
+  font-size: 7vh;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.lesson-timer .lt-label {
+  font-size: 2.4vh;
+  color: #cbd5e1;
+  margin-top: 0.4vh;
+}
+
+/* Last 30 seconds. Colour AND a border change, never colour alone — a
+   colour-blind learner has to be able to see the difference too. */
+.lesson-timer.ending {
+  border-color: #f59e0b;
+  border-width: 0.5vh;
+}
+.lesson-timer.ending .lt-clock { color: #fbbf24; }
+
+.lesson-timer.finished {
+  background: rgba(220, 38, 38, 0.92);
+  border-color: #fecaca;
+  border-width: 0.5vh;
+}
+.lesson-timer.finished .lt-clock { font-size: 5.5vh; color: #ffffff; }
+.lesson-timer.paused { opacity: 0.75; }
+
+body.theme-light .lesson-timer,
+body.theme-classroom .lesson-timer,
+body.theme-playful .lesson-timer,
+body.theme-calm .lesson-timer,
+body.theme-seasonal .lesson-timer {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #0f172a;
+}
+body.theme-light .lesson-timer .lt-label,
+body.theme-classroom .lesson-timer .lt-label,
+body.theme-playful .lesson-timer .lt-label,
+body.theme-calm .lesson-timer .lt-label,
+body.theme-seasonal .lesson-timer .lt-label { color: #475569; }
+body.theme-light .lesson-timer.finished .lt-clock,
+body.theme-classroom .lesson-timer.finished .lt-clock,
+body.theme-playful .lesson-timer.finished .lt-clock,
+body.theme-calm .lesson-timer.finished .lt-clock,
+body.theme-seasonal .lesson-timer.finished .lt-clock { color: #ffffff; }
+
+body.theme-highContrast .lesson-timer {
+  background: #000000;
+  border: 0.4vh solid #ffffff;
+  color: #ffffff;
+}
+body.theme-highContrast .lesson-timer .lt-clock { color: #ffff00; }
+body.theme-highContrast .lesson-timer .lt-label { color: #ffffff; }
+body.theme-highContrast .lesson-timer.finished {
+  background: #ffff00;
+}
+body.theme-highContrast .lesson-timer.finished .lt-clock,
+body.theme-highContrast .lesson-timer.finished .lt-label { color: #000000; }
+
+/* ─── Text size (body.text-lg / body.text-xl) ────────────
+   Only the text that carries the lesson grows — the word, the story line, the
+   sign caption, the answer options, the roster rows. Layout chrome (badges,
+   emoji, the "N answered" line) is deliberately left alone: scaling everything
+   just re-creates the original proportions at a size that overflows, whereas
+   growing only the words is what actually helps the back row.
+   Authored last-ish in the file so these win over the base rules; the per-theme
+   colour blocks below don't set font-size, so they don't conflict. */
+body.text-lg .fcard-word-en { font-size: 11.5vh; }
+body.text-lg .fcard-word-fil { font-size: 6.5vh; }
+body.text-lg .fcard-example { font-size: 4vh; }
+body.text-lg .story-text-en { font-size: 7vh; }
+body.text-lg .story-text-fil { font-size: 4.5vh; }
+body.text-lg .story-title { font-size: 7vh; }
+body.text-lg .fsl-caption { font-size: 6.5vh; }
+body.text-lg .fsl-caption .fil { font-size: 4vh; }
+body.text-lg .live-prompt { font-size: 9.5vh; }
+body.text-lg .live-opt { font-size: 5.5vh; }
+body.text-lg .live-sub { font-size: 4.2vh; }
+body.text-lg .board .row { font-size: 4.3vh; }
+body.text-lg .wins-name { font-size: 4vh; }
+body.text-lg .wins-line { font-size: 3.2vh; }
+
+body.text-xl .fcard-word-en { font-size: 14vh; }
+body.text-xl .fcard-word-fil { font-size: 8vh; }
+body.text-xl .fcard-example { font-size: 4.6vh; }
+body.text-xl .story-text-en { font-size: 8.5vh; }
+body.text-xl .story-text-fil { font-size: 5.5vh; }
+body.text-xl .story-title { font-size: 8vh; }
+body.text-xl .fsl-caption { font-size: 8vh; }
+body.text-xl .fsl-caption .fil { font-size: 5vh; }
+body.text-xl .live-prompt { font-size: 11vh; }
+body.text-xl .live-opt { font-size: 6.5vh; }
+body.text-xl .live-sub { font-size: 5vh; }
+body.text-xl .board .row { font-size: 5.2vh; }
+body.text-xl .wins-name { font-size: 4.8vh; }
+body.text-xl .wins-line { font-size: 3.8vh; }
+
+/* At the largest size a long story page can outrun the screen; let it scroll
+   rather than clip the last line off the bottom. */
+body.text-xl .story { overflow-y: auto; max-height: 96vh; }
+
+/* ─── Language filter (body.lang-en / body.lang-fil) ─────
+   Hides the language the teacher isn't working in. The markup still carries
+   both (the payload is unchanged), so switching back is instant and nothing
+   needs re-fetching. */
+body.lang-en .fcard-word-fil,
+body.lang-en .story-text-fil,
+body.lang-en .fsl-caption .fil { display: none; }
+
+/* Filipino-only promotes the Filipino line to the headline's size, so the
+   remaining text doesn't read as a de-emphasised subtitle of nothing. */
+body.lang-fil .fcard-word-en,
+body.lang-fil .story-text-en { display: none; }
+body.lang-fil .fcard-word-fil {
+  font-size: 9vh;
+  font-style: normal;
+  font-weight: 900;
+}
+body.lang-fil .story-text-fil {
+  font-size: 5.5vh;
+  font-style: normal;
+  color: inherit;
+}
+body.lang-fil .fsl-caption { font-size: 0; }
+body.lang-fil .fsl-caption .fil { font-size: 5vh; font-weight: 800; }
+body.text-lg.lang-fil .fcard-word-fil { font-size: 11.5vh; }
+body.text-xl.lang-fil .fcard-word-fil { font-size: 14vh; }
+body.text-lg.lang-fil .story-text-fil { font-size: 7vh; }
+body.text-xl.lang-fil .story-text-fil { font-size: 8.5vh; }
+
+/* ─── "Our Class Wins" (non-competitive progress view) ───
+   The class total leads, then everyone A–Z in identical cards. Identical is
+   the point: same size, same colour, no rank column, no podium — nothing in
+   the layout lets the room infer an order. */
+.board.wins {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.wins-totals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2vw;
+  margin-bottom: 3.5vh;
+  width: 100%;
+}
+
+.wins-stat {
+  background: #1e293b;
+  border-radius: 2vh;
+  padding: 2vh 2.5vw;
+  min-width: 18vw;
+  text-align: center;
+  font-size: 2.4vh;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+.wins-stat .v {
+  display: block;
+  font-size: 6vh;
+  font-weight: 900;
+  color: #4ade80;
+  line-height: 1.05;
+}
+
+.wins-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5vh 1.5vw;
+  width: 100%;
+}
+
+.wins-card {
+  background: #1e293b;
+  border-radius: 1.5vh;
+  padding: 1.6vh 2vw;
+  min-width: 26vw;
+  flex: 0 1 26vw;
+}
+
+.wins-name {
+  font-size: 3.2vh;
+  font-weight: 800;
+  margin-bottom: 0.6vh;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wins-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 1vw;
+  font-size: 2.6vh;
+  color: #94a3b8;
+}
+
 /* ─── Footer pill (counter + paused) ───────────── */
 .footer-pill {
   position: fixed;
@@ -666,6 +990,25 @@ html, body {
   font-size: 30vh;
   line-height: 1;
   margin: 0 0 1vh 0;
+}
+
+/* The sign clip / real photograph for a card-backed question. Sized so the
+   media, the answer options and the "N answered" line all still fit on a 16:9
+   screen — an fslSign question is unanswerable if the options scroll off. */
+.live-media {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 0 0 1.5vh 0;
+}
+
+.live-media video,
+.live-media img {
+  max-height: 42vh;
+  max-width: 70vw;
+  border-radius: 2vh;
+  background: #0b1220;
+  object-fit: contain;
 }
 
 .live-sub {
@@ -797,6 +1140,12 @@ body.theme-light .board .name,
 body.theme-light .board .stat .v { color: #0f172a; }
 body.theme-light .board .stat { color: #475569; }
 body.theme-light .board .empty { color: #64748b; }
+body.theme-light .wins-stat,
+body.theme-light .wins-card { background: #e2e8f0; }
+body.theme-light .wins-stat { color: #475569; }
+body.theme-light .wins-stat .v { color: #15803d; }
+body.theme-light .wins-name { color: #0f172a; }
+body.theme-light .wins-line { color: #475569; }
 body.theme-light .footer-pill {
   background: rgba(15,23,42,0.08);
   color: #0f172a;
@@ -835,6 +1184,15 @@ body.theme-highContrast .board .rank.top3 { color: #ffff00; }
 body.theme-highContrast .board .name,
 body.theme-highContrast .board .stat,
 body.theme-highContrast .board .stat .v { color: #ffffff; }
+body.theme-highContrast .wins-stat,
+body.theme-highContrast .wins-card {
+  background: #111111;
+  border: 0.3vh solid #ffffff;
+}
+body.theme-highContrast .wins-stat,
+body.theme-highContrast .wins-name,
+body.theme-highContrast .wins-line { color: #ffffff; }
+body.theme-highContrast .wins-stat .v { color: #ffff00; }
 body.theme-highContrast .footer-pill,
 body.theme-highContrast .sound-hint {
   background: #000000;
@@ -993,8 +1351,22 @@ body.theme-calm .board .row, body.theme-seasonal .board .row,
 body.theme-classroom .live-row, body.theme-playful .live-row,
 body.theme-calm .live-row, body.theme-seasonal .live-row,
 body.theme-classroom .live-opt, body.theme-playful .live-opt,
-body.theme-calm .live-opt, body.theme-seasonal .live-opt {
+body.theme-calm .live-opt, body.theme-seasonal .live-opt,
+body.theme-classroom .wins-stat, body.theme-playful .wins-stat,
+body.theme-calm .wins-stat, body.theme-seasonal .wins-stat,
+body.theme-classroom .wins-card, body.theme-playful .wins-card,
+body.theme-calm .wins-card, body.theme-seasonal .wins-card {
   background: #e8eef5;
+}
+body.theme-classroom .wins-stat, body.theme-playful .wins-stat,
+body.theme-calm .wins-stat, body.theme-seasonal .wins-stat,
+body.theme-classroom .wins-line, body.theme-playful .wins-line,
+body.theme-calm .wins-line, body.theme-seasonal .wins-line {
+  color: #475569;
+}
+body.theme-classroom .wins-stat .v, body.theme-playful .wins-stat .v,
+body.theme-calm .wins-stat .v, body.theme-seasonal .wins-stat .v {
+  color: #15803d;
 }
 body.theme-classroom .live-opt, body.theme-playful .live-opt,
 body.theme-calm .live-opt, body.theme-seasonal .live-opt {
@@ -1008,7 +1380,9 @@ body.theme-calm .board .stat .v, body.theme-seasonal .board .stat .v,
 body.theme-classroom .live-row .nm, body.theme-playful .live-row .nm,
 body.theme-calm .live-row .nm, body.theme-seasonal .live-row .nm,
 body.theme-classroom .live-row .sc, body.theme-playful .live-row .sc,
-body.theme-calm .live-row .sc, body.theme-seasonal .live-row .sc {
+body.theme-calm .live-row .sc, body.theme-seasonal .live-row .sc,
+body.theme-classroom .wins-name, body.theme-playful .wins-name,
+body.theme-calm .wins-name, body.theme-seasonal .wins-name {
   color: #0f172a;
 }
 body.theme-classroom .footer-pill, body.theme-playful .footer-pill,

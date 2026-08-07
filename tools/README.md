@@ -135,6 +135,12 @@ mode and replay them. They should still work (served from
   add or rename a video.
 - `publish_fsl_videos.mjs` — the publish script.
 - `service-account.json` — _legacy, no longer used_; safe to delete.
+- `tv_cast_render_check.js` — headless check of the TV Cast display. Run with
+  `node tools/tv_cast_render_check.js .` — it stubs a browser, loads the real
+  `assets/tv_cast/app.js`, and drives it with the payloads the cast server
+  emits. Worth running after touching `app.js` or the `/api/state` shape:
+  `flutter test` covers the wire format but nothing else exercises the
+  TV-side rendering, so a bug there is invisible until a class is watching.
 
 ## Known mapping notes
 

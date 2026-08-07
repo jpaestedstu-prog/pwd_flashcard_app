@@ -1201,6 +1201,48 @@ class HiveService {
     await _sessBox.put('engagement_$profileId', logs);
   }
 
+  // ─── TV Cast session history ─────────────────────────
+  //
+  // Keyed by the *educator's* profile id — these are records of a teacher or
+  // parent casting a lesson, not learner data, and they carry only counts (no
+  // learner names). Deliberately NOT part of the research export, which is
+  // scoped to the Student population by design (see ResearchExportService).
+  //
+  // Plain maps, like the engagement logs above: no Hive adapter and no typeId
+  // to register, so the shape can grow without a migration.
+
+  static List<Map<String, dynamic>> getCastSessions(String profileId) {
+    final data =
+        _sessBox.get('cast_sessions_$profileId', defaultValue: <dynamic>[]);
+    return List<Map<String, dynamic>>.from(
+      (data as List).map((e) => Map<String, dynamic>.from(e as Map)),
+    );
+  }
+
+  /// Appends one finished cast. Newest last. Trimmed to the last 90 days and
+  /// the most recent [_maxCastSessions] entries, so a heavy user's box stays
+  /// bounded — same policy as the engagement logs.
+  static Future<void> addCastSession(
+      String profileId, Map<String, dynamic> session) async {
+    final sessions = getCastSessions(profileId);
+    sessions.add(session);
+    final cutoff = DateTime.now().subtract(const Duration(days: 90));
+    sessions.removeWhere((s) {
+      final date = DateTime.tryParse(s['startedAt'] as String? ?? '');
+      return date != null && date.isBefore(cutoff);
+    });
+    if (sessions.length > _maxCastSessions) {
+      sessions.removeRange(0, sessions.length - _maxCastSessions);
+    }
+    await _sessBox.put('cast_sessions_$profileId', sessions);
+  }
+
+  static const _maxCastSessions = 60;
+
+  /// Wipes an educator's cast history (the "Clear history" action).
+  static Future<void> clearCastSessions(String profileId) =>
+      _sessBox.delete('cast_sessions_$profileId');
+
   // ─── Learning Path Progress ────────────────────────────
 
   static Map<String, dynamic>? getLearningPathProgress(

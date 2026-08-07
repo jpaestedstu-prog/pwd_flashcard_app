@@ -13,6 +13,14 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <!-- TV Cast keep-alive: the cast server is plain Dart in this process, so
+         a backgrounded or screen-off tablet can have it reclaimed mid-lesson.
+         The foreground service (type dataSync — we're serving bytes to a TV on
+         the LAN) tells Android the process is doing something the user can see.
+         FOREGROUND_SERVICE_DATA_SYNC is the Android 14+ per-type permission. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+
     <!-- Word Hunt: live camera object recognition. required="false" so
          tablets without a camera can still install the app — the scan
          screen shows a friendly fallback instead. -->
@@ -91,6 +99,13 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- TV Cast keep-alive. Not exported: only this app starts it, over
+             the MethodChannel in MainActivity when casting begins. -->
+        <service
+            android:name=".CastForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"/>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

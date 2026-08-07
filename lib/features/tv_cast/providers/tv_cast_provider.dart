@@ -9,6 +9,8 @@ import '../../../core/services/action_clip_service.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../core/services/flashcard_photo_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
+import '../../../core/services/notification_service.dart';
+import '../../../data/local/hive_service.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../data/local/seed_stories.dart';
 import '../../../data/models/enums.dart';
@@ -22,6 +24,7 @@ import '../services/tv_cast_asset_bridge.dart';
 import '../services/tv_cast_audio_narrator.dart';
 import '../services/tv_cast_autoplay_controller.dart';
 import '../services/tv_cast_ip_discovery.dart';
+import '../services/tv_cast_keep_alive.dart';
 import '../services/tv_cast_server.dart';
 
 /// Owns the cast session state machine and the underlying HTTP server.
@@ -32,6 +35,39 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   TvCastAutoplayController? _autoplay;
   TvCastAudioNarrator? _narrator;
   Timer? _viewerTickTimer;
+
+  /// Guards the one-shot "time's up" cue so it doesn't fire on every tick once
+  /// the clock is at zero. Reset whenever the timer is (re)started or cleared.
+  bool _timerChimed = false;
+
+  // ─── Session tally (for the summary shown on Stop) ────
+  // Counted here rather than derived from state, because the interesting
+  // numbers are *events* (a card advanced past, a question pushed) which state
+  // only ever holds one of at a time.
+  DateTime? _sessionStartedAt;
+  final List<CastMode> _modesUsed = [];
+  int _cardsShown = 0;
+  int _storyPagesShown = 0;
+  int _liveQuestionsPushed = 0;
+  int _peakViewers = 0;
+
+  /// Answers to questions already replaced by the next one, so the running
+  /// total survives `liveResponders` resetting on each push.
+  int _liveAnswersBanked = 0;
+
+  // ─── Progress-mode liveness ───────────────────────────
+  // The leaderboard used to be a snapshot the educator had to tap "Next" to
+  // refresh, so a class watching their own progress on the TV saw stale numbers
+  // for the whole lesson. While progress mode is on we both subscribe to the
+  // roster (so a learner earning stars repaints the TV) and keep a slow
+  // backstop tick — the roster provider's own liveness depends on whether cloud
+  // sync is configured, and a wall display shouldn't quietly go stale when it
+  // isn't. `_refreshProgress` no-ops unless the numbers actually changed, so
+  // neither path repaints the TV for nothing.
+  ProviderSubscription<AsyncValue<List<(UserProfile, LearningProgress)>>>?
+      _rosterSub;
+  Timer? _progressTickTimer;
+  static const _progressBackstopInterval = Duration(seconds: 15);
 
   // ─── Live interactive session (CastMode.live) ─────────
   final LiveSessionService _liveService = const LiveSessionService();
@@ -48,6 +84,8 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     ref.onDispose(() {
       _autoplay?.dispose();
       _viewerTickTimer?.cancel();
+      _stopProgressWatch();
+      unawaited(TvCastKeepAlive.stop());
       unawaited(_handsSub?.cancel());
       unawaited(_responsesSub?.cancel());
       unawaited(_narrator?.stop());
@@ -78,7 +116,12 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     if (withCue && settings.soundEffects) _audio().cue();
     if (!settings.ttsEnabled) return;
 
-    final (en, fil) = _currentSpeechText();
+    var (en, fil) = _currentSpeechText();
+    // The language filter governs what's spoken as well as what's shown —
+    // hearing a language the TV isn't displaying would be more confusing than
+    // silence, especially for the cognitive-disability profiles.
+    if (state.castLanguage == CastLanguage.english) fil = '';
+    if (state.castLanguage == CastLanguage.filipino) en = '';
     if (en.isEmpty && fil.isEmpty) return;
     unawaited(_audio().speakBoth(en, fil));
   }
@@ -95,6 +138,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         final card = cards[state.slideIndex % cards.length];
         return (card.wordEnglish, card.wordFilipino);
       case CastMode.story:
+        if (state.storyFinished) return ('', '');
         final story = _currentStory();
         if (story == null) return ('', '');
         final pagesEn = story.sentencesEn;
@@ -103,11 +147,42 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         final en = idx < pagesEn.length ? pagesEn[idx] : '';
         final fil = idx < pagesFil.length ? pagesFil[idx] : '';
         return (en, fil);
-      case CastMode.progress:
       case CastMode.live:
+        // Mirrors the TV's `liveSpeechText`: the question plus its lettered
+        // choices, so a class listening on the phone's speaker hears the same
+        // thing a TV would say. Filipino is empty — activities are authored in
+        // one language by the educator, so there's no second string to read.
+        final activity = state.liveActivity;
+        if (activity == null) return ('', '');
+        return (_liveSpeechText(activity), '');
+      case CastMode.progress:
       case CastMode.idle:
         return ('', '');
     }
+  }
+
+  /// Spoken form of a live question. Kept in step with `liveSpeechText` in the
+  /// TV-side `app.js`; the correct answer is deliberately not part of it.
+  String _liveSpeechText(LiveActivity activity) {
+    final parts = <String>[];
+    switch (activity.type) {
+      case LiveActivityType.fslSign:
+        parts.add('Watch the sign, then pick the word.');
+      case LiveActivityType.pictureChoice:
+        parts.add('Which word matches the picture?');
+      default:
+        final prompt = activity.prompt;
+        if (prompt.trim().isNotEmpty) parts.add(prompt);
+    }
+    if (activity.type == LiveActivityType.trueFalse) {
+      parts.add('True, or false?');
+    } else {
+      final options = activity.options;
+      for (var i = 0; i < options.length; i++) {
+        parts.add('${String.fromCharCode(65 + i)}. ${options[i]}');
+      }
+    }
+    return parts.join(' ');
   }
 
   /// Re-speaks the current Flashcard word / Story page on the educator's phone
@@ -168,9 +243,12 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     _server ??= TvCastServer(
       getSession: () => state,
       onTvAudioReport: _onTvAudioReport,
+      onRemoteAction: _onRemoteAction,
     );
     final port = await _server!.start();
-    final url = 'http://$ip:$port';
+    // The URL carries the session code the server just minted — the TV proves
+    // it was invited simply by opening the link the teacher showed it.
+    final url = 'http://$ip:$port${_server!.basePath}';
 
     // Respect the educator's accessibility setting out of the box: if the app
     // is in high-contrast mode, default the TV output to the high-contrast
@@ -182,23 +260,107 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       isServerRunning: true,
       listenUrl: url,
       port: port,
+      castCode: _server!.sessionToken,
       castTheme: highContrast ? CastTheme.highContrast : CastTheme.dark,
       // Mirror the accessibility setting so the TV can drop animations.
       reducedMotion: settings.reducedMotion,
       revision: state.revision + 1,
     );
 
+    _sessionStartedAt = DateTime.now();
+    _modesUsed.clear();
+    _cardsShown = 0;
+    _storyPagesShown = 0;
+    _liveQuestionsPushed = 0;
+    _liveAnswersBanked = 0;
+    _peakViewers = 0;
+
+    // Ask Android to keep this process alive for the duration. Best-effort:
+    // if it's refused the cast is unchanged, it just loses the guarantee.
+    // The permission prompt (Android 13+) is fired first so the ongoing
+    // notification is actually visible — but not awaited on the critical path,
+    // and a refusal is fine: the service still runs, just silently.
+    unawaited(() async {
+      try {
+        await NotificationService.requestPermission();
+      } catch (_) {
+        // Never let a permission hiccup block a cast that's already serving.
+      }
+      await TvCastKeepAlive.start(
+        code: state.castCode ?? '',
+        detail: _keepAliveDetail(),
+      );
+    }());
+
     // Tick the connected-viewer count every 2 s so the phone UI shows
     // how many TVs/browsers are currently pulling state.
     _viewerTickTimer?.cancel();
     _viewerTickTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       final n = _server?.activeViewerCount ?? 0;
+      if (n > _peakViewers) _peakViewers = n;
       if (n != state.connectedViewers) {
         state = state.copyWith(connectedViewers: n);
+        _refreshKeepAlive();
+      }
+      // The lesson timer isn't ticked on this side (see [startTimer]) — nothing
+      // would otherwise notice it hitting zero, so piggyback the check here.
+      // Within 2 s is plenty for a classroom cue.
+      if (state.isTimerFinished && !_timerChimed) {
+        _timerChimed = true;
+        if (ref.read(settingsProvider).soundEffects) _audio().cue();
       }
     });
 
     _autoplay ??= TvCastAutoplayController(onTick: _advanceFromAutoplay);
+  }
+
+  /// One-line status for the ongoing notification, so a teacher glancing at
+  /// the shade sees what the class is looking at without opening the app.
+  String _keepAliveDetail() {
+    if (state.isAway) return 'Showing "the teacher is out" — tap to resume.';
+    final viewers = state.connectedViewers;
+    final who = viewers == 0
+        ? 'No TV connected yet'
+        : '$viewers ${viewers == 1 ? 'TV' : 'TVs'} watching';
+    final what = switch (state.mode) {
+      CastMode.flashcards => 'Flashcards',
+      CastMode.fslVideo => 'FSL signs',
+      CastMode.story => 'Stories',
+      CastMode.progress => 'Progress',
+      CastMode.live => 'Live Activity',
+      CastMode.idle => 'Nothing selected',
+    };
+    return '$what · $who';
+  }
+
+  /// Pushes the current mode / viewer count into the ongoing notification.
+  /// No-op when no cast is running.
+  void _refreshKeepAlive() {
+    if (!state.isServerRunning) return;
+    unawaited(
+      TvCastKeepAlive.update(
+        code: state.castCode ?? '',
+        detail: _keepAliveDetail(),
+      ),
+    );
+  }
+
+  /// What the cast that's running right now has done so far. Null when nothing
+  /// is casting. Read by [stopServer] to hand the educator a receipt.
+  TvCastSessionSummary? get sessionSummary {
+    final startedAt = _sessionStartedAt;
+    if (startedAt == null) return null;
+    return TvCastSessionSummary(
+      startedAt: startedAt,
+      duration: DateTime.now().difference(startedAt),
+      modesUsed: List.unmodifiable(_modesUsed),
+      cardsShown: _cardsShown,
+      storyPagesShown: _storyPagesShown,
+      liveQuestionsPushed: _liveQuestionsPushed,
+      // The question still on screen hasn't been banked yet.
+      liveAnswers: _liveAnswersBanked + state.liveResponders,
+      peakViewers: _peakViewers,
+    );
   }
 
   Future<void> stopServer() async {
@@ -206,6 +368,21 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     unawaited(_narrator?.stop());
     _viewerTickTimer?.cancel();
     _viewerTickTimer = null;
+    _stopProgressWatch();
+    unawaited(TvCastKeepAlive.stop());
+    // Persist the finished cast before dropping the tally. Best-effort: a
+    // failed write must not stop the cast from shutting down cleanly.
+    final finished = sessionSummary;
+    final profile = ref.read(profileProvider);
+    if (finished != null && finished.hasContent && profile != null) {
+      try {
+        await HiveService.addCastSession(profile.id, finished.toJson());
+        ref.invalidate(castSessionHistoryProvider(profile.id));
+      } catch (_) {
+        // History is a convenience; losing one entry is not worth failing on.
+      }
+    }
+    _sessionStartedAt = null; // the tally is a receipt, not live state
     await _endLiveSession(); // ends the Firestore session + cancels streams
     await _server?.stop();
     state = state.copyWith(
@@ -242,6 +419,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       showMeActive: false,
       storyFslActive: false,
       storyImageFlipped: false,
+      storyFinished: false,
       cardFlipped: false,
       revision: state.revision + 1,
     );
@@ -262,13 +440,47 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       }
       _narrateCurrent();
     } else if (mode == CastMode.progress) {
-      _refreshProgress();
+      _startProgressWatch();
       _autoplay?.stop();
       unawaited(_narrator?.stop());
     } else {
       _autoplay?.stop();
       unawaited(_narrator?.stop());
     }
+    if (mode != CastMode.progress) _stopProgressWatch();
+    if (mode != CastMode.idle && !_modesUsed.contains(mode)) {
+      _modesUsed.add(mode);
+    }
+    _refreshKeepAlive();
+  }
+
+  /// Subscribes to the roster and starts the backstop tick so the TV's progress
+  /// display keeps up with the class on its own. Idempotent.
+  void _startProgressWatch() {
+    _refreshProgress();
+    final profile = ref.read(profileProvider);
+    if (profile != null) {
+      _rosterSub?.close();
+      // Listening (not reading) is what keeps the roster provider alive and
+      // pushes changes at us — `_refreshProgress` alone only ever saw whatever
+      // snapshot happened to be cached.
+      _rosterSub = ref.listen(
+        educatorRosterProvider(profile.id),
+        (previous, next) => _refreshProgress(),
+      );
+    }
+    _progressTickTimer?.cancel();
+    _progressTickTimer = Timer.periodic(
+      _progressBackstopInterval,
+      (_) => _refreshProgress(),
+    );
+  }
+
+  void _stopProgressWatch() {
+    _rosterSub?.close();
+    _rosterSub = null;
+    _progressTickTimer?.cancel();
+    _progressTickTimer = null;
   }
 
   void setCategory(FlashcardCategory category) {
@@ -322,6 +534,21 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         revision: state.revision + 1,
       );
     }
+  }
+
+  /// Sets how big the TV's lesson text is. The TV picks it up on its next poll
+  /// and re-lays out immediately — no reload needed.
+  void setCastTextSize(CastTextSize size) {
+    if (state.castTextSize == size) return;
+    state = state.copyWith(castTextSize: size, revision: state.revision + 1);
+  }
+
+  /// Sets which language the TV shows *and* speaks. Re-narrates the current
+  /// item so the change is audible right away rather than at the next slide.
+  void setCastLanguage(CastLanguage language) {
+    if (state.castLanguage == language) return;
+    state = state.copyWith(castLanguage: language, revision: state.revision + 1);
+    _narrateCurrent(withCue: false);
   }
 
   /// Sets (or clears) the optional branding text shown on the TV. Trimmed;
@@ -524,6 +751,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       isPaused: false,
       storyFslActive: false,
       storyImageFlipped: false,
+      storyFinished: false,
       revision: state.revision + 1,
     );
     if (state.autoAdvanceEnabled) {
@@ -535,6 +763,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     _prefetchStoryFslAround();
     _prefetchStoryImagesAround();
     _narrateCurrent();
+    _refreshKeepAlive();
   }
 
   // ─── Remote controls ──────────────────────────────────
@@ -551,6 +780,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
           cardFlipped: false,
           revision: state.revision + 1,
         );
+        _cardsShown++;
         if (state.mode == CastMode.fslVideo) _prefetchFslAround();
         _narrateCurrent();
         break;
@@ -564,9 +794,15 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
             storyImageFlipped: false,
             revision: state.revision + 1,
           );
+          _storyPagesShown++;
           _prefetchStoryFslAround();
           _prefetchStoryImagesAround();
           _narrateCurrent();
+        } else if (!state.storyFinished) {
+          // Past the last page: close the book rather than leaving the class on
+          // the final sentence with the autoplay timer still ticking into
+          // nothing. Autoplay stops here — the next move is the teacher's.
+          _finishStory();
         }
         break;
       case CastMode.progress:
@@ -595,6 +831,16 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         _narrateCurrent();
         break;
       case CastMode.story:
+        if (state.storyFinished) {
+          // Back from "The End" returns to the last page, so a teacher can
+          // re-read the ending without restarting the whole story.
+          state = state.copyWith(
+            storyFinished: false,
+            revision: state.revision + 1,
+          );
+          _narrateCurrent();
+          return;
+        }
         if (state.storyPageIndex > 0) {
           state = state.copyWith(
             storyPageIndex: state.storyPageIndex - 1,
@@ -647,12 +893,34 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       _autoplay?.resume();
       _narrateCurrent(withCue: false);
     }
+    _refreshKeepAlive();
   }
 
   // ─── Internal helpers ─────────────────────────────────
 
+  /// Closes the story: the TV swaps to the "The End" screen and autoplay
+  /// halts. Also stops phone narration — there is nothing left to read.
+  void _finishStory() {
+    state = state.copyWith(
+      storyFinished: true,
+      storyFslActive: false,
+      storyImageFlipped: false,
+      revision: state.revision + 1,
+    );
+    _autoplay?.pause();
+    unawaited(_narrator?.stop());
+    // A soft cue marks the ending for learners who aren't reading the screen.
+    if (state.castAudioEnabled &&
+        state.castAudioTarget == CastAudioTarget.phone &&
+        ref.read(settingsProvider).soundEffects) {
+      _audio().cue();
+    }
+  }
+
   void _advanceFromAutoplay() {
     if (state.isPaused || !state.autoAdvanceEnabled) return;
+    // A closed story has nowhere to advance to; leave the ending on screen.
+    if (state.mode == CastMode.story && state.storyFinished) return;
     next();
   }
 
@@ -667,6 +935,91 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         : (unlocked ? TvAudioStatus.ready : TvAudioStatus.needsTap);
     if (next == state.tvAudioStatus) return;
     state = state.copyWith(tvAudioStatus: next);
+  }
+
+  /// Handles a TV pressing ◀ ▶ / play-pause on its own remote.
+  ///
+  /// Routed through the same methods the phone's buttons call, so remote and
+  /// phone can't drift apart — and so stepping from the TV pauses autoplay and
+  /// re-narrates exactly like stepping from the tablet.
+  void _onRemoteAction(String action) {
+    switch (action) {
+      case 'next':
+        next();
+      case 'prev':
+        prev();
+      case 'playpause':
+        togglePause();
+    }
+  }
+
+  // ─── Lesson timer ─────────────────────────────────────
+
+  /// Starts a countdown the whole room can see, overlaid on whatever is being
+  /// cast. Replaces any existing timer.
+  ///
+  /// Only the *deadline* is stored — nothing ticks on this side. A per-second
+  /// state change would bump `revision`, and the TV rebuilds its stage on every
+  /// revision, so a running timer would restart a playing sign clip once a
+  /// second. The TV counts down locally and re-syncs from `secondsLeft` on each
+  /// poll instead.
+  void startTimer(Duration duration, {String? label}) {
+    final seconds = duration.inSeconds;
+    if (seconds <= 0) return;
+    final trimmed = label?.trim();
+    state = state.copyWith(
+      timerEndsAt: DateTime.now().add(duration),
+      timerTotalSeconds: seconds,
+      timerLabel: (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+      // Drop any freeze from a previous paused timer.
+      clearTimerPause: true,
+      revision: state.revision + 1,
+    );
+    _timerChimed = false;
+    _refreshKeepAlive();
+  }
+
+  /// Freezes the clock, keeping the remaining time.
+  void pauseTimer() {
+    if (state.timerEndsAt == null || state.timerPausedSecondsLeft != null) {
+      return;
+    }
+    state = state.copyWith(
+      timerPausedSecondsLeft: state.timerSecondsLeft ?? 0,
+      revision: state.revision + 1,
+    );
+  }
+
+  /// Resumes from wherever the clock was frozen.
+  void resumeTimer() {
+    final left = state.timerPausedSecondsLeft;
+    if (left == null) return;
+    state = state.copyWith(
+      timerEndsAt: DateTime.now().add(Duration(seconds: left)),
+      clearTimerPause: true,
+      revision: state.revision + 1,
+    );
+    _timerChimed = false;
+  }
+
+  /// Removes the timer entirely (the TV drops the overlay).
+  void clearTimer() {
+    if (state.timerEndsAt == null && state.timerPausedSecondsLeft == null) {
+      return;
+    }
+    state = state.copyWith(clearTimer: true, revision: state.revision + 1);
+    _timerChimed = false;
+    _refreshKeepAlive();
+  }
+
+  /// Turns the TV's own remote on or off as a control surface. Bumps the
+  /// revision so a connected TV stops (or starts) binding its arrow keys.
+  void setTvRemoteEnabled(bool enabled) {
+    if (state.tvRemoteEnabled == enabled) return;
+    state = state.copyWith(
+      tvRemoteEnabled: enabled,
+      revision: state.revision + 1,
+    );
   }
 
   /// Auto-advance cadence per mode: signs dwell longest (8s) so the clip can
@@ -752,6 +1105,21 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     warm(i + 1);
   }
 
+  /// Warms the FSL disk cache for a live question's flashcard so the TV can
+  /// stream the sign the moment the question lands. Fire-and-forget and a
+  /// no-op for text-only questions, cards with no clip, or an already-cached
+  /// one — same contract as [_prefetchFslAround].
+  void _prefetchLiveActivityClip(LiveActivity activity) {
+    final id = activity.flashcardId;
+    if (id == null || id.isEmpty) return;
+    for (final card in SeedData.allFlashcards) {
+      if (card.id == id) {
+        unawaited(FslAssetsService.prefetch(card));
+        return;
+      }
+    }
+  }
+
   List _currentCards() {
     final cat = state.category;
     if (cat == null) return const [];
@@ -768,9 +1136,23 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     }
   }
 
-  /// Re-derives the leaderboard DTO from the educator roster and
-  /// pushes a new revision IFF the values actually changed (avoids
-  /// flicker-repainting the TV every 2 s).
+  /// Switches the TV between the ranked leaderboard and the non-competitive
+  /// class view. Both datasets are already in state, so this only bumps the
+  /// revision — the TV repaints on its next poll with nothing to fetch.
+  void setCastProgressView(CastProgressView view) {
+    if (state.castProgressView == view) return;
+    state = state.copyWith(
+      castProgressView: view,
+      revision: state.revision + 1,
+    );
+  }
+
+  /// Re-derives *both* progress displays from the educator roster and pushes a
+  /// new revision IFF something actually changed (avoids flicker-repainting the
+  /// TV on every tick).
+  ///
+  /// One roster read feeds the ranked top-10 and the alphabetical class
+  /// summary, so switching views costs nothing and the two can't disagree.
   void _refreshProgress() {
     final profile = ref.read(profileProvider);
     if (profile == null) return;
@@ -782,11 +1164,13 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     final students = roster
         .where((d) => d.$1.role == UserRole.student && !d.$1.isGuestPlayer)
         .toList();
-    students.sort((a, b) => b.$2.totalStars.compareTo(a.$2.totalStars));
 
+    // ─ Ranked view: top 10 by stars.
+    final byStars = [...students]
+      ..sort((a, b) => b.$2.totalStars.compareTo(a.$2.totalStars));
     final rows = <TvCastProgressRow>[];
-    for (var i = 0; i < students.length && i < 10; i++) {
-      final (p, prog) = students[i];
+    for (var i = 0; i < byStars.length && i < 10; i++) {
+      final (p, prog) = byStars[i];
       rows.add(
         TvCastProgressRow(
           rank: i + 1,
@@ -798,15 +1182,58 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       );
     }
 
-    final unchanged =
+    // ─ Class view: totals + everyone A–Z, rank 0 (there is no rank here).
+    final byName = [...students]
+      ..sort((a, b) => a.$1.name.toLowerCase().compareTo(
+            b.$1.name.toLowerCase(),
+          ));
+    final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+    var wordsTotal = 0;
+    var starsTotal = 0;
+    var activeToday = 0;
+    var bestStreak = 0;
+    final classRows = <TvCastProgressRow>[];
+    for (final (p, prog) in byName) {
+      wordsTotal += prog.wordsLearned;
+      starsTotal += prog.totalStars;
+      if (prog.lastActivityDate.isAfter(cutoff)) activeToday++;
+      if (prog.streakDays > bestStreak) bestStreak = prog.streakDays;
+      // Capped so a large class still fits on a TV without shrinking the type
+      // past what the back row can read.
+      if (classRows.length < 12) {
+        classRows.add(
+          TvCastProgressRow(
+            rank: 0,
+            name: p.name,
+            wordsLearned: prog.wordsLearned,
+            streakDays: prog.streakDays,
+            stars: prog.totalStars,
+          ),
+        );
+      }
+    }
+    final summary = TvCastClassSummary(
+      learnerCount: students.length,
+      wordsTotal: wordsTotal,
+      starsTotal: starsTotal,
+      activeToday: activeToday,
+      bestStreak: bestStreak,
+      rows: classRows,
+    );
+
+    final rowsUnchanged =
         rows.length == state.progress.length &&
         List.generate(
           rows.length,
           (i) => rows[i] == state.progress[i],
         ).every((b) => b);
-    if (unchanged) return;
+    if (rowsUnchanged && summary == state.classSummary) return;
 
-    state = state.copyWith(progress: rows, revision: state.revision + 1);
+    state = state.copyWith(
+      progress: rows,
+      classSummary: summary,
+      revision: state.revision + 1,
+    );
   }
 
   // ─── Live interactive session ─────────────────────────
@@ -878,11 +1305,22 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   /// Pushes a new activity to every connected learner and shows it on the TV.
   Future<void> pushLiveActivity(LiveActivity activity) async {
     final key = state.liveSessionKey;
+    // Bank the outgoing question's answers before liveResponders resets, so
+    // the session total survives being replaced.
+    _liveAnswersBanked += state.liveResponders;
+    _liveQuestionsPushed++;
     state = state.copyWith(
       liveActivity: activity,
       liveResponders: 0,
       revision: state.revision + 1,
     );
+    // Warm the sign clip before the TV asks for it. An fslSign question now
+    // *shows* the sign, so a cold cache would leave the class staring at a
+    // placeholder for the first seconds of the question.
+    _prefetchLiveActivityClip(activity);
+    // And read the question aloud when audio is routed to this phone (the TV
+    // does its own speaking via `ttsOnTv`).
+    _narrateCurrent(withCue: false);
     if (key == null || !FirebaseService.isConfigured) return;
     try {
       await _liveService.pushActivity(sessionKey: key, activity: activity);
@@ -984,3 +1422,23 @@ final tvCastSessionProvider =
     NotifierProvider<TvCastSessionNotifier, TvCastSession>(
       TvCastSessionNotifier.new,
     );
+
+/// An educator's finished casts, newest first.
+///
+/// Read straight off Hive (no stream): history only changes when a cast ends,
+/// and the notifier invalidates this then. Family-keyed by educator profile id
+/// so switching profiles can't show someone else's lessons.
+final castSessionHistoryProvider =
+    Provider.family<List<TvCastSessionSummary>, String>((ref, profileId) {
+  final raw = HiveService.getCastSessions(profileId);
+  final out = <TvCastSessionSummary>[];
+  for (final entry in raw) {
+    try {
+      out.add(TvCastSessionSummary.fromJson(entry));
+    } catch (_) {
+      // A record written by an older build shouldn't take the list down.
+    }
+  }
+  // Stored oldest-first; the teacher wants the most recent lesson at the top.
+  return out.reversed.toList();
+});

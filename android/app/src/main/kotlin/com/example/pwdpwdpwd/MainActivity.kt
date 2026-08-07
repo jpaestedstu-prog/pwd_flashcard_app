@@ -1,11 +1,78 @@
 package com.example.pwdpwdpwd
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+
+    companion object {
+        /** Mirrors `TvCastKeepAlive._channel` on the Dart side. */
+        private const val CAST_CHANNEL = "flashlearn/tv_cast_keepalive"
+    }
+
+    /**
+     * Bridges the TV Cast keep-alive service to Dart.
+     *
+     * Dart owns the cast lifecycle (the HTTP server is a Riverpod provider), so
+     * it is the only thing that knows when a cast starts, changes, or ends —
+     * hence a channel rather than the service watching anything itself. Every
+     * call is best-effort: if starting the service fails (OEM restrictions, a
+     * denied notification permission), the cast still works exactly as it did
+     * before, just without the process guarantee.
+     */
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CAST_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "start", "update" -> {
+                        val intent = Intent(this, CastForegroundService::class.java).apply {
+                            action = if (call.method == "start") {
+                                CastForegroundService.ACTION_START
+                            } else {
+                                CastForegroundService.ACTION_UPDATE
+                            }
+                            putExtra(
+                                CastForegroundService.EXTRA_CODE,
+                                call.argument<String>("code") ?: "",
+                            )
+                            putExtra(
+                                CastForegroundService.EXTRA_DETAIL,
+                                call.argument<String>("detail") ?: "",
+                            )
+                        }
+                        try {
+                            startForegroundService(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            // e.g. an OEM background-start restriction. The cast
+                            // itself is unaffected, so this is not an error the
+                            // teacher needs to see.
+                            result.success(false)
+                        }
+                    }
+                    "stop" -> {
+                        val intent = Intent(this, CastForegroundService::class.java).apply {
+                            action = CastForegroundService.ACTION_STOP
+                        }
+                        try {
+                            startService(intent)
+                        } catch (e: Exception) {
+                            // Already gone (process was reclaimed) — nothing to do.
+                        }
+                        result.success(true)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Keep the display awake while the app is in the foreground. Learners

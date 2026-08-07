@@ -5,13 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/flashcard_emojis.dart';
+import '../../../widgets/flashcard_image.dart';
 import '../../../core/services/action_clip_service.dart';
 import '../../../core/services/flashcard_photo_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../data/local/hive_service.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../data/local/seed_stories.dart';
 import '../../../data/models/enums.dart';
@@ -23,6 +24,7 @@ import '../models/tv_cast_session.dart';
 import '../providers/tv_cast_provider.dart';
 import '../services/tv_cast_asset_bridge.dart';
 import '../services/tv_cast_ip_discovery.dart';
+import '../services/tv_cast_prewarm.dart';
 import '../widgets/tv_cast_live_panel.dart';
 import '../widgets/tv_cast_qr_card.dart';
 import '../widgets/tv_cast_remote_controls.dart';
@@ -199,13 +201,28 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
 
     // Capture before the await so we don't touch context across an async gap.
     final router = GoRouter.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+    // Read the tally *before* stopping — stopServer clears it.
+    final summary = notifier.sessionSummary;
     try {
-      await ref.read(tvCastSessionProvider.notifier).stopServer();
+      await notifier.stopServer();
     } catch (_) {
       // The session state still resets even if closing the socket throws.
     }
     if (!mounted) return;
-    AppSnackBar.success(context, message: 'Casting stopped');
+
+    // Hand the educator a receipt for what the cast actually did. Skipped for
+    // a cast that was started and immediately stopped — there'd be nothing on
+    // it but zeroes.
+    if (summary != null && summary.hasContent) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => _SessionSummaryDialog(summary: summary),
+      );
+      if (!mounted) return;
+    } else {
+      AppSnackBar.success(context, message: 'Casting stopped');
+    }
     // Leave the cast screen so "shutdown" clearly ends the session instead of
     // silently reverting to the Start card on the same page.
     if (router.canPop()) router.pop();
@@ -254,11 +271,17 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (!state.isServerRunning)
-                _StartCard(starting: _starting, onStart: _start)
-              else ...[
+              if (!state.isServerRunning) ...[
+                _StartCard(starting: _starting, onStart: _start),
+                // Only while idle: mid-cast the educator needs the controls,
+                // not a look back at last week.
+                const _CastHistory(),
+              ] else ...[
                 if (state.listenUrl != null)
-                  TvCastQrCard(url: state.listenUrl!),
+                  TvCastQrCard(
+                    url: state.listenUrl!,
+                    code: state.castCode,
+                  ),
                 const SizedBox(height: 12),
                 _ViewerCount(count: state.connectedViewers),
                 if (state.isAway) ...[
@@ -346,6 +369,14 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                 const _SectionLabel('TV display style'),
                 const SizedBox(height: 10),
                 _TemplateGallery(current: state.castTheme),
+                const SizedBox(height: 20),
+                const _SectionLabel('Lesson timer'),
+                const SizedBox(height: 8),
+                _TimerControl(state: state),
+                const SizedBox(height: 20),
+                const _SectionLabel('Readability on TV'),
+                const SizedBox(height: 8),
+                _ReadabilityControls(state: state),
                 const SizedBox(height: 16),
                 const _SectionLabel('Show on TV'),
                 const SizedBox(height: 8),
@@ -358,6 +389,10 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                 const _SectionLabel('Fullscreen'),
                 const SizedBox(height: 8),
                 _FullscreenControl(state: state),
+                const SizedBox(height: 20),
+                const _SectionLabel('TV remote'),
+                const SizedBox(height: 8),
+                _TvRemoteControl(state: state),
                 const SizedBox(height: 24),
                 const _TroubleshootPanel(),
               ],
@@ -611,12 +646,20 @@ class _ModeConfig extends ConsumerWidget {
         // FSL mode adds a per-word picker so the teacher can jump to a
         // specific sign instead of waiting for autoplay to cycle to it.
         if (state.mode == CastMode.fslVideo && state.category != null) {
+          final cat = state.category!;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               dropdown,
               const SizedBox(height: 12),
               _FslWordPicker(state: state),
+              _PrewarmControl(
+                targetKey: 'cat:${cat.index}',
+                targetLabel: cat.label,
+                onStart: () => ref
+                    .read(tvCastPrewarmProvider.notifier)
+                    .warmCategory(cat),
+              ),
             ],
           );
         }
@@ -625,12 +668,20 @@ class _ModeConfig extends ConsumerWidget {
         // motion) — mirroring the in-app "Show Me" button. It hides itself on
         // cards without a clip.
         if (state.mode == CastMode.flashcards && state.category != null) {
+          final cat = state.category!;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               dropdown,
               _FlipControl(state: state),
               _ShowMeControl(state: state),
+              _PrewarmControl(
+                targetKey: 'cat:${cat.index}',
+                targetLabel: cat.label,
+                onStart: () => ref
+                    .read(tvCastPrewarmProvider.notifier)
+                    .warmCategory(cat),
+              ),
             ],
           );
         }
@@ -666,37 +717,31 @@ class _ModeConfig extends ConsumerWidget {
         // (mirrors the in-app Stories tap-to-flip illustration) and the "Watch
         // in FSL" sign-language button (mirrors the Flashcards "Show Me"). Each
         // hides itself on pages / stories that lack that content.
+        final storyId = state.storyId;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             dropdown,
             _StoryImageFlipControl(state: state),
             _StoryFslControl(state: state),
+            if (storyId != null)
+              _PrewarmControl(
+                targetKey: 'story:$storyId',
+                targetLabel: all
+                    .firstWhere(
+                      (s) => s.id == storyId,
+                      orElse: () => all.first,
+                    )
+                    .titleEn,
+                onStart: () => ref
+                    .read(tvCastPrewarmProvider.notifier)
+                    .warmStory(storyId),
+              ),
           ],
         );
 
       case CastMode.progress:
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.leaderboard_rounded, color: AppColors.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Showing the top 10 students by stars. Tap Next to refresh.',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: hc.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
+        return _ProgressViewPicker(state: state);
 
       case CastMode.live:
         return TvCastLivePanel(state: state);
@@ -716,6 +761,359 @@ class _ModeConfig extends ConsumerWidget {
           ),
         );
     }
+  }
+}
+
+// ─── Readability on TV (text size + language) ──────────
+
+/// How big the TV's words are, and which language they're in.
+///
+/// Both are properties of the *display*, not of the content, which is why they
+/// live here rather than in the app's own accessibility settings: one tablet
+/// drives a screen a whole mixed-ability class is reading, and the right answer
+/// changes per room and per lesson.
+class _ReadabilityControls extends ConsumerWidget {
+  final TvCastSession state;
+  const _ReadabilityControls({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hc = HCColor.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+
+    return Material(
+      color: hc.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _MiniLabel(
+              icon: Icons.format_size_rounded,
+              text: 'Text size on TV',
+              hc: hc,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: CastTextSize.values
+                  .map(
+                    (s) => _PrefChip(
+                      label: s.label,
+                      selected: state.castTextSize == s,
+                      onTap: () => notifier.setCastTextSize(s),
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Makes the word, story line, sign caption and answer choices '
+              'bigger — for learners reading from the back, or with low vision.',
+              style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            _MiniLabel(
+              icon: Icons.translate_rounded,
+              text: 'Language on TV',
+              hc: hc,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: CastLanguage.values
+                  .map(
+                    (l) => _PrefChip(
+                      label: l.label,
+                      selected: state.castLanguage == l,
+                      onTap: () => notifier.setCastLanguage(l),
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              state.castLanguage == CastLanguage.both
+                  ? 'The TV shows and speaks both languages.'
+                  : 'The TV shows and speaks ${state.castLanguage.label} only '
+                        '— the other language is hidden, not removed, so you '
+                        'can switch back mid-lesson.',
+              style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniLabel extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final HCColor hc;
+  const _MiniLabel({required this.icon, required this.text, required this.hc});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.primary),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: AppTypography.titleSmall.copyWith(
+            fontWeight: FontWeight.w700,
+            color: hc.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Compact selected/unselected chip shared by the readability pickers.
+class _PrefChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PrefChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      selected: selected,
+      label: Text(label),
+      labelStyle: AppTypography.labelMedium.copyWith(
+        color: selected ? Colors.white : AppColors.primary,
+        fontWeight: FontWeight.w700,
+      ),
+      selectedColor: AppColors.primary,
+      backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      onSelected: (_) => onTap(),
+    );
+  }
+}
+
+// ─── "Prepare for casting" (offline pre-download) ──────
+
+/// Pulls every clip and picture a category / story will need onto the device
+/// before the lesson starts.
+///
+/// The cast downloads media the moment the TV asks for it, which on a school
+/// connection means the class watches a placeholder while an 8 MB sign clip
+/// arrives. This turns that into a choice: prepare once during setup, then the
+/// cast plays from disk and keeps working if the network drops entirely.
+class _PrewarmControl extends ConsumerWidget {
+  /// `cat:<index>` or `story:<id>` — must match the key the notifier stamps,
+  /// so a finished run for a *different* category doesn't read as "ready".
+  final String targetKey;
+  final String targetLabel;
+  final VoidCallback onStart;
+
+  const _PrewarmControl({
+    required this.targetKey,
+    required this.targetLabel,
+    required this.onStart,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hc = HCColor.of(context);
+    final prewarm = ref.watch(tvCastPrewarmProvider);
+    final notifier = ref.read(tvCastPrewarmProvider.notifier);
+    final isThisTarget = prewarm.targetKey == targetKey;
+    final running = prewarm.isRunning && isThisTarget;
+    final finished = isThisTarget && prewarm.status == PrewarmStatus.done;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: hc.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: finished
+              ? const Color(0xFF2E7D32).withValues(alpha: 0.35)
+              : AppColors.primary.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                finished
+                    ? Icons.cloud_done_rounded
+                    : Icons.cloud_download_rounded,
+                color: finished ? const Color(0xFF2E7D32) : AppColors.primary,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  finished ? 'Ready to cast offline' : 'Prepare for casting',
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: hc.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            running
+                ? 'Downloading ${prewarm.done + 1} of ${prewarm.total}'
+                      '${prewarm.label.isEmpty ? '' : ' — ${prewarm.label}'}'
+                : finished
+                ? _doneMessage(prewarm)
+                : 'Download every sign, clip and picture in $targetLabel now, '
+                      'so the TV never waits mid-lesson — and the cast keeps '
+                      'working if the Wi-Fi drops.',
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+          ),
+          if (running) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: prewarm.fraction,
+                minHeight: 8,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          if (running)
+            OutlinedButton.icon(
+              onPressed: notifier.cancel,
+              icon: const Icon(Icons.close_rounded, size: 18),
+              label: const Text('Stop downloading'),
+            )
+          else
+            FilledButton.icon(
+              onPressed: prewarm.isRunning ? null : onStart,
+              icon: Icon(
+                finished ? Icons.refresh_rounded : Icons.download_rounded,
+                size: 18,
+              ),
+              label: Text(finished ? 'Check again' : 'Prepare $targetLabel'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _doneMessage(TvCastPrewarmState p) {
+    if (p.total == 0) {
+      return 'Nothing to download for $targetLabel — it casts from the app.';
+    }
+    if (p.failed > 0) {
+      return '${p.total - p.failed} of ${p.total} ready. ${p.failed} '
+          'couldn\'t be downloaded — those will load during the lesson if the '
+          'network is up.';
+    }
+    return 'All ${p.total} items are on this device. $targetLabel will cast '
+        'instantly, even with no internet.';
+  }
+}
+
+// ─── Progress view picker ──────────────────────────────
+
+/// Chooses which progress display the TV shows.
+///
+/// Defaults to "Class wins" — a wall-sized ranking of children by stars is a
+/// choice a teacher should make deliberately, not one the app makes for them.
+/// The leaderboard is one tap away for classes it suits.
+class _ProgressViewPicker extends ConsumerWidget {
+  final TvCastSession state;
+  const _ProgressViewPicker({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hc = HCColor.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: CastProgressView.values.map((v) {
+            final selected = state.castProgressView == v;
+            return ChoiceChip(
+              selected: selected,
+              avatar: Icon(
+                v == CastProgressView.classWins
+                    ? Icons.groups_rounded
+                    : Icons.leaderboard_rounded,
+                size: 18,
+                color: selected ? Colors.white : AppColors.primary,
+              ),
+              label: Text(v.label),
+              labelStyle: AppTypography.labelMedium.copyWith(
+                color: selected ? Colors.white : AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
+              selectedColor: AppColors.primary,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                ),
+              ),
+              onSelected: (_) => notifier.setCastProgressView(v),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                state.castProgressView == CastProgressView.classWins
+                    ? Icons.groups_rounded
+                    : Icons.leaderboard_rounded,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${state.castProgressView.description} '
+                  'Updates by itself as your class works.',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: hc.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -771,6 +1169,518 @@ class _FullscreenControl extends ConsumerWidget {
   }
 }
 
+// ─── Cast history ──────────────────────────────────────
+
+/// The educator's recent casts, shown under the Start card.
+///
+/// Casting used to leave no trace at all — this is the record of what was
+/// actually taught off the TV, which is the question a teacher has when they
+/// come back to the screen ("what did I get through on Tuesday?").
+///
+/// Counts only, never learner names, and deliberately outside the research
+/// export: that dataset is scoped to the Student population by design.
+class _CastHistory extends ConsumerWidget {
+  const _CastHistory();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hc = HCColor.of(context);
+    final profile = ref.watch(profileProvider);
+    if (profile == null) return const SizedBox.shrink();
+
+    final history = ref.watch(castSessionHistoryProvider(profile.id));
+    if (history.isEmpty) return const SizedBox.shrink();
+
+    // A handful is what's useful at a glance; the rest stays on disk.
+    final shown = history.take(5).toList();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const _SectionLabel('Recent casts'),
+              const Spacer(),
+              TextButton(
+                onPressed: () => _confirmClear(context, ref, profile.id),
+                child: const Text('Clear'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Material(
+            color: hc.surface,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: AppColors.primary.withValues(alpha: 0.15),
+              ),
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < shown.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      indent: 16,
+                      endIndent: 16,
+                      color: hc.textSecondary.withValues(alpha: 0.15),
+                    ),
+                  _CastHistoryRow(summary: shown[i]),
+                ],
+              ],
+            ),
+          ),
+          if (history.length > shown.length) ...[
+            const SizedBox(height: 6),
+            Text(
+              '${history.length - shown.length} older '
+              '${history.length - shown.length == 1 ? 'cast' : 'casts'} kept '
+              '(90 days).',
+              style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmClear(
+    BuildContext context,
+    WidgetRef ref,
+    String profileId,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear cast history?'),
+        content: const Text(
+          'This removes the record of your past casts from this device. '
+          'It does not affect any student data.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await HiveService.clearCastSessions(profileId);
+    ref.invalidate(castSessionHistoryProvider(profileId));
+  }
+}
+
+class _CastHistoryRow extends StatelessWidget {
+  final TvCastSessionSummary summary;
+  const _CastHistoryRow({required this.summary});
+
+  /// "Today, 11:36" / "Yesterday" / "Mon 4 Aug" — recent casts are the ones a
+  /// teacher is placing in their week, so relative beats a raw date.
+  String _when(DateTime? at) {
+    if (at == null) return 'Earlier';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(at.year, at.month, at.day);
+    final hh = at.hour.toString().padLeft(2, '0');
+    final mm = at.minute.toString().padLeft(2, '0');
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return 'Today, $hh:$mm';
+    if (diff == 1) return 'Yesterday, $hh:$mm';
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${days[at.weekday - 1]} ${at.day} ${months[at.month - 1]}';
+  }
+
+  String _modeLabel(CastMode m) => switch (m) {
+    CastMode.flashcards => 'Flashcards',
+    CastMode.fslVideo => 'FSL',
+    CastMode.story => 'Stories',
+    CastMode.progress => 'Progress',
+    CastMode.live => 'Live',
+    CastMode.idle => '',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final d = summary.duration;
+    final mins = d.inMinutes < 1 ? '<1 min' : '${d.inMinutes} min';
+
+    final bits = <String>[];
+    if (summary.cardsShown > 0) bits.add('${summary.cardsShown} cards');
+    if (summary.storyPagesShown > 0) {
+      bits.add('${summary.storyPagesShown} pages');
+    }
+    if (summary.liveQuestionsPushed > 0) {
+      bits.add(
+        '${summary.liveQuestionsPushed} Qs · ${summary.liveAnswers} answers',
+      );
+    }
+
+    final modes = summary.modesUsed.map(_modeLabel).where((s) => s.isNotEmpty);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.history_rounded, size: 18, color: AppColors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_when(summary.startedAt)} · $mins',
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: hc.textPrimary,
+                  ),
+                ),
+                if (modes.isNotEmpty || bits.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      [
+                        if (modes.isNotEmpty) modes.join(' + '),
+                        ...bits,
+                      ].join(' · '),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: hc.textSecondary,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Session summary ───────────────────────────────────
+
+/// The receipt shown when a cast ends.
+///
+/// Casting was otherwise completely ephemeral — a teacher ran a lesson off the
+/// TV and the app kept nothing. This at least tells them what just happened,
+/// in the moment they can still act on it.
+class _SessionSummaryDialog extends StatelessWidget {
+  final TvCastSessionSummary summary;
+  const _SessionSummaryDialog({required this.summary});
+
+  String _duration(Duration d) {
+    if (d.inMinutes < 1) return '${d.inSeconds} sec';
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    if (h > 0) return '$h hr $m min';
+    return '${d.inMinutes} min';
+  }
+
+  String _modeLabel(CastMode m) => switch (m) {
+    CastMode.flashcards => 'Flashcards',
+    CastMode.fslVideo => 'FSL signs',
+    CastMode.story => 'Stories',
+    CastMode.progress => 'Progress',
+    CastMode.live => 'Live Activity',
+    CastMode.idle => '',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final rows = <(IconData, String)>[
+      (Icons.schedule_rounded, '${_duration(summary.duration)} of casting'),
+      if (summary.modesUsed.isNotEmpty)
+        (
+          Icons.cast_rounded,
+          summary.modesUsed.map(_modeLabel).join(' · '),
+        ),
+      if (summary.cardsShown > 0)
+        (Icons.style_rounded, '${summary.cardsShown} cards / signs shown'),
+      if (summary.storyPagesShown > 0)
+        (Icons.menu_book_rounded, '${summary.storyPagesShown} story pages'),
+      if (summary.liveQuestionsPushed > 0)
+        (
+          Icons.quiz_rounded,
+          '${summary.liveQuestionsPushed} live questions · '
+              '${summary.liveAnswers} answers',
+        ),
+      if (summary.peakViewers > 0)
+        (
+          Icons.tv_rounded,
+          '${summary.peakViewers} '
+              '${summary.peakViewers == 1 ? 'TV' : 'TVs'} at once',
+        ),
+    ];
+
+    return AlertDialog(
+      title: const Text('Lesson cast'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final (icon, text) in rows)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, size: 18, color: AppColors.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: hc.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Done'),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Lesson timer ──────────────────────────────────────
+
+/// Sets a countdown the whole room can see, overlaid on whatever is casting.
+///
+/// Ticks locally (a 1 s `setState`) rather than through the provider: the
+/// provider deliberately stores only the deadline, because a per-second state
+/// change would bump the cast revision and make the TV rebuild its stage —
+/// restarting any playing sign clip once a second.
+class _TimerControl extends ConsumerStatefulWidget {
+  final TvCastSession state;
+  const _TimerControl({required this.state});
+
+  @override
+  ConsumerState<_TimerControl> createState() => _TimerControlState();
+}
+
+class _TimerControlState extends ConsumerState<_TimerControl> {
+  Timer? _tick;
+
+  static const _presets = [
+    (label: '1 min', minutes: 1),
+    (label: '3 min', minutes: 3),
+    (label: '5 min', minutes: 5),
+    (label: '10 min', minutes: 10),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && widget.state.timerSecondsLeft != null) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  String _clock(int seconds) {
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+    final left = widget.state.timerSecondsLeft;
+    final paused = widget.state.timerPausedSecondsLeft != null;
+    final finished = widget.state.isTimerFinished;
+
+    return Material(
+      color: hc.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _MiniLabel(
+              icon: Icons.timer_outlined,
+              text: 'Lesson timer',
+              hc: hc,
+            ),
+            const SizedBox(height: 8),
+            if (left == null) ...[
+              Text(
+                'Show a countdown in the corner of the TV — for transitions, '
+                'quiet reading, or "five more minutes". The lesson keeps '
+                'playing underneath it.',
+                style: AppTypography.bodySmall.copyWith(
+                  color: hc.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _presets
+                    .map(
+                      (p) => OutlinedButton(
+                        onPressed: () => notifier.startTimer(
+                          Duration(minutes: p.minutes),
+                        ),
+                        child: Text(p.label),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ] else ...[
+              Row(
+                children: [
+                  Text(
+                    finished ? "Time's up" : _clock(left),
+                    style: AppTypography.headlineSmall.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: finished
+                          ? const Color(0xFFC62828)
+                          : hc.textPrimary,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  if (paused && !finished) ...[
+                    const SizedBox(width: 10),
+                    Text(
+                      'paused',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: hc.textSecondary,
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  if (!finished)
+                    IconButton(
+                      onPressed: paused
+                          ? notifier.resumeTimer
+                          : notifier.pauseTimer,
+                      icon: Icon(
+                        paused
+                            ? Icons.play_arrow_rounded
+                            : Icons.pause_rounded,
+                      ),
+                    ),
+                  IconButton(
+                    onPressed: notifier.clearTimer,
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                finished
+                    ? 'The TV is showing "Time\'s up!". Clear it, or start '
+                          'another.'
+                    : 'Showing on the TV, over the lesson.',
+                style: AppTypography.bodySmall.copyWith(
+                  color: hc.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _presets
+                    .map(
+                      (p) => OutlinedButton(
+                        onPressed: () => notifier.startTimer(
+                          Duration(minutes: p.minutes),
+                        ),
+                        child: Text(p.label),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── TV remote as a control surface ────────────────────
+
+/// Lets the TV's own remote step the lesson, so a teacher at the board doesn't
+/// have to walk back to the tablet. Enforced on the phone, not the TV — turning
+/// it off stops an already-open TV page from driving the cast.
+class _TvRemoteControl extends ConsumerWidget {
+  final TvCastSession state;
+  const _TvRemoteControl({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hc = HCColor.of(context);
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+
+    return Material(
+      color: hc.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
+      ),
+      child: SwitchListTile(
+        value: state.tvRemoteEnabled,
+        onChanged: notifier.setTvRemoteEnabled,
+        secondary: const Icon(Icons.settings_remote_rounded),
+        title: Text(
+          'Control from the TV remote',
+          style: AppTypography.titleSmall.copyWith(
+            fontWeight: FontWeight.w700,
+            color: hc.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          state.tvRemoteEnabled
+              ? 'Press ◀ or ▶ on the TV remote to move between cards, signs or '
+                    'story pages, and play/pause to hold. Handy when you\'re at '
+                    'the board and the tablet is on your desk. (OK still just '
+                    'turns on the TV\'s sound.)'
+              : 'The TV remote can\'t change the lesson. Turn on if you want to '
+                    'step through from the board — or leave off for a screen '
+                    'left unattended.',
+          style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Troubleshoot panel ────────────────────────────────
 
 class _TroubleshootPanel extends StatelessWidget {
@@ -815,8 +1725,15 @@ class _TroubleshootPanel extends StatelessWidget {
         ),
         _Tip(
           text:
-              'Keep this screen open while casting — the server runs from '
-              'this screen.',
+              'You can leave this screen — the cast keeps running. A "Casting '
+              'to TV" bar stays at the bottom of the app so you can pause or '
+              'skip from anywhere, and tapping it brings you back here.',
+        ),
+        _Tip(
+          text:
+              'Only TVs that open your exact cast link (it ends in your cast '
+              'code) can see the lesson. Starting a new cast makes a new code '
+              'and retires the old link.',
         ),
         _Tip(
           text:
@@ -1927,10 +2844,7 @@ class _CastPreview extends StatelessWidget {
         final card = cards[idx];
         return Row(
           children: [
-            Text(
-              FlashcardEmojis.forId(card.id),
-              style: const TextStyle(fontSize: 40),
-            ),
+            FlashcardPicture(card: card, extent: 46),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -1974,9 +2888,13 @@ class _CastPreview extends StatelessWidget {
         final s = story.first;
         final total = s.sentencesEn.length;
         final page = state.storyPageIndex.clamp(0, total - 1);
+        final finished = state.storyFinished;
         return Row(
           children: [
-            Text(s.emoji, style: const TextStyle(fontSize: 40)),
+            Text(
+              finished ? '🎉' : s.emoji,
+              style: const TextStyle(fontSize: 40),
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -1991,7 +2909,10 @@ class _CastPreview extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Page ${page + 1} / $total',
+                    finished
+                        ? 'Finished — the TV is showing "The End". '
+                              'Back re-reads the last page.'
+                        : 'Page ${page + 1} / $total',
                     style: AppTypography.labelSmall.copyWith(
                       color: hc.textSecondary,
                     ),
