@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'classroom_management_provider.dart';
 import 'firestore_stream_helpers.dart';
@@ -147,8 +151,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 }
 
-final settingsProvider =
-    NotifierProvider<SettingsNotifier, AppSettings>(
+final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(
   SettingsNotifier.new,
 );
 
@@ -205,8 +208,7 @@ class ProfileNotifier extends Notifier<UserProfile?> {
   Future<void> viewAsStudent(UserProfile studentProfile) async {
     final current = state;
     if (current != null &&
-        (current.role == UserRole.teacher ||
-         current.role == UserRole.parent)) {
+        (current.role == UserRole.teacher || current.role == UserRole.parent)) {
       _savedEducatorProfile = current;
     }
     await setProfile(studentProfile);
@@ -254,8 +256,7 @@ class ProfileNotifier extends Notifier<UserProfile?> {
   }
 }
 
-final profileProvider =
-    NotifierProvider<ProfileNotifier, UserProfile?>(
+final profileProvider = NotifierProvider<ProfileNotifier, UserProfile?>(
   ProfileNotifier.new,
 );
 
@@ -269,9 +270,9 @@ final allFlashcardsProvider = Provider<List<Flashcard>>((ref) {
 
 final flashcardsByCategoryProvider =
     Provider.family<List<Flashcard>, FlashcardCategory>((ref, category) {
-  final all = ref.watch(allFlashcardsProvider);
-  return all.where((f) => f.category == category).toList();
-});
+      final all = ref.watch(allFlashcardsProvider);
+      return all.where((f) => f.category == category).toList();
+    });
 
 final decksProvider = Provider<List<FlashcardDeck>>((ref) {
   return SeedData.defaultDecks;
@@ -287,10 +288,7 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     final profile = ref.watch(profileProvider);
     if (profile == null) {
       profileId = '';
-      return LearningProgress(
-        profileId: '',
-        lastActivityDate: DateTime.now(),
-      );
+      return LearningProgress(profileId: '', lastActivityDate: DateTime.now());
     }
     profileId = profile.id;
 
@@ -305,6 +303,46 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     });
 
     return HiveService.getProgress(profileId);
+  }
+
+  /// Re-reads the distinct-signs set from storage.
+  ///
+  /// `HiveService.recordFslVideoView` is a static call made from six different
+  /// surfaces and does not go through this notifier, so nothing here knows a
+  /// sign was watched. Without this the Signs stat on the progress screen and
+  /// the sign achievements sit one view behind until something unrelated
+  /// happens to rebuild progress.
+  ///
+  /// Deliberately not followed by `saveProgress`: `signedWordKeys` lives in its
+  /// own Hive key precisely so those six writers don't have to round-trip a
+  /// whole progress row, and writing it back here could clobber a view recorded
+  /// elsewhere. See [LearningProgress.signedWordKeys].
+  void refreshSignsWatched() {
+    if (profileId.isEmpty) return;
+    final signs = HiveService.fslWordsViewed(profileId);
+    if (signs.length == state.signedWordKeys.length) return;
+    state = state.copyWith(signedWordKeys: signs);
+  }
+
+  /// Re-reads the self-claimed and educator-confirmed sign sets from storage.
+  ///
+  /// Same reason as [refreshSignsWatched]: mastery is written through static
+  /// `HiveService` calls (Sign It, the dictionary sheet, the educator's Sign
+  /// Check screen), none of which go through this notifier, so nothing here
+  /// would otherwise know a claim or a confirmation had changed — and the
+  /// confirmed set feeds XP and two achievements.
+  void refreshSignMastery() {
+    if (profileId.isEmpty) return;
+    final claimed = HiveService.fslCanSignKeys(profileId);
+    final confirmed = HiveService.fslEverConfirmedKeys(profileId);
+    if (claimed.length == state.canSignKeys.length &&
+        confirmed.length == state.everConfirmedSignKeys.length) {
+      return;
+    }
+    state = state.copyWith(
+      canSignKeys: claimed,
+      everConfirmedSignKeys: confirmed,
+    );
   }
 
   void addWordsLearned(int count) {
@@ -353,8 +391,9 @@ class ProgressNotifier extends Notifier<LearningProgress> {
   /// multiple activities the same day never decrements or double-counts.
   /// A redundant cloud write is skipped when nothing changed the same day.
   void recordDailyActivity() {
-    final streaksEnabled = ExperimentService.getConfig(profileId)
-        .isFeatureEnabled(GamificationFeature.streaks);
+    final streaksEnabled = ExperimentService.getConfig(
+      profileId,
+    ).isFeatureEnabled(GamificationFeature.streaks);
     final now = DateTime.now();
     final newStreak = streaksEnabled
         ? StreakService.nextStreak(
@@ -372,6 +411,9 @@ class ProgressNotifier extends Notifier<LearningProgress> {
 
     state = state.copyWith(
       streakDays: newStreak,
+      // High-water mark: the current streak resets on a missed day, this does
+      // not, so XP (and the level it drives) survives the gap.
+      bestStreakDays: math.max(state.effectiveBestStreak, newStreak),
       lastActivityDate: now,
     );
 
@@ -400,14 +442,17 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     required int starsEarned,
     List<FlashcardCategory> categoriesPlayed = const [],
     int? durationSeconds,
+
     /// Word IDs correctly answered in this session (for unique tracking)
     Set<String> correctWordIds = const {},
+
     /// The difficulty the game was played at (for adaptive tracking).
     GameDifficulty? playedDifficulty,
   }) {
     // ─── Experiment gating ────────────────────────────
     final experimentConfig = ExperimentService.getConfig(profileId);
-    final effectiveStars = experimentConfig.isFeatureEnabled(GamificationFeature.stars)
+    final effectiveStars =
+        experimentConfig.isFeatureEnabled(GamificationFeature.stars)
         ? starsEarned
         : 0;
     final newScore = GameScore(
@@ -435,7 +480,9 @@ class ProgressNotifier extends Notifier<LearningProgress> {
 
     // Update streak (gated by experiment config). Calendar-day math lives in
     // StreakService so this path stays consistent with recordDailyActivity().
-    final streaksEnabled = experimentConfig.isFeatureEnabled(GamificationFeature.streaks);
+    final streaksEnabled = experimentConfig.isFeatureEnabled(
+      GamificationFeature.streaks,
+    );
     final now = DateTime.now();
     final newStreak = streaksEnabled
         ? StreakService.nextStreak(
@@ -448,14 +495,30 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     // Track unique learned words
     final newLearnedIds = Set<String>.from(state.learnedWordIds)
       ..addAll(correctWordIds);
+    final newWords = newLearnedIds.length - state.learnedWordIds.length;
+
+    // Day ledger: the only record that can answer "what did I do this week?"
+    // once `recentScores` has trimmed the week away.
+    HiveService.addDailyActivity(
+      profileId,
+      games: 1,
+      stars: effectiveStars,
+      words: newWords,
+      on: now,
+    );
 
     state = state.copyWith(
       totalStars: state.totalStars + effectiveStars,
       wordsLearned: newLearnedIds.length,
       learnedWordIds: newLearnedIds,
       recentScores: scores,
+      // Lifetime total, unlike `scores` which is trimmed to the last 20 above.
+      gamesPlayed: state.effectiveGamesPlayed + 1,
+      // Lifetime roster of games tried, for the same reason.
+      playedGameTypes: {...state.effectivePlayedGameTypes, gameType},
       categoryProgress: updated,
       streakDays: newStreak,
+      bestStreakDays: math.max(state.effectiveBestStreak, newStreak),
       lastActivityDate: now,
     );
     HiveService.saveProgress(state);
@@ -476,8 +539,7 @@ class ProgressNotifier extends Notifier<LearningProgress> {
       AdaptiveDifficultyService.recordGameResult(
         profileId: profileId,
         gameType: gameType,
-        category:
-            categoriesPlayed.isNotEmpty ? categoriesPlayed.first : null,
+        category: categoriesPlayed.isNotEmpty ? categoriesPlayed.first : null,
         score: score,
         total: total,
         playedDifficulty: playedDifficulty,
@@ -538,9 +600,20 @@ class ProgressNotifier extends Notifier<LearningProgress> {
       previouslyUnlockedIds: previousIds,
     );
 
-    if (newlyUnlocked.isNotEmpty) {
-      final allUnlocked = Achievements.unlockedIds(state);
-      HiveService.saveUnlockedAchievements(profileId, allUnlocked);
+    // Union, never replace. This used to write `Achievements.unlockedIds` —
+    // the *currently* true set — which meant any badge the live check no
+    // longer reported was deleted from Hive the next time some other badge
+    // unlocked, and then pushed to Firestore as the new truth. A learner could
+    // lose four streak badges by being ill for a weekend.
+    final durable = Achievements.durableUnlockedIds(
+      progress: state,
+      previouslyUnlockedIds: previousIds,
+    );
+    // Also writes when nothing is *newly* unlocked but the stored set is stale
+    // — a legacy row that never had the badge recorded, or one holding the id
+    // of an achievement since retired.
+    if (!setEquals(durable, previousIds)) {
+      HiveService.saveUnlockedAchievements(profileId, durable);
     }
 
     return newlyUnlocked;
@@ -581,6 +654,7 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     HiveService.saveEquippedItem(profileId, typeKey, itemId);
     // Trigger a state rebuild so listeners update
     state = state.copyWith();
+    _syncEquippedLook();
     return true;
   }
 
@@ -589,6 +663,28 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     final typeKey = type.name;
     HiveService.saveEquippedItem(profileId, typeKey, null);
     state = state.copyWith();
+    _syncEquippedLook();
+  }
+
+  /// Pushes the profile so a newly equipped look reaches other devices, and
+  /// therefore the leaderboard a classmate is looking at.
+  ///
+  /// Fire-and-forget and failure-tolerant on purpose: equipping is a local,
+  /// instant action that must not wait on the network or break when it is
+  /// absent. [FirestoreRepository.saveProfile] re-reads the equipped rows from
+  /// Hive as it writes, so whatever is current at push time is what travels —
+  /// which also means an equip made offline is carried by the next ordinary
+  /// profile sync rather than being lost.
+  void _syncEquippedLook() {
+    final profile = ref.read(profileProvider);
+    if (profile == null || profile.isGuestPlayer) return;
+    unawaited(() async {
+      try {
+        await const LocalRepository().saveProfile(profile);
+      } catch (e, stack) {
+        ErrorHandler.report(e, stack, 'syncEquippedLook:silent');
+      }
+    }());
   }
 
   /// Get the equipped item ID for a given type, or null if none.
@@ -602,22 +698,78 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     if (itemId == null) return null;
     return ShopData.findById(itemId);
   }
+
+  /// Gives back the stars spent on items that have since been withdrawn from
+  /// sale, and returns the total refunded (0 when there was nothing to undo).
+  ///
+  /// Withdrawing an item the learner already paid for would otherwise just
+  /// delete something they earned. This makes the correction whole: the item
+  /// leaves their inventory, is unequipped if it was equipped, and the stars
+  /// go back on the balance to spend on something that works.
+  ///
+  /// Safe to call on every shop visit — it is a no-op once nothing withdrawn
+  /// is owned, and it never touches [LearningProgress.totalStars], so a refund
+  /// cannot inflate lifetime earnings or XP (see [XpLevelService]).
+  int refundWithdrawnPurchases() {
+    final purchased = HiveService.getPurchasedItems(profileId);
+    final toRefund = purchased.intersection(ShopData.withdrawnIds);
+    if (toRefund.isEmpty) return 0;
+
+    var refunded = 0;
+    for (final id in toRefund) {
+      final item = ShopData.findById(id);
+      if (item == null) continue;
+      refunded += item.cost;
+      purchased.remove(id);
+      // Drop the equip too, or the profile keeps pointing at something it no
+      // longer owns.
+      if (getEquippedItemId(item.type) == id) {
+        HiveService.saveEquippedItem(profileId, item.type.name, null);
+      }
+    }
+    if (refunded == 0) return 0;
+
+    HiveService.savePurchasedItems(profileId, purchased);
+    // Refund by un-spending, never by granting: spentStars is the only half of
+    // the balance that may move backwards.
+    state = state.copyWith(
+      spentStars: (state.spentStars - refunded).clamp(0, state.spentStars),
+    );
+    HiveService.saveProgress(state);
+    return refunded;
+  }
 }
 
-final progressProvider =
-    NotifierProvider<ProgressNotifier, LearningProgress>(
+final progressProvider = NotifierProvider<ProgressNotifier, LearningProgress>(
   ProgressNotifier.new,
 );
+
+/// Every badge the active learner holds — stored union live.
+///
+/// The single answer for "which badges does this learner have?". The Progress
+/// tab used to compute the live set itself while the Player Profile, the
+/// student detail sheet, the showcase and the printed reports all read the
+/// stored set, so the same learner could be shown two different badge walls on
+/// two screens. See [Achievements.durableUnlockedIds].
+final unlockedAchievementsProvider = Provider<Set<String>>((ref) {
+  final progress = ref.watch(progressProvider);
+  return Achievements.durableUnlockedIds(
+    progress: progress,
+    previouslyUnlockedIds: HiveService.getUnlockedAchievements(
+      progress.profileId,
+    ),
+  );
+});
 
 // ─── All Profiles Provider (for multi-student dashboard) ────
 
 final allProfilesWithProgressProvider =
     Provider<List<(UserProfile, LearningProgress)>>((ref) {
-  // Re-evaluate when profiles or progress change so educator views stay fresh
-  ref.watch(profileProvider);
-  ref.watch(progressProvider);
-  return HiveService.getAllProfilesWithProgress();
-});
+      // Re-evaluate when profiles or progress change so educator views stay fresh
+      ref.watch(profileProvider);
+      ref.watch(progressProvider);
+      return HiveService.getAllProfilesWithProgress();
+    });
 
 // ─── Educator Roster Provider (Firestore-backed) ───────
 //
@@ -634,67 +786,75 @@ final allProfilesWithProgressProvider =
 // teachers and parents; the legacy `teacherId` callsites still work since
 // the binding is positional.
 final educatorRosterProvider =
-    FutureProvider.family<List<(UserProfile, LearningProgress)>, String>(
-        (ref, educatorProfileId) async {
-  if (!FirebaseService.isConfigured) {
-    // Offline branch: union classroom + home-group children from local Hive.
-    // We also keep the previous "all student profiles" fallback so a single-
-    // device demo (no rosters set up) still shows something.
-    final homeGroupChildIds = HiveService.getHomeGroupsByOwner(educatorProfileId)
-        .expand((g) => HiveService.getHomeGroupMembers(g.id))
-        .map((m) => m.profileId)
-        .toSet();
-    return ref.watch(allProfilesWithProgressProvider)
-        .where((p) =>
-            (p.$1.role == UserRole.student ||
-                    p.$1.role == UserRole.child) &&
-                !p.$1.isGuestPlayer ||
-            homeGroupChildIds.contains(p.$1.id))
-        .toList();
-  }
-  // Re-run reactively when the classroom / home-group list or any member
-  // roster changes. Mirrors the wiring on `teacherDashboardSnapshotProvider`.
-  final classroomsAsync =
-      ref.watch(classroomsByTeacherStreamProvider(educatorProfileId));
-  final homeGroupsAsync =
-      ref.watch(homeGroupsByOwnerStreamProvider(educatorProfileId));
-  final classrooms = classroomsAsync.valueOrNull ?? const [];
-  final homeGroups = homeGroupsAsync.valueOrNull ?? const [];
-  for (final c in classrooms) {
-    ref.watch(classroomMembersProvider(c.id));
-  }
-  for (final g in homeGroups) {
-    ref.watch(homeGroupMembersProvider(g.id));
-  }
-
-  const remote = FirestoreRepository();
-  final aggregated = <(UserProfile, LearningProgress)>[];
-  final seen = <String>{};
-
-  // Classroom-side roster (teachers)
-  for (final c in classrooms) {
-    final pairs = await remote.getStudentsWithProgressByClassroom(c.id);
-    for (final pair in pairs) {
-      // De-dup in case a child is listed under two classrooms.
-      if (seen.add(pair.$1.id)) {
-        aggregated.add(pair);
+    FutureProvider.family<List<(UserProfile, LearningProgress)>, String>((
+      ref,
+      educatorProfileId,
+    ) async {
+      if (!FirebaseService.isConfigured) {
+        // Offline branch: union classroom + home-group children from local Hive.
+        // We also keep the previous "all student profiles" fallback so a single-
+        // device demo (no rosters set up) still shows something.
+        final homeGroupChildIds =
+            HiveService.getHomeGroupsByOwner(educatorProfileId)
+                .expand((g) => HiveService.getHomeGroupMembers(g.id))
+                .map((m) => m.profileId)
+                .toSet();
+        return ref
+            .watch(allProfilesWithProgressProvider)
+            .where(
+              (p) =>
+                  (p.$1.role == UserRole.student ||
+                          p.$1.role == UserRole.child) &&
+                      !p.$1.isGuestPlayer ||
+                  homeGroupChildIds.contains(p.$1.id),
+            )
+            .toList();
       }
-    }
-  }
-
-  // Home-group-side roster (parents) — same de-dup set so a child who
-  // appears in BOTH a classroom and a home group is counted once.
-  for (final g in homeGroups) {
-    final pairs = await remote.getChildrenWithProgressByHomeGroup(g.id);
-    for (final pair in pairs) {
-      if (seen.add(pair.$1.id)) {
-        aggregated.add(pair);
+      // Re-run reactively when the classroom / home-group list or any member
+      // roster changes. Mirrors the wiring on `teacherDashboardSnapshotProvider`.
+      final classroomsAsync = ref.watch(
+        classroomsByTeacherStreamProvider(educatorProfileId),
+      );
+      final homeGroupsAsync = ref.watch(
+        homeGroupsByOwnerStreamProvider(educatorProfileId),
+      );
+      final classrooms = classroomsAsync.valueOrNull ?? const [];
+      final homeGroups = homeGroupsAsync.valueOrNull ?? const [];
+      for (final c in classrooms) {
+        ref.watch(classroomMembersProvider(c.id));
       }
-    }
-  }
+      for (final g in homeGroups) {
+        ref.watch(homeGroupMembersProvider(g.id));
+      }
 
-  return aggregated;
-});
+      const remote = FirestoreRepository();
+      final aggregated = <(UserProfile, LearningProgress)>[];
+      final seen = <String>{};
+
+      // Classroom-side roster (teachers)
+      for (final c in classrooms) {
+        final pairs = await remote.getStudentsWithProgressByClassroom(c.id);
+        for (final pair in pairs) {
+          // De-dup in case a child is listed under two classrooms.
+          if (seen.add(pair.$1.id)) {
+            aggregated.add(pair);
+          }
+        }
+      }
+
+      // Home-group-side roster (parents) — same de-dup set so a child who
+      // appears in BOTH a classroom and a home group is counted once.
+      for (final g in homeGroups) {
+        final pairs = await remote.getChildrenWithProgressByHomeGroup(g.id);
+        for (final pair in pairs) {
+          if (seen.add(pair.$1.id)) {
+            aggregated.add(pair);
+          }
+        }
+      }
+
+      return aggregated;
+    });
 
 // ─── Session Tracker Provider ──────────────────────────
 
@@ -715,8 +875,7 @@ final sessionTrackerProvider = Provider<SessionTracker?>((ref) {
 
 // ─── Learning Path Provider ────────────────────────────
 
-class LearningPathNotifier
-    extends Notifier<Map<String, LearningPathProgress>> {
+class LearningPathNotifier extends Notifier<Map<String, LearningPathProgress>> {
   late String profileId;
 
   @override
@@ -724,8 +883,9 @@ class LearningPathNotifier
     final profile = ref.watch(profileProvider);
     profileId = profile?.id ?? '';
     final all = HiveService.getAllLearningPathProgress(profileId);
-    return all.map((pathId, json) =>
-        MapEntry(pathId, LearningPathProgress.fromJson(json)));
+    return all.map(
+      (pathId, json) => MapEntry(pathId, LearningPathProgress.fromJson(json)),
+    );
   }
 
   LearningPathProgress? getProgress(String pathId) => state[pathId];
@@ -741,12 +901,19 @@ class LearningPathNotifier
     updated[pathId] = progress;
     state = updated;
     await HiveService.saveLearningPathProgress(
-        profileId, pathId, progress.toJson());
+      profileId,
+      pathId,
+      progress.toJson(),
+    );
   }
 
   /// Mark a step as completed with the given score.
   Future<void> completeStep(
-      String pathId, int stepIndex, double score, int totalSteps) async {
+    String pathId,
+    int stepIndex,
+    double score,
+    int totalSteps,
+  ) async {
     final current = state[pathId];
     if (current == null) return;
 
@@ -773,7 +940,10 @@ class LearningPathNotifier
     newState[pathId] = updated;
     state = newState;
     await HiveService.saveLearningPathProgress(
-        profileId, pathId, updated.toJson());
+      profileId,
+      pathId,
+      updated.toJson(),
+    );
   }
 
   /// Check if a path is unlocked (prerequisite completed or initially unlocked).
@@ -785,10 +955,10 @@ class LearningPathNotifier
   }
 }
 
-final learningPathProvider = NotifierProvider<LearningPathNotifier,
-    Map<String, LearningPathProgress>>(
-  LearningPathNotifier.new,
-);
+final learningPathProvider =
+    NotifierProvider<LearningPathNotifier, Map<String, LearningPathProgress>>(
+      LearningPathNotifier.new,
+    );
 
 // ─── Sync Queue Providers ──────────────────────────────
 
@@ -878,8 +1048,8 @@ class SyncQueueStatusNotifier extends Notifier<SyncQueueStatus> {
 
 final syncQueueStatusProvider =
     NotifierProvider<SyncQueueStatusNotifier, SyncQueueStatus>(
-  SyncQueueStatusNotifier.new,
-);
+      SyncQueueStatusNotifier.new,
+    );
 
 // ─── Goals Provider ────────────────────────────────────
 
@@ -914,8 +1084,7 @@ class GoalsNotifier extends Notifier<List<LearningGoal>> {
       state.where((g) => g.status == GoalStatus.completed).toList();
 }
 
-final goalsProvider =
-    NotifierProvider<GoalsNotifier, List<LearningGoal>>(
+final goalsProvider = NotifierProvider<GoalsNotifier, List<LearningGoal>>(
   GoalsNotifier.new,
 );
 
@@ -927,7 +1096,7 @@ final goalsProvider =
 ///
 /// Caller `invalidate(recoveryCodeProvider(profileId))` after generating
 /// a new code so the screen re-reads the freshly-created doc.
-final recoveryCodeProvider =
-    FutureProvider.autoDispose.family<RecoveryCodeRecord?, String>(
-  (ref, profileId) => RecoveryCodeService.findActiveForProfile(profileId),
-);
+final recoveryCodeProvider = FutureProvider.autoDispose
+    .family<RecoveryCodeRecord?, String>(
+      (ref, profileId) => RecoveryCodeService.findActiveForProfile(profileId),
+    );

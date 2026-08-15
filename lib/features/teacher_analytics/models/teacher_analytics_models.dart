@@ -77,8 +77,11 @@ class StudentAnalytics {
   }
 
   /// Build from a profile + progress pair
-  factory StudentAnalytics.from(UserProfile profile, LearningProgress progress,
-      {Duration studyTime = Duration.zero}) {
+  factory StudentAnalytics.from(
+    UserProfile profile,
+    LearningProgress progress, {
+    Duration studyTime = Duration.zero,
+  }) {
     // Calculate average accuracy from recent scores
     double avgAccuracy = 0.0;
     if (progress.recentScores.isNotEmpty) {
@@ -112,7 +115,7 @@ class StudentAnalytics {
       wordsLearned: progress.wordsLearned,
       totalStars: progress.totalStars,
       streakDays: progress.streakDays,
-      gamesPlayed: progress.recentScores.length,
+      gamesPlayed: progress.effectiveGamesPlayed,
       averageAccuracy: avgAccuracy,
       categoryProgress: progress.categoryProgress,
       strongestCategory: strongest,
@@ -151,8 +154,16 @@ class ClassAnalytics {
     required this.studentsNeedingHelp,
   });
 
-  /// Build from a list of student analytics
-  factory ClassAnalytics.fromStudents(List<StudentAnalytics> students) {
+  /// Build from a list of student analytics.
+  ///
+  /// [now] is injectable so the "active in the last 7 days" and "needs help"
+  /// windows can be evaluated against a fixed clock in tests — otherwise a
+  /// test's hard-coded `lastActive` dates silently age past the window and the
+  /// suite starts failing on a calendar date rather than a code change.
+  factory ClassAnalytics.fromStudents(
+    List<StudentAnalytics> students, {
+    DateTime? now,
+  }) {
     if (students.isEmpty) {
       return const ClassAnalytics(
         totalStudents: 0,
@@ -167,10 +178,9 @@ class ClassAnalytics {
       );
     }
 
-    final now = DateTime.now();
-    final weekAgo = now.subtract(const Duration(days: 7));
-    final active =
-        students.where((s) => s.lastActive.isAfter(weekAgo)).length;
+    final asOf = now ?? DateTime.now();
+    final weekAgo = asOf.subtract(const Duration(days: 7));
+    final active = students.where((s) => s.lastActive.isAfter(weekAgo)).length;
 
     // Average over learners who actually have graded games. Including
     // never-played learners (accuracy 0.0) dragged the class average toward
@@ -179,13 +189,10 @@ class ClassAnalytics {
     final avgAccuracy = graded.isEmpty
         ? 0.0
         : graded.fold<double>(0, (s, a) => s + a.averageAccuracy) /
-            graded.length;
-    final totalWords =
-        students.fold<int>(0, (s, a) => s + a.wordsLearned);
-    final totalStars =
-        students.fold<int>(0, (s, a) => s + a.totalStars);
-    final totalGames =
-        students.fold<int>(0, (s, a) => s + a.gamesPlayed);
+              graded.length;
+    final totalWords = students.fold<int>(0, (s, a) => s + a.wordsLearned);
+    final totalStars = students.fold<int>(0, (s, a) => s + a.totalStars);
+    final totalGames = students.fold<int>(0, (s, a) => s + a.gamesPlayed);
 
     // Aggregate category averages
     final catSums = <String, double>{};
@@ -219,15 +226,17 @@ class ClassAnalytics {
       }
     }
 
-    final needHelp =
-        students.where((s) => s.standing(now: now).needsHelp).toList();
+    final needHelp = students
+        .where((s) => s.standing(now: asOf).needsHelp)
+        .toList();
 
     // Rank by demonstrated learning, then break ties so the order is stable
     // and meaningful: words → accuracy → stars → games → name. Sorting on
     // words alone put learners with identical (often zero) word counts in
     // arbitrary order, which handed the top medals to inactive learners
     // while a 100%-accuracy learner ranked near the bottom.
-    final ranked = [...students]..sort((a, b) {
+    final ranked = [...students]
+      ..sort((a, b) {
         final byWords = b.wordsLearned.compareTo(a.wordsLearned);
         if (byWords != 0) return byWords;
         final byAccuracy = b.averageAccuracy.compareTo(a.averageAccuracy);

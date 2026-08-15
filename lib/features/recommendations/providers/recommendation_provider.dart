@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/accessibility/game_catalog.dart';
 import '../../../providers/app_providers.dart';
 import '../models/recommendation_models.dart';
 import '../services/recommendation_service.dart';
@@ -29,5 +30,8 @@ final recommendationProvider = Provider<RecommendationSnapshot>((ref) {
     progress: progress,
     pathProgress: pathProgress,
     interests: profile.interests,
+    // Suggest only games this learner's own Games tab offers, so a
+    // recommendation can't deep-link past their accessibility roster.
+    gameRoster: ref.watch(gameHubCatalogProvider).games,
   );
 });

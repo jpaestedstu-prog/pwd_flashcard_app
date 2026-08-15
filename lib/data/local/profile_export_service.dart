@@ -230,6 +230,12 @@ class ProfileExportService {
         'lastActivityDate': p.lastActivityDate.toIso8601String(),
         'totalStars': p.totalStars,
         'spentStars': p.spentStars,
+        // Lifetime high-water marks. A backup that omits them restores a
+        // learner who has "never" had a long streak or tried a second game —
+        // which costs them XP, their level, and their badges.
+        'bestStreakDays': p.effectiveBestStreak,
+        'gamesPlayed': p.effectiveGamesPlayed,
+        'playedGameTypes': gameTypeNames(p.effectivePlayedGameTypes),
         'categoryProgress': p.categoryProgress,
         'recentScores': p.recentScores
             .map((s) => {
@@ -278,6 +284,11 @@ class ProfileExportService {
       lastActivityDate: DateTime.parse(m['lastActivityDate'] as String),
       totalStars: m['totalStars'] ?? 0,
       spentStars: m['spentStars'] ?? 0,
+      // Absent from backups written before these were exported; the model's
+      // `effective*` getters heal the 0 from whatever the row still holds.
+      bestStreakDays: m['bestStreakDays'] ?? 0,
+      gamesPlayed: m['gamesPlayed'] ?? 0,
+      playedGameTypes: gameTypesFromNames(m['playedGameTypes']),
       categoryProgress: Map<String, double>.from(m['categoryProgress'] ?? {}),
       recentScores: scores,
     );

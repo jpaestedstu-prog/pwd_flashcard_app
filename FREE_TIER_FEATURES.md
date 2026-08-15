@@ -70,7 +70,7 @@ working from Hive, and pending cloud writes queue for later replay.
 | Product | Used here? | Why it would cost money |
 |---|:---:|---|
 | Cloud Functions | ❌ No | Deploying any function requires the Blaze plan. The app does server-side integrity checks client-side instead. |
-| Cloud Storage | ❌ No | All assets are bundled or generated on-device; FSL videos are downloaded from GitHub Releases / Streamable and cached locally, not from Firebase Storage. |
+| Cloud Storage | ❌ No | All assets are bundled or generated on-device; FSL videos are downloaded from GitHub Releases / Cloudinary and cached locally, not from Firebase Storage. |
 | Firebase Cloud Messaging (outbound push) | ❌ No | No `firebase_messaging` dependency; all reminders are local notifications. |
 
 `pubspec.yaml` confirms the absence of `cloud_functions`, `firebase_storage`, and

@@ -14,6 +14,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
+import '../../../features/gaze_control/providers/gaze_settings_provider.dart';
+import '../../../features/gaze_control/widgets/gaze_dpad_scope.dart';
 import '../../../providers/app_providers.dart';
 
 /// Screen shown when multiple profiles exist on the device.
@@ -27,8 +29,7 @@ class ProfileSwitcherScreen extends ConsumerStatefulWidget {
       _ProfileSwitcherScreenState();
 }
 
-class _ProfileSwitcherScreenState
-    extends ConsumerState<ProfileSwitcherScreen> {
+class _ProfileSwitcherScreenState extends ConsumerState<ProfileSwitcherScreen> {
   List<UserProfile> _profiles = [];
 
   @override
@@ -39,18 +40,19 @@ class _ProfileSwitcherScreenState
 
   void _loadProfiles() {
     final rawProfiles = HiveService.getProfiles();
-    final loaded = rawProfiles
-        .map((data) => HiveService.getProfileById(data['id'] as String))
-        .whereType<UserProfile>()
-        .toList()
-      // Stable, predictable order so the list never reshuffles between
-      // launches. It previously followed Hive's box order, which changed
-      // whenever a profile was re-saved on selection — the just-used profile
-      // drifted to the bottom, breaking muscle memory on a shared tablet
-      // (especially hard for cognitive-disability users). Sorting by creation
-      // time keeps every profile in the same slot, with newly added ones
-      // appended at the end.
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final loaded =
+        rawProfiles
+            .map((data) => HiveService.getProfileById(data['id'] as String))
+            .whereType<UserProfile>()
+            .toList()
+          // Stable, predictable order so the list never reshuffles between
+          // launches. It previously followed Hive's box order, which changed
+          // whenever a profile was re-saved on selection — the just-used profile
+          // drifted to the bottom, breaking muscle memory on a shared tablet
+          // (especially hard for cognitive-disability users). Sorting by creation
+          // time keeps every profile in the same slot, with newly added ones
+          // appended at the end.
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     setState(() {
       _profiles = loaded;
     });
@@ -78,6 +80,43 @@ class _ProfileSwitcherScreenState
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hc = HCColor.of(context);
 
+    // Hands-free entry. This screen is the app's front door and it used to be
+    // touch-only, so a gaze learner could not even reach their own profile —
+    // every hands-free feature behind it was unreachable without help. One
+    // profile per row so ▲ ▼ walks the roster the way it reads, with
+    // "Add New Profile" as the last row.
+    final dpadRows = <List<GazeDpadCell>>[
+      for (final profile in _profiles)
+        [
+          GazeDpadCell(
+            label: profile.name,
+            onActivate: () => _selectProfile(profile),
+          ),
+        ],
+      [
+        GazeDpadCell(
+          label: 'Add New Profile',
+          onActivate: () => context.go('/profile'),
+        ),
+      ],
+    ];
+
+    return GazeDpadScope(
+      rows: dpadRows,
+      // Not the ambient settings: the device still remembers whoever signed in
+      // last, and a picker that followed *their* configuration would lock a
+      // gaze learner out of reaching their own profile.
+      settingsOverride: ref.watch(gazePickerSettingsProvider),
+      builder: (context, gaze) => _buildBody(context, gaze, isDark, hc),
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context,
+    GazeDpadState gaze,
+    bool isDark,
+    HCColor hc,
+  ) {
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -98,9 +137,7 @@ class _ProfileSwitcherScreenState
               const SizedBox(height: 40),
               Text(
                 '${AppLocalizations.of(context)!.welcomeBack} 👋',
-                style: AppTypography.displayMedium.copyWith(
-                  color: hc.primary,
-                ),
+                style: AppTypography.displayMedium.copyWith(color: hc.primary),
               ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.2, end: 0),
               const SizedBox(height: 8),
               Text(
@@ -128,6 +165,7 @@ class _ProfileSwitcherScreenState
                       child: _ProfileCard(
                         profile: profile,
                         avatar: avatar,
+                        highlighted: gaze.isFocused(index, 0),
                         onTap: () => _selectProfile(profile),
                       ),
                     );
@@ -136,8 +174,10 @@ class _ProfileSwitcherScreenState
               ),
               // Add new profile button
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: SizedBox(
                   width: double.infinity,
                   height: 56,
@@ -147,7 +187,13 @@ class _ProfileSwitcherScreenState
                     label: Text(AppLocalizations.of(context)!.addNewProfile),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary, width: 2),
+                      // Last gaze row — ring it the same way as the cards.
+                      side: gaze.isFocused(_profiles.length, 0)
+                          ? const BorderSide(color: AppColors.accent, width: 4)
+                          : const BorderSide(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -167,12 +213,16 @@ class _ProfileSwitcherScreenState
 class _ProfileCard extends StatelessWidget {
   final UserProfile profile;
   final AvatarOption avatar;
+
+  /// The hands-free D-pad is resting on this profile.
+  final bool highlighted;
   final VoidCallback onTap;
 
   const _ProfileCard({
     required this.profile,
     required this.avatar,
     required this.onTap,
+    this.highlighted = false,
   });
 
   @override
@@ -187,15 +237,14 @@ class _ProfileCard extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              hc.surface,
-              avatar.color.withValues(alpha: 0.04),
-            ],
+            colors: [hc.surface, avatar.color.withValues(alpha: 0.04)],
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: avatar.color.withValues(alpha: 0.2),
-            width: 1.5,
+            color: highlighted
+                ? AppColors.accent
+                : avatar.color.withValues(alpha: 0.2),
+            width: highlighted ? 4 : 1.5,
           ),
           boxShadow: [
             BoxShadow(
@@ -225,8 +274,7 @@ class _ProfileCard extends StatelessWidget {
                 ],
               ),
               child: Center(
-                child: Text(avatar.emoji,
-                    style: const TextStyle(fontSize: 32)),
+                child: Text(avatar.emoji, style: const TextStyle(fontSize: 32)),
               ),
             ),
             const SizedBox(width: 16),
@@ -278,12 +326,18 @@ class _ProfileCard extends StatelessWidget {
                   color: AppColors.warning.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.lock_rounded,
-                    size: 20, color: AppColors.warning),
+                child: const Icon(
+                  Icons.lock_rounded,
+                  size: 20,
+                  color: AppColors.warning,
+                ),
               )
             else
-              const Icon(Icons.arrow_forward_ios_rounded,
-                  size: 18, color: AppColors.textHint),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 18,
+                color: AppColors.textHint,
+              ),
           ],
         ),
       ),
@@ -453,8 +507,8 @@ class _PinEntryDialogState extends State<_PinEntryDialog> {
                     color: _hasError
                         ? AppColors.error
                         : filled
-                            ? AppColors.primary
-                            : AppColors.border,
+                        ? AppColors.primary
+                        : AppColors.border,
                   ),
                 );
               }),
@@ -464,8 +518,7 @@ class _PinEntryDialogState extends State<_PinEntryDialog> {
               const SizedBox(height: 12),
               Text(
                 l10n.pinLockedTryAgainIn(_formatDuration(_remainingLockout!)),
-                style: AppTypography.bodySmall
-                    .copyWith(color: AppColors.error),
+                style: AppTypography.bodySmall.copyWith(color: AppColors.error),
                 textAlign: TextAlign.center,
               ),
             ] else if (_hasError) ...[
@@ -482,10 +535,7 @@ class _PinEntryDialogState extends State<_PinEntryDialog> {
 
             if (showForgot) ...[
               const SizedBox(height: 4),
-              TextButton(
-                onPressed: _onForgotPin,
-                child: Text(l10n.forgotPin),
-              ),
+              TextButton(onPressed: _onForgotPin, child: Text(l10n.forgotPin)),
             ],
 
             TextButton(
@@ -522,8 +572,10 @@ class _PinEntryDialogState extends State<_PinEntryDialog> {
                     height: 56,
                     child: TextButton(
                       onPressed: disabled ? null : _removeDigit,
-                      child: Icon(Icons.backspace_rounded,
-                          color: HCColor.of(context).textSecondary),
+                      child: Icon(
+                        Icons.backspace_rounded,
+                        color: HCColor.of(context).textSecondary,
+                      ),
                     ),
                   );
                 }
@@ -623,8 +675,9 @@ class _RecoveryCodeSheetState extends State<_RecoveryCodeSheet> {
       // Failed code attempts share the lockout counter.
       final attempts = widget.profile.failedAttempts + 1;
       final cooldown = PinAuthService.cooldownFor(attempts);
-      final lockedUntil =
-          cooldown == Duration.zero ? null : DateTime.now().add(cooldown);
+      final lockedUntil = cooldown == Duration.zero
+          ? null
+          : DateTime.now().add(cooldown);
       await HiveService.bumpFailedAttempts(widget.profile.id, lockedUntil);
       if (!mounted) return;
       setState(() {
@@ -664,8 +717,11 @@ class _RecoveryCodeSheetState extends State<_RecoveryCodeSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.vpn_key_rounded,
-                size: 40, color: AppColors.primary),
+            const Icon(
+              Icons.vpn_key_rounded,
+              size: 40,
+              color: AppColors.primary,
+            ),
             const SizedBox(height: 12),
             Text(
               _codeOk ? l10n.setNewPin : l10n.enterRecoveryCode,
@@ -743,9 +799,11 @@ class _EducatorOverrideSheetState extends State<_EducatorOverrideSheet> {
     final all = HiveService.getAllProfilesWithProgress();
     _educators = all
         .map((t) => t.$1)
-        .where((p) =>
-            (p.role == UserRole.teacher || p.role == UserRole.parent) &&
-            p.hasPinProtection)
+        .where(
+          (p) =>
+              (p.role == UserRole.teacher || p.role == UserRole.parent) &&
+              p.hasPinProtection,
+        )
         .toList();
     if (_educators.isNotEmpty) _selected = _educators.first;
   }
@@ -781,11 +839,16 @@ class _EducatorOverrideSheetState extends State<_EducatorOverrideSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.supervisor_account_rounded,
-                size: 40, color: AppColors.primary),
+            const Icon(
+              Icons.supervisor_account_rounded,
+              size: 40,
+              color: AppColors.primary,
+            ),
             const SizedBox(height: 12),
-            Text(l10n.recoveryViaEducatorTitle,
-                style: AppTypography.titleMedium),
+            Text(
+              l10n.recoveryViaEducatorTitle,
+              style: AppTypography.titleMedium,
+            ),
             const SizedBox(height: 8),
             Text(
               l10n.recoveryViaEducatorPrompt(widget.student.name),
@@ -794,19 +857,22 @@ class _EducatorOverrideSheetState extends State<_EducatorOverrideSheet> {
             ),
             const SizedBox(height: 16),
             if (_educators.isEmpty)
-              Text(l10n.recoveryNoEducator,
-                  style: AppTypography.bodySmall
-                      .copyWith(color: AppColors.error),
-                  textAlign: TextAlign.center)
+              Text(
+                l10n.recoveryNoEducator,
+                style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+                textAlign: TextAlign.center,
+              )
             else ...[
               DropdownButton<UserProfile>(
                 value: _selected,
                 isExpanded: true,
                 items: _educators
-                    .map((p) => DropdownMenuItem(
-                          value: p,
-                          child: Text('${p.name} — ${p.role.label}'),
-                        ))
+                    .map(
+                      (p) => DropdownMenuItem(
+                        value: p,
+                        child: Text('${p.name} — ${p.role.label}'),
+                      ),
+                    )
                     .toList(),
                 onChanged: (v) => setState(() => _selected = v),
               ),

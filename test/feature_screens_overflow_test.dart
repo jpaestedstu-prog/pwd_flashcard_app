@@ -12,8 +12,10 @@ import 'package:pwdpwdpwd/features/home/screens/player_home_screen.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/screens/mood_check_in_screen.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/screens/mood_history_screen.dart';
 import 'package:pwdpwdpwd/features/notebook/screens/notebook_screen.dart';
+import 'package:pwdpwdpwd/features/object_scan/screens/word_hunt_collection_screen.dart';
 import 'package:pwdpwdpwd/features/parent/screens/parent_dashboard_screen.dart';
 import 'package:pwdpwdpwd/features/parent/screens/parental_controls_screen.dart';
+import 'package:pwdpwdpwd/features/progress/screens/adaptive_analytics_screen.dart';
 import 'package:pwdpwdpwd/features/progress/screens/certificate_screen.dart';
 import 'package:pwdpwdpwd/features/progress/screens/detailed_analytics_screen.dart';
 import 'package:pwdpwdpwd/features/progress/screens/progress_screen.dart';
@@ -88,6 +90,10 @@ void main() {
   for (final entry in <String, Widget Function()>{
     'ProgressScreen': () => const ProgressScreen(),
     'DetailedAnalyticsScreen': () => const DetailedAnalyticsScreen(),
+    // Learner-reachable since the Progress tab grew a "Learning Insights"
+    // button; it had never been through the matrix because nothing could open
+    // it but a voice command.
+    'AdaptiveAnalyticsScreen': () => const AdaptiveAnalyticsScreen(),
     'StreakCalendarScreen': () => const StreakCalendarScreen(),
     'CertificateScreen': () => const CertificateScreen(),
     'SettingsScreen': () => const SettingsScreen(),
@@ -96,6 +102,9 @@ void main() {
     'MoodCheckInScreen': () => const MoodCheckInScreen(),
     'MoodHistoryScreen': () => const MoodHistoryScreen(),
     'WeeklyReportScreen': () => const WeeklyReportScreen(),
+    // Word Hunt's collection: a long checklist of picture tiles, the shape
+    // most likely to burst a row at a big font scale.
+    'WordHuntCollectionScreen': () => const WordHuntCollectionScreen(),
   }.entries) {
     testWidgets('${entry.key} survives the device matrix', (tester) async {
       await expectScreenNoOverflowAcrossDevices(

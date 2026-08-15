@@ -15,7 +15,8 @@ class StudentStatus {
   final String profileId;
   final String name;
   final String? avatarEmoji;
-  final String currentActivity; // e.g. "Playing Word Match", "Viewing Flashcards"
+  final String
+  currentActivity; // e.g. "Playing Word Match", "Viewing Flashcards"
   final int wordsLearned;
   final int starsEarned;
   final int gamesPlayed;
@@ -62,14 +63,12 @@ class ClassroomSnapshot {
         students.length;
   }
 
-  int get totalGamesPlayed =>
-      students.fold(0, (sum, s) => sum + s.gamesPlayed);
+  int get totalGamesPlayed => students.fold(0, (sum, s) => sum + s.gamesPlayed);
 
   int get totalWordsLearned =>
       students.fold(0, (sum, s) => sum + s.wordsLearned);
 
-  int get totalStarsEarned =>
-      students.fold(0, (sum, s) => sum + s.starsEarned);
+  int get totalStarsEarned => students.fold(0, (sum, s) => sum + s.starsEarned);
 
   /// Which activities are most common across all students.
   Map<String, int> get categoryDistribution {
@@ -95,11 +94,13 @@ class ClassroomNotifier extends StateNotifier<ClassroomSnapshot> {
   final String? classroomId;
 
   ClassroomNotifier({this.classroomId})
-      : super(ClassroomSnapshot(
+    : super(
+        ClassroomSnapshot(
           timestamp: DateTime.now(),
           students: const [],
           sessionId: DateTime.now().millisecondsSinceEpoch.toString(),
-        )) {
+        ),
+      ) {
     refresh();
   }
 
@@ -110,10 +111,12 @@ class ClassroomNotifier extends StateNotifier<ClassroomSnapshot> {
     // Only include student profiles — skip teacher/parent profiles.
     // Also exclude guest "player mode" profiles regardless of scope.
     final studentProfiles = profilesWithProgress
-        .where((pair) =>
-            pair.$1.role == UserRole.student &&
-            !pair.$1.isGuestPlayer &&
-            (classroomId == null || pair.$1.classroomId == classroomId))
+        .where(
+          (pair) =>
+              pair.$1.role == UserRole.student &&
+              !pair.$1.isGuestPlayer &&
+              (classroomId == null || pair.$1.classroomId == classroomId),
+        )
         .toList();
 
     final students = studentProfiles.map((pair) {
@@ -123,7 +126,8 @@ class ClassroomNotifier extends StateNotifier<ClassroomSnapshot> {
       // Compute average accuracy from recent scores
       double avgAccuracy = 0;
       if (progress.recentScores.isNotEmpty) {
-        avgAccuracy = progress.recentScores
+        avgAccuracy =
+            progress.recentScores
                 .map((s) => s.total > 0 ? s.score / s.total : 0.0)
                 .reduce((a, b) => a + b) /
             progress.recentScores.length;
@@ -161,7 +165,7 @@ class ClassroomNotifier extends StateNotifier<ClassroomSnapshot> {
         currentActivity: activity,
         wordsLearned: progress.wordsLearned,
         starsEarned: progress.totalStars,
-        gamesPlayed: progress.recentScores.length,
+        gamesPlayed: progress.effectiveGamesPlayed,
         averageAccuracy: avgAccuracy,
         lastActive: progress.lastActivityDate,
       );
@@ -187,16 +191,19 @@ class ClassroomNotifier extends StateNotifier<ClassroomSnapshot> {
 /// every student profile on the device, just like before.
 final classroomProvider =
     StateNotifierProvider<ClassroomNotifier, ClassroomSnapshot>((ref) {
-  return ClassroomNotifier();
-});
+      return ClassroomNotifier();
+    });
 
 /// Family-scoped local variant. Returns only students whose `classroomId`
 /// is already on this device's Hive. Useful as an offline fallback or for
 /// single-device demo use.
-final classroomScopedProvider = StateNotifierProvider.family<
-    ClassroomNotifier, ClassroomSnapshot, String>((ref, classroomId) {
-  return ClassroomNotifier(classroomId: classroomId);
-});
+final classroomScopedProvider =
+    StateNotifierProvider.family<ClassroomNotifier, ClassroomSnapshot, String>((
+      ref,
+      classroomId,
+    ) {
+      return ClassroomNotifier(classroomId: classroomId);
+    });
 
 /// Firestore-backed snapshot aggregating every student across every
 /// classroom a teacher owns.
@@ -214,61 +221,63 @@ final classroomScopedProvider = StateNotifierProvider.family<
 ///     once the 2-minute idle threshold passes, without a Firestore round-
 ///     trip.
 final teacherDashboardSnapshotProvider =
-    FutureProvider.family<ClassroomSnapshot, String>(
-        (ref, teacherId) async {
-  if (!FirebaseService.isConfigured) {
-    return ref.read(classroomProvider);
-  }
-  // Re-evaluate isActive on each wall-clock tick.
-  ref.watch(wallClockTickerProvider);
-  // Re-run when the teacher's classroom list changes.
-  final classroomsAsync =
-      ref.watch(classroomsByTeacherStreamProvider(teacherId));
-  final classrooms = classroomsAsync.valueOrNull ?? const <Classroom>[];
-  // Re-run when any member doc in any of these classrooms changes.
-  for (final c in classrooms) {
-    ref.watch(classroomMembersProvider(c.id));
-  }
-  const remote = FirestoreRepository();
-  final allStatuses = <StudentStatus>[];
-  for (final c in classrooms) {
-    final pairs =
-        await remote.getStudentsWithProgressByClassroom(c.id);
-    for (final pair in pairs) {
-      final UserProfile profile = pair.$1;
-      final progress = pair.$2;
-      double avgAccuracy = 0;
-      if (progress.recentScores.isNotEmpty) {
-        avgAccuracy = progress.recentScores
-                .map((s) => s.total > 0 ? s.score / s.total : 0.0)
-                .reduce((a, b) => a + b) /
-            progress.recentScores.length;
+    FutureProvider.family<ClassroomSnapshot, String>((ref, teacherId) async {
+      if (!FirebaseService.isConfigured) {
+        return ref.read(classroomProvider);
       }
-      final elapsed = DateTime.now().difference(progress.lastActivityDate);
-      final activity = elapsed.inMinutes < 5 ? 'Studying' : 'Idle';
-      allStatuses.add(StudentStatus(
-        profileId: profile.id,
-        name: profile.name,
-        avatarEmoji: AvatarData.getAvatar(profile.avatarIndex).emoji,
-        currentActivity: activity,
-        wordsLearned: progress.wordsLearned,
-        starsEarned: progress.totalStars,
-        gamesPlayed: progress.recentScores.length,
-        averageAccuracy: avgAccuracy,
-        lastActive: progress.lastActivityDate,
-      ));
-    }
-  }
-  allStatuses.sort((a, b) {
-    if (a.isActive != b.isActive) return a.isActive ? -1 : 1;
-    return a.name.compareTo(b.name);
-  });
-  return ClassroomSnapshot(
-    timestamp: DateTime.now(),
-    students: allStatuses,
-    sessionId: teacherId,
-  );
-});
+      // Re-evaluate isActive on each wall-clock tick.
+      ref.watch(wallClockTickerProvider);
+      // Re-run when the teacher's classroom list changes.
+      final classroomsAsync = ref.watch(
+        classroomsByTeacherStreamProvider(teacherId),
+      );
+      final classrooms = classroomsAsync.valueOrNull ?? const <Classroom>[];
+      // Re-run when any member doc in any of these classrooms changes.
+      for (final c in classrooms) {
+        ref.watch(classroomMembersProvider(c.id));
+      }
+      const remote = FirestoreRepository();
+      final allStatuses = <StudentStatus>[];
+      for (final c in classrooms) {
+        final pairs = await remote.getStudentsWithProgressByClassroom(c.id);
+        for (final pair in pairs) {
+          final UserProfile profile = pair.$1;
+          final progress = pair.$2;
+          double avgAccuracy = 0;
+          if (progress.recentScores.isNotEmpty) {
+            avgAccuracy =
+                progress.recentScores
+                    .map((s) => s.total > 0 ? s.score / s.total : 0.0)
+                    .reduce((a, b) => a + b) /
+                progress.recentScores.length;
+          }
+          final elapsed = DateTime.now().difference(progress.lastActivityDate);
+          final activity = elapsed.inMinutes < 5 ? 'Studying' : 'Idle';
+          allStatuses.add(
+            StudentStatus(
+              profileId: profile.id,
+              name: profile.name,
+              avatarEmoji: AvatarData.getAvatar(profile.avatarIndex).emoji,
+              currentActivity: activity,
+              wordsLearned: progress.wordsLearned,
+              starsEarned: progress.totalStars,
+              gamesPlayed: progress.effectiveGamesPlayed,
+              averageAccuracy: avgAccuracy,
+              lastActive: progress.lastActivityDate,
+            ),
+          );
+        }
+      }
+      allStatuses.sort((a, b) {
+        if (a.isActive != b.isActive) return a.isActive ? -1 : 1;
+        return a.name.compareTo(b.name);
+      });
+      return ClassroomSnapshot(
+        timestamp: DateTime.now(),
+        students: allStatuses,
+        sessionId: teacherId,
+      );
+    });
 
 /// Firestore-backed snapshot for a specific classroom.
 ///
@@ -283,59 +292,62 @@ final teacherDashboardSnapshotProvider =
 /// When Firebase isn't configured, falls back to the local Hive snapshot
 /// so single-device demos still render something.
 final classroomFirestoreSnapshotProvider =
-    FutureProvider.family<ClassroomSnapshot, String>(
-        (ref, classroomId) async {
-  if (!FirebaseService.isConfigured) {
-    // Local fallback: rebuild the same shape from Hive.
-    return ref.read(classroomScopedProvider(classroomId));
-  }
-  // Re-evaluate isActive on each wall-clock tick.
-  ref.watch(wallClockTickerProvider);
-  // Re-run when this classroom's member list changes.
-  ref.watch(classroomMembersProvider(classroomId));
+    FutureProvider.family<ClassroomSnapshot, String>((ref, classroomId) async {
+      if (!FirebaseService.isConfigured) {
+        // Local fallback: rebuild the same shape from Hive.
+        return ref.read(classroomScopedProvider(classroomId));
+      }
+      // Re-evaluate isActive on each wall-clock tick.
+      ref.watch(wallClockTickerProvider);
+      // Re-run when this classroom's member list changes.
+      ref.watch(classroomMembersProvider(classroomId));
 
-  const remote = FirestoreRepository();
-  final pairs =
-      await remote.getStudentsWithProgressByClassroom(classroomId);
+      const remote = FirestoreRepository();
+      final pairs = await remote.getStudentsWithProgressByClassroom(
+        classroomId,
+      );
 
-  final students = pairs.map((pair) {
-    final UserProfile profile = pair.$1;
-    final progress = pair.$2;
+      final students =
+          pairs.map((pair) {
+            final UserProfile profile = pair.$1;
+            final progress = pair.$2;
 
-    double avgAccuracy = 0;
-    if (progress.recentScores.isNotEmpty) {
-      avgAccuracy = progress.recentScores
-              .map((s) => s.total > 0 ? s.score / s.total : 0.0)
-              .reduce((a, b) => a + b) /
-          progress.recentScores.length;
-    }
+            double avgAccuracy = 0;
+            if (progress.recentScores.isNotEmpty) {
+              avgAccuracy =
+                  progress.recentScores
+                      .map((s) => s.total > 0 ? s.score / s.total : 0.0)
+                      .reduce((a, b) => a + b) /
+                  progress.recentScores.length;
+            }
 
-    // Activity inferred from time since last progress update — sessions
-    // logs aren't reliably available across devices, so fall back to the
-    // last activity date.
-    final elapsed = DateTime.now().difference(progress.lastActivityDate);
-    final activity = elapsed.inMinutes < 5 ? 'Studying' : 'Idle';
+            // Activity inferred from time since last progress update — sessions
+            // logs aren't reliably available across devices, so fall back to the
+            // last activity date.
+            final elapsed = DateTime.now().difference(
+              progress.lastActivityDate,
+            );
+            final activity = elapsed.inMinutes < 5 ? 'Studying' : 'Idle';
 
-    return StudentStatus(
-      profileId: profile.id,
-      name: profile.name,
-      avatarEmoji: AvatarData.getAvatar(profile.avatarIndex).emoji,
-      currentActivity: activity,
-      wordsLearned: progress.wordsLearned,
-      starsEarned: progress.totalStars,
-      gamesPlayed: progress.recentScores.length,
-      averageAccuracy: avgAccuracy,
-      lastActive: progress.lastActivityDate,
-    );
-  }).toList()
-    ..sort((a, b) {
-      if (a.isActive != b.isActive) return a.isActive ? -1 : 1;
-      return a.name.compareTo(b.name);
+            return StudentStatus(
+              profileId: profile.id,
+              name: profile.name,
+              avatarEmoji: AvatarData.getAvatar(profile.avatarIndex).emoji,
+              currentActivity: activity,
+              wordsLearned: progress.wordsLearned,
+              starsEarned: progress.totalStars,
+              gamesPlayed: progress.effectiveGamesPlayed,
+              averageAccuracy: avgAccuracy,
+              lastActive: progress.lastActivityDate,
+            );
+          }).toList()..sort((a, b) {
+            if (a.isActive != b.isActive) return a.isActive ? -1 : 1;
+            return a.name.compareTo(b.name);
+          });
+
+      return ClassroomSnapshot(
+        timestamp: DateTime.now(),
+        students: students,
+        sessionId: classroomId,
+      );
     });
-
-  return ClassroomSnapshot(
-    timestamp: DateTime.now(),
-    students: students,
-    sessionId: classroomId,
-  );
-});

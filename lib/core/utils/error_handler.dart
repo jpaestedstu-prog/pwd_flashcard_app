@@ -38,6 +38,10 @@ class ErrorHandler {
     'OnAlarmFired:silent',
     'PinUnlockGrace:silent',
     'OverflowSilent',
+    // Cosmetic mirror push. Best-effort by design: the equip already happened
+    // locally, and a learner should never see an error because their new hat
+    // has not reached the leaderboard yet.
+    'syncEquippedLook:silent',
     // Recoverable Flutter framework assertions (overflow, ListTile ink-hidden,
     // duplicate GlobalKey, hero conflicts, setState-during-build, …). Logged
     // for the developer but never surfaced as the user-facing snackbar — see
@@ -45,10 +49,21 @@ class ErrorHandler {
     'FrameworkDiagnostic:silent',
     'SoundService',
     'CelebrationService',
+    // The lock screen's alarm chime + spoken hand-off. A missing codec,
+    // a TTS engine that isn't installed, or an audio-focus loss must
+    // never stack a generic error snackbar on top of a lock screen the
+    // child already can't dismiss — the caption and FSL clip still carry
+    // the message.
+    'LockAnnouncer:silent',
+    // The blocked-peers listener. `blocks` is a newer collection than some
+    // deployed rule sets, so an app built ahead of a Firestore deploy gets
+    // PERMISSION_DENIED here on every Messages open. Blocking still works
+    // from the Hive cache, and a learner must never be shown an error banner
+    // for a safeguarding feature quietly running in the background.
+    'FriendService.watchBlocked:silent',
   };
 
-  static final _errorStreamController =
-      StreamController<AppError>.broadcast();
+  static final _errorStreamController = StreamController<AppError>.broadcast();
 
   /// Stream of errors for the UI to listen to (e.g. show a snackbar).
   static Stream<AppError> get errorStream => _errorStreamController.stream;
@@ -104,21 +119,14 @@ class ErrorHandler {
   /// Wrap [runApp] inside [runZonedGuarded] to catch async errors that
   /// escape try/catch blocks.
   static void runGuarded(void Function() appRunner) {
-    runZonedGuarded(
-      appRunner,
-      (error, stack) {
-        _handleError(error, stack, source: 'Zone');
-      },
-    );
+    runZonedGuarded(appRunner, (error, stack) {
+      _handleError(error, stack, source: 'Zone');
+    });
   }
 
   /// Manually report an error from anywhere in the codebase.
   /// Use this instead of silently swallowing with `catch (_) {}`.
-  static void report(
-    Object error, [
-    StackTrace? stack,
-    String? source,
-  ]) {
+  static void report(Object error, [StackTrace? stack, String? source]) {
     _handleError(error, stack, source: source ?? 'Manual');
   }
 
@@ -191,8 +199,9 @@ class ErrorHandler {
     try {
       final box = Hive.box(_boxName);
       final logs = List<Map<String, dynamic>>.from(
-        (box.get('logs', defaultValue: <dynamic>[]) as List)
-            .map((e) => Map<String, dynamic>.from(e as Map)),
+        (box.get('logs', defaultValue: <dynamic>[]) as List).map(
+          (e) => Map<String, dynamic>.from(e as Map),
+        ),
       );
 
       logs.add(error.toJson());
@@ -214,8 +223,9 @@ class ErrorHandler {
     try {
       final box = Hive.box(_boxName);
       final logs = List<Map<String, dynamic>>.from(
-        (box.get('logs', defaultValue: <dynamic>[]) as List)
-            .map((e) => Map<String, dynamic>.from(e as Map)),
+        (box.get('logs', defaultValue: <dynamic>[]) as List).map(
+          (e) => Map<String, dynamic>.from(e as Map),
+        ),
       );
       return logs.reversed.map((e) => AppError.fromJson(e)).toList();
     } catch (_) {
@@ -271,19 +281,19 @@ class AppError {
   }
 
   Map<String, dynamic> toJson() => {
-        'message': message,
-        'source': source,
-        'context': context,
-        'timestamp': timestamp.toIso8601String(),
-        'stackTrace': stackTrace,
-      };
+    'message': message,
+    'source': source,
+    'context': context,
+    'timestamp': timestamp.toIso8601String(),
+    'stackTrace': stackTrace,
+  };
 
   factory AppError.fromJson(Map<String, dynamic> json) => AppError(
-        message: json['message'] as String? ?? 'Unknown error',
-        source: json['source'] as String? ?? 'Unknown',
-        context: json['context'] as String?,
-        timestamp: DateTime.tryParse(json['timestamp'] as String? ?? '') ??
-            DateTime.now(),
-        stackTrace: json['stackTrace'] as String?,
-      );
+    message: json['message'] as String? ?? 'Unknown error',
+    source: json['source'] as String? ?? 'Unknown',
+    context: json['context'] as String?,
+    timestamp:
+        DateTime.tryParse(json['timestamp'] as String? ?? '') ?? DateTime.now(),
+    stackTrace: json['stackTrace'] as String?,
+  );
 }

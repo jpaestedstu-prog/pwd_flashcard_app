@@ -10,6 +10,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../providers/app_providers.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
 
 /// A 3-step accessibility setup wizard shown after profile creation.
 ///
@@ -91,8 +92,18 @@ class _AccessibilitySetupScreenState
     // Apply accessibility preset to settings
     if (type != DisabilityType.none) {
       final currentSettings = ref.read(settingsProvider);
-      final preset = AccessibilityPresets.presetFor(type, current: currentSettings);
+      final preset = AccessibilityPresets.presetFor(
+        type,
+        current: currentSettings,
+      );
       ref.read(settingsProvider.notifier).update(preset);
+      // Gaze Control lives in its own provider, so the preset can't carry it.
+      // For the categories whose barrier is reaching the screen at all, turn
+      // hands-free control on here — the learner has just confirmed it in the
+      // preview list, and it is saved against their profile alone.
+      if (AccessibilityPresets.enablesGazeControl(type)) {
+        ref.read(gazeSettingsProvider.notifier).setEnabled(true);
+      }
     }
 
     // Update profile with disability type
@@ -116,7 +127,11 @@ class _AccessibilitySetupScreenState
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFF0F4FF), Color(0xFFF5F0FF), AppColors.background],
+            colors: [
+              Color(0xFFF0F4FF),
+              Color(0xFFF5F0FF),
+              AppColors.background,
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -126,7 +141,10 @@ class _AccessibilitySetupScreenState
             children: [
               // ─── Top bar with skip ─────────────
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -153,8 +171,8 @@ class _AccessibilitySetupScreenState
                             color: isDone
                                 ? AppColors.primary
                                 : isActive
-                                    ? AppColors.primary
-                                    : AppColors.primary.withValues(alpha: 0.2),
+                                ? AppColors.primary
+                                : AppColors.primary.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                         );
@@ -164,7 +182,8 @@ class _AccessibilitySetupScreenState
                       onPressed: () async {
                         if (_isEducatorSetup) {
                           ref.invalidate(allProfilesWithProgressProvider);
-                          await ref.read(profileProvider.notifier)
+                          await ref
+                              .read(profileProvider.notifier)
                               .setProfile(widget.studentProfile!);
                           if (!context.mounted) return;
                         }
@@ -188,11 +207,7 @@ class _AccessibilitySetupScreenState
                 child: PageView(
                   controller: _pageController,
                   physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _buildStep1(),
-                    _buildStep2(),
-                    _buildStep3(),
-                  ],
+                  children: [_buildStep1(), _buildStep2(), _buildStep3()],
                 ),
               ),
             ],
@@ -238,13 +253,13 @@ class _AccessibilitySetupScreenState
             final isSelected = _selectedType == type;
 
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _DisabilityCard(
-                type: type,
-                isSelected: isSelected,
-                onTap: () => setState(() => _selectedType = type),
-              ),
-            )
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _DisabilityCard(
+                    type: type,
+                    isSelected: isSelected,
+                    onTap: () => setState(() => _selectedType = type),
+                  ),
+                )
                 .animate()
                 .fadeIn(duration: 400.ms, delay: (200 + index * 80).ms)
                 .slideX(begin: index.isEven ? -0.1 : 0.1, end: 0);
@@ -263,7 +278,9 @@ class _AccessibilitySetupScreenState
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.3),
+                disabledBackgroundColor: AppColors.primary.withValues(
+                  alpha: 0.3,
+                ),
                 textStyle: AppTypography.buttonText,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -315,29 +332,33 @@ class _AccessibilitySetupScreenState
 
           // Selected type badge
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: type.color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: type.color.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(type.emoji, style: const TextStyle(fontSize: 24)),
-                const SizedBox(width: 12),
-                Text(
-                  type.label,
-                  style: AppTypography.titleMedium.copyWith(
-                    color: type.color,
-                    fontWeight: FontWeight.w700,
-                  ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
                 ),
-              ],
-            ),
-          ).animate().fadeIn(duration: 400.ms, delay: 300.ms).scale(
+                decoration: BoxDecoration(
+                  color: type.color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: type.color.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(type.emoji, style: const TextStyle(fontSize: 24)),
+                    const SizedBox(width: 12),
+                    Text(
+                      type.label,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: type.color,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              .animate()
+              .fadeIn(duration: 400.ms, delay: 300.ms)
+              .scale(
                 begin: const Offset(0.9, 0.9),
                 end: const Offset(1.0, 1.0),
               ),
@@ -350,21 +371,21 @@ class _AccessibilitySetupScreenState
           // disability presets and otherwise easy to miss.
           if (type == DisabilityType.none) ...[
             const _OptionalComfortTipsCard(
-              tips: [
-                _ComfortTip(
-                  emoji: '📝',
-                  title: 'Dyslexia-friendly',
-                  subtitle:
-                      'Cream background, Lexend font, wider letter spacing — easier reading for everyone.',
-                ),
-                _ComfortTip(
-                  emoji: '🎬',
-                  title: 'Reduced Motion',
-                  subtitle:
-                      'Less animation, instant page transitions — good for motion sensitivity or older devices.',
-                ),
-              ],
-            )
+                  tips: [
+                    _ComfortTip(
+                      emoji: '📝',
+                      title: 'Dyslexia-friendly',
+                      subtitle:
+                          'Cream background, Lexend font, wider letter spacing — easier reading for everyone.',
+                    ),
+                    _ComfortTip(
+                      emoji: '🎬',
+                      title: 'Reduced Motion',
+                      subtitle:
+                          'Less animation, instant page transitions — good for motion sensitivity or older devices.',
+                    ),
+                  ],
+                )
                 .animate()
                 .fadeIn(duration: 400.ms, delay: 350.ms)
                 .slideY(begin: 0.05, end: 0),
@@ -388,50 +409,58 @@ class _AccessibilitySetupScreenState
                   return Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 14,
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              change.emoji,
-                              style: const TextStyle(fontSize: 22),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 14,
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    change.name,
-                                    style: AppTypography.labelLarge.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  change.emoji,
+                                  style: const TextStyle(fontSize: 22),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        change.name,
+                                        style: AppTypography.labelLarge
+                                            .copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        change.value,
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: HCColor.of(
+                                            context,
+                                          ).textSecondary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    change.value,
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: HCColor.of(context).textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: AppColors.success,
+                                  size: 22,
+                                ),
+                              ],
                             ),
-                            const Icon(
-                              Icons.check_circle_rounded,
-                              color: AppColors.success,
-                              size: 22,
-                            ),
-                          ],
-                        ),
-                      )
+                          )
                           .animate()
                           .fadeIn(duration: 350.ms, delay: (400 + i * 80).ms)
                           .slideX(begin: 0.05, end: 0),
                       if (!isLast)
-                        const Divider(height: 1, indent: 56, color: AppColors.border),
+                        const Divider(
+                          height: 1,
+                          indent: 56,
+                          color: AppColors.border,
+                        ),
                     ],
                   );
                 }).toList(),
@@ -493,18 +522,18 @@ class _AccessibilitySetupScreenState
           children: [
             // Success animation
             Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_circle_rounded,
-                size: 72,
-                color: AppColors.success,
-              ),
-            )
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    size: 72,
+                    color: AppColors.success,
+                  ),
+                )
                 .animate()
                 .fadeIn(duration: 600.ms)
                 .scale(
@@ -527,9 +556,7 @@ class _AccessibilitySetupScreenState
             const SizedBox(height: 12),
 
             Text(
-              profile != null
-                  ? 'Welcome, ${profile.name}!'
-                  : 'Welcome!',
+              profile != null ? 'Welcome, ${profile.name}!' : 'Welcome!',
               style: AppTypography.titleLarge.copyWith(
                 color: HCColor.of(context).textSecondary,
               ),
@@ -567,7 +594,11 @@ class _AccessibilitySetupScreenState
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.settings_rounded, color: HCColor.of(context).textSecondary, size: 18),
+                  Icon(
+                    Icons.settings_rounded,
+                    color: HCColor.of(context).textSecondary,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
@@ -585,28 +616,34 @@ class _AccessibilitySetupScreenState
 
             // Let's Go button
             SizedBox(
-              width: double.infinity,
-              height: 60,
-              child: ElevatedButton.icon(
-                onPressed: _applyAndContinue,
-                icon: Icon(_isEducatorSetup
-                    ? Icons.check_rounded
-                    : Icons.rocket_launch_rounded),
-                label: Text(_isEducatorSetup
-                    ? 'Save & Finish'
-                    : AppLocalizations.of(context)!.letsStartLearning),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  textStyle: AppTypography.buttonText.copyWith(fontSize: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+                  width: double.infinity,
+                  height: 60,
+                  child: ElevatedButton.icon(
+                    onPressed: _applyAndContinue,
+                    icon: Icon(
+                      _isEducatorSetup
+                          ? Icons.check_rounded
+                          : Icons.rocket_launch_rounded,
+                    ),
+                    label: Text(
+                      _isEducatorSetup
+                          ? 'Save & Finish'
+                          : AppLocalizations.of(context)!.letsStartLearning,
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      textStyle: AppTypography.buttonText.copyWith(
+                        fontSize: 18,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      elevation: 4,
+                      shadowColor: AppColors.primary.withValues(alpha: 0.4),
+                    ),
                   ),
-                  elevation: 4,
-                  shadowColor: AppColors.primary.withValues(alpha: 0.4),
-                ),
-              ),
-            )
+                )
                 .animate()
                 .fadeIn(duration: 500.ms, delay: 900.ms)
                 .slideY(begin: 0.2, end: 0),
@@ -638,7 +675,8 @@ class _DisabilityCard extends StatelessWidget {
     return Semantics(
       button: true,
       selected: isSelected,
-      label: '${type.label}: ${type.description}${isSelected ? ", selected" : ""}',
+      label:
+          '${type.label}: ${type.description}${isSelected ? ", selected" : ""}',
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
@@ -648,10 +686,7 @@ class _DisabilityCard extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: isSelected
                 ? LinearGradient(
-                    colors: [
-                      type.color,
-                      type.color.withValues(alpha: 0.8),
-                    ],
+                    colors: [type.color, type.color.withValues(alpha: 0.8)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
@@ -687,10 +722,7 @@ class _DisabilityCard extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: Text(
-                    type.emoji,
-                    style: const TextStyle(fontSize: 26),
-                  ),
+                  child: Text(type.emoji, style: const TextStyle(fontSize: 26)),
                 ),
               ),
               const SizedBox(width: 14),
@@ -701,7 +733,9 @@ class _DisabilityCard extends StatelessWidget {
                     Text(
                       type.label,
                       style: AppTypography.titleSmall.copyWith(
-                        color: isSelected ? Colors.white : HCColor.of(context).textPrimary,
+                        color: isSelected
+                            ? Colors.white
+                            : HCColor.of(context).textPrimary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -732,7 +766,9 @@ class _DisabilityCard extends StatelessWidget {
                       ? Icons.check_rounded
                       : Icons.arrow_forward_ios_rounded,
                   size: 16,
-                  color: isSelected ? type.color : HCColor.of(context).textSecondary,
+                  color: isSelected
+                      ? type.color
+                      : HCColor.of(context).textSecondary,
                 ),
               ),
             ],
@@ -781,8 +817,11 @@ class _OptionalComfortTipsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.lightbulb_outline_rounded,
-                  size: 20, color: AppColors.primaryDark),
+              const Icon(
+                Icons.lightbulb_outline_rounded,
+                size: 20,
+                color: AppColors.primaryDark,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Comfort tweaks you can try later',

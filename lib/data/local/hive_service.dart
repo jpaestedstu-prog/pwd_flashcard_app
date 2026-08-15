@@ -103,8 +103,8 @@ class HiveService {
       'isGuestPlayer': profile.isGuestPlayer,
       'learningLevel': profile.learningLevel?.index,
       'learningLevelOverriddenBy': profile.learningLevelOverriddenBy,
-      'learningLevelOverriddenAt':
-          profile.learningLevelOverriddenAt?.toIso8601String(),
+      'learningLevelOverriddenAt': profile.learningLevelOverriddenAt
+          ?.toIso8601String(),
       'ownerUid': profile.ownerUid,
       'username': profile.username,
     });
@@ -115,7 +115,9 @@ class HiveService {
   /// UserProfile object. Used by the PIN dialog to update lockout state on
   /// every keystroke without redundant work.
   static Future<void> _patchProfile(
-      String profileId, Map<String, dynamic> patch) async {
+    String profileId,
+    Map<String, dynamic> patch,
+  ) async {
     final profiles = getProfiles();
     final idx = profiles.indexWhere((p) => p['id'] == profileId);
     if (idx == -1) return;
@@ -124,7 +126,9 @@ class HiveService {
   }
 
   static Future<void> bumpFailedAttempts(
-      String profileId, DateTime? lockedUntil) async {
+    String profileId,
+    DateTime? lockedUntil,
+  ) async {
     final profiles = getProfiles();
     final idx = profiles.indexWhere((p) => p['id'] == profileId);
     if (idx == -1) return;
@@ -136,10 +140,7 @@ class HiveService {
   }
 
   static Future<void> clearFailedAttempts(String profileId) async {
-    await _patchProfile(profileId, {
-      'failedAttempts': 0,
-      'lockedUntil': null,
-    });
+    await _patchProfile(profileId, {'failedAttempts': 0, 'lockedUntil': null});
   }
 
   /// Returns a fully-deserialized profile by id, or null if not found.
@@ -197,7 +198,8 @@ class HiveService {
       role: UserRole.values[roleIndex],
       avatarIndex: data['avatarIndex'] ?? 0,
       createdAt: DateTime.parse(data['createdAt']),
-      disabilityType: (disabilityIndex != null &&
+      disabilityType:
+          (disabilityIndex != null &&
               disabilityIndex >= 0 &&
               disabilityIndex < DisabilityType.values.length)
           ? DisabilityType.values[disabilityIndex]
@@ -212,7 +214,8 @@ class HiveService {
           : null,
       recoveryCodeHash: data['recoveryCodeHash'] as String?,
       recoveryCodeSalt: data['recoveryCodeSalt'] as String?,
-      gradeLevel: (gradeLevelIndex != null &&
+      gradeLevel:
+          (gradeLevelIndex != null &&
               gradeLevelIndex >= 0 &&
               gradeLevelIndex < GradeLevel.values.length)
           ? GradeLevel.values[gradeLevelIndex]
@@ -235,8 +238,7 @@ class HiveService {
         }
         return LearningLevel.values[idx];
       }(),
-      learningLevelOverriddenBy:
-          data['learningLevelOverriddenBy'] as String?,
+      learningLevelOverriddenBy: data['learningLevelOverriddenBy'] as String?,
       learningLevelOverriddenAt: data['learningLevelOverriddenAt'] != null
           ? DateTime.tryParse(data['learningLevelOverriddenAt'] as String)
           : null,
@@ -323,8 +325,10 @@ class HiveService {
     );
   }
 
-  static Future<void> saveSettings(AppSettings settings,
-      {String? profileId}) async {
+  static Future<void> saveSettings(
+    AppSettings settings, {
+    String? profileId,
+  }) async {
     Future<void> p(String key, dynamic value) =>
         _settBox.put(_settKey(key, profileId), value);
     await p('fontScale', settings.fontScale);
@@ -355,6 +359,44 @@ class HiveService {
   /// Generic setting setter — write any key to the settings box.
   static Future<void> saveSetting(String key, dynamic value) async {
     await _settBox.put(key, value);
+  }
+
+  /// Generic **per-profile** setting getter — the same `<profileId>::<key>`
+  /// namespacing [getSettings] uses, for settings that live outside
+  /// [AppSettings] but must still not leak between profiles on a shared
+  /// device (e.g. Gaze Control). A `null` [profileId] reads the device-level
+  /// key, which is the correct scope before a profile has been chosen.
+  static dynamic getProfileSetting(String key, {String? profileId}) =>
+      _settBox.get(_settKey(key, profileId));
+
+  /// Generic per-profile setting setter — see [getProfileSetting].
+  static Future<void> saveProfileSetting(
+    String key,
+    dynamic value, {
+    String? profileId,
+  }) async {
+    await _settBox.put(_settKey(key, profileId), value);
+  }
+
+  /// The first profile-scoped value of [key] for which [isEnabled] is true, or
+  /// null if no profile has one.
+  ///
+  /// This exists for the bootstrap case: before anyone has signed in there is
+  /// no active profile, so a per-profile setting has nothing to read. Gaze
+  /// Control needs it — a hands-free learner has to be able to choose their own
+  /// profile, and that screen comes *before* the profile that enables gaze is
+  /// known.
+  static Map? firstProfileSettingWhere(
+    String key,
+    bool Function(Map value) isEnabled,
+  ) {
+    final suffix = '::$key';
+    for (final boxKey in _settBox.keys) {
+      if (boxKey is! String || !boxKey.endsWith(suffix)) continue;
+      final value = _settBox.get(boxKey);
+      if (value is Map && isEnabled(value)) return value;
+    }
+    return null;
   }
 
   // ─── Progress ──────────────────────────────────────────
@@ -394,15 +436,19 @@ class HiveService {
       try {
         final m = Map<String, dynamic>.from(e as Map);
         final gameTypeIndex = m['gameType'] as int;
-        if (gameTypeIndex < 0 || gameTypeIndex >= GameType.values.length) continue;
-        scores.add(GameScore(
-          gameType: GameType.values[gameTypeIndex],
-          score: m['score'] as int,
-          total: m['total'] as int,
-          starsEarned: m['starsEarned'] as int,
-          date: DateTime.parse(m['date'] as String),
-          durationSeconds: m['durationSeconds'] as int?,
-        ));
+        if (gameTypeIndex < 0 || gameTypeIndex >= GameType.values.length) {
+          continue;
+        }
+        scores.add(
+          GameScore(
+            gameType: GameType.values[gameTypeIndex],
+            score: m['score'] as int,
+            total: m['total'] as int,
+            starsEarned: m['starsEarned'] as int,
+            date: DateTime.parse(m['date'] as String),
+            durationSeconds: m['durationSeconds'] as int?,
+          ),
+        );
       } catch (e) {
         if (kDebugMode) {
           debugPrint('HiveService: Skipping corrupted score entry: $e');
@@ -423,16 +469,31 @@ class HiveService {
 
     final progress = LearningProgress(
       profileId: profileId,
-      wordsLearned: wordIds.isNotEmpty ? wordIds.length : (map['wordsLearned'] ?? 0),
+      wordsLearned: wordIds.isNotEmpty
+          ? wordIds.length
+          : (map['wordsLearned'] ?? 0),
       learnedWordIds: wordIds,
       streakDays: map['streakDays'] ?? 0,
       lastActivityDate: DateTime.parse(map['lastActivityDate']),
       totalStars: map['totalStars'] ?? 0,
       spentStars: map['spentStars'] ?? 0,
+      // Absent on records written before these lifetime counters existed.
+      // `effectiveBestStreak` / `effectiveGamesPlayed` heal the 0 to the best
+      // value still derivable from the row, so no migration pass is needed.
+      bestStreakDays: map['bestStreakDays'] ?? 0,
+      gamesPlayed: map['gamesPlayed'] ?? 0,
+      playedGameTypes: gameTypesFromNames(map['playedGameTypes']),
       categoryProgress: Map<String, double>.from(map['categoryProgress'] ?? {}),
       recentScores: scores,
       completedStoryIds: storyIds,
       storyBestStars: storyStars,
+      // Read through from the FSL key rather than this row — six surfaces write
+      // sign views directly, so the row is not the source of truth. See
+      // [LearningProgress.signedWordKeys]; [recordFslVideoView] drops the cache
+      // entry so the next read picks a new view up.
+      signedWordKeys: fslWordsViewed(profileId),
+      canSignKeys: fslCanSignKeys(profileId),
+      everConfirmedSignKeys: fslEverConfirmedKeys(profileId),
     );
 
     _progressCache[profileId] = progress;
@@ -449,15 +510,24 @@ class HiveService {
       'lastActivityDate': progress.lastActivityDate.toIso8601String(),
       'totalStars': progress.totalStars,
       'spentStars': progress.spentStars,
+      // Persist the healed values so a legacy row upgrades itself on first
+      // write rather than re-deriving forever.
+      'bestStreakDays': progress.effectiveBestStreak,
+      'gamesPlayed': progress.effectiveGamesPlayed,
+      'playedGameTypes': gameTypeNames(progress.effectivePlayedGameTypes),
       'categoryProgress': progress.categoryProgress,
-      'recentScores': progress.recentScores.map((s) => {
-        'gameType': s.gameType.index,
-        'score': s.score,
-        'total': s.total,
-        'starsEarned': s.starsEarned,
-        'date': s.date.toIso8601String(),
-        'durationSeconds': s.durationSeconds,
-      }).toList(),
+      'recentScores': progress.recentScores
+          .map(
+            (s) => {
+              'gameType': s.gameType.index,
+              'score': s.score,
+              'total': s.total,
+              'starsEarned': s.starsEarned,
+              'date': s.date.toIso8601String(),
+              'durationSeconds': s.durationSeconds,
+            },
+          )
+          .toList(),
       'completedStoryIds': progress.completedStoryIds.toList(),
       'storyBestStars': progress.storyBestStars,
     });
@@ -474,16 +544,20 @@ class HiveService {
       try {
         final m = Map<String, dynamic>.from(e as Map);
         final catIndex = m['category'] as int;
-        if (catIndex < 0 || catIndex >= FlashcardCategory.values.length) continue;
-        result.add(Flashcard(
-          id: m['id'],
-          wordEnglish: m['wordEnglish'],
-          wordFilipino: m['wordFilipino'],
-          exampleSentence: m['exampleSentence'],
-          imageAsset: m['imageAsset'],
-          category: FlashcardCategory.values[catIndex],
-          isCustom: true,
-        ));
+        if (catIndex < 0 || catIndex >= FlashcardCategory.values.length) {
+          continue;
+        }
+        result.add(
+          Flashcard(
+            id: m['id'],
+            wordEnglish: m['wordEnglish'],
+            wordFilipino: m['wordFilipino'],
+            exampleSentence: m['exampleSentence'],
+            imageAsset: m['imageAsset'],
+            category: FlashcardCategory.values[catIndex],
+            isCustom: true,
+          ),
+        );
       } catch (_) {
         // Skip corrupted card entries
         continue;
@@ -538,7 +612,9 @@ class HiveService {
   }
 
   static Future<void> saveUnlockedAchievements(
-      String profileId, Set<String> ids) async {
+    String profileId,
+    Set<String> ids,
+  ) async {
     await _progBox.put('achievements_$profileId', ids.toList());
   }
 
@@ -591,7 +667,9 @@ class HiveService {
   }
 
   static Future<void> saveProgressThemeId(
-      String profileId, String themeId) async {
+    String profileId,
+    String themeId,
+  ) async {
     await _progBox.put('progress_theme_$profileId', themeId);
   }
 
@@ -607,7 +685,9 @@ class HiveService {
   }
 
   static Future<void> saveProgressLayoutId(
-      String profileId, String layoutId) async {
+    String profileId,
+    String layoutId,
+  ) async {
     await _progBox.put('progress_layout_$profileId', layoutId);
   }
 
@@ -620,7 +700,9 @@ class HiveService {
   static Box get _lbConfigBox => Hive.box(_leaderboardConfigBox);
 
   static LeaderboardConfig? getLeaderboardConfig(
-      LeaderboardScopeKind kind, String scopeId) {
+    LeaderboardScopeKind kind,
+    String scopeId,
+  ) {
     final raw = _lbConfigBox.get('${kind.name}_$scopeId');
     if (raw is Map) {
       try {
@@ -633,16 +715,22 @@ class HiveService {
   }
 
   static Future<void> cacheLeaderboardConfig(
-      LeaderboardScopeKind kind, LeaderboardConfig config) async {
+    LeaderboardScopeKind kind,
+    LeaderboardConfig config,
+  ) async {
     await _lbConfigBox.put('${kind.name}_${config.scopeId}', config.toJson());
   }
 
   /// Per-screen tutorial tracking (e.g. 'flashcard_viewer', 'game_hub', 'progress').
   static bool hasSeenScreenTutorial(String profileId, String screenId) {
-    return _progBox.get('tutorial_${screenId}_$profileId', defaultValue: false) as bool;
+    return _progBox.get('tutorial_${screenId}_$profileId', defaultValue: false)
+        as bool;
   }
 
-  static Future<void> markScreenTutorialSeen(String profileId, String screenId) async {
+  static Future<void> markScreenTutorialSeen(
+    String profileId,
+    String screenId,
+  ) async {
     await _progBox.put('tutorial_${screenId}_$profileId', true);
   }
 
@@ -654,6 +742,62 @@ class HiveService {
     }
   }
 
+  // ─── Daily Activity Ledger ─────────────────────────────
+
+  /// Date key ("2026-08-15") used by the activity ledger and the calendar.
+  static String dayKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// Per-day totals of what the learner actually did, keyed by [dayKey].
+  ///
+  /// Exists because no other record can answer "what did I do this week?".
+  /// `recentScores` is trimmed to the last 20 entries, so a busy week silently
+  /// under-reports itself; session logs carry minutes but not stars or words.
+  /// A week summary that shrinks when a learner plays *more* is worse than no
+  /// week summary at all.
+  ///
+  /// Each value holds `games`, `stars` and `words` for that day. Pruned to the
+  /// last 90 days, matching the session logs.
+  static Map<String, Map<String, int>> getDailyActivity(String profileId) {
+    final raw = _progBox.get('daily_activity_$profileId');
+    if (raw is! Map) return {};
+    final out = <String, Map<String, int>>{};
+    raw.forEach((key, value) {
+      if (value is! Map) return;
+      out[key.toString()] = {
+        for (final entry in value.entries)
+          entry.key.toString(): (entry.value as num?)?.toInt() ?? 0,
+      };
+    });
+    return out;
+  }
+
+  /// Adds [games] / [stars] / [words] to today's row in the activity ledger.
+  static Future<void> addDailyActivity(
+    String profileId, {
+    int games = 0,
+    int stars = 0,
+    int words = 0,
+    DateTime? on,
+  }) async {
+    final ledger = getDailyActivity(profileId);
+    final key = dayKey(on ?? DateTime.now());
+    final today = ledger[key] ?? const {'games': 0, 'stars': 0, 'words': 0};
+    ledger[key] = {
+      'games': (today['games'] ?? 0) + games,
+      'stars': (today['stars'] ?? 0) + stars,
+      'words': (today['words'] ?? 0) + words,
+    };
+
+    final cutoff = DateTime.now().subtract(const Duration(days: 90));
+    ledger.removeWhere((k, _) {
+      final date = DateTime.tryParse(k);
+      return date != null && date.isBefore(cutoff);
+    });
+    await _progBox.put('daily_activity_$profileId', ledger);
+  }
+
   // ─── Daily Challenge ───────────────────────────────────
 
   /// Returns the date key (e.g. "2026-02-13") of the last completed challenge.
@@ -662,19 +806,22 @@ class HiveService {
   }
 
   static Future<void> saveDailyChallengeDate(
-      String profileId, String dateKey) async {
+    String profileId,
+    String dateKey,
+  ) async {
     await _progBox.put('daily_date_$profileId', dateKey);
     // Also record in history set for the calendar view
     final history = getDailyChallengeHistory(profileId);
     history.add(dateKey);
-    await _progBox.put(
-        'daily_history_$profileId', history.toList());
+    await _progBox.put('daily_history_$profileId', history.toList());
   }
 
   /// Returns the set of all date keys where the daily challenge was completed.
   static Set<String> getDailyChallengeHistory(String profileId) {
-    final raw =
-        _progBox.get('daily_history_$profileId', defaultValue: <dynamic>[]);
+    final raw = _progBox.get(
+      'daily_history_$profileId',
+      defaultValue: <dynamic>[],
+    );
     return Set<String>.from((raw as List).map((e) => e.toString()));
   }
 
@@ -699,7 +846,9 @@ class HiveService {
   }
 
   static Future<void> saveLoginRewardDate(
-      String profileId, String dateKey) async {
+    String profileId,
+    String dateKey,
+  ) async {
     await _progBox.put('login_reward_date_$profileId', dateKey);
   }
 
@@ -709,7 +858,9 @@ class HiveService {
   }
 
   static Future<void> saveLoginRewardStreak(
-      String profileId, int streak) async {
+    String profileId,
+    int streak,
+  ) async {
     await _progBox.put('login_reward_streak_$profileId', streak);
   }
 
@@ -725,8 +876,13 @@ class HiveService {
         final disabilityIndex = data['disabilityType'] as int?;
         final gradeLevelIndex = data['gradeLevel'] as int?;
         final rawTags = data['tags'] as List?;
-        final profile = _deserializeProfile(data, roleIndex,
-            disabilityIndex, gradeLevelIndex, rawTags);
+        final profile = _deserializeProfile(
+          data,
+          roleIndex,
+          disabilityIndex,
+          gradeLevelIndex,
+          rawTags,
+        );
         final progress = getProgress(profile.id);
         result.add((profile, progress));
       } catch (e) {
@@ -803,7 +959,9 @@ class HiveService {
   }
 
   static Future<void> removeMemberLocal(
-      String classroomId, String profileId) async {
+    String classroomId,
+    String profileId,
+  ) async {
     await _memberBox.delete('$classroomId:$profileId');
   }
 
@@ -815,7 +973,9 @@ class HiveService {
         final raw = _memberBox.get(key);
         if (raw is Map) {
           try {
-            result.add(ClassroomMember.fromJson(Map<String, dynamic>.from(raw)));
+            result.add(
+              ClassroomMember.fromJson(Map<String, dynamic>.from(raw)),
+            );
           } catch (_) {
             continue;
           }
@@ -890,7 +1050,9 @@ class HiveService {
   }
 
   static Future<void> removeHomeGroupMemberLocal(
-      String homeGroupId, String profileId) async {
+    String homeGroupId,
+    String profileId,
+  ) async {
     await _hgMemberBox.delete('$homeGroupId:$profileId');
   }
 
@@ -903,7 +1065,8 @@ class HiveService {
         if (raw is Map) {
           try {
             result.add(
-                HomeGroupMember.fromJson(Map<String, dynamic>.from(raw)));
+              HomeGroupMember.fromJson(Map<String, dynamic>.from(raw)),
+            );
           } catch (_) {
             continue;
           }
@@ -995,7 +1158,9 @@ class HiveService {
   /// the value survives Hive's typed-box round trip without a custom
   /// adapter.
   static Future<void> setPinUnlockGrace(
-      String childProfileId, DateTime until) async {
+    String childProfileId,
+    DateTime until,
+  ) async {
     await _settBox.put(_pinGraceKey(childProfileId), until.toIso8601String());
   }
 
@@ -1079,9 +1244,16 @@ class HiveService {
       return getProfileById(id);
     }
 
-    // Classroom path: classroom_members → classroom → teacher_id
+    // Classroom path: classroom_members → classroom → teacher_id.
+    // Keys are written by [addMemberLocal] as `<classroomId>:<profileId>` —
+    // the separator is a colon, not an underscore. Matching on `_` here
+    // meant this branch never hit, so a classroom-linked learner's lock
+    // screen showed "No parent or teacher is linked to this device" and
+    // the teacher's PIN could not dismiss it. The home-group branch below
+    // always used the right separator, which is why parent-linked
+    // children were unaffected.
     for (final key in _memberBox.keys) {
-      if (!key.toString().endsWith('_$childProfileId')) continue;
+      if (!key.toString().endsWith(':$childProfileId')) continue;
       final raw = _memberBox.get(key);
       if (raw is! Map) continue;
       final classroomId = raw['classroom_id'] as String?;
@@ -1133,7 +1305,9 @@ class HiveService {
   }
 
   static Future<void> savePurchasedItems(
-      String profileId, Set<String> itemIds) async {
+    String profileId,
+    Set<String> itemIds,
+  ) async {
     await _progBox.put('purchases_$profileId', itemIds.toList());
   }
 
@@ -1146,7 +1320,10 @@ class HiveService {
 
   /// Set the equipped item for a given type. Pass null to unequip.
   static Future<void> saveEquippedItem(
-      String profileId, String type, String? itemId) async {
+    String profileId,
+    String type,
+    String? itemId,
+  ) async {
     if (itemId == null) {
       await _progBox.delete('equipped_${type}_$profileId');
     } else {
@@ -1166,7 +1343,9 @@ class HiveService {
   }
 
   static Future<void> addSessionLog(
-      String profileId, Map<String, dynamic> session) async {
+    String profileId,
+    Map<String, dynamic> session,
+  ) async {
     final sessions = getSessionLogs(profileId);
     sessions.add(session);
     // Keep only last 90 days of sessions
@@ -1181,15 +1360,19 @@ class HiveService {
   // ─── Engagement Tracking ─────────────────────────────
 
   static List<Map<String, dynamic>> getEngagementLogs(String profileId) {
-    final data =
-        _sessBox.get('engagement_$profileId', defaultValue: <dynamic>[]);
+    final data = _sessBox.get(
+      'engagement_$profileId',
+      defaultValue: <dynamic>[],
+    );
     return List<Map<String, dynamic>>.from(
       (data as List).map((e) => Map<String, dynamic>.from(e as Map)),
     );
   }
 
   static Future<void> addEngagementLog(
-      String profileId, Map<String, dynamic> log) async {
+    String profileId,
+    Map<String, dynamic> log,
+  ) async {
     final logs = getEngagementLogs(profileId);
     logs.add(log);
     // Keep only last 90 days of engagement logs
@@ -1212,8 +1395,10 @@ class HiveService {
   // to register, so the shape can grow without a migration.
 
   static List<Map<String, dynamic>> getCastSessions(String profileId) {
-    final data =
-        _sessBox.get('cast_sessions_$profileId', defaultValue: <dynamic>[]);
+    final data = _sessBox.get(
+      'cast_sessions_$profileId',
+      defaultValue: <dynamic>[],
+    );
     return List<Map<String, dynamic>>.from(
       (data as List).map((e) => Map<String, dynamic>.from(e as Map)),
     );
@@ -1223,7 +1408,9 @@ class HiveService {
   /// the most recent [_maxCastSessions] entries, so a heavy user's box stays
   /// bounded — same policy as the engagement logs.
   static Future<void> addCastSession(
-      String profileId, Map<String, dynamic> session) async {
+    String profileId,
+    Map<String, dynamic> session,
+  ) async {
     final sessions = getCastSessions(profileId);
     sessions.add(session);
     final cutoff = DateTime.now().subtract(const Duration(days: 90));
@@ -1246,19 +1433,25 @@ class HiveService {
   // ─── Learning Path Progress ────────────────────────────
 
   static Map<String, dynamic>? getLearningPathProgress(
-      String profileId, String pathId) {
+    String profileId,
+    String pathId,
+  ) {
     final data = _progBox.get('lp_${profileId}_$pathId');
     if (data == null) return null;
     return Map<String, dynamic>.from(data as Map);
   }
 
   static Future<void> saveLearningPathProgress(
-      String profileId, String pathId, Map<String, dynamic> progress) async {
+    String profileId,
+    String pathId,
+    Map<String, dynamic> progress,
+  ) async {
     await _progBox.put('lp_${profileId}_$pathId', progress);
   }
 
   static Map<String, Map<String, dynamic>> getAllLearningPathProgress(
-      String profileId) {
+    String profileId,
+  ) {
     final result = <String, Map<String, dynamic>>{};
     final keys = _progBox.keys.where(
       (k) => k.toString().startsWith('lp_${profileId}_'),
@@ -1275,37 +1468,301 @@ class HiveService {
 
   // ─── FSL Video View Tracking ────────────────────────────
 
+  /// How many recent FSL views to keep per profile.
+  ///
+  /// The log used to be unbounded — every view ever, appended to one key and
+  /// re-serialised on each write, then rescanned in full for the unique count
+  /// on every FSL Dictionary rebuild (i.e. every search keystroke). Over a
+  /// semester of daily use that is a list that only grows. Capped like
+  /// `recentScores`; the *unique words* set below is what carries the learner's
+  /// actual progress, and it is stored separately so trimming never loses it.
+  static const int _fslViewLogCap = 200;
+
+  /// Stable identity for a signed word. Category-qualified because two seed
+  /// cards share the slug `chicken` (Animals + Food & Drinks).
+  static String fslWordKey(String category, String word) => '${category}_$word';
+
   /// Record that a user watched an FSL video for a given word.
   static Future<void> recordFslVideoView(
-      String profileId, String category, String word) async {
-    final key = 'fsl_views_$profileId';
-    final raw = _progBox.get(key);
-    final views = raw != null
-        ? List<Map<String, dynamic>>.from(
-            (raw as List).map((e) => Map<String, dynamic>.from(e as Map)))
-        : <Map<String, dynamic>>[];
+    String profileId,
+    String category,
+    String word,
+  ) async {
+    // Read the distinct-signs set FIRST. On a profile that has none stored yet
+    // it derives itself from the view log, so appending to the log before this
+    // point would make every word look like one already seen — `add` returns
+    // false, the set is never persisted, and the count silently degrades to
+    // "however much of the log survived trimming".
+    final unique = fslWordsViewed(profileId);
+    final isNewSign = unique.add(fslWordKey(category, word));
+
+    final views = getFslVideoViews(profileId);
     views.add({
       'category': category,
       'word': word,
       'date': DateTime.now().toIso8601String(),
     });
-    await _progBox.put(key, views);
+    if (views.length > _fslViewLogCap) {
+      views.removeRange(0, views.length - _fslViewLogCap);
+    }
+    await _progBox.put('fsl_views_$profileId', views);
+
+    // Unique words live in their own key so the count survives the log being
+    // trimmed, and so reading it is a lookup rather than a scan.
+    if (isNewSign) {
+      await _progBox.put('fsl_unique_$profileId', unique.toList());
+      // `getProgress` reads this set through into `signedWordKeys`, so a cached
+      // row would keep reporting the old count to XP, achievements and the
+      // progress screen until something else happened to invalidate it.
+      _progressCache.remove(profileId);
+    }
   }
 
-  /// Get all FSL video views for this profile.
+  /// Get the recent FSL video views for this profile, oldest first. Capped at
+  /// [_fslViewLogCap] entries — use [fslWordsViewed] for "what have they
+  /// learned", which is complete.
   static List<Map<String, dynamic>> getFslVideoViews(String profileId) {
     final raw = _progBox.get('fsl_views_$profileId');
     if (raw == null) return [];
     return List<Map<String, dynamic>>.from(
-        (raw as List).map((e) => Map<String, dynamic>.from(e as Map)));
+      (raw as List).map((e) => Map<String, dynamic>.from(e as Map)),
+    );
+  }
+
+  /// Every distinct word whose sign this profile has watched, as
+  /// [fslWordKey]s.
+  static Set<String> fslWordsViewed(String profileId) {
+    final raw = _progBox.get('fsl_unique_$profileId');
+    if (raw != null) return List<String>.from(raw as List).toSet();
+    // Profiles that predate the unique-set key derive it from whatever log they
+    // still have. That can undercount a long history whose log was trimmed, but
+    // it self-heals on the next view, and the alternative is showing them zero.
+    return getFslVideoViews(
+      profileId,
+    ).map((v) => fslWordKey('${v['category']}', '${v['word']}')).toSet();
   }
 
   /// Get the number of unique FSL words viewed by this profile.
-  static int fslUniqueWordsViewed(String profileId) {
-    final views = getFslVideoViews(profileId);
-    final unique = views.map((v) => '${v['category']}_${v['word']}').toSet();
-    return unique.length;
+  static int fslUniqueWordsViewed(String profileId) =>
+      fslWordsViewed(profileId).length;
+
+  /// Whether this profile has already watched the sign for a given word.
+  static bool hasViewedFslWord(
+    String profileId,
+    String category,
+    String word,
+  ) => fslWordsViewed(profileId).contains(fslWordKey(category, word));
+
+  /// Folds a remote set of watched signs into the local one.
+  ///
+  /// **Union, never replace.** The set only ever grows, and a learner using two
+  /// devices will have signs on each that the other has not seen. Replacing
+  /// would silently roll back whichever device synced second — and because this
+  /// set feeds XP, that would de-level them, which is exactly what the
+  /// monotonicity rule exists to prevent.
+  ///
+  /// Returns whether anything was actually added, so the caller can skip a
+  /// needless rebuild.
+  static Future<bool> mergeFslWordsViewed(
+    String profileId,
+    Iterable<String> remote,
+  ) async {
+    final local = fslWordsViewed(profileId);
+    final before = local.length;
+    local.addAll(remote.where((k) => k.isNotEmpty));
+    if (local.length == before) return false;
+    await _progBox.put('fsl_unique_$profileId', local.toList());
+    _progressCache.remove(profileId);
+    return true;
   }
+
+  // ─── FSL Self-Assessed Production ("I can sign this") ───
+
+  /// The learner's own claim per word, as [fslWordKey] → [SignMastery].
+  ///
+  /// Revocable by design — see [SignMastery]. Absent keys are
+  /// [SignMastery.notSet].
+  static Map<String, SignMastery> fslMastery(String profileId) {
+    final raw = _progBox.get('fsl_mastery_$profileId');
+    if (raw == null) return <String, SignMastery>{};
+    final out = <String, SignMastery>{};
+    (raw as Map).forEach((k, v) {
+      final index = v is int ? v : int.tryParse('$v') ?? 0;
+      if (index >= 0 && index < SignMastery.values.length) {
+        out['$k'] = SignMastery.values[index];
+      }
+    });
+    return out;
+  }
+
+  static SignMastery fslMasteryFor(
+    String profileId,
+    String category,
+    String word,
+  ) =>
+      fslMastery(profileId)[fslWordKey(category, word)] ?? SignMastery.notSet;
+
+  /// Records the learner's own claim. Setting [SignMastery.notSet] clears it.
+  ///
+  /// Changing a claim deliberately does **not** touch the verification record:
+  /// an educator's judgement is theirs, and silently discarding it whenever the
+  /// learner re-answers would destroy the calibration pairing this whole
+  /// feature exists to measure. A stale verification is surfaced as such by
+  /// [fslVerificationFor] rather than deleted.
+  static Future<void> setFslMastery(
+    String profileId,
+    String category,
+    String word,
+    SignMastery mastery,
+  ) async {
+    final all = fslMastery(profileId);
+    final key = fslWordKey(category, word);
+    if (mastery == SignMastery.notSet) {
+      all.remove(key);
+    } else {
+      all[key] = mastery;
+    }
+    await _progBox.put(
+      'fsl_mastery_$profileId',
+      all.map((k, v) => MapEntry(k, v.index)),
+    );
+    _progressCache.remove(profileId);
+  }
+
+  /// Words the learner currently claims they can produce.
+  static Set<String> fslCanSignKeys(String profileId) => fslMastery(profileId)
+      .entries
+      .where((e) => e.value == SignMastery.canSign)
+      .map((e) => e.key)
+      .toSet();
+
+  // ─── FSL Educator Verification ──────────────────────────
+
+  /// An educator's judgement per word, as [fslWordKey] → [SignVerification].
+  static Map<String, SignVerification> fslVerifications(String profileId) {
+    final raw = _progBox.get('fsl_verified_$profileId');
+    if (raw == null) return <String, SignVerification>{};
+    final out = <String, SignVerification>{};
+    (raw as Map).forEach((k, v) {
+      final row = Map<String, dynamic>.from(v as Map);
+      final index = (row['state'] as num?)?.toInt() ?? 0;
+      if (index >= 0 && index < SignVerification.values.length) {
+        out['$k'] = SignVerification.values[index];
+      }
+    });
+    return out;
+  }
+
+  static SignVerification fslVerificationFor(
+    String profileId,
+    String category,
+    String word,
+  ) =>
+      fslVerifications(profileId)[fslWordKey(category, word)] ??
+      SignVerification.unreviewed;
+
+  /// Full verification rows — state plus who decided and when. Backs the
+  /// research export's calibration columns.
+  static List<Map<String, dynamic>> fslVerificationRows(String profileId) {
+    final raw = _progBox.get('fsl_verified_$profileId');
+    if (raw == null) return const [];
+    final out = <Map<String, dynamic>>[];
+    (raw as Map).forEach((k, v) {
+      out.add({'key': '$k', ...Map<String, dynamic>.from(v as Map)});
+    });
+    return out;
+  }
+
+  /// Records an educator's judgement of a learner's claim.
+  ///
+  /// [verifierRole] is the educator's role ('teacher' / 'parent') so the export
+  /// can tell a classroom check from a home one — they are not the same
+  /// evidence.
+  static Future<void> setFslVerification(
+    String profileId,
+    String category,
+    String word,
+    SignVerification verification, {
+    required String verifierId,
+    required String verifierRole,
+  }) async {
+    final raw = _progBox.get('fsl_verified_$profileId');
+    final all = raw == null
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(raw as Map);
+    final key = fslWordKey(category, word);
+    if (verification == SignVerification.unreviewed) {
+      all.remove(key);
+    } else {
+      all[key] = {
+        'state': verification.index,
+        'at': DateTime.now().toIso8601String(),
+        'by': verifierId,
+        'role': verifierRole,
+      };
+    }
+    await _progBox.put('fsl_verified_$profileId', all);
+
+    // High-water mark for XP. Confirmations are what earn levels, and a
+    // later downgrade must never take a level away — the same rule
+    // `bestStreakDays` follows. See [XpService.calculateXp].
+    if (verification == SignVerification.confirmed) {
+      final ever = fslEverConfirmedKeys(profileId);
+      if (ever.add(key)) {
+        await _progBox.put('fsl_ever_confirmed_$profileId', ever.toList());
+      }
+    }
+    _progressCache.remove(profileId);
+  }
+
+  /// Words ever confirmed by an educator. Monotonic — the XP input.
+  static Set<String> fslEverConfirmedKeys(String profileId) {
+    final raw = _progBox.get('fsl_ever_confirmed_$profileId');
+    if (raw == null) return <String>{};
+    return List<String>.from(raw as List).toSet();
+  }
+
+  /// Words currently confirmed. Can go down; drives what educators and
+  /// learners *see*, while [fslEverConfirmedKeys] drives what they keep.
+  static Set<String> fslConfirmedKeys(String profileId) =>
+      fslVerifications(profileId)
+          .entries
+          .where((e) => e.value == SignVerification.confirmed)
+          .map((e) => e.key)
+          .toSet();
+
+  // ─── FSL Favourites ─────────────────────────────────────
+
+  /// Signs the learner has starred, as [fslWordKey]s.
+  ///
+  /// A learner's own short list out of 142 — the handful they are working on,
+  /// or the ones they keep coming back to. Deliberately **device-local and not
+  /// part of [LearningProgress]**: it is a preference, not progress, so it
+  /// earns no XP, stays out of the research export, and does not travel with
+  /// the synced progress row.
+  static Set<String> fslFavourites(String profileId) {
+    final raw = _progBox.get('fsl_favourites_$profileId');
+    if (raw == null) return <String>{};
+    return List<String>.from(raw as List).toSet();
+  }
+
+  /// Stars or un-stars a sign. Returns the state it ended in, so the caller can
+  /// confirm the action without re-reading the set.
+  static Future<bool> toggleFslFavourite(
+    String profileId,
+    String category,
+    String word,
+  ) async {
+    final favourites = fslFavourites(profileId);
+    final key = fslWordKey(category, word);
+    final nowFavourite = favourites.add(key);
+    if (!nowFavourite) favourites.remove(key);
+    await _progBox.put('fsl_favourites_$profileId', favourites.toList());
+    return nowFavourite;
+  }
+
+  static bool isFslFavourite(String profileId, String category, String word) =>
+      fslFavourites(profileId).contains(fslWordKey(category, word));
 
   // ─── Mood Tracker ──────────────────────────────────────
 
@@ -1320,7 +1777,9 @@ class HiveService {
 
   /// Save mood entries for a profile.
   static Future<void> saveMoodEntries(
-      String profileId, List<MoodEntry> entries) async {
+    String profileId,
+    List<MoodEntry> entries,
+  ) async {
     await _progBox.put(
       'mood_entries_$profileId',
       entries.map((e) => e.toJson()).toList(),
@@ -1338,7 +1797,9 @@ class HiveService {
 
   /// Save owned sticker IDs for a profile.
   static Future<void> saveOwnedStickers(
-      String profileId, Set<String> ids) async {
+    String profileId,
+    Set<String> ids,
+  ) async {
     await _progBox.put('stickers_$profileId', ids.toList());
   }
 
@@ -1355,7 +1816,9 @@ class HiveService {
 
   /// Save all messages for a profile.
   static Future<void> saveMessages(
-      String profileId, List<LocalMessage> messages) async {
+    String profileId,
+    List<LocalMessage> messages,
+  ) async {
     await _progBox.put(
       'messages_$profileId',
       messages.map((m) => m.toJson()).toList(),
@@ -1382,7 +1845,9 @@ class HiveService {
 
   /// Save all learning goals for a profile.
   static Future<void> saveGoals(
-      String profileId, List<LearningGoal> goals) async {
+    String profileId,
+    List<LearningGoal> goals,
+  ) async {
     await _progBox.put(
       'goals_$profileId',
       goals.map((g) => g.toJson()).toList(),
@@ -1410,7 +1875,9 @@ class HiveService {
   /// JSON maps keeps the cache forward-compatible if [Friendship] grows
   /// new fields.
   static Future<void> saveFriendsCache(
-      String profileId, List<Map<String, dynamic>> friendsJson) async {
+    String profileId,
+    List<Map<String, dynamic>> friendsJson,
+  ) async {
     await _friendsBox.put(profileId, friendsJson);
   }
 
@@ -1425,7 +1892,9 @@ class HiveService {
 
   /// Replace the cached incoming-request list for [profileId].
   static Future<void> saveFriendRequestsCache(
-      String profileId, List<Map<String, dynamic>> requestsJson) async {
+    String profileId,
+    List<Map<String, dynamic>> requestsJson,
+  ) async {
     await _friendReqBox.put(profileId, requestsJson);
   }
 
@@ -1438,10 +1907,32 @@ class HiveService {
         .toList();
   }
 
+  /// Replace the cached blocked-profile list for [profileId].
+  ///
+  /// Shares the friends box under a `blocked_` key prefix rather than opening
+  /// another box — [init] would otherwise need a new box and a migration, and
+  /// this list has the same lifetime and owner as the friends cache.
+  /// Cached so a blocked peer never flashes back into the inbox during the
+  /// cold-start window before Firestore's first snapshot lands.
+  static Future<void> saveBlockedProfiles(
+    String profileId,
+    List<String> blockedIds,
+  ) async {
+    await _friendsBox.put('blocked_$profileId', blockedIds);
+  }
+
+  static List<String> getBlockedProfiles(String profileId) {
+    final raw = _friendsBox.get('blocked_$profileId');
+    if (raw is! List) return const [];
+    return raw.whereType<String>().toList();
+  }
+
   /// Cache a single directory entry by profile id so future name
   /// resolutions skip the Firestore round-trip.
   static Future<void> cacheDirectoryEntry(
-      String profileId, Map<String, dynamic> json) async {
+    String profileId,
+    Map<String, dynamic> json,
+  ) async {
     await _dirCacheBox.put('by_id_$profileId', json);
   }
 
@@ -1464,7 +1955,9 @@ class HiveService {
 
   /// Save Word of Day history records for a profile.
   static Future<void> saveWordOfDayHistory(
-      String profileId, List<WordOfDayRecord> records) async {
+    String profileId,
+    List<WordOfDayRecord> records,
+  ) async {
     await _progBox.put(
       'wotd_history_$profileId',
       records.map((r) => r.toJson()).toList(),
@@ -1484,7 +1977,9 @@ class HiveService {
 
   /// Save focus sessions for a profile.
   static Future<void> saveFocusSessions(
-      String profileId, List<FocusSession> sessions) async {
+    String profileId,
+    List<FocusSession> sessions,
+  ) async {
     await _progBox.put(
       'focus_sessions_$profileId',
       sessions.map((s) => s.toJson()).toList(),
@@ -1522,7 +2017,9 @@ class HiveService {
 
   /// Remove one note from a student's bucket.
   static Future<void> removeNoteForStudent(
-      String noteId, String studentId) async {
+    String noteId,
+    String studentId,
+  ) async {
     final existing = getNotesForStudent(studentId);
     existing.removeWhere((n) => n.id == noteId);
     await _progBox.put(
@@ -1534,7 +2031,9 @@ class HiveService {
   /// Replace the entire bucket — used by cloud hydration to overwrite
   /// stale local state with the authoritative server set.
   static Future<void> replaceNotesForStudent(
-      String studentId, List<ParentTeacherNote> notes) async {
+    String studentId,
+    List<ParentTeacherNote> notes,
+  ) async {
     await _progBox.put(
       'pt_notes_$studentId',
       notes.map((n) => n.toJson()).toList(),
@@ -1550,8 +2049,10 @@ class HiveService {
     if (settings.get(flagKey, defaultValue: false) == true) return;
 
     // Snapshot keys first — we'll mutate the box as we go.
-    final allKeys = _progBox.keys.where((k) =>
-        k is String && k.startsWith('pt_notes_')).cast<String>().toList();
+    final allKeys = _progBox.keys
+        .where((k) => k is String && k.startsWith('pt_notes_'))
+        .cast<String>()
+        .toList();
 
     // Group every existing note by its inner studentProfileId.
     final byStudent = <String, List<ParentTeacherNote>>{};

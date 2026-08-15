@@ -38,6 +38,11 @@ class HomeTile extends StatelessWidget {
   /// Accessibility label. Defaults to "label. subtitle".
   final String? semanticLabel;
 
+  /// Count for a corner notification pip (unread messages, pending items…).
+  /// Zero or null draws nothing, so a caller can pass a live count straight
+  /// through without branching.
+  final int? badgeCount;
+
   const HomeTile({
     super.key,
     required this.emoji,
@@ -47,12 +52,69 @@ class HomeTile extends StatelessWidget {
     this.subtitle,
     this.compact = false,
     this.semanticLabel,
+    this.badgeCount,
   });
 
   @override
   Widget build(BuildContext context) {
     final double emojiSize = compact ? 24 : 34;
     final double badge = compact ? 42 : 56;
+    final count = badgeCount ?? 0;
+
+    final card = _card(emojiSize: emojiSize, badgeSize: badge);
+    if (count <= 0) return card;
+
+    // The pip sits *outside* the card's padded content so it can't reflow the
+    // label at large text scales — the tile's layout is unchanged whether or
+    // not there's a badge.
+    return Stack(
+      clipBehavior: Clip.none,
+      // Without passthrough the non-positioned card gets *loose* constraints
+      // and shrink-wraps, so a badged tile would draw narrower than its
+      // unbadged neighbours in the same grid row.
+      fit: StackFit.passthrough,
+      children: [
+        card,
+        Positioned(
+          top: compact ? 2 : 6,
+          right: compact ? 2 : 6,
+          child: IgnorePointer(
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                widthFactor: 1,
+                child: Text(
+                  count > 99 ? '99+' : '$count',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: gradient.first,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _card({required double emojiSize, required double badgeSize}) {
+    final count = badgeCount ?? 0;
+    final base =
+        semanticLabel ?? (subtitle == null ? label : '$label. $subtitle');
+    final double badge = badgeSize;
 
     return AppCard(
       onTap: onTap,
@@ -67,8 +129,9 @@ class HomeTile extends StatelessWidget {
       // the larger tiles where there's room (compact tiles stay clean).
       depth: true,
       depthBubbles: !compact,
-      semanticLabel:
-          semanticLabel ?? (subtitle == null ? label : '$label. $subtitle'),
+      // The badge is drawn outside the card and marked IgnorePointer, so the
+      // count has to be spoken here or a screen-reader user never hears it.
+      semanticLabel: count > 0 ? '$base. $count new' : base,
       // Center the badge + labels both vertically and horizontally inside the
       // fixed-height grid cell. AppCard's depth mode lays its content out in a
       // Stack that defaults to top-start, so without this the content would hug

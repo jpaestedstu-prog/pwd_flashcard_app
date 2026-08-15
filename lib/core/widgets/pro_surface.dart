@@ -72,7 +72,11 @@ class ProPanel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (title != null) ...[
-          ProSectionHeader(title: title!, subtitle: subtitle, trailing: trailing),
+          ProSectionHeader(
+            title: title!,
+            subtitle: subtitle,
+            trailing: trailing,
+          ),
           AppSpacing.gapMd,
         ],
         child,
@@ -290,7 +294,11 @@ class ProStatTile extends StatelessWidget {
 }
 
 class _TrendChip extends StatelessWidget {
-  const _TrendChip({required this.trend, required this.delta, required this.hc});
+  const _TrendChip({
+    required this.trend,
+    required this.delta,
+    required this.hc,
+  });
 
   final ProTrend trend;
   final String? delta;
@@ -311,10 +319,10 @@ class _TrendChip extends StatelessWidget {
           Text(
             delta!,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
       ],
     );
@@ -429,7 +437,8 @@ class ProStatGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = columns ?? columnsForWidth(constraints.maxWidth, tiles.length);
+        final cols =
+            columns ?? columnsForWidth(constraints.maxWidth, tiles.length);
         final rows = <Widget>[];
         for (var i = 0; i < tiles.length; i += cols) {
           final rowTiles = tiles.sublist(
@@ -440,21 +449,21 @@ class ProStatGrid extends StatelessWidget {
           for (var c = 0; c < cols; c++) {
             if (c > 0) cells.add(SizedBox(width: spacing));
             if (c < rowTiles.length) {
-              cells.add(Expanded(
-                child: _GridCell(child: rowTiles[c]),
-              ));
+              cells.add(Expanded(child: _GridCell(child: rowTiles[c])));
             } else {
               // Pad the last row so cells keep a consistent width.
               cells.add(const Expanded(child: SizedBox.shrink()));
             }
           }
           if (rows.isNotEmpty) rows.add(SizedBox(height: spacing));
-          rows.add(IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: cells,
+          rows.add(
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: cells,
+              ),
             ),
-          ));
+          );
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -508,11 +517,17 @@ class ProActionTile extends StatelessWidget {
     this.caption,
     this.accent,
     this.compact = false,
+    this.badgeCount,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+
+  /// Count for a corner notification pip (unread messages, pending items…).
+  /// Zero or null draws nothing, so callers can pass a live count straight
+  /// through without branching.
+  final int? badgeCount;
 
   /// Optional one-line description, shown on large (non-[compact]) tiles only.
   final String? caption;
@@ -535,10 +550,14 @@ class ProActionTile extends StatelessWidget {
     // A restrained dose of colour: the accent is *blended into* the surface so
     // the fill stays opaque (the screen sits on an animated gradient — a
     // translucent fill would bleed through) and auto-adapts to light/dark.
-    final Color fillStrong =
-        Color.alphaBlend(accentColor.withValues(alpha: 0.12), hc.cardBackground);
-    final Color fillSoft =
-        Color.alphaBlend(accentColor.withValues(alpha: 0.04), hc.cardBackground);
+    final Color fillStrong = Color.alphaBlend(
+      accentColor.withValues(alpha: 0.12),
+      hc.cardBackground,
+    );
+    final Color fillSoft = Color.alphaBlend(
+      accentColor.withValues(alpha: 0.04),
+      hc.cardBackground,
+    );
 
     final content = Container(
       padding: compact ? AppSpacing.paddingMd : AppSpacing.paddingLg,
@@ -578,13 +597,14 @@ class ProActionTile extends StatelessWidget {
             label,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: (compact
-                    ? theme.textTheme.titleSmall
-                    : theme.textTheme.titleMedium)
-                ?.copyWith(
-              color: hc.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+            style:
+                (compact
+                        ? theme.textTheme.titleSmall
+                        : theme.textTheme.titleMedium)
+                    ?.copyWith(
+                      color: hc.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
           ),
           if (!compact && caption != null) ...[
             const SizedBox(height: AppSpacing.xs),
@@ -599,15 +619,62 @@ class ProActionTile extends StatelessWidget {
       ),
     );
 
+    final count = badgeCount ?? 0;
+    final base = caption == null ? label : '$label. $caption';
+
     return Semantics(
       button: true,
-      label: caption == null ? label : '$label. $caption',
+      // The pip below is IgnorePointer, so the count has to be spoken here or
+      // a screen-reader user never hears it.
+      label: count > 0 ? '$base. $count new' : base,
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
           onTap: onTap,
           borderRadius: ProSurface.borderRadius,
-          child: content,
+          child: count > 0
+              ? Stack(
+                  clipBehavior: Clip.none,
+                  // Without passthrough the non-positioned content gets *loose*
+                  // constraints and shrink-wraps, so a badged tile drew
+                  // narrower than its unbadged neighbours in the same grid row
+                  // (and the pip floated in the gap beside it).
+                  fit: StackFit.passthrough,
+                  children: [
+                    content,
+                    Positioned(
+                      top: compact ? 6 : 10,
+                      right: compact ? 6 : 10,
+                      child: IgnorePointer(
+                        child: Container(
+                          constraints: const BoxConstraints(
+                            minWidth: 20,
+                            minHeight: 20,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: accentColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            widthFactor: 1,
+                            child: Text(
+                              count > 99 ? '99+' : '$count',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : content,
         ),
       ),
     );
@@ -636,7 +703,11 @@ class ProActionGrid extends StatelessWidget {
 
   /// Width-aware column count, clamped to the number of tiles. Large grids stay
   /// at two big columns on phones; compact grids fit more, smaller tiles.
-  static int columnsForWidth(double width, int itemCount, {bool compact = false}) {
+  static int columnsForWidth(
+    double width,
+    int itemCount, {
+    bool compact = false,
+  }) {
     int cols;
     if (compact) {
       if (width >= 1120) {
@@ -666,8 +737,11 @@ class ProActionGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols =
-            columnsForWidth(constraints.maxWidth, tiles.length, compact: compact);
+        final cols = columnsForWidth(
+          constraints.maxWidth,
+          tiles.length,
+          compact: compact,
+        );
         final rows = <Widget>[];
         for (var i = 0; i < tiles.length; i += cols) {
           final rowTiles = tiles.sublist(
@@ -685,12 +759,14 @@ class ProActionGrid extends StatelessWidget {
             }
           }
           if (rows.isNotEmpty) rows.add(SizedBox(height: spacing));
-          rows.add(IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: cells,
+          rows.add(
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: cells,
+              ),
             ),
-          ));
+          );
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

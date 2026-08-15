@@ -9,7 +9,11 @@ import '../../data/models/learning_path.dart';
 /// Shared routing logic for both the lesson timeline ([LessonScreen]) and the
 /// winding lesson trail ([LessonTrailScreen]) so a step always opens the same
 /// way regardless of which view the learner tapped it from.
-void launchLessonStep(BuildContext context, LessonStep step, LearningPath path) {
+void launchLessonStep(
+  BuildContext context,
+  LessonStep step,
+  LearningPath path,
+) {
   final stepIndex = path.steps.indexOf(step);
   final totalSteps = path.steps.length;
 
@@ -36,6 +40,9 @@ void launchLessonStep(BuildContext context, LessonStep step, LearningPath path) 
           GameType.fslPractice => 'fsl-practice',
           GameType.jigsawPuzzle => 'jigsaw-puzzle',
           GameType.pictureWord => 'picture-word',
+          GameType.yesOrNo => 'yes-or-no',
+          GameType.oddOneOut => 'odd-one-out',
+          GameType.firstLetter => 'first-letter',
         };
         final difficulty = step.gameDifficulty?.name ?? 'medium';
         context.push(

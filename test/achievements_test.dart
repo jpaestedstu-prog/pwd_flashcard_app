@@ -85,4 +85,66 @@ void main() {
       expect(newOnes.any((a) => a.id == 'first_word'), false);
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Word Hunt badges
+  // ─────────────────────────────────────────────────────────────────────
+  //
+  // These read the Word Hunt discovery log rather than [LearningProgress], so
+  // they are the one family of achievements that touches Hive. This suite never
+  // opens a box — which is exactly the case the service's guarded accessors
+  // exist for, and asserting it here keeps that guard from being removed.
+  group('Word Hunt achievements', () {
+    LearningProgress progress() => LearningProgress(
+          profileId: 'p-hunt',
+          lastActivityDate: DateTime(2026),
+        );
+
+    test('are part of the badge set', () {
+      final ids = Achievements.all.map((a) => a.id).toSet();
+      expect(
+        ids,
+        containsAll(<String>[
+          'hunt_first_find',
+          'hunt_spotter',
+          'hunt_collector',
+          'hunt_daily_streak',
+        ]),
+      );
+    });
+
+    test('stay locked, not crashing, when Hive is not up', () {
+      final unlocked = Achievements.unlockedIds(progress());
+      expect(unlocked.contains('hunt_first_find'), isFalse);
+      expect(unlocked.contains('hunt_daily_streak'), isFalse);
+    });
+
+    test('their titles come from the shared milestone ladder', () {
+      // One source of truth: the "N more to unlock X" nudge on My Finds reads
+      // the same list, so the two can never disagree about the badge name.
+      expect(Achievements.huntFirstFind.title, huntFindMilestones[0].title);
+      expect(Achievements.huntSpotter.title, huntFindMilestones[1].title);
+      expect(Achievements.huntCollector.title, huntFindMilestones[2].title);
+    });
+  });
+
+  group('nextHuntMilestone', () {
+    test('points at the next rung up', () {
+      expect(nextHuntMilestone(0)!.finds, huntFindMilestones[0].finds);
+      expect(nextHuntMilestone(1)!.finds, huntFindMilestones[1].finds);
+      expect(nextHuntMilestone(9)!.finds, huntFindMilestones[1].finds);
+      expect(nextHuntMilestone(10)!.finds, huntFindMilestones[2].finds);
+    });
+
+    test('is null once the ladder is topped out', () {
+      expect(nextHuntMilestone(huntFindMilestones.last.finds), isNull);
+      expect(nextHuntMilestone(999), isNull);
+    });
+
+    test('the ladder ascends', () {
+      final finds = huntFindMilestones.map((m) => m.finds).toList();
+      expect(finds, orderedEquals([...finds]..sort()));
+      expect(finds.toSet(), hasLength(finds.length));
+    });
+  });
 }

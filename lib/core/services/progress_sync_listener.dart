@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../data/local/hive_service.dart';
+import '../../data/models/enums.dart';
 import '../../data/models/models.dart';
 import 'firebase_service.dart';
 
@@ -25,12 +26,12 @@ class ProgressSyncListener {
 
   /// profileId → active subscription. One per profile we're watching.
   final Map<String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>
-      _subs = {};
+  _subs = {};
 
   final StreamController<String> _changes = StreamController.broadcast();
 
   ProgressSyncListener({FirebaseFirestore? db})
-      : _db = db ?? FirebaseService.db;
+    : _db = db ?? FirebaseService.db;
 
   /// Emits the profileId of any progress doc just hydrated from the
   /// server. Consumers (typically a Riverpod StreamProvider) use this
@@ -57,18 +58,22 @@ class ProgressSyncListener {
   void _subscribe(String profileId) {
     if (_subs.containsKey(profileId)) return;
     final ref = _db.collection('progress').doc(profileId);
-    _subs[profileId] = ref.snapshots(includeMetadataChanges: false).listen(
-      (snap) => _handleSnapshot(profileId, snap),
-      onError: (Object e, StackTrace st) {
-        if (kDebugMode) {
-          debugPrint('ProgressSyncListener[$profileId] error: $e');
-        }
-      },
-    );
+    _subs[profileId] = ref
+        .snapshots(includeMetadataChanges: false)
+        .listen(
+          (snap) => _handleSnapshot(profileId, snap),
+          onError: (Object e, StackTrace st) {
+            if (kDebugMode) {
+              debugPrint('ProgressSyncListener[$profileId] error: $e');
+            }
+          },
+        );
   }
 
   void _handleSnapshot(
-      String profileId, DocumentSnapshot<Map<String, dynamic>> snap) {
+    String profileId,
+    DocumentSnapshot<Map<String, dynamic>> snap,
+  ) {
     // Skip echoes of our own pending writes — those will fire again
     // once confirmed by the server.
     if (snap.metadata.hasPendingWrites) return;
@@ -81,6 +86,17 @@ class ProgressSyncListener {
       // Bypass LocalRepository so this hydration doesn't bounce back
       // out as a remote write.
       HiveService.saveProgress(progress);
+      // Watched signs live in their own Hive key, not on the progress row, so
+      // `saveProgress` does not carry them — without this the pull would drop
+      // every sign the other device recorded. Merged as a union so neither
+      // device's history is rolled back.
+      final signedRaw = data['fsl_signed_words'] as List<dynamic>? ?? const [];
+      if (signedRaw.isNotEmpty) {
+        HiveService.mergeFslWordsViewed(
+          profileId,
+          signedRaw.map((e) => e.toString()),
+        );
+      }
       _changes.add(profileId);
     } catch (e, st) {
       if (kDebugMode) {
@@ -92,8 +108,7 @@ class ProgressSyncListener {
   /// Mirrors the deserialization in [FirestoreRepository.getProgress].
   /// Inlined here to avoid a circular dependency between the listener
   /// (in core/) and the repository (in data/).
-  LearningProgress _progressFromMap(
-      String profileId, Map<String, dynamic> r) {
+  LearningProgress _progressFromMap(String profileId, Map<String, dynamic> r) {
     final catRaw = r['category_progress'] as Map<String, dynamic>? ?? {};
     final scoresRaw = r['recent_scores'] as List<dynamic>? ?? [];
     final wordsRaw = r['learned_word_ids'] as List<dynamic>? ?? [];
@@ -105,15 +120,25 @@ class ProgressSyncListener {
       streakDays: (r['streak_days'] as int?) ?? 0,
       lastActivityDate:
           DateTime.tryParse(r['last_activity'] as String? ?? '') ??
-              DateTime.now(),
-      categoryProgress:
-          catRaw.map((k, v) => MapEntry(k, (v as num).toDouble())),
+          DateTime.now(),
+      categoryProgress: catRaw.map(
+        (k, v) => MapEntry(k, (v as num).toDouble()),
+      ),
       recentScores: scoresRaw
-          .map((s) =>
-              GameScore.fromJson(Map<String, dynamic>.from(s as Map)))
+          .map((s) => GameScore.fromJson(Map<String, dynamic>.from(s as Map)))
           .toList(),
       totalStars: (r['total_stars'] as int?) ?? 0,
       spentStars: (r['spent_stars'] as int?) ?? 0,
+      // Absent on documents written before these lifetime counters existed;
+      // the model's `effective*` getters heal the 0. Omitting them here would
+      // let a cloud pull reset the high-water marks and de-level the learner —
+      // the exact regression XP monotonicity exists to prevent.
+      bestStreakDays: (r['best_streak_days'] as int?) ?? 0,
+      gamesPlayed: (r['games_played'] as int?) ?? 0,
+      playedGameTypes: gameTypesFromNames(r['played_game_types']),
+      // Deliberately not read here: `signedWordKeys` is not persisted by
+      // `saveProgress`, so setting it on this model would achieve nothing.
+      // `_handleSnapshot` merges it into its own Hive key instead.
     );
   }
 

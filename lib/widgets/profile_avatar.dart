@@ -38,28 +38,75 @@ class ProfileAvatar extends ConsumerWidget {
       );
     }
 
-    // Resolve avatar: equipped shop avatar first, then default
     final progressNotifier = ref.read(progressProvider.notifier);
-    final equippedAvatarId =
-        progressNotifier.getEquippedItemId(ShopItemType.avatar);
+
+    return CosmeticAvatar(
+      avatarIndex: profile!.avatarIndex,
+      equippedAvatarId:
+          progressNotifier.getEquippedItemId(ShopItemType.avatar),
+      equippedBorderId:
+          progressNotifier.getEquippedItemId(ShopItemType.border),
+      radius: radius,
+      fontSize: fontSize,
+    );
+  }
+}
+
+/// The purely presentational half of [ProfileAvatar]: renders whatever avatar
+/// and border it is *given*, rather than looking up the signed-in learner's.
+///
+/// Exists so surfaces that show *other* people — the leaderboard above all —
+/// can render a learner's purchased avatar and border. Before this, the
+/// leaderboard drew `AvatarData.getAvatar(entry.avatarIndex)`, so a learner
+/// who spent 40 stars on the Alien still appeared as their starting animal in
+/// the one place cosmetics are meant to be seen.
+///
+/// Both ids may be null (nothing equipped, or another device's member whose
+/// equipped rows have not synced here), in which case this degrades to the
+/// plain [AvatarData] avatar — exactly the old behaviour.
+class CosmeticAvatar extends StatelessWidget {
+  const CosmeticAvatar({
+    super.key,
+    required this.avatarIndex,
+    this.equippedAvatarId,
+    this.equippedBorderId,
+    this.radius = 28,
+    this.fontSize,
+  });
+
+  /// Index into [AvatarData] — the avatar chosen at profile creation.
+  final int avatarIndex;
+
+  /// Shop avatar id, which takes precedence over [avatarIndex].
+  final String? equippedAvatarId;
+
+  /// Shop border id; adds a decorative frame when present.
+  final String? equippedBorderId;
+
+  final double radius;
+  final double? fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    // Resolve by id *and* check the type. Withdrawn items stay in the
+    // catalogue so owners can be refunded, and ids arrive here from another
+    // device's Hive rows, so a mismatched id is reachable — without this guard
+    // a stale `sound_nature` would draw a leaf as somebody's face.
+    final resolved =
+        equippedAvatarId == null ? null : ShopData.findById(equippedAvatarId!);
     final equippedAvatar =
-        equippedAvatarId != null ? ShopData.findById(equippedAvatarId) : null;
+        resolved?.type == ShopItemType.avatar ? resolved : null;
 
     final String emoji;
     final Color bgColor;
-
     if (equippedAvatar != null) {
       emoji = equippedAvatar.emoji;
       bgColor = equippedAvatar.color;
     } else {
-      final defaultAvatar = AvatarData.getAvatar(profile!.avatarIndex);
+      final defaultAvatar = AvatarData.getAvatar(avatarIndex);
       emoji = defaultAvatar.emoji;
       bgColor = defaultAvatar.color;
     }
-
-    // Resolve border: equipped shop border
-    final equippedBorderId =
-        progressNotifier.getEquippedItemId(ShopItemType.border);
 
     final avatarWidget = CircleAvatar(
       radius: radius,
@@ -70,7 +117,7 @@ class ProfileAvatar extends ConsumerWidget {
     if (equippedBorderId == null) return avatarWidget;
 
     return _BorderWrapper(
-      borderId: equippedBorderId,
+      borderId: equippedBorderId!,
       radius: radius,
       child: avatarWidget,
     );

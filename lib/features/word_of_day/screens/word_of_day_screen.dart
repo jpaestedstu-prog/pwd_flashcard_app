@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
-import '../../../core/accessibility/haptic_service.dart' show hapticServiceProvider;
+import '../../../core/accessibility/haptic_service.dart'
+    show hapticServiceProvider;
 import '../../../core/accessibility/tts_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../models/word_of_day_models.dart';
 import '../services/word_of_day_service.dart';
+import '../../../widgets/flashcard_image.dart';
 
 class WordOfDayScreen extends ConsumerStatefulWidget {
   const WordOfDayScreen({super.key});
@@ -73,7 +75,10 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
             children: [
               // ─── Date Banner ──────────────────────
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: hc.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -81,11 +86,17 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.calendar_today_rounded, size: 16, color: hc.primary),
+                    Icon(
+                      Icons.calendar_today_rounded,
+                      size: 16,
+                      color: hc.primary,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       _formatDate(DateTime.now(), isFilipino),
-                      style: AppTypography.labelMedium.copyWith(color: hc.primary),
+                      style: AppTypography.labelMedium.copyWith(
+                        color: hc.primary,
+                      ),
                     ),
                   ],
                 ),
@@ -109,23 +120,26 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                       : _buildFrontCard(hc, isFilipino),
                 ),
               ).animate().scale(
-                    begin: const Offset(0.9, 0.9),
-                    end: const Offset(1.0, 1.0),
-                    duration: 500.ms,
-                    curve: Curves.elasticOut,
-                  ),
+                begin: const Offset(0.9, 0.9),
+                end: const Offset(1.0, 1.0),
+                duration: 500.ms,
+                curve: Curves.elasticOut,
+              ),
 
               const SizedBox(height: 12),
 
               Text(
                 isFilipino ? 'I-tap para i-flip' : 'Tap to flip',
-                style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+                style: AppTypography.bodySmall.copyWith(
+                  color: hc.textSecondary,
+                ),
               ),
 
               const SizedBox(height: 24),
 
               // ─── Example Sentence ─────────────────
-              if (_word.exampleSentence != null && _word.exampleSentence!.isNotEmpty)
+              if (_word.exampleSentence != null &&
+                  _word.exampleSentence!.isNotEmpty)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -139,7 +153,11 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.format_quote_rounded, size: 20, color: hc.textSecondary),
+                          Icon(
+                            Icons.format_quote_rounded,
+                            size: 20,
+                            color: hc.textSecondary,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             isFilipino ? 'Halimbawa' : 'Example',
@@ -187,15 +205,21 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                       button: true,
                       label: _learned
                           ? (isFilipino ? 'Natutunan na' : 'Already learned')
-                          : (isFilipino ? 'Markahan bilang natutunan' : 'Mark as learned'),
+                          : (isFilipino
+                                ? 'Markahan bilang natutunan'
+                                : 'Mark as learned'),
                       child: FilledButton.icon(
                         onPressed: _learned ? null : _markLearned,
-                        icon: Icon(_learned
-                            ? Icons.check_circle_rounded
-                            : Icons.school_rounded),
-                        label: Text(_learned
-                            ? (isFilipino ? 'Natutunan na!' : 'Learned!')
-                            : (isFilipino ? 'Natutunan Ko' : 'I Learned It')),
+                        icon: Icon(
+                          _learned
+                              ? Icons.check_circle_rounded
+                              : Icons.school_rounded,
+                        ),
+                        label: Text(
+                          _learned
+                              ? (isFilipino ? 'Natutunan na!' : 'Learned!')
+                              : (isFilipino ? 'Natutunan Ko' : 'I Learned It'),
+                        ),
                         style: FilledButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
@@ -222,7 +246,9 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                     _StatTile(
                       emoji: '📚',
                       value: '$totalLearned',
-                      label: isFilipino ? 'Salitang Natutunan' : 'Words Learned',
+                      label: isFilipino
+                          ? 'Salitang Natutunan'
+                          : 'Words Learned',
                       color: hc.success,
                     ),
                     Container(width: 1, height: 40, color: hc.border),
@@ -264,7 +290,11 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_word.emoji, style: const TextStyle(fontSize: 64)),
+            FlashcardPictureById(
+              cardId: _word.cardId,
+              fallback: _word.emoji,
+              extent: 74,
+            ),
             const SizedBox(height: 16),
             Text(
               _word.wordEnglish,
@@ -314,7 +344,11 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_word.emoji, style: const TextStyle(fontSize: 64)),
+            FlashcardPictureById(
+              cardId: _word.cardId,
+              fallback: _word.emoji,
+              extent: 74,
+            ),
             const SizedBox(height: 16),
             Text(
               _word.wordFilipino,
@@ -344,10 +378,34 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
 
   String _formatDate(DateTime d, bool isFilipino) {
     final months = isFilipino
-        ? ['Ene', 'Peb', 'Mar', 'Abr', 'May', 'Hun',
-           'Hul', 'Ago', 'Set', 'Okt', 'Nob', 'Dis']
-        : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        ? [
+            'Ene',
+            'Peb',
+            'Mar',
+            'Abr',
+            'May',
+            'Hun',
+            'Hul',
+            'Ago',
+            'Set',
+            'Okt',
+            'Nob',
+            'Dis',
+          ]
+        : [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
 }

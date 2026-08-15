@@ -46,13 +46,19 @@ class AppColors {
   // ─── Semantic Colors ────────────────────────────────
   static const Color success = Color(0xFF81C784); // Soft green
   static const Color successLight = Color(0xFFC8E6C9);
-  static const Color successDark = Color(0xFF2E7D32); // Dark green (text on success bg)
+  static const Color successDark = Color(
+    0xFF2E7D32,
+  ); // Dark green (text on success bg)
   static const Color error = Color(0xFFE57373); // Soft red
   static const Color errorLight = Color(0xFFFFCDD2);
-  static const Color errorDark = Color(0xFFC62828); // Dark red (text on error bg)
+  static const Color errorDark = Color(
+    0xFFC62828,
+  ); // Dark red (text on error bg)
   static const Color warning = Color(0xFFFFD54F); // Soft yellow
   static const Color warningLight = Color(0xFFFFF9C4);
-  static const Color warningDark = Color(0xFFFF8F00); // Dark amber (text on warning bg)
+  static const Color warningDark = Color(
+    0xFFFF8F00,
+  ); // Dark amber (text on warning bg)
   static const Color info = Color(0xFF64B5F6); // Soft blue
   static const Color infoLight = Color(0xFFBBDEFB);
 
@@ -335,27 +341,30 @@ class HCColor {
   bool get isDyslexia => _kind == ThemeKind.dyslexia;
 
   // Backgrounds & surfaces
-  Color get background =>
-      hc ? AppColors.hcBackground : (_scaffoldBackground ?? AppColors.background);
+  Color get background => hc
+      ? AppColors.hcBackground
+      : (_scaffoldBackground ?? AppColors.background);
   Color get surface =>
       hc ? AppColors.hcSurface : (_scheme?.surface ?? AppColors.surface);
   Color get surfaceVariant => switch (_kind) {
-        ThemeKind.highContrast => const Color(0xFF2C2C2C),
-        // Lift the surface slightly so chips/inputs read on dark cards.
-        ThemeKind.dark => Color.alphaBlend(
-            Colors.white.withValues(alpha: 0.07),
-            _scheme?.surface ?? const Color(0xFF1E1E2A)),
-        ThemeKind.dyslexia => AppColors.dyslexiaSurfaceVariant,
-        ThemeKind.light => AppColors.surfaceVariant,
-      };
+    ThemeKind.highContrast => const Color(0xFF2C2C2C),
+    // Lift the surface slightly so chips/inputs read on dark cards.
+    ThemeKind.dark => Color.alphaBlend(
+      Colors.white.withValues(alpha: 0.07),
+      _scheme?.surface ?? const Color(0xFF1E1E2A),
+    ),
+    ThemeKind.dyslexia => AppColors.dyslexiaSurfaceVariant,
+    ThemeKind.light => AppColors.surfaceVariant,
+  };
   Color get surfaceLight => switch (_kind) {
-        ThemeKind.highContrast => const Color(0xFF262626),
-        ThemeKind.dark => Color.alphaBlend(
-            Colors.white.withValues(alpha: 0.05),
-            _scheme?.surface ?? const Color(0xFF1E1E2A)),
-        ThemeKind.dyslexia => AppColors.dyslexiaSurface,
-        ThemeKind.light => AppColors.surfaceLight,
-      };
+    ThemeKind.highContrast => const Color(0xFF262626),
+    ThemeKind.dark => Color.alphaBlend(
+      Colors.white.withValues(alpha: 0.05),
+      _scheme?.surface ?? const Color(0xFF1E1E2A),
+    ),
+    ThemeKind.dyslexia => AppColors.dyslexiaSurface,
+    ThemeKind.light => AppColors.surfaceLight,
+  };
   Color get cardBackground => hc
       ? AppColors.hcSurface
       : (_cardColor ?? _scheme?.surface ?? AppColors.cardBackground);
@@ -371,11 +380,10 @@ class HCColor {
       ? const Color(0xFF3E2723)
       : (_scheme?.primaryContainer ?? AppColors.primaryLight);
   Color get primaryDark => switch (_kind) {
-        ThemeKind.highContrast ||
-        ThemeKind.dark =>
-          _scheme?.primary ?? AppColors.hcPrimary,
-        _ => AppColors.primaryDark,
-      };
+    ThemeKind.highContrast ||
+    ThemeKind.dark => _scheme?.primary ?? AppColors.hcPrimary,
+    _ => AppColors.primaryDark,
+  };
   Color get secondary =>
       _scheme?.secondary ?? (hc ? AppColors.hcSecondary : AppColors.secondary);
   Color get accent =>
@@ -385,26 +393,25 @@ class HCColor {
   // black (HC), soft off-white on dark, muted soft-black on cream (dyslexia),
   // dark blue-grey on pastel (light).
   Color get textPrimary => switch (_kind) {
-        ThemeKind.highContrast => AppColors.hcText,
-        ThemeKind.dark => _scheme?.onSurface ?? const Color(0xFFE8E8F0),
-        ThemeKind.dyslexia => AppColors.dyslexiaText,
-        ThemeKind.light => AppColors.textPrimary,
-      };
+    ThemeKind.highContrast => AppColors.hcText,
+    ThemeKind.dark => _scheme?.onSurface ?? const Color(0xFFE8E8F0),
+    ThemeKind.dyslexia => AppColors.dyslexiaText,
+    ThemeKind.light => AppColors.textPrimary,
+  };
   Color get textSecondary => switch (_kind) {
-        ThemeKind.highContrast => AppColors.hcTextSecondary,
-        ThemeKind.dark => const Color(0xFFB0B0C8),
-        ThemeKind.dyslexia => AppColors.dyslexiaTextSecondary,
-        ThemeKind.light => AppColors.textSecondary,
-      };
+    ThemeKind.highContrast => AppColors.hcTextSecondary,
+    ThemeKind.dark => const Color(0xFFB0B0C8),
+    ThemeKind.dyslexia => AppColors.dyslexiaTextSecondary,
+    ThemeKind.light => AppColors.textSecondary,
+  };
   Color get textHint => switch (_kind) {
-        ThemeKind.highContrast => const Color(0xFF757575),
-        ThemeKind.dark => const Color(0xFF8888A0),
-        ThemeKind.dyslexia => const Color(0xFF8A8271),
-        ThemeKind.light => AppColors.textHint,
-      };
-  Color get textOnPrimary => hc
-      ? Colors.black
-      : (_scheme?.onPrimary ?? AppColors.textOnPrimary);
+    ThemeKind.highContrast => const Color(0xFF757575),
+    ThemeKind.dark => const Color(0xFF8888A0),
+    ThemeKind.dyslexia => const Color(0xFF8A8271),
+    ThemeKind.light => AppColors.textHint,
+  };
+  Color get textOnPrimary =>
+      hc ? Colors.black : (_scheme?.onPrimary ?? AppColors.textOnPrimary);
 
   // Semantic
   Color get success => hc ? AppColors.hcSuccess : AppColors.success;
@@ -412,11 +419,49 @@ class HCColor {
   Color get warning => hc ? AppColors.hcWarning : AppColors.warning;
   Color get info => hc ? AppColors.hcInfo : AppColors.info;
   Color get border => switch (_kind) {
-        ThemeKind.highContrast => AppColors.hcBorder,
-        ThemeKind.dark => const Color(0xFF3A3A4E),
-        ThemeKind.dyslexia => AppColors.dyslexiaBorder,
-        ThemeKind.light => _scheme?.outline ?? AppColors.border,
-      };
+    ThemeKind.highContrast => AppColors.hcBorder,
+    ThemeKind.dark => const Color(0xFF3A3A4E),
+    ThemeKind.dyslexia => AppColors.dyslexiaBorder,
+    ThemeKind.light => _scheme?.outline ?? AppColors.border,
+  };
+
+  // ─── Stat accents ─────────────────────────────────────
+  //
+  // Six colour-coded accents for metric tiles and their icons (stars, streak,
+  // achievements, words, games, stickers). Distinct from the
+  // [success]/[error]/[warning]/[info] semantics above: those mean "this went
+  // well / badly", these only tell six metrics apart.
+  //
+  // Resolved per theme so the value stays legible **on [surface]**. Screens
+  // used to hardcode the Material 500 swatches, which do not survive a white
+  // card — `Colors.amber` on white is about 1.7:1 — and did not change at all
+  // under the dark or high-contrast presets.
+
+  /// Stars. Amber family.
+  Color get statWarning => _stat(0xFFB26A00, 0xFFFFD54F, 0xFFFFD740);
+
+  /// Streak. Deep-orange family.
+  Color get statError => _stat(0xFFD84315, 0xFFFF8A65, 0xFFFF5252);
+
+  /// Achievements. Purple family.
+  Color get statAccent => _stat(0xFF7B1FA2, 0xFFCE93D8, 0xFFE040FB);
+
+  /// Words learned. Blue family.
+  Color get statInfo => _stat(0xFF1565C0, 0xFF64B5F6, 0xFF40C4FF);
+
+  /// Games played. Teal family.
+  Color get statSuccess => _stat(0xFF00695C, 0xFF4DB6AC, 0xFF00E676);
+
+  /// Stickers. Pink family.
+  Color get statSecondary => _stat(0xFFC2185B, 0xFFF48FB1, 0xFFFF80AB);
+
+  /// Picks the [light] (also used for the cream dyslexia paper), [dark] or
+  /// [highContrast] variant of a stat accent.
+  Color _stat(int light, int dark, int highContrast) => switch (_kind) {
+    ThemeKind.highContrast => Color(highContrast),
+    ThemeKind.dark => Color(dark),
+    ThemeKind.dyslexia || ThemeKind.light => Color(light),
+  };
 
   // Category colors
   Color categoryColor(FlashcardCategory cat) => hc
@@ -452,6 +497,9 @@ class HCColor {
           GameType.fslPractice => const Color(0xFFB388FF),
           GameType.jigsawPuzzle => const Color(0xFFFFE082),
           GameType.pictureWord => const Color(0xFFC5E1A5),
+          GameType.yesOrNo => const Color(0xFF82B1FF),
+          GameType.oddOneOut => const Color(0xFFEA80FC),
+          GameType.firstLetter => const Color(0xFFFFAB40),
         }
       : game.color;
 
@@ -464,54 +512,52 @@ class HCColor {
   // container colors instead of the light pastels, so the white copy painted
   // over the hero cards stays clearly readable.
   LinearGradient get primaryGradient => switch (_kind) {
-        ThemeKind.highContrast => const LinearGradient(
-            colors: [Color(0xFFFFD740), Color(0xFF69F0AE)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ThemeKind.dark => LinearGradient(
-            colors: [
-              _scheme?.primaryContainer ?? const Color(0xFF3D2E5E),
-              Color.alphaBlend(
-                (_scheme?.secondary ?? AppColors.secondary)
-                    .withValues(alpha: 0.35),
-                _scheme?.surface ?? const Color(0xFF1E1E2A),
-              ),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        _ => LinearGradient(
-            colors: [primary, secondary],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-      };
+    ThemeKind.highContrast => const LinearGradient(
+      colors: [Color(0xFFFFD740), Color(0xFF69F0AE)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    ThemeKind.dark => LinearGradient(
+      colors: [
+        _scheme?.primaryContainer ?? const Color(0xFF3D2E5E),
+        Color.alphaBlend(
+          (_scheme?.secondary ?? AppColors.secondary).withValues(alpha: 0.35),
+          _scheme?.surface ?? const Color(0xFF1E1E2A),
+        ),
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    _ => LinearGradient(
+      colors: [primary, secondary],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+  };
 
   /// Spotlight gradient for the home's hero cards (Player Profile, level badge,
   /// Daily Challenge). Follows the active group theme instead of a fixed hue.
   LinearGradient get heroGradient => switch (_kind) {
-        ThemeKind.highContrast => const LinearGradient(
-            colors: [Color(0xFFFFD740), Color(0xFF40C4FF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ThemeKind.dark => LinearGradient(
-            colors: [
-              _scheme?.primaryContainer ?? const Color(0xFF3D2E5E),
-              Color.alphaBlend(
-                (_scheme?.tertiary ?? AppColors.accent)
-                    .withValues(alpha: 0.40),
-                _scheme?.surface ?? const Color(0xFF1E1E2A),
-              ),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        _ => LinearGradient(
-            colors: [primary, accent],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-      };
+    ThemeKind.highContrast => const LinearGradient(
+      colors: [Color(0xFFFFD740), Color(0xFF40C4FF)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    ThemeKind.dark => LinearGradient(
+      colors: [
+        _scheme?.primaryContainer ?? const Color(0xFF3D2E5E),
+        Color.alphaBlend(
+          (_scheme?.tertiary ?? AppColors.accent).withValues(alpha: 0.40),
+          _scheme?.surface ?? const Color(0xFF1E1E2A),
+        ),
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    _ => LinearGradient(
+      colors: [primary, accent],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+  };
 }

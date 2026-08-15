@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/accessibility/haptic_service.dart';
 import '../../../core/accessibility/tts_service.dart';
-import '../../../core/constants/flashcard_emojis.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -17,6 +16,7 @@ import '../../../providers/app_providers.dart';
 import '../models/live_session_models.dart';
 import '../services/live_scoring.dart';
 import '../services/live_session_service.dart';
+import '../../../widgets/flashcard_image.dart';
 
 /// Real-time live session. Learners (Student / Child) get an accessible
 /// receiver that renders the educator's pushed activities, awards stars for
@@ -198,16 +198,17 @@ class _LearnerViewState extends ConsumerState<_LearnerView> {
         title: 'Join a class first',
         message: widget.profile.role == UserRole.child
             ? 'Ask your parent for the home-group code, then join from Settings '
-                'to take part in live activities.'
+                  'to take part in live activities.'
             : 'You are not in a classroom yet. Tap "Join a class" to take part '
-                'in live activities.',
+                  'in live activities.',
       );
     }
     if (!FirebaseService.isConfigured) {
       return const _Notice(
         icon: Icons.cloud_off_rounded,
         title: 'Connect to the internet',
-        message: 'Live activities need a connection so you can join your class '
+        message:
+            'Live activities need a connection so you can join your class '
             'in real time. Connect to Wi-Fi or mobile data and reopen this '
             'screen.',
       );
@@ -259,7 +260,9 @@ class _LearnerViewState extends ConsumerState<_LearnerView> {
     setState(() => _handRaised = raising);
     unawaited(ref.read(hapticServiceProvider).selectionClick());
     _announce(
-      raising ? 'Hand raised. Your teacher can see your name.' : 'Hand lowered.',
+      raising
+          ? 'Hand raised. Your teacher can see your name.'
+          : 'Hand lowered.',
     );
     try {
       if (raising) {
@@ -313,24 +316,24 @@ class _LearnerViewState extends ConsumerState<_LearnerView> {
     final haptic = ref.read(hapticServiceProvider);
     if (isCorrect) {
       unawaited(haptic.success());
-      _announce(
-        award > 0 ? 'Correct! You earned $award stars.' : 'Correct!',
-      );
+      _announce(award > 0 ? 'Correct! You earned $award stars.' : 'Correct!');
     } else {
       unawaited(haptic.error());
       _announce('Good try. Wait for the next question.');
     }
 
-    unawaited(_service.submitResponse(
-      sessionKey: key,
-      activityId: activity.id,
-      profileId: widget.profile.id,
-      profileName: widget.profile.name,
-      isCorrect: isCorrect,
-      answer: answer,
-      elapsedMs: elapsedMs,
-      starsAwarded: award,
-    ));
+    unawaited(
+      _service.submitResponse(
+        sessionKey: key,
+        activityId: activity.id,
+        profileId: widget.profile.id,
+        profileName: widget.profile.name,
+        isCorrect: isCorrect,
+        answer: answer,
+        elapsedMs: elapsedMs,
+        starsAwarded: award,
+      ),
+    );
 
     // First-correct bonus is a global decision — resolve it after a short
     // settle delay so every device sees the same response set and exactly one
@@ -377,12 +380,14 @@ class _LearnerViewState extends ConsumerState<_LearnerView> {
     if (mounted) setState(() => _lastAward += bonus);
 
     // Keep the educator scoreboard accurate.
-    unawaited(_service.updateResponseStars(
-      sessionKey: _sessionKey!,
-      activityId: activity.id,
-      profileId: widget.profile.id,
-      starsAwarded: _lastAward,
-    ));
+    unawaited(
+      _service.updateResponseStars(
+        sessionKey: _sessionKey!,
+        activityId: activity.id,
+        profileId: widget.profile.id,
+        starsAwarded: _lastAward,
+      ),
+    );
   }
 }
 
@@ -416,8 +421,9 @@ class _WaitingView extends StatelessWidget {
                   Text(
                     message,
                     textAlign: TextAlign.center,
-                    style: AppTypography.titleMedium
-                        .copyWith(color: hc.textSecondary),
+                    style: AppTypography.titleMedium.copyWith(
+                      color: hc.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -614,11 +620,13 @@ class _Prompt extends StatelessWidget {
         type == LiveActivityType.fslSign ||
         type == LiveActivityType.flashcard) {
       final card = _lookupCard(activity.flashcardId);
-      final emoji = card != null ? FlashcardEmojis.forId(card.id) : '❓';
       final isFsl = type == LiveActivityType.fslSign;
       return Column(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 88)),
+          if (card != null)
+            FlashcardPicture(card: card, extent: 100)
+          else
+            const Text('❓', style: TextStyle(fontSize: 88)),
           const SizedBox(height: 8),
           if (isFsl)
             Text(
@@ -794,9 +802,7 @@ class _ResultBanner extends StatelessWidget {
           Expanded(
             child: Text(
               correct
-                  ? (award > 0
-                      ? 'Correct! You earned $award ⭐'
-                      : 'Correct! 🎉')
+                  ? (award > 0 ? 'Correct! You earned $award ⭐' : 'Correct! 🎉')
                   : 'Good try! Keep going 💪',
               style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w700,
@@ -834,8 +840,9 @@ class _RaiseHandBar extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onToggle,
               style: FilledButton.styleFrom(
-                backgroundColor:
-                    handRaised ? const Color(0xFFFFB300) : AppColors.primary,
+                backgroundColor: handRaised
+                    ? const Color(0xFFFFB300)
+                    : AppColors.primary,
                 foregroundColor: handRaised ? Colors.black : Colors.white,
                 textStyle: AppTypography.titleMedium.copyWith(
                   fontWeight: FontWeight.w800,

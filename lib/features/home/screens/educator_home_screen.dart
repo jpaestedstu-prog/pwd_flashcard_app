@@ -14,6 +14,7 @@ import '../../../widgets/app_card.dart';
 import '../../../widgets/connectivity_indicator.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../providers/student_list_provider.dart';
+import '../../messaging/providers/messaging_providers.dart';
 
 /// Home screen shown to teachers and parents.
 ///
@@ -40,18 +41,20 @@ class EducatorHomeScreen extends ConsumerWidget {
     final students = allData
         .where((d) => d.$1.role.isEnrollableLearner && !d.$1.isGuestPlayer)
         .toList();
-    final showRosterLoading = rosterAsync != null &&
+    final showRosterLoading =
+        rosterAsync != null &&
         rosterAsync.isLoading &&
         rosterAsync.valueOrNull == null;
     final totalStudents = students.length;
     final activeToday = students
-        .where((d) =>
-            DateTime.now().difference(d.$2.lastActivityDate).inHours < 24)
+        .where(
+          (d) => DateTime.now().difference(d.$2.lastActivityDate).inHours < 24,
+        )
         .length;
     final avgWords = totalStudents > 0
         ? (students.fold<int>(0, (s, d) => s + d.$2.wordsLearned) /
-                totalStudents)
-            .round()
+                  totalStudents)
+              .round()
         : 0;
 
     // Distinct educator identities: the Teacher (Classroom, indigo theme)
@@ -69,299 +72,329 @@ class EducatorHomeScreen extends ConsumerWidget {
               ? const Center(child: CircularProgressIndicator())
               : CustomScrollView(
                   slivers: [
-            // ─── Header ───────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome, ${profile?.name ?? 'Educator'}! ${isParent ? '👨‍👩‍👧' : '📚'}',
-                            style: AppTypography.headlineLarge
-                                .copyWith(color: hc.textPrimary),
-                          )
-                              .animate()
-                              .fadeIn(duration: 400.ms)
-                              .slideX(begin: -0.05, end: 0),
-                          const SizedBox(height: 4),
-                          Text(
-                            isParent
-                                ? 'Monitor your children\'s learning'
-                                : 'Manage your class progress',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: hc.textSecondary,
+                    // ─── Header ───────────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                        'Welcome, ${profile?.name ?? 'Educator'}! ${isParent ? '👨‍👩‍👧' : '📚'}',
+                                        style: AppTypography.headlineLarge
+                                            .copyWith(color: hc.textPrimary),
+                                      )
+                                      .animate()
+                                      .fadeIn(duration: 400.ms)
+                                      .slideX(begin: -0.05, end: 0),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    isParent
+                                        ? 'Monitor your children\'s learning'
+                                        : 'Manage your class progress',
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      color: hc.textSecondary,
+                                    ),
+                                  ).animate().fadeIn(
+                                    duration: 400.ms,
+                                    delay: 100.ms,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
-                        ],
-                      ),
-                    ),
-                    const ConnectivityIndicator(),
-                    // Settings gear (top-right). Switching profiles now lives
-                    // inside Settings, matching the Student/Child surfaces.
-                    Semantics(
-                      button: true,
-                      label: 'Open settings',
-                      child: IconButton(
-                        onPressed: () => context.push('/settings'),
-                        icon: const Icon(Icons.settings_rounded),
-                        iconSize: 28,
-                        color: hc.textSecondary,
-                      ),
-                    )
-                        .animate()
-                        .fadeIn(delay: 200.ms)
-                        .rotate(begin: -0.1, end: 0, duration: 500.ms),
-                  ],
-                ),
-              ),
-            ),
-
-            // ─── Overview Stats ───────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding:
-                    EdgeInsets.symmetric(horizontal: padding, vertical: 20),
-                child: _OverviewStats(
-                  totalStudents: totalStudents,
-                  activeToday: activeToday,
-                  avgWords: avgWords,
-                ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
-              ),
-            ),
-
-            // ─── Dashboard CTA (both educator roles) ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
-                child: _EducatorDashboardCta(hc: hc, isParent: isParent)
-                    .animate()
-                    .fadeIn(duration: 400.ms, delay: 175.ms),
-              ),
-            ),
-
-            // ─── Quick Actions ────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: padding),
-                child: Text(
-                  'Quick Actions',
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: hc.textPrimary,
-                  ),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(padding, 12, padding, 0),
-                child: _QuickActions(isParent: isParent, hc: hc)
-                    .animate()
-                    .fadeIn(duration: 400.ms, delay: 200.ms),
-              ),
-            ),
-
-            // ─── Cards ────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(padding, 24, padding, 8),
-                child: Row(
-                  children: [
-                    Text(
-                      'Cards',
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: hc.textPrimary,
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => context.push('/flashcards'),
-                      child: Text(
-                        'View All',
-                        style: AppTypography.labelMedium.copyWith(
-                          color: hc.primary,
+                            const ConnectivityIndicator(),
+                            // Settings gear (top-right). Switching profiles now lives
+                            // inside Settings, matching the Student/Child surfaces.
+                            Semantics(
+                                  button: true,
+                                  label: 'Open settings',
+                                  child: IconButton(
+                                    onPressed: () => context.push('/settings'),
+                                    icon: const Icon(Icons.settings_rounded),
+                                    iconSize: 28,
+                                    color: hc.textSecondary,
+                                  ),
+                                )
+                                .animate()
+                                .fadeIn(delay: 200.ms)
+                                .rotate(begin: -0.1, end: 0, duration: 500.ms),
+                          ],
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 132,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: EdgeInsets.symmetric(horizontal: padding),
-                  itemCount: _popularDeckCategories.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 12),
-                  itemBuilder: (context, i) {
-                    final category = _popularDeckCategories[i];
-                    final count = SeedData.getByCategory(category).length;
-                    return _DeckTile(
-                      category: category,
-                      cardCount: count,
-                      onTap: () => context.push(
-                        '/flashcards/viewer/${category.index}',
-                      ),
-                    )
-                        .animate()
-                        .fadeIn(
-                          duration: 300.ms,
-                          delay: (250 + i * 60).ms,
-                        )
-                        .slideX(begin: 0.1, end: 0);
-                  },
-                ),
-              ),
-            ),
 
-            // ─── Recent Students ──────────────────
-            if (students.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(padding, 24, padding, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          // Expanded + ellipsis so a long (or XL-scaled) title
-                          // can't push "View All" off-screen and overflow.
-                          Expanded(
-                            child: Text(
-                              isParent ? 'Your Children' : 'Recent Students',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                    // ─── Overview Stats ───────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: padding,
+                          vertical: 20,
+                        ),
+                        child: _OverviewStats(
+                          totalStudents: totalStudents,
+                          activeToday: activeToday,
+                          avgWords: avgWords,
+                        ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
+                      ),
+                    ),
+
+                    // ─── Dashboard CTA (both educator roles) ──
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
+                        child: _EducatorDashboardCta(
+                          hc: hc,
+                          isParent: isParent,
+                        ).animate().fadeIn(duration: 400.ms, delay: 175.ms),
+                      ),
+                    ),
+
+                    // ─── Quick Actions ────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: padding),
+                        child: Text(
+                          'Quick Actions',
+                          style: AppTypography.titleMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: hc.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 12, padding, 0),
+                        child: _QuickActions(
+                          isParent: isParent,
+                          hc: hc,
+                        ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+                      ),
+                    ),
+
+                    // ─── Cards ────────────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 24, padding, 8),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Cards',
                               style: AppTypography.titleMedium.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: hc.textPrimary,
                               ),
                             ),
-                          ),
-                          TextButton(
-                            onPressed: () => context.go('/multi-dashboard'),
-                            child: Text(
-                              'View All',
-                              style: AppTypography.labelMedium.copyWith(
-                                color: hc.primary,
+                            const Spacer(),
+                            TextButton(
+                              onPressed: () => context.push('/flashcards'),
+                              child: Text(
+                                'View All',
+                                style: AppTypography.labelMedium.copyWith(
+                                  color: hc.primary,
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // Quick filter chips
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _QuickFilterChip(
-                              label: 'Needs Help',
-                              icon: Icons.warning_amber_rounded,
-                              color: AppColors.error,
-                              onTap: () {
-                                final notifier = ref.read(studentFilterProvider.notifier);
-                                notifier.clearFilters();
-                                // Sort by accuracy ascending so struggling students appear first
-                                notifier.setSortFieldWithDirection(
-                                  StudentSortField.averageAccuracy,
-                                  ascending: true,
-                                );
-                                context.push('/multi-dashboard');
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            _QuickFilterChip(
-                              label: 'Inactive 7d+',
-                              icon: Icons.schedule_rounded,
-                              color: AppColors.warning,
-                              onTap: () {
-                                final notifier = ref.read(studentFilterProvider.notifier);
-                                notifier.clearFilters();
-                                notifier.setActivityFilter(ActivityStatus.inactive7Days);
-                                context.push('/multi-dashboard');
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            _QuickFilterChip(
-                              label: 'Active Today',
-                              icon: Icons.local_fire_department_rounded,
-                              color: AppColors.success,
-                              onTap: () {
-                                final notifier = ref.read(studentFilterProvider.notifier);
-                                notifier.clearFilters();
-                                notifier.setActivityFilter(ActivityStatus.activeToday);
-                                context.push('/multi-dashboard');
-                              },
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  // No per-row entrance animation: rows in a lazy sliver are
-                  // rebuilt on every scroll-back, so a staggered `.animate()`
-                  // replays from opacity 0 each time and the roster flickers.
-                  // Section headers above still animate.
-                  (context, index) {
-                    final (studentProfile, studentProgress) =
-                        students[index];
-                    return Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: padding, vertical: 4),
-                      child: _StudentCard(
-                        name: studentProfile.name,
-                        wordsLearned: studentProgress.wordsLearned,
-                        streak: studentProgress.streakDays,
-                        stars: studentProgress.totalStars,
-                        lastActive: studentProgress.lastActivityDate,
-                        hc: hc,
-                        onTap: () {
-                          ref
-                              .read(profileProvider.notifier)
-                              .viewAsStudent(studentProfile);
-                          context.push('/dashboard');
-                        },
+                    ),
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: 132,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: EdgeInsets.symmetric(horizontal: padding),
+                          itemCount: _popularDeckCategories.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 12),
+                          itemBuilder: (context, i) {
+                            final category = _popularDeckCategories[i];
+                            final count = SeedData.getByCategory(
+                              category,
+                            ).length;
+                            return _DeckTile(
+                                  category: category,
+                                  cardCount: count,
+                                  onTap: () => context.push(
+                                    '/flashcards/viewer/${category.index}',
+                                  ),
+                                )
+                                .animate()
+                                .fadeIn(
+                                  duration: 300.ms,
+                                  delay: (250 + i * 60).ms,
+                                )
+                                .slideX(begin: 0.1, end: 0);
+                          },
+                        ),
                       ),
-                    );
-                  },
-                  childCount: students.length.clamp(0, 5),
-                ),
-              ),
-            ],
+                    ),
 
-            // ─── Empty State ──────────────────────
-            if (students.isEmpty)
-              SliverToBoxAdapter(
-                child: RichEmptyState(
-                  emoji: isParent ? '👨‍👩‍👧' : '📊',
-                  title: isParent ? 'No children yet' : 'No students yet',
-                  description: isParent
-                      ? 'Create a home group, then share the code with your child to join.'
-                      : 'Create a class, then share the code with your students to join.',
-                  actionLabel:
-                      isParent ? 'Share Home Group Code' : 'Share Class Code',
-                  actionIcon: isParent
-                      ? Icons.family_restroom_rounded
-                      : Icons.qr_code_2_rounded,
-                  onAction: () => context.push(
-                      isParent ? '/home-group-manage' : '/classroom-manage'),
-                ),
-              ),
+                    // ─── Recent Students ──────────────────
+                    if (students.isNotEmpty) ...[
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(padding, 24, padding, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  // Expanded + ellipsis so a long (or XL-scaled) title
+                                  // can't push "View All" off-screen and overflow.
+                                  Expanded(
+                                    child: Text(
+                                      isParent
+                                          ? 'Your Children'
+                                          : 'Recent Students',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.titleMedium.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: hc.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        context.go('/multi-dashboard'),
+                                    child: Text(
+                                      'View All',
+                                      style: AppTypography.labelMedium.copyWith(
+                                        color: hc.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              // Quick filter chips
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    _QuickFilterChip(
+                                      label: 'Needs Help',
+                                      icon: Icons.warning_amber_rounded,
+                                      color: AppColors.error,
+                                      onTap: () {
+                                        final notifier = ref.read(
+                                          studentFilterProvider.notifier,
+                                        );
+                                        notifier.clearFilters();
+                                        // Sort by accuracy ascending so struggling students appear first
+                                        notifier.setSortFieldWithDirection(
+                                          StudentSortField.averageAccuracy,
+                                          ascending: true,
+                                        );
+                                        context.push('/multi-dashboard');
+                                      },
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _QuickFilterChip(
+                                      label: 'Inactive 7d+',
+                                      icon: Icons.schedule_rounded,
+                                      color: AppColors.warning,
+                                      onTap: () {
+                                        final notifier = ref.read(
+                                          studentFilterProvider.notifier,
+                                        );
+                                        notifier.clearFilters();
+                                        notifier.setActivityFilter(
+                                          ActivityStatus.inactive7Days,
+                                        );
+                                        context.push('/multi-dashboard');
+                                      },
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _QuickFilterChip(
+                                      label: 'Active Today',
+                                      icon: Icons.local_fire_department_rounded,
+                                      color: AppColors.success,
+                                      onTap: () {
+                                        final notifier = ref.read(
+                                          studentFilterProvider.notifier,
+                                        );
+                                        notifier.clearFilters();
+                                        notifier.setActivityFilter(
+                                          ActivityStatus.activeToday,
+                                        );
+                                        context.push('/multi-dashboard');
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          // No per-row entrance animation: rows in a lazy sliver are
+                          // rebuilt on every scroll-back, so a staggered `.animate()`
+                          // replays from opacity 0 each time and the roster flickers.
+                          // Section headers above still animate.
+                          (context, index) {
+                            final (studentProfile, studentProgress) =
+                                students[index];
+                            return Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: padding,
+                                vertical: 4,
+                              ),
+                              child: _StudentCard(
+                                name: studentProfile.name,
+                                wordsLearned: studentProgress.wordsLearned,
+                                streak: studentProgress.streakDays,
+                                stars: studentProgress.totalStars,
+                                lastActive: studentProgress.lastActivityDate,
+                                hc: hc,
+                                onTap: () {
+                                  ref
+                                      .read(profileProvider.notifier)
+                                      .viewAsStudent(studentProfile);
+                                  context.push('/dashboard');
+                                },
+                              ),
+                            );
+                          },
+                          childCount: students.length.clamp(0, 5),
+                        ),
+                      ),
+                    ],
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 40)),
-                ],
-              ),
+                    // ─── Empty State ──────────────────────
+                    if (students.isEmpty)
+                      SliverToBoxAdapter(
+                        child: RichEmptyState(
+                          emoji: isParent ? '👨‍👩‍👧' : '📊',
+                          title: isParent
+                              ? 'No children yet'
+                              : 'No students yet',
+                          description: isParent
+                              ? 'Create a home group, then share the code with your child to join.'
+                              : 'Create a class, then share the code with your students to join.',
+                          actionLabel: isParent
+                              ? 'Share Home Group Code'
+                              : 'Share Class Code',
+                          actionIcon: isParent
+                              ? Icons.family_restroom_rounded
+                              : Icons.qr_code_2_rounded,
+                          onAction: () => context.push(
+                            isParent
+                                ? '/home-group-manage'
+                                : '/classroom-manage',
+                          ),
+                        ),
+                      ),
+
+                    const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                  ],
+                ),
         ),
       ),
     );
@@ -416,21 +449,25 @@ class _OverviewStats extends StatelessWidget {
 
 // ─── Quick Action Buttons ──────────────────────────────
 
-class _QuickActions extends StatelessWidget {
+class _QuickActions extends ConsumerWidget {
   final bool isParent;
   final HCColor hc;
 
   const _QuickActions({required this.isParent, required this.hc});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Unread messages from the educator's learners, badged onto the Messages
+    // tile so a teacher doesn't have to open the inbox to discover that a
+    // student wrote to them.
+    final unreadMessages = ref.watch(unreadMessageCountProvider);
     if (isParent) {
-      return _buildParentChips(context);
+      return _buildParentChips(context, unreadMessages);
     }
-    return _buildTeacherChips(context);
+    return _buildTeacherChips(context, unreadMessages);
   }
 
-  Widget _buildParentChips(BuildContext context) {
+  Widget _buildParentChips(BuildContext context, int unreadMessages) {
     // Primary actions as large, easy-to-tap professional tiles; the rest tuck
     // into a compact "More" grid. (Family View lives in the hero CTA above, so
     // it isn't duplicated here.)
@@ -488,6 +525,7 @@ class _QuickActions extends StatelessWidget {
               label: 'Messages',
               accent: AppColors.sectionSocial,
               onTap: () => context.push('/messages'),
+              badgeCount: unreadMessages,
             ),
             ProActionTile(
               compact: true,
@@ -502,7 +540,7 @@ class _QuickActions extends StatelessWidget {
     );
   }
 
-  Widget _buildTeacherChips(BuildContext context) {
+  Widget _buildTeacherChips(BuildContext context, int unreadMessages) {
     // Six large primary tiles for the daily essentials, then the long tail of
     // actions grouped under a compact "More" section.
     return Column(
@@ -582,6 +620,7 @@ class _QuickActions extends StatelessWidget {
               label: 'Messages',
               accent: AppColors.sectionSocial,
               onTap: () => context.push('/messages'),
+              badgeCount: unreadMessages,
             ),
             ProActionTile(
               compact: true,
@@ -697,9 +736,8 @@ class _EducatorDashboardCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      onTap: () => context.push(
-        isParent ? '/parent-dashboard' : '/teacher-dashboard',
-      ),
+      onTap: () =>
+          context.push(isParent ? '/parent-dashboard' : '/teacher-dashboard'),
       borderRadius: 20,
       gradient: LinearGradient(
         begin: Alignment.topLeft,
@@ -717,8 +755,11 @@ class _EducatorDashboardCta extends StatelessWidget {
               color: hc.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.dashboard_customize_rounded,
-                color: hc.primary, size: 22),
+            child: Icon(
+              Icons.dashboard_customize_rounded,
+              color: hc.primary,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -790,10 +831,7 @@ class _StudentCard extends StatelessWidget {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          AppColors.primary.withValues(alpha: 0.06),
-          Colors.transparent,
-        ],
+        colors: [AppColors.primary.withValues(alpha: 0.06), Colors.transparent],
       ),
       child: Row(
         children: [
@@ -845,13 +883,10 @@ class _StudentCard extends StatelessWidget {
           ),
           Text(
             _timeAgo(lastActive),
-            style: AppTypography.labelSmall.copyWith(
-              color: hc.textSecondary,
-            ),
+            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(width: 4),
-          Icon(Icons.chevron_right_rounded,
-              color: hc.textSecondary, size: 20),
+          Icon(Icons.chevron_right_rounded, color: hc.textSecondary, size: 20),
         ],
       ),
     );
@@ -963,11 +998,7 @@ class _DeckTile extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.15),
                         ),
                       ),
-                      child: Icon(
-                        category.icon,
-                        size: 22,
-                        color: Colors.white,
-                      ),
+                      child: Icon(category.icon, size: 22, color: Colors.white),
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

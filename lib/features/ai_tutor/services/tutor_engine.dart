@@ -43,17 +43,20 @@ class TutorEngine {
   /// Resolves the learner's current interests: explicit favorites first (in
   /// pick order), then implicit categories whose score passed the threshold,
   /// strongest first. Deduplicated and capped at [max].
-  static List<FlashcardCategory> topInterests(TutorMemory memory,
-      {int max = maxFavorites}) {
+  static List<FlashcardCategory> topInterests(
+    TutorMemory memory, {
+    int max = maxFavorites,
+  }) {
     final result = <FlashcardCategory>[];
     for (final name in memory.favoriteCategories) {
       final cat = categoryFromName(name);
       if (cat != null && !result.contains(cat)) result.add(cat);
     }
-    final implicit = memory.interestScores.entries
-        .where((e) => e.value >= interestThreshold)
-        .toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final implicit =
+        memory.interestScores.entries
+            .where((e) => e.value >= interestThreshold)
+            .toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
     for (final e in implicit) {
       final cat = categoryFromName(e.key);
       if (cat != null && !result.contains(cat)) result.add(cat);
@@ -64,7 +67,10 @@ class TutorEngine {
   /// Returns a new score map with [category] bumped by [amount], clamped to
   /// [0, maxInterestScore].
   static Map<String, double> bumpInterest(
-      Map<String, double> scores, FlashcardCategory category, double amount) {
+    Map<String, double> scores,
+    FlashcardCategory category,
+    double amount,
+  ) {
     final next = Map<String, double>.from(scores);
     next[category.name] = ((next[category.name] ?? 0) + amount)
         .clamp(0.0, maxInterestScore)
@@ -187,8 +193,7 @@ class TutorEngine {
 
     // Check if there are weak categories
     if (weakCategories.isNotEmpty) {
-      return _weakCategoryAdvice(weakCategories.first,
-          isFilipino: isFilipino);
+      return _weakCategoryAdvice(weakCategories.first, isFilipino: isFilipino);
     }
 
     // Celebrate strong categories
@@ -197,8 +202,13 @@ class TutorEngine {
     }
 
     // Default: offer today's personalized learning plan.
-    return offerLearningPlan(progress, profileId,
-        isFilipino: isFilipino, interests: interests, simple: simple);
+    return offerLearningPlan(
+      progress,
+      profileId,
+      isFilipino: isFilipino,
+      interests: interests,
+      simple: simple,
+    );
   }
 
   /// Generate a response to a student question
@@ -220,8 +230,15 @@ class TutorEngine {
 
     // "I like animals" / "gusto ko ang mga hayop" → record the favorite.
     // Checked before the category-info branch so liking beats describing.
-    const likingVerbs = ['i like', 'i love', 'favorite', 'favourite',
-        'gusto', 'mahilig', 'paborito'];
+    const likingVerbs = [
+      'i like',
+      'i love',
+      'favorite',
+      'favourite',
+      'gusto',
+      'mahilig',
+      'paborito',
+    ];
     final expressesLiking = likingVerbs.any(lowerQ.contains);
     if (expressesLiking && mentioned != null) {
       return interestConfirmation(mentioned, isFilipino: isFilipino);
@@ -238,8 +255,12 @@ class TutorEngine {
 
     // Check for category queries
     if (mentioned != null) {
-      return _categoryInfo(mentioned, progress,
-          isFilipino: isFilipino, simple: simple);
+      return _categoryInfo(
+        mentioned,
+        progress,
+        isFilipino: isFilipino,
+        simple: simple,
+      );
     }
 
     // Check for help/hint requests. With a question on screen, help means
@@ -266,8 +287,13 @@ class TutorEngine {
         lowerQ.contains('today') ||
         lowerQ.contains('aralin') ||
         lowerQ.contains('ngayon')) {
-      return offerLearningPlan(progress, profileId,
-          isFilipino: isFilipino, interests: interests, simple: simple);
+      return offerLearningPlan(
+        progress,
+        profileId,
+        isFilipino: isFilipino,
+        interests: interests,
+        simple: simple,
+      );
     }
 
     // Check for practice requests
@@ -282,8 +308,7 @@ class TutorEngine {
         lowerQ.contains('score') ||
         lowerQ.contains('how am i') ||
         lowerQ.contains('pag-unlad')) {
-      return _progressSummary(progress,
-          isFilipino: isFilipino, simple: simple);
+      return _progressSummary(progress, isFilipino: isFilipino, simple: simple);
     }
 
     // Default response
@@ -307,8 +332,7 @@ class TutorEngine {
     );
   }
 
-  static TutorMessage _streakCelebration(int days,
-      {bool isFilipino = false}) {
+  static TutorMessage _streakCelebration(int days, {bool isFilipino = false}) {
     return TutorMessage(
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
@@ -320,8 +344,10 @@ class TutorEngine {
     );
   }
 
-  static TutorMessage _weakCategoryAdvice(String category,
-      {bool isFilipino = false}) {
+  static TutorMessage _weakCategoryAdvice(
+    String category, {
+    bool isFilipino = false,
+  }) {
     return TutorMessage(
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
@@ -336,8 +362,10 @@ class TutorEngine {
     );
   }
 
-  static TutorMessage _strongCategoryMessage(List<String> categories,
-      {bool isFilipino = false}) {
+  static TutorMessage _strongCategoryMessage(
+    List<String> categories, {
+    bool isFilipino = false,
+  }) {
     final catList = categories.take(3).join(', ');
     return TutorMessage(
       id: _uuid.v4(),
@@ -376,8 +404,11 @@ class TutorEngine {
   }
 
   static TutorMessage _categoryInfo(
-      FlashcardCategory cat, LearningProgress progress,
-      {bool isFilipino = false, bool simple = false}) {
+    FlashcardCategory cat,
+    LearningProgress progress, {
+    bool isFilipino = false,
+    bool simple = false,
+  }) {
     final prog = progress.categoryProgress[cat.label] ?? 0.0;
     final pct = (prog * 100).round();
     final cards = SeedData.getByCategory(cat);
@@ -389,11 +420,11 @@ class TutorEngine {
       role: TutorMessageRole.tutor,
       content: simple
           ? (isFilipino
-              ? '${cat.emoji} $label: alam mo na ang $known sa ${cards.length} salita.\n\n${prog < 0.5 ? 'Matuto pa tayo!' : 'Ang galing mo!'}'
-              : '${cat.emoji} $label: you know $known of ${cards.length} words.\n\n${prog < 0.5 ? 'Let\'s learn more!' : 'You are doing great!'}')
+                ? '${cat.emoji} $label: alam mo na ang $known sa ${cards.length} salita.\n\n${prog < 0.5 ? 'Matuto pa tayo!' : 'Ang galing mo!'}'
+                : '${cat.emoji} $label: you know $known of ${cards.length} words.\n\n${prog < 0.5 ? 'Let\'s learn more!' : 'You are doing great!'}')
           : (isFilipino
-              ? '📊 ${cat.label}: $pct% na-master mo. Mayroong ${cards.length} salita sa kategiryang ito. ${prog < 0.5 ? 'Kailangan pa ng practice!' : 'Magaling ang progress mo!'}'
-              : '📊 ${cat.label}: You\'ve mastered $pct%. There are ${cards.length} words in this category. ${prog < 0.5 ? 'Let\'s practice more!' : 'Great progress!'}'),
+                ? '📊 ${cat.label}: $pct% na-master mo. Mayroong ${cards.length} salita sa kategiryang ito. ${prog < 0.5 ? 'Kailangan pa ng practice!' : 'Magaling ang progress mo!'}'
+                : '📊 ${cat.label}: You\'ve mastered $pct%. There are ${cards.length} words in this category. ${prog < 0.5 ? 'Let\'s practice more!' : 'Great progress!'}'),
       timestamp: DateTime.now(),
     );
   }
@@ -413,18 +444,24 @@ class TutorEngine {
   static TutorMessage hintForWord(Flashcard card, {bool isFilipino = false}) {
     final answer = card.wordFilipino;
     final letters = answer.replaceAll(RegExp(r'\s'), '').length;
-    final label = isFilipino ? card.category.labelFilipino : card.category.label;
+    final label = isFilipino
+        ? card.category.labelFilipino
+        : card.category.label;
 
     final buffer = StringBuffer();
     // "a word about X" rather than "a/an X word": category labels are plural
     // and multi-word ("Colors & Shapes"), so any article in front of them
     // reads wrong.
-    buffer.write(isFilipino
-        ? '💡 Isa itong salita tungkol sa $label ${card.category.emoji}.'
-        : '💡 It\'s a word about $label ${card.category.emoji}.');
-    buffer.write(isFilipino
-        ? '\nNagsisimula ito sa "${answer[0]}" at may $letters na letra.'
-        : '\nIt starts with "${answer[0]}" and has $letters letters.');
+    buffer.write(
+      isFilipino
+          ? '💡 Isa itong salita tungkol sa $label ${card.category.emoji}.'
+          : '💡 It\'s a word about $label ${card.category.emoji}.',
+    );
+    buffer.write(
+      isFilipino
+          ? '\nNagsisimula ito sa "${answer[0]}" at may $letters na letra.'
+          : '\nIt starts with "${answer[0]}" and has $letters letters.',
+    );
 
     final masked = _maskWord(card.exampleSentence, card.wordEnglish);
     if (masked != null) buffer.write('\n\n💬 "$masked"');
@@ -451,8 +488,11 @@ class TutorEngine {
     return text.replaceAll(pattern, '___');
   }
 
-  static TutorMessage _provideHint(LearningProgress progress,
-      {bool isFilipino = false, bool simple = false}) {
+  static TutorMessage _provideHint(
+    LearningProgress progress, {
+    bool isFilipino = false,
+    bool simple = false,
+  }) {
     if (simple) {
       final tips = isFilipino
           ? [
@@ -513,10 +553,13 @@ class TutorEngine {
   /// correction is a teaching moment rather than a verdict.
   static TutorMessage reteach(Flashcard card, {bool isFilipino = false}) {
     final buffer = StringBuffer();
-    buffer.write(isFilipino
-        ? '📖 Balikan natin ito. Ang "${card.wordEnglish}" ay "${card.wordFilipino}" ${card.category.emoji}'
-        : '📖 Let\'s look at it again. "${card.wordEnglish}" is "${card.wordFilipino}" ${card.category.emoji}');
-    if (card.exampleSentence != null && card.exampleSentence!.trim().isNotEmpty) {
+    buffer.write(
+      isFilipino
+          ? '📖 Balikan natin ito. Ang "${card.wordEnglish}" ay "${card.wordFilipino}" ${card.category.emoji}'
+          : '📖 Let\'s look at it again. "${card.wordEnglish}" is "${card.wordFilipino}" ${card.category.emoji}',
+    );
+    if (card.exampleSentence != null &&
+        card.exampleSentence!.trim().isNotEmpty) {
       buffer.write('\n\n💬 "${card.exampleSentence!.trim()}"');
     }
     if (card.definition != null && card.definition!.trim().isNotEmpty) {
@@ -583,8 +626,9 @@ class TutorEngine {
 
     String? prefix;
     if (interests.contains(card.category)) {
-      final catLabel =
-          isFilipino ? card.category.labelFilipino : card.category.label;
+      final catLabel = isFilipino
+          ? card.category.labelFilipino
+          : card.category.label;
       prefix = isFilipino
           ? '❓ Quiz tungkol sa $catLabel ${card.category.emoji} — paborito mo!'
           : '❓ A ${card.category.emoji} $catLabel quiz — your favorite!';
@@ -613,8 +657,10 @@ class TutorEngine {
   /// Confirms a newly picked favorite topic. The action carries the category
   /// name (no options) so the screen can record the pick when this message
   /// came from free text ("I like animals") rather than a chip tap.
-  static TutorMessage interestConfirmation(FlashcardCategory category,
-      {bool isFilipino = false}) {
+  static TutorMessage interestConfirmation(
+    FlashcardCategory category, {
+    bool isFilipino = false,
+  }) {
     final label = isFilipino ? category.labelFilipino : category.label;
     return TutorMessage(
       id: _uuid.v4(),
@@ -639,13 +685,12 @@ class TutorEngine {
     bool isFilipino = false,
     List<FlashcardCategory> interests = const [],
   }) {
-    final plan =
-        buildLearningPlan(progress, profileId, interests: interests);
+    final plan = buildLearningPlan(progress, profileId, interests: interests);
     final favLine = interests.isEmpty
         ? ''
         : (isFilipino
-            ? ' Handa ka na ba para sa mas maraming ${interests.first.labelFilipino} ${interests.first.emoji}?'
-            : ' Ready for more ${interests.first.label} ${interests.first.emoji} words?');
+              ? ' Handa ka na ba para sa mas maraming ${interests.first.labelFilipino} ${interests.first.emoji}?'
+              : ' Ready for more ${interests.first.label} ${interests.first.emoji} words?');
     return TutorMessage(
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
@@ -697,12 +742,16 @@ class TutorEngine {
     return picked.toList();
   }
 
-  static TutorMessage quizForWord(Flashcard card,
-      {bool isFilipino = false, String? prefix}) {
+  static TutorMessage quizForWord(
+    Flashcard card, {
+    bool isFilipino = false,
+    String? prefix,
+  }) {
     final options = [card.wordFilipino, ...distractorsFor(card)]
       ..shuffle(_random);
 
-    final head = prefix ?? (isFilipino ? '❓ Mabilisang Quiz!' : '❓ Quick Quiz!');
+    final head =
+        prefix ?? (isFilipino ? '❓ Mabilisang Quiz!' : '❓ Quick Quiz!');
     return TutorMessage(
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
@@ -748,9 +797,9 @@ class TutorEngine {
       return plan;
     }
     for (final cat in interests) {
-      final candidates = SeedData.getByCategory(cat)
-          .where((c) => plan.every((p) => p.id != c.id))
-          .toList();
+      final candidates = SeedData.getByCategory(
+        cat,
+      ).where((c) => plan.every((p) => p.id != c.id)).toList();
       if (candidates.isNotEmpty) {
         final pick = candidates[_random.nextInt(candidates.length)];
         return [...plan.sublist(0, plan.length - 1), pick];
@@ -778,8 +827,8 @@ class TutorEngine {
       role: TutorMessageRole.tutor,
       content: simple
           ? (isFilipino
-              ? '🎯 Matuto tayo ng ${plan.length} salita: $preview.\n\nPindutin ang button para magsimula. May bituin ka! ⭐'
-              : '🎯 Let\'s learn ${plan.length} words: $preview.\n\nTap the button to start. You get stars! ⭐')
+                ? '🎯 Matuto tayo ng ${plan.length} salita: $preview.\n\nPindutin ang button para magsimula. May bituin ka! ⭐'
+                : '🎯 Let\'s learn ${plan.length} words: $preview.\n\nTap the button to start. You get stars! ⭐')
           : isFilipino
           ? '🎯 Handa na ang iyong aralin ngayon! Mag-aaral tayo ng ${plan.length} salita: $preview.\n\nPindutin sa ibaba para magsimula — may bituin kang makukuha!'
           : '🎯 Today\'s lesson is ready! We\'ll practice ${plan.length} words: $preview.\n\nTap below to start — you\'ll earn stars!',
@@ -791,8 +840,10 @@ class TutorEngine {
     );
   }
 
-  static TutorMessage _suggestPractice(LearningProgress progress,
-      {bool isFilipino = false}) {
+  static TutorMessage _suggestPractice(
+    LearningProgress progress, {
+    bool isFilipino = false,
+  }) {
     // Find the weakest category to suggest
     String? weakest;
     double minProg = 2.0;
@@ -817,8 +868,11 @@ class TutorEngine {
     );
   }
 
-  static TutorMessage _progressSummary(LearningProgress progress,
-      {bool isFilipino = false, bool simple = false}) {
+  static TutorMessage _progressSummary(
+    LearningProgress progress, {
+    bool isFilipino = false,
+    bool simple = false,
+  }) {
     if (simple) {
       final words = progress.wordsLearned;
       final days = progress.streakDays;
@@ -827,15 +881,15 @@ class TutorEngine {
         role: TutorMessageRole.tutor,
         content: isFilipino
             ? '📊 Tingnan ang nagawa mo!\n\n'
-                '📖 ${words == 1 ? '1 salita' : '$words na salita'} ang alam mo\n'
-                '⭐ ${progress.totalStars} bituin\n'
-                '🔥 ${days == 1 ? '1 araw' : '$days na araw'} sunod-sunod\n\n'
-                'Ang galing mo! 🎉'
+                  '📖 ${words == 1 ? '1 salita' : '$words na salita'} ang alam mo\n'
+                  '⭐ ${progress.totalStars} bituin\n'
+                  '🔥 ${days == 1 ? '1 araw' : '$days na araw'} sunod-sunod\n\n'
+                  'Ang galing mo! 🎉'
             : '📊 Look what you did!\n\n'
-                '📖 You know $words ${words == 1 ? 'word' : 'words'}\n'
-                '⭐ You have ${progress.totalStars} stars\n'
-                '🔥 $days ${days == 1 ? 'day' : 'days'} in a row\n\n'
-                'Great job! 🎉',
+                  '📖 You know $words ${words == 1 ? 'word' : 'words'}\n'
+                  '⭐ You have ${progress.totalStars} stars\n'
+                  '🔥 $days ${days == 1 ? 'day' : 'days'} in a row\n\n'
+                  'Great job! 🎉',
         timestamp: DateTime.now(),
       );
     }
@@ -843,8 +897,8 @@ class TutorEngine {
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
       content: isFilipino
-          ? '📊 Ito ang iyong progress:\n\n📖 ${progress.wordsLearned} salita ang natutunan\n⭐ ${progress.totalStars} bituin\n🔥 ${progress.streakDays}-araw na streak\n🎮 ${progress.recentScores.length} laro na nilaro\n\nItuloy mo lang ang magandang gawa!'
-          : '📊 Here\'s your progress:\n\n📖 ${progress.wordsLearned} words learned\n⭐ ${progress.totalStars} stars earned\n🔥 ${progress.streakDays}-day streak\n🎮 ${progress.recentScores.length} games played\n\nKeep up the great work!',
+          ? '📊 Ito ang iyong progress:\n\n📖 ${progress.wordsLearned} salita ang natutunan\n⭐ ${progress.totalStars} bituin\n🔥 ${progress.streakDays}-araw na streak\n🎮 ${progress.effectiveGamesPlayed} laro na nilaro\n\nItuloy mo lang ang magandang gawa!'
+          : '📊 Here\'s your progress:\n\n📖 ${progress.wordsLearned} words learned\n⭐ ${progress.totalStars} stars earned\n🔥 ${progress.streakDays}-day streak\n🎮 ${progress.effectiveGamesPlayed} games played\n\nKeep up the great work!',
       timestamp: DateTime.now(),
     );
   }

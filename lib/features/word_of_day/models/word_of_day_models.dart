@@ -4,6 +4,10 @@ class WordOfDay {
   final String wordFilipino;
   final String? exampleSentence;
   final String emoji;
+
+  /// Seed card behind this word, so the screen can show its picture. Null on
+  /// entries persisted before pictures existed, which keep showing [emoji].
+  final String? cardId;
   final String category;
   final DateTime date;
 
@@ -12,18 +16,20 @@ class WordOfDay {
     required this.wordFilipino,
     this.exampleSentence,
     required this.emoji,
+    this.cardId,
     required this.category,
     required this.date,
   });
 
   Map<String, dynamic> toJson() => {
-        'wordEnglish': wordEnglish,
-        'wordFilipino': wordFilipino,
-        'exampleSentence': exampleSentence,
-        'emoji': emoji,
-        'category': category,
-        'date': date.toIso8601String(),
-      };
+    'wordEnglish': wordEnglish,
+    'wordFilipino': wordFilipino,
+    'exampleSentence': exampleSentence,
+    'emoji': emoji,
+    if (cardId != null) 'card_id': cardId,
+    'category': category,
+    'date': date.toIso8601String(),
+  };
 
   factory WordOfDay.fromJson(Map<String, dynamic> json) {
     return WordOfDay(
@@ -31,6 +37,7 @@ class WordOfDay {
       wordFilipino: json['wordFilipino'] as String,
       exampleSentence: json['exampleSentence'] as String?,
       emoji: json['emoji'] as String? ?? '📝',
+      cardId: json['card_id'] as String?,
       category: json['category'] as String? ?? '',
       date: DateTime.parse(json['date'] as String),
     );
@@ -42,22 +49,23 @@ class WordOfDayHistory {
   final String profileId;
   final List<WordOfDayRecord> records;
 
-  const WordOfDayHistory({
-    required this.profileId,
-    this.records = const [],
-  });
+  const WordOfDayHistory({required this.profileId, this.records = const []});
 
   Map<String, dynamic> toJson() => {
-        'profileId': profileId,
-        'records': records.map((r) => r.toJson()).toList(),
-      };
+    'profileId': profileId,
+    'records': records.map((r) => r.toJson()).toList(),
+  };
 
   factory WordOfDayHistory.fromJson(Map<String, dynamic> json) {
     return WordOfDayHistory(
       profileId: json['profileId'] as String,
-      records: (json['records'] as List?)
-              ?.map((r) =>
-                  WordOfDayRecord.fromJson(Map<String, dynamic>.from(r as Map)))
+      records:
+          (json['records'] as List?)
+              ?.map(
+                (r) => WordOfDayRecord.fromJson(
+                  Map<String, dynamic>.from(r as Map),
+                ),
+              )
               .toList() ??
           [],
     );
@@ -77,10 +85,10 @@ class WordOfDayRecord {
   });
 
   Map<String, dynamic> toJson() => {
-        'dateKey': dateKey,
-        'wordEnglish': wordEnglish,
-        'learned': learned,
-      };
+    'dateKey': dateKey,
+    'wordEnglish': wordEnglish,
+    'learned': learned,
+  };
 
   factory WordOfDayRecord.fromJson(Map<String, dynamic> json) {
     return WordOfDayRecord(

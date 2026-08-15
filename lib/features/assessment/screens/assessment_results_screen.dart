@@ -2,7 +2,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -12,6 +11,7 @@ import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
 import '../services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Full analytics dashboard showing assessment history, score trends,
 /// pre/post comparisons, and category breakdowns over time.
@@ -27,8 +27,9 @@ class AssessmentResultsScreen extends ConsumerWidget {
     final profileId = profile?.id ?? '';
     final gainReport = AssessmentService.getLearningGainReport(profileId);
 
-    final masteryResults =
-        results.where((r) => r.type == AssessmentType.categoryMastery).toList();
+    final masteryResults = results
+        .where((r) => r.type == AssessmentType.categoryMastery)
+        .toList();
 
     return Scaffold(
       body: SafeArea(
@@ -51,13 +52,15 @@ class AssessmentResultsScreen extends ConsumerWidget {
                         children: [
                           Text(
                             'Assessment Analytics',
-                            style: AppTypography.headlineLarge
-                                .copyWith(color: hc.textPrimary),
+                            style: AppTypography.headlineLarge.copyWith(
+                              color: hc.textPrimary,
+                            ),
                           ),
                           Text(
                             '${results.length} assessments completed',
-                            style: AppTypography.bodyMedium
-                                .copyWith(color: hc.textSecondary),
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: hc.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -77,12 +80,13 @@ class AssessmentResultsScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
                       Text(
                         'No assessments completed yet',
-                        style: AppTypography.titleMedium
-                            .copyWith(color: hc.textSecondary),
+                        style: AppTypography.titleMedium.copyWith(
+                          color: hc.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton(
-                        onPressed: () => context.go('/assessment'),
+                        onPressed: () => context.popOrGo('/assessment'),
                         child: const Text('Take an Assessment'),
                       ),
                     ],
@@ -95,7 +99,9 @@ class AssessmentResultsScreen extends ConsumerWidget {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.symmetric(
-                        horizontal: padding, vertical: 16),
+                      horizontal: padding,
+                      vertical: 16,
+                    ),
                     child: _PrePostComparisonChart(report: gainReport)
                         .animate()
                         .fadeIn(duration: 500.ms, delay: 100.ms)
@@ -120,16 +126,19 @@ class AssessmentResultsScreen extends ConsumerWidget {
                   padding: EdgeInsets.fromLTRB(padding, 24, padding, 0),
                   child: Text(
                     '📈 Score Trend Over Time',
-                    style: AppTypography.titleLarge
-                        .copyWith(color: hc.textPrimary),
+                    style: AppTypography.titleLarge.copyWith(
+                      color: hc.textPrimary,
+                    ),
                   ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
                 ),
               ),
 
               SliverToBoxAdapter(
                 child: Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: padding, vertical: 12),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: padding,
+                    vertical: 12,
+                  ),
                   child: _ScoreTrendChart(results: results)
                       .animate()
                       .fadeIn(duration: 500.ms, delay: 350.ms)
@@ -144,18 +153,21 @@ class AssessmentResultsScreen extends ConsumerWidget {
                     padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
                     child: Text(
                       '🏆 Category Mastery',
-                      style: AppTypography.titleLarge
-                          .copyWith(color: hc.textPrimary),
+                      style: AppTypography.titleLarge.copyWith(
+                        color: hc.textPrimary,
+                      ),
                     ).animate().fadeIn(duration: 400.ms, delay: 400.ms),
                   ),
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.symmetric(
-                        horizontal: padding, vertical: 12),
-                    child: _CategoryMasteryBars(results: masteryResults)
-                        .animate()
-                        .fadeIn(duration: 500.ms, delay: 450.ms),
+                      horizontal: padding,
+                      vertical: 12,
+                    ),
+                    child: _CategoryMasteryBars(
+                      results: masteryResults,
+                    ).animate().fadeIn(duration: 500.ms, delay: 450.ms),
                   ),
                 ),
               ],
@@ -166,8 +178,9 @@ class AssessmentResultsScreen extends ConsumerWidget {
                   padding: EdgeInsets.fromLTRB(padding, 16, padding, 8),
                   child: Text(
                     '📋 Assessment History',
-                    style: AppTypography.titleLarge
-                        .copyWith(color: hc.textPrimary),
+                    style: AppTypography.titleLarge.copyWith(
+                      color: hc.textPrimary,
+                    ),
                   ).animate().fadeIn(duration: 400.ms, delay: 500.ms),
                 ),
               ),
@@ -175,22 +188,15 @@ class AssessmentResultsScreen extends ConsumerWidget {
               SliverPadding(
                 padding: EdgeInsets.symmetric(horizontal: padding),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final sorted = List.of(results)
-                        ..sort((a, b) =>
-                            b.completedAt.compareTo(a.completedAt));
-                      final result = sorted[index];
-                      return _HistoryTile(result: result)
-                          .animate()
-                          .fadeIn(
-                            duration: 300.ms,
-                            delay: (550 + index * 50).ms,
-                          )
-                          .slideX(begin: 0.05, end: 0);
-                    },
-                    childCount: results.length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final sorted = List.of(results)
+                      ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
+                    final result = sorted[index];
+                    return _HistoryTile(result: result)
+                        .animate()
+                        .fadeIn(duration: 300.ms, delay: (550 + index * 50).ms)
+                        .slideX(begin: 0.05, end: 0);
+                  }, childCount: results.length),
                 ),
               ),
 
@@ -247,8 +253,10 @@ class _PrePostComparisonChart extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: (improved ? AppColors.success : AppColors.warning)
                       .withValues(alpha: 0.15),
@@ -276,8 +284,7 @@ class _PrePostComparisonChart extends StatelessWidget {
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       return BarTooltipItem(
                         '${rod.toY.round()}%',
-                        AppTypography.labelMedium
-                            .copyWith(color: Colors.white),
+                        AppTypography.labelMedium.copyWith(color: Colors.white),
                       );
                     },
                   ),
@@ -287,14 +294,14 @@ class _PrePostComparisonChart extends StatelessWidget {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        final label =
-                            value == 0 ? 'Pre-Test' : 'Post-Test';
+                        final label = value == 0 ? 'Pre-Test' : 'Post-Test';
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             label,
-                            style: AppTypography.labelSmall
-                                .copyWith(color: hc.textSecondary),
+                            style: AppTypography.labelSmall.copyWith(
+                              color: hc.textSecondary,
+                            ),
                           ),
                         );
                       },
@@ -308,49 +315,52 @@ class _PrePostComparisonChart extends StatelessWidget {
                         if (value % 25 != 0) return const SizedBox.shrink();
                         return Text(
                           '${value.toInt()}%',
-                          style: AppTypography.labelSmall
-                              .copyWith(color: hc.textHint),
+                          style: AppTypography.labelSmall.copyWith(
+                            color: hc.textHint,
+                          ),
                         );
                       },
                     ),
                   ),
-                  topTitles: const AxisTitles(
-                      ),
-                  rightTitles: const AxisTitles(
-                      ),
+                  topTitles: const AxisTitles(),
+                  rightTitles: const AxisTitles(),
                 ),
                 gridData: FlGridData(
                   horizontalInterval: 25,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: hc.border,
-                    strokeWidth: 1,
-                  ),
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: hc.border, strokeWidth: 1),
                   drawVerticalLine: false,
                 ),
                 borderData: FlBorderData(show: false),
                 barGroups: [
-                  BarChartGroupData(x: 0, barRods: [
-                    BarChartRodData(
-                      toY: prePct.toDouble(),
-                      color: const Color(0xFF5C6BC0),
-                      width: 40,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(8),
-                        topRight: Radius.circular(8),
+                  BarChartGroupData(
+                    x: 0,
+                    barRods: [
+                      BarChartRodData(
+                        toY: prePct.toDouble(),
+                        color: const Color(0xFF5C6BC0),
+                        width: 40,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          topRight: Radius.circular(8),
+                        ),
                       ),
-                    ),
-                  ]),
-                  BarChartGroupData(x: 1, barRods: [
-                    BarChartRodData(
-                      toY: postPct.toDouble(),
-                      color: const Color(0xFF00897B),
-                      width: 40,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(8),
-                        topRight: Radius.circular(8),
+                    ],
+                  ),
+                  BarChartGroupData(
+                    x: 1,
+                    barRods: [
+                      BarChartRodData(
+                        toY: postPct.toDouble(),
+                        color: const Color(0xFF00897B),
+                        width: 40,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          topRight: Radius.circular(8),
+                        ),
                       ),
-                    ),
-                  ]),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -370,8 +380,7 @@ class _PrePostComparisonChart extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'Per-Category Gains',
-              style: AppTypography.labelLarge
-                  .copyWith(color: hc.textPrimary),
+              style: AppTypography.labelLarge.copyWith(color: hc.textPrimary),
             ),
             const SizedBox(height: 8),
             ...report.categoryGains.entries.map((entry) {
@@ -384,16 +393,15 @@ class _PrePostComparisonChart extends StatelessWidget {
                     Expanded(
                       child: Text(
                         entry.key,
-                        style: AppTypography.bodySmall
-                            .copyWith(color: hc.textPrimary),
+                        style: AppTypography.bodySmall.copyWith(
+                          color: hc.textPrimary,
+                        ),
                       ),
                     ),
                     Text(
                       '${positive ? "+" : ""}$gain%',
                       style: AppTypography.labelMedium.copyWith(
-                        color: positive
-                            ? AppColors.success
-                            : AppColors.error,
+                        color: positive ? AppColors.success : AppColors.error,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -417,8 +425,10 @@ class _OverallStatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totalCorrect = results.fold<int>(0, (sum, r) => sum + r.score);
-    final totalQuestions =
-        results.fold<int>(0, (sum, r) => sum + r.totalQuestions);
+    final totalQuestions = results.fold<int>(
+      0,
+      (sum, r) => sum + r.totalQuestions,
+    );
     final avgPct = totalQuestions > 0
         ? ((totalCorrect / totalQuestions) * 100).round()
         : 0;
@@ -492,8 +502,7 @@ class _MiniStat extends StatelessWidget {
           ),
           Text(
             label,
-            style: AppTypography.labelSmall
-                .copyWith(color: hc.textSecondary),
+            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
           ),
         ],
       ),
@@ -523,8 +532,7 @@ class _ScoreTrendChart extends StatelessWidget {
         child: Center(
           child: Text(
             'Complete 2+ assessments to see trends',
-            style: AppTypography.bodySmall
-                .copyWith(color: hc.textHint),
+            style: AppTypography.bodySmall.copyWith(color: hc.textHint),
           ),
         ),
       );
@@ -547,10 +555,8 @@ class _ScoreTrendChart extends StatelessWidget {
         LineChartData(
           gridData: FlGridData(
             horizontalInterval: 25,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: hc.border,
-              strokeWidth: 1,
-            ),
+            getDrawingHorizontalLine: (value) =>
+                FlLine(color: hc.border, strokeWidth: 1),
             drawVerticalLine: false,
           ),
           titlesData: FlTitlesData(
@@ -567,8 +573,10 @@ class _ScoreTrendChart extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       '${date.month}/${date.day}',
-                      style: AppTypography.labelSmall
-                          .copyWith(color: hc.textHint, fontSize: 10),
+                      style: AppTypography.labelSmall.copyWith(
+                        color: hc.textHint,
+                        fontSize: 10,
+                      ),
                     ),
                   );
                 },
@@ -583,16 +591,15 @@ class _ScoreTrendChart extends StatelessWidget {
                   if (value % 25 != 0) return const SizedBox.shrink();
                   return Text(
                     '${value.toInt()}%',
-                    style: AppTypography.labelSmall
-                        .copyWith(color: hc.textHint),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: hc.textHint,
+                    ),
                   );
                 },
               ),
             ),
-            topTitles:
-                const AxisTitles(),
-            rightTitles:
-                const AxisTitles(),
+            topTitles: const AxisTitles(),
+            rightTitles: const AxisTitles(),
           ),
           borderData: FlBorderData(show: false),
           minY: 0,
@@ -606,11 +613,11 @@ class _ScoreTrendChart extends StatelessWidget {
               dotData: FlDotData(
                 getDotPainter: (spot, percent, bar, index) =>
                     FlDotCirclePainter(
-                  radius: 4,
-                  color: AppColors.primary,
-                  strokeWidth: 2,
-                  strokeColor: Colors.white,
-                ),
+                      radius: 4,
+                      color: AppColors.primary,
+                      strokeWidth: 2,
+                      strokeColor: Colors.white,
+                    ),
               ),
               belowBarData: BarAreaData(
                 show: true,
@@ -624,8 +631,7 @@ class _ScoreTrendChart extends StatelessWidget {
                 return touchedSpots.map((spot) {
                   return LineTooltipItem(
                     '${spot.y.round()}%',
-                    AppTypography.labelMedium
-                        .copyWith(color: Colors.white),
+                    AppTypography.labelMedium.copyWith(color: Colors.white),
                   );
                 }).toList();
               },
@@ -692,8 +698,9 @@ class _CategoryMasteryBars extends StatelessWidget {
                   children: [
                     Text(
                       entry.key,
-                      style: AppTypography.labelMedium
-                          .copyWith(color: hc.textPrimary),
+                      style: AppTypography.labelMedium.copyWith(
+                        color: hc.textPrimary,
+                      ),
                     ),
                     Text(
                       '$pct%',
@@ -753,13 +760,16 @@ class _HistoryTile extends StatelessWidget {
                 children: [
                   Text(
                     result.type.label,
-                    style: AppTypography.titleSmall
-                        .copyWith(color: hc.textPrimary),
+                    style: AppTypography.titleSmall.copyWith(
+                      color: hc.textPrimary,
+                    ),
                   ),
                   Text(
                     '${_formatDate(result.completedAt)} • ${result.totalQuestions} questions • ${_formatDuration(result.durationSeconds)}',
-                    style: AppTypography.bodySmall
-                        .copyWith(color: hc.textHint, fontSize: 11),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: hc.textHint,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
@@ -792,8 +802,18 @@ class _HistoryTile extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}';
   }

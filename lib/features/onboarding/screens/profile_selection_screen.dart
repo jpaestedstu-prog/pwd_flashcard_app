@@ -34,52 +34,52 @@ extension on _EntryChoice {
   /// The [UserRole] this entry maps to — used to look up the [RoleTheme].
   /// Both Player variants share the Player role/theme.
   UserRole get role => switch (this) {
-        _EntryChoice.playerGuest => UserRole.player,
-        _EntryChoice.playerProgress => UserRole.player,
-        _EntryChoice.joinClass => UserRole.student,
-        _EntryChoice.joinHomeGroup => UserRole.child,
-        _EntryChoice.teacher => UserRole.teacher,
-        _EntryChoice.parent => UserRole.parent,
-      };
+    _EntryChoice.playerGuest => UserRole.player,
+    _EntryChoice.playerProgress => UserRole.player,
+    _EntryChoice.joinClass => UserRole.student,
+    _EntryChoice.joinHomeGroup => UserRole.child,
+    _EntryChoice.teacher => UserRole.teacher,
+    _EntryChoice.parent => UserRole.parent,
+  };
 
   String label(AppLocalizations l10n) => switch (this) {
-        _EntryChoice.playerGuest => l10n.rolePlayerGuest,
-        _EntryChoice.playerProgress => l10n.rolePlayerProgress,
-        _EntryChoice.joinClass => l10n.roleStudent,
-        _EntryChoice.joinHomeGroup => l10n.roleChild,
-        _EntryChoice.teacher => l10n.roleTeacher,
-        _EntryChoice.parent => l10n.roleParent,
-      };
+    _EntryChoice.playerGuest => l10n.rolePlayerGuest,
+    _EntryChoice.playerProgress => l10n.rolePlayerProgress,
+    _EntryChoice.joinClass => l10n.roleStudent,
+    _EntryChoice.joinHomeGroup => l10n.roleChild,
+    _EntryChoice.teacher => l10n.roleTeacher,
+    _EntryChoice.parent => l10n.roleParent,
+  };
 
   String tagline(AppLocalizations l10n) => switch (this) {
-        _EntryChoice.playerGuest => l10n.rolePlayerGuestTagline,
-        _EntryChoice.playerProgress => l10n.rolePlayerProgressTagline,
-        _EntryChoice.joinClass => l10n.roleStudentTagline,
-        _EntryChoice.joinHomeGroup => l10n.roleChildTagline,
-        _EntryChoice.teacher => l10n.roleTeacherTagline,
-        _EntryChoice.parent => l10n.roleParentTagline,
-      };
+    _EntryChoice.playerGuest => l10n.rolePlayerGuestTagline,
+    _EntryChoice.playerProgress => l10n.rolePlayerProgressTagline,
+    _EntryChoice.joinClass => l10n.roleStudentTagline,
+    _EntryChoice.joinHomeGroup => l10n.roleChildTagline,
+    _EntryChoice.teacher => l10n.roleTeacherTagline,
+    _EntryChoice.parent => l10n.roleParentTagline,
+  };
 
   /// Per-choice glyph. The two Player variants share the Player theme colour
   /// but use distinct icons so they're easy to tell apart at a glance.
   IconData get icon => switch (this) {
-        _EntryChoice.playerGuest => Icons.sports_esports_rounded,
-        _EntryChoice.playerProgress => Icons.workspace_premium_rounded,
-        _ => RoleTheme.of(role).icon,
-      };
+    _EntryChoice.playerGuest => Icons.sports_esports_rounded,
+    _EntryChoice.playerProgress => Icons.workspace_premium_rounded,
+    _ => RoleTheme.of(role).icon,
+  };
 
   /// Destination route for this entry. Student / Child go through a code
   /// screen first; the rest land on the role-setup form. The two Player
   /// variants share the form but pass a `mode` so it knows whether to create
   /// a guest (local-only) or a progress-keeping profile.
   String get route => switch (this) {
-        _EntryChoice.joinClass => '/join-class',
-        _EntryChoice.joinHomeGroup => '/join-home-group',
-        _EntryChoice.playerGuest => '/role-setup/player?mode=guest',
-        _EntryChoice.playerProgress => '/role-setup/player?mode=progress',
-        _EntryChoice.teacher => '/role-setup/teacher',
-        _EntryChoice.parent => '/role-setup/parent',
-      };
+    _EntryChoice.joinClass => '/join-class',
+    _EntryChoice.joinHomeGroup => '/join-home-group',
+    _EntryChoice.playerGuest => '/role-setup/player?mode=guest',
+    _EntryChoice.playerProgress => '/role-setup/player?mode=progress',
+    _EntryChoice.teacher => '/role-setup/teacher',
+    _EntryChoice.parent => '/role-setup/parent',
+  };
 }
 
 /// First real screen of onboarding: pick who you are. Each card routes
@@ -122,12 +122,13 @@ class ProfileSelectionScreen extends StatelessWidget {
 
                     // ─── Title ──────────────────────────────
                     Text(
-                      l10n.welcome,
-                      style: AppTypography.displayMedium.copyWith(
-                        color:
-                            isDark ? colorScheme.primary : AppColors.primaryDark,
-                      ),
-                    )
+                          l10n.welcome,
+                          style: AppTypography.displayMedium.copyWith(
+                            color: isDark
+                                ? colorScheme.primary
+                                : AppColors.primaryDark,
+                          ),
+                        )
                         .animate()
                         .fadeIn(duration: 500.ms)
                         .slideY(begin: -0.2, end: 0),
@@ -179,27 +180,27 @@ class ProfileSelectionScreen extends StatelessWidget {
   /// entrance. The functional routes are unchanged — this only reorganises the
   /// flat list into Player Profiles / Classroom / Family Group sections.
   List<Widget> _buildGroups(BuildContext context, AppLocalizations l10n) {
-    final groups = <({
-      String title,
-      String description,
-      List<_EntryChoice> choices,
-    })>[
-      (
-        title: l10n.groupPlayerProfiles,
-        description: l10n.groupPlayerProfilesDesc,
-        choices: const [_EntryChoice.playerGuest, _EntryChoice.playerProgress],
-      ),
-      (
-        title: l10n.groupClassroom,
-        description: l10n.groupClassroomDesc,
-        choices: const [_EntryChoice.joinClass, _EntryChoice.teacher],
-      ),
-      (
-        title: l10n.groupFamily,
-        description: l10n.groupFamilyDesc,
-        choices: const [_EntryChoice.joinHomeGroup, _EntryChoice.parent],
-      ),
-    ];
+    final groups =
+        <({String title, String description, List<_EntryChoice> choices})>[
+          (
+            title: l10n.groupPlayerProfiles,
+            description: l10n.groupPlayerProfilesDesc,
+            choices: const [
+              _EntryChoice.playerGuest,
+              _EntryChoice.playerProgress,
+            ],
+          ),
+          (
+            title: l10n.groupClassroom,
+            description: l10n.groupClassroomDesc,
+            choices: const [_EntryChoice.joinClass, _EntryChoice.teacher],
+          ),
+          (
+            title: l10n.groupFamily,
+            description: l10n.groupFamilyDesc,
+            choices: const [_EntryChoice.joinHomeGroup, _EntryChoice.parent],
+          ),
+        ];
 
     final widgets = <Widget>[];
     var delay = 300;
@@ -217,12 +218,12 @@ class ProfileSelectionScreen extends StatelessWidget {
       for (final choice in group.choices) {
         widgets.add(
           Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-            child: _ChoiceCard(
-              choice: choice,
-              onTap: () => context.go(choice.route),
-            ),
-          )
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: _ChoiceCard(
+                  choice: choice,
+                  onTap: () => context.push(choice.route),
+                ),
+              )
               .animate()
               .fadeIn(duration: 500.ms, delay: delay.ms)
               .slideX(begin: 0.12, end: 0),

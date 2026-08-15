@@ -2,10 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../core/services/cloud_sync_exceptions.dart';
 import '../../core/services/firebase_service.dart';
+import '../local/hive_service.dart';
 import '../models/classroom.dart';
 import '../models/classroom_member.dart';
 import '../models/enums.dart';
 import '../models/home_group.dart';
+import '../models/shop_data.dart';
 import '../models/home_group_member.dart';
 import '../models/models.dart';
 import '../repository.dart';
@@ -71,6 +73,15 @@ class FirestoreRepository implements DataRepository {
       'is_guest_player': profile.isGuestPlayer,
       'owner_uid': profile.ownerUid ?? currentUid,
       'username': profile.username,
+      // Mirrors of the per-profile Hive rows `ProgressNotifier.equipItem`
+      // writes. Sent so a learner's purchased look reaches the leaderboard on
+      // a classmate's device; Hive stays the source of truth locally.
+      'equipped_avatar_id': profile.equippedAvatarId ??
+          HiveService.getEquippedItem(profile.id, ShopItemType.avatar.name),
+      'equipped_border_id': profile.equippedBorderId ??
+          HiveService.getEquippedItem(profile.id, ShopItemType.border.name),
+      'equipped_title_id': profile.equippedTitleId ??
+          HiveService.getEquippedItem(profile.id, ShopItemType.title.name),
     }, SetOptions(merge: true));
   }
 
@@ -151,6 +162,11 @@ class FirestoreRepository implements DataRepository {
       isGuestPlayer: (r['is_guest_player'] as bool?) ?? false,
       ownerUid: r['owner_uid'] as String?,
       username: r['username'] as String?,
+      // Absent on documents written before cosmetics travelled; null reads the
+      // same as "nothing equipped" and falls back to avatarIndex.
+      equippedAvatarId: r['equipped_avatar_id'] as String?,
+      equippedBorderId: r['equipped_border_id'] as String?,
+      equippedTitleId: r['equipped_title_id'] as String?,
     );
   }
 
@@ -185,7 +201,7 @@ class FirestoreRepository implements DataRepository {
   /// Used by teacher dashboards on devices that don't have those students
   /// in their local Hive (e.g. teacher's tablet vs. student's phone).
   Future<List<(UserProfile, LearningProgress)>>
-      getStudentsWithProgressByClassroom(String classroomId) async {
+  getStudentsWithProgressByClassroom(String classroomId) async {
     final members = await listMembers(classroomId);
     final results = <(UserProfile, LearningProgress)>[];
     for (final m in members) {
@@ -206,7 +222,10 @@ class FirestoreRepository implements DataRepository {
     // don't trample each other's active profile.
     final uid = _uid;
     if (uid == null) return null;
-    final doc = await _db.collection('app_state').doc('active_profile_$uid').get();
+    final doc = await _db
+        .collection('app_state')
+        .doc('active_profile_$uid')
+        .get();
     if (!doc.exists) return null;
     return doc.data()?['value'] as String?;
   }
@@ -294,6 +313,9 @@ class FirestoreRepository implements DataRepository {
     final wordsRaw = r['learned_word_ids'] as List<dynamic>? ?? [];
     final storyIdsRaw = r['completed_story_ids'] as List<dynamic>? ?? [];
     final storyStarsRaw = r['story_best_stars'] as Map<String, dynamic>? ?? {};
+    final signedRaw = r['fsl_signed_words'] as List<dynamic>? ?? [];
+    final canSignRaw = r['fsl_can_sign'] as List<dynamic>? ?? [];
+    final confirmedRaw = r['fsl_ever_confirmed'] as List<dynamic>? ?? [];
 
     return LearningProgress(
       profileId: profileId,
@@ -302,18 +324,31 @@ class FirestoreRepository implements DataRepository {
       streakDays: (r['streak_days'] as int?) ?? 0,
       lastActivityDate:
           DateTime.tryParse(r['last_activity'] as String? ?? '') ??
-              DateTime.now(),
-      categoryProgress:
-          catRaw.map((k, v) => MapEntry(k, (v as num).toDouble())),
+          DateTime.now(),
+      categoryProgress: catRaw.map(
+        (k, v) => MapEntry(k, (v as num).toDouble()),
+      ),
       recentScores: scoresRaw
           .map((s) => GameScore.fromJson(Map<String, dynamic>.from(s as Map)))
           .toList(),
       totalStars: (r['total_stars'] as int?) ?? 0,
       spentStars: (r['spent_stars'] as int?) ?? 0,
-      completedStoryIds:
-          Set<String>.from(storyIdsRaw.map((e) => e.toString())),
-      storyBestStars:
-          storyStarsRaw.map((k, v) => MapEntry(k, (v as num).toInt())),
+      // Absent on documents written before these lifetime counters existed;
+      // the model's `effective*` getters heal the 0.
+      bestStreakDays: (r['best_streak_days'] as int?) ?? 0,
+      gamesPlayed: (r['games_played'] as int?) ?? 0,
+      playedGameTypes: gameTypesFromNames(r['played_game_types']),
+      completedStoryIds: Set<String>.from(storyIdsRaw.map((e) => e.toString())),
+      storyBestStars: storyStarsRaw.map(
+        (k, v) => MapEntry(k, (v as num).toInt()),
+      ),
+      // Absent on documents written before sign-language engagement was
+      // tracked; an empty set is the correct reading of "we don't know yet".
+      signedWordKeys: Set<String>.from(signedRaw.map((e) => e.toString())),
+      canSignKeys: Set<String>.from(canSignRaw.map((e) => e.toString())),
+      everConfirmedSignKeys: Set<String>.from(
+        confirmedRaw.map((e) => e.toString()),
+      ),
     );
   }
 
@@ -323,12 +358,27 @@ class FirestoreRepository implements DataRepository {
       'profile_id': p.profileId,
       'words_learned': p.wordsLearned,
       'learned_word_ids': p.learnedWordIds.toList(),
+      // Distinct FSL signs watched. ~142 short keys at most, so it costs a few
+      // KB and lets a learner keep their sign progress across devices.
+      'fsl_signed_words': p.signedWordKeys.toList(),
+      // Self-claimed production, and the educator confirmations that scored.
+      // Both travel so a learner keeps their standing across devices; the
+      // confirmations are the ones that carry XP, so losing them would cost a
+      // level.
+      'fsl_can_sign': p.canSignKeys.toList(),
+      'fsl_ever_confirmed': p.everConfirmedSignKeys.toList(),
       'streak_days': p.streakDays,
       'last_activity': p.lastActivityDate.toIso8601String(),
       'category_progress': p.categoryProgress,
       'recent_scores': p.recentScores.map((s) => s.toJson()).toList(),
       'total_stars': p.totalStars,
       'spent_stars': p.spentStars,
+      'best_streak_days': p.effectiveBestStreak,
+      'games_played': p.effectiveGamesPlayed,
+      // Which games have ever been finished. Travels with the other lifetime
+      // records so a cloud pull cannot reset it — the same reason
+      // `best_streak_days` is here.
+      'played_game_types': gameTypeNames(p.effectivePlayedGameTypes),
       'completed_story_ids': p.completedStoryIds.toList(),
       'story_best_stars': p.storyBestStars,
       'owner_uid': _uid,
@@ -386,7 +436,9 @@ class FirestoreRepository implements DataRepository {
 
   @override
   Future<void> saveUnlockedAchievements(
-      String profileId, Set<String> achievementIds) async {
+    String profileId,
+    Set<String> achievementIds,
+  ) async {
     final batch = _db.batch();
     final col = _db
         .collection('achievements')
@@ -416,8 +468,7 @@ class FirestoreRepository implements DataRepository {
   }
 
   @override
-  Future<void> savePurchasedItems(
-      String profileId, Set<String> itemIds) async {
+  Future<void> savePurchasedItems(String profileId, Set<String> itemIds) async {
     final batch = _db.batch();
     final col = _db
         .collection('shop_purchases')
@@ -445,7 +496,10 @@ class FirestoreRepository implements DataRepository {
 
   @override
   Future<void> saveEquippedItem(
-      String profileId, String type, String? itemId) async {
+    String profileId,
+    String type,
+    String? itemId,
+  ) async {
     final ref = _db.collection('shop_equipped').doc('${profileId}_$type');
     if (itemId == null) {
       await ref.delete();
@@ -490,12 +544,8 @@ class FirestoreRepository implements DataRepository {
   }
 
   @override
-  Future<void> saveDailyChallengeDate(
-      String profileId, String date) async {
-    await _db
-        .collection('app_state')
-        .doc('daily_challenge_$profileId')
-        .set({
+  Future<void> saveDailyChallengeDate(String profileId, String date) async {
+    await _db.collection('app_state').doc('daily_challenge_$profileId').set({
       'key': 'daily_challenge_$profileId',
       'value': date,
       'owner_uid': _uid,
@@ -516,7 +566,7 @@ class FirestoreRepository implements DataRepository {
 
   @override
   Future<List<(UserProfile, LearningProgress)>>
-      getAllProfilesWithProgress() async {
+  getAllProfilesWithProgress() async {
     final profiles = await getProfiles();
     final results = <(UserProfile, LearningProgress)>[];
     for (final p in profiles) {
@@ -529,8 +579,7 @@ class FirestoreRepository implements DataRepository {
   // ─── Session Analytics ────────────────────────────────
 
   @override
-  Future<List<Map<String, dynamic>>> getSessionLogs(
-      String profileId) async {
+  Future<List<Map<String, dynamic>>> getSessionLogs(String profileId) async {
     final snap = await _db
         .collection('session_logs')
         .where('profile_id', isEqualTo: profileId)
@@ -550,7 +599,9 @@ class FirestoreRepository implements DataRepository {
 
   @override
   Future<void> addSessionLog(
-      String profileId, Map<String, dynamic> session) async {
+    String profileId,
+    Map<String, dynamic> session,
+  ) async {
     await _db.collection('session_logs').add({
       'profile_id': profileId,
       'date': session['date'],
@@ -578,12 +629,12 @@ class FirestoreRepository implements DataRepository {
           .doc(classroomId)
           .collection('events')
           .add({
-        'event_type': eventType,
-        'actor_uid': _uid,
-        'classroom_id': classroomId,
-        'details': details,
-        'at': FieldValue.serverTimestamp(),
-      });
+            'event_type': eventType,
+            'actor_uid': _uid,
+            'classroom_id': classroomId,
+            'details': details,
+            'at': FieldValue.serverTimestamp(),
+          });
     } catch (_) {
       // Audit is observational; swallow.
     }
@@ -615,7 +666,9 @@ class FirestoreRepository implements DataRepository {
         .limit(1)
         .get();
     if (snap.docs.isEmpty) return null;
-    return Classroom.fromJson(Map<String, dynamic>.from(snap.docs.first.data()));
+    return Classroom.fromJson(
+      Map<String, dynamic>.from(snap.docs.first.data()),
+    );
   }
 
   @override
@@ -634,10 +687,10 @@ class FirestoreRepository implements DataRepository {
 
   @override
   Future<void> updateClassroom(Classroom c) async {
-    await _db.collection('classrooms').doc(c.id).set(
-          c.toJson(),
-          SetOptions(merge: true),
-        );
+    await _db
+        .collection('classrooms')
+        .doc(c.id)
+        .set(c.toJson(), SetOptions(merge: true));
     await _writeClassroomAudit(c.id, 'updated', {
       'name': c.name,
       'code': c.code,
@@ -683,8 +736,9 @@ class FirestoreRepository implements DataRepository {
         .where('classroom_id', isEqualTo: classroomId)
         .get();
     final members = snap.docs
-        .map((d) =>
-            ClassroomMember.fromJson(Map<String, dynamic>.from(d.data())))
+        .map(
+          (d) => ClassroomMember.fromJson(Map<String, dynamic>.from(d.data())),
+        )
         .toList();
     members.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
     return members;
@@ -707,13 +761,15 @@ class FirestoreRepository implements DataRepository {
   /// round-trips to Firestore. Writes one audit entry summarising the
   /// removal so we don't spam the audit log on big resets.
   Future<void> removeMembers(
-      String classroomId, List<String> profileIds) async {
+    String classroomId,
+    List<String> profileIds,
+  ) async {
     if (profileIds.isEmpty) return;
     final batch = _db.batch();
     for (final profileId in profileIds) {
-      batch.delete(_db
-          .collection('classroom_members')
-          .doc('${classroomId}_$profileId'));
+      batch.delete(
+        _db.collection('classroom_members').doc('${classroomId}_$profileId'),
+      );
     }
     await batch.commit();
     await _writeClassroomAudit(classroomId, 'members_bulk_removed', {
@@ -741,9 +797,9 @@ class FirestoreRepository implements DataRepository {
         .collection('classroom_members')
         .doc('${classroomId}_$profileId')
         .set({
-      'display_name': newDisplayName,
-      'updated_at': nowIso,
-    }, SetOptions(merge: true));
+          'display_name': newDisplayName,
+          'updated_at': nowIso,
+        }, SetOptions(merge: true));
     // Audit BEFORE the profile patch so the rule can find it.
     await _writeClassroomAudit(classroomId, 'member_renamed', {
       'profile_id': profileId,
@@ -776,7 +832,8 @@ class FirestoreRepository implements DataRepository {
 
   /// Fetch every home group owned by a parent profile.
   Future<List<HomeGroup>> getHomeGroupsByOwnerProfileId(
-      String ownerProfileId) async {
+    String ownerProfileId,
+  ) async {
     final snap = await _db
         .collection('home_groups')
         .where('owner_profile_id', isEqualTo: ownerProfileId)
@@ -789,15 +846,15 @@ class FirestoreRepository implements DataRepository {
   }
 
   /// Fetch every member row for a home group.
-  Future<List<HomeGroupMember>> listHomeGroupMembers(
-      String homeGroupId) async {
+  Future<List<HomeGroupMember>> listHomeGroupMembers(String homeGroupId) async {
     final snap = await _db
         .collection('home_group_members')
         .where('home_group_id', isEqualTo: homeGroupId)
         .get();
     final members = snap.docs
-        .map((d) =>
-            HomeGroupMember.fromJson(Map<String, dynamic>.from(d.data())))
+        .map(
+          (d) => HomeGroupMember.fromJson(Map<String, dynamic>.from(d.data())),
+        )
         .toList();
     members.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
     return members;
@@ -809,7 +866,7 @@ class FirestoreRepository implements DataRepository {
   /// `educatorRosterProvider` so home-group children show up alongside
   /// classroom students in the parent dashboard.
   Future<List<(UserProfile, LearningProgress)>>
-      getChildrenWithProgressByHomeGroup(String homeGroupId) async {
+  getChildrenWithProgressByHomeGroup(String homeGroupId) async {
     final members = await listHomeGroupMembers(homeGroupId);
     final results = <(UserProfile, LearningProgress)>[];
     for (final m in members) {
@@ -847,12 +904,12 @@ class FirestoreRepository implements DataRepository {
           .doc(homeGroupId)
           .collection('events')
           .add({
-        'event_type': eventType,
-        'actor_uid': _uid,
-        'home_group_id': homeGroupId,
-        'details': details,
-        'at': FieldValue.serverTimestamp(),
-      });
+            'event_type': eventType,
+            'actor_uid': _uid,
+            'home_group_id': homeGroupId,
+            'details': details,
+            'at': FieldValue.serverTimestamp(),
+          });
     } catch (_) {
       // Audit is observational; swallow.
     }
@@ -875,9 +932,9 @@ class FirestoreRepository implements DataRepository {
         .collection('home_group_members')
         .doc('${homeGroupId}_$profileId')
         .set({
-      'display_name': newDisplayName,
-      'updated_at': nowIso,
-    }, SetOptions(merge: true));
+          'display_name': newDisplayName,
+          'updated_at': nowIso,
+        }, SetOptions(merge: true));
     // Audit BEFORE the profile patch so the rule can find it.
     await _writeHomeGroupAudit(homeGroupId, 'member_renamed', {
       'profile_id': profileId,
@@ -903,13 +960,15 @@ class FirestoreRepository implements DataRepository {
   /// Mirror of [removeMembers] for home groups. Single batch so all
   /// deletions land atomically.
   Future<void> removeHomeGroupMembers(
-      String homeGroupId, List<String> profileIds) async {
+    String homeGroupId,
+    List<String> profileIds,
+  ) async {
     if (profileIds.isEmpty) return;
     final batch = _db.batch();
     for (final profileId in profileIds) {
-      batch.delete(_db
-          .collection('home_group_members')
-          .doc('${homeGroupId}_$profileId'));
+      batch.delete(
+        _db.collection('home_group_members').doc('${homeGroupId}_$profileId'),
+      );
     }
     await batch.commit();
   }
@@ -1002,24 +1061,16 @@ class FirestoreRepository implements DataRepository {
     // profile.
     final batch = _db.batch();
 
-    batch.set(
-      _db.collection('profiles').doc(profileId),
-      {
-        'owner_uid': newUid,
-        '_recovery_code': code,
-        'updated_at': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    batch.set(_db.collection('profiles').doc(profileId), {
+      'owner_uid': newUid,
+      '_recovery_code': code,
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
 
-    batch.set(
-      _db.collection('progress').doc(profileId),
-      {
-        'owner_uid': newUid,
-        '_recovery_code': code,
-      },
-      SetOptions(merge: true),
-    );
+    batch.set(_db.collection('progress').doc(profileId), {
+      'owner_uid': newUid,
+      '_recovery_code': code,
+    }, SetOptions(merge: true));
 
     for (final id in appStateIds) {
       // Only re-stamp if the doc actually exists for the old uid — we
@@ -1029,36 +1080,24 @@ class FirestoreRepository implements DataRepository {
       if (!existing.exists) continue;
       final data = existing.data() ?? const <String, dynamic>{};
       if (data['owner_uid'] != oldOwnerUid) continue;
-      batch.set(
-        _db.collection('app_state').doc(id),
-        {
-          'owner_uid': newUid,
-          '_recovery_code': code,
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(_db.collection('app_state').doc(id), {
+        'owner_uid': newUid,
+        '_recovery_code': code,
+      }, SetOptions(merge: true));
     }
 
     for (final d in cardSnap.docs) {
-      batch.set(
-        d.reference,
-        {
-          'owner_uid': newUid,
-          '_recovery_code': code,
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(d.reference, {
+        'owner_uid': newUid,
+        '_recovery_code': code,
+      }, SetOptions(merge: true));
     }
 
     for (final d in equippedSnap.docs) {
-      batch.set(
-        d.reference,
-        {
-          'owner_uid': newUid,
-          '_recovery_code': code,
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(d.reference, {
+        'owner_uid': newUid,
+        '_recovery_code': code,
+      }, SetOptions(merge: true));
     }
 
     // Mark the code redeemed last so a partial failure leaves it

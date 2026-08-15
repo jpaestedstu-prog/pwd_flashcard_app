@@ -26,6 +26,7 @@ import 'data/models/alarm_action.dart';
 import 'data/models/enums.dart';
 import 'data/models/models.dart';
 import 'features/classroom/widgets/lock_enforcer_gate.dart';
+import 'features/classroom/widgets/lock_warning_gate.dart';
 import 'features/companion/widgets/companion_overlay.dart';
 import 'features/tv_cast/widgets/cast_status_pill.dart';
 import 'features/onboarding/widgets/membership_eviction_gate.dart';
@@ -101,12 +102,10 @@ void main() {
     // `portrait` so there is no landscape flash before this runtime call
     // (which overrides the manifest) takes effect. portraitDown is included
     // so a 180° flip keeps content upright without ever entering landscape.
-    await SystemChrome.setPreferredOrientations(
-      const [
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ],
-    );
+    await SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
 
     // Edge-to-edge: draw under status + nav bars. Android 15 (targetSdk
     // 35+) enforces this anyway; setting it explicitly gives consistent
@@ -130,12 +129,11 @@ void main() {
       ActionClipService.load(),
       FirebaseService.init(options: DefaultFirebaseOptions.currentPlatform),
       NotificationService.init(
-        onNotificationTap: (payload) { 
+        onNotificationTap: (payload) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             final ctx = rootNavigatorKey.currentContext;
             if (ctx == null) return;
             switch (payload) {
-              
               case 'daily_challenge':
                 GoRouter.of(ctx).go('/home');
               case 'vocab_review':
@@ -152,7 +150,7 @@ void main() {
     await Hive.openBox('error_logs');
 
     // Migrate any plaintext PINs to salted PBKDF2 hashes before the first
-    // PIN-gated screen can be reached. Local-only and idempotent — a 
+    // PIN-gated screen can be reached. Local-only and idempotent — a
     // settings flag and per-profile guards prevent double-hashing.
     await PinMigration.runIfNeeded();
 
@@ -223,19 +221,21 @@ void main() {
       }
     }());
 
-    runApp(ProviderScope(
-      overrides: [
-        if (syncInstance != null)
-          syncServiceProvider.overrideWithValue(syncInstance),
-        if (queueInstance != null)
-          syncQueueServiceProvider.overrideWithValue(queueInstance),
-        if (progressListener != null)
-          progressSyncListenerProvider.overrideWithValue(progressListener),
-        if (profileListener != null)
-          profileSyncListenerProvider.overrideWithValue(profileListener),
-      ],
-      child: const FlashLearnApp(),
-    ));
+    runApp(
+      ProviderScope(
+        overrides: [
+          if (syncInstance != null)
+            syncServiceProvider.overrideWithValue(syncInstance),
+          if (queueInstance != null)
+            syncQueueServiceProvider.overrideWithValue(queueInstance),
+          if (progressListener != null)
+            progressSyncListenerProvider.overrideWithValue(progressListener),
+          if (profileListener != null)
+            profileSyncListenerProvider.overrideWithValue(profileListener),
+        ],
+        child: const FlashLearnApp(),
+      ),
+    );
   });
 }
 
@@ -262,7 +262,8 @@ class FlashLearnApp extends ConsumerWidget {
     // [ErrorHandler.report] under the silent source 'applyLifecycle:silent'.
     void applyLifecycle(UserProfile? next) {
       try {
-        final isLearner = next != null &&
+        final isLearner =
+            next != null &&
             (next.role == UserRole.student || next.role == UserRole.child) &&
             !next.isGuestPlayer;
         if (isLearner) {
@@ -318,9 +319,9 @@ class FlashLearnApp extends ConsumerWidget {
     // Check for equipped shop theme (acc essibility themes take priority)
     // Watch progress state to rebuild on changes, then read equipped item
     ref.watch(progressProvider);
-    final equippedThemeId = ref.read(progressProvider.notifier).getEquippedItemId(
-      ShopItemType.theme,
-    );
+    final equippedThemeId = ref
+        .read(progressProvider.notifier)
+        .getEquippedItemId(ShopItemType.theme);
 
     // Active profile drives the per-profile themes below; watch so the app
     // re-themes when the user switches profiles.
@@ -328,10 +329,11 @@ class FlashLearnApp extends ConsumerWidget {
     final roleForTheme = profileForTheme?.role;
     // Accessibility-profile palette applies to Students (Classroom) and
     // Children (Family Group); educators and players fall through.
-    final isThemedLearner = roleForTheme == UserRole.student ||
-        roleForTheme == UserRole.child;
-    final accessTypeForTheme =
-        isThemedLearner ? profileForTheme?.disabilityType : null;
+    final isThemedLearner =
+        roleForTheme == UserRole.student || roleForTheme == UserRole.child;
+    final accessTypeForTheme = isThemedLearner
+        ? profileForTheme?.disabilityType
+        : null;
 
     // Choose theme based on settings — accessibility first, then shop theme,
     // then the learner's accessibility-profile palette, then the group theme
@@ -349,11 +351,13 @@ class FlashLearnApp extends ConsumerWidget {
     } else if (settings.dyslexiaMode) {
       baseTheme = AppTheme.dyslexia;
     } else if (settings.darkMode) {
-      baseTheme = AppTheme.shopThemeDark(equippedThemeId) ??
+      baseTheme =
+          AppTheme.shopThemeDark(equippedThemeId) ??
           AppTheme.learnerThemeDark(accessTypeForTheme) ??
           AppTheme.dark;
     } else {
-      baseTheme = AppTheme.shopTheme(equippedThemeId) ??
+      baseTheme =
+          AppTheme.shopTheme(equippedThemeId) ??
           AppTheme.learnerTheme(accessTypeForTheme, roleForTheme) ??
           AppTheme.groupTheme(roleForTheme) ??
           AppTheme.light;
@@ -363,9 +367,7 @@ class FlashLearnApp extends ConsumerWidget {
     // nav bar piece matters under edge-to-edge — without it, light icons
     // on a light Flutter background go invisible after a theme toggle.
     SystemChrome.setSystemUIOverlayStyle(
-      _systemUiStyleFor(
-        isDark: baseTheme.brightness == Brightness.dark,
-      ),
+      _systemUiStyleFor(isDark: baseTheme.brightness == Brightness.dark),
     );
 
     // Reduced-motion contract: when on, strip page-route transitions too
@@ -400,12 +402,13 @@ class FlashLearnApp extends ConsumerWidget {
         final systemScale = mediaQuery.textScaler.scale(1.0);
         final combined = (systemScale * settings.fontScale).clamp(0.85, 1.5);
         return MediaQuery(
-          data: mediaQuery.copyWith(
-            textScaler: TextScaler.linear(combined),
-          ),
+          data: mediaQuery.copyWith(textScaler: TextScaler.linear(combined)),
           // ErrorBoundary (global error snackbars), ConnectivityBanner (offline
           // indicator), then MembershipEvictionGate above LockEnforcerGate so an
           // educator-driven removal wins over a time-driven lock.
+          // LockWarningGate sits just *inside* LockEnforcerGate: its "nearly
+          // time" banner belongs over normal learner screens but never over a
+          // lock or eviction screen.
           // CompanionHost sits *inside* the lock / eviction gates so the
           // floating AI Companion never shows over a lock or eviction screen,
           // but floats above every normal learner screen.
@@ -417,9 +420,11 @@ class FlashLearnApp extends ConsumerWidget {
             child: ConnectivityBanner(
               child: MembershipEvictionGate(
                 child: LockEnforcerGate(
-                  child: CompanionHost(
-                    child: CastStatusHost(
-                      child: child ?? const SizedBox.shrink(),
+                  child: LockWarningGate(
+                    child: CompanionHost(
+                      child: CastStatusHost(
+                        child: child ?? const SizedBox.shrink(),
+                      ),
                     ),
                   ),
                 ),

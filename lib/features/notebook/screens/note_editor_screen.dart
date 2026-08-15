@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
@@ -8,6 +7,7 @@ import '../../../data/models/enums.dart';
 import '../models/notebook_models.dart';
 import '../providers/notebook_provider.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../navigation/nav_extensions.dart';
 
 class NoteEditorScreen extends ConsumerStatefulWidget {
   final NoteEntry? existingNote;
@@ -27,10 +27,12 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   void initState() {
     super.initState();
     _isEditing = widget.existingNote != null;
-    _titleController =
-        TextEditingController(text: widget.existingNote?.title ?? '');
-    _contentController =
-        TextEditingController(text: widget.existingNote?.content ?? '');
+    _titleController = TextEditingController(
+      text: widget.existingNote?.title ?? '',
+    );
+    _contentController = TextEditingController(
+      text: widget.existingNote?.content ?? '',
+    );
     _selectedCategory = widget.existingNote?.category;
   }
 
@@ -79,7 +81,10 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
             ),
             child: TextButton.icon(
               onPressed: _saveNote,
-              icon: const Icon(Icons.check_rounded, color: AppColors.textOnPrimary),
+              icon: const Icon(
+                Icons.check_rounded,
+                color: AppColors.textOnPrimary,
+              ),
               label: Text(
                 'Save',
                 style: AppTypography.labelMedium.copyWith(
@@ -103,83 +108,86 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
           ),
         ),
         child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ─── Title Field ──────────────────────
-            TextField(
-              controller: _titleController,
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w700,
-                color: hc.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Note title...',
-                hintStyle: AppTypography.titleMedium.copyWith(
-                  color: hc.textHint,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ─── Title Field ──────────────────────
+              TextField(
+                controller: _titleController,
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: hc.textPrimary,
                 ),
-                border: InputBorder.none,
+                decoration: InputDecoration(
+                  hintText: 'Note title...',
+                  hintStyle: AppTypography.titleMedium.copyWith(
+                    color: hc.textHint,
+                  ),
+                  border: InputBorder.none,
+                ),
+                textCapitalization: TextCapitalization.sentences,
               ),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const Divider(),
+              const Divider(),
 
-            // ─── Category Selector ────────────────
-            const SizedBox(height: 8),
-            Text(
-              'Category (optional)',
-              style: AppTypography.labelMedium.copyWith(
-                color: hc.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                ChoiceChip(
-                  label: const Text('None'),
-                  selected: _selectedCategory == null,
-                  onSelected: (_) =>
-                      setState(() => _selectedCategory = null),
+              // ─── Category Selector ────────────────
+              const SizedBox(height: 8),
+              Text(
+                'Category (optional)',
+                style: AppTypography.labelMedium.copyWith(
+                  color: hc.textSecondary,
+                  fontWeight: FontWeight.w600,
                 ),
-                ...FlashcardCategory.values.map((cat) => ChoiceChip(
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  ChoiceChip(
+                    label: const Text('None'),
+                    selected: _selectedCategory == null,
+                    onSelected: (_) => setState(() => _selectedCategory = null),
+                  ),
+                  ...FlashcardCategory.values.map(
+                    (cat) => ChoiceChip(
                       label: Text(cat.label),
                       avatar: Icon(cat.icon, size: 16),
                       selected: _selectedCategory == cat,
-                      onSelected: (_) => setState(() =>
-                          _selectedCategory =
-                              _selectedCategory == cat ? null : cat),
-                    )),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // ─── Content Field ────────────────────
-            TextField(
-              controller: _contentController,
-              style: AppTypography.bodyMedium.copyWith(
-                color: hc.textPrimary,
-                height: 1.6,
+                      onSelected: (_) => setState(
+                        () => _selectedCategory = _selectedCategory == cat
+                            ? null
+                            : cat,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              decoration: InputDecoration(
-                hintText: 'Write your study notes here...',
-                hintStyle: AppTypography.bodyMedium.copyWith(
-                  color: hc.textHint,
+
+              const SizedBox(height: 20),
+
+              // ─── Content Field ────────────────────
+              TextField(
+                controller: _contentController,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: hc.textPrimary,
+                  height: 1.6,
                 ),
-                border: InputBorder.none,
+                decoration: InputDecoration(
+                  hintText: 'Write your study notes here...',
+                  hintStyle: AppTypography.bodyMedium.copyWith(
+                    color: hc.textHint,
+                  ),
+                  border: InputBorder.none,
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: null,
+                minLines: 12,
+                keyboardType: TextInputType.multiline,
               ),
-              textCapitalization: TextCapitalization.sentences,
-              maxLines: null,
-              minLines: 12,
-              keyboardType: TextInputType.multiline,
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -197,27 +205,27 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     final notifier = ref.read(notebookProvider.notifier);
 
     if (_isEditing && widget.existingNote != null) {
-      notifier.updateNote(widget.existingNote!.copyWith(
-        title: title.isNotEmpty ? title : 'Untitled',
-        content: content,
-        category: () => _selectedCategory,
-        updatedAt: now,
-      ));
+      notifier.updateNote(
+        widget.existingNote!.copyWith(
+          title: title.isNotEmpty ? title : 'Untitled',
+          content: content,
+          category: () => _selectedCategory,
+          updatedAt: now,
+        ),
+      );
     } else {
-      notifier.addNote(NoteEntry(
-        id: 'note_${now.millisecondsSinceEpoch}',
-        title: title.isNotEmpty ? title : 'Untitled',
-        content: content,
-        category: _selectedCategory,
-        createdAt: now,
-        updatedAt: now,
-      ));
+      notifier.addNote(
+        NoteEntry(
+          id: 'note_${now.millisecondsSinceEpoch}',
+          title: title.isNotEmpty ? title : 'Untitled',
+          content: content,
+          category: _selectedCategory,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
     }
 
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go('/notebook');
-    }
+    context.popOrGo('/notebook');
   }
 }

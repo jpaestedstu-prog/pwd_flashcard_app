@@ -17,7 +17,8 @@ void main() {
     '/weekly-reports',
     '/assessment/builder',
     '/worksheets',
-    '/adaptive-analytics',
+    // '/adaptive-analytics' is intentionally absent: it shows the active
+    // learner their *own* adaptive data, like '/analytics' already did.
   ];
 
   const studentOnlyRoutes = [

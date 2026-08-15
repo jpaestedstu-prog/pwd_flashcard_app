@@ -84,25 +84,28 @@ class GoalService {
   ) {
     return switch (goal.type) {
       GoalType.wordsLearned => progress.wordsLearned,
-      GoalType.gamesCompleted => progress.recentScores.length,
-      GoalType.categoryMastery => goal.category != null
-          ? ((progress.categoryProgress[goal.category!.label] ?? 0.0) * 100)
-              .round()
-          : 0,
+      // Lifetime count. `recentScores` is trimmed to the last 20, so any goal
+      // with a target above 20 could never be completed.
+      GoalType.gamesCompleted => progress.effectiveGamesPlayed,
+      GoalType.categoryMastery =>
+        goal.category != null
+            ? ((progress.categoryProgress[goal.category!.label] ?? 0.0) * 100)
+                  .round()
+            : 0,
       GoalType.streakDays => progress.streakDays,
       GoalType.starsEarned => progress.totalStars,
     };
   }
 
   static List<LearningGoal> activeGoals(String profileId) {
-    return getGoals(profileId)
-        .where((g) => g.status == GoalStatus.active)
-        .toList();
+    return getGoals(
+      profileId,
+    ).where((g) => g.status == GoalStatus.active).toList();
   }
 
   static List<LearningGoal> completedGoals(String profileId) {
-    return getGoals(profileId)
-        .where((g) => g.status == GoalStatus.completed)
-        .toList();
+    return getGoals(
+      profileId,
+    ).where((g) => g.status == GoalStatus.completed).toList();
   }
 }

@@ -5,6 +5,7 @@ import '../../../data/local/spaced_repetition_service.dart';
 import '../../../data/local/daily_challenge.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../data/local/learning_path_data.dart';
+import '../../../core/accessibility/game_catalog.dart';
 import '../../../core/services/adaptive_difficulty_service.dart';
 import '../models/recommendation_models.dart';
 
@@ -15,11 +16,18 @@ class RecommendationService {
   const RecommendationService._();
 
   /// Build a full [RecommendationSnapshot] for the given profile.
+  ///
+  /// [gameRoster] is the set of games this learner's Games tab actually
+  /// offers — their accessibility category's roster for a Student or Child,
+  /// every game for a Player. The "try this game" suggestion is drawn from it
+  /// so we never send a learner to a game their own hub hides. Defaults to
+  /// every game when the caller has no roster to hand (tests, previews).
   static RecommendationSnapshot generate({
     required String profileId,
     required LearningProgress progress,
     required Map<String, LearningPathProgress> pathProgress,
     List<FlashcardCategory> interests = const [],
+    List<GameType>? gameRoster,
   }) {
     final allCards = SeedData.allFlashcards;
     final recommendations = <Recommendation>[];
@@ -27,25 +35,28 @@ class RecommendationService {
     // ── 1. Weak categories (progress < 50 %) ─────────────────────
     final weakCategories = _findWeakCategories(progress);
     for (final entry in weakCategories) {
-      recommendations.add(Recommendation(
-        id: 'weak_cat_${entry.key}',
-        type: RecommendationType.reviewWeakCategory,
-        priority: entry.value < 0.3
-            ? RecommendationPriority.high
-            : RecommendationPriority.medium,
-        title: 'Review ${entry.key}',
-        titleFilipino: 'Balikan ang ${entry.key}',
-        description:
-            'Your progress is ${(entry.value * 100).round()}%. '
-            'Let\'s practice to boost your score!',
-        descriptionFilipino:
-            'Ang progreso mo ay ${(entry.value * 100).round()}%. '
-            'Mag-practice tayo para tumaas ang score mo!',
-        emoji: _categoryEmoji(entry.key),
-        route: '/flashcards/viewer/${_categoryIndexByLabel(entry.key)}',
-        category: _categoryByLabel(entry.key),
-        relevanceScore: 1.0 - entry.value, // lower progress → higher relevance
-      ));
+      recommendations.add(
+        Recommendation(
+          id: 'weak_cat_${entry.key}',
+          type: RecommendationType.reviewWeakCategory,
+          priority: entry.value < 0.3
+              ? RecommendationPriority.high
+              : RecommendationPriority.medium,
+          title: 'Review ${entry.key}',
+          titleFilipino: 'Balikan ang ${entry.key}',
+          description:
+              'Your progress is ${(entry.value * 100).round()}%. '
+              'Let\'s practice to boost your score!',
+          descriptionFilipino:
+              'Ang progreso mo ay ${(entry.value * 100).round()}%. '
+              'Mag-practice tayo para tumaas ang score mo!',
+          emoji: _categoryEmoji(entry.key),
+          route: '/flashcards/viewer/${_categoryIndexByLabel(entry.key)}',
+          category: _categoryByLabel(entry.key),
+          relevanceScore:
+              1.0 - entry.value, // lower progress → higher relevance
+        ),
+      );
     }
 
     // ── 2. Spaced-repetition words due ───────────────────────────
@@ -56,22 +67,24 @@ class RecommendationService {
     );
     final srSummary = SpacedRepetitionService.getSummary(profileId);
     if (reviewWords.isNotEmpty && srSummary.totalAttempted > 0) {
-      recommendations.add(Recommendation(
-        id: 'sr_review',
-        type: RecommendationType.spacedRepetitionDue,
-        priority: RecommendationPriority.high,
-        title: 'Smart Review',
-        titleFilipino: 'Matalinong Pagsasanay',
-        description:
-            '${reviewWords.length} words are ready for review based on '
-            'your learning pattern.',
-        descriptionFilipino:
-            '${reviewWords.length} salita ang handa nang balikan '
-            'batay sa iyong pattern ng pagkatuto.',
-        emoji: '🧠',
-        route: '/smart-review',
-        relevanceScore: 0.95,
-      ));
+      recommendations.add(
+        Recommendation(
+          id: 'sr_review',
+          type: RecommendationType.spacedRepetitionDue,
+          priority: RecommendationPriority.high,
+          title: 'Smart Review',
+          titleFilipino: 'Matalinong Pagsasanay',
+          description:
+              '${reviewWords.length} words are ready for review based on '
+              'your learning pattern.',
+          descriptionFilipino:
+              '${reviewWords.length} salita ang handa nang balikan '
+              'batay sa iyong pattern ng pagkatuto.',
+          emoji: '🧠',
+          route: '/smart-review',
+          relevanceScore: 0.95,
+        ),
+      );
     }
 
     // ── 3. Weak words practice ───────────────────────────────────
@@ -81,97 +94,111 @@ class RecommendationService {
     );
     if (weakWords.isNotEmpty) {
       final worst = weakWords.first;
-      recommendations.add(Recommendation(
-        id: 'weak_words',
-        type: RecommendationType.practiceWeakWords,
-        priority: RecommendationPriority.high,
-        title: 'Practice Tricky Words',
-        titleFilipino: 'Magsanay sa Mahirap na Salita',
-        description:
-            '${weakWords.length} words need extra practice. '
-            '"${worst.$1.wordEnglish}" is your trickiest '
-            '(${(worst.$2.accuracy * 100).round()}% accuracy).',
-        descriptionFilipino:
-            '${weakWords.length} salita ang kailangan ng dagdag na '
-            'pagsasanay. "${worst.$1.wordFilipino}" ang pinakamahirap '
-            '(${(worst.$2.accuracy * 100).round()}% accuracy).',
-        emoji: '📝',
-        route: '/smart-review',
-        relevanceScore: 0.9,
-      ));
+      recommendations.add(
+        Recommendation(
+          id: 'weak_words',
+          type: RecommendationType.practiceWeakWords,
+          priority: RecommendationPriority.high,
+          title: 'Practice Tricky Words',
+          titleFilipino: 'Magsanay sa Mahirap na Salita',
+          description:
+              '${weakWords.length} words need extra practice. '
+              '"${worst.$1.wordEnglish}" is your trickiest '
+              '(${(worst.$2.accuracy * 100).round()}% accuracy).',
+          descriptionFilipino:
+              '${weakWords.length} salita ang kailangan ng dagdag na '
+              'pagsasanay. "${worst.$1.wordFilipino}" ang pinakamahirap '
+              '(${(worst.$2.accuracy * 100).round()}% accuracy).',
+          emoji: '📝',
+          route: '/smart-review',
+          relevanceScore: 0.9,
+        ),
+      );
     }
 
     // ── 4. Suggested game based on adaptive difficulty ───────────
-    final suggestedDifficulty =
-        AdaptiveDifficultyService.suggestDifficulty(profileId: profileId);
-    final leastPlayedGame = _findLeastPlayedGame(progress.recentScores);
+    final suggestedDifficulty = AdaptiveDifficultyService.suggestDifficulty(
+      profileId: profileId,
+    );
+    final leastPlayedGame = _findLeastPlayedGame(
+      progress.recentScores,
+      gameRoster ?? GameCatalog.combined,
+    );
     if (leastPlayedGame != null) {
       final gameRoute = _gameRoute(leastPlayedGame);
       if (gameRoute != null) {
-        recommendations.add(Recommendation(
-          id: 'game_${leastPlayedGame.name}',
-          type: RecommendationType.trySuggestedGame,
-          priority: RecommendationPriority.medium,
-          title: 'Try ${leastPlayedGame.label}',
-          titleFilipino: 'Subukan ang ${leastPlayedGame.label}',
-          description:
-              'You haven\'t played this game recently. '
-              'We suggest ${suggestedDifficulty.name} difficulty.',
-          descriptionFilipino:
-              'Hindi mo pa nilalaro ito kamakailan. '
-              'Iminumungkahi namin ang ${suggestedDifficulty.name} na '
-              'kahirapan.',
-          emoji: '🎮',
-          route: gameRoute,
-          queryParams: {'difficulty': suggestedDifficulty.name},
-          gameType: leastPlayedGame,
-          relevanceScore: 0.7,
-        ));
+        recommendations.add(
+          Recommendation(
+            id: 'game_${leastPlayedGame.name}',
+            type: RecommendationType.trySuggestedGame,
+            priority: RecommendationPriority.medium,
+            title: 'Try ${leastPlayedGame.label}',
+            titleFilipino: 'Subukan ang ${leastPlayedGame.label}',
+            description:
+                'You haven\'t played this game recently. '
+                'We suggest ${suggestedDifficulty.name} difficulty.',
+            descriptionFilipino:
+                'Hindi mo pa nilalaro ito kamakailan. '
+                'Iminumungkahi namin ang ${suggestedDifficulty.name} na '
+                'kahirapan.',
+            emoji: '🎮',
+            route: gameRoute,
+            queryParams: {'difficulty': suggestedDifficulty.name},
+            gameType: leastPlayedGame,
+            relevanceScore: 0.7,
+          ),
+        );
       }
     }
 
     // ── 5. Continue learning path ────────────────────────────────
     final nextPath = _findNextLearningPath(pathProgress);
     if (nextPath != null) {
-      recommendations.add(Recommendation(
-        id: 'path_${nextPath.id}',
-        type: RecommendationType.continueLearningPath,
-        priority: RecommendationPriority.medium,
-        title: 'Continue ${nextPath.title}',
-        titleFilipino: 'Ipagpatuloy ang ${nextPath.title}',
-        description: _learningPathDescription(nextPath, pathProgress),
-        descriptionFilipino:
-            _learningPathDescriptionFilipino(nextPath, pathProgress),
-        emoji: nextPath.emoji,
-        route: '/learning-paths/${nextPath.id}',
-        category: nextPath.category,
-        relevanceScore: 0.75,
-      ));
+      recommendations.add(
+        Recommendation(
+          id: 'path_${nextPath.id}',
+          type: RecommendationType.continueLearningPath,
+          priority: RecommendationPriority.medium,
+          title: 'Continue ${nextPath.title}',
+          titleFilipino: 'Ipagpatuloy ang ${nextPath.title}',
+          description: _learningPathDescription(nextPath, pathProgress),
+          descriptionFilipino: _learningPathDescriptionFilipino(
+            nextPath,
+            pathProgress,
+          ),
+          emoji: nextPath.emoji,
+          route: '/learning-paths/${nextPath.id}',
+          category: nextPath.category,
+          relevanceScore: 0.75,
+        ),
+      );
     }
 
     // ── 6. Daily challenge ───────────────────────────────────────
     if (!DailyChallenge.hasCompletedToday(profileId)) {
       final streak = DailyChallenge.getStreak(profileId);
-      recommendations.add(Recommendation(
-        id: 'daily_challenge',
-        type: RecommendationType.dailyChallengeReminder,
-        priority: RecommendationPriority.medium,
-        title: 'Daily Challenge',
-        titleFilipino: 'Pang-araw-araw na Hamon',
-        description: streak > 0
-            ? 'Keep your $streak-day streak alive! '
-              'Complete today\'s word challenge.'
-            : 'Start a new streak! Complete today\'s word challenge '
-              'and earn bonus stars.',
-        descriptionFilipino: streak > 0
-            ? 'Panatilihin ang $streak-araw na streak mo! '
-              'Tapusin ang hamon ngayong araw.'
-            : 'Magsimula ng bagong streak! Tapusin ang hamon ngayong '
-              'araw at kumita ng bonus stars.',
-        emoji: '📅',
-        route: '/daily-challenge',
-        relevanceScore: 0.85,
-      ));
+      recommendations.add(
+        Recommendation(
+          id: 'daily_challenge',
+          type: RecommendationType.dailyChallengeReminder,
+          priority: RecommendationPriority.medium,
+          title: 'Daily Challenge',
+          titleFilipino: 'Pang-araw-araw na Hamon',
+          description: streak > 0
+              ? 'Keep your $streak-day streak alive! '
+                    'Complete today\'s word challenge.'
+              : 'Start a new streak! Complete today\'s word challenge '
+                    'and earn bonus stars.',
+          descriptionFilipino: streak > 0
+              ? 'Panatilihin ang $streak-araw na streak mo! '
+                    'Tapusin ang hamon ngayong araw.'
+              : 'Magsimula ng bagong streak! Tapusin ang hamon ngayong '
+                    'araw at kumita ng bonus stars.',
+          emoji: '📅',
+          route: '/daily-challenge',
+          relevanceScore: 0.85,
+        ),
+      );
     }
 
     // ── 7. Explore new/unexplored categories ─────────────────────
@@ -181,53 +208,58 @@ class RecommendationService {
     if (unexplored.isNotEmpty) {
       final cat = unexplored.first;
       final isInterest = interests.contains(cat);
-      recommendations.add(Recommendation(
-        id: 'explore_${cat.name}',
-        type: RecommendationType.exploreNewCategory,
-        priority: isInterest
-            ? RecommendationPriority.medium
-            : RecommendationPriority.low,
-        title: 'Discover ${cat.label}',
-        titleFilipino: 'Tuklasin ang ${cat.labelFilipino}',
-        description: isInterest
-            ? 'One of your favourite topics! Tap to start learning '
-                '${cat.label} words!'
-            : 'You haven\'t explored ${cat.label} yet. '
-                'Tap to start learning new words!',
-        descriptionFilipino: isInterest
-            ? 'Isa sa mga paborito mong paksa! Pindutin para matuto ng '
-                'mga salita sa ${cat.labelFilipino}!'
-            : 'Hindi mo pa natutuklas ang ${cat.labelFilipino}. '
-                'Pindutin para magsimulang matuto ng mga bagong salita!',
-        emoji: _categoryEmojiFromEnum(cat),
-        route: '/flashcards/viewer/${cat.index}',
-        category: cat,
-        relevanceScore: isInterest ? 0.8 : 0.5,
-      ));
+      recommendations.add(
+        Recommendation(
+          id: 'explore_${cat.name}',
+          type: RecommendationType.exploreNewCategory,
+          priority: isInterest
+              ? RecommendationPriority.medium
+              : RecommendationPriority.low,
+          title: 'Discover ${cat.label}',
+          titleFilipino: 'Tuklasin ang ${cat.labelFilipino}',
+          description: isInterest
+              ? 'One of your favourite topics! Tap to start learning '
+                    '${cat.label} words!'
+              : 'You haven\'t explored ${cat.label} yet. '
+                    'Tap to start learning new words!',
+          descriptionFilipino: isInterest
+              ? 'Isa sa mga paborito mong paksa! Pindutin para matuto ng '
+                    'mga salita sa ${cat.labelFilipino}!'
+              : 'Hindi mo pa natutuklas ang ${cat.labelFilipino}. '
+                    'Pindutin para magsimulang matuto ng mga bagong salita!',
+          emoji: _categoryEmojiFromEnum(cat),
+          route: '/flashcards/viewer/${cat.index}',
+          category: cat,
+          relevanceScore: isInterest ? 0.8 : 0.5,
+        ),
+      );
     }
 
     // ── 8. Streak motivation ─────────────────────────────────────
     if (progress.streakDays > 0) {
-      final daysSinceLast =
-          DateTime.now().difference(progress.lastActivityDate).inDays;
+      final daysSinceLast = DateTime.now()
+          .difference(progress.lastActivityDate)
+          .inDays;
       if (daysSinceLast >= 1) {
-        recommendations.add(Recommendation(
-          id: 'streak',
-          type: RecommendationType.increaseStreak,
-          priority: RecommendationPriority.high,
-          title: 'Keep Your Streak!',
-          titleFilipino: 'Panatilihin ang Iyong Streak!',
-          description:
-              'You have a ${progress.streakDays}-day streak. '
-              'Do any activity today to keep it going!',
-          descriptionFilipino:
-              'May ${progress.streakDays}-araw na streak ka. '
-              'Gumawa ng kahit anong aktibidad ngayon para '
-              'mapanatili ito!',
-          emoji: '🔥',
-          route: '/home',
-          relevanceScore: 0.92,
-        ));
+        recommendations.add(
+          Recommendation(
+            id: 'streak',
+            type: RecommendationType.increaseStreak,
+            priority: RecommendationPriority.high,
+            title: 'Keep Your Streak!',
+            titleFilipino: 'Panatilihin ang Iyong Streak!',
+            description:
+                'You have a ${progress.streakDays}-day streak. '
+                'Do any activity today to keep it going!',
+            descriptionFilipino:
+                'May ${progress.streakDays}-araw na streak ka. '
+                'Gumawa ng kahit anong aktibidad ngayon para '
+                'mapanatili ito!',
+            emoji: '🔥',
+            route: '/home',
+            relevanceScore: 0.92,
+          ),
+        );
       }
     }
 
@@ -242,8 +274,7 @@ class RecommendationService {
     final explored = progress.categoryProgress.entries
         .where((e) => e.value > 0)
         .length;
-    final accuracies =
-        SpacedRepetitionService.getWordAccuracies(profileId);
+    final accuracies = SpacedRepetitionService.getWordAccuracies(profileId);
     double overallAcc = 0;
     if (accuracies.isNotEmpty) {
       int sumCorrect = 0, sumTotal = 0;
@@ -273,7 +304,8 @@ class RecommendationService {
 
   /// Returns categories with progress < 50 %, sorted ascending.
   static List<MapEntry<String, double>> _findWeakCategories(
-      LearningProgress progress) {
+    LearningProgress progress,
+  ) {
     final weak = progress.categoryProgress.entries
         .where((e) => e.value < 0.5 && e.value > 0)
         .toList();
@@ -284,7 +316,9 @@ class RecommendationService {
   /// Categories with zero progress, with the learner's chosen interest
   /// categories surfaced first so suggestions feel personalised.
   static List<FlashcardCategory> _findUnexploredCategories(
-      LearningProgress progress, List<FlashcardCategory> interests) {
+    LearningProgress progress,
+    List<FlashcardCategory> interests,
+  ) {
     final unexplored = FlashcardCategory.values.where((cat) {
       final p = progress.categoryProgress[cat.label] ?? 0.0;
       return p == 0.0;
@@ -297,15 +331,26 @@ class RecommendationService {
     return unexplored;
   }
 
-  /// Finds the game type least played in recent scores.
-  static GameType? _findLeastPlayedGame(List<GameScore> scores) {
-    if (scores.isEmpty) return GameType.wordMatch; // good starter game
-    final counts = <GameType, int>{};
-    for (final gt in GameType.values) {
-      counts[gt] = 0;
+  /// Finds the game least played in recent scores, out of the games this
+  /// learner is actually offered.
+  static GameType? _findLeastPlayedGame(
+    List<GameScore> scores,
+    List<GameType> roster,
+  ) {
+    if (roster.isEmpty) return null;
+    // A brand-new learner has no history to rank, so lead with the first game
+    // on their roster — each category's roster is ordered best-starter-first.
+    if (scores.isEmpty) {
+      return roster.contains(GameType.wordMatch)
+          ? GameType.wordMatch
+          : roster.first;
     }
+    final counts = {for (final gt in roster) gt: 0};
     for (final s in scores) {
-      counts[s.gameType] = (counts[s.gameType] ?? 0) + 1;
+      // Ignore plays of games outside the roster (e.g. from a lesson step);
+      // they can't be suggested, so they mustn't sort into the ranking.
+      if (!counts.containsKey(s.gameType)) continue;
+      counts[s.gameType] = counts[s.gameType]! + 1;
     }
     final sorted = counts.entries.toList()
       ..sort((a, b) => a.value.compareTo(b.value));
@@ -314,7 +359,8 @@ class RecommendationService {
 
   /// Finds the next incomplete (or not-started) learning path.
   static LearningPath? _findNextLearningPath(
-      Map<String, LearningPathProgress> pathProgress) {
+    Map<String, LearningPathProgress> pathProgress,
+  ) {
     final allPaths = LearningPathData.allPaths;
     for (final path in allPaths) {
       final prog = pathProgress[path.id];
@@ -324,7 +370,9 @@ class RecommendationService {
   }
 
   static String _learningPathDescription(
-      LearningPath path, Map<String, LearningPathProgress> pathProgress) {
+    LearningPath path,
+    Map<String, LearningPathProgress> pathProgress,
+  ) {
     final prog = pathProgress[path.id];
     if (prog == null) {
       return 'Start the ${path.title} learning path — '
@@ -336,7 +384,9 @@ class RecommendationService {
   }
 
   static String _learningPathDescriptionFilipino(
-      LearningPath path, Map<String, LearningPathProgress> pathProgress) {
+    LearningPath path,
+    Map<String, LearningPathProgress> pathProgress,
+  ) {
     final prog = pathProgress[path.id];
     if (prog == null) {
       return 'Simulan ang ${path.title} learning path — '
@@ -416,6 +466,9 @@ class RecommendationService {
       GameType.fslPractice => '/games/fsl-practice',
       GameType.jigsawPuzzle => '/games/jigsaw-puzzle',
       GameType.pictureWord => '/games/picture-word',
+      GameType.yesOrNo => '/games/yes-or-no',
+      GameType.oddOneOut => '/games/odd-one-out',
+      GameType.firstLetter => '/games/first-letter',
     };
   }
 }

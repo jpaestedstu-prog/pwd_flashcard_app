@@ -317,7 +317,7 @@ abstract class AppLocalizations {
   /// No description provided for @games.
   ///
   /// In en, this message translates to:
-  /// **'Games 🎮'**
+  /// **'Games'**
   String get games;
 
   /// No description provided for @learnWhileHavingFun.
@@ -475,6 +475,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Borders'**
   String get borders;
+
+  /// No description provided for @titles.
+  ///
+  /// In en, this message translates to:
+  /// **'Titles'**
+  String get titles;
+
+  /// No description provided for @sounds.
+  ///
+  /// In en, this message translates to:
+  /// **'Sounds'**
+  String get sounds;
+
+  /// No description provided for @effects.
+  ///
+  /// In en, this message translates to:
+  /// **'Effects'**
+  String get effects;
+
+  /// No description provided for @themeOverriddenByContrast.
+  ///
+  /// In en, this message translates to:
+  /// **'High Contrast is on, so this theme won\'t change your colours until you turn it off.'**
+  String get themeOverriddenByContrast;
+
+  /// No description provided for @themeOverriddenByDyslexia.
+  ///
+  /// In en, this message translates to:
+  /// **'Dyslexia-friendly mode is on, so this theme won\'t change your colours until you turn it off.'**
+  String get themeOverriddenByDyslexia;
+
+  /// No description provided for @effectPlaysGently.
+  ///
+  /// In en, this message translates to:
+  /// **'Reduced Motion is on, so this effect will play gently.'**
+  String get effectPlaysGently;
+
+  /// No description provided for @recommendedForYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended for you'**
+  String get recommendedForYou;
+
+  /// No description provided for @goodToKnow.
+  ///
+  /// In en, this message translates to:
+  /// **'Good to know'**
+  String get goodToKnow;
+
+  /// No description provided for @itemNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is not ready yet.'**
+  String itemNotReady(String name);
+
+  /// No description provided for @starsRefunded.
+  ///
+  /// In en, this message translates to:
+  /// **'⭐ {count} stars are back — something you bought isn\'t ready yet, so we returned it.'**
+  String starsRefunded(int count);
 
   /// No description provided for @owned.
   ///
@@ -2557,6 +2617,278 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Meaning'**
   String get wordHuntMeaning;
+
+  /// No description provided for @wordHuntMyFinds.
+  ///
+  /// In en, this message translates to:
+  /// **'My Finds'**
+  String get wordHuntMyFinds;
+
+  /// No description provided for @wordHuntCollectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'🎒 My Finds'**
+  String get wordHuntCollectionTitle;
+
+  /// No description provided for @wordHuntFoundOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{found} of {total} words found'**
+  String wordHuntFoundOf(int found, int total);
+
+  /// No description provided for @wordHuntStarsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'{earned} of {cap} camera stars today'**
+  String wordHuntStarsToday(int earned, int cap);
+
+  /// No description provided for @wordHuntCollectionEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t found any words yet. Point the camera at something around you!'**
+  String get wordHuntCollectionEmpty;
+
+  /// No description provided for @wordHuntStartHunting.
+  ///
+  /// In en, this message translates to:
+  /// **'Start hunting'**
+  String get wordHuntStartHunting;
+
+  /// No description provided for @wordHuntStillToFind.
+  ///
+  /// In en, this message translates to:
+  /// **'Still to find'**
+  String get wordHuntStillToFind;
+
+  /// No description provided for @wordHuntFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Found'**
+  String get wordHuntFound;
+
+  /// No description provided for @wordHuntTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Try to find:'**
+  String get wordHuntTargets;
+
+  /// No description provided for @wordHuntNewBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'NEW'**
+  String get wordHuntNewBadge;
+
+  /// No description provided for @wordHuntAllFound.
+  ///
+  /// In en, this message translates to:
+  /// **'You found every word the camera knows. Amazing! 🏆'**
+  String get wordHuntAllFound;
+
+  /// No description provided for @wordHuntSpokenFound.
+  ///
+  /// In en, this message translates to:
+  /// **'I found {count} words: {words}'**
+  String wordHuntSpokenFound(int count, String words);
+
+  /// No description provided for @wordHuntSayTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Say \"take a photo\"'**
+  String get wordHuntSayTakePhoto;
+
+  /// No description provided for @wordHuntFoundTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Found it! {words} was on your list.'**
+  String wordHuntFoundTarget(String words);
+
+  /// No description provided for @wordHuntFoundTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Found them! {words} were on your list.'**
+  String wordHuntFoundTargets(String words);
+
+  /// No description provided for @wordHuntStreakDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days}-day hunt streak'**
+  String wordHuntStreakDays(int days);
+
+  /// No description provided for @wordHuntFindsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} found today'**
+  String wordHuntFindsToday(int count);
+
+  /// No description provided for @wordHuntNextBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{remaining} more to unlock {badge}'**
+  String wordHuntNextBadge(int remaining, String badge);
+
+  /// No description provided for @wordHuntCameraBusyReason.
+  ///
+  /// In en, this message translates to:
+  /// **'This activity points the camera at the world around you, so it needs the camera to itself. Head control will pause while it is open.'**
+  String get wordHuntCameraBusyReason;
+
+  /// No description provided for @customizeProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize progress'**
+  String get customizeProgress;
+
+  /// No description provided for @customize.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize'**
+  String get customize;
+
+  /// No description provided for @signs.
+  ///
+  /// In en, this message translates to:
+  /// **'Signs'**
+  String get signs;
+
+  /// No description provided for @bestStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'best {days}'**
+  String bestStreak(int days);
+
+  /// No description provided for @starsLeftToSpend.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} left'**
+  String starsLeftToSpend(int count);
+
+  /// No description provided for @streakCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak Calendar'**
+  String get streakCalendar;
+
+  /// No description provided for @certificates.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificates'**
+  String get certificates;
+
+  /// No description provided for @advancedAnalytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Learning Insights'**
+  String get advancedAnalytics;
+
+  /// No description provided for @firstBadgePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep learning to unlock your first badge!'**
+  String get firstBadgePrompt;
+
+  /// No description provided for @badgesEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'{earned} of {total} earned'**
+  String badgesEarned(int earned, int total);
+
+  /// No description provided for @reading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get reading;
+
+  /// No description provided for @storiesRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Stories read'**
+  String get storiesRead;
+
+  /// No description provided for @perfectQuizzes.
+  ///
+  /// In en, this message translates to:
+  /// **'3-star quizzes'**
+  String get perfectQuizzes;
+
+  /// No description provided for @signLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Language'**
+  String get signLanguage;
+
+  /// No description provided for @signsWatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Watched'**
+  String get signsWatched;
+
+  /// No description provided for @signsCanMake.
+  ///
+  /// In en, this message translates to:
+  /// **'I can sign'**
+  String get signsCanMake;
+
+  /// No description provided for @signsConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Teacher confirmed'**
+  String get signsConfirmed;
+
+  /// No description provided for @daysActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Days active'**
+  String get daysActive;
+
+  /// No description provided for @minutesStudied.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get minutesStudied;
+
+  /// No description provided for @newWords.
+  ///
+  /// In en, this message translates to:
+  /// **'New words'**
+  String get newWords;
+
+  /// No description provided for @weeklyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing yet this week — play a game or read a story and it will show up here.'**
+  String get weeklyEmpty;
+
+  /// No description provided for @hearMyProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Hear my progress'**
+  String get hearMyProgress;
+
+  /// No description provided for @studyMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Study Min'**
+  String get studyMinutes;
+
+  /// No description provided for @spokenProgressSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'You are level {level}, {title}. You have learned {words} words and earned {stars} stars. Your streak is {streak} days, and your best ever is {best} days. You have played {games} games.'**
+  String spokenProgressSummary(
+    int level,
+    String title,
+    int words,
+    int stars,
+    int streak,
+    int best,
+    int games,
+  );
+
+  /// No description provided for @spokenWeekSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'This week you were active on {days} days, played {games} games and earned {stars} stars.'**
+  String spokenWeekSummary(int days, int games, int stars);
 }
 
 class _AppLocalizationsDelegate

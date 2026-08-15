@@ -121,7 +121,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get games => 'Games 🎮';
+  String get games => 'Games';
 
   @override
   String get learnWhileHavingFun => 'Learn new words while having fun!';
@@ -202,6 +202,43 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get borders => 'Borders';
+
+  @override
+  String get titles => 'Titles';
+
+  @override
+  String get sounds => 'Sounds';
+
+  @override
+  String get effects => 'Effects';
+
+  @override
+  String get themeOverriddenByContrast =>
+      'High Contrast is on, so this theme won\'t change your colours until you turn it off.';
+
+  @override
+  String get themeOverriddenByDyslexia =>
+      'Dyslexia-friendly mode is on, so this theme won\'t change your colours until you turn it off.';
+
+  @override
+  String get effectPlaysGently =>
+      'Reduced Motion is on, so this effect will play gently.';
+
+  @override
+  String get recommendedForYou => 'Recommended for you';
+
+  @override
+  String get goodToKnow => 'Good to know';
+
+  @override
+  String itemNotReady(String name) {
+    return '$name is not ready yet.';
+  }
+
+  @override
+  String starsRefunded(int count) {
+    return '⭐ $count stars are back — something you bought isn\'t ready yet, so we returned it.';
+  }
 
   @override
   String get owned => 'Owned';
@@ -1340,4 +1377,174 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wordHuntMeaning => 'Meaning';
+
+  @override
+  String get wordHuntMyFinds => 'My Finds';
+
+  @override
+  String get wordHuntCollectionTitle => '🎒 My Finds';
+
+  @override
+  String wordHuntFoundOf(int found, int total) {
+    return '$found of $total words found';
+  }
+
+  @override
+  String wordHuntStarsToday(int earned, int cap) {
+    return '$earned of $cap camera stars today';
+  }
+
+  @override
+  String get wordHuntCollectionEmpty =>
+      'You haven\'t found any words yet. Point the camera at something around you!';
+
+  @override
+  String get wordHuntStartHunting => 'Start hunting';
+
+  @override
+  String get wordHuntStillToFind => 'Still to find';
+
+  @override
+  String get wordHuntFound => 'Found';
+
+  @override
+  String get wordHuntTargets => 'Try to find:';
+
+  @override
+  String get wordHuntNewBadge => 'NEW';
+
+  @override
+  String get wordHuntAllFound =>
+      'You found every word the camera knows. Amazing! 🏆';
+
+  @override
+  String wordHuntSpokenFound(int count, String words) {
+    return 'I found $count words: $words';
+  }
+
+  @override
+  String get wordHuntSayTakePhoto => 'Say \"take a photo\"';
+
+  @override
+  String wordHuntFoundTarget(String words) {
+    return 'Found it! $words was on your list.';
+  }
+
+  @override
+  String wordHuntFoundTargets(String words) {
+    return 'Found them! $words were on your list.';
+  }
+
+  @override
+  String wordHuntStreakDays(int days) {
+    return '$days-day hunt streak';
+  }
+
+  @override
+  String wordHuntFindsToday(int count) {
+    return '$count found today';
+  }
+
+  @override
+  String wordHuntNextBadge(int remaining, String badge) {
+    return '$remaining more to unlock $badge';
+  }
+
+  @override
+  String get wordHuntCameraBusyReason =>
+      'This activity points the camera at the world around you, so it needs the camera to itself. Head control will pause while it is open.';
+
+  @override
+  String get customizeProgress => 'Customize progress';
+
+  @override
+  String get customize => 'Customize';
+
+  @override
+  String get signs => 'Signs';
+
+  @override
+  String bestStreak(int days) {
+    return 'best $days';
+  }
+
+  @override
+  String starsLeftToSpend(int count) {
+    return '$count left';
+  }
+
+  @override
+  String get streakCalendar => 'Streak Calendar';
+
+  @override
+  String get certificates => 'Certificates';
+
+  @override
+  String get advancedAnalytics => 'Learning Insights';
+
+  @override
+  String get firstBadgePrompt => 'Keep learning to unlock your first badge!';
+
+  @override
+  String badgesEarned(int earned, int total) {
+    return '$earned of $total earned';
+  }
+
+  @override
+  String get reading => 'Reading';
+
+  @override
+  String get storiesRead => 'Stories read';
+
+  @override
+  String get perfectQuizzes => '3-star quizzes';
+
+  @override
+  String get signLanguage => 'Sign Language';
+
+  @override
+  String get signsWatched => 'Watched';
+
+  @override
+  String get signsCanMake => 'I can sign';
+
+  @override
+  String get signsConfirmed => 'Teacher confirmed';
+
+  @override
+  String get daysActive => 'Days active';
+
+  @override
+  String get minutesStudied => 'Minutes';
+
+  @override
+  String get newWords => 'New words';
+
+  @override
+  String get weeklyEmpty =>
+      'Nothing yet this week — play a game or read a story and it will show up here.';
+
+  @override
+  String get hearMyProgress => 'Hear my progress';
+
+  @override
+  String get studyMinutes => 'Study Min';
+
+  @override
+  String spokenProgressSummary(
+    int level,
+    String title,
+    int words,
+    int stars,
+    int streak,
+    int best,
+    int games,
+  ) {
+    return 'You are level $level, $title. You have learned $words words and earned $stars stars. Your streak is $streak days, and your best ever is $best days. You have played $games games.';
+  }
+
+  @override
+  String spokenWeekSummary(int days, int games, int stars) {
+    return 'This week you were active on $days days, played $games games and earned $stars stars.';
+  }
 }

@@ -15,6 +15,7 @@ import '../../../core/utils/csv_export_service.dart';
 import '../../../core/services/session_tracker.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Dashboard for Parent/Teacher roles — provides an overview of the
 /// student's learning progress, weak areas, and recommendations.
@@ -61,8 +62,9 @@ class DashboardScreen extends ConsumerWidget {
     final unlockedCount = unlockedIds.length;
 
     // Check if educator is viewing a student's dashboard
-    final isViewingAsStudent =
-        ref.read(profileProvider.notifier).isViewingAsStudent;
+    final isViewingAsStudent = ref
+        .read(profileProvider.notifier)
+        .isViewingAsStudent;
     final viewingLabel = isViewingAsStudent
         ? '${profile?.name ?? 'Student'} Dashboard'
         : '${profile?.role.label ?? 'Teacher'} Dashboard';
@@ -74,260 +76,256 @@ class DashboardScreen extends ConsumerWidget {
         if (isViewingAsStudent) {
           await ref.read(profileProvider.notifier).restoreEducatorProfile();
         }
-        if (context.mounted) {
-          if (GoRouter.of(context).canPop()) {
-            context.pop();
-          } else {
-            context.go('/home');
-          }
-        }
+        if (context.mounted) context.popOrGo('/home');
       },
       child: Scaffold(
-      appBar: AppBar(
-        leading: AppBackButton(
-          onBeforePop: () async {
-            if (isViewingAsStudent) {
-              await ref.read(profileProvider.notifier).restoreEducatorProfile();
-            }
-            return true;
-          },
-        ),
-        title: Text(
-          viewingLabel,
-          style: AppTypography.titleMedium.copyWith(
-            fontWeight: FontWeight.w700,
+        appBar: AppBar(
+          leading: AppBackButton(
+            onBeforePop: () async {
+              if (isViewingAsStudent) {
+                await ref
+                    .read(profileProvider.notifier)
+                    .restoreEducatorProfile();
+              }
+              return true;
+            },
           ),
-        ),
-        actions: [
-          Semantics(
-            button: true,
-            label: 'Export data as CSV spreadsheet',
-            child: IconButton(
-              onPressed: profile != null
-                  ? () {
-                      CsvExportService.generateAndShare(
-                        profile: profile,
-                        progress: progress,
-                        allCards: allCards,
-                      );
-                    }
-                  : null,
-              icon: const Icon(Icons.table_chart_rounded),
-              tooltip: 'Export CSV Data',
+          title: Text(
+            viewingLabel,
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
-          Semantics(
-            button: true,
-            label: 'Export progress report as PDF',
-            child: IconButton(
-              onPressed: profile != null
-                  ? () {
-                      ReportGenerator.generateAndShare(
-                        profile: profile,
-                        progress: progress,
-                        allCards: allCards,
-                      );
-                    }
-                  : null,
-              icon: const Icon(Icons.picture_as_pdf_rounded),
-              tooltip: 'Export PDF Report',
-            ),
-          ),
-          Semantics(
-            button: true,
-            label: 'Export research data for thesis analysis',
-            child: IconButton(
-              onPressed: () => context.push('/research-export'),
-              icon: const Icon(Icons.science_rounded),
-              tooltip: 'Research Export',
-            ),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          // ─── Student Info Banner ──────────────
-          _ProfileBanner(
-            profile: profile,
-            streak: streak,
-          ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
-
-          const SizedBox(height: 24),
-
-          // ─── Key Metrics Row ──────────────────
-          Row(
-                children: [
-                  _MetricCard(
-                    icon: Icons.star_rounded,
-                    label: 'Stars',
-                    value: '$totalStars',
-                    color: AppColors.warning,
-                  ),
-                  const SizedBox(width: 12),
-                  _MetricCard(
-                    icon: Icons.auto_stories_rounded,
-                    label: 'Words',
-                    value: '$masteredWords',
-                    color: AppColors.secondary,
-                  ),
-                  const SizedBox(width: 12),
-                  _MetricCard(
-                    icon: Icons.emoji_events_rounded,
-                    label: 'Badges',
-                    value: '$unlockedCount/$totalAchievements',
-                    color: AppColors.accent,
-                  ),
-                ],
-              )
-              .animate()
-              .fadeIn(duration: 400.ms, delay: 100.ms)
-              .slideY(begin: 0.1, end: 0),
-
-          const SizedBox(height: 24),
-
-          // ─── Overall Mastery ──────────────────
-          const _SectionTitle(title: 'Overall Mastery'),
-          const SizedBox(height: 12),
-          _MasterySection(
-            masteryPct: masteryPct,
-            recentAvgPct: recentAvgPct,
-            dailyStreak: dailyStreak,
-          ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
-
-          const SizedBox(height: 24),
-
-          // ─── Category Breakdown ───────────────
-          const _SectionTitle(title: 'Category Breakdown'),
-          const SizedBox(height: 12),
-          ...FlashcardCategory.values.asMap().entries.map((entry) {
-            final i = entry.key;
-            final cat = entry.value;
-            final pct = progress.categoryProgress[cat.label] ?? 0.0;
-            final catCards = allCards.where((c) => c.category == cat).length;
-            return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _CategoryBar(
-                    category: cat,
-                    progress: pct,
-                    wordCount: catCards,
-                  ),
-                )
-                .animate()
-                .fadeIn(
-                  duration: 400.ms,
-                  delay: Duration(milliseconds: 300 + i * 60),
-                )
-                .slideX(begin: 0.08, end: 0);
-          }),
-
-          const SizedBox(height: 24),
-
-          // ─── Insights & Recommendations ───────
-          const _SectionTitle(title: 'Insights & Recommendations'),
-          const SizedBox(height: 12),
-          if (!hasAnyProgress)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: hc.surfaceLight,
-                borderRadius: BorderRadius.circular(16),
+          actions: [
+            Semantics(
+              button: true,
+              label: 'Export data as CSV spreadsheet',
+              child: IconButton(
+                onPressed: profile != null
+                    ? () {
+                        CsvExportService.generateAndShare(
+                          profile: profile,
+                          progress: progress,
+                          allCards: allCards,
+                        );
+                      }
+                    : null,
+                icon: const Icon(Icons.table_chart_rounded),
+                tooltip: 'Export CSV Data',
               ),
-              child: Text(
-                'No learning data yet. Once the student starts playing games and reviewing flashcards, insights will appear here.',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: hc.textSecondary,
-                ),
+            ),
+            Semantics(
+              button: true,
+              label: 'Export progress report as PDF',
+              child: IconButton(
+                onPressed: profile != null
+                    ? () {
+                        ReportGenerator.generateAndShare(
+                          profile: profile,
+                          progress: progress,
+                          allCards: allCards,
+                        );
+                      }
+                    : null,
+                icon: const Icon(Icons.picture_as_pdf_rounded),
+                tooltip: 'Export PDF Report',
               ),
-            ).animate().fadeIn(duration: 400.ms, delay: 500.ms)
-          else ...[
-          _InsightCard(
-            icon: Icons.trending_down_rounded,
-            iconColor: AppColors.error,
-            title: 'Needs Practice',
-            description: weakCategories
-                .map((e) => '${e.$1.label} (${(e.$2 * 100).round()}%)')
-                .join(', '),
-            recommendation:
-                'Focus on ${weakCategories.first.$1.label} flashcards and games.',
-          ).animate().fadeIn(duration: 400.ms, delay: 500.ms),
-          const SizedBox(height: 10),
-          _InsightCard(
-            icon: Icons.trending_up_rounded,
-            iconColor: AppColors.success,
-            title: 'Doing Great',
-            description: strongCategories
-                .map((e) => '${e.$1.label} (${(e.$2 * 100).round()}%)')
-                .join(', '),
-            recommendation:
-                'Keep it up! Consider trying harder difficulty levels.',
-          ).animate().fadeIn(duration: 400.ms, delay: 600.ms),
-          const SizedBox(height: 10),
-          _InsightCard(
-            icon: Icons.lightbulb_rounded,
-            iconColor: AppColors.warning,
-            title: 'Engagement',
-            description: streak > 0
-                ? '$streak-day learning streak active!'
-                : 'No active streak. Try daily practice.',
-            recommendation: streak >= 3
-                ? 'Great consistency! The student is building a habit.'
-                : 'Encourage the student to play at least once a day.',
-          ).animate().fadeIn(duration: 400.ms, delay: 700.ms),
+            ),
+            Semantics(
+              button: true,
+              label: 'Export research data for thesis analysis',
+              child: IconButton(
+                onPressed: () => context.push('/research-export'),
+                icon: const Icon(Icons.science_rounded),
+                tooltip: 'Research Export',
+              ),
+            ),
+            const SizedBox(width: 4),
           ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            // ─── Student Info Banner ──────────────
+            _ProfileBanner(
+              profile: profile,
+              streak: streak,
+            ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
 
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          // ─── Study Time Analytics ─────────────
-          const _SectionTitle(title: 'Study Time'),
-          const SizedBox(height: 12),
-          if (profile != null)
-            _StudyTimeSection(profileId: profile.id)
+            // ─── Key Metrics Row ──────────────────
+            Row(
+                  children: [
+                    _MetricCard(
+                      icon: Icons.star_rounded,
+                      label: 'Stars',
+                      value: '$totalStars',
+                      color: AppColors.warning,
+                    ),
+                    const SizedBox(width: 12),
+                    _MetricCard(
+                      icon: Icons.auto_stories_rounded,
+                      label: 'Words',
+                      value: '$masteredWords',
+                      color: AppColors.secondary,
+                    ),
+                    const SizedBox(width: 12),
+                    _MetricCard(
+                      icon: Icons.emoji_events_rounded,
+                      label: 'Badges',
+                      value: '$unlockedCount/$totalAchievements',
+                      color: AppColors.accent,
+                    ),
+                  ],
+                )
                 .animate()
-                .fadeIn(duration: 400.ms, delay: 750.ms),
+                .fadeIn(duration: 400.ms, delay: 100.ms)
+                .slideY(begin: 0.1, end: 0),
 
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          // ─── Recent Activity ───────────────────
-          const _SectionTitle(title: 'Recent Activity'),
-          const SizedBox(height: 12),
-          if (recentScores.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: hc.surfaceLight,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                'No game activity yet. Encourage the student to play games!',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: hc.textSecondary,
-                ),
-              ),
-            )
-          else
-            ...recentScores.reversed.take(5).toList().asMap().entries.map((
-              entry,
-            ) {
+            // ─── Overall Mastery ──────────────────
+            const _SectionTitle(title: 'Overall Mastery'),
+            const SizedBox(height: 12),
+            _MasterySection(
+              masteryPct: masteryPct,
+              recentAvgPct: recentAvgPct,
+              dailyStreak: dailyStreak,
+            ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+
+            const SizedBox(height: 24),
+
+            // ─── Category Breakdown ───────────────
+            const _SectionTitle(title: 'Category Breakdown'),
+            const SizedBox(height: 12),
+            ...FlashcardCategory.values.asMap().entries.map((entry) {
               final i = entry.key;
-              final score = entry.value;
+              final cat = entry.value;
+              final pct = progress.categoryProgress[cat.label] ?? 0.0;
+              final catCards = allCards.where((c) => c.category == cat).length;
               return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _ActivityTile(score: score),
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _CategoryBar(
+                      category: cat,
+                      progress: pct,
+                      wordCount: catCards,
+                    ),
                   )
                   .animate()
                   .fadeIn(
                     duration: 400.ms,
-                    delay: Duration(milliseconds: 800 + i * 60),
+                    delay: Duration(milliseconds: 300 + i * 60),
                   )
                   .slideX(begin: 0.08, end: 0);
             }),
 
-          const SizedBox(height: 40),
-        ],
+            const SizedBox(height: 24),
+
+            // ─── Insights & Recommendations ───────
+            const _SectionTitle(title: 'Insights & Recommendations'),
+            const SizedBox(height: 12),
+            if (!hasAnyProgress)
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: hc.surfaceLight,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  'No learning data yet. Once the student starts playing games and reviewing flashcards, insights will appear here.',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: hc.textSecondary,
+                  ),
+                ),
+              ).animate().fadeIn(duration: 400.ms, delay: 500.ms)
+            else ...[
+              _InsightCard(
+                icon: Icons.trending_down_rounded,
+                iconColor: AppColors.error,
+                title: 'Needs Practice',
+                description: weakCategories
+                    .map((e) => '${e.$1.label} (${(e.$2 * 100).round()}%)')
+                    .join(', '),
+                recommendation:
+                    'Focus on ${weakCategories.first.$1.label} flashcards and games.',
+              ).animate().fadeIn(duration: 400.ms, delay: 500.ms),
+              const SizedBox(height: 10),
+              _InsightCard(
+                icon: Icons.trending_up_rounded,
+                iconColor: AppColors.success,
+                title: 'Doing Great',
+                description: strongCategories
+                    .map((e) => '${e.$1.label} (${(e.$2 * 100).round()}%)')
+                    .join(', '),
+                recommendation:
+                    'Keep it up! Consider trying harder difficulty levels.',
+              ).animate().fadeIn(duration: 400.ms, delay: 600.ms),
+              const SizedBox(height: 10),
+              _InsightCard(
+                icon: Icons.lightbulb_rounded,
+                iconColor: AppColors.warning,
+                title: 'Engagement',
+                description: streak > 0
+                    ? '$streak-day learning streak active!'
+                    : 'No active streak. Try daily practice.',
+                recommendation: streak >= 3
+                    ? 'Great consistency! The student is building a habit.'
+                    : 'Encourage the student to play at least once a day.',
+              ).animate().fadeIn(duration: 400.ms, delay: 700.ms),
+            ],
+
+            const SizedBox(height: 24),
+
+            // ─── Study Time Analytics ─────────────
+            const _SectionTitle(title: 'Study Time'),
+            const SizedBox(height: 12),
+            if (profile != null)
+              _StudyTimeSection(
+                profileId: profile.id,
+              ).animate().fadeIn(duration: 400.ms, delay: 750.ms),
+
+            const SizedBox(height: 24),
+
+            // ─── Recent Activity ───────────────────
+            const _SectionTitle(title: 'Recent Activity'),
+            const SizedBox(height: 12),
+            if (recentScores.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: hc.surfaceLight,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  'No game activity yet. Encourage the student to play games!',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: hc.textSecondary,
+                  ),
+                ),
+              )
+            else
+              ...recentScores.reversed.take(5).toList().asMap().entries.map((
+                entry,
+              ) {
+                final i = entry.key;
+                final score = entry.value;
+                return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _ActivityTile(score: score),
+                    )
+                    .animate()
+                    .fadeIn(
+                      duration: 400.ms,
+                      delay: Duration(milliseconds: 800 + i * 60),
+                    )
+                    .slideX(begin: 0.08, end: 0);
+              }),
+
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -483,9 +481,7 @@ class _MetricCard extends StatelessWidget {
             ),
             Text(
               label,
-              style: AppTypography.labelSmall.copyWith(
-                color: hc.textSecondary,
-              ),
+              style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
             ),
           ],
         ),
@@ -509,70 +505,68 @@ class _MasterySection extends StatelessWidget {
     return Card(
       elevation: 2,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
-        children: [
-          CircularPercentIndicator(
-            radius: 56,
-            lineWidth: 10,
-            percent: masteryPct.clamp(0.0, 1.0),
-            center: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${(masteryPct * 100).round()}%',
-                  style: AppTypography.titleLarge.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.primary,
+          children: [
+            CircularPercentIndicator(
+              radius: 56,
+              lineWidth: 10,
+              percent: masteryPct.clamp(0.0, 1.0),
+              center: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${(masteryPct * 100).round()}%',
+                    style: AppTypography.titleLarge.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                    ),
                   ),
-                ),
-                Text(
-                  'Mastery',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: HCColor.of(context).textSecondary,
+                  Text(
+                    'Mastery',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: HCColor.of(context).textSecondary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              progressColor: AppColors.primary,
+              backgroundColor: AppColors.primaryLight,
+              circularStrokeCap: CircularStrokeCap.round,
+              animation: true,
+              animationDuration: 800,
             ),
-            progressColor: AppColors.primary,
-            backgroundColor: AppColors.primaryLight,
-            circularStrokeCap: CircularStrokeCap.round,
-            animation: true,
-            animationDuration: 800,
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _MiniMetric(
-                  label: 'Recent Game Avg',
-                  value: '${(recentAvgPct * 100).round()}%',
-                  icon: Icons.trending_up_rounded,
-                  color: recentAvgPct >= 0.7
-                      ? AppColors.success
-                      : recentAvgPct >= 0.4
-                      ? AppColors.warning
-                      : AppColors.error,
-                ),
-                const SizedBox(height: 10),
-                _MiniMetric(
-                  label: 'Daily Challenge Streak',
-                  value: '$dailyStreak days',
-                  icon: Icons.local_fire_department_rounded,
-                  color: dailyStreak >= 3
-                      ? AppColors.success
-                      : AppColors.warning,
-                ),
-              ],
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _MiniMetric(
+                    label: 'Recent Game Avg',
+                    value: '${(recentAvgPct * 100).round()}%',
+                    icon: Icons.trending_up_rounded,
+                    color: recentAvgPct >= 0.7
+                        ? AppColors.success
+                        : recentAvgPct >= 0.4
+                        ? AppColors.warning
+                        : AppColors.error,
+                  ),
+                  const SizedBox(height: 10),
+                  _MiniMetric(
+                    label: 'Daily Challenge Streak',
+                    value: '$dailyStreak days',
+                    icon: Icons.local_fire_department_rounded,
+                    color: dailyStreak >= 3
+                        ? AppColors.success
+                        : AppColors.warning,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -609,9 +603,7 @@ class _MiniMetric extends StatelessWidget {
             ),
             Text(
               label,
-              style: AppTypography.labelSmall.copyWith(
-                color: hc.textSecondary,
-              ),
+              style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
             ),
           ],
         ),
@@ -923,7 +915,9 @@ class _StudyTimeSection extends StatelessWidget {
     final totalSess = SessionTracker.totalSessions(profileId);
     final dailyMinutes = SessionTracker.dailyStudyMinutes(profileId);
     final maxDaily = dailyMinutes.values.fold<int>(
-        1, (prev, v) => v > prev ? v : prev);
+      1,
+      (prev, v) => v > prev ? v : prev,
+    );
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1056,9 +1050,7 @@ class _StudyMetric extends StatelessWidget {
         ),
         Text(
           label,
-          style: AppTypography.labelSmall.copyWith(
-            color: hc.textSecondary,
-          ),
+          style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
         ),
       ],
     );

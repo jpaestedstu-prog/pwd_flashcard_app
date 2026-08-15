@@ -34,6 +34,7 @@ class WordOfDayService {
       wordFilipino: card.wordFilipino,
       exampleSentence: card.exampleSentence,
       emoji: FlashcardEmojis.forId(card.id),
+      cardId: card.id,
       category: card.category.label,
       date: now,
     );
@@ -55,11 +56,13 @@ class WordOfDayService {
     // Don't add duplicate
     if (history.any((r) => r.dateKey == key)) return;
 
-    history.add(WordOfDayRecord(
-      dateKey: key,
-      wordEnglish: word.wordEnglish,
-      learned: true,
-    ));
+    history.add(
+      WordOfDayRecord(
+        dateKey: key,
+        wordEnglish: word.wordEnglish,
+        learned: true,
+      ),
+    );
 
     // Keep only the last 90 days
     if (history.length > 90) {
@@ -71,9 +74,9 @@ class WordOfDayService {
 
   /// How many words this user has learned via Word of the Day.
   static int totalLearned(String profileId) {
-    return HiveService.getWordOfDayHistory(profileId)
-        .where((r) => r.learned)
-        .length;
+    return HiveService.getWordOfDayHistory(
+      profileId,
+    ).where((r) => r.learned).length;
   }
 
   static String _dateKey(DateTime d) =>

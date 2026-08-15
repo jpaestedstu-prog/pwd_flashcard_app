@@ -105,7 +105,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get streak => 'Sunod-sunod';
 
   @override
-  String get mastery => 'Kahusayan';
+  String get mastery => 'Kabihasaan';
 
   @override
   String get categoryProgress => 'Progreso ng Kategorya';
@@ -122,7 +122,7 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
-  String get games => 'Mga Laro 🎮';
+  String get games => 'Mga Laro';
 
   @override
   String get learnWhileHavingFun =>
@@ -204,6 +204,43 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get borders => 'Mga Border';
+
+  @override
+  String get titles => 'Mga Titulo';
+
+  @override
+  String get sounds => 'Mga Tunog';
+
+  @override
+  String get effects => 'Mga Epekto';
+
+  @override
+  String get themeOverriddenByContrast =>
+      'Naka-on ang High Contrast, kaya hindi magbabago ang mga kulay mula sa temang ito hangga\'t hindi mo ito i-off.';
+
+  @override
+  String get themeOverriddenByDyslexia =>
+      'Naka-on ang Dyslexia-friendly, kaya hindi magbabago ang mga kulay mula sa temang ito hangga\'t hindi mo ito i-off.';
+
+  @override
+  String get effectPlaysGently =>
+      'Naka-on ang Reduced Motion, kaya marahan itong ipapakita.';
+
+  @override
+  String get recommendedForYou => 'Inirerekomenda para sa iyo';
+
+  @override
+  String get goodToKnow => 'Dapat mong malaman';
+
+  @override
+  String itemNotReady(String name) {
+    return 'Hindi pa handa ang $name.';
+  }
+
+  @override
+  String starsRefunded(int count) {
+    return '⭐ Naibalik ang $count bituin — may binili kang hindi pa handa, kaya isinauli namin ito.';
+  }
 
   @override
   String get owned => 'Pag-aari';
@@ -1356,4 +1393,175 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get wordHuntMeaning => 'Kahulugan';
+
+  @override
+  String get wordHuntMyFinds => 'Mga Nahanap Ko';
+
+  @override
+  String get wordHuntCollectionTitle => '🎒 Mga Nahanap Ko';
+
+  @override
+  String wordHuntFoundOf(int found, int total) {
+    return '$found sa $total salita ang nahanap';
+  }
+
+  @override
+  String wordHuntStarsToday(int earned, int cap) {
+    return '$earned sa $cap bituin ngayong araw';
+  }
+
+  @override
+  String get wordHuntCollectionEmpty =>
+      'Wala ka pang nahahanap na salita. Itutok ang camera sa isang bagay sa paligid mo!';
+
+  @override
+  String get wordHuntStartHunting => 'Simulan ang paghahanap';
+
+  @override
+  String get wordHuntStillToFind => 'Hahanapin pa';
+
+  @override
+  String get wordHuntFound => 'Nahanap';
+
+  @override
+  String get wordHuntTargets => 'Subukang hanapin:';
+
+  @override
+  String get wordHuntNewBadge => 'BAGO';
+
+  @override
+  String get wordHuntAllFound =>
+      'Nahanap mo na lahat ng salitang kilala ng camera. Ang galing! 🏆';
+
+  @override
+  String wordHuntSpokenFound(int count, String words) {
+    return 'May nahanap akong $count salita: $words';
+  }
+
+  @override
+  String get wordHuntSayTakePhoto => 'Sabihin ang \"kuha\"';
+
+  @override
+  String wordHuntFoundTarget(String words) {
+    return 'Nahanap mo! Nasa listahan mo ang $words.';
+  }
+
+  @override
+  String wordHuntFoundTargets(String words) {
+    return 'Nahanap mo! Nasa listahan mo ang $words.';
+  }
+
+  @override
+  String wordHuntStreakDays(int days) {
+    return '$days araw na sunod-sunod na paghahanap';
+  }
+
+  @override
+  String wordHuntFindsToday(int count) {
+    return '$count ang nahanap ngayong araw';
+  }
+
+  @override
+  String wordHuntNextBadge(int remaining, String badge) {
+    return '$remaining pa para sa $badge';
+  }
+
+  @override
+  String get wordHuntCameraBusyReason =>
+      'Itinuturo ng aktibidad na ito ang camera sa paligid mo, kaya kailangan nitong sarilinin ang camera. Titigil muna ang head control habang bukas ito.';
+
+  @override
+  String get customizeProgress => 'I-customize ang progreso';
+
+  @override
+  String get customize => 'I-customize';
+
+  @override
+  String get signs => 'Mga Senyas';
+
+  @override
+  String bestStreak(int days) {
+    return 'pinakamahusay $days';
+  }
+
+  @override
+  String starsLeftToSpend(int count) {
+    return '$count natitira';
+  }
+
+  @override
+  String get streakCalendar => 'Kalendaryo ng Sunod-sunod';
+
+  @override
+  String get certificates => 'Mga Sertipiko';
+
+  @override
+  String get advancedAnalytics => 'Mga Natuklasan sa Pagkatuto';
+
+  @override
+  String get firstBadgePrompt =>
+      'Magpatuloy sa pag-aaral para makuha ang iyong unang badge!';
+
+  @override
+  String badgesEarned(int earned, int total) {
+    return '$earned sa $total ang nakuha';
+  }
+
+  @override
+  String get reading => 'Pagbasa';
+
+  @override
+  String get storiesRead => 'Nabasang kuwento';
+
+  @override
+  String get perfectQuizzes => '3-bituing pagsusulit';
+
+  @override
+  String get signLanguage => 'Wikang Senyas';
+
+  @override
+  String get signsWatched => 'Napanood';
+
+  @override
+  String get signsCanMake => 'Kaya kong isenyas';
+
+  @override
+  String get signsConfirmed => 'Kinumpirma ng guro';
+
+  @override
+  String get daysActive => 'Araw na aktibo';
+
+  @override
+  String get minutesStudied => 'Minuto';
+
+  @override
+  String get newWords => 'Bagong salita';
+
+  @override
+  String get weeklyEmpty =>
+      'Wala pa ngayong linggo — maglaro o magbasa ng kuwento at lalabas ito dito.';
+
+  @override
+  String get hearMyProgress => 'Pakinggan ang aking progreso';
+
+  @override
+  String get studyMinutes => 'Minuto ng Pag-aaral';
+
+  @override
+  String spokenProgressSummary(
+    int level,
+    String title,
+    int words,
+    int stars,
+    int streak,
+    int best,
+    int games,
+  ) {
+    return 'Ikaw ay nasa antas $level, $title. Natutunan mo na ang $words na salita at nakakuha ng $stars bituin. Ang iyong streak ay $streak araw, at ang pinakamahusay mo ay $best araw. Naglaro ka na ng $games laro.';
+  }
+
+  @override
+  String spokenWeekSummary(int days, int games, int stars) {
+    return 'Ngayong linggo ay aktibo ka sa $days araw, naglaro ng $games laro at nakakuha ng $stars bituin.';
+  }
 }

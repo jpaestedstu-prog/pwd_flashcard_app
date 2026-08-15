@@ -78,6 +78,26 @@
   "avatars": "Avatars",
   "themes": "Themes",
   "borders": "Borders",
+  "titles": "Titles",
+  "sounds": "Sounds",
+  "effects": "Effects",
+  "themeOverriddenByContrast": "High Contrast is on, so this theme won't change your colours until you turn it off.",
+  "themeOverriddenByDyslexia": "Dyslexia-friendly mode is on, so this theme won't change your colours until you turn it off.",
+  "effectPlaysGently": "Reduced Motion is on, so this effect will play gently.",
+  "recommendedForYou": "Recommended for you",
+  "goodToKnow": "Good to know",
+  "itemNotReady": "{name} is not ready yet.",
+  "@itemNotReady": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "starsRefunded": "⭐ {count} stars are back — something you bought isn't ready yet, so we returned it.",
+  "@starsRefunded": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "owned": "Owned",
   "buy": "Buy!",
   "buyItem": "Buy {name}?",
@@ -493,5 +513,115 @@
   "wordHuntSpeakEnglish": "English",
   "wordHuntSpeakFilipino": "Filipino",
   "wordHuntFlashcards": "Flashcards",
-  "wordHuntMeaning": "Meaning"
+  "wordHuntMeaning": "Meaning",
+  "wordHuntMyFinds": "My Finds",
+  "wordHuntCollectionTitle": "🎒 My Finds",
+  "wordHuntFoundOf": "{found} of {total} words found",
+  "@wordHuntFoundOf": {
+    "placeholders": {
+      "found": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "wordHuntStarsToday": "{earned} of {cap} camera stars today",
+  "@wordHuntStarsToday": {
+    "placeholders": {
+      "earned": { "type": "int" },
+      "cap": { "type": "int" }
+    }
+  },
+  "wordHuntCollectionEmpty": "You haven't found any words yet. Point the camera at something around you!",
+  "wordHuntStartHunting": "Start hunting",
+  "wordHuntStillToFind": "Still to find",
+  "wordHuntFound": "Found",
+  "wordHuntTargets": "Try to find:",
+  "wordHuntNewBadge": "NEW",
+  "wordHuntAllFound": "You found every word the camera knows. Amazing! 🏆",
+  "wordHuntSpokenFound": "I found {count} words: {words}",
+  "@wordHuntSpokenFound": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "words": { "type": "String" }
+    }
+  },
+  "wordHuntSayTakePhoto": "Say \"take a photo\"",
+  "wordHuntFoundTarget": "Found it! {words} was on your list.",
+  "@wordHuntFoundTarget": {
+    "placeholders": { "words": { "type": "String" } }
+  },
+  "wordHuntFoundTargets": "Found them! {words} were on your list.",
+  "@wordHuntFoundTargets": {
+    "placeholders": { "words": { "type": "String" } }
+  },
+  "wordHuntStreakDays": "{days}-day hunt streak",
+  "@wordHuntStreakDays": {
+    "placeholders": { "days": { "type": "int" } }
+  },
+  "wordHuntFindsToday": "{count} found today",
+  "@wordHuntFindsToday": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "wordHuntNextBadge": "{remaining} more to unlock {badge}",
+  "@wordHuntNextBadge": {
+    "placeholders": {
+      "remaining": { "type": "int" },
+      "badge": { "type": "String" }
+    }
+  },
+  "wordHuntCameraBusyReason": "This activity points the camera at the world around you, so it needs the camera to itself. Head control will pause while it is open.",
+
+  "progressTitle": "{name}'s Progress",
+  "@progressTitle": { "placeholders": { "name": { "type": "String" } } },
+  "customizeProgress": "Customize progress",
+  "customize": "Customize",
+  "streak": "Streak",
+  "games": "Games",
+  "signs": "Signs",
+  "mastery": "Mastery",
+  "bestStreak": "best {days}",
+  "@bestStreak": { "placeholders": { "days": { "type": "int" } } },
+  "starsLeftToSpend": "{count} left",
+  "@starsLeftToSpend": { "placeholders": { "count": { "type": "int" } } },
+  "streakCalendar": "Streak Calendar",
+  "certificates": "Certificates",
+  "advancedAnalytics": "Learning Insights",
+  "firstBadgePrompt": "Keep learning to unlock your first badge!",
+  "badgesEarned": "{earned} of {total} earned",
+  "@badgesEarned": { "placeholders": { "earned": { "type": "int" }, "total": { "type": "int" } } },
+  "reading": "Reading",
+  "storiesRead": "Stories read",
+  "perfectQuizzes": "3-star quizzes",
+  "signLanguage": "Sign Language",
+  "signsWatched": "Watched",
+  "signsCanMake": "I can sign",
+  "signsConfirmed": "Teacher confirmed",
+  "thisWeek": "This Week",
+  "daysActive": "Days active",
+  "minutesStudied": "Minutes",
+  "newWords": "New words",
+  "weeklyEmpty": "Nothing yet this week — play a game or read a story and it will show up here.",
+  "hearMyProgress": "Hear my progress",
+  "studyMinutes": "Study Min",
+  "accuracy": "Accuracy",
+  "sessions": "Sessions",
+  "spokenProgressSummary": "You are level {level}, {title}. You have learned {words} words and earned {stars} stars. Your streak is {streak} days, and your best ever is {best} days. You have played {games} games.",
+  "@spokenProgressSummary": {
+    "placeholders": {
+      "level": { "type": "int" },
+      "title": { "type": "String" },
+      "words": { "type": "int" },
+      "stars": { "type": "int" },
+      "streak": { "type": "int" },
+      "best": { "type": "int" },
+      "games": { "type": "int" }
+    }
+  },
+  "spokenWeekSummary": "This week you were active on {days} days, played {games} games and earned {stars} stars.",
+  "@spokenWeekSummary": {
+    "placeholders": {
+      "days": { "type": "int" },
+      "games": { "type": "int" },
+      "stars": { "type": "int" }
+    }
+  }
 }

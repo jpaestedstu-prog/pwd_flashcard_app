@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../data/models/shop_data.dart';
+import '../l10n/app_localizations.dart';
 
 /// A visual theme preview card for the shop's Themes tab.
 ///
@@ -10,6 +11,15 @@ import '../data/models/shop_data.dart';
 /// see what the theme looks like before purchasing or equipping.
 class ThemePreviewCard extends StatefulWidget {
   final ShopItem item;
+
+  /// Whether to show the item's Filipino name. Defaults to English so a call
+  /// site that has not been localised yet degrades to readable text.
+  final bool isFilipino;
+
+  /// Whether the learner's own settings will override this theme, in which
+  /// case the card carries a quiet marker and the buy dialog spells it out.
+  final bool hasAdvice;
+
   final bool owned;
   final bool canAfford;
   final bool isEquipped;
@@ -18,6 +28,8 @@ class ThemePreviewCard extends StatefulWidget {
   const ThemePreviewCard({
     super.key,
     required this.item,
+    this.isFilipino = false,
+    this.hasAdvice = false,
     required this.owned,
     required this.canAfford,
     required this.isEquipped,
@@ -89,11 +101,13 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
   @override
   Widget build(BuildContext context) {
     final palette = _paletteFor(widget.item.id);
+    final l10n = AppLocalizations.of(context)!;
 
     return Semantics(
       button: true,
-      label: '${widget.item.name}, ${widget.item.description}, '
-          '${widget.isEquipped ? "Equipped" : widget.owned ? "Owned, tap to equip" : "${widget.item.cost} stars"}',
+      label: '${widget.item.localizedName(widget.isFilipino)}, '
+          '${widget.item.localizedDescription(widget.isFilipino)}, '
+          '${widget.isEquipped ? l10n.equipped : widget.owned ? l10n.tapToEquip : "${widget.item.cost} ${l10n.stars}"}',
       child: GestureDetector(
         onTap: widget.onTap,
         onTapDown: _onTapDown,
@@ -124,7 +138,18 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
                 // ── Mini app preview ──
                 Expanded(
                   flex: 3,
-                  child: _MiniAppPreview(palette: palette),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(child: _MiniAppPreview(palette: palette)),
+                      if (widget.hasAdvice)
+                        const Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Icon(Icons.info_outline_rounded,
+                              size: 18, color: AppColors.info),
+                        ),
+                    ],
+                  ),
                 ),
 
                 // ── Info footer ──
@@ -140,29 +165,36 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Emoji + Name
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(widget.item.emoji,
-                                style: const TextStyle(fontSize: 18)),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                widget.item.name,
-                                style: AppTypography.titleSmall.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: widget.isEquipped
-                                      ? palette.primary
-                                      : widget.owned
-                                          ? AppColors.success
-                                          : AppColors.textPrimary,
+                        // Emoji + Name. The row is Flexible so a long name at a
+                        // large font scale wraps inside the footer instead of
+                        // pushing the price chip past the card's edge, and gets
+                        // two lines before it resorts to an ellipsis — "Ocean
+                        // Theme" truncated to "Ocea…" exactly for the learners
+                        // who chose the biggest font.
+                        Flexible(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(widget.item.emoji,
+                                  style: const TextStyle(fontSize: 18)),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  widget.item.localizedName(widget.isFilipino),
+                                  style: AppTypography.titleSmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: widget.isEquipped
+                                        ? palette.primary
+                                        : widget.owned
+                                            ? AppColors.success
+                                            : AppColors.textPrimary,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
 
                         const SizedBox(height: 6),
@@ -171,13 +203,13 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
                         if (widget.isEquipped)
                           _StatusChip(
                             icon: Icons.check_circle_rounded,
-                            label: 'Equipped',
+                            label: l10n.equipped,
                             color: palette.primary,
                           )
                         else if (widget.owned)
-                          const _StatusChip(
+                          _StatusChip(
                             icon: Icons.touch_app_rounded,
-                            label: 'Tap to Equip',
+                            label: l10n.tapToEquip,
                             color: AppColors.success,
                           )
                         else

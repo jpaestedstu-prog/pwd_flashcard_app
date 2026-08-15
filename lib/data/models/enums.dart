@@ -52,6 +52,14 @@ enum GameType {
   // ─── New games (appended to preserve Hive int index) ───
   jigsawPuzzle,
   pictureWord,
+  // ─── Low-barrier games (appended to preserve Hive int index) ───
+  // Single-tap, large-target, TTS-narratable. Added so that every
+  // accessibility category can be given a full roster of ten games —
+  // see `GameCatalog`. Categories with the tightest input/perception
+  // constraints (visual, motor, multiple) lean on these three.
+  yesOrNo,
+  oddOneOut,
+  firstLetter,
 }
 
 /// Grade/year level for student profiles
@@ -80,12 +88,7 @@ enum StudentSortField {
 }
 
 /// Activity status filter for students
-enum ActivityStatus {
-  all,
-  activeToday,
-  activeThisWeek,
-  inactive7Days,
-}
+enum ActivityStatus { all, activeToday, activeThisWeek, inactive7Days }
 
 // ─── Extension helpers ─────────────────────────────────
 
@@ -109,7 +112,8 @@ extension DisabilityTypeX on DisabilityType {
   };
 
   String get description => switch (this) {
-    DisabilityType.visual => 'Difficulty seeing, low vision, or color blindness',
+    DisabilityType.visual =>
+      'Difficulty seeing, low vision, or color blindness',
     DisabilityType.hearing => 'Difficulty hearing or deaf',
     DisabilityType.motor => 'Difficulty with fine motor skills or touch',
     DisabilityType.cognitive => 'Dyslexia, ADHD, or learning difficulties',
@@ -176,8 +180,7 @@ extension UserRoleX on UserRole {
       this == UserRole.child ||
       this == UserRole.player;
 
-  bool get isEducator =>
-      this == UserRole.teacher || this == UserRole.parent;
+  bool get isEducator => this == UserRole.teacher || this == UserRole.parent;
 
   /// Roles that can be *enrolled* by an educator: a classroom `student` and a
   /// home-group `child`. Narrower than [isLearner], which also covers Player
@@ -204,10 +207,14 @@ extension LearningLevelX on LearningLevel {
   };
 
   String get description => switch (this) {
-    LearningLevel.beginner => 'Just starting out — simple words and short sessions.',
-    LearningLevel.elementary => 'Building vocabulary — slightly longer lessons.',
-    LearningLevel.intermediate => 'Comfortable with most lessons — full-length games.',
-    LearningLevel.advanced => 'Ready for harder challenges and complex stories.',
+    LearningLevel.beginner =>
+      'Just starting out — simple words and short sessions.',
+    LearningLevel.elementary =>
+      'Building vocabulary — slightly longer lessons.',
+    LearningLevel.intermediate =>
+      'Comfortable with most lessons — full-length games.',
+    LearningLevel.advanced =>
+      'Ready for harder challenges and complex stories.',
   };
 
   Color get color => switch (this) {
@@ -364,6 +371,28 @@ extension GameDifficultyX on GameDifficulty {
   };
 }
 
+/// Decodes a persisted list of [GameType] **names** into a set.
+///
+/// Lifetime records (`LearningProgress.playedGameTypes`) travel by name rather
+/// than by the enum index that [GameScore] uses. The enum asks new games to be
+/// appended so existing Hive indices stay valid, and a record that can never
+/// be rebuilt is the worst thing to silently reinterpret if that convention is
+/// ever broken. Unknown names — a game dropped in a later build — are skipped
+/// rather than throwing. Shared by the Hive, Firestore and sync-listener
+/// readers so all three agree.
+Set<GameType> gameTypesFromNames(Object? raw) {
+  if (raw is! List) return const {};
+  final byName = {for (final g in GameType.values) g.name: g};
+  return {for (final e in raw) ?byName[e.toString()]};
+}
+
+/// The inverse of [gameTypesFromNames], in a stable (enum-declaration) order
+/// so a re-save of unchanged progress produces an identical record.
+List<String> gameTypeNames(Set<GameType> types) => [
+  for (final g in GameType.values)
+    if (types.contains(g)) g.name,
+];
+
 extension GameTypeX on GameType {
   String get label => switch (this) {
     GameType.wordMatch => 'Word Match',
@@ -378,6 +407,9 @@ extension GameTypeX on GameType {
     GameType.fslPractice => 'FSL Practice',
     GameType.jigsawPuzzle => 'Jigsaw Puzzle',
     GameType.pictureWord => 'Picture-Word',
+    GameType.yesOrNo => 'Yes or No',
+    GameType.oddOneOut => 'Odd One Out',
+    GameType.firstLetter => 'First Letter',
   };
 
   String get description => switch (this) {
@@ -393,6 +425,9 @@ extension GameTypeX on GameType {
     GameType.fslPractice => 'Learn Filipino Sign Language!',
     GameType.jigsawPuzzle => 'Assemble the picture puzzle!',
     GameType.pictureWord => 'Match pictures to words by listening!',
+    GameType.yesOrNo => 'Is this the right word? Tap Yes or No!',
+    GameType.oddOneOut => 'Tap the word that does not belong!',
+    GameType.firstLetter => 'Pick the letter the word starts with!',
   };
 
   IconData get icon => switch (this) {
@@ -408,6 +443,9 @@ extension GameTypeX on GameType {
     GameType.fslPractice => Icons.sign_language_rounded,
     GameType.jigsawPuzzle => Icons.extension_rounded,
     GameType.pictureWord => Icons.image_search_rounded,
+    GameType.yesOrNo => Icons.thumbs_up_down_rounded,
+    GameType.oddOneOut => Icons.filter_none_rounded,
+    GameType.firstLetter => Icons.abc_rounded,
   };
 
   Color get color => switch (this) {
@@ -423,6 +461,9 @@ extension GameTypeX on GameType {
     GameType.fslPractice => const Color(0xFFB388FF),
     GameType.jigsawPuzzle => const Color(0xFFFFE082),
     GameType.pictureWord => const Color(0xFFC5E1A5),
+    GameType.yesOrNo => const Color(0xFF90CAF9),
+    GameType.oddOneOut => const Color(0xFFCE93D8),
+    GameType.firstLetter => const Color(0xFFFFAB40),
   };
 }
 
@@ -472,5 +513,80 @@ extension ActivityStatusX on ActivityStatus {
     ActivityStatus.activeToday => 'Active Today',
     ActivityStatus.activeThisWeek => 'Active This Week',
     ActivityStatus.inactive7Days => 'Inactive 7+ Days',
+  };
+}
+
+// ─── Filipino Sign Language: self-assessed production ──────
+
+/// What a learner says about their own ability to *produce* a sign.
+///
+/// Deliberately a third axis, distinct from the two that already exist:
+///
+///  * **Signs watched** (`LearningProgress.signedWordKeys`) is *exposure* —
+///    set by the system when a clip plays, and it can only ever grow.
+///  * **Favourites** (`HiveService.fslFavourites`) is *intent* — a bookmark,
+///    device-local, unscored.
+///  * **This** is *capability*, and it is the only one of the three that can go
+///    **down**. "I could do this last week, I can't today" is real information
+///    about a learner, and a measure that cannot fall would hide it.
+///
+/// Sign It has always asked this question ("I got it!" / "Not yet") and then
+/// discarded the answer into the vocabulary counter. These states are what it
+/// should have been recording.
+enum SignMastery {
+  /// Never claimed either way.
+  notSet,
+
+  /// "Not yet" — tried it, still working on it.
+  learning,
+
+  /// "I got it!" — the learner says they can produce this sign unaided.
+  canSign,
+}
+
+/// What an educator says about a learner's [SignMastery.canSign] claim.
+///
+/// The pairing of claim and verification is the point: the gap between what a
+/// learner believes they can produce and what a teacher confirms is a
+/// calibration measure, and it is the reason self-report is worth collecting at
+/// all rather than being treated as noise.
+enum SignVerification {
+  /// No educator has looked at this claim yet.
+  unreviewed,
+
+  /// An educator watched the learner and agrees.
+  confirmed,
+
+  /// An educator watched and the sign is not there yet. Not a punishment —
+  /// it is the honest half of the calibration measure.
+  notConfirmed,
+}
+
+extension SignMasteryX on SignMastery {
+  String get label => switch (this) {
+    SignMastery.notSet => 'Not set',
+    SignMastery.learning => 'Learning',
+    SignMastery.canSign => 'I can sign this',
+  };
+
+  /// Short form for the research export, stable across UI copy changes.
+  String get exportCode => switch (this) {
+    SignMastery.notSet => 'not_set',
+    SignMastery.learning => 'learning',
+    SignMastery.canSign => 'can_sign',
+  };
+}
+
+extension SignVerificationX on SignVerification {
+  String get label => switch (this) {
+    SignVerification.unreviewed => 'Not checked yet',
+    SignVerification.confirmed => 'Confirmed',
+    SignVerification.notConfirmed => 'Needs practice',
+  };
+
+  String get exportCode => switch (this) {
+    SignVerification.unreviewed => 'unreviewed',
+    SignVerification.confirmed => 'confirmed',
+    SignVerification.notConfirmed => 'not_confirmed',
   };
 }

@@ -121,7 +121,15 @@ class FirebaseService {
   /// completed yet (first launch offline, or Firebase init failed).
   /// Stamped onto every owner-scoped Firestore write so security rules
   /// can verify the writer.
-  static String? get currentUid => FirebaseAuth.instance.currentUser?.uid;
+  ///
+  /// Guarded on [isConfigured]: reaching for `FirebaseAuth.instance` before
+  /// [init] has run throws `[core/no-app]` rather than returning null, which
+  /// turned "Firebase isn't set up" into a crash for callers that correctly
+  /// treat a null uid as "skip the cloud write".
+  static String? get currentUid {
+    if (!_initialised) return null;
+    return FirebaseAuth.instance.currentUser?.uid;
+  }
 
   /// The reason init failed (when [isConfigured] is false). Surfaced in
   /// the UI banner and logs so the developer can act on it.
@@ -171,15 +179,19 @@ class FirebaseService {
       _initialised = true;
       lastInitError = null;
       if (kDebugMode) {
-        debugPrint('✓ FirebaseService: connected to '
-            '${Firebase.app().options.projectId}');
+        debugPrint(
+          '✓ FirebaseService: connected to '
+          '${Firebase.app().options.projectId}',
+        );
       }
     } catch (e, stack) {
       lastInitError = e.toString();
       if (kDebugMode) {
         debugPrint('✗ FirebaseService.init failed: $e\n$stack');
-        debugPrint('  → Run `flutterfire configure` from the project root '
-            'to generate firebase_options.dart and platform configs.');
+        debugPrint(
+          '  → Run `flutterfire configure` from the project root '
+          'to generate firebase_options.dart and platform configs.',
+        );
       }
       _initialised = false;
     }
@@ -199,14 +211,18 @@ class FirebaseService {
     try {
       await FirebaseAuth.instance.signInAnonymously();
       if (kDebugMode) {
-        debugPrint('✓ FirebaseService: anonymous uid '
-            '${FirebaseAuth.instance.currentUser?.uid}');
+        debugPrint(
+          '✓ FirebaseService: anonymous uid '
+          '${FirebaseAuth.instance.currentUser?.uid}',
+        );
       }
     } catch (e, stack) {
       if (kDebugMode) {
         debugPrint('✗ FirebaseService.signInAnonymously failed: $e\n$stack');
-        debugPrint('  → Enable Anonymous sign-in in the Firebase console: '
-            'Authentication → Sign-in method → Anonymous → Enable.');
+        debugPrint(
+          '  → Enable Anonymous sign-in in the Firebase console: '
+          'Authentication → Sign-in method → Anonymous → Enable.',
+        );
       }
     }
   }
@@ -275,8 +291,10 @@ class FirebaseService {
     );
     await user.linkWithCredential(credential);
     if (kDebugMode) {
-      debugPrint('✓ FirebaseService: linked anonymous uid ${user.uid} '
-          'to email ${email.trim()}');
+      debugPrint(
+        '✓ FirebaseService: linked anonymous uid ${user.uid} '
+        'to email ${email.trim()}',
+      );
     }
   }
 
@@ -304,8 +322,10 @@ class FirebaseService {
       password: password,
     );
     if (kDebugMode) {
-      debugPrint('✓ FirebaseService: signed in as '
-          '${FirebaseAuth.instance.currentUser?.uid}');
+      debugPrint(
+        '✓ FirebaseService: signed in as '
+        '${FirebaseAuth.instance.currentUser?.uid}',
+      );
     }
   }
 

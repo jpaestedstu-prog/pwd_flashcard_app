@@ -7,7 +7,7 @@ import '../../../core/services/celebration_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
-import '../../../core/constants/flashcard_emojis.dart';
+import '../../../widgets/flashcard_image.dart';
 import '../../../data/local/daily_challenge.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/models.dart';
@@ -108,7 +108,9 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
 
     if (correct) {
       AccessibleCelebrationOverlay.show(
-        context: context, ref: ref, type: CelebrationType.correctAnswer,
+        context: context,
+        ref: ref,
+        type: CelebrationType.correctAnswer,
       );
     } else {
       haptic.error();
@@ -171,8 +173,9 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
     final starsEnabled = ref.read(
       gamificationFeatureProvider(GamificationFeature.stars),
     );
-    final earned =
-        (counted && starsEnabled) ? _correctCount : 0; // 1 star per correct
+    final earned = (counted && starsEnabled)
+        ? _correctCount
+        : 0; // 1 star per correct
     if (earned > 0) {
       ref.read(progressProvider.notifier).addStars(earned);
     }
@@ -228,10 +231,9 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
         padding: EdgeInsets.symmetric(horizontal: padding, vertical: 8),
         child: Column(
           children: [
-            _StreakBanner(streak: _streak)
-                .animate()
-                .fadeIn(duration: 400.ms)
-                .slideY(begin: -0.1, end: 0),
+            _StreakBanner(
+              streak: _streak,
+            ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
 
             const SizedBox(height: 20),
 
@@ -243,26 +245,26 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
             const SizedBox(height: 24),
 
             _ChallengeCalendar(
-              month: _calendarMonth,
-              completedDates: _completedDates,
-              onPreviousMonth: () {
-                setState(() {
-                  _calendarMonth = DateTime(
-                    _calendarMonth.year,
-                    _calendarMonth.month - 1,
-                  );
-                });
-              },
-              onNextMonth: () {
-                final nextMonth = DateTime(
-                  _calendarMonth.year,
-                  _calendarMonth.month + 1,
-                );
-                if (!nextMonth.isAfter(DateTime.now())) {
-                  setState(() => _calendarMonth = nextMonth);
-                }
-              },
-            )
+                  month: _calendarMonth,
+                  completedDates: _completedDates,
+                  onPreviousMonth: () {
+                    setState(() {
+                      _calendarMonth = DateTime(
+                        _calendarMonth.year,
+                        _calendarMonth.month - 1,
+                      );
+                    });
+                  },
+                  onNextMonth: () {
+                    final nextMonth = DateTime(
+                      _calendarMonth.year,
+                      _calendarMonth.month + 1,
+                    );
+                    if (!nextMonth.isAfter(DateTime.now())) {
+                      setState(() => _calendarMonth = nextMonth);
+                    }
+                  },
+                )
                 .animate()
                 .fadeIn(duration: 400.ms, delay: 200.ms)
                 .slideY(begin: 0.05, end: 0),
@@ -304,10 +306,10 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
       child: _missionWords.isEmpty
           ? _buildEmpty(context)
           : _missionComplete
-              ? _buildSummary(context)
-              : (_alreadyCompleted
-                  ? _buildCompletedBanner(context)
-                  : _buildActiveItem(context)),
+          ? _buildSummary(context)
+          : (_alreadyCompleted
+                ? _buildCompletedBanner(context)
+                : _buildActiveItem(context)),
     );
   }
 
@@ -360,10 +362,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
         // Word display
         Row(
           children: [
-            Text(
-              FlashcardEmojis.forId(_word.id),
-              style: const TextStyle(fontSize: 52),
-            ),
+            FlashcardPicture(card: _word, extent: 60),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -462,9 +461,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
             child: FilledButton.icon(
               onPressed: _nextItem,
               icon: Icon(
-                _isLastItem
-                    ? Icons.flag_rounded
-                    : Icons.arrow_forward_rounded,
+                _isLastItem ? Icons.flag_rounded : Icons.arrow_forward_rounded,
               ),
               label: Text(_isLastItem ? 'Finish Mission' : 'Next Word'),
               style: FilledButton.styleFrom(
@@ -499,7 +496,9 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
         return Expanded(
           child: Container(
             height: 8,
-            margin: EdgeInsets.only(right: i == _missionWords.length - 1 ? 0 : 6),
+            margin: EdgeInsets.only(
+              right: i == _missionWords.length - 1 ? 0 : 6,
+            ),
             decoration: BoxDecoration(
               color: result == null && !isCurrent
                   ? color.withValues(alpha: 0.4)
@@ -549,9 +548,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                     Text(
                       _isCorrect ? 'Correct! +1 star ⭐' : 'Not quite!',
                       style: AppTypography.titleSmall.copyWith(
-                        color: _isCorrect
-                            ? AppColors.success
-                            : AppColors.error,
+                        color: _isCorrect ? AppColors.success : AppColors.error,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -664,8 +661,11 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
     final hc = HCColor.of(context);
     return Row(
       children: [
-        const Icon(Icons.check_circle_rounded,
-            color: AppColors.success, size: 28),
+        const Icon(
+          Icons.check_circle_rounded,
+          color: AppColors.success,
+          size: 28,
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -768,11 +768,7 @@ class _StreakBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFFFF6B35),
-            Color(0xFFFF8E53),
-            Color(0xFFFFB74D),
-          ],
+          colors: [Color(0xFFFF6B35), Color(0xFFFF8E53), Color(0xFFFFB74D)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -957,8 +953,9 @@ class _ChoiceButton extends StatelessWidget {
                     style: AppTypography.titleMedium.copyWith(
                       color: hc.textPrimary,
                       fontWeight: FontWeight.w600,
-                      decoration:
-                          eliminated ? TextDecoration.lineThrough : null,
+                      decoration: eliminated
+                          ? TextDecoration.lineThrough
+                          : null,
                     ),
                   ),
                 ),
@@ -997,8 +994,19 @@ class _ChallengeCalendar extends StatelessWidget {
     final startWeekday = firstDay.weekday; // 1-7 (Mon-Sun)
 
     const months = [
-      '', 'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      '',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
 
     return Container(
@@ -1040,8 +1048,10 @@ class _ChallengeCalendar extends StatelessWidget {
                 label: 'Next month',
                 child: IconButton(
                   onPressed: onNextMonth,
-                  icon:
-                      Icon(Icons.chevron_right_rounded, color: hc.textPrimary),
+                  icon: Icon(
+                    Icons.chevron_right_rounded,
+                    color: hc.textPrimary,
+                  ),
                 ),
               ),
             ],
@@ -1076,11 +1086,15 @@ class _ChallengeCalendar extends StatelessWidget {
                   final dateKey =
                       '${month.year}-${month.month.toString().padLeft(2, '0')}-${dayIndex.toString().padLeft(2, '0')}';
                   final isCompleted = completedDates.contains(dateKey);
-                  final isToday = month.year == now.year &&
+                  final isToday =
+                      month.year == now.year &&
                       month.month == now.month &&
                       dayIndex == now.day;
-                  final isFuture = DateTime(month.year, month.month, dayIndex)
-                      .isAfter(now);
+                  final isFuture = DateTime(
+                    month.year,
+                    month.month,
+                    dayIndex,
+                  ).isAfter(now);
 
                   return Expanded(
                     child: Container(
@@ -1100,8 +1114,8 @@ class _ChallengeCalendar extends StatelessWidget {
                         color: !isCompleted && isToday
                             ? hc.primary.withValues(alpha: 0.1)
                             : !isCompleted
-                                ? Colors.transparent
-                                : null,
+                            ? Colors.transparent
+                            : null,
                         shape: BoxShape.circle,
                         border: isToday
                             ? Border.all(color: hc.primary, width: 2)
@@ -1109,8 +1123,9 @@ class _ChallengeCalendar extends StatelessWidget {
                         boxShadow: isCompleted
                             ? [
                                 BoxShadow(
-                                  color: AppColors.success
-                                      .withValues(alpha: 0.15),
+                                  color: AppColors.success.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   blurRadius: 6,
                                 ),
                               ]
@@ -1211,8 +1226,10 @@ class _StatsRow extends StatelessWidget {
             runSpacing: 8,
             children: badges.map((b) {
               return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: hc.surfaceVariant,
                   borderRadius: BorderRadius.circular(12),
@@ -1287,10 +1304,7 @@ class _StatCard extends StatelessWidget {
               color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
               boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.2),
-                  blurRadius: 8,
-                ),
+                BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 8),
               ],
             ),
             child: Text(emoji, style: const TextStyle(fontSize: 18)),
@@ -1307,9 +1321,7 @@ class _StatCard extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: AppTypography.labelSmall.copyWith(
-              color: hc.textSecondary,
-            ),
+            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
           ),
         ],
       ),

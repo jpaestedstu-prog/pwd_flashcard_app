@@ -125,7 +125,6 @@
       "Bash(PATH='/c/Windows/System32:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Program Files/Git/cmd:__TRACKED_VAR__' /c/Windows/System32/cmd.exe //c 'C:\\\\src\\\\flutter\\\\bin\\\\flutter.bat analyze --no-pub')",
       "Bash(node tools/regen_manifest_download_urls.mjs --dry)",
       "Bash(node tools/regen_manifest_download_urls.mjs)",
-      "Bash(node -e \"const m=require\\('./assets/data/fsl_video_manifest.json'\\);const e=m.entries;console.log\\('entries:',e.length\\);console.log\\('all have download_url:',e.every\\(x=>x.download_url&&x.download_url.includes\\('/releases/download/'\\)\\)\\);console.log\\('all have streamable_url:',e.every\\(x=>x.streamable_url\\)\\);const keys=e.map\\(x=>x.category+'__'+x.slug\\);const dups=keys.filter\\(\\(k,i\\)=>keys.indexOf\\(k\\)!==i\\);console.log\\('duplicate \\(category,slug\\):',dups.length?dups:'none'\\);console.log\\('video_source:',JSON.stringify\\(m.video_source\\)\\);\")",
       "Bash(node --input-type=module -e ' *)",
       "Bash(/c/src/flutter/bin/dart.bat format *)",
       "Bash(command -v flutter dart)",

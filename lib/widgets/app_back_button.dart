@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
+import '../navigation/nav_extensions.dart';
 import 'app_icon_button.dart';
 
 /// Pops the nav stack when possible; falls back to [fallbackRoute] otherwise
@@ -29,11 +29,7 @@ class AppBackButton extends StatelessWidget {
       final proceed = await onBeforePop!();
       if (!proceed || !context.mounted) return;
     }
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go(fallbackRoute);
-    }
+    context.popOrGo(fallbackRoute);
   }
 
   @override

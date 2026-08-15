@@ -10,9 +10,12 @@ import '../../../providers/app_providers.dart';
 import '../../../core/widgets/hub_scaffold.dart';
 import '../../../widgets/accessibility_quick_sheet.dart';
 import '../../../widgets/profile_avatar.dart';
+import '../../../widgets/xp_level_bar.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
+import '../../messaging/providers/messaging_providers.dart';
+import '../../object_scan/word_hunt_entry.dart';
 import '../widgets/home_tile.dart';
 
 /// Gamified home for the Child role (Family Group).
@@ -44,8 +47,8 @@ class ChildHomeScreen extends ConsumerWidget {
     final columns = context.screenWidth >= 900
         ? 4
         : context.screenWidth >= 600
-            ? 3
-            : 2;
+        ? 3
+        : 2;
 
     // Content gating by the child's accessibility category (same policy the
     // Student home applies): FSL entry points hide where signing isn't the
@@ -65,32 +68,37 @@ class ChildHomeScreen extends ConsumerWidget {
       required String label,
       required List<Color> gradient,
       required VoidCallback onTap,
-    }) =>
-        (
-          tile: HomeTile(
-            emoji: emoji,
-            label: label,
-            gradient: gradient,
-            onTap: onTap,
-          ),
-          cell: GazeTileCell(label: label, onActivate: onTap),
-        );
+      int? badgeCount,
+    }) => (
+      tile: HomeTile(
+        emoji: emoji,
+        label: label,
+        gradient: gradient,
+        onTap: onTap,
+        badgeCount: badgeCount,
+      ),
+      cell: GazeTileCell(label: label, onActivate: onTap),
+    );
+
+    // Unread messages, so a child sees that their parent or teacher wrote to
+    // them without having to open Messages and check.
+    final unreadMessages = ref.watch(unreadMessageCountProvider);
 
     /// A kid-sized tile grid sliver for one section.
     Widget grid(List<GazeTileEntry> entries) => SliverPadding(
-          padding: EdgeInsets.symmetric(horizontal: pad),
-          sliver: SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns,
-              mainAxisSpacing: context.gridSpacing,
-              crossAxisSpacing: context.gridSpacing,
-              mainAxisExtent: context.hubTileHeight(),
-            ),
-            delegate: SliverChildListDelegate(
-              gazeGrid.section(columns: columns, entries: entries),
-            ),
-          ),
-        );
+      padding: EdgeInsets.symmetric(horizontal: pad),
+      sliver: SliverGrid(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columns,
+          mainAxisSpacing: context.gridSpacing,
+          crossAxisSpacing: context.gridSpacing,
+          mainAxisExtent: context.hubTileHeight(),
+        ),
+        delegate: SliverChildListDelegate(
+          gazeGrid.section(columns: columns, entries: entries),
+        ),
+      ),
+    );
 
     return GazeHomeRegistrar(
       active: gazeGrid.active,
@@ -101,8 +109,12 @@ class ChildHomeScreen extends ConsumerWidget {
           // ─── Greeting strip ──────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding:
-                  EdgeInsets.fromLTRB(pad, AppSpacing.md, pad, AppSpacing.md),
+              padding: EdgeInsets.fromLTRB(
+                pad,
+                AppSpacing.md,
+                pad,
+                AppSpacing.md,
+              ),
               child: Row(
                 children: [
                   ProfileAvatar(profile: profile, radius: 32),
@@ -113,15 +125,17 @@ class ChildHomeScreen extends ConsumerWidget {
                       children: [
                         Text(
                           'Hi, ${profile?.name ?? "Friend"}!',
-                          style: theme.textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           'What do you want to do today?',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: colors.onSurfaceVariant),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -133,20 +147,22 @@ class ChildHomeScreen extends ConsumerWidget {
                   // service over text size, contrast, read-aloud, etc.
                   // Its own gaze row (the topmost), so the D-pad can
                   // reach it too.
-                  gazeGrid.section(
-                    columns: 1,
-                    expand: false,
-                    entries: [
-                      (
-                        tile: const AccessibilityQuickButton(),
-                        cell: GazeTileCell(
-                          label: 'Accessibility',
-                          onActivate: () =>
-                              showAccessibilityQuickSheet(context),
-                        ),
-                      ),
-                    ],
-                  ).first,
+                  gazeGrid
+                      .section(
+                        columns: 1,
+                        expand: false,
+                        entries: [
+                          (
+                            tile: const AccessibilityQuickButton(),
+                            cell: GazeTileCell(
+                              label: 'Accessibility',
+                              onActivate: () =>
+                                  showAccessibilityQuickSheet(context),
+                            ),
+                          ),
+                        ],
+                      )
+                      .first,
                 ],
               ),
             ),
@@ -161,6 +177,20 @@ class ChildHomeScreen extends ConsumerWidget {
                 words: progress.wordsLearned,
                 stars: progress.totalStars,
               ),
+            ),
+          ),
+
+          // ─── XP & Level Bar ──────────────────────
+          // A Child levels up on the same XP curve as everyone else and gets
+          // the same full-screen celebration from the shell, but this home had
+          // nowhere to see the level afterwards — the fanfare landed and then
+          // vanished. Same widget the Student / Player home uses, so the two
+          // can never show different numbers. Non-interactive, so it publishes
+          // no gaze cell.
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
+              child: XpLevelBar(progress: progress),
             ),
           ),
 
@@ -196,7 +226,7 @@ class ChildHomeScreen extends ConsumerWidget {
               ],
               onTap: () => context.go('/stories'),
             ),
-            if (showFsl)
+            if (showFsl) ...[
               entry(
                 emoji: '🤟',
                 label: 'Sign Language',
@@ -204,8 +234,22 @@ class ChildHomeScreen extends ConsumerWidget {
                   AppColors.bannerFslStart,
                   AppColors.bannerFslEnd,
                 ],
-                onTap: () => context.go('/games/fsl-practice'),
+                onTap: () => context.push('/games/fsl-practice'),
               ),
+              // The practice hub only quizzes signs the child has met. Browsing
+              // them is a different need and the Student / Player home has had
+              // its own tile for it all along — without this one a Child
+              // profile could not reach the dictionary at all.
+              entry(
+                emoji: '📖',
+                label: 'Sign Dictionary',
+                gradient: const [
+                  AppColors.bannerFslEnd,
+                  AppColors.bannerFslStart,
+                ],
+                onTap: () => context.push('/fsl-dictionary'),
+              ),
+            ],
             entry(
               emoji: '🧠',
               label: 'Practice Words',
@@ -254,7 +298,7 @@ class ChildHomeScreen extends ConsumerWidget {
                 AppColors.bannerWordHuntStart,
                 AppColors.bannerWordHuntEnd,
               ],
-              onTap: () => context.push('/object-scan'),
+              onTap: () => openWordHunt(context, ref),
             ),
             entry(
               emoji: '💬',
@@ -299,6 +343,7 @@ class ChildHomeScreen extends ConsumerWidget {
                 AppColors.bannerMessagingEnd,
               ],
               onTap: () => context.push('/messages'),
+              badgeCount: unreadMessages,
             ),
             // Read-only for the child: the notes screen hides its "New Note"
             // button for non-educators, so this is where they see what their
@@ -317,6 +362,19 @@ class ChildHomeScreen extends ConsumerWidget {
           // ─── Section: Rewards & Feelings ─────────
           const _ChildSectionHeader(emoji: '⭐', title: 'Rewards & Feelings'),
           grid([
+            // The Player Profile — the learner's level, stats and rewards in
+            // one place. The Student / Player home reaches it from a banner;
+            // a Child had no route to it at all, so the level bar above was
+            // as far as they could look at their own progress.
+            entry(
+              emoji: '🎮',
+              label: 'My Player Card',
+              gradient: const [
+                AppColors.playerAccent,
+                AppColors.playerAccentPurpleLight,
+              ],
+              onTap: () => context.push('/gamification-dashboard'),
+            ),
             entry(
               emoji: '⭐',
               label: 'Stickers',
@@ -363,23 +421,28 @@ class ChildHomeScreen extends ConsumerWidget {
                 bottom: AppSpacing.lg,
               ),
               child: Center(
-                child: gazeGrid.section(
-                  columns: 1,
-                  expand: false,
-                  entries: [
-                    (
-                      tile: TextButton.icon(
-                        onPressed: () => context.push('/profile-switcher'),
-                        icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                        label: const Text('Switch profile'),
-                      ),
-                      cell: GazeTileCell(
-                        label: 'Switch profile',
-                        onActivate: () => context.push('/profile-switcher'),
-                      ),
-                    ),
-                  ],
-                ).first,
+                child: gazeGrid
+                    .section(
+                      columns: 1,
+                      expand: false,
+                      entries: [
+                        (
+                          tile: TextButton.icon(
+                            onPressed: () => context.push('/profile-switcher'),
+                            icon: const Icon(
+                              Icons.swap_horiz_rounded,
+                              size: 18,
+                            ),
+                            label: const Text('Switch profile'),
+                          ),
+                          cell: GazeTileCell(
+                            label: 'Switch profile',
+                            onActivate: () => context.push('/profile-switcher'),
+                          ),
+                        ),
+                      ],
+                    )
+                    .first,
               ),
             ),
           ),
@@ -408,7 +471,8 @@ class _KidStatsStrip extends StatelessWidget {
     final hc = HCColor.of(context);
     final onGrad = hc.textOnPrimary;
     return Semantics(
-      label: 'My day: $streak day streak, $words words learned, '
+      label:
+          'My day: $streak day streak, $words words learned, '
           '$stars stars earned',
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
@@ -418,25 +482,34 @@ class _KidStatsStrip extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _KidStat(emoji: '🔥', value: '$streak', label: 'Streak',
-                color: onGrad),
+            _KidStat(
+              emoji: '🔥',
+              value: '$streak',
+              label: 'Streak',
+              color: onGrad,
+            ),
             _divider(onGrad),
-            _KidStat(emoji: '📚', value: '$words', label: 'Words',
-                color: onGrad),
+            _KidStat(
+              emoji: '📚',
+              value: '$words',
+              label: 'Words',
+              color: onGrad,
+            ),
             _divider(onGrad),
-            _KidStat(emoji: '⭐', value: '$stars', label: 'Stars',
-                color: onGrad),
+            _KidStat(
+              emoji: '⭐',
+              value: '$stars',
+              label: 'Stars',
+              color: onGrad,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _divider(Color ink) => Container(
-        width: 1,
-        height: 36,
-        color: ink.withValues(alpha: 0.3),
-      );
+  Widget _divider(Color ink) =>
+      Container(width: 1, height: 36, color: ink.withValues(alpha: 0.3));
 }
 
 class _KidStat extends StatelessWidget {
@@ -474,8 +547,9 @@ class _KidStat extends StatelessWidget {
           ),
           Text(
             label,
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: color.withValues(alpha: 0.85)),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: color.withValues(alpha: 0.85),
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

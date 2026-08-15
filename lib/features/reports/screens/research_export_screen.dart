@@ -43,7 +43,8 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
     int gainCount = 0;
 
     for (final (profile, progress) in students) {
-      totalGames += progress.recentScores.length;
+      // Must match the CSV the export writes — `recentScores` is trimmed to 20.
+      totalGames += progress.effectiveGamesPlayed;
       totalSessions += HiveService.getSessionLogs(profile.id).length;
       assessmentCount += AssessmentService.getResults(profile.id).length;
       moodCount += HiveService.getMoodEntries(profile.id).length;
@@ -75,14 +76,15 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
             decoration: BoxDecoration(
               color: AppColors.info.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.info.withValues(alpha: 0.25),
-              ),
+              border: Border.all(color: AppColors.info.withValues(alpha: 0.25)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.science_rounded,
-                    color: AppColors.info, size: 32),
+                const Icon(
+                  Icons.science_rounded,
+                  color: AppColors.info,
+                  size: 32,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -179,41 +181,50 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
           const SizedBox(height: 12),
 
           _FileChip(
-              name: 'students_overview.csv',
-              desc: 'Demographics & aggregate stats per student',
-              hc: hc),
+            name: 'students_overview.csv',
+            desc: 'Demographics & aggregate stats per student',
+            hc: hc,
+          ),
           _FileChip(
-              name: 'learning_curves.csv',
-              desc: 'Game scores over time (for trend analysis)',
-              hc: hc),
+            name: 'learning_curves.csv',
+            desc: 'Game scores over time (for trend analysis)',
+            hc: hc,
+          ),
           _FileChip(
-              name: 'session_patterns.csv',
-              desc: 'Session logs with day-of-week patterns',
-              hc: hc),
+            name: 'session_patterns.csv',
+            desc: 'Session logs with day-of-week patterns',
+            hc: hc,
+          ),
           _FileChip(
-              name: 'category_mastery.csv',
-              desc: 'Per-category mastery % for each student',
-              hc: hc),
+            name: 'category_mastery.csv',
+            desc: 'Per-category mastery % for each student',
+            hc: hc,
+          ),
           _FileChip(
-              name: 'word_accuracy.csv',
-              desc: 'Spaced-repetition per-word accuracy data',
-              hc: hc),
+            name: 'word_accuracy.csv',
+            desc: 'Spaced-repetition per-word accuracy data',
+            hc: hc,
+          ),
           _FileChip(
-              name: 'assessment_results.csv',
-              desc: 'Pre/post test scores & learning gains',
-              hc: hc),
+            name: 'assessment_results.csv',
+            desc: 'Pre/post test scores & learning gains',
+            hc: hc,
+          ),
           _FileChip(
-              name: 'mood_data.csv',
-              desc: 'Mood check-ins correlated with activities',
-              hc: hc),
+            name: 'mood_data.csv',
+            desc: 'Mood check-ins correlated with activities',
+            hc: hc,
+          ),
           _FileChip(
-              name: 'adaptive_difficulty.csv',
-              desc: 'Difficulty adjustments & accuracy over time',
-              hc: hc),
+            name: 'adaptive_difficulty.csv',
+            desc: 'Difficulty adjustments & accuracy over time',
+            hc: hc,
+          ),
           _FileChip(
-              name: 'summary_stats.json',
-              desc: 'High-level aggregates for quick reference',
-              hc: hc),
+            name: 'summary_stats.json',
+            desc: 'High-level aggregates for quick reference',
+            hc: hc,
+          ),
 
           const SizedBox(height: 32),
 
@@ -261,9 +272,7 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
               'No student profiles found. Create student profiles to '
               'export research data.',
               textAlign: TextAlign.center,
-              style: AppTypography.bodySmall.copyWith(
-                color: hc.textSecondary,
-              ),
+              style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),
           ],
 
@@ -278,7 +287,10 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
     try {
       await ResearchExportService.generateAndShare();
       if (mounted) {
-        AppSnackBar.success(context, message: 'Research data exported successfully!');
+        AppSnackBar.success(
+          context,
+          message: 'Research data exported successfully!',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -326,9 +338,7 @@ class _StatRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: AppTypography.bodyMedium.copyWith(
-                color: hc.textPrimary,
-              ),
+              style: AppTypography.bodyMedium.copyWith(color: hc.textPrimary),
             ),
           ),
           Text(
@@ -349,11 +359,7 @@ class _FileChip extends StatelessWidget {
   final String desc;
   final HCColor hc;
 
-  const _FileChip({
-    required this.name,
-    required this.desc,
-    required this.hc,
-  });
+  const _FileChip({required this.name, required this.desc, required this.hc});
 
   @override
   Widget build(BuildContext context) {
@@ -368,8 +374,7 @@ class _FileChip extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.description_outlined,
-                size: 18, color: hc.textSecondary),
+            Icon(Icons.description_outlined, size: 18, color: hc.textSecondary),
             const SizedBox(width: 10),
             Expanded(
               child: Column(

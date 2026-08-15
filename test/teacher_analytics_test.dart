@@ -36,6 +36,13 @@ void main() {
     );
   }
 
+  /// Always aggregate against the same fixed clock the learners are dated
+  /// from. Without this the "active in the last 7 days" window is measured
+  /// from the real date, so these cases passed until the calendar drifted a
+  /// week past [now] and then failed with no code change.
+  ClassAnalytics analyticsOf(List<StudentAnalytics> students) =>
+      ClassAnalytics.fromStudents(students, now: now);
+
   group('StudentStanding', () {
     test('a learner with no graded games is notStarted, never needsHelp', () {
       final s = learner(name: 'Fresh');
@@ -73,7 +80,7 @@ void main() {
 
   group('ClassAnalytics.fromStudents', () {
     test('needs-help excludes learners who never played', () {
-      final analytics = ClassAnalytics.fromStudents([
+      final analytics = analyticsOf([
         learner(name: 'NeverPlayed'),
         learner(name: 'AlsoNever'),
         learner(name: 'Struggling', gamesPlayed: 5, accuracy: 0.3),
@@ -88,7 +95,7 @@ void main() {
     test('class average ignores learners with no graded games', () {
       // One learner at 100%, five who never played. The old mean over all
       // six reported 17%; the class average should reflect actual work.
-      final analytics = ClassAnalytics.fromStudents([
+      final analytics = analyticsOf([
         learner(name: 'Ace', gamesPlayed: 3, accuracy: 1.0),
         for (var i = 0; i < 5; i++) learner(name: 'Idle$i'),
       ]);
@@ -97,7 +104,7 @@ void main() {
     });
 
     test('class average is 0 when nobody has played', () {
-      final analytics = ClassAnalytics.fromStudents([
+      final analytics = analyticsOf([
         learner(name: 'A'),
         learner(name: 'B'),
       ]);
@@ -108,7 +115,7 @@ void main() {
         () {
       // The exact on-device shape: everyone at 0 words, but one learner has
       // 100% accuracy and stars. They must rank first, not fifth.
-      final analytics = ClassAnalytics.fromStudents([
+      final analytics = analyticsOf([
         learner(name: 'Normal'),
         learner(name: 'Multiple'),
         learner(name: 'Cognitive', totalStars: 10, gamesPlayed: 1),
@@ -126,7 +133,7 @@ void main() {
     });
 
     test('word count still outranks accuracy', () {
-      final analytics = ClassAnalytics.fromStudents([
+      final analytics = analyticsOf([
         learner(name: 'Accurate', gamesPlayed: 3, accuracy: 1.0),
         learner(
           name: 'Prolific',
@@ -140,7 +147,7 @@ void main() {
     });
 
     test('ranking is deterministic for wholly tied learners', () {
-      List<String> order() => ClassAnalytics.fromStudents([
+      List<String> order() => analyticsOf([
             learner(name: 'charlie'),
             learner(name: 'alice'),
             learner(name: 'bob'),
@@ -153,7 +160,7 @@ void main() {
     test('a flat category spread reports no strongest or weakest', () {
       // Every category at 0% — the old first-wins scan still crowned one
       // category and red-flagged another.
-      final analytics = ClassAnalytics.fromStudents([
+      final analytics = analyticsOf([
         learner(
           name: 'Idle',
           categories: const {'Animals': 0.0, 'Food & Drinks': 0.0},
@@ -165,7 +172,7 @@ void main() {
     });
 
     test('a real category spread reports both ends', () {
-      final analytics = ClassAnalytics.fromStudents([
+      final analytics = analyticsOf([
         learner(
           name: 'Mixed',
           categories: const {'Animals': 0.8, 'Food & Drinks': 0.1},

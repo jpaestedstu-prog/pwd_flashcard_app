@@ -8,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/utils/score_utils.dart';
 import '../models/assessment_models.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Shown immediately after completing an assessment — celebration + summary.
 class AssessmentSummaryScreen extends ConsumerWidget {
@@ -54,40 +55,42 @@ class AssessmentSummaryScreen extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 '${result.type.label} Complete!',
-                style: AppTypography.bodyMedium
-                    .copyWith(color: hc.textSecondary),
+                style: AppTypography.bodyMedium.copyWith(
+                  color: hc.textSecondary,
+                ),
               ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
 
               const SizedBox(height: 32),
 
               // ─── Score Circle ──────────────────────────
               CircularPercentIndicator(
-                radius: 80,
-                lineWidth: 12,
-                percent: pct.clamp(0, 1),
-                center: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$pctDisplay%',
-                      style: AppTypography.displayMedium.copyWith(
-                        color: _scoreColor(pct),
-                        fontWeight: FontWeight.w900,
-                      ),
+                    radius: 80,
+                    lineWidth: 12,
+                    percent: pct.clamp(0, 1),
+                    center: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$pctDisplay%',
+                          style: AppTypography.displayMedium.copyWith(
+                            color: _scoreColor(pct),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          '${result.score}/${result.totalQuestions}',
+                          style: AppTypography.labelMedium.copyWith(
+                            color: hc.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      '${result.score}/${result.totalQuestions}',
-                      style: AppTypography.labelMedium
-                          .copyWith(color: hc.textSecondary),
-                    ),
-                  ],
-                ),
-                progressColor: _scoreColor(pct),
-                backgroundColor: hc.border,
-                circularStrokeCap: CircularStrokeCap.round,
-                animation: true,
-                animationDuration: 1200,
-              )
+                    progressColor: _scoreColor(pct),
+                    backgroundColor: hc.border,
+                    circularStrokeCap: CircularStrokeCap.round,
+                    animation: true,
+                    animationDuration: 1200,
+                  )
                   .animate()
                   .fadeIn(duration: 500.ms, delay: 400.ms)
                   .scale(
@@ -100,28 +103,28 @@ class AssessmentSummaryScreen extends ConsumerWidget {
 
               // ─── Stats Row ─────────────────────────────
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _StatCard(
-                    icon: Icons.timer_rounded,
-                    value: _formatDuration(result.durationSeconds),
-                    label: 'Time',
-                    color: hc.info,
-                  ),
-                  _StatCard(
-                    icon: Icons.check_circle_rounded,
-                    value: '${result.score}',
-                    label: 'Correct',
-                    color: AppColors.success,
-                  ),
-                  _StatCard(
-                    icon: Icons.cancel_rounded,
-                    value: '${result.totalQuestions - result.score}',
-                    label: 'Wrong',
-                    color: AppColors.error,
-                  ),
-                ],
-              )
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _StatCard(
+                        icon: Icons.timer_rounded,
+                        value: _formatDuration(result.durationSeconds),
+                        label: 'Time',
+                        color: hc.info,
+                      ),
+                      _StatCard(
+                        icon: Icons.check_circle_rounded,
+                        value: '${result.score}',
+                        label: 'Correct',
+                        color: AppColors.success,
+                      ),
+                      _StatCard(
+                        icon: Icons.cancel_rounded,
+                        value: '${result.totalQuestions - result.score}',
+                        label: 'Wrong',
+                        color: AppColors.error,
+                      ),
+                    ],
+                  )
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 600.ms)
                   .slideY(begin: 0.1, end: 0),
@@ -169,49 +172,46 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                 return _QuestionReviewTile(
                   index: i + 1,
                   answer: answer,
-                )
-                    .animate()
-                    .fadeIn(duration: 300.ms, delay: (800 + i * 50).ms);
+                ).animate().fadeIn(duration: 300.ms, delay: (800 + i * 50).ms);
               }),
 
               const SizedBox(height: 32),
 
               // ─── Actions ───────────────────────────────
               Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.go('/assessment'),
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('Back to Hub'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => context.popOrGo('/assessment'),
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          label: const Text('Back to Hub'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () =>
-                          context.push('/assessment/results'),
-                      icon: const Icon(Icons.analytics_rounded),
-                      label: const Text('View Analytics'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: hc.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => context.push('/assessment/results'),
+                          icon: const Icon(Icons.analytics_rounded),
+                          label: const Text('View Analytics'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: hc.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
                         ),
-                        elevation: 0,
                       ),
-                    ),
-                  ),
-                ],
-              )
+                    ],
+                  )
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 1000.ms)
                   .slideY(begin: 0.1, end: 0),
@@ -271,8 +271,7 @@ class _StatCard extends StatelessWidget {
           ),
           Text(
             label,
-            style: AppTypography.labelSmall
-                .copyWith(color: hc.textSecondary),
+            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
           ),
         ],
       ),
@@ -318,8 +317,9 @@ class _CategoryScoreBar extends StatelessWidget {
               children: [
                 Text(
                   category,
-                  style: AppTypography.labelMedium
-                      .copyWith(color: hc.textPrimary),
+                  style: AppTypography.labelMedium.copyWith(
+                    color: hc.textPrimary,
+                  ),
                 ),
                 Text(
                   '$displayPercent%',
@@ -353,10 +353,7 @@ class _QuestionReviewTile extends StatelessWidget {
   final int index;
   final QuestionAnswer answer;
 
-  const _QuestionReviewTile({
-    required this.index,
-    required this.answer,
-  });
+  const _QuestionReviewTile({required this.index, required this.answer});
 
   @override
   Widget build(BuildContext context) {
@@ -389,8 +386,9 @@ class _QuestionReviewTile extends StatelessWidget {
                 child: Text(
                   '$index',
                   style: AppTypography.labelSmall.copyWith(
-                    color:
-                        answer.isCorrect ? AppColors.success : AppColors.error,
+                    color: answer.isCorrect
+                        ? AppColors.success
+                        : AppColors.error,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -400,9 +398,7 @@ class _QuestionReviewTile extends StatelessWidget {
             Expanded(
               child: Text(
                 answer.givenAnswer,
-                style: AppTypography.bodySmall.copyWith(
-                  color: hc.textPrimary,
-                ),
+                style: AppTypography.bodySmall.copyWith(color: hc.textPrimary),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -411,8 +407,7 @@ class _QuestionReviewTile extends StatelessWidget {
               answer.isCorrect
                   ? Icons.check_circle_rounded
                   : Icons.cancel_rounded,
-              color:
-                  answer.isCorrect ? AppColors.success : AppColors.error,
+              color: answer.isCorrect ? AppColors.success : AppColors.error,
               size: 20,
             ),
           ],

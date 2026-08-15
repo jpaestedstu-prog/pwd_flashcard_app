@@ -6,6 +6,7 @@ class Flashcard {
   final String wordEnglish;
   final String wordFilipino;
   final String? exampleSentence;
+
   /// Short, kid-friendly meaning of the word. Shown in the Word Hunt camera
   /// sheet and any other learning surface. English-only, mirroring
   /// [exampleSentence]; null when no definition is available.
@@ -110,6 +111,7 @@ class UserProfile {
   final int avatarIndex;
   final DateTime createdAt;
   final DisabilityType disabilityType;
+
   /// Legacy plaintext PIN. Set to null after PinMigration runs. Kept for
   /// backwards compatibility with un-migrated installs only.
   final String? pin;
@@ -118,6 +120,7 @@ class UserProfile {
   final String? pinHashAlgorithm;
   final int failedAttempts;
   final DateTime? lockedUntil;
+
   /// Hash of the one-time recovery code for teacher/parent profiles. Null
   /// for student profiles (which use educator override instead).
   final String? recoveryCodeHash;
@@ -126,16 +129,34 @@ class UserProfile {
   final String? section;
   final DateTime? birthDate;
   final List<String> tags;
+
   /// Learner-chosen favourite vocabulary categories. Used to personalise
   /// content surfacing (e.g. prioritising these categories in suggestions).
   /// Empty by default and on non-learner profiles.
   final List<FlashcardCategory> interests;
+
+  /// Equipped Star Shop cosmetics, carried here so they travel with the
+  /// profile to other devices.
+  ///
+  /// [avatarIndex] is the avatar chosen at sign-up; these override it. The
+  /// authoritative copy is still the per-profile Hive row that
+  /// `ProgressNotifier.equipItem` writes — these are a mirror, synced so that
+  /// a classmate on another tablet appears on the leaderboard wearing what
+  /// they bought instead of their starting animal. Null means "not known
+  /// here", which reads identically to "nothing equipped": fall back to
+  /// [avatarIndex].
+  final String? equippedAvatarId;
+  final String? equippedBorderId;
+  final String? equippedTitleId;
+
   /// Classroom this profile is enrolled in. Null for unlinked profiles
   /// (player mode, teachers, parents).
   final String? classroomId;
+
   /// Home group this profile is enrolled in. Null for non-child profiles
   /// and for children who haven't joined a group yet.
   final String? homeGroupId;
+
   /// True for casual "Player Mode" profiles. Skips classroom linkage and
   /// remote progress sync; everything stays local for the session.
   ///
@@ -143,19 +164,24 @@ class UserProfile {
   /// call sites and serialized profiles continue to work without a data
   /// migration. New profiles set both consistently.
   final bool isGuestPlayer;
+
   /// Adaptive learning level. Null only on legacy profiles created before
   /// the field existed; treat null as [LearningLevel.beginner] in the UI.
   final LearningLevel? learningLevel;
+
   /// UID of the teacher / parent who last overrode this learner's level.
   /// While non-null, the adaptive auto-promote logic is suppressed.
   final String? learningLevelOverriddenBy;
+
   /// When the override was applied. Used for audit display and to bound
   /// override staleness.
   final DateTime? learningLevelOverriddenAt;
+
   /// Firebase Anonymous-Auth UID of the device that owns this profile.
   /// Stamped on save so security rules can verify the writer. Null on
   /// pre-auth profiles until [OwnerUidMigration] claims them.
   final String? ownerUid;
+
   /// Public-facing handle used for the messaging "add friend by username"
   /// flow. Auto-generated on first save (e.g. `maria-1947`) and unique
   /// across the project — backed by the `profile_directory/{username}`
@@ -191,6 +217,9 @@ class UserProfile {
     this.learningLevelOverriddenAt,
     this.ownerUid,
     this.username,
+    this.equippedAvatarId,
+    this.equippedBorderId,
+    this.equippedTitleId,
   });
 
   /// Human-readable "profile type" shown in the profile switcher.
@@ -201,8 +230,8 @@ class UserProfile {
   /// Every other role (Teacher / Parent / Player) just shows its role label.
   String get profileTypeLabel =>
       (role == UserRole.student || role == UserRole.child)
-          ? '${role.label} - ${disabilityType.profileTypeLabel}'
-          : role.label;
+      ? '${role.label} - ${disabilityType.profileTypeLabel}'
+      : role.label;
 
   /// Whether this profile requires a PIN to switch to. Covers both migrated
   /// (pinHash) and pre-migration (legacy plaintext pin) profiles so unlock
@@ -264,6 +293,9 @@ class UserProfile {
     DateTime? Function()? learningLevelOverriddenAt,
     String? Function()? ownerUid,
     String? Function()? username,
+    String? equippedAvatarId,
+    String? equippedBorderId,
+    String? equippedTitleId,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -291,11 +323,15 @@ class UserProfile {
       birthDate: birthDate != null ? birthDate() : this.birthDate,
       tags: tags ?? this.tags,
       interests: interests ?? this.interests,
+      equippedAvatarId: equippedAvatarId ?? this.equippedAvatarId,
+      equippedBorderId: equippedBorderId ?? this.equippedBorderId,
+      equippedTitleId: equippedTitleId ?? this.equippedTitleId,
       classroomId: classroomId != null ? classroomId() : this.classroomId,
       homeGroupId: homeGroupId != null ? homeGroupId() : this.homeGroupId,
       isGuestPlayer: isGuestPlayer ?? this.isGuestPlayer,
-      learningLevel:
-          learningLevel != null ? learningLevel() : this.learningLevel,
+      learningLevel: learningLevel != null
+          ? learningLevel()
+          : this.learningLevel,
       learningLevelOverriddenBy: learningLevelOverriddenBy != null
           ? learningLevelOverriddenBy()
           : this.learningLevelOverriddenBy,
@@ -318,14 +354,74 @@ class LearningProgress {
   final List<GameScore> recentScores;
   final int totalStars;
   final int spentStars;
+
+  /// Longest streak the learner has ever reached. Never decreases.
+  ///
+  /// [streakDays] is the *current* run and resets to 1 the moment a day is
+  /// missed. XP is scored off this high-water mark instead, so being ill for a
+  /// weekend costs the learner their streak flame but never the level they
+  /// already earned. See [XpService.calculateXp].
+  final int bestStreakDays;
+
+  /// Lifetime count of finished games. Never decreases.
+  ///
+  /// [recentScores] is trimmed to the last 20 entries for the charts, so it
+  /// cannot answer "how many games have I played?" — it silently freezes at 20
+  /// and, before this field existed, capped game XP at 100.
+  final int gamesPlayed;
+
+  /// Every game type the learner has ever finished at least once. Never
+  /// shrinks.
+  ///
+  /// The third lifetime record on this model, for the same reason as
+  /// [bestStreakDays] and [gamesPlayed]: [recentScores] is trimmed to the last
+  /// 20 entries, so "which games has this learner tried?" cannot be answered
+  /// from it. Twenty games of one favourite used to erase every other type
+  /// from the record — and with it the "Game Explorer" badge, which is scored
+  /// off this set.
+  final Set<GameType> playedGameTypes;
+
   /// Set of unique flashcard IDs the student has answered correctly.
   final Set<String> learnedWordIds;
+
   /// IDs of stories the learner has finished reading (reached the last
   /// sentence in the reader). Drives the "Read ✓" badge on story cards.
   final Set<String> completedStoryIds;
+
   /// Best star score (0–3) earned per story quiz, keyed by story ID.
   /// Drives the ★ badge on story cards.
   final Map<String, int> storyBestStars;
+
+  /// Words whose Filipino Sign Language clip the learner has watched, as
+  /// `HiveService.fslWordKey`s. Never shrinks.
+  ///
+  /// **Derived, not persisted here.** The write path is
+  /// `HiveService.recordFslVideoView`, called from six different surfaces
+  /// (dictionary, card viewer, both FSL games, Sign It, the AI tutor), so the
+  /// set lives in its own Hive key and `getProgress` hydrates this field from
+  /// it. `saveProgress` deliberately does not write it back — that would let a
+  /// stale in-memory copy clobber a view recorded elsewhere.
+  ///
+  /// Exists on the model so sign-language engagement reaches everything that
+  /// already reasons about a learner: XP, achievements, the progress screen and
+  /// the research export. Before this it was written by six callers and read by
+  /// exactly one label in the dictionary.
+  final Set<String> signedWordKeys;
+
+  /// Words the learner currently claims they can *produce* the sign for.
+  ///
+  /// Derived like [signedWordKeys] and, like it, not persisted on this row.
+  /// Distinct from it in the way that matters: watching is exposure and only
+  /// grows, this is capability and can be withdrawn. Earns no XP on its own —
+  /// it is unverified self-report; [everConfirmedSignKeys] is what scores.
+  final Set<String> canSignKeys;
+
+  /// Words an educator has ever confirmed the learner can produce.
+  ///
+  /// Monotonic high-water mark, like [bestStreakDays]: an educator may later
+  /// downgrade a word, which changes what everyone *sees*, but the level the
+  /// learner already earned is never taken back.
+  final Set<String> everConfirmedSignKeys;
 
   const LearningProgress({
     required this.profileId,
@@ -336,13 +432,50 @@ class LearningProgress {
     this.recentScores = const [],
     this.totalStars = 0,
     this.spentStars = 0,
+    this.bestStreakDays = 0,
+    this.gamesPlayed = 0,
+    this.playedGameTypes = const {},
     this.learnedWordIds = const {},
     this.completedStoryIds = const {},
     this.storyBestStars = const {},
+    this.signedWordKeys = const {},
+    this.canSignKeys = const {},
+    this.everConfirmedSignKeys = const {},
   });
+
+  /// How many distinct signs the learner has watched.
+  int get signsLearned => signedWordKeys.length;
+
+  /// How many signs the learner says they can produce (unverified).
+  int get signsClaimed => canSignKeys.length;
+
+  /// How many signs an educator has ever confirmed. The scored figure.
+  int get signsConfirmed => everConfirmedSignKeys.length;
 
   /// Available star balance (earned minus spent)
   int get starBalance => totalStars - spentStars;
+
+  /// [bestStreakDays] healed for records written before the field existed, and
+  /// against any writer that lets the current streak run past the recorded
+  /// best. Always at least [streakDays].
+  int get effectiveBestStreak =>
+      bestStreakDays > streakDays ? bestStreakDays : streakDays;
+
+  /// [gamesPlayed] healed for records written before the field existed. Legacy
+  /// rows undercount by however many games fell out of the 20-entry
+  /// [recentScores] window, but they can never report fewer than what is still
+  /// on hand.
+  int get effectiveGamesPlayed =>
+      gamesPlayed > recentScores.length ? gamesPlayed : recentScores.length;
+
+  /// [playedGameTypes] healed for records written before the field existed, by
+  /// folding in whatever types are still on hand in [recentScores]. Legacy
+  /// rows undercount by the types that already aged out of the window, but
+  /// they can never report fewer than what is still visible.
+  Set<GameType> get effectivePlayedGameTypes => {
+    ...playedGameTypes,
+    ...recentScores.map((s) => s.gameType),
+  };
 
   LearningProgress copyWith({
     int? wordsLearned,
@@ -352,9 +485,15 @@ class LearningProgress {
     List<GameScore>? recentScores,
     int? totalStars,
     int? spentStars,
+    int? bestStreakDays,
+    int? gamesPlayed,
+    Set<GameType>? playedGameTypes,
     Set<String>? learnedWordIds,
     Set<String>? completedStoryIds,
     Map<String, int>? storyBestStars,
+    Set<String>? signedWordKeys,
+    Set<String>? canSignKeys,
+    Set<String>? everConfirmedSignKeys,
   }) {
     return LearningProgress(
       profileId: profileId,
@@ -365,9 +504,16 @@ class LearningProgress {
       recentScores: recentScores ?? this.recentScores,
       totalStars: totalStars ?? this.totalStars,
       spentStars: spentStars ?? this.spentStars,
+      bestStreakDays: bestStreakDays ?? this.bestStreakDays,
+      gamesPlayed: gamesPlayed ?? this.gamesPlayed,
+      playedGameTypes: playedGameTypes ?? this.playedGameTypes,
       learnedWordIds: learnedWordIds ?? this.learnedWordIds,
       completedStoryIds: completedStoryIds ?? this.completedStoryIds,
       storyBestStars: storyBestStars ?? this.storyBestStars,
+      signedWordKeys: signedWordKeys ?? this.signedWordKeys,
+      canSignKeys: canSignKeys ?? this.canSignKeys,
+      everConfirmedSignKeys:
+          everConfirmedSignKeys ?? this.everConfirmedSignKeys,
     );
   }
 }

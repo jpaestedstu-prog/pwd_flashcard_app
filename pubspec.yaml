@@ -56,7 +56,7 @@ dependencies:
 
   # Video / asset caching (used by core/services/fsl_assets_service.dart
   # to download each FSL video on first play and serve it from disk
-  # thereafter — primary source is GitHub Releases, with Streamable as a
+  # thereafter — primary source is GitHub Releases, with Cloudinary as a
   # runtime fallback; see assets/data/fsl_video_manifest.json)
   flutter_cache_manager: ^3.4.1
 
@@ -127,6 +127,6 @@ flutter:
     # in-app shelf server for the TV Cast feature.
     - assets/tv_cast/
     # FSL videos are not bundled — FslAssetsService downloads each one on
-    # first play (GitHub Releases primary, Streamable fallback) and caches
+    # first play (GitHub Releases primary, Cloudinary fallback) and caches
     # it on-device. See assets/data/fsl_video_manifest.json.
     - google_fonts/
