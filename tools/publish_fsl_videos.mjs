@@ -34,6 +34,7 @@ import { readFileSync, writeFileSync, existsSync, statSync, copyFileSync, mkdirS
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { inspect, problemsFor, findFfprobe } from './fsl_check_clips.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -135,6 +136,11 @@ const publishedEntries = [];
 let staged = 0;
 let skipped = 0;
 let carried = 0;
+const rejected = [];
+const ffprobe = findFfprobe();
+if (!ffprobe) {
+  console.warn('! ffprobe not found — skipping the decode check on each clip.');
+}
 
 for (const entry of entries) {
   const { category, slug, wordEnglish, wordFilipino, source: sourceFile } = entry;
@@ -152,6 +158,23 @@ for (const entry of entries) {
       skipped++;
     }
     continue;
+  }
+
+  // Refuse to upload a clip the target devices cannot decode.
+  //
+  // weather__partly-cloudy.mp4 got all the way onto the release and into a
+  // learner's hands as "Unable to load video" because it was exported in
+  // 10-bit HDR. Nothing in this pipeline looked at the file itself.
+  if (ffprobe) {
+    const problems = problemsFor(inspect(ffprobe, localPath));
+    if (problems.length) {
+      console.error(`• REJECT ${slug.padEnd(18)} ${mp4Name}`);
+      for (const p of problems) console.error(`      ${p}`);
+      rejected.push(slug);
+      const prior = existingByKey.get(`${category}__${slug}`);
+      if (prior) publishedEntries.push(prior); // keep whatever already worked
+      continue;
+    }
   }
 
   const assetName = `${safeSlug(category)}__${safeSlug(slug)}.mp4`;

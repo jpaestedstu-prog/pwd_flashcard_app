@@ -168,13 +168,18 @@ you can record a few at a time and publish after each session.
 
 Per session:
 
+0. **Turn HDR off on the camera** before you shoot — see *The decode trap*.
 1. **Record**, then transcode into `build/fsl_mp4/` using the Step 2 recipe.
    Name each file after the row's `source` field with `.MOV` swapped for
    `.mp4` — `GREEN.mp4`, `BOTTLE.mp4`, `RUN.mp4`. **Not** the release asset
    name (`colors-shapes__green.mp4`); the publisher derives that itself, and a
    file named the wrong way fails as a silent `SKIP`.
-2. **Check** the source manifest: `node tools/fsl_coverage_report.mjs --check`.
-   Catches a typo'd slug or an app-shaped row *before* anything uploads.
+2. **Check** the clips and the manifest, both before anything uploads:
+
+   ```powershell
+   node tools/fsl_check_clips.mjs             # will these actually decode?
+   node tools/fsl_coverage_report.mjs --check # is every row keyed correctly?
+   ```
 3. **Publish**: `node tools/publish_fsl_videos.mjs`. Rows with no file yet print
    `SKIP`; signs already live print `KEEP` and are carried into the regenerated
    manifest unchanged.
@@ -205,3 +210,49 @@ light background, signer framed head-to-mid-torso and centred, solid dark top,
 even front lighting, no on-screen text, and just the sign — start and end with
 hands at rest. The app plays these at 0.25x–1.5x, so a clip that is rushed at
 1x becomes unreadable slowed down.
+
+
+## The decode trap (found 2026-08-15)
+
+`weather__partly-cloudy.mp4` was recorded, transcoded and uploaded to the
+release exactly like the other 143 — and never played. It was shot on a phone
+with **HDR enabled**, so it exported as H.264 **High 10** profile
+(`yuv420p10le`, BT.2020 HLG). The tablet's AVC decoder refuses that outright:
+
+```
+ExoPlaybackException: MediaCodecVideoRenderer error,
+  format=Format(..., avc1.6E002A, [1920, 1080, 60.0,
+    ColorInfo(BT2020, Limited range, HLG, false, 10bit Luma, 10bit Chroma)]),
+  format_supported=NO_EXCEEDS_CAPABILITIES
+```
+
+Nothing noticed. The upload succeeded, the manifest row looked identical to its
+neighbours, and the only symptom was **"Unable to load video"** in front of a
+Deaf learner — the one person who cannot route around a missing sign.
+
+Every clip that plays today is 8-bit SDR:
+
+| | plays | fails |
+|---|---|---|
+| profile | `High` | `High 10` |
+| pix_fmt | `yuv420p` | `yuv420p10le` |
+| primaries / transfer | `bt709` | `bt2020` / `arib-std-b67` |
+
+**Prevention:** shoot with HDR **off**. `node tools/fsl_check_clips.mjs`
+verifies every file in `build/fsl_mp4/` before you publish, and
+`publish_fsl_videos.mjs` now refuses to upload a clip that fails the same
+check, so a bad export cannot reach a learner again.
+
+**Salvaging HDR footage** you have already shot — tone-map it down to SDR
+rather than reshooting:
+
+```powershell
+& C:fmpeginfmpeg.exe -y -i in.mp4 `
+  -vf "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p" `
+  -c:v libx264 -profile:v high -crf 23 -preset medium `
+  -c:a aac -b:a 128k -movflags +faststart out.mp4
+```
+
+A plain `-pix_fmt yuv420p` also converts, but without tone-mapping HLG footage
+comes out washed out and flat — which costs exactly the hand/background
+contrast a sign needs to be readable.
