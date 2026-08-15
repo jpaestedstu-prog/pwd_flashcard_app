@@ -117,13 +117,74 @@ class LabelWordMapper {
     'rainbow': 'Rainbow',
   };
 
+  /// ML Kit base-model labels that already *are* one of our vocabulary words,
+  /// so they need no alias entry. They exist as an explicit list anyway
+  /// because [huntableCards] — the "words the camera knows" the collection
+  /// screen counts against and draws its hunt targets from — cannot be
+  /// derived from [aliases] alone.
+  ///
+  /// Deliberately conservative: a word listed here that the model never emits
+  /// becomes an unreachable hunt target, which is worse than omitting it. Every
+  /// entry must resolve to a seed card (enforced by test).
+  @visibleForTesting
+  static const List<String> selfLabels = [
+    // ── Animals ──
+    'Bird', 'Butterfly', 'Cat', 'Chicken', 'Cow', 'Dog',
+    'Elephant', 'Fish', 'Frog', 'Horse', 'Pig', 'Rabbit',
+    // ── Food & drinks ──
+    'Apple', 'Banana', 'Bread', 'Juice', 'Soup',
+    // ── Classroom & household ──
+    'Ball', 'Book', 'Chair', 'Door', 'Paper', 'Pencil',
+    'Scissors', 'Table', 'Television', 'Window',
+    // ── Tableware ──
+    'Bottle', 'Cup', 'Fork', 'Plate', 'Spoon',
+    // ── Transportation ──
+    'Airplane', 'Bicycle', 'Boat', 'Bus', 'Car',
+    'Helicopter', 'Motorcycle', 'Ship', 'Taxi', 'Train',
+    // ── Clothing ──
+    'Backpack', 'Dress', 'Glasses', 'Jacket', 'Shorts',
+    // ── Nature & time ──
+    'Clock', 'Flower', 'Lightning', 'Rainbow',
+  ];
+
+  /// Every vocabulary card Word Hunt can actually produce: the [aliases]
+  /// targets plus [selfLabels], deduped and kept in seed order so the
+  /// collection reads the same way as the rest of the app.
+  ///
+  /// This is the honest denominator for "N of M found" — the app's full
+  /// vocabulary includes words no camera can see (Monday, Sorry, Proud).
+  static final List<Flashcard> huntableCards = _buildHuntable();
+
+  static List<Flashcard> _buildHuntable() {
+    final ids = <String>{};
+    for (final word in [...aliases.values, ...selfLabels]) {
+      final card = _byEnglish[word.toLowerCase()];
+      if (card != null) ids.add(card.id);
+    }
+    return [
+      for (final card in SeedData.allFlashcards)
+        if (ids.remove(card.id)) card,
+    ];
+  }
+
+  /// Ids of [huntableCards], for membership tests.
+  static final Set<String> huntableCardIds = {
+    for (final card in huntableCards) card.id,
+  };
+
+  /// True when the camera is taught to recognize this card at all — used to
+  /// keep a discovery made before a vocabulary change from inflating the
+  /// collection's denominator.
+  static bool isHuntable(String cardId) => huntableCardIds.contains(cardId);
+
   /// Resolves one raw label to a flashcard, or null when the object is not
   /// part of the vocabulary.
   static WordMatch? match(String label, {double confidence = 1.0}) {
     final normalized = label.trim().toLowerCase();
     if (normalized.isEmpty) return null;
     final card =
-        _byEnglish[normalized] ?? _byEnglish[aliases[normalized]?.toLowerCase()];
+        _byEnglish[normalized] ??
+        _byEnglish[aliases[normalized]?.toLowerCase()];
     if (card == null) return null;
     return WordMatch(card: card, sourceLabel: label, confidence: confidence);
   }

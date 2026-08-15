@@ -12,6 +12,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/app_action_bar.dart';
 import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/accessibility/tts_service.dart';
@@ -30,6 +31,7 @@ import '../../break_time/break_time.dart';
 import '../widgets/show_me_button.dart';
 import '../widgets/examples_gallery.dart';
 import '../../gaze_control/widgets/gaze_dpad_scope.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 class FlashcardViewerScreen extends ConsumerStatefulWidget {
   final FlashcardCategory category;
@@ -95,6 +97,19 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     if (focusId != null) {
       final focused = _cards.where((c) => c.id == focusId).toList();
       if (focused.isNotEmpty) _cards = focused;
+    }
+    _warmPictures(_currentIndex);
+  }
+
+  /// Warms the pictures around [index]: both faces of the card on screen, so
+  /// tap-to-flip is instant, and the front face of its neighbours so swiping
+  /// doesn't flash the emoji placeholder. Fire-and-forget.
+  void _warmPictures(int index) {
+    if (index < 0 || index >= _cards.length) return;
+    FlashcardPhotoService.prefetchBothFaces(_cards[index]).catchError((_) {});
+    for (final neighbour in [index - 1, index + 1]) {
+      if (neighbour < 0 || neighbour >= _cards.length) continue;
+      FlashcardPhotoService.prefetch(_cards[neighbour]).catchError((_) {});
     }
   }
 
@@ -343,6 +358,12 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
 
     return GazeDpadScope(
       rows: dpadRows,
+      // The viewer is immersive — the nav bar is hidden and the shell's D-pad
+      // stands down — so without this the action bar is the whole world and a
+      // hands-free learner cannot leave the deck. Look ▲ from the bar to the
+      // Back pill, blink, and you are back on the Cards hub; same route as the
+      // app bar's back button.
+      onExit: () => context.popOrGo('/flashcards'),
       builder: (context, gaze) => Stack(
         children: [
           Scaffold(
@@ -351,55 +372,58 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
             // _CardsBackdrop layered behind the body; this just guarantees an
             // opaque floor that follows the real light/dark setting.
             backgroundColor: Theme.of(context).colorScheme.surface,
-            appBar: AppBar(
-              leading: const AppBackButton(fallbackRoute: '/flashcards'),
-              title: Text(widget.category.label),
-              actions: [
-                // "I Need a Break" — always visible so a student who feels
-                // overwhelmed can pause the lesson and choose a calming activity,
-                // then return to this exact card. Pauses/restores auto-play.
-                BreakButton(
-                  color: AppColors.secondary,
-                  onBreakStart: _onBreakStart,
-                  onBreakEnd: _onBreakEnd,
-                ),
-                // Auto-play toggle
-                IconButton(
-                  icon: Icon(
-                    _autoPlay
-                        ? Icons.pause_circle_rounded
-                        : Icons.play_circle_rounded,
-                    color: _autoPlay
-                        ? AppColors.accent
-                        : HCColor.of(context).textSecondary,
+            appBar: fullscreenBar(
+              ref,
+              AppBar(
+                leading: const AppBackButton(fallbackRoute: '/flashcards'),
+                title: Text(widget.category.label),
+                actions: [
+                  // "I Need a Break" — always visible so a student who feels
+                  // overwhelmed can pause the lesson and choose a calming activity,
+                  // then return to this exact card. Pauses/restores auto-play.
+                  BreakButton(
+                    color: AppColors.secondary,
+                    onBreakStart: _onBreakStart,
+                    onBreakEnd: _onBreakEnd,
                   ),
-                  onPressed: _toggleAutoPlay,
-                  tooltip: _autoPlay ? 'Pause auto-play' : 'Start auto-play',
-                ),
-                // Card counter
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: widget.category.color.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${_currentIndex + 1} / ${_cards.length}',
-                        style: AppTypography.labelMedium.copyWith(
-                          color: widget.category.darkColor,
-                          fontWeight: FontWeight.w700,
+                  // Auto-play toggle
+                  IconButton(
+                    icon: Icon(
+                      _autoPlay
+                          ? Icons.pause_circle_rounded
+                          : Icons.play_circle_rounded,
+                      color: _autoPlay
+                          ? AppColors.accent
+                          : HCColor.of(context).textSecondary,
+                    ),
+                    onPressed: _toggleAutoPlay,
+                    tooltip: _autoPlay ? 'Pause auto-play' : 'Start auto-play',
+                  ),
+                  // Card counter
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: widget.category.color.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${_currentIndex + 1} / ${_cards.length}',
+                          style: AppTypography.labelMedium.copyWith(
+                            color: widget.category.darkColor,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             body: Stack(
               children: [
@@ -459,6 +483,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                             _currentIndex = index;
                             _isFlipped = false;
                           });
+                          _warmPictures(index);
                         },
                         itemBuilder: (context, index) {
                           final card = _cards[index];
@@ -663,6 +688,9 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
         card.category.label,
         card.wordEnglish,
       );
+      // Static write the progress notifier cannot see — tell it, so the
+      // Signs stat and the sign achievements do not lag a view behind.
+      ref.read(progressProvider.notifier).refreshSignsWatched();
     }
     showFslVideoSheet(
       context,
@@ -1410,10 +1438,7 @@ class _ActionButton extends StatelessWidget {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.accent,
-                            width: 3,
-                          ),
+                          border: Border.all(color: AppColors.accent, width: 3),
                           boxShadow: [
                             BoxShadow(
                               color: AppColors.accent.withValues(alpha: 0.5),
@@ -1484,11 +1509,8 @@ class _GazeViewerHint extends StatelessWidget {
     final (IconData icon, String text) = !ready
         ? (Icons.hourglass_top_rounded, 'Starting gaze…')
         : !faceVisible
-            ? (Icons.face_retouching_natural_rounded, 'Look at the screen')
-            : (
-                Icons.visibility_rounded,
-                'Look ◀ ▶ to choose · blink to open',
-              );
+        ? (Icons.face_retouching_natural_rounded, 'Look at the screen')
+        : (Icons.visibility_rounded, 'Look ◀ ▶ to choose · blink to open');
     return IgnorePointer(
       child: Center(
         child: Container(

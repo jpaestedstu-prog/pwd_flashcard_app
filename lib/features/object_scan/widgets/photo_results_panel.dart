@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/flashcard_emojis.dart';
+import '../../../data/models/models.dart';
+import '../../../widgets/flashcard_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
 import '../models/object_scan_models.dart';
+import 'hunt_target_strip.dart';
 
 /// Bottom panel shown over a captured photo: the vocabulary words found in
 /// it as large tap targets, or a friendly "nothing found" message, plus a
@@ -17,6 +19,18 @@ class PhotoResultsPanel extends StatelessWidget {
 
   /// True while the photo is still being analyzed.
   final bool searching;
+
+  /// Card ids among [matches] the learner has never collected — badged NEW.
+  final Set<String> newWordIds;
+
+  /// Hunt suggestions shown when the photo turned up nothing, so a miss ends
+  /// with something to go and look for instead of a dead end.
+  final List<Flashcard> targets;
+
+  /// Suggestions this photo actually landed — celebrated above the results, so
+  /// completing the hunt you were sent on is marked rather than silent.
+  final List<Flashcard> targetsHit;
+
   final void Function(WordMatch) onWordTap;
   final VoidCallback onRetake;
 
@@ -26,6 +40,9 @@ class PhotoResultsPanel extends StatelessWidget {
     required this.searching,
     required this.onWordTap,
     required this.onRetake,
+    this.newWordIds = const {},
+    this.targets = const [],
+    this.targetsHit = const [],
   });
 
   @override
@@ -53,8 +70,14 @@ class PhotoResultsPanel extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ] else ...[
+            if (targetsHit.isNotEmpty) ...[
+              _FoundItBanner(cards: targetsHit),
+              const SizedBox(height: 10),
+            ],
             Text(
-              matches.isEmpty ? l10n.wordHuntNoneFound : l10n.wordHuntFoundWords,
+              matches.isEmpty
+                  ? l10n.wordHuntNoneFound
+                  : l10n.wordHuntFoundWords,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -64,8 +87,16 @@ class PhotoResultsPanel extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             for (final match in matches) ...[
-              _WordCard(match: match, onTap: onWordTap),
+              _WordCard(
+                match: match,
+                isNew: newWordIds.contains(match.card.id),
+                onTap: onWordTap,
+              ),
               const SizedBox(height: 8),
+            ],
+            if (matches.isEmpty && targets.isNotEmpty) ...[
+              HuntTargetStrip(targets: targets),
+              const SizedBox(height: 12),
             ],
             Semantics(
               button: true,
@@ -98,17 +129,63 @@ class PhotoResultsPanel extends StatelessWidget {
   }
 }
 
-class _WordCard extends StatelessWidget {
-  final WordMatch match;
-  final void Function(WordMatch) onTap;
-  const _WordCard({required this.match, required this.onTap});
+/// "🎯 Found it! Chair was on your list" — the explicit win for a hunt target.
+class _FoundItBanner extends StatelessWidget {
+  final List<Flashcard> cards;
+  const _FoundItBanner({required this.cards});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final words = cards.map((c) => c.wordEnglish).join(', ');
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.success,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          const Text('🎯', style: TextStyle(fontSize: 22)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              cards.length == 1
+                  ? l10n.wordHuntFoundTarget(words)
+                  : l10n.wordHuntFoundTargets(words),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WordCard extends StatelessWidget {
+  final WordMatch match;
+  final bool isNew;
+  final void Function(WordMatch) onTap;
+  const _WordCard({
+    required this.match,
+    required this.isNew,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final card = match.card;
     return Semantics(
       button: true,
-      label: '${card.wordEnglish}, ${card.wordFilipino}',
+      label:
+          '${card.wordEnglish}, ${card.wordFilipino}'
+          '${isNew ? ', ${l10n.wordHuntNewBadge}' : ''}',
       child: Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -120,10 +197,7 @@ class _WordCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                Text(
-                  FlashcardEmojis.forId(card.id),
-                  style: const TextStyle(fontSize: 36),
-                ),
+                FlashcardPicture(card: card, extent: 42),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -152,6 +226,27 @@ class _WordCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (isNew) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.bannerWordHuntStart,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      l10n.wordHuntNewBadge,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 const Icon(
                   Icons.chevron_right_rounded,
                   size: 32,

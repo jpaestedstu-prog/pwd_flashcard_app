@@ -5,7 +5,6 @@ import 'dart:math';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/accessibility/haptic_service.dart';
@@ -16,7 +15,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/slow_motion.dart';
 import '../../../data/local/hive_service.dart';
-import '../../../data/local/spaced_repetition_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
@@ -24,7 +22,11 @@ import '../../../widgets/accessible_celebration_overlay.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../widgets/shimmer_loading.dart';
 import '../../games/widgets/fsl_empty_state.dart';
+import '../../gaze_control/logic/voice_commands.dart';
 import '../../gaze_control/providers/gaze_camera_owners.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/voice_control_mixin.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Lifecycle of the front camera used for the practice mirror.
 enum _CamStatus { initializing, ready, noCamera, permissionDenied, failed }
@@ -52,11 +54,22 @@ class SignItScreen extends ConsumerStatefulWidget {
   /// caller can catch.
   final Future<VideoSource?> Function(Flashcard card) videoLoader;
 
+  /// Which signs exist — injectable so a test can drive the "no videos for this
+  /// category" empty state deterministically.
+  ///
+  /// It used to be reached by asking for the Actions category, which had no
+  /// clips at all. That is a content gap the project is actively closing (see
+  /// `tools/fsl_coverage_report.mjs`), so every recording session would have
+  /// chipped away at the test until it silently stopped exercising the branch.
+  /// A seam keeps the branch testable no matter how complete the manifest gets.
+  final Future<FslAvailability> Function() availabilityLoader;
+
   const SignItScreen({
     super.key,
     this.categories = const [],
     this.camerasLoader = availableCameras,
     this.videoLoader = FslAssetsService.videoSourceFor,
+    this.availabilityLoader = FslAssetsService.load,
   });
 
   @override
@@ -64,7 +77,7 @@ class SignItScreen extends ConsumerStatefulWidget {
 }
 
 class _SignItScreenState extends ConsumerState<SignItScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, VoiceControlMixin {
   static const int _maxRounds = 10;
 
   final _random = Random();
@@ -103,13 +116,31 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     // One camera at a time: stand the background nav-gaze camera down while
     // the practice mirror is open (mirrors Word Hunt / gaze control).
     gazeCameraOwners.acquire();
+    // …which means head control cannot run here — recording and the gaze image
+    // stream can't share a controller. The **microphone** is a separate
+    // resource though, so if the learner has voice commands on, keep them
+    // listening: "go back" is their way out of a screen their head can't drive.
+    // The hub warns them before they arrive (`confirmHandsFreePause`).
+    final gaze = ref.read(gazeSettingsProvider);
+    if (gaze.enabled && gaze.voiceCommands) startVoiceControl();
     _initCards();
     _initCamera();
+  }
+
+  /// The only command that matters here: leave. Movement and selection have no
+  /// meaning on a screen whose job is to record your hands, so anything else is
+  /// deliberately ignored rather than half-wired.
+  @override
+  void onVoiceCommand(String text) {
+    if (!mounted) return;
+    final result = resolveDpadVoiceCommand(text, const []);
+    if (result.intent == DpadVoiceIntent.goBack) _exit();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    disposeVoiceControl();
     _recordCapTimer?.cancel();
     _replayController?.dispose();
     // Disposing the camera controller stops any in-flight recording; delete
@@ -153,11 +184,12 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
   // ─── Setup ─────────────────────────────────────────────
 
   Future<void> _initCards() async {
-    final availability = await FslAssetsService.load();
+    final availability = await widget.availabilityLoader();
     var source = List.of(availability.cardsWithVideo);
     if (widget.categories.isNotEmpty) {
-      source =
-          source.where((c) => widget.categories.contains(c.category)).toList();
+      source = source
+          .where((c) => widget.categories.contains(c.category))
+          .toList();
     }
     if (source.isEmpty) {
       if (mounted) setState(() => _loading = false);
@@ -172,8 +204,9 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
   /// Playback speed for the reference sign — half speed when the learner has
   /// Slow-Motion enabled, normal otherwise. Uses the same [kSlowMotionFactor]
   /// (2.0) that SlowMotionScope applies to animations.
-  double get _referenceSpeed =>
-      ref.read(settingsProvider).slowMotionEnabled ? 1 / kSlowMotionFactor : 1.0;
+  double get _referenceSpeed => ref.read(settingsProvider).slowMotionEnabled
+      ? 1 / kSlowMotionFactor
+      : 1.0;
 
   Future<void> _prepareVideo() async {
     _videoController?.dispose();
@@ -191,6 +224,9 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
         card.category.label,
         card.wordEnglish,
       );
+      // Static write the progress notifier cannot see — tell it, so the
+      // Signs stat and the sign achievements do not lag a view behind.
+      ref.read(progressProvider.notifier).refreshSignsWatched();
     }
 
     final source = await widget.videoLoader(card);
@@ -250,9 +286,11 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
         _cameraController = null;
         controller.dispose();
         if (!mounted) return;
-        setState(() => _camStatus = e.code.startsWith('CameraAccess')
-            ? _CamStatus.permissionDenied
-            : _CamStatus.failed);
+        setState(
+          () => _camStatus = e.code.startsWith('CameraAccess')
+              ? _CamStatus.permissionDenied
+              : _CamStatus.failed,
+        );
       } catch (_) {
         if (!identical(_cameraController, controller)) return;
         _cameraController = null;
@@ -414,14 +452,54 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
 
   void _saveProgress() {
     final categories = _cards.map((c) => c.category).toSet().toList();
-    ref.read(progressProvider.notifier).recordGameResult(
+    ref
+        .read(progressProvider.notifier)
+        .recordGameResult(
           gameType: GameType.fslPractice,
           score: _gotItCount,
           total: _rounds,
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
-          correctWordIds: _cardResults.correctWordIds,
+          // Deliberately no `correctWordIds`.
+          //
+          // Sign It practises *production* — the learner watches a sign and
+          // copies it, then says whether they managed. Feeding that into
+          // `correctWordIds` folded it into `wordsLearned`, the same counter a
+          // multiple-choice quiz increments, so a self-reported "I got it"
+          // counted as vocabulary learned exactly like a recognition answer.
+          // Those are different constructs, and pooling them made the headline
+          // vocabulary figure unable to say which it was measuring.
+          //
+          // The self-report is not discarded — it is recorded as
+          // [SignMastery] by [_persistMastery], where it can also be checked
+          // by an educator.
         );
+    _persistMastery();
+  }
+
+  /// Writes this session's self-assessment as a durable mastery claim.
+  ///
+  /// "I got it!" → [SignMastery.canSign], "Not yet" → [SignMastery.learning].
+  /// The screen has always collected both answers and thrown them away at the
+  /// end of the round; they are the learner's own account of what they can
+  /// produce, which is the one thing no automatic grader in this app can
+  /// supply (there is no sign-recognition model).
+  Future<void> _persistMastery() async {
+    final profileId = ref.read(profileProvider)?.id;
+    if (profileId == null) return;
+    for (final card in _cards) {
+      final gotIt = _cardResults[card.id];
+      if (gotIt == null) continue; // round never reached
+      await HiveService.setFslMastery(
+        profileId,
+        card.category.label,
+        card.wordEnglish,
+        gotIt ? SignMastery.canSign : SignMastery.learning,
+      );
+    }
+    if (mounted) {
+      ref.read(progressProvider.notifier).refreshSignMastery();
+    }
   }
 
   void _restart() {
@@ -437,22 +515,22 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     _prepareVideo();
   }
 
-  void _exit() => context.go('/games/fsl-practice');
+  void _exit() => context.popOrGo('/games/fsl-practice');
 
   // ─── UI ────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     // React live if the learner flips Slow-Motion while practising.
-    ref.listen<bool>(
-      settingsProvider.select((s) => s.slowMotionEnabled),
-      (_, slow) {
-        final c = _videoController;
-        if (c != null && c.value.isInitialized) {
-          c.setPlaybackSpeed(slow ? 1 / kSlowMotionFactor : 1.0);
-        }
-      },
-    );
+    ref.listen<bool>(settingsProvider.select((s) => s.slowMotionEnabled), (
+      _,
+      slow,
+    ) {
+      final c = _videoController;
+      if (c != null && c.value.isInitialized) {
+        c.setPlaybackSpeed(slow ? 1 / kSlowMotionFactor : 1.0);
+      }
+    });
     if (_loading) {
       return Scaffold(
         appBar: AppBar(
@@ -504,20 +582,28 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
             padding: const EdgeInsets.only(right: 16),
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.warning.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.check_circle_rounded,
-                        size: 20, color: AppColors.success),
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 20,
+                      color: AppColors.success,
+                    ),
                     const SizedBox(width: 4),
-                    Text('$_gotItCount',
-                        style: AppTypography.labelLarge
-                            .copyWith(color: AppColors.success)),
+                    Text(
+                      '$_gotItCount',
+                      style: AppTypography.labelLarge.copyWith(
+                        color: AppColors.success,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -536,10 +622,10 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
                 child: LinearProgressIndicator(
                   value: (_currentRound + 1) / _rounds,
                   minHeight: 6,
-                  backgroundColor:
-                      AppColors.primaryLight.withValues(alpha: 0.3),
-                  valueColor:
-                      const AlwaysStoppedAnimation(AppColors.primary),
+                  backgroundColor: AppColors.primaryLight.withValues(
+                    alpha: 0.3,
+                  ),
+                  valueColor: const AlwaysStoppedAnimation(AppColors.primary),
                 ),
               ),
               const SizedBox(height: 12),
@@ -638,14 +724,17 @@ class _WordPrompt extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Text(
               card.wordEnglish,
-              style: AppTypography.headlineSmall
-                  .copyWith(fontWeight: FontWeight.w800, color: hc.textPrimary),
+              style: AppTypography.headlineSmall.copyWith(
+                fontWeight: FontWeight.w800,
+                color: hc.textPrimary,
+              ),
             ),
           ),
           Text(
             card.wordFilipino,
-            style: AppTypography.titleSmall
-                .copyWith(color: const Color(0xFF7C4DFF)),
+            style: AppTypography.titleSmall.copyWith(
+              color: const Color(0xFF7C4DFF),
+            ),
           ),
         ],
       ),
@@ -695,10 +784,9 @@ class _ReferencePanel extends StatelessWidget {
                   child: Icon(
                     Icons.play_circle_outline_rounded,
                     size: 48,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurfaceVariant
-                        .withValues(alpha: 0.3),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                   ),
                 ),
               ),
@@ -734,7 +822,8 @@ class _MirrorPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final liveReady = status == _CamStatus.ready &&
+    final liveReady =
+        status == _CamStatus.ready &&
         controller != null &&
         controller!.value.isInitialized;
     final replaying = replay != null && replay!.value.isInitialized;
@@ -748,8 +837,9 @@ class _MirrorPanel extends StatelessWidget {
         Transform.flip(
           flipX: true,
           child: AspectRatio(
-            aspectRatio:
-                replay!.value.aspectRatio == 0 ? 1 : replay!.value.aspectRatio,
+            aspectRatio: replay!.value.aspectRatio == 0
+                ? 1
+                : replay!.value.aspectRatio,
             child: VideoPlayer(replay!),
           ),
         ),
@@ -764,13 +854,17 @@ class _MirrorPanel extends StatelessWidget {
       media = Stack(
         alignment: Alignment.topCenter,
         children: [
-          _framed(Transform.flip(flipX: true, child: CameraPreview(controller!))),
+          _framed(
+            Transform.flip(flipX: true, child: CameraPreview(controller!)),
+          ),
           if (recording)
             Padding(
               padding: const EdgeInsets.all(8),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.55),
                   borderRadius: BorderRadius.circular(12),
@@ -778,14 +872,20 @@ class _MirrorPanel extends StatelessWidget {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.fiber_manual_record_rounded,
-                        color: Colors.redAccent, size: 14),
+                    Icon(
+                      Icons.fiber_manual_record_rounded,
+                      color: Colors.redAccent,
+                      size: 14,
+                    ),
                     SizedBox(width: 4),
-                    Text('REC',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12)),
+                    Text(
+                      'REC',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -804,8 +904,11 @@ class _MirrorPanel extends StatelessWidget {
             )
           : OutlinedButton.icon(
               onPressed: onRecord,
-              icon: const Icon(Icons.fiber_manual_record_rounded,
-                  size: 16, color: Colors.redAccent),
+              icon: const Icon(
+                Icons.fiber_manual_record_rounded,
+                size: 16,
+                color: Colors.redAccent,
+              ),
               label: const Text('Record'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: _accent,
@@ -826,10 +929,8 @@ class _MirrorPanel extends StatelessWidget {
     );
   }
 
-  Widget _framed(Widget child) => ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: child,
-      );
+  Widget _framed(Widget child) =>
+      ClipRRect(borderRadius: BorderRadius.circular(12), child: child);
 }
 
 class _CameraFallback extends StatelessWidget {
@@ -841,21 +942,21 @@ class _CameraFallback extends StatelessWidget {
     final hc = HCColor.of(context);
     final (IconData icon, String message) = switch (status) {
       _CamStatus.initializing => (
-          Icons.hourglass_top_rounded,
-          'Starting camera…',
-        ),
+        Icons.hourglass_top_rounded,
+        'Starting camera…',
+      ),
       _CamStatus.permissionDenied => (
-          Icons.no_photography_rounded,
-          'Camera permission off.\nYou can still watch and practise!',
-        ),
+        Icons.no_photography_rounded,
+        'Camera permission off.\nYou can still watch and practise!',
+      ),
       _CamStatus.noCamera => (
-          Icons.videocam_off_rounded,
-          'No camera found.\nJust watch and practise the sign!',
-        ),
+        Icons.videocam_off_rounded,
+        'No camera found.\nJust watch and practise the sign!',
+      ),
       _ => (
-          Icons.videocam_off_rounded,
-          'Camera unavailable.\nJust watch and practise the sign!',
-        ),
+        Icons.videocam_off_rounded,
+        'Camera unavailable.\nJust watch and practise the sign!',
+      ),
     };
     return Container(
       decoration: BoxDecoration(
@@ -875,8 +976,9 @@ class _CameraFallback extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style:
-                    AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+                style: AppTypography.bodySmall.copyWith(
+                  color: hc.textSecondary,
+                ),
               ),
             ],
           ),
@@ -935,7 +1037,9 @@ class _PracticePanel extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.labelMedium.copyWith(
-                              color: accent, fontWeight: FontWeight.w700),
+                            color: accent,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],

@@ -46,166 +46,175 @@ class DeckListScreen extends ConsumerWidget {
       // gradient reads the active color scheme, so every profile theme
       // re-tints it automatically.
       child: AnimatedGradientBackground(
-      preset: GradientPreset.flashcards,
-      intensity: 0.28,
-      child: Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // ─── Header ─────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(padding, 20, padding, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                          AppLocalizations.of(context)!.flashcardDecks,
-                          style: AppTypography.headlineLarge,
-                        )
-                        .animate()
-                        .fadeIn(duration: 400.ms)
-                        .slideX(begin: -0.05, end: 0),
-                    const SizedBox(height: 4),
-                    Text(
-                      AppLocalizations.of(context)!.chooseCategory,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: HCColor.of(context).textSecondary,
-                      ),
-                    ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
-                    if (isTeacherOrParent) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _ActionChip(
-                            icon: Icons.auto_awesome_rounded,
-                            label: 'Browse templates',
-                            onTap: () => context.go('/flashcards/templates'),
+        preset: GradientPreset.flashcards,
+        intensity: 0.28,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: CustomScrollView(
+              slivers: [
+                // ─── Header ─────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(padding, 20, padding, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                              AppLocalizations.of(context)!.flashcardDecks,
+                              style: AppTypography.headlineLarge,
+                            )
+                            .animate()
+                            .fadeIn(duration: 400.ms)
+                            .slideX(begin: -0.05, end: 0),
+                        const SizedBox(height: 4),
+                        Text(
+                          AppLocalizations.of(context)!.chooseCategory,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: HCColor.of(context).textSecondary,
                           ),
-                          _ActionChip(
-                            icon: Icons.file_upload_rounded,
-                            label: AppLocalizations.of(context)!.importLabel,
-                            onTap: () async {
-                              final count =
-                                  await FlashcardExportService.importCards();
-                              if (!context.mounted) return;
-                              if (count > 0) {
-                                ref.invalidate(allFlashcardsProvider);
-                                AppSnackBar.success(
-                                  context,
-                                  message: AppLocalizations.of(
-                                    context,
-                                  )!.importedCards(count),
-                                );
-                              } else if (count == 0) {
-                                AppSnackBar.info(
-                                  context,
-                                  message: AppLocalizations.of(
-                                    context,
-                                  )!.noDuplicates,
-                                );
-                              } else {
-                                AppSnackBar.error(
-                                  context,
-                                  message: AppLocalizations.of(
-                                    context,
-                                  )!.importFailed,
-                                );
-                              }
-                            },
-                          ),
-                          _ActionChip(
-                            icon: Icons.file_download_rounded,
-                            label: AppLocalizations.of(context)!.exportLabel,
-                            onTap: () async {
-                              await FlashcardExportService.exportCards();
-                            },
-                          ),
-                        ],
-                      ).animate().fadeIn(duration: 350.ms, delay: 200.ms),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-
-            // ─── Category Decks ─────────────────
-            SliverPadding(
-              padding: EdgeInsets.all(padding),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: context.gridColumns,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  // Cards grow taller with text scale so the icon + two
-                  // labels + stats row + progress bar can't overflow at XL.
-                  childAspectRatio:
-                      ((context.isTablet ? 1.6 : 1.4) /
-                              MediaQuery.textScalerOf(context).scale(1.0))
-                          .clamp(0.9, 1.7),
-                ),
-                delegate: SliverChildListDelegate(
-                  gazeGrid.section(
-                    columns: context.gridColumns,
-                    entries: [
-                      for (final (index, category)
-                          in FlashcardCategory.values.indexed)
-                        (
-                          tile: _DeckCard(
-                                category: category,
-                                cardCount:
-                                    SeedData.getByCategory(category).length,
-                                progress:
-                                    progress.categoryProgress[category.label] ??
-                                    progress.categoryProgress[category.name] ??
-                                    0.0,
-                                onTap: () => context.go(
-                                  '/flashcards/viewer/${category.index}',
-                                ),
-                              )
-                              .animate()
-                              .fadeIn(
-                                duration: 400.ms,
-                                delay: (200 + index * 80).ms,
-                              )
-                              .slideY(begin: 0.12, end: 0)
-                              .scale(
-                                begin: const Offset(0.95, 0.95),
-                                end: const Offset(1.0, 1.0),
+                        ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
+                        if (isTeacherOrParent) ...[
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _ActionChip(
+                                icon: Icons.auto_awesome_rounded,
+                                label: 'Browse templates',
+                                onTap: () =>
+                                    context.push('/flashcards/templates'),
                               ),
-                          cell: GazeTileCell(
-                            label: category.label,
-                            onActivate: () => context.go(
-                              '/flashcards/viewer/${category.index}',
-                            ),
-                          ),
-                        ),
-                    ],
+                              _ActionChip(
+                                icon: Icons.file_upload_rounded,
+                                label: AppLocalizations.of(
+                                  context,
+                                )!.importLabel,
+                                onTap: () async {
+                                  final count =
+                                      await FlashcardExportService.importCards();
+                                  if (!context.mounted) return;
+                                  if (count > 0) {
+                                    ref.invalidate(allFlashcardsProvider);
+                                    AppSnackBar.success(
+                                      context,
+                                      message: AppLocalizations.of(
+                                        context,
+                                      )!.importedCards(count),
+                                    );
+                                  } else if (count == 0) {
+                                    AppSnackBar.info(
+                                      context,
+                                      message: AppLocalizations.of(
+                                        context,
+                                      )!.noDuplicates,
+                                    );
+                                  } else {
+                                    AppSnackBar.error(
+                                      context,
+                                      message: AppLocalizations.of(
+                                        context,
+                                      )!.importFailed,
+                                    );
+                                  }
+                                },
+                              ),
+                              _ActionChip(
+                                icon: Icons.file_download_rounded,
+                                label: AppLocalizations.of(
+                                  context,
+                                )!.exportLabel,
+                                onTap: () async {
+                                  await FlashcardExportService.exportCards();
+                                },
+                              ),
+                            ],
+                          ).animate().fadeIn(duration: 350.ms, delay: 200.ms),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
+
+                // ─── Category Decks ─────────────────
+                SliverPadding(
+                  padding: EdgeInsets.all(padding),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: context.gridColumns,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      // Cards grow taller with text scale so the icon + two
+                      // labels + stats row + progress bar can't overflow at XL.
+                      childAspectRatio:
+                          ((context.isTablet ? 1.6 : 1.4) /
+                                  MediaQuery.textScalerOf(context).scale(1.0))
+                              .clamp(0.9, 1.7),
+                    ),
+                    delegate: SliverChildListDelegate(
+                      gazeGrid.section(
+                        columns: context.gridColumns,
+                        entries: [
+                          for (final (index, category)
+                              in FlashcardCategory.values.indexed)
+                            (
+                              tile:
+                                  _DeckCard(
+                                        category: category,
+                                        cardCount: SeedData.getByCategory(
+                                          category,
+                                        ).length,
+                                        progress:
+                                            progress.categoryProgress[category
+                                                .label] ??
+                                            progress.categoryProgress[category
+                                                .name] ??
+                                            0.0,
+                                        onTap: () => context.push(
+                                          '/flashcards/viewer/${category.index}',
+                                        ),
+                                      )
+                                      .animate()
+                                      .fadeIn(
+                                        duration: 400.ms,
+                                        delay: (200 + index * 80).ms,
+                                      )
+                                      .slideY(begin: 0.12, end: 0)
+                                      .scale(
+                                        begin: const Offset(0.95, 0.95),
+                                        end: const Offset(1.0, 1.0),
+                                      ),
+                              cell: GazeTileCell(
+                                label: category.label,
+                                onActivate: () => context.push(
+                                  '/flashcards/viewer/${category.index}',
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
+          // FAB for teacher/parent to create custom cards
+          floatingActionButton: isTeacherOrParent
+              ? FloatingActionButton.extended(
+                  onPressed: () => context.push('/flashcards/create'),
+                  icon: const Icon(Icons.add_rounded),
+                  label: Text(AppLocalizations.of(context)!.createCard),
+                ).animate().scale(
+                  begin: const Offset(0, 0),
+                  end: const Offset(1, 1),
+                  delay: 800.ms,
+                  duration: 400.ms,
+                  curve: Curves.elasticOut,
+                )
+              : null,
         ),
-      ),
-      // FAB for teacher/parent to create custom cards
-      floatingActionButton: isTeacherOrParent
-          ? FloatingActionButton.extended(
-              onPressed: () => context.go('/flashcards/create'),
-              icon: const Icon(Icons.add_rounded),
-              label: Text(AppLocalizations.of(context)!.createCard),
-            ).animate().scale(
-              begin: const Offset(0, 0),
-              end: const Offset(1, 1),
-              delay: 800.ms,
-              duration: 400.ms,
-              curve: Curves.elasticOut,
-            )
-          : null,
-      ),
       ),
     );
   }

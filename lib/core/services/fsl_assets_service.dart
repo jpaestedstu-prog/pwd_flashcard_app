@@ -81,6 +81,24 @@ class FslAssetsService {
     'Weather__storm': 'storms',
   };
 
+  /// Card keys that should reuse **another card's** clip, keyed
+  /// `[Category label]__[wordEnglish lowercased]` → the manifest key to borrow.
+  ///
+  /// Different from [_filenameAliases], which only redirects the *filename* of
+  /// a bundled asset within the same category. This maps across categories, for
+  /// the case where two seed cards are the same word and therefore the same
+  /// sign — re-shooting it would produce an identical video.
+  ///
+  /// Only add a pair when the sign is genuinely identical. A word that merely
+  /// looks related (`open` the verb vs `open` the adjective) can be a different
+  /// sign entirely, and pointing a learner at the wrong one is worse than
+  /// telling them it hasn't been recorded yet.
+  static const Map<String, String> _crossCategoryAliases = {
+    // "Walk" is one sign; it exists as a Transportation card (a way to get
+    // somewhere) and an Actions verb. Same hands, same clip.
+    'Actions__walk': 'Transportation__walk',
+  };
+
   static Future<FslAvailability>? _cache;
 
   /// Card key → resolved bundled asset path (case-preserved).
@@ -164,7 +182,35 @@ class FslAssetsService {
     //    asset — gives the app a graceful path for cloud-hosted videos.
     await _loadCloudFallbackUrls();
 
+    // 5. Let a card borrow an identical sign from another category.
+    _applyCrossCategoryAliases();
+
     return _buildAvailability();
+  }
+
+  /// Copies a lender's sources onto the borrower's key, so every downstream
+  /// lookup — availability, resolve, prefetch, the offline packs scan — treats
+  /// the borrowed clip as the borrower's own with no special-casing.
+  ///
+  /// A card that has a clip of its own always wins; this only fills holes. The
+  /// disk cache still keys by card, so a borrowed sign is stored once per card
+  /// rather than shared — a few MB of duplication, in exchange for eviction and
+  /// byte accounting that stay per-card and obvious.
+  static void _applyCrossCategoryAliases() {
+    _crossCategoryAliases.forEach((borrower, lender) {
+      final alreadyHasOwn =
+          _assetPathByKey.containsKey(borrower) ||
+          _downloadUrlByKey.containsKey(borrower) ||
+          _streamUrlByKey.containsKey(borrower);
+      if (alreadyHasOwn) return;
+
+      final asset = _assetPathByKey[lender];
+      if (asset != null) _assetPathByKey[borrower] = asset;
+      final direct = _downloadUrlByKey[lender];
+      if (direct != null) _downloadUrlByKey[borrower] = direct;
+      final stream = _streamUrlByKey[lender];
+      if (stream != null) _streamUrlByKey[borrower] = stream;
+    });
   }
 
   /// Returns all `.mp4` paths bundled under `assets/videos/fsl/`.
@@ -440,6 +486,36 @@ class FslAssetsService {
       return cached != null;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Bytes [card]'s clip occupies on disk, or 0 when it isn't downloaded.
+  ///
+  /// Backs the offline sign packs UI, which has to answer "how much of this
+  /// tablet am I about to spend?" before a teacher commits to a download, and
+  /// "how much would I get back?" before they clear one. Bundled assets report
+  /// 0: they ship inside the APK and freeing them is not on offer.
+  static Future<int> cachedBytes(Flashcard card) async {
+    if (hasVideo(card)) return 0;
+    try {
+      final cached = await _videoCache.getFileFromCache(_keyFor(card));
+      if (cached == null) return 0;
+      return await cached.file.length();
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Drops [card]'s downloaded clip from the disk cache. No-op when the clip
+  /// is bundled or was never downloaded; the word keeps working, it just needs
+  /// the network again on next play.
+  static Future<void> evict(Flashcard card) async {
+    if (hasVideo(card)) return;
+    try {
+      await _videoCache.removeFile(_keyFor(card));
+    } catch (_) {
+      // Already gone, or the cache is mid-write — either way there is nothing
+      // for the caller to do about it.
     }
   }
 

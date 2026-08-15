@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pwdpwdpwd/core/accessibility/tts_service.dart';
 import 'package:pwdpwdpwd/data/local/seed_data.dart';
+import 'package:pwdpwdpwd/data/models/achievements.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/object_scan/widgets/discovered_word_sheet.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
@@ -74,6 +75,7 @@ void main() {
     // Auto-speak is off by default so the existing button/navigation
     // assertions see only the speech they trigger.
     bool ttsEnabled = false,
+    List<Achievement> unlockedAchievements = const [],
   }) async {
     progressStub = _StubProgressNotifier();
     tts = _FakeTtsService();
@@ -87,6 +89,7 @@ void main() {
                 card: card,
                 isNewDiscovery: isNewDiscovery,
                 starAwarded: starAwarded,
+                unlockedAchievements: unlockedAchievements,
               ),
             ),
           ),
@@ -233,5 +236,26 @@ void main() {
     await pumpSheet(tester, card: _card('cr13'));
     await tester.pump();
     expect(find.text('FSL'), findsNothing);
+  });
+
+  testWidgets('celebrates a badge the find just unlocked', (tester) async {
+    // Word Hunt has no game-over dialog, so the sheet is where a newly earned
+    // badge has to land — otherwise the unlock happens invisibly.
+    await pumpSheet(
+      tester,
+      card: _card('cr13'),
+      isNewDiscovery: true,
+      starAwarded: true,
+      unlockedAchievements: [Achievements.huntFirstFind],
+    );
+    expect(
+      find.text('${Achievements.huntFirstFind.title} unlocked!'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('no badge chip when the find unlocked nothing', (tester) async {
+    await pumpSheet(tester, card: _card('cr13'), isNewDiscovery: true);
+    expect(find.textContaining('unlocked!'), findsNothing);
   });
 }

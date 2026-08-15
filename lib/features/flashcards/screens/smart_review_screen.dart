@@ -17,6 +17,7 @@ import '../../../widgets/flashcard_image.dart';
 import '../../../widgets/language_replay_bar.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 /// Smart Review screen that uses spaced repetition to present
 /// the words the student struggles with most.
@@ -110,7 +111,9 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
     }
     if (mounted) {
       AccessibleCelebrationOverlay.show(
-        context: context, ref: ref, type: CelebrationType.gameComplete,
+        context: context,
+        ref: ref,
+        type: CelebrationType.gameComplete,
       );
     }
     setState(() => _finished = true);
@@ -126,9 +129,12 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
 
     if (_reviewCards.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          leading: const AppBackButton(fallbackRoute: '/flashcards'),
-          title: Text(AppLocalizations.of(context)!.smartReview),
+        appBar: fullscreenBar(
+          ref,
+          AppBar(
+            leading: const AppBackButton(fallbackRoute: '/flashcards'),
+            title: Text(AppLocalizations.of(context)!.smartReview),
+          ),
         ),
         body: Center(
           child: Padding(
@@ -166,25 +172,28 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
     final progressPct = (_currentIndex + 1) / _reviewCards.length;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          '${AppLocalizations.of(context)!.smartReview}  ${_currentIndex + 1}/${_reviewCards.length}',
-          style: AppTypography.titleMedium.copyWith(
-            fontWeight: FontWeight.w700,
+      appBar: fullscreenBar(
+        ref,
+        AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.close_rounded),
+            tooltip: 'Close',
+            onPressed: () => context.pop(),
           ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(4),
-          child: LinearProgressIndicator(
-            value: progressPct,
-            backgroundColor: AppColors.border,
-            color: AppColors.primary,
-            minHeight: 4,
+          title: Text(
+            '${AppLocalizations.of(context)!.smartReview}  ${_currentIndex + 1}/${_reviewCards.length}',
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(4),
+            child: LinearProgressIndicator(
+              value: progressPct,
+              backgroundColor: AppColors.border,
+              color: AppColors.primary,
+              minHeight: 4,
+            ),
           ),
         ),
       ),
@@ -199,126 +208,141 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
               child: LayoutBuilder(
                 builder: (context, constraints) => SingleChildScrollView(
                   child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minHeight: constraints.maxHeight),
-                    child: Center(
-                      child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 40,
-                  ),
-                  decoration: BoxDecoration(
-                    color: hc.surface,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: AppColors.softShadow,
-                    border: Border.all(
-                      color: _showAnswer
-                          ? AppColors.primary.withValues(alpha: 0.3)
-                          : AppColors.border,
-                      width: _showAnswer ? 2 : 1,
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
                     ),
-                  ),
-                  child: Column(
-                    children: [
-                      // Category chip
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: card.category.color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          card.category.label,
-                          style: AppTypography.labelSmall.copyWith(
-                            color: card.category.darkColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Per-word image
-                      FlashcardImage(
-                        card: card,
-                        size: 76,
-                        borderRadius: 16,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // English word
-                      Semantics(
-                        label: 'English word: ${card.wordEnglish}',
-                        child: Text(
-                          card.wordEnglish,
-                          style: AppTypography.flashcardWord.copyWith(
-                            color: hc.textPrimary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      if (card.exampleSentence != null)
-                        Text(
-                          card.exampleSentence!,
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: hc.textSecondary,
-                            fontStyle: FontStyle.italic,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-
-                      if (_showAnswer) ...[
-                        const SizedBox(height: 24),
-                        Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryLight.withValues(
-                                  alpha: 0.3,
+                    child: Center(
+                      child:
+                          Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 40,
                                 ),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    'Filipino',
-                                    style: AppTypography.labelSmall.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                decoration: BoxDecoration(
+                                  color: hc.surface,
+                                  borderRadius: BorderRadius.circular(24),
+                                  boxShadow: AppColors.softShadow,
+                                  border: Border.all(
+                                    color: _showAnswer
+                                        ? AppColors.primary.withValues(
+                                            alpha: 0.3,
+                                          )
+                                        : AppColors.border,
+                                    width: _showAnswer ? 2 : 1,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Semantics(
-                                    label:
-                                        'Filipino translation: ${card.wordFilipino}',
-                                    child: Text(
-                                      card.wordFilipino,
-                                      style: AppTypography.headlineMedium
-                                          .copyWith(
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                      textAlign: TextAlign.center,
+                                ),
+                                child: Column(
+                                  children: [
+                                    // Category chip
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: card.category.color.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        card.category.label,
+                                        style: AppTypography.labelSmall
+                                            .copyWith(
+                                              color: card.category.darkColor,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            )
-                            .animate()
-                            .fadeIn(duration: 300.ms)
-                            .slideY(begin: 0.1, end: 0),
-                      ],
-                    ],
-                  ),
-                )
-                .animate(key: ValueKey(_currentIndex))
-                .fadeIn(duration: 300.ms)
-                .slideX(begin: 0.05, end: 0),
+                                    const SizedBox(height: 16),
+
+                                    // Per-word image
+                                    FlashcardImage(
+                                      card: card,
+                                      size: 76,
+                                      borderRadius: 16,
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    // English word
+                                    Semantics(
+                                      label:
+                                          'English word: ${card.wordEnglish}',
+                                      child: Text(
+                                        card.wordEnglish,
+                                        style: AppTypography.flashcardWord
+                                            .copyWith(color: hc.textPrimary),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    if (card.exampleSentence != null)
+                                      Text(
+                                        card.exampleSentence!,
+                                        style: AppTypography.bodyMedium
+                                            .copyWith(
+                                              color: hc.textSecondary,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                        textAlign: TextAlign.center,
+                                      ),
+
+                                    if (_showAnswer) ...[
+                                      const SizedBox(height: 24),
+                                      Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primaryLight
+                                                  .withValues(alpha: 0.3),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  'Filipino',
+                                                  style: AppTypography
+                                                      .labelSmall
+                                                      .copyWith(
+                                                        color:
+                                                            AppColors.primary,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Semantics(
+                                                  label:
+                                                      'Filipino translation: ${card.wordFilipino}',
+                                                  child: Text(
+                                                    card.wordFilipino,
+                                                    style: AppTypography
+                                                        .headlineMedium
+                                                        .copyWith(
+                                                          color:
+                                                              AppColors.primary,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                        ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          )
+                                          .animate()
+                                          .fadeIn(duration: 300.ms)
+                                          .slideY(begin: 0.1, end: 0),
+                                    ],
+                                  ],
+                                ),
+                              )
+                              .animate(key: ValueKey(_currentIndex))
+                              .fadeIn(duration: 300.ms)
+                              .slideX(begin: 0.05, end: 0),
                     ),
                   ),
                 ),
@@ -372,7 +396,10 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                       height: 56,
                       child: OutlinedButton.icon(
                         onPressed: _answerDontKnow,
-                        icon: const Icon(Icons.close_rounded, color: AppColors.error),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: AppColors.error,
+                        ),
                         label: Text(
                           AppLocalizations.of(context)!.stillLearning,
                           style: AppTypography.buttonText.copyWith(
@@ -556,7 +583,10 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: Text(AppLocalizations.of(context)!.done, style: AppTypography.buttonText),
+                  child: Text(
+                    AppLocalizations.of(context)!.done,
+                    style: AppTypography.buttonText,
+                  ),
                 ),
               ),
             ],

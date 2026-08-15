@@ -43,6 +43,7 @@ Future<void> _pumpSignIt(
   required Future<List<CameraDescription>> Function() camerasLoader,
   List<FlashcardCategory> categories = const [],
   double textScale = 1.0,
+  Future<FslAvailability> Function()? availabilityLoader,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -58,8 +59,9 @@ Future<void> _pumpSignIt(
         // Inject the text scaler inside MaterialApp.builder — a MediaQuery
         // wrapped outside MaterialApp is rebuilt away from the FlutterView.
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: TextScaler.linear(textScale)),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
           child: child!,
         ),
         home: SignItScreen(
@@ -68,6 +70,7 @@ Future<void> _pumpSignIt(
           // Keep tests off the cache/download stack: "video unavailable" is
           // a supported state (the reference panel holds its placeholder).
           videoLoader: (_) async => null,
+          availabilityLoader: availabilityLoader ?? FslAssetsService.load,
         ),
       ),
     ),
@@ -85,7 +88,8 @@ Future<void> _pumpSignIt(
 Future<void> _settle(WidgetTester tester) async {
   for (var i = 0; i < 6; i++) {
     await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 50)));
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
     await tester.pump();
   }
 }
@@ -113,21 +117,26 @@ void main() {
   tearDownAll(() async => Hive.deleteFromDisk());
 
   testWidgets(
-      'shows the friendly FSL empty state when the chosen category has no videos',
-      (tester) async {
-    // Actions is the one category with no FSL videos in the manifest.
-    await _pumpSignIt(
-      tester,
-      camerasLoader: _noCameras,
-      categories: const [FlashcardCategory.actions],
-    );
+    'shows the friendly FSL empty state when the chosen category has no videos',
+    (tester) async {
+      // Driven through the injected loader rather than by naming a category that
+      // happens to have no clips: the manifest is deliberately filling up (see
+      // `tools/fsl_coverage_report.mjs`), and Actions — the category this used to
+      // rely on — now has one. A real learner still meets this state whenever the
+      // manifest fails to load at all, e.g. offline on first run.
+      await _pumpSignIt(
+        tester,
+        camerasLoader: _noCameras,
+        availabilityLoader: () async =>
+            const FslAvailability(cardsWithVideo: [], videoCountByCategory: {}),
+      );
 
-    expect(find.byType(FslEmptyStateScaffold), findsOneWidget);
-    expect(find.text('FSL videos coming soon'), findsOneWidget);
-  });
+      expect(find.byType(FslEmptyStateScaffold), findsOneWidget);
+      expect(find.text('FSL videos coming soon'), findsOneWidget);
+    },
+  );
 
-  testWidgets('runs watch-only when the device has no camera',
-      (tester) async {
+  testWidgets('runs watch-only when the device has no camera', (tester) async {
     await _pumpSignIt(tester, camerasLoader: _noCameras);
 
     // Practice UI is fully live: round counter, prompt, both panels.
@@ -146,20 +155,22 @@ void main() {
   });
 
   testWidgets(
-      'a CameraException from the camera enumerator degrades to watch-only',
-      (tester) async {
-    await _pumpSignIt(
-      tester,
-      camerasLoader: () async =>
-          throw CameraException('CameraAccessDenied', 'denied in test'),
-    );
+    'a CameraException from the camera enumerator degrades to watch-only',
+    (tester) async {
+      await _pumpSignIt(
+        tester,
+        camerasLoader: () async =>
+            throw CameraException('CameraAccessDenied', 'denied in test'),
+      );
 
-    expect(find.textContaining('No camera found'), findsOneWidget);
-    expect(find.text('I got it!'), findsOneWidget);
-  });
+      expect(find.textContaining('No camera found'), findsOneWidget);
+      expect(find.text('I got it!'), findsOneWidget);
+    },
+  );
 
-  testWidgets('self-assessment advances rounds and tallies only "I got it!"',
-      (tester) async {
+  testWidgets('self-assessment advances rounds and tallies only "I got it!"', (
+    tester,
+  ) async {
     await _pumpSignIt(tester, camerasLoader: _noCameras);
     expect(find.textContaining('1/10'), findsOneWidget);
 
@@ -176,8 +187,9 @@ void main() {
     expect(find.text('1'), findsOneWidget);
   });
 
-  testWidgets('holds the shared camera gate while open and releases on close',
-      (tester) async {
+  testWidgets('holds the shared camera gate while open and releases on close', (
+    tester,
+  ) async {
     await _pumpSignIt(tester, camerasLoader: _noCameras);
     // Mirrors Word Hunt / gaze preview: the nav-gaze shell must stand its
     // camera down while this screen owns the (potential) camera.
@@ -192,11 +204,13 @@ void main() {
   // applicable: the app is portrait-locked, and at 2.0× font that height
   // cannot hold a reference video + mirror + controls. Every tablet size +
   // orientation, plus phone portrait, at up to 2.0× font is still covered.
-  final devices =
-      kTabletMatrix.where((d) => d.label != 'phone landscape').toList();
+  final devices = kTabletMatrix
+      .where((d) => d.label != 'phone landscape')
+      .toList();
 
-  testWidgets('practice layout survives the device × text-scale matrix',
-      (tester) async {
+  testWidgets('practice layout survives the device × text-scale matrix', (
+    tester,
+  ) async {
     for (final device in devices) {
       for (final scale in kTextScales) {
         tester.view.physicalSize = device.size * device.devicePixelRatio;
@@ -204,17 +218,21 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        await _pumpSignIt(tester, camerasLoader: _noCameras,
-            textScale: scale);
+        await _pumpSignIt(tester, camerasLoader: _noCameras, textScale: scale);
         // Assert the loaded practice layout (not the loading skeleton).
-        expect(find.text('Watch, then sign it back!'), findsOneWidget,
-            reason: 'practice UI did not load at $device, ${scale}x');
+        expect(
+          find.text('Watch, then sign it back!'),
+          findsOneWidget,
+          reason: 'practice UI did not load at $device, ${scale}x',
+        );
 
         // An overflowing body re-reports each frame; drain them all.
         Object? firstError;
-        for (Object? e = tester.takeException();
-            e != null;
-            e = tester.takeException()) {
+        for (
+          Object? e = tester.takeException();
+          e != null;
+          e = tester.takeException()
+        ) {
           firstError ??= e;
         }
         expect(

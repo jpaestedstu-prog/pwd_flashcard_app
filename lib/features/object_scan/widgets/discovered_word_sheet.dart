@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/accessibility/tts_service.dart' show ttsServiceProvider;
-import '../../../core/constants/flashcard_emojis.dart';
+import '../../../widgets/flashcard_image.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/achievements.dart';
 import '../../../data/models/models.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
@@ -20,6 +21,10 @@ class DiscoveredWordSheet extends ConsumerStatefulWidget {
   final bool isNewDiscovery;
   final bool starAwarded;
 
+  /// Badges this find just unlocked, celebrated inline. Word Hunt has no
+  /// game-over dialog to carry them, so the sheet is where they land.
+  final List<Achievement> unlockedAchievements;
+
   /// Speak the word once with TTS as soon as the sheet appears (the "reads
   /// the word aloud" step) — the manual 🔊 buttons stay available either way.
   /// Honored only when the app's `ttsEnabled` setting is on. Tests that don't
@@ -32,6 +37,7 @@ class DiscoveredWordSheet extends ConsumerStatefulWidget {
     this.isNewDiscovery = false,
     this.starAwarded = false,
     this.autoSpeak = true,
+    this.unlockedAchievements = const [],
   });
 
   @override
@@ -91,10 +97,14 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
               if (isNewDiscovery) ...[
                 const SizedBox(height: 12),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppColors.bannerWordHuntStart.withValues(alpha: 0.15),
+                    color: AppColors.bannerWordHuntStart.withValues(
+                      alpha: 0.15,
+                    ),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
@@ -106,11 +116,12 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
                   ),
                 ),
               ],
+              for (final badge in widget.unlockedAchievements) ...[
+                const SizedBox(height: 8),
+                _BadgeUnlockedChip(badge: badge),
+              ],
               const SizedBox(height: 8),
-              Text(
-                FlashcardEmojis.forId(card.id),
-                style: const TextStyle(fontSize: 64),
-              ),
+              FlashcardPicture(card: card, extent: 74),
               Text(
                 card.wordEnglish,
                 style: const TextStyle(
@@ -160,7 +171,9 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
                       label: l10n.wordHuntSpeakEnglish,
                       onTap: () {
                         _recordActivity();
-                        ref.read(ttsServiceProvider).speakEnglish(
+                        ref
+                            .read(ttsServiceProvider)
+                            .speakEnglish(
                               card.exampleSentence == null
                                   ? card.wordEnglish
                                   : '${card.wordEnglish}. ${card.exampleSentence}',
@@ -196,7 +209,8 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
                         // spaces/hyphens can't be letter-scrambled (mirrors
                         // the game's own filter) — those fall back to a
                         // category round instead.
-                        final spellable = !card.wordEnglish.contains(' ') &&
+                        final spellable =
+                            !card.wordEnglish.contains(' ') &&
                             !card.wordEnglish.contains('-');
                         context.push(
                           '/games/spelling-bee?difficulty=easy&categories=$categoryIndex'
@@ -245,6 +259,40 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// "🏅 Word Spotter unlocked!" — a badge the find just earned, in the
+/// achievement's own colour so it reads the same here as on the Progress screen.
+class _BadgeUnlockedChip extends StatelessWidget {
+  final Achievement badge;
+  const _BadgeUnlockedChip({required this.badge});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: badge.color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: badge.color, width: 2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(badge.icon, size: 20, color: badge.color),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              '${badge.title} unlocked!',
+              style: TextStyle(fontWeight: FontWeight.bold, color: badge.color),
+              maxLines: 2,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
       ),
     );
   }

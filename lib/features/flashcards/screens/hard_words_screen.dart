@@ -10,6 +10,7 @@ import '../../../data/models/models.dart';
 import '../../../data/models/enums.dart';
 import '../providers/hard_words_provider.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 class HardWordsScreen extends ConsumerWidget {
   const HardWordsScreen({super.key});
@@ -22,22 +23,25 @@ class HardWordsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: hc.background,
-      appBar: AppBar(
-        leading: const AppBackButton(),
-        title: Text(
-          'Hard Words',
-          style: AppTypography.titleMedium.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        actions: [
-          if (hardWords.isNotEmpty)
-            TextButton.icon(
-              onPressed: () => context.push('/smart-review'),
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text('Practice'),
+      appBar: fullscreenBar(
+        ref,
+        AppBar(
+          leading: const AppBackButton(),
+          title: Text(
+            'Hard Words',
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w700,
             ),
-        ],
+          ),
+          actions: [
+            if (hardWords.isNotEmpty)
+              TextButton.icon(
+                onPressed: () => context.push('/smart-review'),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('Practice'),
+              ),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -78,8 +82,9 @@ class HardWordsScreen extends ConsumerWidget {
                 ? LayoutBuilder(
                     builder: (context, constraints) => SingleChildScrollView(
                       child: ConstrainedBox(
-                        constraints:
-                            BoxConstraints(minHeight: constraints.maxHeight),
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
                         child: _EmptyState(),
                       ),
                     ),
@@ -90,18 +95,21 @@ class HardWordsScreen extends ConsumerWidget {
                     itemBuilder: (context, index) {
                       final (card, accuracy) = hardWords[index];
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _HardWordCard(
-                          card: card,
-                          accuracy: accuracy,
-                          onTap: () => context.push(
-                            '/flashcards/viewer/${card.category.index}',
-                          ),
-                        ),
-                      ).animate().fadeIn(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _HardWordCard(
+                              card: card,
+                              accuracy: accuracy,
+                              onTap: () => context.push(
+                                '/flashcards/viewer/${card.category.index}',
+                              ),
+                            ),
+                          )
+                          .animate()
+                          .fadeIn(
                             duration: 350.ms,
                             delay: Duration(milliseconds: 50 * index),
-                          ).slideX(begin: 0.05, end: 0);
+                          )
+                          .slideX(begin: 0.05, end: 0);
                     },
                   ),
           ),
@@ -196,12 +204,13 @@ class _HardWordCard extends StatelessWidget {
     final barColor = pct < 30
         ? AppColors.error
         : pct < 50
-            ? AppColors.warning
-            : Colors.amber;
+        ? AppColors.warning
+        : Colors.amber;
 
     return Semantics(
       button: true,
-      label: '${card.wordEnglish}, '
+      label:
+          '${card.wordEnglish}, '
           '${card.wordFilipino}. '
           'Accuracy: $pct percent. '
           '${accuracy.correct} correct out of ${accuracy.total} attempts.',
@@ -231,8 +240,7 @@ class _HardWordCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
-                  child: Icon(card.category.icon,
-                      color: catColor, size: 22),
+                  child: Icon(card.category.icon, color: catColor, size: 22),
                 ),
               ),
               const SizedBox(width: 12),
