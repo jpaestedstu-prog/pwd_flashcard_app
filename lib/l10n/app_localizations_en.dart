@@ -1547,4 +1547,170 @@ class AppLocalizationsEn extends AppLocalizations {
   String spokenWeekSummary(int days, int games, int stars) {
     return 'This week you were active on $days days, played $games games and earned $stars stars.';
   }
+
+  @override
+  String get chartLess => 'Less';
+
+  @override
+  String get chartMore => 'More';
+
+  @override
+  String get chartDifficultyHistory => 'Difficulty Adaptation History';
+
+  @override
+  String get chartReviewHeatmap => 'Review Activity Heatmap';
+
+  @override
+  String get chartStarsEarnedVsSpent => 'Earned vs spent';
+
+  @override
+  String get chartStarsAvailable => 'Available';
+
+  @override
+  String get chartStarsSpent => 'Spent';
+
+  @override
+  String get catShortAnimals => 'Animals';
+
+  @override
+  String get catShortColors => 'Colors';
+
+  @override
+  String get catShortNumbers => 'Numbers';
+
+  @override
+  String get catShortBody => 'Body';
+
+  @override
+  String get catShortFood => 'Food';
+
+  @override
+  String get catShortFamily => 'Family';
+
+  @override
+  String get catShortClothing => 'Cloth';
+
+  @override
+  String get catShortWeather => 'Weather';
+
+  @override
+  String get catShortClassroom => 'Class';
+
+  @override
+  String get catShortTransport => 'Travel';
+
+  @override
+  String get catShortEmotions => 'Feels';
+
+  @override
+  String get catShortDays => 'Days';
+
+  @override
+  String get catShortActions => 'Action';
+
+  @override
+  String get gameShortMatch => 'Match';
+
+  @override
+  String get gameShortSpell => 'Spell';
+
+  @override
+  String get gameShortQuiz => 'Quiz';
+
+  @override
+  String get gameShortMemory => 'Memory';
+
+  @override
+  String get gameShortDrag => 'Drag';
+
+  @override
+  String get gameShortPronun => 'Pronun';
+
+  @override
+  String get gameShortSentence => 'Sent';
+
+  @override
+  String get gameShortStory => 'Story';
+
+  @override
+  String get gameShortTrace => 'Trace';
+
+  @override
+  String get gameShortFsl => 'FSL';
+
+  @override
+  String get gameShortJigsaw => 'Jigsaw';
+
+  @override
+  String get gameShortPicWord => 'PicWord';
+
+  @override
+  String get gameShortYesNo => 'Yes/No';
+
+  @override
+  String get gameShortOdd => 'Odd';
+
+  @override
+  String get gameShortLetter => 'Letter';
+
+  @override
+  String get chartActivityMapTitle => 'Activity Map 📅';
+
+  @override
+  String get chartActivityMapSubtitle => 'Daily study activity — last 8 weeks';
+
+  @override
+  String get chartCategoryMasteryTitle => 'Category Mastery 🎯';
+
+  @override
+  String get chartDifficultyHigh => 'High (≥80%)';
+
+  @override
+  String get chartDifficultyMedium => 'Medium (50-80%)';
+
+  @override
+  String get chartDifficultyLow => 'Low (<50%)';
+
+  @override
+  String get chartNoGameScores => 'No game scores yet. Play some games! 🎮';
+
+  @override
+  String get chartGamePerformanceTitle => 'Game Performance 🎮';
+
+  @override
+  String get chartGamePerformanceSubtitle => 'Average score (%) per game type';
+
+  @override
+  String get chartWordsLearnedTitle => 'Words Learned 📈';
+
+  @override
+  String get chartWordsLearnedSubtitle =>
+      'Cumulative word progress — last 30 days';
+
+  @override
+  String get chartStarsOverviewTitle => 'Stars Overview ⭐';
+
+  @override
+  String get chartNoStars => 'No stars earned yet. Keep learning! ✨';
+
+  @override
+  String get chartStudyTimeTitle => 'Study Time ⏱️';
+
+  @override
+  String get chartStudyTimeSubtitle => 'Minutes studied per day (last 7 days)';
+
+  @override
+  String get chartMinutesShort => 'min';
+
+  @override
+  String get chartCategoryMasterySubtitle =>
+      'Your progress across all vocabulary categories';
+
+  @override
+  String get chartDifficultySubtitle =>
+      'How your accuracy changes across games over time';
+
+  @override
+  String get chartDifficultyEmpty =>
+      'Play some games to see your\ndifficulty adaptation history!';
 }

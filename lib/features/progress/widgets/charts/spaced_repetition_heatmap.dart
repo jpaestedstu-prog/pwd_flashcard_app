@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../data/models/models.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// A GitHub-style heatmap showing spaced repetition review activity.
 ///
@@ -21,6 +22,7 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final activityMap = _buildActivityMap();
     final now = DateTime.now();
     final weeks = (daysToShow / 7).ceil();
@@ -43,7 +45,7 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Review Activity Heatmap',
+                  l10n.chartReviewHeatmap,
                   style: AppTypography.labelMedium.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -133,7 +135,7 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Less', style: AppTypography.labelSmall.copyWith(
+              Text(l10n.chartLess, style: AppTypography.labelSmall.copyWith(
                 fontSize: 9, color: hc.textSecondary)),
               const SizedBox(width: 4),
               _legendCell(context, 0),
@@ -142,7 +144,7 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
               _legendCell(context, 3),
               _legendCell(context, 4),
               const SizedBox(width: 4),
-              Text('More', style: AppTypography.labelSmall.copyWith(
+              Text(l10n.chartMore, style: AppTypography.labelSmall.copyWith(
                 fontSize: 9, color: hc.textSecondary)),
             ],
           ),

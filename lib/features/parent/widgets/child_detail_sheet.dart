@@ -297,8 +297,11 @@ class ChildDetailSheet extends ConsumerWidget {
               SizedBox(height: layout.sectionGap),
 
               // ─── Category Progress ────────────────
+              // Coverage — the chart is headed "Category Mastery", and
+              // `categoryProgress` is an accuracy average that reads high for a
+              // category the learner has barely opened. See CategoryMastery.
               CategoryRadarChart(
-                categoryProgress: child.categoryProgress,
+                categoryProgress: child.categoryCoverage,
               ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
 
               SizedBox(height: layout.sectionGap),

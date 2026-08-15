@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../data/models/enums.dart';
 import '../../../../data/models/models.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Grouped bar chart showing average score percentage per game type.
 class GameScoreBarChart extends StatelessWidget {
@@ -13,6 +14,7 @@ class GameScoreBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // Group scores by game type and compute average percentage
     final Map<GameType, List<double>> grouped = {};
     for (final s in scores) {
@@ -37,7 +39,7 @@ class GameScoreBarChart extends StatelessWidget {
         ),
         child: Center(
           child: Text(
-            'No game scores yet. Play some games! 🎮',
+            l10n.chartNoGameScores,
             style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
           ),
         ),
@@ -67,14 +69,14 @@ class GameScoreBarChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Game Performance 🎮',
+            l10n.chartGamePerformanceTitle,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Average score (%) per game type',
+            l10n.chartGamePerformanceSubtitle,
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 20),
@@ -111,7 +113,7 @@ class GameScoreBarChart extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            _shortLabel(gameType),
+                            _shortLabel(l10n, gameType),
                             style: AppTypography.labelSmall.copyWith(
                               fontSize: 8,
                               color: hc.textSecondary,
@@ -179,39 +181,39 @@ class GameScoreBarChart extends StatelessWidget {
     );
   }
 
-  /// Produce a compact label for each game type.
-  String _shortLabel(GameType type) {
+  /// Compact axis label for each game type, localized.
+  String _shortLabel(AppLocalizations l10n, GameType type) {
     switch (type) {
       case GameType.wordMatch:
-        return 'Match';
+        return l10n.gameShortMatch;
       case GameType.spellingBee:
-        return 'Spell';
+        return l10n.gameShortSpell;
       case GameType.flashcardQuiz:
-        return 'Quiz';
+        return l10n.gameShortQuiz;
       case GameType.memoryMatch:
-        return 'Memory';
+        return l10n.gameShortMemory;
       case GameType.dragAndDrop:
-        return 'Drag';
+        return l10n.gameShortDrag;
       case GameType.pronunciation:
-        return 'Pronun';
+        return l10n.gameShortPronun;
       case GameType.sentenceBuilder:
-        return 'Sent';
+        return l10n.gameShortSentence;
       case GameType.storyQuiz:
-        return 'Story';
+        return l10n.gameShortStory;
       case GameType.tracing:
-        return 'Trace';
+        return l10n.gameShortTrace;
       case GameType.fslPractice:
-        return 'FSL';
+        return l10n.gameShortFsl;
       case GameType.jigsawPuzzle:
-        return 'Jigsaw';
+        return l10n.gameShortJigsaw;
       case GameType.pictureWord:
-        return 'PicWord';
+        return l10n.gameShortPicWord;
       case GameType.yesOrNo:
-        return 'Yes/No';
+        return l10n.gameShortYesNo;
       case GameType.oddOneOut:
-        return 'Odd';
+        return l10n.gameShortOdd;
       case GameType.firstLetter:
-        return 'Letter';
+        return l10n.gameShortLetter;
     }
   }
 }

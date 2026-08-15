@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../data/models/enums.dart';
 import '../../../../data/models/models.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Chart showing how the adaptive difficulty system has adjusted over time.
 ///
@@ -16,6 +17,7 @@ class DifficultyHistoryChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (recentScores.isEmpty) {
       return _emptyState(context);
     }
@@ -53,7 +55,7 @@ class DifficultyHistoryChart extends StatelessWidget {
               const Icon(Icons.trending_up_rounded, color: AppColors.info, size: 22),
               const SizedBox(width: 8),
               Text(
-                'Difficulty Adaptation History',
+                l10n.chartDifficultyHistory,
                 style: AppTypography.labelMedium.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -62,7 +64,7 @@ class DifficultyHistoryChart extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'How your accuracy changes across games over time',
+            l10n.chartDifficultySubtitle,
             style: AppTypography.bodySmall.copyWith(
               color: hc.textSecondary,
             ),
@@ -72,11 +74,11 @@ class DifficultyHistoryChart extends StatelessWidget {
           // Legend
           Row(
             children: [
-              _legendDot(context, AppColors.success, 'High (≥80%)'),
+              _legendDot(context, AppColors.success, l10n.chartDifficultyHigh),
               const SizedBox(width: 16),
-              _legendDot(context, AppColors.warning, 'Medium (50-80%)'),
+              _legendDot(context, AppColors.warning, l10n.chartDifficultyMedium),
               const SizedBox(width: 16),
-              _legendDot(context, AppColors.error, 'Low (<50%)'),
+              _legendDot(context, AppColors.error, l10n.chartDifficultyLow),
             ],
           ),
           const SizedBox(height: 12),
@@ -219,6 +221,7 @@ class DifficultyHistoryChart extends StatelessWidget {
   }
 
   Widget _emptyState(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hc = HCColor.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
@@ -233,7 +236,7 @@ class DifficultyHistoryChart extends StatelessWidget {
             const Icon(Icons.trending_up_rounded, size: 40, color: AppColors.textHint),
             const SizedBox(height: 8),
             Text(
-              'Play some games to see your\ndifficulty adaptation history!',
+              l10n.chartDifficultyEmpty,
               textAlign: TextAlign.center,
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),

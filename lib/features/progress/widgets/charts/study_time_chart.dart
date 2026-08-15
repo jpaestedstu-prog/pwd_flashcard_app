@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Bar chart showing daily study minutes over the last 7 days.
 class StudyTimeChart extends StatelessWidget {
@@ -12,6 +13,7 @@ class StudyTimeChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // Get last 7 days
     final now = DateTime.now();
     final days = List.generate(7, (i) {
@@ -35,14 +37,14 @@ class StudyTimeChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Study Time ⏱️',
+            l10n.chartStudyTimeTitle,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Minutes studied per day (last 7 days)',
+            l10n.chartStudyTimeSubtitle,
             style: AppTypography.bodySmall.copyWith(
               color: hc.textSecondary,
             ),
@@ -58,7 +60,7 @@ class StudyTimeChart extends StatelessWidget {
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       return BarTooltipItem(
-                        '${rod.toY.round()} min',
+                        '${rod.toY.round()} ${l10n.chartMinutesShort}',
                         AppTypography.labelSmall.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,

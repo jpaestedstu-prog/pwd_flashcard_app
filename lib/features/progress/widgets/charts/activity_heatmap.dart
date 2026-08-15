@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/session_tracker.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// GitHub-style activity heat-map grid (7 rows × N columns) showing
 /// daily study activity over the last 8 weeks (56 days).
@@ -12,6 +13,7 @@ class ActivityHeatmap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     const totalDays = 56; // 8 weeks
     final dailyMinutes =
         SessionTracker.dailyStudyMinutes(profileId, days: totalDays);
@@ -41,14 +43,14 @@ class ActivityHeatmap extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Activity Map 📅',
+            l10n.chartActivityMapTitle,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Daily study activity — last 8 weeks',
+            l10n.chartActivityMapSubtitle,
             style: AppTypography.bodySmall.copyWith(
               color: hc.textSecondary,
             ),
@@ -86,7 +88,7 @@ class ActivityHeatmap extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               Text(
-                'Less ',
+                '${l10n.chartLess} ',
                 style: AppTypography.labelSmall.copyWith(
                   fontSize: 9,
                   color: hc.textSecondary,
@@ -102,7 +104,7 @@ class ActivityHeatmap extends StatelessWidget {
                     ),
                   )),
               Text(
-                ' More',
+                ' ${l10n.chartMore}',
                 style: AppTypography.labelSmall.copyWith(
                   fontSize: 9,
                   color: hc.textSecondary,

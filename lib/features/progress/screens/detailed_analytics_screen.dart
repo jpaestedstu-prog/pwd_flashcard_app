@@ -15,6 +15,7 @@ import '../widgets/charts/star_pie_chart.dart';
 import '../widgets/charts/study_time_chart.dart';
 import '../widgets/charts/activity_heatmap.dart';
 import '../../../widgets/app_back_button.dart';
+import '../models/category_mastery.dart';
 
 /// Full-page analytics dashboard with interactive fl_chart visuals.
 class DetailedAnalyticsScreen extends ConsumerWidget {
@@ -39,13 +40,12 @@ class DetailedAnalyticsScreen extends ConsumerWidget {
     }
 
     final profileId = profile.id;
-    final categoryProgress = progress.categoryProgress;
-
-    // Build category mastery map (label -> double)
-    final catMastery = <String, double>{};
-    for (final cat in FlashcardCategory.values) {
-      catMastery[cat.label] = categoryProgress[cat.label] ?? 0.0;
-    }
+    // Coverage, not the accuracy average — the chart this feeds is headed
+    // "Category Mastery". See CategoryMastery.
+    final mastery = ref.watch(categoryMasteryProvider);
+    final catMastery = <String, double>{
+      for (final entry in mastery.entries) entry.key.label: entry.value.coverage,
+    };
 
     final dailyMinutes =
         SessionTracker.dailyStudyMinutes(profileId);

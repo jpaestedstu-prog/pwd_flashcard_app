@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Pie / donut chart showing stars earned vs spent vs available.
 class StarPieChart extends StatelessWidget {
@@ -18,6 +19,7 @@ class StarPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hasData = totalStars > 0;
     final hc = HCColor.of(context);
 
@@ -32,14 +34,14 @@ class StarPieChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Stars Overview ⭐',
+            l10n.chartStarsOverviewTitle,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Earned vs spent',
+            l10n.chartStarsEarnedVsSpent,
             style: AppTypography.bodySmall.copyWith(
               color: hc.textSecondary,
             ),
@@ -50,7 +52,7 @@ class StarPieChart extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Text(
-                  'No stars earned yet. Keep learning! ✨',
+                  l10n.chartNoStars,
                   style: AppTypography.bodyMedium.copyWith(
                     color: hc.textSecondary,
                   ),

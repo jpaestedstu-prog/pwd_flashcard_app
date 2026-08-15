@@ -1564,4 +1564,172 @@ class AppLocalizationsFil extends AppLocalizations {
   String spokenWeekSummary(int days, int games, int stars) {
     return 'Ngayong linggo ay aktibo ka sa $days araw, naglaro ng $games laro at nakakuha ng $stars bituin.';
   }
+
+  @override
+  String get chartLess => 'Kaunti';
+
+  @override
+  String get chartMore => 'Marami';
+
+  @override
+  String get chartDifficultyHistory => 'Kasaysayan ng Antas ng Hirap';
+
+  @override
+  String get chartReviewHeatmap => 'Mapa ng Aktibidad sa Pagbabalik-aral';
+
+  @override
+  String get chartStarsEarnedVsSpent => 'Nakuha kumpara sa nagastos';
+
+  @override
+  String get chartStarsAvailable => 'Magagamit';
+
+  @override
+  String get chartStarsSpent => 'Nagastos';
+
+  @override
+  String get catShortAnimals => 'Hayop';
+
+  @override
+  String get catShortColors => 'Kulay';
+
+  @override
+  String get catShortNumbers => 'Bilang';
+
+  @override
+  String get catShortBody => 'Katawan';
+
+  @override
+  String get catShortFood => 'Pagkain';
+
+  @override
+  String get catShortFamily => 'Pamilya';
+
+  @override
+  String get catShortClothing => 'Damit';
+
+  @override
+  String get catShortWeather => 'Panahon';
+
+  @override
+  String get catShortClassroom => 'Klase';
+
+  @override
+  String get catShortTransport => 'Biyahe';
+
+  @override
+  String get catShortEmotions => 'Damdamin';
+
+  @override
+  String get catShortDays => 'Araw';
+
+  @override
+  String get catShortActions => 'Kilos';
+
+  @override
+  String get gameShortMatch => 'Tugma';
+
+  @override
+  String get gameShortSpell => 'Baybay';
+
+  @override
+  String get gameShortQuiz => 'Pagsusulit';
+
+  @override
+  String get gameShortMemory => 'Alaala';
+
+  @override
+  String get gameShortDrag => 'Hila';
+
+  @override
+  String get gameShortPronun => 'Bigkas';
+
+  @override
+  String get gameShortSentence => 'Pangungusap';
+
+  @override
+  String get gameShortStory => 'Kuwento';
+
+  @override
+  String get gameShortTrace => 'Bakat';
+
+  @override
+  String get gameShortFsl => 'FSL';
+
+  @override
+  String get gameShortJigsaw => 'Palaisipan';
+
+  @override
+  String get gameShortPicWord => 'Larawan';
+
+  @override
+  String get gameShortYesNo => 'Oo/Hindi';
+
+  @override
+  String get gameShortOdd => 'Kaiba';
+
+  @override
+  String get gameShortLetter => 'Letra';
+
+  @override
+  String get chartActivityMapTitle => 'Mapa ng Aktibidad 📅';
+
+  @override
+  String get chartActivityMapSubtitle =>
+      'Araw-araw na pag-aaral — huling 8 linggo';
+
+  @override
+  String get chartCategoryMasteryTitle => 'Nasaklaw na Kategorya 🎯';
+
+  @override
+  String get chartDifficultyHigh => 'Mataas (≥80%)';
+
+  @override
+  String get chartDifficultyMedium => 'Katamtaman (50-80%)';
+
+  @override
+  String get chartDifficultyLow => 'Mababa (<50%)';
+
+  @override
+  String get chartNoGameScores => 'Wala pang iskor sa laro. Maglaro muna! 🎮';
+
+  @override
+  String get chartGamePerformanceTitle => 'Pagganap sa Laro 🎮';
+
+  @override
+  String get chartGamePerformanceSubtitle =>
+      'Karaniwang iskor (%) bawat uri ng laro';
+
+  @override
+  String get chartWordsLearnedTitle => 'Natutunang Salita 📈';
+
+  @override
+  String get chartWordsLearnedSubtitle => 'Kabuuang salita — huling 30 araw';
+
+  @override
+  String get chartStarsOverviewTitle => 'Buod ng Bituin ⭐';
+
+  @override
+  String get chartNoStars => 'Wala pang bituin. Magpatuloy sa pag-aaral! ✨';
+
+  @override
+  String get chartStudyTimeTitle => 'Oras ng Pag-aaral ⏱️';
+
+  @override
+  String get chartStudyTimeSubtitle =>
+      'Minuto ng pag-aaral bawat araw (huling 7 araw)';
+
+  @override
+  String get chartMinutesShort => 'min';
+
+  @override
+  String get chartCategoryMasterySubtitle =>
+      'Ang iyong progreso sa lahat ng kategorya ng bokabularyo';
+
+  @override
+  String get chartDifficultySubtitle =>
+      'Kung paano nagbabago ang iyong katumpakan sa paglipas ng panahon';
+
+  @override
+  String get chartDifficultyEmpty =>
+      'Maglaro muna upang makita ang\nkasaysayan ng antas ng hirap!';
 }

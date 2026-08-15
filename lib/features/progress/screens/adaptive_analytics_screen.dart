@@ -18,6 +18,7 @@ import '../widgets/charts/spaced_repetition_heatmap.dart';
 import '../widgets/charts/star_pie_chart.dart';
 import '../widgets/charts/study_time_chart.dart';
 import '../../../widgets/app_back_button.dart';
+import '../models/category_mastery.dart';
 
 /// Enhanced analytics dashboard with adaptive difficulty history,
 /// spaced repetition heatmap, and comprehensive learning insights.
@@ -46,11 +47,14 @@ class AdaptiveAnalyticsScreen extends ConsumerWidget {
 
     final profileId = profile.id;
 
-    // Build category mastery map
-    final catMastery = <String, double>{};
-    for (final cat in FlashcardCategory.values) {
-      catMastery[cat.label] = progress.categoryProgress[cat.label] ?? 0.0;
-    }
+    // Coverage, not the accuracy average: this feeds a chart headed "Category
+    // Mastery" and the mastered / in-progress / not-started counts below, all
+    // of which are statements about how much of a category the learner has
+    // met. See CategoryMastery.
+    final mastery = ref.watch(categoryMasteryProvider);
+    final catMastery = <String, double>{
+      for (final entry in mastery.entries) entry.key.label: entry.value.coverage,
+    };
 
     final dailyMinutes = SessionTracker.dailyStudyMinutes(profileId);
     final totalMin = SessionTracker.totalStudyMinutes(profileId);

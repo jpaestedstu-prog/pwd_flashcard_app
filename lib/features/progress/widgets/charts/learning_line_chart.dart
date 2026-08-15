@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../data/models/models.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Line chart showing words learned over the last 30 days.
 ///
@@ -22,6 +23,7 @@ class LearningLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // Aggregate score counts per day over the last 30 days
     final now = DateTime.now();
     final cutoff = now.subtract(const Duration(days: 30));
@@ -65,14 +67,14 @@ class LearningLineChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Words Learned 📈',
+            l10n.chartWordsLearnedTitle,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Cumulative word progress — last 30 days',
+            l10n.chartWordsLearnedSubtitle,
             style: AppTypography.bodySmall.copyWith(
               color: hc.textSecondary,
             ),

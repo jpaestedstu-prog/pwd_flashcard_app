@@ -2889,6 +2889,330 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This week you were active on {days} days, played {games} games and earned {stars} stars.'**
   String spokenWeekSummary(int days, int games, int stars);
+
+  /// No description provided for @chartLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Less'**
+  String get chartLess;
+
+  /// No description provided for @chartMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get chartMore;
+
+  /// No description provided for @chartDifficultyHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Difficulty Adaptation History'**
+  String get chartDifficultyHistory;
+
+  /// No description provided for @chartReviewHeatmap.
+  ///
+  /// In en, this message translates to:
+  /// **'Review Activity Heatmap'**
+  String get chartReviewHeatmap;
+
+  /// No description provided for @chartStarsEarnedVsSpent.
+  ///
+  /// In en, this message translates to:
+  /// **'Earned vs spent'**
+  String get chartStarsEarnedVsSpent;
+
+  /// No description provided for @chartStarsAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get chartStarsAvailable;
+
+  /// No description provided for @chartStarsSpent.
+  ///
+  /// In en, this message translates to:
+  /// **'Spent'**
+  String get chartStarsSpent;
+
+  /// No description provided for @catShortAnimals.
+  ///
+  /// In en, this message translates to:
+  /// **'Animals'**
+  String get catShortAnimals;
+
+  /// No description provided for @catShortColors.
+  ///
+  /// In en, this message translates to:
+  /// **'Colors'**
+  String get catShortColors;
+
+  /// No description provided for @catShortNumbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbers'**
+  String get catShortNumbers;
+
+  /// No description provided for @catShortBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Body'**
+  String get catShortBody;
+
+  /// No description provided for @catShortFood.
+  ///
+  /// In en, this message translates to:
+  /// **'Food'**
+  String get catShortFood;
+
+  /// No description provided for @catShortFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get catShortFamily;
+
+  /// No description provided for @catShortClothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloth'**
+  String get catShortClothing;
+
+  /// No description provided for @catShortWeather.
+  ///
+  /// In en, this message translates to:
+  /// **'Weather'**
+  String get catShortWeather;
+
+  /// No description provided for @catShortClassroom.
+  ///
+  /// In en, this message translates to:
+  /// **'Class'**
+  String get catShortClassroom;
+
+  /// No description provided for @catShortTransport.
+  ///
+  /// In en, this message translates to:
+  /// **'Travel'**
+  String get catShortTransport;
+
+  /// No description provided for @catShortEmotions.
+  ///
+  /// In en, this message translates to:
+  /// **'Feels'**
+  String get catShortEmotions;
+
+  /// No description provided for @catShortDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days'**
+  String get catShortDays;
+
+  /// No description provided for @catShortActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Action'**
+  String get catShortActions;
+
+  /// No description provided for @gameShortMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Match'**
+  String get gameShortMatch;
+
+  /// No description provided for @gameShortSpell.
+  ///
+  /// In en, this message translates to:
+  /// **'Spell'**
+  String get gameShortSpell;
+
+  /// No description provided for @gameShortQuiz.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiz'**
+  String get gameShortQuiz;
+
+  /// No description provided for @gameShortMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get gameShortMemory;
+
+  /// No description provided for @gameShortDrag.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag'**
+  String get gameShortDrag;
+
+  /// No description provided for @gameShortPronun.
+  ///
+  /// In en, this message translates to:
+  /// **'Pronun'**
+  String get gameShortPronun;
+
+  /// No description provided for @gameShortSentence.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get gameShortSentence;
+
+  /// No description provided for @gameShortStory.
+  ///
+  /// In en, this message translates to:
+  /// **'Story'**
+  String get gameShortStory;
+
+  /// No description provided for @gameShortTrace.
+  ///
+  /// In en, this message translates to:
+  /// **'Trace'**
+  String get gameShortTrace;
+
+  /// No description provided for @gameShortFsl.
+  ///
+  /// In en, this message translates to:
+  /// **'FSL'**
+  String get gameShortFsl;
+
+  /// No description provided for @gameShortJigsaw.
+  ///
+  /// In en, this message translates to:
+  /// **'Jigsaw'**
+  String get gameShortJigsaw;
+
+  /// No description provided for @gameShortPicWord.
+  ///
+  /// In en, this message translates to:
+  /// **'PicWord'**
+  String get gameShortPicWord;
+
+  /// No description provided for @gameShortYesNo.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes/No'**
+  String get gameShortYesNo;
+
+  /// No description provided for @gameShortOdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Odd'**
+  String get gameShortOdd;
+
+  /// No description provided for @gameShortLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'Letter'**
+  String get gameShortLetter;
+
+  /// No description provided for @chartActivityMapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity Map 📅'**
+  String get chartActivityMapTitle;
+
+  /// No description provided for @chartActivityMapSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily study activity — last 8 weeks'**
+  String get chartActivityMapSubtitle;
+
+  /// No description provided for @chartCategoryMasteryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Category Mastery 🎯'**
+  String get chartCategoryMasteryTitle;
+
+  /// No description provided for @chartDifficultyHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High (≥80%)'**
+  String get chartDifficultyHigh;
+
+  /// No description provided for @chartDifficultyMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium (50-80%)'**
+  String get chartDifficultyMedium;
+
+  /// No description provided for @chartDifficultyLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low (<50%)'**
+  String get chartDifficultyLow;
+
+  /// No description provided for @chartNoGameScores.
+  ///
+  /// In en, this message translates to:
+  /// **'No game scores yet. Play some games! 🎮'**
+  String get chartNoGameScores;
+
+  /// No description provided for @chartGamePerformanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Game Performance 🎮'**
+  String get chartGamePerformanceTitle;
+
+  /// No description provided for @chartGamePerformanceSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Average score (%) per game type'**
+  String get chartGamePerformanceSubtitle;
+
+  /// No description provided for @chartWordsLearnedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Words Learned 📈'**
+  String get chartWordsLearnedTitle;
+
+  /// No description provided for @chartWordsLearnedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cumulative word progress — last 30 days'**
+  String get chartWordsLearnedSubtitle;
+
+  /// No description provided for @chartStarsOverviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stars Overview ⭐'**
+  String get chartStarsOverviewTitle;
+
+  /// No description provided for @chartNoStars.
+  ///
+  /// In en, this message translates to:
+  /// **'No stars earned yet. Keep learning! ✨'**
+  String get chartNoStars;
+
+  /// No description provided for @chartStudyTimeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Study Time ⏱️'**
+  String get chartStudyTimeTitle;
+
+  /// No description provided for @chartStudyTimeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes studied per day (last 7 days)'**
+  String get chartStudyTimeSubtitle;
+
+  /// No description provided for @chartMinutesShort.
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get chartMinutesShort;
+
+  /// No description provided for @chartCategoryMasterySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your progress across all vocabulary categories'**
+  String get chartCategoryMasterySubtitle;
+
+  /// No description provided for @chartDifficultySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How your accuracy changes across games over time'**
+  String get chartDifficultySubtitle;
+
+  /// No description provided for @chartDifficultyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Play some games to see your\ndifficulty adaptation history!'**
+  String get chartDifficultyEmpty;
 }
 
 class _AppLocalizationsDelegate

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../data/models/enums.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Radar chart showing mastery percentages across all 12 categories.
 class CategoryRadarChart extends StatelessWidget {
@@ -12,6 +13,7 @@ class CategoryRadarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     const categories = FlashcardCategory.values;
     final values = categories
         .map((c) => categoryProgress[c.label] ?? 0.0)
@@ -30,14 +32,14 @@ class CategoryRadarChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Category Mastery 🎯',
+            l10n.chartCategoryMasteryTitle,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Your progress across all vocabulary categories',
+            l10n.chartCategoryMasterySubtitle,
             style: AppTypography.bodySmall.copyWith(
               color: hc.textSecondary,
             ),
@@ -67,7 +69,7 @@ class CategoryRadarChart extends StatelessWidget {
                   color: hc.textSecondary,
                 ),
                 getTitle: (index, angle) => RadarChartTitle(
-                  text: _shortLabel(categories[index]),
+                  text: _shortLabel(l10n, categories[index]),
                 ),
                 tickCount: 4,
                 ticksTextStyle: AppTypography.labelSmall.copyWith(
@@ -88,21 +90,26 @@ class CategoryRadarChart extends StatelessWidget {
     );
   }
 
-  String _shortLabel(FlashcardCategory cat) {
+  /// Compact axis label, localized.
+  ///
+  /// These are deliberately shorter than `cat.label` — a radar axis has no
+  /// room for "Family & Greetings" — so they are their own strings rather
+  /// than a truncation of the category name.
+  String _shortLabel(AppLocalizations l10n, FlashcardCategory cat) {
     return switch (cat) {
-      FlashcardCategory.animals => 'Animals',
-      FlashcardCategory.colorsAndShapes => 'Colors',
-      FlashcardCategory.numbers => 'Numbers',
-      FlashcardCategory.bodyParts => 'Body',
-      FlashcardCategory.foodAndDrinks => 'Food',
-      FlashcardCategory.familyAndGreetings => 'Family',
-      FlashcardCategory.clothing => 'Cloth',
-      FlashcardCategory.weather => 'Weather',
-      FlashcardCategory.classroom => 'Class',
-      FlashcardCategory.transportation => 'Travel',
-      FlashcardCategory.emotions => 'Feels',
-      FlashcardCategory.daysAndTime => 'Days',
-      FlashcardCategory.actions => 'Action',
+      FlashcardCategory.animals => l10n.catShortAnimals,
+      FlashcardCategory.colorsAndShapes => l10n.catShortColors,
+      FlashcardCategory.numbers => l10n.catShortNumbers,
+      FlashcardCategory.bodyParts => l10n.catShortBody,
+      FlashcardCategory.foodAndDrinks => l10n.catShortFood,
+      FlashcardCategory.familyAndGreetings => l10n.catShortFamily,
+      FlashcardCategory.clothing => l10n.catShortClothing,
+      FlashcardCategory.weather => l10n.catShortWeather,
+      FlashcardCategory.classroom => l10n.catShortClassroom,
+      FlashcardCategory.transportation => l10n.catShortTransport,
+      FlashcardCategory.emotions => l10n.catShortEmotions,
+      FlashcardCategory.daysAndTime => l10n.catShortDays,
+      FlashcardCategory.actions => l10n.catShortActions,
     };
   }
 }
