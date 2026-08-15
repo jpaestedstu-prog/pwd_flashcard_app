@@ -1,5 +1,7 @@
 {
-  "generated_at": "2026-07-28T17:34:31.132Z",
+  "generated_at": "2026-08-15T14:52:10.411Z",
+  "release_tag": "v1",
+  "release_repo": "jpaestedstu-prog/pwd-fsl-videos",
   "entries": [
     {
       "category": "Animals",
@@ -638,7 +640,7 @@
       "word_english": "Shorts",
       "word_filipino": "Shorts",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__shorts.mp4",
-      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237770/SMALL_vmspk2.mp4"
+      "size_bytes": 3474770
     },
     {
       "category": "Clothing",
@@ -734,7 +736,7 @@
       "word_english": "Flood",
       "word_filipino": "Baha",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__flood.mp4",
-      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237281/FLOOR_cf3vsr.mp4"
+      "size_bytes": 3854432
     },
     {
       "category": "Weather",
@@ -743,6 +745,14 @@
       "word_filipino": "Kidlat",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__lightning.mp4",
       "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237678/LIGHT_lbhwhs.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "partly cloudy",
+      "word_english": "Partly Cloudy",
+      "word_filipino": "Bahagyang Maulap",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__partly-cloudy.mp4",
+      "size_bytes": 5311809
     },
     {
       "category": "Weather",
@@ -782,7 +792,7 @@
       "word_english": "Crayon",
       "word_filipino": "Krayola",
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__crayon.mp4",
-      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237219/COLOR_fbls03.mp4"
+      "size_bytes": 2720716
     },
     {
       "category": "Classroom",
@@ -1136,11 +1146,5 @@
       "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__today.mp4",
       "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237822/TODAY_auj7gx.mp4"
     }
-  ],
-  "video_source": {
-    "primary": "github_release",
-    "fallback": "cloudinary",
-    "repo": "jpaestedstu-prog/pwd-fsl-videos",
-    "tag": "v1"
-  }
+  ]
 }
