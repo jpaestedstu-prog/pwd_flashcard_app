@@ -111,6 +111,64 @@ void main() {
     expect(find.text('Player Profile'), findsOneWidget);
   });
 
+  testWidgets('the banner takes its own space instead of covering content', (
+    tester,
+  ) async {
+    // As an overlay the banner sat on the first row of home tiles and stayed
+    // there while the page scrolled underneath, so "Assessments", "Learning",
+    // "My Portfolio" and "My Goals" were unreadable until it was dismissed.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          seasonalEventProvider.overrideWithValue(event),
+          settingsProvider.overrideWith(_FixedSettings.new),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: SeasonalBannerStrip()),
+                SliverToBoxAdapter(
+                  child: SizedBox(height: 80, child: Text('Assessments')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final bannerBottom = tester.getRect(find.text(event.name)).bottom;
+    final tileTop = tester.getRect(find.text('Assessments')).top;
+
+    expect(
+      tileTop,
+      greaterThanOrEqualTo(bannerBottom),
+      reason: 'the first tile must start below the banner, not underneath it',
+    );
+  });
+
+  testWidgets('the banner can still be dismissed', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          seasonalEventProvider.overrideWithValue(event),
+          settingsProvider.overrideWith(_FixedSettings.new),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: SeasonalBannerStrip()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(event.name), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pumpAndSettle();
+    expect(find.text(event.name), findsNothing);
+  });
+
   testWidgets('no event means no decoration at all', (tester) async {
     await tester.pumpWidget(
       ProviderScope(

@@ -168,6 +168,87 @@ class _SeasonalDecorationsState extends ConsumerState<SeasonalDecorations>
   }
 }
 
+/// The seasonal banner on its own, laid out **in flow** rather than as an
+/// overlay.
+///
+/// [SeasonalDecorations] positions its copy at `top: 0` over whatever screen it
+/// decorates, which meant the banner sat on top of the first row of home tiles
+/// and stayed there while the page scrolled underneath — "Assessments",
+/// "Learning", "My Portfolio" and "My Goals" were unreadable until it was
+/// dismissed. A banner that announces an event should cost the page its own
+/// height, not a row of its content.
+///
+/// Place this in the scroll content and pass `showBanner: false` to
+/// [SeasonalDecorations] so the particles still float above everything.
+/// Renders nothing when no event is active or the learner has dismissed it.
+class SeasonalBannerStrip extends ConsumerStatefulWidget {
+  const SeasonalBannerStrip({super.key});
+
+  @override
+  ConsumerState<SeasonalBannerStrip> createState() =>
+      _SeasonalBannerStripState();
+}
+
+class _SeasonalBannerStripState extends ConsumerState<SeasonalBannerStrip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _slide;
+  late final Animation<double> _fade;
+  bool _dismissed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _slide = Tween<double>(begin: -1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+    _fade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+      ),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final event = ref.watch(seasonalEventProvider);
+    if (event == null || _dismissed) return const SizedBox.shrink();
+
+    final reducedMotion = ref.watch(
+      settingsProvider.select((s) => s.reducedMotion),
+    );
+    final banner = _SeasonalBanner(
+      event: event,
+      onDismiss: () => setState(() => _dismissed = true),
+    );
+
+    // The entrance is decoration; a learner who asked for less motion gets the
+    // banner already in place.
+    if (reducedMotion) return banner;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Transform.translate(
+        offset: Offset(0, _slide.value * 60),
+        child: Opacity(opacity: _fade.value, child: child),
+      ),
+      child: banner,
+    );
+  }
+}
+
 // ─── Seasonal Banner Widget ────────────────────────────────────
 class _SeasonalBanner extends StatelessWidget {
   final SeasonalEvent event;

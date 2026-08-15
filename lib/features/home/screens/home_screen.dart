@@ -125,6 +125,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               body: SafeArea(
                 child: CustomScrollView(
                   slivers: [
+                    // ─── Seasonal Banner ──────────────────
+                    // In the scroll, not over it: as an overlay it covered the
+                    // first row of feature tiles and stayed there while the
+                    // page scrolled underneath.
+                    const SliverToBoxAdapter(child: SeasonalBannerStrip()),
+
                     // ─── App Bar ──────────────────────────
                     SliverToBoxAdapter(
                       child: Padding(
@@ -609,8 +615,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             // Mascot companion
             const AnimatedMascotBuddy(),
-            // Seasonal event decorations
-            const SeasonalDecorations(),
+            // Particles only — the banner is a sliver above, so it takes its
+            // own space instead of sitting on the tiles.
+            const SeasonalDecorations(showBanner: false),
           ],
         ),
       ),

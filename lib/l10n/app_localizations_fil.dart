@@ -1629,28 +1629,28 @@ class AppLocalizationsFil extends AppLocalizations {
   String get gameShortMatch => 'Tugma';
 
   @override
-  String get gameShortSpell => 'Baybay';
+  String get gameShortSpell => 'Spelling';
 
   @override
-  String get gameShortQuiz => 'Pagsusulit';
+  String get gameShortQuiz => 'Quiz';
 
   @override
-  String get gameShortMemory => 'Alaala';
+  String get gameShortMemory => 'Memory';
 
   @override
-  String get gameShortDrag => 'Hila';
+  String get gameShortDrag => 'Drag';
 
   @override
   String get gameShortPronun => 'Bigkas';
 
   @override
-  String get gameShortSentence => 'Pangungusap';
+  String get gameShortSentence => 'Sentence';
 
   @override
-  String get gameShortStory => 'Kuwento';
+  String get gameShortStory => 'Kwento';
 
   @override
-  String get gameShortTrace => 'Bakat';
+  String get gameShortTrace => 'Sulat';
 
   @override
   String get gameShortFsl => 'FSL';
@@ -1678,7 +1678,7 @@ class AppLocalizationsFil extends AppLocalizations {
       'Araw-araw na pag-aaral — huling 8 linggo';
 
   @override
-  String get chartCategoryMasteryTitle => 'Nasaklaw na Kategorya 🎯';
+  String get chartCategoryMasteryTitle => 'Saklaw ng Kategorya 🎯';
 
   @override
   String get chartDifficultyHigh => 'Mataas (≥80%)';
@@ -1706,7 +1706,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get chartWordsLearnedSubtitle => 'Kabuuang salita — huling 30 araw';
 
   @override
-  String get chartStarsOverviewTitle => 'Buod ng Bituin ⭐';
+  String get chartStarsOverviewTitle => 'Buod ng Mga Bituin ⭐';
 
   @override
   String get chartNoStars => 'Wala pang bituin. Magpatuloy sa pag-aaral! ✨';

@@ -4,7 +4,9 @@
   "greeting": "Hi, {name}! 👋",
   "@greeting": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "readyToLearn": "Ready to learn new words today?",
@@ -43,10 +45,12 @@
   "progressTitle": "{name}'s Progress",
   "@progressTitle": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
-  "games": "Games 🎮",
+  "games": "Games",
   "learnWhileHavingFun": "Learn new words while having fun!",
   "chooseDifficulty": "Choose Difficulty",
   "chooseCategories": "Choose Categories",
@@ -66,7 +70,9 @@
   "hintsLeft": "Hint ({count} left)",
   "@hintsLeft": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "fillInTheBlank": "Fill in the blank",
@@ -89,13 +95,17 @@
   "itemNotReady": "{name} is not ready yet.",
   "@itemNotReady": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "starsRefunded": "⭐ {count} stars are back — something you bought isn't ready yet, so we returned it.",
   "@starsRefunded": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "owned": "Owned",
@@ -103,20 +113,26 @@
   "buyItem": "Buy {name}?",
   "@buyItem": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "notEnoughStars": "Not enough stars! You need {count} more ⭐",
   "@notEnoughStars": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "alreadyOwned": "You already own this item!",
   "purchaseSuccess": "🎉 You got {name}!",
   "@purchaseSuccess": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "studyTime": "Study Time",
@@ -128,7 +144,9 @@
   "teacherDashboard": "{role} Dashboard",
   "@teacherDashboard": {
     "placeholders": {
-      "role": { "type": "String" }
+      "role": {
+        "type": "String"
+      }
     }
   },
   "overallMastery": "Overall Mastery",
@@ -168,19 +186,22 @@
   "focusOn": "Focus on {category} flashcards and games.",
   "@focusOn": {
     "placeholders": {
-      "category": { "type": "String" }
+      "category": {
+        "type": "String"
+      }
     }
   },
   "streakActive": "{count}-day learning streak active!",
   "@streakActive": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "noStreakMessage": "No active streak. Try daily practice.",
   "greatConsistency": "Great consistency! The student is building a habit.",
   "encourageDaily": "Encourage the student to play at least once a day.",
-
   "stories": "Stories 📖",
   "readStoriesAndAnswer": "Read fun stories and answer questions!",
   "storyQuiz": "Story Quiz",
@@ -190,13 +211,17 @@
   "storySentences": "{count} sentences",
   "@storySentences": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "storyQuestions": "{count} questions",
   "@storyQuestions": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "locked": "Locked",
@@ -220,8 +245,7 @@
   "voiceNavigationDesc": "Announce screens aloud",
   "adaptiveDifficulty": "Adaptive Difficulty",
   "adaptiveDifficultyDesc": "Auto-suggest game difficulty",
-
-  "welcome": "Welcome! \ud83d\udc4b",
+  "welcome": "Welcome! 👋",
   "whoAreYou": "Who are you?",
   "whatsYourName": "What's your name?",
   "enterYourName": "Enter your name...",
@@ -230,11 +254,17 @@
   "iWantToLearn": "I want to learn new words!",
   "iWantToHelp": "I want to help students learn",
   "iWantToSupport": "I want to support my child",
-  "welcomeBack": "Welcome Back! \ud83d\udc4b",
+  "welcomeBack": "Welcome Back! 👋",
   "chooseYourProfile": "Choose your profile",
   "addNewProfile": "Add New Profile",
   "enterPin": "Enter PIN for {name}",
-  "@enterPin": { "placeholders": { "name": { "type": "String" } } },
+  "@enterPin": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "wrongPin": "Wrong PIN. Try again.",
   "setPin": "Set PIN",
   "changePin": "Change PIN",
@@ -252,14 +282,32 @@
   "recommendedSettings": "Recommended Settings",
   "noSpecialSettings": "No special settings needed!\nYou're all set with the defaults.",
   "weWillApplySettings": "We'll apply these settings for {type}:",
-  "@weWillApplySettings": { "placeholders": { "type": { "type": "String" } } },
-  "changeInSettings": "You can change these anytime in Settings \u2699\ufe0f",
+  "@weWillApplySettings": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "changeInSettings": "You can change these anytime in Settings ⚙️",
   "applyAndContinue": "Apply & Continue",
-  "youreAllSet": "You're All Set! \ud83c\udf89",
+  "youreAllSet": "You're All Set! 🎉",
   "welcomeName": "Welcome, {name}!",
-  "@welcomeName": { "placeholders": { "name": { "type": "String" } } },
+  "@welcomeName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "appOptimizedFor": "Your app has been optimized for\n{type}",
-  "@appOptimizedFor": { "placeholders": { "type": { "type": "String" } } },
+  "@appOptimizedFor": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
   "standardSettings": "Standard settings are ready to go.",
   "adjustAnytime": "You can adjust all settings anytime\nfrom the Settings page.",
   "letsStartLearning": "Let's Start Learning!",
@@ -269,15 +317,33 @@
   "importLabel": "Import",
   "exportLabel": "Export",
   "importedCards": "Imported {count} flashcard(s)!",
-  "@importedCards": { "placeholders": { "count": { "type": "int" } } },
+  "@importedCards": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "noDuplicates": "No new cards to import (all duplicates or cancelled).",
   "importFailed": "Import failed — check the file format.",
   "createCard": "Create Card",
   "cards": "{count} cards",
-  "@cards": { "placeholders": { "count": { "type": "int" } } },
+  "@cards": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "deleteFlashcard": "Delete Flashcard?",
   "deleteConfirm": "Are you sure you want to delete \"{name}\"? This cannot be undone.",
-  "@deleteConfirm": { "placeholders": { "name": { "type": "String" } } },
+  "@deleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "delete": "Delete",
   "flashcardDeleted": "Flashcard deleted",
   "customCard": "Custom Card",
@@ -290,9 +356,15 @@
   "flip": "Flip",
   "filipinoSignLanguage": "Filipino Sign Language",
   "noFslVideo": "No FSL video available yet for \"{word}\".",
-  "@noFslVideo": { "placeholders": { "word": { "type": "String" } } },
+  "@noFslVideo": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
   "gotIt": "Got it!",
-  "tapToSeeMore": "Tap to see more \u2728",
+  "tapToSeeMore": "Tap to see more ✨",
   "details": "DETAILS",
   "example": "Example",
   "tapToFlipBack": "Tap to flip back",
@@ -300,13 +372,25 @@
   "replay": "Replay",
   "close": "Close",
   "unableToLoadVideo": "Unable to load video",
-  "fslDictionary": "FSL Dictionary \ud83e\udd1f",
+  "fslDictionary": "FSL Dictionary 🤟",
   "searchWords": "Search words...",
   "all": "All",
   "wordsCount": "{count} words",
-  "@wordsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@wordsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "videosWatched": "{count} videos watched",
-  "@videosWatched": { "placeholders": { "count": { "type": "int" } } },
+  "@videosWatched": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "noWordsFound": "No words found",
   "noWordsToReview": "No words to review!",
   "playGamesFirst": "Play some games first to build up your word data.",
@@ -322,22 +406,49 @@
   "dragInstruction": "Drag the English word to its Filipino match!",
   "tracing": "Tracing",
   "traceWord": "Trace: {word}",
-  "@traceWord": { "placeholders": { "word": { "type": "String" } } },
+  "@traceWord": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
   "clear": "Clear",
   "check": "Check",
   "whatIsThisWord": "What is this word?",
   "moves": "{count} moves",
-  "@moves": { "placeholders": { "count": { "type": "int" } } },
+  "@moves": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "matched": "Matched: {current} / {total}",
-  "@matched": { "placeholders": { "current": { "type": "int" }, "total": { "type": "int" } } },
-  "stillLearningSwipe": "\u2190 Still\nLearning",
-  "iKnowThisSwipe": "I Know\nThis! \u2192",
+  "@matched": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "stillLearningSwipe": "← Still\nLearning",
+  "iKnowThisSwipe": "I Know\nThis! →",
   "learning": "Learning",
   "iKnow": "I Know!",
-  "amazing": "\ud83c\udf89 Amazing!",
-  "keepGoing": "\ud83d\udcaa Keep Going!",
+  "amazing": "🎉 Amazing!",
+  "keepGoing": "💪 Keep Going!",
   "percentMastered": "{percent}% mastered",
-  "@percentMastered": { "placeholders": { "percent": { "type": "int" } } },
+  "@percentMastered": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
   "reviewWords": "Review Words",
   "again": "Again",
   "listenAndPick": "Listen & Pick",
@@ -345,7 +456,7 @@
   "listenFilipino": "Listen to the Filipino word",
   "pickFilipino": "Pick the Filipino match!",
   "pickEnglish": "Pick the English match!",
-  "tapSpeakerReplay": "\ud83d\udd0a Tap speaker to replay",
+  "tapSpeakerReplay": "🔊 Tap speaker to replay",
   "noWordsAvailable": "No words available for this category.",
   "storyNotFound": "Story Not Found",
   "storyNotFoundMsg": "Story not found.",
@@ -353,20 +464,44 @@
   "back": "Back",
   "quizNotFound": "Quiz Not Found",
   "questionOf": "Question {current} of {total}",
-  "@questionOf": { "placeholders": { "current": { "type": "int" }, "total": { "type": "int" } } },
+  "@questionOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "equipped": "Equipped",
   "tapToEquip": "Tap to Equip",
   "starsAmount": "{count} stars",
-  "@starsAmount": { "placeholders": { "count": { "type": "int" } } },
+  "@starsAmount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "viewLeaderboard": "View Leaderboard",
   "detailedAnalytics": "Detailed Analytics",
   "starCollection": "Star Collection",
   "achievements": "Achievements",
   "days": "days",
-  "leaderboard": "Leaderboard \ud83c\udfc6",
+  "leaderboard": "Leaderboard 🏆",
   "noEntriesYet": "No entries yet.\nPlay games and learn words to rank up!",
   "activeTotal": "{active} active / {total} total",
-  "@activeTotal": { "placeholders": { "active": { "type": "int" }, "total": { "type": "int" } } },
+  "@activeTotal": {
+    "placeholders": {
+      "active": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "createStudentMsg": "Students appear here after joining your class with a code.\nShare the class code from Manage Classes to invite them.",
   "switchProfile": "Switch",
   "clothing": "Clothing",
@@ -393,13 +528,10 @@
   "thisWeek": "This Week",
   "recommendations": "Recommendations",
   "wordsLearned": "Words Learned",
-  "studyTime": "Study Time",
   "activeToday": "Active today",
   "lastActive": "Last active",
   "strengthsAndAreas": "Strengths & Areas to Improve",
-  "recentGames": "Recent Games",
   "createProfile": "Create Profile",
-  "noStudentProfiles": "No student profiles found",
   "encouragePractice": "Encourage {name} to practice",
   "keepUpGreatWork": "Keep up the great work!",
   "learnWordsThrough": "Learn words through play! ✨",
@@ -418,9 +550,21 @@
   "pauseVideo": "Pause video",
   "playVideo": "Play video",
   "setSpeedTo": "Set speed to {speed}x",
-  "@setSpeedTo": { "placeholders": { "speed": { "type": "String" } } },
+  "@setSpeedTo": {
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      }
+    }
+  },
   "pinLockedTryAgainIn": "Too many tries. Try again in {duration}.",
-  "@pinLockedTryAgainIn": { "placeholders": { "duration": { "type": "String" } } },
+  "@pinLockedTryAgainIn": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "forgotPin": "Forgot PIN?",
   "recoveryCodeTitle": "Save your recovery code",
   "recoveryCodeSubtitle": "Write this down. You'll need it if you forget your PIN. We can't show it again.",
@@ -429,14 +573,19 @@
   "recoveryCodeWrong": "That code didn't match.",
   "recoveryViaEducatorTitle": "Ask a teacher or parent",
   "recoveryViaEducatorPrompt": "Have a teacher or parent enter their PIN to reset {name}'s PIN.",
-  "@recoveryViaEducatorPrompt": { "placeholders": { "name": { "type": "String" } } },
+  "@recoveryViaEducatorPrompt": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "recoveryNoEducator": "No teacher or parent profile is set up on this device. Ask an adult to add one, or remove the profile to start over.",
   "pinResetSuccess": "PIN reset. Set a new one.",
   "pinChangedSuccess": "PIN updated.",
   "setNewPin": "Set a new PIN",
   "regenerateRecoveryCode": "Regenerate recovery code",
   "showRecoveryCode": "Show recovery code",
-
   "setUpProfileTitle": "Set Up Profile",
   "letsSetUpProfile": "Let's set up your profile",
   "nameLabel": "Name",
@@ -447,9 +596,21 @@
   "selectBirthDate": "Select birth date",
   "pleaseSelectBirthDate": "Please select a birth date",
   "yearsOld": "{count} yrs old",
-  "@yearsOld": { "placeholders": { "count": { "type": "int" } } },
+  "@yearsOld": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "suggestedLevel": "✨ Suggested level: {level}",
-  "@suggestedLevel": { "placeholders": { "level": { "type": "String" } } },
+  "@suggestedLevel": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
   "pinProtection": "PIN Protection",
   "pinProtectionDescription": "Add a 4-digit PIN to protect this profile",
   "enablePinLock": "Enable PIN lock",
@@ -486,7 +647,13 @@
   "pwdAwarenessTitle": "PWD Awareness",
   "pwdAwarenessSubtitle": "Understanding & respecting Persons with Disabilities",
   "youJoined": "You joined {name}.",
-  "@youJoined": { "placeholders": { "name": { "type": "String" } } },
+  "@youJoined": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "getStarted": "Get Started",
   "welcomeSlide1Title": "Learn Filipino Sign Language",
   "welcomeSlide1Body": "Fun flashcards, games, and FSL videos to build vocabulary every day.",
@@ -519,15 +686,23 @@
   "wordHuntFoundOf": "{found} of {total} words found",
   "@wordHuntFoundOf": {
     "placeholders": {
-      "found": { "type": "int" },
-      "total": { "type": "int" }
+      "found": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "wordHuntStarsToday": "{earned} of {cap} camera stars today",
   "@wordHuntStarsToday": {
     "placeholders": {
-      "earned": { "type": "int" },
-      "cap": { "type": "int" }
+      "earned": {
+        "type": "int"
+      },
+      "cap": {
+        "type": "int"
+      }
     }
   },
   "wordHuntCollectionEmpty": "You haven't found any words yet. Point the camera at something around you!",
@@ -540,54 +715,93 @@
   "wordHuntSpokenFound": "I found {count} words: {words}",
   "@wordHuntSpokenFound": {
     "placeholders": {
-      "count": { "type": "int" },
-      "words": { "type": "String" }
+      "count": {
+        "type": "int"
+      },
+      "words": {
+        "type": "String"
+      }
     }
   },
   "wordHuntSayTakePhoto": "Say \"take a photo\"",
   "wordHuntFoundTarget": "Found it! {words} was on your list.",
   "@wordHuntFoundTarget": {
-    "placeholders": { "words": { "type": "String" } }
+    "placeholders": {
+      "words": {
+        "type": "String"
+      }
+    }
   },
   "wordHuntFoundTargets": "Found them! {words} were on your list.",
   "@wordHuntFoundTargets": {
-    "placeholders": { "words": { "type": "String" } }
+    "placeholders": {
+      "words": {
+        "type": "String"
+      }
+    }
   },
   "wordHuntStreakDays": "{days}-day hunt streak",
   "@wordHuntStreakDays": {
-    "placeholders": { "days": { "type": "int" } }
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
   },
   "wordHuntFindsToday": "{count} found today",
   "@wordHuntFindsToday": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "wordHuntNextBadge": "{remaining} more to unlock {badge}",
   "@wordHuntNextBadge": {
     "placeholders": {
-      "remaining": { "type": "int" },
-      "badge": { "type": "String" }
+      "remaining": {
+        "type": "int"
+      },
+      "badge": {
+        "type": "String"
+      }
     }
   },
   "wordHuntCameraBusyReason": "This activity points the camera at the world around you, so it needs the camera to itself. Head control will pause while it is open.",
-
-  "progressTitle": "{name}'s Progress",
-  "@progressTitle": { "placeholders": { "name": { "type": "String" } } },
   "customizeProgress": "Customize progress",
   "customize": "Customize",
-  "streak": "Streak",
-  "games": "Games",
   "signs": "Signs",
-  "mastery": "Mastery",
   "bestStreak": "best {days}",
-  "@bestStreak": { "placeholders": { "days": { "type": "int" } } },
+  "@bestStreak": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "starsLeftToSpend": "{count} left",
-  "@starsLeftToSpend": { "placeholders": { "count": { "type": "int" } } },
+  "@starsLeftToSpend": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "streakCalendar": "Streak Calendar",
   "certificates": "Certificates",
   "advancedAnalytics": "Learning Insights",
   "firstBadgePrompt": "Keep learning to unlock your first badge!",
   "badgesEarned": "{earned} of {total} earned",
-  "@badgesEarned": { "placeholders": { "earned": { "type": "int" }, "total": { "type": "int" } } },
+  "@badgesEarned": {
+    "placeholders": {
+      "earned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "reading": "Reading",
   "storiesRead": "Stories read",
   "perfectQuizzes": "3-star quizzes",
@@ -595,33 +809,50 @@
   "signsWatched": "Watched",
   "signsCanMake": "I can sign",
   "signsConfirmed": "Teacher confirmed",
-  "thisWeek": "This Week",
   "daysActive": "Days active",
   "minutesStudied": "Minutes",
   "newWords": "New words",
   "weeklyEmpty": "Nothing yet this week — play a game or read a story and it will show up here.",
   "hearMyProgress": "Hear my progress",
   "studyMinutes": "Study Min",
-  "accuracy": "Accuracy",
-  "sessions": "Sessions",
   "spokenProgressSummary": "You are level {level}, {title}. You have learned {words} words and earned {stars} stars. Your streak is {streak} days, and your best ever is {best} days. You have played {games} games.",
   "@spokenProgressSummary": {
     "placeholders": {
-      "level": { "type": "int" },
-      "title": { "type": "String" },
-      "words": { "type": "int" },
-      "stars": { "type": "int" },
-      "streak": { "type": "int" },
-      "best": { "type": "int" },
-      "games": { "type": "int" }
+      "level": {
+        "type": "int"
+      },
+      "title": {
+        "type": "String"
+      },
+      "words": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      },
+      "streak": {
+        "type": "int"
+      },
+      "best": {
+        "type": "int"
+      },
+      "games": {
+        "type": "int"
+      }
     }
   },
   "spokenWeekSummary": "This week you were active on {days} days, played {games} games and earned {stars} stars.",
   "@spokenWeekSummary": {
     "placeholders": {
-      "days": { "type": "int" },
-      "games": { "type": "int" },
-      "stars": { "type": "int" }
+      "days": {
+        "type": "int"
+      },
+      "games": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      }
     }
   },
   "chartLess": "Less",
