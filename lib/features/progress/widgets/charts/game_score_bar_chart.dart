@@ -38,8 +38,7 @@ class GameScoreBarChart extends StatelessWidget {
         child: Center(
           child: Text(
             'No game scores yet. Play some games! 🎮',
-            style: AppTypography.bodyMedium
-                .copyWith(color: hc.textSecondary),
+            style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
           ),
         ),
       );
@@ -76,9 +75,7 @@ class GameScoreBarChart extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Average score (%) per game type',
-            style: AppTypography.bodySmall.copyWith(
-              color: hc.textSecondary,
-            ),
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -142,10 +139,8 @@ class GameScoreBarChart extends StatelessWidget {
                       },
                     ),
                   ),
-                  topTitles: const AxisTitles(
-                      ),
-                  rightTitles: const AxisTitles(
-                      ),
+                  topTitles: const AxisTitles(),
+                  rightTitles: const AxisTitles(),
                 ),
                 gridData: FlGridData(
                   drawVerticalLine: false,
@@ -158,7 +153,8 @@ class GameScoreBarChart extends StatelessWidget {
                 borderData: FlBorderData(show: false),
                 barGroups: entries.asMap().entries.map((e) {
                   final i = e.key;
-                  final avg = e.value.value.reduce((a, b) => a + b) /
+                  final avg =
+                      e.value.value.reduce((a, b) => a + b) /
                       e.value.value.length;
                   return BarChartGroupData(
                     x: i,
@@ -210,6 +206,12 @@ class GameScoreBarChart extends StatelessWidget {
         return 'Jigsaw';
       case GameType.pictureWord:
         return 'PicWord';
+      case GameType.yesOrNo:
+        return 'Yes/No';
+      case GameType.oddOneOut:
+        return 'Odd';
+      case GameType.firstLetter:
+        return 'Letter';
     }
   }
 }

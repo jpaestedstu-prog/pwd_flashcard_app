@@ -18,10 +18,25 @@ class PlayerLevel {
 /// Computes XP and levels from a student's [LearningProgress].
 ///
 /// XP formula:
-///   - Each word learned  = 10 XP
+///   - Each word learned   = 10 XP
 ///   - Each star earned    =  2 XP
-///   - Each streak day     = 15 XP
+///   - Each best-streak day = 15 XP
 ///   - Each game played    =  5 XP
+///
+/// **Every input is monotonic, so XP never falls and a learner can never be
+/// demoted.** That is a deliberate design rule, not an accident of the current
+/// numbers: this app's learners are exactly the ones a punishment mechanic
+/// hurts most. Two of the inputs used to break it —
+///
+///   - `streakDays` resets to 1 the moment a day is missed, so a fortnight's
+///     streak evaporating dropped 195 XP and could demote a learner a whole
+///     level for being ill. Scored off [LearningProgress.effectiveBestStreak]
+///     instead, which is a high-water mark.
+///   - `recentScores` is trimmed to the last 20 entries, so game XP silently
+///     capped at 100. Scored off [LearningProgress.effectiveGamesPlayed].
+///
+/// Anything added here must be monotonic too. Stars use `totalStars` (lifetime
+/// earnings) rather than `starBalance`, so spending in the Shop costs no XP.
 class XpService {
   XpService._();
 
@@ -39,13 +54,53 @@ class XpService {
     PlayerLevel(level: 10, title: 'Grandmaster', emoji: '💎', xpRequired: 5500),
   ];
 
-  /// Total XP earned from the given progress.
+  /// Total XP earned from the given progress. Never decreases — see the class
+  /// doc for why each input is the monotonic one.
   static int calculateXp(LearningProgress progress) {
     final wordXp = progress.wordsLearned * 10;
     final starXp = progress.totalStars * 2;
-    final streakXp = progress.streakDays * 15;
-    final gameXp = progress.recentScores.length * 5;
-    return wordXp + starXp + streakXp + gameXp;
+    final streakXp = progress.effectiveBestStreak * 15;
+    final gameXp = progress.effectiveGamesPlayed * 5;
+    // Distinct signs watched. Monotonic like the rest: the set only ever grows,
+    // so a learner can never de-level. Worth less than a word learned (which
+    // requires answering correctly) but more than a game played — watching a
+    // new sign is the core act of the FSL side of the app, and until now it
+    // earned nothing at all.
+    final signXp = progress.signsLearned * 8;
+    // Educator-confirmed production. Worth more than watching a sign (8) or
+    // answering a recognition question (10): it took a learner claiming it and
+    // a teacher watching them do it.
+    //
+    // Only *confirmed* signs score — a bare self-claim earns nothing. That is
+    // deliberate: the claim is unverified self-report, and if it paid XP a
+    // learner could tap through 142 words and level up without signing once,
+    // which would also poison the calibration measure this feature exists to
+    // produce. Scored off the monotonic ever-confirmed set, so an educator
+    // downgrading a word never de-levels the learner.
+    final confirmedSignXp = progress.signsConfirmed * 15;
+    return wordXp + starXp + streakXp + gameXp + signXp + confirmedSignXp;
+  }
+
+  /// XP earned *inside* the current level band — the numerator that matches
+  /// [progressToNextLevel]'s bar. At max level this is the full band.
+  static int xpIntoLevel(LearningProgress progress) {
+    final xp = calculateXp(progress);
+    return xp - currentLevel(progress).xpRequired;
+  }
+
+  /// Total XP the current level band spans, i.e. the denominator that matches
+  /// [progressToNextLevel]'s bar. Null at max level, where there is no band.
+  static int? xpLevelSpan(LearningProgress progress) {
+    final next = nextLevel(progress);
+    if (next == null) return null;
+    return next.xpRequired - currentLevel(progress).xpRequired;
+  }
+
+  /// XP still needed to reach the next level, or null at max level.
+  static int? xpToNextLevel(LearningProgress progress) {
+    final next = nextLevel(progress);
+    if (next == null) return null;
+    return (next.xpRequired - calculateXp(progress)).clamp(0, next.xpRequired);
   }
 
   /// The current [PlayerLevel] for the given progress.

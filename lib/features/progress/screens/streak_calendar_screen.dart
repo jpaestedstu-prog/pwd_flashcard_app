@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,8 +43,15 @@ class StreakCalendarScreen extends ConsumerWidget {
 
     final allActivityDates = {...completedDates, ...sessionDates};
 
-    // Calculate longest streak from activity dates
-    final longestStreak = _calculateLongestStreak(allActivityDates);
+    // Longest streak. The date-derived figure is only as complete as the logs
+    // that survive — daily-challenge history, session logs, and the last 20
+    // game scores — so it silently under-reports once older activity is pruned.
+    // `effectiveBestStreak` is the recorded high-water mark that XP is scored
+    // off, so take whichever is larger and the two surfaces agree.
+    final longestStreak = math.max(
+      _calculateLongestStreak(allActivityDates),
+      progress.effectiveBestStreak,
+    );
     final thisMonthActive = allActivityDates.where((d) {
       final now = DateTime.now();
       return d.startsWith(
@@ -138,7 +147,7 @@ class StreakCalendarScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
-            StreakMilestoneBadges(currentStreak: streak)
+            StreakMilestoneBadges(bestStreak: longestStreak)
                 .animate()
                 .fadeIn(duration: 400.ms, delay: 400.ms),
 

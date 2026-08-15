@@ -15,7 +15,8 @@ import '../../../providers/firestore_stream_helpers.dart';
 import '../../../providers/online_leaderboard_provider.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/rich_empty_states.dart';
-import '../../../core/constants/avatar_data.dart';
+import '../../../widgets/profile_avatar.dart';
+import '../../../data/models/shop_data.dart';
 
 /// Membership-scoped leaderboard.
 ///
@@ -490,7 +491,6 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         children: List.generate(3, (i) {
           final entry = order[i];
           final isMe = entry.profileId == currentProfileId;
-          final avatar = AvatarData.getAvatar(entry.avatarIndex);
 
           return Expanded(
             child: Column(
@@ -542,10 +542,15 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                     ],
                   ),
                   child: Center(
-                    child: Text(avatar.emoji,
-                        style: TextStyle(
-                            fontSize:
-                                context.responsiveSize(i == 1 ? 26 : 22))),
+                    // Their equipped avatar and border, not their starting
+                    // one — the podium is the whole point of buying either.
+                    child: CosmeticAvatar(
+                      avatarIndex: entry.avatarIndex,
+                      equippedAvatarId: entry.equippedAvatarId,
+                      equippedBorderId: entry.equippedBorderId,
+                      radius: context.responsiveSize(i == 1 ? 18 : 15),
+                      fontSize: context.responsiveSize(i == 1 ? 26 : 22),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -688,6 +693,14 @@ class _ChipSelector<T> extends StatelessWidget {
 
 // ─── Leaderboard Tile ────────────────────────────────────
 
+/// The display name of an entry's equipped Title, or null when they have none
+/// (or own one that has since been withdrawn from sale).
+String? _titleFor(LeaderboardEntry entry) {
+  final id = entry.equippedTitleId;
+  if (id == null) return null;
+  return ShopData.findById(id)?.name;
+}
+
 class _LeaderboardTile extends StatelessWidget {
   final int rank;
   final LeaderboardEntry entry;
@@ -703,7 +716,6 @@ class _LeaderboardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avatar = AvatarData.getAvatar(entry.avatarIndex);
     final isTopThree = rank <= 3;
     final medalColors = [
       const Color(0xFFFFD700),
@@ -806,8 +818,13 @@ class _LeaderboardTile extends StatelessWidget {
                   : [],
             ),
             child: Center(
-              child:
-                  Text(avatar.emoji, style: const TextStyle(fontSize: 20)),
+              child: CosmeticAvatar(
+                avatarIndex: entry.avatarIndex,
+                equippedAvatarId: entry.equippedAvatarId,
+                equippedBorderId: entry.equippedBorderId,
+                radius: 14,
+                fontSize: 20,
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -818,15 +835,34 @@ class _LeaderboardTile extends StatelessWidget {
                 Row(
                   children: [
                     Flexible(
-                      child: Text(
-                        entry.profileName,
-                        style: AppTypography.bodyMedium.copyWith(
-                          fontWeight: isCurrentUser
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            entry.profileName,
+                            style: AppTypography.bodyMedium.copyWith(
+                              fontWeight: isCurrentUser
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          // An equipped Title was previously visible on one
+                          // screen the learner rarely opens. A title is a
+                          // thing you wear in front of other people.
+                          if (_titleFor(entry) case final title?)
+                            Text(
+                              title,
+                              style: AppTypography.labelSmall.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
                       ),
                     ),
                     if (isCurrentUser)

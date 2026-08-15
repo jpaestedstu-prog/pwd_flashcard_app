@@ -102,17 +102,24 @@ class SessionTracker with WidgetsBindingObserver {
     }).length;
   }
 
-  /// Get total games played across all sessions in the last N days.
+  /// Get total games played in the last N days.
+  ///
+  /// Reads the day ledger, not the session logs. The session log's own
+  /// `gamesPlayed` field is fed by [recordGamePlayed], which nothing in the app
+  /// has ever called — so every session is logged with zero, and this method
+  /// returned a flat 0 no matter how much the learner played. The ledger is
+  /// written by `ProgressNotifier.recordGameResult`, i.e. by the thing that
+  /// actually knows a game finished.
   static int totalGamesPlayed(String profileId, {int days = 30}) {
-    final sessions = HiveService.getSessionLogs(profileId);
+    final ledger = HiveService.getDailyActivity(profileId);
     final cutoff = DateTime.now().subtract(Duration(days: days));
-    int total = 0;
-    for (final s in sessions) {
-      final date = DateTime.tryParse(s['date'] as String? ?? '');
+    var total = 0;
+    ledger.forEach((key, row) {
+      final date = DateTime.tryParse(key);
       if (date != null && date.isAfter(cutoff)) {
-        total += (s['gamesPlayed'] as int?) ?? 0;
+        total += row['games'] ?? 0;
       }
-    }
+    });
     return total;
   }
 

@@ -206,10 +206,14 @@ class _DayCell extends StatelessWidget {
 }
 
 /// Milestone badges shown below the calendar.
+///
+/// Ticks are scored against the learner's **best** streak, not the run they
+/// happen to be on. These are records of something reached; a missed day
+/// resets the flame above them, and used to un-tick every badge here with it.
 class StreakMilestoneBadges extends StatelessWidget {
-  final int currentStreak;
+  final int bestStreak;
 
-  const StreakMilestoneBadges({super.key, required this.currentStreak});
+  const StreakMilestoneBadges({super.key, required this.bestStreak});
 
   static const _milestones = [
     (days: 3, emoji: '🌟', label: '3 Days'),
@@ -228,7 +232,7 @@ class StreakMilestoneBadges extends StatelessWidget {
       spacing: 10,
       runSpacing: 10,
       children: _milestones.map((m) {
-        final achieved = currentStreak >= m.days;
+        final achieved = bestStreak >= m.days;
         return Semantics(
           label: '${m.label} streak milestone${achieved ? ", achieved" : ", not yet achieved"}',
           child: Container(

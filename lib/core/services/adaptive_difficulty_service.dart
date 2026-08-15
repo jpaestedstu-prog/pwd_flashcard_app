@@ -5,6 +5,7 @@ import '../../data/local/seed_data.dart';
 import '../../data/local/spaced_repetition_service.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/models.dart';
+import 'flashcard_photo_service.dart';
 import 'learning_level_service.dart';
 
 /// Suggests game difficulty and word selection based on the student's
@@ -61,9 +62,7 @@ class AdaptiveDifficultyService {
   }
 
   /// Get a human-readable explanation of why a difficulty was suggested.
-  static String getSuggestionReason({
-    required String profileId,
-  }) {
+  static String getSuggestionReason({required String profileId}) {
     final summary = SpacedRepetitionService.getSummary(profileId);
 
     if (summary.totalAttempted == 0) {
@@ -130,6 +129,12 @@ class AdaptiveDifficultyService {
   /// Handles missing data gracefully — guests ([profileId] null) and brand
   /// new students get a plain shuffle. Returns at most [count] cards, or
   /// the full reordered pool when [count] is null.
+  ///
+  /// Also warms the chosen cards' pictures ([FlashcardPhotoService.prefetchAll]).
+  /// Every game deals its hand through here, so hooking the warm-up in one place
+  /// keeps a new game from having to remember it — without it, each card shows
+  /// its emoji placeholder for the first moment it appears. Fire-and-forget, and
+  /// inert until the picture manifest is loaded.
   static List<Flashcard> pickGameCards({
     required String? profileId,
     required List<Flashcard> cards,
@@ -147,8 +152,11 @@ class AdaptiveDifficultyService {
         random: rng,
       );
     }
-    if (count == null || count >= ordered.length) return ordered;
-    return ordered.take(count).toList();
+    final picked = (count == null || count >= ordered.length)
+        ? ordered
+        : ordered.take(count).toList();
+    FlashcardPhotoService.prefetchAll(picked);
+    return picked;
   }
 
   /// Returns a difficulty icon string for display.
@@ -169,8 +177,7 @@ class AdaptiveDifficultyService {
   static Box get _box => Hive.box(_boxName);
 
   /// Storage key for the difficulty history list.
-  static String _historyKey(String profileId) =>
-      'adaptive_history_$profileId';
+  static String _historyKey(String profileId) => 'adaptive_history_$profileId';
 
   /// Storage key for per-game-type overrides.
   static String _gameOverrideKey(String profileId) =>
@@ -247,8 +254,10 @@ class AdaptiveDifficultyService {
     final history = getHistory(profileId);
 
     // Most specific: the student's recent rounds of this exact game.
-    final gameWindow =
-        history.where((h) => h.gameType == gameType.name).take(5).toList();
+    final gameWindow = history
+        .where((h) => h.gameType == gameType.name)
+        .take(5)
+        .toList();
     if (gameWindow.isNotEmpty) return _difficultyFromWindow(gameWindow);
 
     final storedGame = _getGameOverrides(profileId)[gameType.name];
@@ -256,8 +265,10 @@ class AdaptiveDifficultyService {
 
     // Next: how they fare in this vocabulary category across all games.
     if (category != null) {
-      final catWindow =
-          history.where((h) => h.category == category.name).take(5).toList();
+      final catWindow = history
+          .where((h) => h.category == category.name)
+          .take(5)
+          .toList();
       if (catWindow.isNotEmpty) return _difficultyFromWindow(catWindow);
 
       final storedCat = _getCategoryOverrides(profileId)[category.name];
@@ -279,9 +290,13 @@ class AdaptiveDifficultyService {
     required GameType gameType,
   }) {
     final history = getHistory(profileId);
-    final gameWindow =
-        history.where((h) => h.gameType == gameType.name).take(5).toList();
-    final window = gameWindow.isNotEmpty ? gameWindow : history.take(10).toList();
+    final gameWindow = history
+        .where((h) => h.gameType == gameType.name)
+        .take(5)
+        .toList();
+    final window = gameWindow.isNotEmpty
+        ? gameWindow
+        : history.take(10).toList();
 
     if (window.isEmpty) {
       // No game history yet — fall back to lifetime word stats.
@@ -310,8 +325,9 @@ class AdaptiveDifficultyService {
     if (raw == null) return [];
     final list = (raw as List).cast<Map>();
     return list
-        .map((m) => DifficultyHistoryEntry.fromMap(
-            Map<String, dynamic>.from(m)))
+        .map(
+          (m) => DifficultyHistoryEntry.fromMap(Map<String, dynamic>.from(m)),
+        )
         .toList()
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
@@ -323,8 +339,7 @@ class AdaptiveDifficultyService {
   }
 
   /// Get per-category difficulty overrides.
-  static Map<String, GameDifficulty> getCategoryOverrides(
-      String profileId) {
+  static Map<String, GameDifficulty> getCategoryOverrides(String profileId) {
     final raw = _getCategoryOverrides(profileId);
     return raw.map((k, v) => MapEntry(k, _difficultyFromName(v)));
   }
@@ -348,8 +363,7 @@ class AdaptiveDifficultyService {
     final recent = history.take(10).toList();
     final recentAcc = recent.isEmpty
         ? 0.0
-        : recent.map((e) => e.accuracy).reduce((a, b) => a + b) /
-            recent.length;
+        : recent.map((e) => e.accuracy).reduce((a, b) => a + b) / recent.length;
 
     // Trend: compare first half vs second half of recent
     DifficultyTrend trend = DifficultyTrend.stable;
@@ -359,10 +373,10 @@ class AdaptiveDifficultyService {
       final secondHalf = recent.sublist(mid);
       final firstAvg =
           firstHalf.map((e) => e.accuracy).reduce((a, b) => a + b) /
-              firstHalf.length;
+          firstHalf.length;
       final secondAvg =
           secondHalf.map((e) => e.accuracy).reduce((a, b) => a + b) /
-              secondHalf.length;
+          secondHalf.length;
       final diff = firstAvg - secondAvg;
       if (diff > 0.1) {
         trend = DifficultyTrend.improving;
@@ -413,12 +427,12 @@ class AdaptiveDifficultyService {
   /// Shared sliding-window rule: streaks adjust fast, averages smoothly.
   /// [window] must be sorted most recent first.
   static GameDifficulty _difficultyFromWindow(
-      List<DifficultyHistoryEntry> window) {
+    List<DifficultyHistoryEntry> window,
+  ) {
     if (window.isEmpty) return GameDifficulty.easy;
 
     final avgAcc =
-        window.map((e) => e.accuracy).reduce((a, b) => a + b) /
-            window.length;
+        window.map((e) => e.accuracy).reduce((a, b) => a + b) / window.length;
 
     // Check for streaks of high/low performance (last 3 games)
     final last3 = window.take(3).toList();
@@ -528,13 +542,13 @@ class DifficultyHistoryEntry {
   });
 
   Map<String, dynamic> toMap() => {
-        'timestamp': timestamp.toIso8601String(),
-        'gameType': gameType,
-        'category': category,
-        'difficulty': difficulty,
-        'accuracy': accuracy,
-        'durationSeconds': durationSeconds,
-      };
+    'timestamp': timestamp.toIso8601String(),
+    'gameType': gameType,
+    'category': category,
+    'difficulty': difficulty,
+    'accuracy': accuracy,
+    'durationSeconds': durationSeconds,
+  };
 
   factory DifficultyHistoryEntry.fromMap(Map<String, dynamic> m) {
     return DifficultyHistoryEntry(
@@ -567,17 +581,17 @@ class AdaptiveSummary {
   });
 
   String get trendLabel => switch (trend) {
-        DifficultyTrend.improving => '📈 Improving',
-        DifficultyTrend.stable => '➡️ Stable',
-        DifficultyTrend.declining => '📉 Needs Support',
-      };
+    DifficultyTrend.improving => '📈 Improving',
+    DifficultyTrend.stable => '➡️ Stable',
+    DifficultyTrend.declining => '📉 Needs Support',
+  };
 
   String get trendDescription => switch (trend) {
-        DifficultyTrend.improving =>
-          'Performance is trending upward — great progress!',
-        DifficultyTrend.stable =>
-          'Performance is consistent — steady learning pace.',
-        DifficultyTrend.declining =>
-          'Recent scores are dropping — consider easier activities.',
-      };
+    DifficultyTrend.improving =>
+      'Performance is trending upward — great progress!',
+    DifficultyTrend.stable =>
+      'Performance is consistent — steady learning pace.',
+    DifficultyTrend.declining =>
+      'Recent scores are dropping — consider easier activities.',
+  };
 }

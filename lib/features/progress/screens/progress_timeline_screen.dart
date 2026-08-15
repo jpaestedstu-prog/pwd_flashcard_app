@@ -32,8 +32,10 @@ class ProgressTimelineScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hc = HCColor.of(context);
     final progress = HiveService.getProgress(profileId);
-    final dailyMinutes30 =
-        SessionTracker.dailyStudyMinutes(profileId, days: 30);
+    final dailyMinutes30 = SessionTracker.dailyStudyMinutes(
+      profileId,
+      days: 30,
+    );
     final recentScores = progress.recentScores;
 
     return Scaffold(
@@ -62,9 +64,10 @@ class ProgressTimelineScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                child: _SummaryRow(progress: progress, hc: hc)
-                    .animate()
-                    .fadeIn(duration: 400.ms),
+                child: _SummaryRow(
+                  progress: progress,
+                  hc: hc,
+                ).animate().fadeIn(duration: 400.ms),
               ),
             ),
 
@@ -105,9 +108,9 @@ class ProgressTimelineScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                child: ActivityHeatmap(profileId: profileId)
-                    .animate()
-                    .fadeIn(duration: 400.ms, delay: 400.ms),
+                child: ActivityHeatmap(
+                  profileId: profileId,
+                ).animate().fadeIn(duration: 400.ms, delay: 400.ms),
               ),
             ),
           ],
@@ -137,9 +140,7 @@ class _SummaryRow extends StatelessWidget {
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -163,7 +164,7 @@ class _SummaryRow extends StatelessWidget {
           ),
           _MiniStat(
             icon: Icons.sports_esports_rounded,
-            value: '${progress.recentScores.length}',
+            value: '${progress.effectiveGamesPlayed}',
             label: 'Games',
             color: AppColors.info,
           ),
@@ -218,10 +219,7 @@ class _AccuracyTrendChart extends StatelessWidget {
   final List<GameScore> recentScores;
   final HCColor hc;
 
-  const _AccuracyTrendChart({
-    required this.recentScores,
-    required this.hc,
-  });
+  const _AccuracyTrendChart({required this.recentScores, required this.hc});
 
   @override
   Widget build(BuildContext context) {
@@ -275,8 +273,7 @@ class _AccuracyTrendChart extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Average daily accuracy — last 30 days',
-            style:
-                AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -295,9 +292,9 @@ class _AccuracyTrendChart extends StatelessWidget {
                     dotData: FlDotData(
                       getDotPainter: (spot, pct, bar, index) =>
                           FlDotCirclePainter(
-                        radius: 3,
-                        color: AppColors.primary,
-                      ),
+                            radius: 3,
+                            color: AppColors.primary,
+                          ),
                     ),
                     belowBarData: BarAreaData(
                       show: true,
@@ -311,8 +308,9 @@ class _AccuracyTrendChart extends StatelessWidget {
                       showTitles: true,
                       interval: 7,
                       getTitlesWidget: (value, meta) {
-                        final day =
-                            now.subtract(Duration(days: 30 - value.toInt()));
+                        final day = now.subtract(
+                          Duration(days: 30 - value.toInt()),
+                        );
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
@@ -340,10 +338,8 @@ class _AccuracyTrendChart extends StatelessWidget {
                       ),
                     ),
                   ),
-                  topTitles: const AxisTitles(
-                      ),
-                  rightTitles: const AxisTitles(
-                      ),
+                  topTitles: const AxisTitles(),
+                  rightTitles: const AxisTitles(),
                 ),
                 gridData: FlGridData(
                   horizontalInterval: 25,
@@ -384,10 +380,7 @@ class _StudyTimeChart30 extends StatelessWidget {
   final Map<String, int> dailyMinutes;
   final HCColor hc;
 
-  const _StudyTimeChart30({
-    required this.dailyMinutes,
-    required this.hc,
-  });
+  const _StudyTimeChart30({required this.dailyMinutes, required this.hc});
 
   @override
   Widget build(BuildContext context) {
@@ -428,15 +421,18 @@ class _StudyTimeChart30 extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Minutes per day — last 30 days',
-                      style: AppTypography.bodySmall
-                          .copyWith(color: hc.textSecondary),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: hc.textSecondary,
+                      ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.success.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
@@ -509,10 +505,8 @@ class _StudyTimeChart30 extends StatelessWidget {
                       ),
                     ),
                   ),
-                  topTitles: const AxisTitles(
-                      ),
-                  rightTitles: const AxisTitles(
-                      ),
+                  topTitles: const AxisTitles(),
+                  rightTitles: const AxisTitles(),
                 ),
                 gridData: FlGridData(
                   getDrawingHorizontalLine: (value) => FlLine(
@@ -531,7 +525,8 @@ class _StudyTimeChart30 extends StatelessWidget {
                         color: AppColors.secondary,
                         width: 6,
                         borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(3)),
+                          top: Radius.circular(3),
+                        ),
                       ),
                     ],
                   );
@@ -588,10 +583,10 @@ class _CategoryProgressSection extends StatelessWidget {
             final color = pct >= 80
                 ? AppColors.success
                 : pct >= 50
-                    ? AppColors.info
-                    : pct >= 20
-                        ? AppColors.warning
-                        : AppColors.error;
+                ? AppColors.info
+                : pct >= 20
+                ? AppColors.warning
+                : AppColors.error;
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Column(
@@ -658,14 +653,15 @@ class _EmptyChartCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(title,
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w700,
-                color: hc.textPrimary,
-              )),
+          Text(
+            title,
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: hc.textPrimary,
+            ),
+          ),
           const SizedBox(height: 16),
-          Icon(Icons.bar_chart_rounded,
-              size: 48, color: hc.textHint),
+          Icon(Icons.bar_chart_rounded, size: 48, color: hc.textHint),
           const SizedBox(height: 8),
           Text(
             'Not enough data yet',

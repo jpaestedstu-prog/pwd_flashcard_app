@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/services/session_tracker.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../data/models/enums.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../widgets/charts/category_radar_chart.dart';
 import '../widgets/charts/difficulty_history_chart.dart';
@@ -24,6 +26,7 @@ class AdaptiveAnalyticsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final profile = ref.watch(profileProvider);
     final progress = ref.watch(progressProvider);
     final hc = HCColor.of(context);
@@ -80,8 +83,10 @@ class AdaptiveAnalyticsScreen extends ConsumerWidget {
             return true;
           },
         ),
+        // Same words as the button that opens it — the screen used to call
+        // itself "Adaptive Analytics" while nothing in the app named it at all.
         title: Text(
-          'Adaptive Analytics',
+          l10n.advancedAnalytics,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -93,41 +98,43 @@ class AdaptiveAnalyticsScreen extends ConsumerWidget {
         children: [
           // ─── Insight Cards Row ────────────────
           SizedBox(
-            height: 90,
+            // Text-scale aware, capped: a fixed 90 was 35 px short of what the
+            // cards need at the 2.0x font a low-vision preset applies.
+            height: context.scaledHeightCapped(90, max: 1.6),
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
                 _InsightCard(
                   icon: Icons.star_rounded,
-                  label: 'Stars',
+                  label: l10n.stars,
                   value: '${progress.totalStars}',
                   color: hc.warning,
                   hc: hc,
                 ),
                 _InsightCard(
                   icon: Icons.auto_stories_rounded,
-                  label: 'Words',
+                  label: l10n.words,
                   value: '${progress.wordsLearned}',
                   color: hc.secondary,
                   hc: hc,
                 ),
                 _InsightCard(
                   icon: Icons.timer_rounded,
-                  label: 'Study Min',
+                  label: l10n.studyMinutes,
                   value: '$totalMin',
                   color: hc.info,
                   hc: hc,
                 ),
                 _InsightCard(
                   icon: Icons.gamepad_rounded,
-                  label: 'Games',
+                  label: l10n.games,
                   value: '$totalGames',
                   color: hc.accent,
                   hc: hc,
                 ),
                 _InsightCard(
                   icon: Icons.gps_fixed_rounded,
-                  label: 'Accuracy',
+                  label: l10n.accuracy,
                   value: '${(avgAccuracy * 100).toStringAsFixed(0)}%',
                   color: avgAccuracy >= 0.8
                       ? hc.success
@@ -138,7 +145,7 @@ class AdaptiveAnalyticsScreen extends ConsumerWidget {
                 ),
                 _InsightCard(
                   icon: Icons.repeat_rounded,
-                  label: 'Sessions',
+                  label: l10n.sessions,
                   value: '$totalSess',
                   color: hc.primary,
                   hc: hc,
@@ -245,35 +252,54 @@ class _InsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 100,
-      margin: const EdgeInsets.only(right: 10),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.w800,
-              color: color,
+    return Semantics(
+      label: '$label: $value',
+      child: Container(
+        // Grows with the Font Size setting instead of squeezing the label out
+        // of a fixed 100 px. This screen had never been through the overflow
+        // matrix — nothing but a voice command could open it — and its cards
+        // overflowed by 35 px at the 2.0x scale a low-vision preset uses.
+        width: context.scaleIcon(100).clamp(100.0, 168.0),
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: context.scaleIcon(20)),
+            const SizedBox(height: 4),
+            // Same self-protection as ProgressStatCard: the value scales down
+            // rather than pushing the label off the bottom.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
             ),
-          ),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              fontSize: 9,
-              color: hc.textSecondary,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppTypography.labelSmall.copyWith(
+                  fontSize: 9,
+                  color: hc.textSecondary,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
