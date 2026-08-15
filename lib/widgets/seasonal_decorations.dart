@@ -34,7 +34,7 @@ class _SeasonalDecorationsState extends ConsumerState<SeasonalDecorations>
   late final Animation<double> _bannerSlide;
   late final Animation<double> _bannerOpacity;
 
-  final List<_FallingEmoji> _emojis = [];
+  final List<FallingEmoji> _emojis = [];
   final _random = Random();
   bool _dismissed = false;
 
@@ -78,7 +78,7 @@ class _SeasonalDecorationsState extends ConsumerState<SeasonalDecorations>
   void _initEmojis(Size size, SeasonalEvent event) {
     if (_emojis.isNotEmpty) return;
     for (int i = 0; i < 12; i++) {
-      _emojis.add(_FallingEmoji(
+      _emojis.add(FallingEmoji(
         emoji: event.decorationEmojis[i % event.decorationEmojis.length],
         x: _random.nextDouble() * size.width,
         y: _random.nextDouble() * size.height,
@@ -116,7 +116,10 @@ class _SeasonalDecorationsState extends ConsumerState<SeasonalDecorations>
                   _updateEmojis(size);
 
                   return CustomPaint(
-                    painter: _EmojiParticlePainter(emojis: _emojis),
+                    painter: EmojiParticlePainter(
+                      emojis: _emojis,
+                      opacity: EmojiParticlePainter.defaultOpacity,
+                    ),
                     size: size,
                   );
                 },
@@ -261,7 +264,7 @@ class _SeasonalBanner extends StatelessWidget {
 }
 
 // ─── Falling Emoji Model ───────────────────────────────────────
-class _FallingEmoji {
+class FallingEmoji {
   final String emoji;
   double x;
   double y;
@@ -272,7 +275,7 @@ class _FallingEmoji {
   double rotation;
   final double rotationSpeed;
 
-  _FallingEmoji({
+  FallingEmoji({
     required this.emoji,
     required this.x,
     required this.y,
@@ -286,13 +289,38 @@ class _FallingEmoji {
 }
 
 // ─── Emoji Particle Custom Painter ─────────────────────────────
-class _EmojiParticlePainter extends CustomPainter {
-  final List<_FallingEmoji> emojis;
+///
+/// Public only so a test can assert the layer never returns to full opacity;
+/// nothing outside this file constructs it.
+@visibleForTesting
+class EmojiParticlePainter extends CustomPainter {
+  final List<FallingEmoji> emojis;
 
-  _EmojiParticlePainter({required this.emojis});
+  /// Alpha applied to the whole particle layer.
+  ///
+  /// These particles are painted *over* every screen they decorate, so at full
+  /// strength a flag or a flower lands on top of a label and eats a letter —
+  /// the home tile read "Playe🎊Profile", and a flag sat on the XP counter.
+  /// Legibility is the one thing this app cannot trade away, so the confetti
+  /// stays as texture behind the words.
+  ///
+  /// Applied with a single `saveLayer` rather than a colour on the [TextStyle]:
+  /// these are colour-emoji glyphs, which ignore a text colour entirely, and a
+  /// per-glyph `Opacity` widget would cost a layer each.
+  final double opacity;
+
+  /// Faint enough that a particle crossing a word never costs a letter, strong
+  /// enough to still read as a celebration.
+  static const double defaultOpacity = 0.3;
+
+  EmojiParticlePainter({required this.emojis, required this.opacity});
 
   @override
   void paint(Canvas canvas, Size size) {
+    canvas.saveLayer(
+      Offset.zero & size,
+      Paint()..color = Color.fromRGBO(255, 255, 255, opacity),
+    );
     for (final e in emojis) {
       canvas.save();
       canvas.translate(e.x, e.y);
@@ -313,8 +341,10 @@ class _EmojiParticlePainter extends CustomPainter {
 
       canvas.restore();
     }
+    canvas.restore();
   }
 
+  // The particles move every frame, so this always repaints.
   @override
-  bool shouldRepaint(covariant _EmojiParticlePainter oldDelegate) => true;
+  bool shouldRepaint(covariant EmojiParticlePainter oldDelegate) => true;
 }
