@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -9,7 +10,9 @@ import '../../../core/widgets/safe_scaffold.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
+import '../../../data/local/hive_service.dart';
 import '../../../providers/parent_provider.dart';
+import '../screens/sign_check_screen.dart';
 import '../../../features/progress/theme/progress_theme_provider.dart';
 import '../../../features/progress/theme/progress_layout_provider.dart';
 import '../../../features/progress/theme/progress_theme_picker.dart';
@@ -37,8 +40,7 @@ class ChildDetailSheet extends ConsumerWidget {
     final theme = ref.watch(progressThemeForProvider(child.profileId));
     final layout = ref.watch(progressLayoutForProvider(child.profileId));
     final settings = ref.watch(settingsProvider);
-    final useTheme =
-        !(settings.highContrastMode || settings.dyslexiaMode);
+    final useTheme = !(settings.highContrastMode || settings.dyslexiaMode);
     final accent = useTheme ? theme.accent : AppColors.primary;
     final cardSurface = useTheme ? theme.cardSurface(hc.surface) : hc.surface;
 
@@ -52,6 +54,22 @@ class ChildDetailSheet extends ConsumerWidget {
     // Derive catalog totals so the "of X total" copy can't drift from seed data.
     final totalWords = ref.watch(allFlashcardsProvider).length;
 
+    // Whether this learner has sign claims waiting on an educator's eye.
+    // Scoped to the child's own accessibility type, like the Signs stat.
+    final showFsl = AccessibilityContentPolicy.forType(
+      child.disabilityType,
+    ).showFsl;
+    final claims = HiveService.fslMastery(child.profileId);
+    final verdicts = HiveService.fslVerifications(child.profileId);
+    final pendingSignClaims = claims.entries
+        .where(
+          (e) =>
+              e.value != SignMastery.notSet &&
+              (verdicts[e.key] ?? SignVerification.unreviewed) ==
+                  SignVerification.unreviewed,
+        )
+        .length;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,
@@ -60,8 +78,7 @@ class ChildDetailSheet extends ConsumerWidget {
         return Container(
           decoration: BoxDecoration(
             color: hc.background,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: ListView(
             controller: scrollController,
@@ -104,151 +121,161 @@ class ChildDetailSheet extends ConsumerWidget {
               OverflowGuard(
                 label: 'child-header',
                 child: Row(
-                children: [
-                  // Avatar with accuracy ring
-                  SizedBox(
-                    width: 60,
-                    height: 60,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 60,
-                          height: 60,
-                          child: CircularProgressIndicator(
-                            value: child.averageAccuracy,
-                            strokeWidth: 3,
-                            backgroundColor: hc.border.withValues(alpha: 0.15),
-                            valueColor: AlwaysStoppedAnimation(
-                              child.isRecentlyActive
-                                  ? AppColors.success
-                                  : accent,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: accent.withValues(alpha: 0.18),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(child.avatarEmoji,
-                                style: const TextStyle(fontSize: 26)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          child.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.titleMedium.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: hc.textPrimary,
-                          ),
-                        ),
-                        if (child.disabilityType != DisabilityType.none)
-                          Row(
-                            children: [
-                              Icon(child.disabilityType.icon,
-                                  size: 14, color: hc.textSecondary),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  child.disabilityType.label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTypography.labelSmall.copyWith(
-                                    color: hc.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: child.isRecentlyActive
-                                    ? AppColors.success
-                                    : AppColors.textHint,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                child.isRecentlyActive
-                                    ? 'Active today'
-                                    : 'Last active ${_formatLastActive(child.lastActivityDate)}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: child.isRecentlyActive
-                                      ? AppColors.success
-                                      : hc.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (child.streakDays > 0)
-                    ConstrainedBox(
-                      // Cap the badge so it can't crowd out the name on a very
-                      // narrow split-screen at huge font; the inner text then
-                      // ellipsizes. Name keeps its Expanded priority otherwise.
-                      constraints: BoxConstraints(
-                          maxWidth: context.screenWidth * 0.42),
-                      child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.warning.withValues(alpha: 0.2),
-                            AppColors.warning.withValues(alpha: 0.08),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppColors.warning.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Avatar with accuracy ring
+                    SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
-                          const Text('🔥', style: TextStyle(fontSize: 16)),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              '${child.streakDays} day streak',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.labelSmall.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.warning,
+                          SizedBox(
+                            width: 60,
+                            height: 60,
+                            child: CircularProgressIndicator(
+                              value: child.averageAccuracy,
+                              strokeWidth: 3,
+                              backgroundColor: hc.border.withValues(
+                                alpha: 0.15,
+                              ),
+                              valueColor: AlwaysStoppedAnimation(
+                                child.isRecentlyActive
+                                    ? AppColors.success
+                                    : accent,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.18),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                child.avatarEmoji,
+                                style: const TextStyle(fontSize: 26),
                               ),
                             ),
                           ),
                         ],
                       ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            child.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.titleMedium.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: hc.textPrimary,
+                            ),
+                          ),
+                          if (child.disabilityType != DisabilityType.none)
+                            Row(
+                              children: [
+                                Icon(
+                                  child.disabilityType.icon,
+                                  size: 14,
+                                  color: hc.textSecondary,
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    child.disabilityType.label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTypography.labelSmall.copyWith(
+                                      color: hc.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: child.isRecentlyActive
+                                      ? AppColors.success
+                                      : AppColors.textHint,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  child.isRecentlyActive
+                                      ? 'Active today'
+                                      : 'Last active ${_formatLastActive(child.lastActivityDate)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: child.isRecentlyActive
+                                        ? AppColors.success
+                                        : hc.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                ],
+                    if (child.streakDays > 0)
+                      ConstrainedBox(
+                        // Cap the badge so it can't crowd out the name on a very
+                        // narrow split-screen at huge font; the inner text then
+                        // ellipsizes. Name keeps its Expanded priority otherwise.
+                        constraints: BoxConstraints(
+                          maxWidth: context.screenWidth * 0.42,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.warning.withValues(alpha: 0.2),
+                                AppColors.warning.withValues(alpha: 0.08),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppColors.warning.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('🔥', style: TextStyle(fontSize: 16)),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  '${child.streakDays} day streak',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTypography.labelSmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.warning,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ).animate().fadeIn(duration: 300.ms),
 
@@ -263,30 +290,32 @@ class ChildDetailSheet extends ConsumerWidget {
               SizedBox(height: layout.sectionGap),
 
               // ─── Study Time Chart ─────────────────
-              StudyTimeChart(dailyMinutes: child.dailyStudyMinutes)
-                  .animate()
-                  .fadeIn(duration: 400.ms, delay: 200.ms),
+              StudyTimeChart(
+                dailyMinutes: child.dailyStudyMinutes,
+              ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
 
               SizedBox(height: layout.sectionGap),
 
               // ─── Category Progress ────────────────
-              CategoryRadarChart(categoryProgress: child.categoryProgress)
-                  .animate()
-                  .fadeIn(duration: 400.ms, delay: 300.ms),
+              CategoryRadarChart(
+                categoryProgress: child.categoryProgress,
+              ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
 
               SizedBox(height: layout.sectionGap),
 
               // ─── Learning Gain (Pre vs Post) ──────
-              LearningGainCard(profileId: child.profileId)
-                  .animate()
-                  .fadeIn(duration: 400.ms, delay: 350.ms),
+              LearningGainCard(
+                profileId: child.profileId,
+              ).animate().fadeIn(duration: 400.ms, delay: 350.ms),
 
               SizedBox(height: layout.sectionGap),
 
               // ─── Strengths & Weaknesses ───────────
-              _StrengthsCard(child: child, hc: hc, surface: cardSurface)
-                  .animate()
-                  .fadeIn(duration: 400.ms, delay: 400.ms),
+              _StrengthsCard(
+                child: child,
+                hc: hc,
+                surface: cardSurface,
+              ).animate().fadeIn(duration: 400.ms, delay: 400.ms),
 
               SizedBox(height: layout.sectionGap),
 
@@ -298,22 +327,51 @@ class ChildDetailSheet extends ConsumerWidget {
                   iconColor: accent,
                 ),
                 const SizedBox(height: 10),
-                ...child.recentScores
-                    .reversed
+                ...child.recentScores.reversed
                     .take(5)
                     .toList()
                     .asMap()
                     .entries
-                    .map((entry) => _RecentGameRow(
-                          score: entry.value,
-                          hc: hc,
-                        )
-                            .animate()
-                            .fadeIn(
-                                duration: 300.ms,
-                                delay: (500 + entry.key * 60).ms)
-                            .slideX(begin: 0.03, end: 0)),
+                    .map(
+                      (entry) => _RecentGameRow(score: entry.value, hc: hc)
+                          .animate()
+                          .fadeIn(
+                            duration: 300.ms,
+                            delay: (500 + entry.key * 60).ms,
+                          )
+                          .slideX(begin: 0.03, end: 0),
+                    ),
               ],
+
+              // ─── Sign Check ───────────────────────
+              // Only for learners the FSL surfaces are shown to, and only
+              // where the learner has actually claimed something — an empty
+              // review queue is not worth a button.
+              if (showFsl && pendingSignClaims > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.secondaryDark,
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => SignCheckScreen(
+                              learnerId: child.profileId,
+                              learnerName: child.name,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.sign_language_rounded),
+                      label: Text('Sign Check · $pendingSignClaims to review'),
+                    ),
+                  ),
+                ).animate().fadeIn(duration: 400.ms, delay: 500.ms),
 
               // ─── View Full Dashboard Button ───────
               if (onViewFullDashboard != null)
@@ -351,18 +409,24 @@ class ChildDetailSheet extends ConsumerWidget {
 
 // ─── Quick Stats Grid ────────────────────────────────
 
-class _QuickStatsGrid extends StatelessWidget {
+class _QuickStatsGrid extends ConsumerWidget {
   final ChildSummary child;
   final int totalWords;
 
-  const _QuickStatsGrid({
-    required this.child,
-    required this.totalWords,
-  });
+  const _QuickStatsGrid({required this.child, required this.totalWords});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final accuracy = child.averageAccuracy;
+    // Derived from THIS CHILD's accessibility type, not from
+    // `accessibilityContentPolicyProvider` — that reads the signed-in profile,
+    // which on this screen is the teacher or parent, not the learner.
+    final showFsl = AccessibilityContentPolicy.forType(
+      child.disabilityType,
+    ).showFsl;
+    final totalSigns =
+        ref.watch(fslAvailabilityProvider).valueOrNull?.cardsWithVideo.length ??
+        0;
     // Professional dashboard kit: a structured, overflow-safe stat grid in a
     // titled panel, replacing the fixed 2-per-row gradient tiles.
     return ProPanel(
@@ -383,6 +447,18 @@ class _QuickStatsGrid extends StatelessWidget {
             caption: 'available',
             accent: AppColors.warning,
           ),
+          // Only where signing is this learner's modality — a permanent zero
+          // on a visual-impairment or cognitive profile would read as a
+          // deficit rather than a setting. Same policy the learner's own
+          // surfaces use.
+          if (showFsl)
+            ProStatTile(
+              icon: Icons.sign_language_rounded,
+              label: 'Signs Watched',
+              value: '${child.signsWatched}',
+              caption: totalSigns > 0 ? 'of $totalSigns signs' : 'FSL clips',
+              accent: AppColors.secondaryDark,
+            ),
           ProStatTile(
             icon: Icons.percent_rounded,
             label: 'Accuracy',
@@ -390,13 +466,13 @@ class _QuickStatsGrid extends StatelessWidget {
             caption: accuracy >= 0.7
                 ? 'Great!'
                 : accuracy >= 0.4
-                    ? 'Good progress'
-                    : 'Needs practice',
+                ? 'Good progress'
+                : 'Needs practice',
             trend: accuracy >= 0.7
                 ? ProTrend.up
                 : accuracy >= 0.4
-                    ? ProTrend.flat
-                    : ProTrend.down,
+                ? ProTrend.flat
+                : ProTrend.down,
             accent: AppColors.info,
           ),
           ProStatTile(
@@ -419,6 +495,19 @@ class _QuickStatsGrid extends StatelessWidget {
             value: '${child.gamesPlayed}',
             caption: '${child.totalSessions} sessions',
             accent: AppColors.accent,
+          ),
+          // Word Hunt is the one activity that happens away from the screen —
+          // worth showing an educator on its own, since it never appears in a
+          // game score. Shared by the Teacher and Parent surfaces.
+          ProStatTile(
+            icon: Icons.photo_camera_rounded,
+            label: 'Word Hunt Finds',
+            value: '${child.wordHuntFinds}',
+            caption: child.wordHuntStreak > 0
+                ? '${child.wordHuntStreak}-day streak'
+                : 'with the camera',
+            trend: child.wordHuntStreak > 0 ? ProTrend.up : null,
+            accent: AppColors.bannerWordHuntStart,
           ),
         ],
       ),
@@ -565,15 +654,13 @@ class _RecentGameRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pct = score.total > 0
-        ? (score.score / score.total * 100).round()
-        : 0;
+    final pct = score.total > 0 ? (score.score / score.total * 100).round() : 0;
     final diff = DateTime.now().difference(score.date);
     final timeAgo = diff.inDays > 0
         ? '${diff.inDays}d ago'
         : diff.inHours > 0
-            ? '${diff.inHours}h ago'
-            : '${diff.inMinutes}m ago';
+        ? '${diff.inHours}h ago'
+        : '${diff.inMinutes}m ago';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -599,9 +686,7 @@ class _RecentGameRow extends StatelessWidget {
                 ),
                 Text(
                   timeAgo,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: hc.textHint,
-                  ),
+                  style: AppTypography.labelSmall.copyWith(color: hc.textHint),
                 ),
               ],
             ),
@@ -620,14 +705,16 @@ class _RecentGameRow extends StatelessWidget {
                   style: AppTypography.labelMedium,
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: pct >= 70
                         ? AppColors.success.withValues(alpha: 0.15)
                         : pct >= 40
-                            ? AppColors.warning.withValues(alpha: 0.15)
-                            : AppColors.error.withValues(alpha: 0.15),
+                        ? AppColors.warning.withValues(alpha: 0.15)
+                        : AppColors.error.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -637,19 +724,24 @@ class _RecentGameRow extends StatelessWidget {
                       color: pct >= 70
                           ? AppColors.success
                           : pct >= 40
-                              ? AppColors.warning
-                              : AppColors.error,
+                          ? AppColors.warning
+                          : AppColors.error,
                     ),
                   ),
                 ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.star_rounded,
-                        size: 14, color: AppColors.warning),
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 14,
+                      color: AppColors.warning,
+                    ),
                     const SizedBox(width: 2),
-                    Text('${score.starsEarned}',
-                        style: AppTypography.labelSmall),
+                    Text(
+                      '${score.starsEarned}',
+                      style: AppTypography.labelSmall,
+                    ),
                   ],
                 ),
               ],

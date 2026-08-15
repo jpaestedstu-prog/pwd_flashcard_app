@@ -44,11 +44,13 @@ class LearningGainCard extends StatelessWidget {
           // ─── Header ─────────────────────
           Row(
             children: [
-              Icon(Icons.trending_up_rounded,
-                  color: report.hasImproved
-                      ? AppColors.success
-                      : AppColors.warning,
-                  size: 22),
+              Icon(
+                Icons.trending_up_rounded,
+                color: report.hasImproved
+                    ? AppColors.success
+                    : AppColors.warning,
+                size: 22,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -60,8 +62,10 @@ class LearningGainCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: report.hasImproved
                       ? AppColors.success.withValues(alpha: 0.15)
@@ -69,9 +73,7 @@ class LearningGainCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  report.hasImproved
-                      ? '+$gainPercent%'
-                      : '$gainPercent%',
+                  report.hasImproved ? '+$gainPercent%' : '$gainPercent%',
                   style: AppTypography.labelSmall.copyWith(
                     fontWeight: FontWeight.w800,
                     color: report.hasImproved
@@ -85,8 +87,7 @@ class LearningGainCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             report.summary,
-            style:
-                AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
 
           const SizedBox(height: 16),
@@ -127,8 +128,7 @@ class LearningGainCard extends StatelessWidget {
                     touchTooltipData: BarTouchTooltipData(
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         final entry = gains.entries.elementAt(group.x);
-                        final label =
-                            rodIndex == 0 ? 'Pre' : 'Post';
+                        final label = rodIndex == 0 ? 'Pre' : 'Post';
                         return BarTooltipItem(
                           '${entry.key}\n$label: ${(rod.toY).round()}%',
                           AppTypography.labelSmall.copyWith(
@@ -179,10 +179,8 @@ class LearningGainCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    topTitles: const AxisTitles(
-                        ),
-                    rightTitles: const AxisTitles(
-                        ),
+                    topTitles: const AxisTitles(),
+                    rightTitles: const AxisTitles(),
                   ),
                   gridData: FlGridData(
                     horizontalInterval: 25,
@@ -193,8 +191,9 @@ class LearningGainCard extends StatelessWidget {
                     drawVerticalLine: false,
                   ),
                   borderData: FlBorderData(show: false),
-                  barGroups:
-                      gains.entries.toList().asMap().entries.map((entry) {
+                  barGroups: gains.entries.toList().asMap().entries.map((
+                    entry,
+                  ) {
                     final i = entry.key;
                     final cat = entry.value.value;
                     return BarChartGroupData(
@@ -205,14 +204,16 @@ class LearningGainCard extends StatelessWidget {
                           color: AppColors.info,
                           width: 8,
                           borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(3)),
+                            top: Radius.circular(3),
+                          ),
                         ),
                         BarChartRodData(
                           toY: (cat.post * 100).clamp(0, 100),
                           color: AppColors.success,
                           width: 8,
                           borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(3)),
+                            top: Radius.circular(3),
+                          ),
                         ),
                       ],
                     );
@@ -377,8 +378,11 @@ class _NoDataCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.trending_up_rounded,
-                  color: hc.textSecondary, size: 22),
+              Icon(
+                Icons.trending_up_rounded,
+                color: hc.textSecondary,
+                size: 22,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Learning Gain',
@@ -398,7 +402,7 @@ class _NoDataCard extends StatelessWidget {
             compact: true,
             actionLabel: actionLabel,
             actionIcon: Icons.play_arrow_rounded,
-            onAction: () => context.go('/assessment'),
+            onAction: () => context.push('/assessment'),
           ),
         ],
       ),
