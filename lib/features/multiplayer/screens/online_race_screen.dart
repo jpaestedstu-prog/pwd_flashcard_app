@@ -1,18 +1,27 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/accessibility/tts_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
 import '../../games/widgets/pause_overlay.dart';
+import '../../gaze_control/models/gaze_action.dart';
+import '../../gaze_control/models/gaze_models.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_scope.dart';
 import '../models/multiplayer_models.dart';
+import '../models/race_presentation.dart';
 import '../services/multiplayer_service.dart';
+import '../widgets/race_cursor.dart';
 import '../widgets/memory_race_player.dart';
 import '../widgets/quiz_race_player.dart';
 import '../widgets/race_result_view.dart';
+import '../widgets/race_sign_launcher.dart';
 import '../widgets/scramble_race_player.dart';
 
 /// Online "Play with a Friend" race over Firestore.
@@ -53,12 +62,55 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
   bool _myFinished = false;
   bool _matchComplete = false;
   bool _paused = false;
+
+  /// An FSL clip is on screen — freezes my own round without stacking the
+  /// pause menu behind the video sheet. (My opponent keeps racing; online
+  /// play can never freeze the other device.)
+  bool _mediaOpen = false;
   bool _cleanedUp = false;
+
+  /// Hands-free highlight, shared with the player widget. Owned here for the
+  /// same reason as in the local race: one camera, one [GazeScope].
+  final RaceCursor _cursor = RaceCursor();
+
+  /// Resolved on mount — `ref` is unusable from `dispose`.
+  late final TtsService _tts;
   int _myScore = 0;
   int _playerSeq = 0;
   String? _error;
 
   String get _roomId => widget.room.id;
+
+  /// How *this* device presents the race.
+  ///
+  /// Channels (narration, haptics, pacing, target size) come from my own
+  /// profile — my opponent races their own copy, so nothing I need slows them
+  /// down. The one exception is the speed bonus: [GameRoom.fairPlay] carries
+  /// the OR of both players' needs, so the moment either side needs an untimed
+  /// score, both sides drop the clock and the two scores stay comparable.
+  RacePresentation get _policy {
+    final mine = ref.read(racePresentationProvider);
+    return (_room ?? widget.room).fairPlay ? mine.withoutTimeScoring() : mine;
+  }
+
+  /// Show the sign for a round's word, freezing my round while it plays.
+  Future<void> _showSign(String cardId) async {
+    if (_mediaOpen) return;
+    setState(() => _mediaOpen = true);
+    try {
+      await showRaceSign(context, ref, cardId);
+    } finally {
+      if (mounted) setState(() => _mediaOpen = false);
+    }
+  }
+
+  void _speak(String text) {
+    final tts = ref.read(ttsServiceProvider);
+    // ignore: discarded_futures
+    ref.read(settingsProvider).locale == 'fil'
+        ? tts.speakFilipino(text)
+        : tts.speakEnglish(text);
+  }
 
   @override
   void initState() {
@@ -66,7 +118,64 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
     WidgetsBinding.instance.addObserver(this);
     _room = widget.room;
     _everLoaded = true;
+    _tts = ref.read(ttsServiceProvider);
+    _cursor.highlight = ref.read(gazeSettingsProvider).enabled;
     WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
+  }
+
+  // ─── Hands-free control ───────────────────────────────
+  // One GazeScope for the screen. Unlike the local race there is no setup or
+  // intro phase — the guest arrives mid-invite — so the actions are the
+  // in-play cursor, plus a way out of every waiting / finished state.
+
+  bool get _canSteer => _started && !_myFinished && !_paused && !_mediaOpen;
+
+  List<GazeAction> _gazeActions() {
+    if (!_canSteer) {
+      return [
+        GazeAction(
+          zone: GazeZone.down,
+          label: 'Back',
+          icon: Icons.arrow_back_rounded,
+          color: AppColors.secondary,
+          onSelect: _leave,
+        ),
+      ];
+    }
+    return [
+      GazeAction(
+        zone: GazeZone.left,
+        label: 'Prev',
+        icon: Icons.chevron_left_rounded,
+        color: AppColors.secondary,
+        enabled: _cursor.canMove,
+        onSelect: () => _cursor.move(-1),
+      ),
+      GazeAction(
+        zone: GazeZone.right,
+        label: 'Next',
+        icon: Icons.chevron_right_rounded,
+        color: AppColors.secondary,
+        enabled: _cursor.canMove,
+        onSelect: () => _cursor.move(1),
+      ),
+      GazeAction(
+        zone: GazeZone.down,
+        label: 'Choose',
+        icon: Icons.check_circle_rounded,
+        color: AppColors.success,
+        enabled: _cursor.canChoose,
+        onSelect: _cursor.choose,
+      ),
+    ];
+  }
+
+  void _onBlink() {
+    if (_canSteer) {
+      _cursor.choose();
+    } else {
+      _leave();
+    }
   }
 
   Future<void> _bootstrap() async {
@@ -78,6 +187,14 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
 
     _roomSub = _svc.watchRoom(_roomId).listen((room) {
       if (!mounted) return;
+      if (kDebugMode && room != null) {
+        // The fair-play handshake is otherwise invisible — it only shows up
+        // as an absent speed bonus in the final score. Log the negotiated
+        // value so it can be confirmed on a real pair of devices.
+        debugPrint('OnlineRace[${widget.asHost ? 'host' : 'guest'}]: '
+            'status=${room.status.wire} fairPlay=${room.fairPlay} '
+            'timeScoring=${_policy.timeScoring}');
+      }
       setState(() {
         _room = room;
         if (room != null) _everLoaded = true;
@@ -98,10 +215,16 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
       });
     });
 
-    // Guest accepts the invite by joining (flips the room to active).
+    // Guest accepts the invite by joining (flips the room to active). Their
+    // own no-clock need is OR-ed into the room in the same write, before
+    // either racer can start.
     if (!widget.asHost) {
       try {
-        await _svc.joinRoom(room: widget.room, me: me);
+        await _svc.joinRoom(
+          room: widget.room,
+          me: me,
+          needsFairPlay: ref.read(racePresentationProvider).needsFairPlay,
+        );
       } on MpActionException catch (e) {
         if (mounted) setState(() => _error = e.message);
       }
@@ -111,7 +234,10 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    // ignore: discarded_futures
+    _tts.stop();
     _cleanup();
+    _cursor.dispose();
     _roomSub?.cancel();
     _playersSub?.cancel();
     super.dispose();
@@ -218,6 +344,18 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
     final room = _room;
     final inPlay = _inPlay(room, me);
 
+    return ListenableBuilder(
+      listenable: _cursor,
+      builder: (context, _) => GazeScope(
+        actions: _gazeActions(),
+        onBlink: _onBlink,
+        child: _shell(room, me, isFilipino, inPlay),
+      ),
+    );
+  }
+
+  Widget _shell(
+      GameRoom? room, UserProfile? me, bool isFilipino, bool inPlay) {
     return Stack(
       children: [
         Scaffold(
@@ -310,6 +448,8 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
       _ => AppColors.info,
     };
     final key = ValueKey('online_$_playerSeq');
+    final policy = _policy;
+    final frozen = _paused || _mediaOpen;
     final Widget player;
     if (room.mode == MpGameMode.memoryRace) {
       player = MemoryRacePlayer(
@@ -317,7 +457,10 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
         layout: room.memoryLayout,
         accentColor: accent,
         isFilipino: isFilipino,
-        isPaused: _paused,
+        isPaused: frozen,
+        presentation: policy,
+        onShowSign: _showSign,
+        cursor: _cursor,
         onProgress: _onProgress,
         onFinished: _onMyFinished,
       );
@@ -327,7 +470,11 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
         items: room.scrambleItems,
         accentColor: accent,
         isFilipino: isFilipino,
-        isPaused: _paused,
+        isPaused: frozen,
+        presentation: policy,
+        speak: _speak,
+        onShowSign: _showSign,
+        cursor: _cursor,
         onProgress: _onProgress,
         onFinished: _onMyFinished,
       );
@@ -337,7 +484,11 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
         questions: room.questions,
         accentColor: accent,
         isFilipino: isFilipino,
-        isPaused: _paused,
+        isPaused: frozen,
+        presentation: policy,
+        speak: _speak,
+        onShowSign: _showSign,
+        cursor: _cursor,
         onProgress: _onProgress,
         onFinished: _onMyFinished,
       );

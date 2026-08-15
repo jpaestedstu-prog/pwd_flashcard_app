@@ -17,13 +17,17 @@ import '../models/friend_models.dart';
 ///
 /// Firestore schema (`profile_directory/{usernameLower}`):
 /// ```
-/// username:   string  (mirrors doc id, kept on the body for portability)
-/// profile_id: string
-/// name:       string
-/// role_index: int     (UserRole index)
-/// owner_uid:  string  (Firebase Anonymous Auth uid of the writer)
-/// updated_at: ISO8601 string
+/// username:        string  (mirrors doc id, kept on the body for portability)
+/// profile_id:      string
+/// name:            string
+/// role_index:      int     (UserRole index)
+/// disability_index int?    (DisabilityType index; absent on older writers)
+/// owner_uid:       string  (Firebase Anonymous Auth uid of the writer)
+/// updated_at:      ISO8601 string
 /// ```
+///
+/// Entries are cached in Hive and served from there first, then topped up in
+/// the background once stale — see [_isStale].
 ///
 /// Reads are open to any signed-in user (security rule below); writes
 /// require the caller to own the profile referenced by [profile_id].
@@ -77,6 +81,9 @@ class ProfileDirectoryService {
       profileId: profile.id,
       name: profile.name,
       roleIndex: profile.role.index,
+      // Lets a host see what an invitee needs before picking a game — see
+      // [DirectoryEntry.disabilityIndex].
+      disabilityIndex: profile.disabilityType.index,
       ownerUid: profile.ownerUid ?? uid,
       updatedAt: DateTime.now(),
     );
@@ -119,7 +126,18 @@ class ProfileDirectoryService {
     final cached = HiveService.getCachedDirectoryEntry(profileId);
     if (cached != null) {
       try {
-        return DirectoryEntry.fromJson(cached);
+        final entry = DirectoryEntry.fromJson(cached);
+        // Serve the cache immediately (that is the whole point of it), but
+        // top it up in the background when it has gone stale. Without this
+        // the cache was write-once: a friend who changed their name — or,
+        // now, their accessibility category — stayed frozen on every peer
+        // forever, and Play Together would keep sizing invites to a profile
+        // they no longer have.
+        if (_isStale(entry)) {
+          // ignore: discarded_futures
+          _refreshCache(profileId);
+        }
+        return entry;
       } catch (_) {
         // Fallthrough — corrupted cache, refetch.
       }
@@ -139,6 +157,36 @@ class ProfileDirectoryService {
     } catch (e, st) {
       ErrorHandler.report(e, st, 'ProfileDirectoryService.lookupByProfileId');
       return null;
+    }
+  }
+
+  /// How long a cached directory entry is trusted before it is topped up in
+  /// the background. Deliberately generous — the entry changes rarely, and a
+  /// stale name or category for a few hours is far cheaper than a read on
+  /// every inbox render.
+  static const Duration _cacheTtl = Duration(hours: 12);
+
+  bool _isStale(DirectoryEntry entry) =>
+      // An entry cached before this build simply has no category, and the
+      // invite logic needs one. Refetch rather than treat "not published" and
+      // "not known yet" as the same thing.
+      entry.disabilityIndex == null ||
+      DateTime.now().difference(entry.updatedAt) > _cacheTtl;
+
+  /// Background top-up of one cached entry. Never throws and never blocks the
+  /// caller — the fresh value is simply there for the next read.
+  Future<void> _refreshCache(String profileId) async {
+    if (!FirebaseService.isConfigured) return;
+    try {
+      final snap = await _col
+          .where('profile_id', isEqualTo: profileId)
+          .limit(1)
+          .get()
+          .timeout(_lookupTimeout);
+      if (snap.docs.isEmpty) return;
+      await HiveService.cacheDirectoryEntry(profileId, snap.docs.first.data());
+    } catch (e, st) {
+      ErrorHandler.report(e, st, 'ProfileDirectoryService._refreshCache');
     }
   }
 

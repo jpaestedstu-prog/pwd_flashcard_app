@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/data/models/enums.dart';
+import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/multiplayer/models/multiplayer_models.dart';
+import 'package:pwdpwdpwd/features/multiplayer/models/race_presentation.dart';
 import 'package:pwdpwdpwd/features/multiplayer/widgets/memory_race_player.dart';
 import 'package:pwdpwdpwd/features/multiplayer/widgets/quiz_race_player.dart';
 import 'package:pwdpwdpwd/features/multiplayer/widgets/race_result_view.dart';
@@ -102,6 +105,97 @@ void main() {
         onFinished: (_) {},
       ),
     );
+  });
+
+  // ── Accessibility-adapted variants ──
+  // Bigger targets mean taller answer cells, one column fewer on the memory
+  // board, and larger letter tiles — each a fresh chance to overflow, so the
+  // adapted layouts get the same matrix as the classic ones.
+
+  final bigTargets = RacePresentation.forProfile(
+    DisabilityType.multiple,
+    const AppSettings(),
+  );
+
+  testWidgets('QuizRacePlayer never overflows with big targets',
+      (tester) async {
+    await expectNoOverflowAcrossDevices(
+      tester,
+      (_) => QuizRacePlayer(
+        questions: _questions(),
+        accentColor: Colors.indigo,
+        presentation: bigTargets,
+        speak: (_) {},
+        onFinished: (_) {},
+      ),
+    );
+  });
+
+  testWidgets('MemoryRacePlayer never overflows with big targets',
+      (tester) async {
+    await expectNoOverflowAcrossDevices(
+      tester,
+      (_) => MemoryRacePlayer(
+        layout: _layout(),
+        accentColor: Colors.purple,
+        presentation: bigTargets,
+        onFinished: (_) {},
+      ),
+    );
+  });
+
+  testWidgets('ScrambleRacePlayer never overflows with big targets',
+      (tester) async {
+    await expectNoOverflowAcrossDevices(
+      tester,
+      (_) => ScrambleRacePlayer(
+        items: _scramble(),
+        accentColor: Colors.orange,
+        presentation: RacePresentation.forProfile(
+          DisabilityType.motor,
+          const AppSettings(),
+        ),
+        speak: (_) {},
+        onFinished: (_) {},
+      ),
+    );
+  });
+
+  testWidgets('the self-paced advance button never overflows', (tester) async {
+    // The button only exists *after* an answer, so the shared matrix helper
+    // (which renders a fresh tree and never interacts) can't reach it — drive
+    // the answer by hand at every size × scale instead.
+    for (final device in kTabletMatrix) {
+      for (final scale in kTextScales) {
+        await pumpResponsive(
+          tester,
+          QuizRacePlayer(
+            questions: _trueFalse(),
+            accentColor: Colors.indigo,
+            presentation: bigTargets,
+            onFinished: (_) {},
+          ),
+          size: device.size,
+          devicePixelRatio: device.devicePixelRatio,
+          textScale: scale,
+        );
+        // On the shortest viewports the option sits below the fold, so bring
+        // it into view before tapping — otherwise the answer never lands and
+        // the Next button under test never renders.
+        final option = find.text('Tama / True').first;
+        await tester.ensureVisible(option);
+        await tester.pump();
+        await tester.tap(option);
+        await tester.pump();
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'Overflow with the Next button at $device, '
+              'textScale ${scale}x',
+        );
+      }
+    }
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('RaceResultView never overflows (win + draw)', (tester) async {

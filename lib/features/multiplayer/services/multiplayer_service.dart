@@ -65,6 +65,7 @@ class MultiplayerService {
     List<MpQuestion> questions = const [],
     List<MemoryCardSpec> memoryLayout = const [],
     List<MpScrambleItem> scrambleItems = const [],
+    bool fairPlay = false,
   }) async {
     final uid = _requireUid();
     final now = DateTime.now();
@@ -81,6 +82,7 @@ class MultiplayerService {
       questions: questions,
       memoryLayout: memoryLayout,
       scrambleItems: scrambleItems,
+      fairPlay: fairPlay,
       createdAt: now,
       updatedAt: now,
       ownerUid: uid,
@@ -104,9 +106,16 @@ class MultiplayerService {
 
   /// Guest accepts an invite: stamps the guest fields, flips the room to
   /// `active`, and writes the guest's player doc.
+  ///
+  /// [needsFairPlay] is the guest's own accessibility need for an untimed
+  /// score. It is OR-ed into the host's value rather than overwriting it, so
+  /// whichever side needs the clock off takes it off for both — and because
+  /// this lands before the room goes `active`, neither racer can have started
+  /// under the other rule.
   Future<void> joinRoom({
     required GameRoom room,
     required UserProfile me,
+    bool needsFairPlay = false,
   }) async {
     final uid = _requireUid();
     if (room.hasGuest && room.guestProfileId != me.id) {
@@ -119,6 +128,7 @@ class MultiplayerService {
         'guest_name': me.name,
         'guest_avatar_index': me.avatarIndex,
         'status': GameRoomStatus.active.wire,
+        'fair_play': room.fairPlay || needsFairPlay,
         'updated_at': DateTime.now().toIso8601String(),
       }).timeout(_timeout);
       await _writePlayer(

@@ -18,24 +18,30 @@ import '../../../data/models/models.dart';
 /// (and the shared quiz player); `memoryRace` uses [MemoryCardSpec] layout;
 /// `scrambleRace` uses [MpScrambleItem]. Wire values are name-based, so the
 /// declaration order is purely cosmetic (drives the lobby list order).
-enum MpGameMode { quizRace, pictureRace, trueFalseRace, memoryRace, scrambleRace }
+enum MpGameMode {
+  quizRace,
+  pictureRace,
+  trueFalseRace,
+  memoryRace,
+  scrambleRace,
+}
 
 extension MpGameModeX on MpGameMode {
   String get wire => switch (this) {
-        MpGameMode.quizRace => 'quizRace',
-        MpGameMode.pictureRace => 'pictureRace',
-        MpGameMode.trueFalseRace => 'trueFalseRace',
-        MpGameMode.memoryRace => 'memoryRace',
-        MpGameMode.scrambleRace => 'scrambleRace',
-      };
+    MpGameMode.quizRace => 'quizRace',
+    MpGameMode.pictureRace => 'pictureRace',
+    MpGameMode.trueFalseRace => 'trueFalseRace',
+    MpGameMode.memoryRace => 'memoryRace',
+    MpGameMode.scrambleRace => 'scrambleRace',
+  };
 
   static MpGameMode fromWire(String? s) => switch (s) {
-        'pictureRace' => MpGameMode.pictureRace,
-        'trueFalseRace' => MpGameMode.trueFalseRace,
-        'memoryRace' => MpGameMode.memoryRace,
-        'scrambleRace' => MpGameMode.scrambleRace,
-        _ => MpGameMode.quizRace,
-      };
+    'pictureRace' => MpGameMode.pictureRace,
+    'trueFalseRace' => MpGameMode.trueFalseRace,
+    'memoryRace' => MpGameMode.memoryRace,
+    'scrambleRace' => MpGameMode.scrambleRace,
+    _ => MpGameMode.quizRace,
+  };
 
   /// True for the modes that render with the shared multiple-choice player.
   bool get usesQuestions =>
@@ -44,49 +50,49 @@ extension MpGameModeX on MpGameMode {
       this == MpGameMode.trueFalseRace;
 
   String get label => switch (this) {
-        MpGameMode.quizRace => 'Word Quiz Race',
-        MpGameMode.pictureRace => 'Picture Quiz',
-        MpGameMode.trueFalseRace => 'True or False',
-        MpGameMode.memoryRace => 'Memory Match Race',
-        MpGameMode.scrambleRace => 'Word Scramble',
-      };
+    MpGameMode.quizRace => 'Word Quiz Race',
+    MpGameMode.pictureRace => 'Picture Quiz',
+    MpGameMode.trueFalseRace => 'True or False',
+    MpGameMode.memoryRace => 'Memory Match Race',
+    MpGameMode.scrambleRace => 'Word Scramble',
+  };
 
   String get labelFilipino => switch (this) {
-        MpGameMode.quizRace => 'Karera ng Salita',
-        MpGameMode.pictureRace => 'Larong Larawan',
-        MpGameMode.trueFalseRace => 'Tama o Mali',
-        MpGameMode.memoryRace => 'Karera ng Memorya',
-        MpGameMode.scrambleRace => 'Gulong Salita',
-      };
+    MpGameMode.quizRace => 'Karera ng Salita',
+    MpGameMode.pictureRace => 'Larong Larawan',
+    MpGameMode.trueFalseRace => 'Tama o Mali',
+    MpGameMode.memoryRace => 'Karera ng Memorya',
+    MpGameMode.scrambleRace => 'Gulong Salita',
+  };
 
   String get emoji => switch (this) {
-        MpGameMode.quizRace => '⚡',
-        MpGameMode.pictureRace => '🖼️',
-        MpGameMode.trueFalseRace => '✅',
-        MpGameMode.memoryRace => '🧠',
-        MpGameMode.scrambleRace => '🔤',
-      };
+    MpGameMode.quizRace => '⚡',
+    MpGameMode.pictureRace => '🖼️',
+    MpGameMode.trueFalseRace => '✅',
+    MpGameMode.memoryRace => '🧠',
+    MpGameMode.scrambleRace => '🔤',
+  };
 
   String get description => switch (this) {
-        MpGameMode.quizRace => 'Answer the same words — most correct wins!',
-        MpGameMode.pictureRace => 'Name the picture — most correct wins!',
-        MpGameMode.trueFalseRace => 'Is it right? Tap fast — most correct wins!',
-        MpGameMode.memoryRace => 'Find all the matching pairs the fastest!',
-        MpGameMode.scrambleRace => 'Unscramble the letters — most words wins!',
-      };
+    MpGameMode.quizRace => 'Answer the same words — most correct wins!',
+    MpGameMode.pictureRace => 'Name the picture — most correct wins!',
+    MpGameMode.trueFalseRace => 'Is it right? Tap fast — most correct wins!',
+    MpGameMode.memoryRace => 'Find all the matching pairs the fastest!',
+    MpGameMode.scrambleRace => 'Unscramble the letters — most words wins!',
+  };
 
   String get descriptionFilipino => switch (this) {
-        MpGameMode.quizRace =>
-          'Sagutin ang parehong salita — panalo ang pinakamarami!',
-        MpGameMode.pictureRace =>
-          'Pangalanan ang larawan — panalo ang pinakamarami!',
-        MpGameMode.trueFalseRace =>
-          'Tama ba? Pindutin agad — panalo ang pinakamarami!',
-        MpGameMode.memoryRace =>
-          'Hanapin ang lahat ng magkapares nang pinakamabilis!',
-        MpGameMode.scrambleRace =>
-          'Ayusin ang mga letra — panalo ang pinakamaraming salita!',
-      };
+    MpGameMode.quizRace =>
+      'Sagutin ang parehong salita — panalo ang pinakamarami!',
+    MpGameMode.pictureRace =>
+      'Pangalanan ang larawan — panalo ang pinakamarami!',
+    MpGameMode.trueFalseRace =>
+      'Tama ba? Pindutin agad — panalo ang pinakamarami!',
+    MpGameMode.memoryRace =>
+      'Hanapin ang lahat ng magkapares nang pinakamabilis!',
+    MpGameMode.scrambleRace =>
+      'Ayusin ang mga letra — panalo ang pinakamaraming salita!',
+  };
 }
 
 /// Lifecycle of an online match. Stored as a short wire string (mirrors
@@ -95,18 +101,18 @@ enum GameRoomStatus { waiting, active, finished, cancelled }
 
 extension GameRoomStatusX on GameRoomStatus {
   String get wire => switch (this) {
-        GameRoomStatus.waiting => 'waiting',
-        GameRoomStatus.active => 'active',
-        GameRoomStatus.finished => 'finished',
-        GameRoomStatus.cancelled => 'cancelled',
-      };
+    GameRoomStatus.waiting => 'waiting',
+    GameRoomStatus.active => 'active',
+    GameRoomStatus.finished => 'finished',
+    GameRoomStatus.cancelled => 'cancelled',
+  };
 
   static GameRoomStatus fromWire(String? s) => switch (s) {
-        'active' => GameRoomStatus.active,
-        'finished' => GameRoomStatus.finished,
-        'cancelled' => GameRoomStatus.cancelled,
-        _ => GameRoomStatus.waiting,
-      };
+    'active' => GameRoomStatus.active,
+    'finished' => GameRoomStatus.finished,
+    'cancelled' => GameRoomStatus.cancelled,
+    _ => GameRoomStatus.waiting,
+  };
 }
 
 /// A single multiple-choice question for the quiz race. The same list is
@@ -118,30 +124,55 @@ class MpQuestion {
   final List<String> options;
   final int correctIndex;
 
+  /// Flashcard behind a picture round, so the player can render the card's
+  /// picture instead of [prompt]. Null for text-only rounds (true/false,
+  /// translation) and for peers running an older build, where [prompt] is
+  /// shown as-is.
+  ///
+  /// This field doubles as the "render pictorially" marker, which is why the
+  /// FSL lookup uses [signCardId] instead: setting `card_id` on a word round
+  /// would turn its text prompt into a picture on every peer.
+  final String? cardId;
+
+  /// Which flashcard this round is *about*, for the Filipino Sign Language
+  /// lookup — set on every round type, unlike [cardId]. Null on peers running
+  /// an older build, where the round simply offers no sign.
+  final String? signCardId;
+
   const MpQuestion({
     required this.prompt,
     required this.promptLabel,
     this.subtitle,
     required this.options,
     required this.correctIndex,
+    this.cardId,
+    this.signCardId,
   });
 
+  /// The card to look a sign up from: the explicit [signCardId], falling back
+  /// to a picture round's [cardId] (which is the same card).
+  String? get fslCardId => signCardId ?? cardId;
+
   Map<String, dynamic> toJson() => {
-        'prompt': prompt,
-        'prompt_label': promptLabel,
-        if (subtitle != null) 'subtitle': subtitle,
-        'options': options,
-        'correct_index': correctIndex,
-      };
+    'prompt': prompt,
+    'prompt_label': promptLabel,
+    if (subtitle != null) 'subtitle': subtitle,
+    'options': options,
+    'correct_index': correctIndex,
+    if (cardId != null) 'card_id': cardId,
+    if (signCardId != null) 'sign_card_id': signCardId,
+  };
 
   factory MpQuestion.fromJson(Map<String, dynamic> j) => MpQuestion(
-        prompt: j['prompt'] as String? ?? '',
-        promptLabel: j['prompt_label'] as String? ?? '',
-        subtitle: j['subtitle'] as String?,
-        options: (j['options'] as List?)?.map((e) => '$e').toList() ??
-            const <String>[],
-        correctIndex: (j['correct_index'] as num?)?.toInt() ?? 0,
-      );
+    prompt: j['prompt'] as String? ?? '',
+    promptLabel: j['prompt_label'] as String? ?? '',
+    subtitle: j['subtitle'] as String?,
+    options:
+        (j['options'] as List?)?.map((e) => '$e').toList() ?? const <String>[],
+    correctIndex: (j['correct_index'] as num?)?.toInt() ?? 0,
+    cardId: j['card_id'] as String?,
+    signCardId: j['sign_card_id'] as String?,
+  );
 }
 
 /// One face in the memory race board. The board is a pre-shuffled list of
@@ -158,16 +189,16 @@ class MemoryCardSpec {
   });
 
   Map<String, dynamic> toJson() => {
-        'card_id': cardId,
-        'emoji': emoji,
-        'label': label,
-      };
+    'card_id': cardId,
+    'emoji': emoji,
+    'label': label,
+  };
 
   factory MemoryCardSpec.fromJson(Map<String, dynamic> j) => MemoryCardSpec(
-        cardId: j['card_id'] as String? ?? '',
-        emoji: j['emoji'] as String? ?? '📖',
-        label: j['label'] as String? ?? '',
-      );
+    cardId: j['card_id'] as String? ?? '',
+    emoji: j['emoji'] as String? ?? '📖',
+    label: j['label'] as String? ?? '',
+  );
 }
 
 /// One word to unscramble in the word-scramble race. The host bakes the
@@ -176,6 +207,10 @@ class MpScrambleItem {
   /// English clue word shown to the player.
   final String prompt;
   final String promptEmoji;
+
+  /// Flashcard behind the clue, so the player can render its picture instead
+  /// of [promptEmoji]. Null on peers running an older build.
+  final String? cardId;
 
   /// The Filipino word the player must spell.
   final String answer;
@@ -188,22 +223,25 @@ class MpScrambleItem {
     required this.promptEmoji,
     required this.answer,
     required this.letters,
+    this.cardId,
   });
 
   Map<String, dynamic> toJson() => {
-        'prompt': prompt,
-        'prompt_emoji': promptEmoji,
-        'answer': answer,
-        'letters': letters,
-      };
+    'prompt': prompt,
+    'prompt_emoji': promptEmoji,
+    'answer': answer,
+    'letters': letters,
+    if (cardId != null) 'card_id': cardId,
+  };
 
   factory MpScrambleItem.fromJson(Map<String, dynamic> j) => MpScrambleItem(
-        prompt: j['prompt'] as String? ?? '',
-        promptEmoji: j['prompt_emoji'] as String? ?? '🔤',
-        answer: j['answer'] as String? ?? '',
-        letters: (j['letters'] as List?)?.map((e) => '$e').toList() ??
-            const <String>[],
-      );
+    prompt: j['prompt'] as String? ?? '',
+    promptEmoji: j['prompt_emoji'] as String? ?? '🔤',
+    cardId: j['card_id'] as String?,
+    answer: j['answer'] as String? ?? '',
+    letters:
+        (j['letters'] as List?)?.map((e) => '$e').toList() ?? const <String>[],
+  );
 }
 
 /// An online match room. Doc id is a UUID. The host writes the full game
@@ -231,6 +269,18 @@ class GameRoom {
   final List<MpQuestion> questions;
   final List<MemoryCardSpec> memoryLayout;
   final List<MpScrambleItem> scrambleItems;
+
+  /// True when **either** racer's accessibility profile needs an untimed
+  /// score, in which case neither side gets a speed bonus.
+  ///
+  /// A speed bonus is only fair when both players can go fast, so this is the
+  /// one presentation decision that cannot be made per-device. The host seeds
+  /// it from their own policy at [createRoom]; the guest ORs their own need in
+  /// when they join, before either side can start playing (the match only goes
+  /// `active` on join). Defaults false so a peer on an older build — which
+  /// never writes the field — still races the classic timed match.
+  final bool fairPlay;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -254,76 +304,88 @@ class GameRoom {
     this.questions = const [],
     this.memoryLayout = const [],
     this.scrambleItems = const [],
+    this.fairPlay = false,
     required this.createdAt,
     required this.updatedAt,
     required this.ownerUid,
   });
 
-  bool get hasGuest =>
-      guestProfileId != null && guestProfileId!.isNotEmpty;
+  bool get hasGuest => guestProfileId != null && guestProfileId!.isNotEmpty;
 
   /// Number of steps in this match — used for the live opponent progress bar.
   int get totalSteps => switch (mode) {
-        MpGameMode.memoryRace => memoryLayout.length ~/ 2,
-        MpGameMode.scrambleRace => scrambleItems.length,
-        _ => questions.length,
-      };
+    MpGameMode.memoryRace => memoryLayout.length ~/ 2,
+    MpGameMode.scrambleRace => scrambleItems.length,
+    _ => questions.length,
+  };
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'host_profile_id': hostProfileId,
-        'host_name': hostName,
-        'host_uid': hostUid,
-        'host_avatar_index': hostAvatarIndex,
-        if (guestProfileId != null) 'guest_profile_id': guestProfileId,
-        if (guestName != null) 'guest_name': guestName,
-        if (guestAvatarIndex != null) 'guest_avatar_index': guestAvatarIndex,
-        'invited_profile_id': invitedProfileId,
-        'mode': mode.wire,
-        'status': status.wire,
-        'rounds': rounds,
-        'questions': questions.map((q) => q.toJson()).toList(),
-        'memory_layout': memoryLayout.map((c) => c.toJson()).toList(),
-        'scramble_items': scrambleItems.map((s) => s.toJson()).toList(),
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
-        'owner_uid': ownerUid,
-      };
+    'id': id,
+    'host_profile_id': hostProfileId,
+    'host_name': hostName,
+    'host_uid': hostUid,
+    'host_avatar_index': hostAvatarIndex,
+    if (guestProfileId != null) 'guest_profile_id': guestProfileId,
+    if (guestName != null) 'guest_name': guestName,
+    if (guestAvatarIndex != null) 'guest_avatar_index': guestAvatarIndex,
+    'invited_profile_id': invitedProfileId,
+    'mode': mode.wire,
+    'status': status.wire,
+    'rounds': rounds,
+    'questions': questions.map((q) => q.toJson()).toList(),
+    'memory_layout': memoryLayout.map((c) => c.toJson()).toList(),
+    'scramble_items': scrambleItems.map((s) => s.toJson()).toList(),
+    'fair_play': fairPlay,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    'owner_uid': ownerUid,
+  };
 
   factory GameRoom.fromJson(Map<String, dynamic> j) => GameRoom(
-        id: j['id'] as String? ?? '',
-        hostProfileId: j['host_profile_id'] as String? ?? '',
-        hostName: j['host_name'] as String? ?? '',
-        hostUid: j['host_uid'] as String? ?? '',
-        hostAvatarIndex: (j['host_avatar_index'] as num?)?.toInt() ?? 0,
-        guestProfileId: j['guest_profile_id'] as String?,
-        guestName: j['guest_name'] as String?,
-        guestAvatarIndex: (j['guest_avatar_index'] as num?)?.toInt(),
-        invitedProfileId: j['invited_profile_id'] as String? ?? '',
-        mode: MpGameModeX.fromWire(j['mode'] as String?),
-        status: GameRoomStatusX.fromWire(j['status'] as String?),
-        rounds: (j['rounds'] as num?)?.toInt() ?? 5,
-        questions: (j['questions'] as List?)
-                ?.map((e) =>
-                    MpQuestion.fromJson(Map<String, dynamic>.from(e as Map)))
-                .toList() ??
-            const [],
-        memoryLayout: (j['memory_layout'] as List?)
-                ?.map((e) => MemoryCardSpec.fromJson(
-                    Map<String, dynamic>.from(e as Map)))
-                .toList() ??
-            const [],
-        scrambleItems: (j['scramble_items'] as List?)
-                ?.map((e) => MpScrambleItem.fromJson(
-                    Map<String, dynamic>.from(e as Map)))
-                .toList() ??
-            const [],
-        createdAt: DateTime.tryParse(j['created_at'] as String? ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0),
-        updatedAt: DateTime.tryParse(j['updated_at'] as String? ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0),
-        ownerUid: j['owner_uid'] as String? ?? '',
-      );
+    id: j['id'] as String? ?? '',
+    hostProfileId: j['host_profile_id'] as String? ?? '',
+    hostName: j['host_name'] as String? ?? '',
+    hostUid: j['host_uid'] as String? ?? '',
+    hostAvatarIndex: (j['host_avatar_index'] as num?)?.toInt() ?? 0,
+    guestProfileId: j['guest_profile_id'] as String?,
+    guestName: j['guest_name'] as String?,
+    guestAvatarIndex: (j['guest_avatar_index'] as num?)?.toInt(),
+    invitedProfileId: j['invited_profile_id'] as String? ?? '',
+    mode: MpGameModeX.fromWire(j['mode'] as String?),
+    status: GameRoomStatusX.fromWire(j['status'] as String?),
+    rounds: (j['rounds'] as num?)?.toInt() ?? 5,
+    questions:
+        (j['questions'] as List?)
+            ?.map(
+              (e) => MpQuestion.fromJson(Map<String, dynamic>.from(e as Map)),
+            )
+            .toList() ??
+        const [],
+    memoryLayout:
+        (j['memory_layout'] as List?)
+            ?.map(
+              (e) =>
+                  MemoryCardSpec.fromJson(Map<String, dynamic>.from(e as Map)),
+            )
+            .toList() ??
+        const [],
+    scrambleItems:
+        (j['scramble_items'] as List?)
+            ?.map(
+              (e) =>
+                  MpScrambleItem.fromJson(Map<String, dynamic>.from(e as Map)),
+            )
+            .toList() ??
+        const [],
+    fairPlay: j['fair_play'] as bool? ?? false,
+    createdAt:
+        DateTime.tryParse(j['created_at'] as String? ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0),
+    updatedAt:
+        DateTime.tryParse(j['updated_at'] as String? ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0),
+    ownerUid: j['owner_uid'] as String? ?? '',
+  );
 
   /// The other party's display name, given my profile id. Falls back to a
   /// generic label so the UI never shows an empty name.
@@ -363,27 +425,28 @@ class MpPlayerState {
   });
 
   Map<String, dynamic> toJson() => {
-        'profile_id': profileId,
-        'name': name,
-        'avatar_index': avatarIndex,
-        'score': score,
-        'progress': progress,
-        'finished': finished,
-        'owner_uid': ownerUid,
-        'updated_at': updatedAt.toIso8601String(),
-      };
+    'profile_id': profileId,
+    'name': name,
+    'avatar_index': avatarIndex,
+    'score': score,
+    'progress': progress,
+    'finished': finished,
+    'owner_uid': ownerUid,
+    'updated_at': updatedAt.toIso8601String(),
+  };
 
   factory MpPlayerState.fromJson(Map<String, dynamic> j) => MpPlayerState(
-        profileId: j['profile_id'] as String? ?? '',
-        name: j['name'] as String? ?? '',
-        avatarIndex: (j['avatar_index'] as num?)?.toInt() ?? 0,
-        score: (j['score'] as num?)?.toInt() ?? 0,
-        progress: (j['progress'] as num?)?.toInt() ?? 0,
-        finished: j['finished'] as bool? ?? false,
-        ownerUid: j['owner_uid'] as String? ?? '',
-        updatedAt: DateTime.tryParse(j['updated_at'] as String? ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0),
-      );
+    profileId: j['profile_id'] as String? ?? '',
+    name: j['name'] as String? ?? '',
+    avatarIndex: (j['avatar_index'] as num?)?.toInt() ?? 0,
+    score: (j['score'] as num?)?.toInt() ?? 0,
+    progress: (j['progress'] as num?)?.toInt() ?? 0,
+    finished: j['finished'] as bool? ?? false,
+    ownerUid: j['owner_uid'] as String? ?? '',
+    updatedAt:
+        DateTime.tryParse(j['updated_at'] as String? ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0),
+  );
 }
 
 /// Head-to-head outcome from two scores. Pure + testable.
@@ -414,8 +477,7 @@ List<MpQuestion> buildQuizQuestions(
     final card = shuffled[i % shuffled.length];
     final englishToFilipino = rng.nextBool();
 
-    final wrong = shuffled.where((c) => c.id != card.id).toList()
-      ..shuffle(rng);
+    final wrong = shuffled.where((c) => c.id != card.id).toList()..shuffle(rng);
     final wrongOptions = wrong
         .take(3)
         .map((c) => englishToFilipino ? c.wordFilipino : c.wordEnglish)
@@ -424,15 +486,18 @@ List<MpQuestion> buildQuizQuestions(
 
     final options = [...wrongOptions, correct]..shuffle(rng);
 
-    out.add(MpQuestion(
-      prompt: englishToFilipino ? card.wordEnglish : card.wordFilipino,
-      promptLabel: englishToFilipino
-          ? 'What is this in Filipino?'
-          : 'What is this in English?',
-      subtitle: card.exampleSentence,
-      options: options,
-      correctIndex: options.indexOf(correct),
-    ));
+    out.add(
+      MpQuestion(
+        prompt: englishToFilipino ? card.wordEnglish : card.wordFilipino,
+        promptLabel: englishToFilipino
+            ? 'What is this in Filipino?'
+            : 'What is this in English?',
+        subtitle: card.exampleSentence,
+        options: options,
+        correctIndex: options.indexOf(correct),
+        signCardId: card.id,
+      ),
+    );
   }
   return out;
 }
@@ -483,12 +548,16 @@ List<MpQuestion> buildPictureQuestions(
       card.wordEnglish,
     ]..shuffle(rng);
 
-    out.add(MpQuestion(
-      prompt: emojiFor(card.id),
-      promptLabel: 'Which word is this?',
-      options: options,
-      correctIndex: options.indexOf(card.wordEnglish),
-    ));
+    out.add(
+      MpQuestion(
+        prompt: emojiFor(card.id),
+        promptLabel: 'Which word is this?',
+        options: options,
+        correctIndex: options.indexOf(card.wordEnglish),
+        cardId: card.id,
+        signCardId: card.id,
+      ),
+    );
   }
   return out;
 }
@@ -524,12 +593,15 @@ List<MpQuestion> buildTrueFalseQuestions(
     // the answer stays consistent with [makeTrue].
     final isTrue = shownFilipino == card.wordFilipino;
 
-    out.add(MpQuestion(
-      prompt: '${card.wordEnglish} = $shownFilipino?',
-      promptLabel: 'True or False?',
-      options: [yesLabel, noLabel],
-      correctIndex: isTrue ? 0 : 1,
-    ));
+    out.add(
+      MpQuestion(
+        prompt: '${card.wordEnglish} = $shownFilipino?',
+        promptLabel: 'True or False?',
+        options: [yesLabel, noLabel],
+        correctIndex: isTrue ? 0 : 1,
+        signCardId: card.id,
+      ),
+    );
   }
   return out;
 }
@@ -543,13 +615,16 @@ List<MpScrambleItem> buildScrambleItems(
   Random rng, {
   required String Function(String cardId) emojiFor,
 }) {
-  final eligible = pool
-      .where((c) =>
-          !c.wordFilipino.contains(' ') &&
-          c.wordFilipino.runes.length >= 3 &&
-          c.wordFilipino.runes.length <= 8)
-      .toList()
-    ..shuffle(rng);
+  final eligible =
+      pool
+          .where(
+            (c) =>
+                !c.wordFilipino.contains(' ') &&
+                c.wordFilipino.runes.length >= 3 &&
+                c.wordFilipino.runes.length <= 8,
+          )
+          .toList()
+        ..shuffle(rng);
 
   final out = <MpScrambleItem>[];
   for (final c in eligible.take(count)) {
@@ -563,12 +638,15 @@ List<MpScrambleItem> buildScrambleItems(
       attempts++;
     } while (letters.join() == answer && attempts < 8);
 
-    out.add(MpScrambleItem(
-      prompt: c.wordEnglish,
-      promptEmoji: emojiFor(c.id),
-      answer: answer,
-      letters: letters,
-    ));
+    out.add(
+      MpScrambleItem(
+        prompt: c.wordEnglish,
+        promptEmoji: emojiFor(c.id),
+        answer: answer,
+        letters: letters,
+        cardId: c.id,
+      ),
+    );
   }
   return out;
 }

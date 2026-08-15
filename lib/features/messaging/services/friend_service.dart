@@ -36,6 +36,12 @@ class FriendService {
   CollectionReference<Map<String, dynamic>> get _friendships =>
       FirebaseService.db.collection('friendships');
 
+  CollectionReference<Map<String, dynamic>> get _blocks =>
+      FirebaseService.db.collection('blocks');
+
+  CollectionReference<Map<String, dynamic>> get _reports =>
+      FirebaseService.db.collection('message_reports');
+
   // ─── Mutations ────────────────────────────────────────
 
   /// Resolve [targetUsernameOrId] to a profile id and write a pending
@@ -48,12 +54,14 @@ class FriendService {
   }) async {
     if (!FirebaseService.isConfigured) {
       throw const FriendActionException(
-          'Cloud sync is not configured on this device.');
+        'Cloud sync is not configured on this device.',
+      );
     }
     final uid = FirebaseService.currentUid;
     if (uid == null) {
       throw const FriendActionException(
-          'Sign-in is still warming up. Try again in a moment.');
+        'Sign-in is still warming up. Try again in a moment.',
+      );
     }
 
     final raw = targetUsernameOrId.trim();
@@ -72,8 +80,9 @@ class FriendService {
     }
     if (target == null) {
       throw const FriendActionException(
-          'No user with that username or ID. Make sure they have opened '
-          'Messages on their device at least once.');
+        'No user with that username or ID. Make sure they have opened '
+        'Messages on their device at least once.',
+      );
     }
 
     if (target.profileId == me.id) {
@@ -102,10 +111,7 @@ class FriendService {
     // straight away instead of creating a duplicate from the other side.
     DocumentSnapshot<Map<String, dynamic>> reverse;
     try {
-      reverse = await _requests
-          .doc(reverseId)
-          .get()
-          .timeout(_firestoreTimeout);
+      reverse = await _requests.doc(reverseId).get().timeout(_firestoreTimeout);
     } catch (e, st) {
       _mapFirestoreError(e, st, 'sendRequest.checkReverse');
     }
@@ -114,6 +120,35 @@ class FriendService {
       if (r.status == FriendRequestStatus.pending) {
         await acceptRequest(myProfileId: me.id, requestId: reverseId);
         return;
+      }
+    }
+
+    // A *finished* request from a previous round (accepted, then unfriended
+    // or blocked; or rejected/cancelled) still occupies this composite id.
+    // Firestore evaluates `set()` on an existing doc against the **update**
+    // rule, which only permits `status` and `updated_at` to change — so
+    // rewriting it wholesale is denied and re-adding a former friend fails
+    // with a bare "couldn't send the request". Clear the stale doc first;
+    // the rules let the sender delete their own request, and a re-add is a
+    // genuinely new request rather than a mutation of the old one.
+    DocumentSnapshot<Map<String, dynamic>>? prior;
+    try {
+      prior = await _requests.doc(requestId).get().timeout(_firestoreTimeout);
+    } catch (e, st) {
+      _mapFirestoreError(e, st, 'sendRequest.checkPrior');
+    }
+    if (prior.exists) {
+      final r = FriendRequest.fromJson(prior.data()!);
+      if (r.status == FriendRequestStatus.pending) {
+        // Already waiting on them — say so rather than silently resending.
+        throw const FriendActionException(
+          "You already asked them. They haven't answered yet.",
+        );
+      }
+      try {
+        await _requests.doc(requestId).delete().timeout(_firestoreTimeout);
+      } catch (e, st) {
+        _mapFirestoreError(e, st, 'sendRequest.clearStale');
       }
     }
 
@@ -158,14 +193,12 @@ class FriendService {
       final fid = Friendship.makeId(r.fromProfileId, r.toProfileId);
       final friendship = Friendship(
         id: fid,
-        profileA:
-            r.fromProfileId.compareTo(r.toProfileId) <= 0
-                ? r.fromProfileId
-                : r.toProfileId,
-        profileB:
-            r.fromProfileId.compareTo(r.toProfileId) <= 0
-                ? r.toProfileId
-                : r.fromProfileId,
+        profileA: r.fromProfileId.compareTo(r.toProfileId) <= 0
+            ? r.fromProfileId
+            : r.toProfileId,
+        profileB: r.fromProfileId.compareTo(r.toProfileId) <= 0
+            ? r.toProfileId
+            : r.fromProfileId,
         createdAt: DateTime.now(),
       );
 
@@ -219,7 +252,164 @@ class FriendService {
     }
   }
 
+  // ─── Blocking & reporting ─────────────────────────────
+
+  /// Doc id for "[blocker] has blocked [blocked]". Directional on purpose —
+  /// blocking is one-sided and must not be inferable in reverse.
+  static String blockId(String blocker, String blocked) =>
+      '${blocker}_$blocked';
+
+  /// Block [blockedProfileId]: drops the friendship (so they leave the inbox
+  /// on both sides) and records the block so they can't come back via a new
+  /// friend request.
+  ///
+  /// The block doc is what [watchBlocked] filters the conversation directory
+  /// with, so the peer disappears locally even before the friendship delete
+  /// round-trips.
+  Future<void> blockUser({
+    required String myProfileId,
+    required String blockedProfileId,
+  }) async {
+    if (!FirebaseService.isConfigured) return;
+    final uid = FirebaseService.currentUid;
+    if (uid == null) return;
+    try {
+      await _blocks.doc(blockId(myProfileId, blockedProfileId)).set({
+        'blocker_profile_id': myProfileId,
+        'blocked_profile_id': blockedProfileId,
+        'blocker_uid': uid,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e, st) {
+      ErrorHandler.report(e, st, 'FriendService.blockUser');
+    }
+    // Unfriending is best-effort and separate: a block must stick even if the
+    // friendship delete is denied or the doc never existed.
+    await removeFriend(
+      myProfileId: myProfileId,
+      friendProfileId: blockedProfileId,
+    );
+  }
+
+  Future<void> unblockUser({
+    required String myProfileId,
+    required String blockedProfileId,
+  }) async {
+    if (!FirebaseService.isConfigured) return;
+    try {
+      await _blocks.doc(blockId(myProfileId, blockedProfileId)).delete();
+    } catch (e, st) {
+      ErrorHandler.report(e, st, 'FriendService.unblockUser');
+    }
+  }
+
+  /// Live set of profile ids [profileId] has blocked. Emits the Hive cache
+  /// first so a blocked peer never flashes back into the inbox on cold start.
+  Stream<Set<String>> watchBlocked(String profileId) {
+    final cached = HiveService.getBlockedProfiles(profileId).toSet();
+    if (!FirebaseService.isConfigured) return Stream.value(cached);
+
+    final controller = StreamController<Set<String>>.broadcast();
+    controller.add(cached);
+    final sub = _blocks
+        .where('blocker_profile_id', isEqualTo: profileId)
+        .snapshots()
+        .listen(
+          (snap) {
+            final ids = snap.docs
+                .map((d) => d.data()['blocked_profile_id'] as String? ?? '')
+                .where((id) => id.isNotEmpty)
+                .toSet();
+            // ignore: discarded_futures
+            HiveService.saveBlockedProfiles(profileId, ids.toList());
+            controller.add(ids);
+          },
+          onError: (e, st) {
+            // Logged for the developer, never surfaced: see the matching entry in
+            // ErrorHandler._silentSources. Until the `blocks` rules are deployed
+            // this denies on every Messages open, and the Hive cache below still
+            // enforces whatever the learner has already blocked.
+            ErrorHandler.report(e, st, 'FriendService.watchBlocked:silent');
+            if (!controller.isClosed) controller.add(cached);
+          },
+        );
+    controller.onCancel = () => sub.cancel();
+    return controller.stream;
+  }
+
+  /// File a safeguarding report about [reportedProfileId].
+  ///
+  /// The report lands in `message_reports` for a grown-up to review. When
+  /// [alsoBlock] is true the peer is blocked immediately too, so a child
+  /// doesn't have to wait out the review to stop receiving messages.
+  ///
+  /// **[alsoBlock] must be false for a classroom educator.** Auto-blocking
+  /// there would quietly cut the child off from their own teacher — the exact
+  /// person the class depends on — and, because the educator relationship
+  /// comes from the classroom rather than a friendship, the child could not
+  /// undo it from the peer sheet. Reports about an adult are for a grown-up
+  /// to act on, not for the app to silently enforce.
+  Future<void> reportUser({
+    required String myProfileId,
+    required String myDisplayName,
+    required String reportedProfileId,
+    required String reportedDisplayName,
+    required String reason,
+    required bool alsoBlock,
+    String? lastMessageContent,
+  }) async {
+    if (!FirebaseService.isConfigured) return;
+    final uid = FirebaseService.currentUid;
+    if (uid == null) return;
+    try {
+      await _reports.add({
+        'reporter_profile_id': myProfileId,
+        'reporter_display_name': myDisplayName,
+        'reporter_uid': uid,
+        'reported_profile_id': reportedProfileId,
+        'reported_display_name': reportedDisplayName,
+        'reason': reason,
+        'sample_message': ?lastMessageContent,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e, st) {
+      ErrorHandler.report(e, st, 'FriendService.reportUser');
+    }
+    if (!alsoBlock) return;
+    await blockUser(
+      myProfileId: myProfileId,
+      blockedProfileId: reportedProfileId,
+    );
+  }
+
   // ─── Streams ──────────────────────────────────────────
+
+  /// Live list of pending requests [profileId] has **sent** and can still
+  /// cancel. Without this the sender had no record that a request existed —
+  /// they'd re-send into a "you already asked" void.
+  Stream<List<FriendRequest>> watchOutgoingRequests(String profileId) {
+    if (!FirebaseService.isConfigured) {
+      return Stream.value(const <FriendRequest>[]);
+    }
+    final controller = StreamController<List<FriendRequest>>.broadcast();
+    final sub = _requests
+        .where('from_profile_id', isEqualTo: profileId)
+        .where('status', isEqualTo: FriendRequestStatus.pending.wire)
+        .snapshots()
+        .listen(
+          (snap) {
+            final list =
+                snap.docs.map((d) => FriendRequest.fromJson(d.data())).toList()
+                  ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            controller.add(list);
+          },
+          onError: (e, st) {
+            ErrorHandler.report(e, st, 'FriendService.watchOutgoingRequests');
+          },
+        );
+    controller.onCancel = () => sub.cancel();
+    return controller.stream;
+  }
 
   /// Live list of accepted friendships visible to [profileId]. Merges
   /// two `where` queries client-side (Firestore disallows OR on different
@@ -230,12 +420,8 @@ class FriendService {
       return Stream.value(_cachedFriends(profileId));
     }
 
-    final a = _friendships
-        .where('profile_a', isEqualTo: profileId)
-        .snapshots();
-    final b = _friendships
-        .where('profile_b', isEqualTo: profileId)
-        .snapshots();
+    final a = _friendships.where('profile_a', isEqualTo: profileId).snapshots();
+    final b = _friendships.where('profile_b', isEqualTo: profileId).snapshots();
 
     final controller = StreamController<List<Friendship>>.broadcast();
     List<Friendship> aBuf = const [];
@@ -260,7 +446,9 @@ class FriendService {
       // Fire-and-forget cache write.
       // ignore: discarded_futures
       HiveService.saveFriendsCache(
-          profileId, merged.map((f) => f.toJson()).toList());
+        profileId,
+        merged.map((f) => f.toJson()).toList(),
+      );
       emitted = true;
     }
 
@@ -303,23 +491,23 @@ class FriendService {
         .where('status', isEqualTo: FriendRequestStatus.pending.wire)
         .snapshots()
         .map((snap) {
-      final list = snap.docs
-          .map((d) => FriendRequest.fromJson(d.data()))
-          .toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      // ignore: discarded_futures
-      HiveService.saveFriendRequestsCache(
-          profileId, list.map((r) => r.toJson()).toList());
-      return list;
-    });
+          final list =
+              snap.docs.map((d) => FriendRequest.fromJson(d.data())).toList()
+                ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          // ignore: discarded_futures
+          HiveService.saveFriendRequestsCache(
+            profileId,
+            list.map((r) => r.toJson()).toList(),
+          );
+          return list;
+        });
 
     final controller = StreamController<List<FriendRequest>>.broadcast();
     controller.add(cached);
     final sub = live.listen(
       controller.add,
       onError: (e, st) {
-        ErrorHandler.report(
-            e, st, 'FriendService.watchIncomingRequests');
+        ErrorHandler.report(e, st, 'FriendService.watchIncomingRequests');
       },
     );
     controller.onCancel = () => sub.cancel();
@@ -329,15 +517,15 @@ class FriendService {
   // ─── Internals ────────────────────────────────────────
 
   List<Friendship> _cachedFriends(String profileId) {
-    return HiveService.getFriendsCache(profileId)
-        .map(Friendship.fromJson)
-        .toList();
+    return HiveService.getFriendsCache(
+      profileId,
+    ).map(Friendship.fromJson).toList();
   }
 
   List<FriendRequest> _cachedRequests(String profileId) {
-    return HiveService.getFriendRequestsCache(profileId)
-        .map(FriendRequest.fromJson)
-        .toList();
+    return HiveService.getFriendRequestsCache(
+      profileId,
+    ).map(FriendRequest.fromJson).toList();
   }
 
   bool _looksLikeUuid(String s) {
@@ -360,15 +548,18 @@ class FriendService {
     ErrorHandler.report(e, st, 'FriendService.$label');
     if (e is TimeoutException) {
       throw const FriendActionException(
-          'Network is slow. Check your connection and try again.');
+        'Network is slow. Check your connection and try again.',
+      );
     }
     if (e is FirebaseException && e.code == 'permission-denied') {
       throw const FriendActionException(
-          "Couldn't reach the friend service. If this keeps happening, "
-          'ask your teacher to redeploy the app rules.');
+        "Couldn't reach the friend service. If this keeps happening, "
+        'ask your teacher to redeploy the app rules.',
+      );
     }
     throw const FriendActionException(
-        "Couldn't send the request. Try again in a moment.");
+      "Couldn't send the request. Try again in a moment.",
+    );
   }
 }
 

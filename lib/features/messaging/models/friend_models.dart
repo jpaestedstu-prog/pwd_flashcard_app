@@ -141,6 +141,17 @@ class DirectoryEntry {
   /// Role index from [UserRole]. Stored as int for forward-compat with
   /// new roles without breaking the directory query.
   final int roleIndex;
+
+  /// Index from [DisabilityType], or null when the peer's build predates the
+  /// field (or the profile carries no category).
+  ///
+  /// Published so a *host* can see what an invitee needs before choosing a
+  /// game — a Word Scramble invite is useless to a friend whose own roster
+  /// excludes it. This is the learner's accessibility category, not a
+  /// diagnosis, and it is already visible to anyone who can see their Games
+  /// tab; nothing more sensitive is added to the directory.
+  final int? disabilityIndex;
+
   final String ownerUid;
   final DateTime updatedAt;
 
@@ -151,6 +162,7 @@ class DirectoryEntry {
     required this.roleIndex,
     required this.ownerUid,
     required this.updatedAt,
+    this.disabilityIndex,
   });
 
   Map<String, dynamic> toJson() => {
@@ -158,6 +170,7 @@ class DirectoryEntry {
         'profile_id': profileId,
         'name': name,
         'role_index': roleIndex,
+        if (disabilityIndex != null) 'disability_index': disabilityIndex,
         'owner_uid': ownerUid,
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -167,6 +180,7 @@ class DirectoryEntry {
         profileId: j['profile_id'] as String? ?? '',
         name: j['name'] as String? ?? '',
         roleIndex: (j['role_index'] as int?) ?? 0,
+        disabilityIndex: (j['disability_index'] as num?)?.toInt(),
         ownerUid: j['owner_uid'] as String? ?? '',
         updatedAt: DateTime.tryParse(j['updated_at'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0),

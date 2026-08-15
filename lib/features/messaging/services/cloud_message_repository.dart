@@ -94,6 +94,74 @@ class CloudMessageRepository {
     }
   }
 
+  /// Mark every message [me] has received in one conversation as read, in a
+  /// single batched write.
+  ///
+  /// Called when a thread is opened (and again while it stays open and new
+  /// messages land), which is what turns the inbox badge off. Safe to call
+  /// with an already-read list — it filters first and no-ops on an empty
+  /// result, so an open thread doesn't re-write on every stream emission.
+  Future<void> markConversationRead(
+    String myProfileId,
+    Iterable<LocalMessage> messages,
+  ) async {
+    final unread = messages
+        .where((m) => m.recipientId == myProfileId && !m.isRead)
+        .toList();
+    if (unread.isEmpty) return;
+
+    for (final message in unread) {
+      await _persistLocally(message.copyWith(isRead: true));
+    }
+
+    if (!FirebaseService.isConfigured) return;
+    try {
+      // Firestore caps a batch at 500 writes; a classroom thread never gets
+      // near that, but chunking keeps the promise unconditional.
+      for (var i = 0; i < unread.length; i += 400) {
+        final slice = unread.skip(i).take(400);
+        final batch = FirebaseService.db.batch();
+        for (final message in slice) {
+          batch.update(_col.doc(message.id), {'is_read': true});
+        }
+        await batch.commit();
+      }
+    } catch (e, stack) {
+      ErrorHandler.report(
+        e,
+        stack,
+        'CloudMessageRepository.markConversationRead',
+      );
+    }
+  }
+
+  /// Unsend: remove a message the caller wrote. Firestore rules already allow
+  /// delete by the owner of `sender_profile_id`, so this needs no rule change.
+  ///
+  /// The local caches of *both* endpoints are pruned so the sender's thread
+  /// updates instantly; the recipient's device drops it on the next snapshot.
+  Future<void> deleteMessage(LocalMessage message) async {
+    for (final profileId in {message.senderId, message.recipientId}) {
+      if (profileId.isEmpty) continue;
+      try {
+        final cached = await HiveService.getMessages(profileId);
+        cached.removeWhere((m) => m.id == message.id);
+        await HiveService.saveMessages(profileId, cached);
+      } catch (e, stack) {
+        if (kDebugMode) {
+          debugPrint('CloudMessageRepository.deleteMessage: $e\n$stack');
+        }
+      }
+    }
+
+    if (!FirebaseService.isConfigured) return;
+    try {
+      await _col.doc(message.id).delete();
+    } catch (e, stack) {
+      ErrorHandler.report(e, stack, 'CloudMessageRepository.deleteMessage');
+    }
+  }
+
   /// Watch all messages for which [profileId] is either the sender or
   /// recipient. Returns a continuously updating list ordered by
   /// timestamp ascending.
@@ -186,10 +254,13 @@ class CloudMessageRepository {
       senderName: r['sender_name'] as String? ?? '',
       recipientId: r['recipient_profile_id'] as String? ?? '',
       content: r['content'] as String? ?? '',
-      type: MessageType.values[
-          (r['type'] as int? ?? 0).clamp(0, MessageType.values.length - 1)],
-      timestamp: DateTime.tryParse(r['timestamp'] as String? ?? '') ??
-          DateTime.now(),
+      type:
+          MessageType.values[(r['type'] as int? ?? 0).clamp(
+            0,
+            MessageType.values.length - 1,
+          )],
+      timestamp:
+          DateTime.tryParse(r['timestamp'] as String? ?? '') ?? DateTime.now(),
       isRead: r['is_read'] as bool? ?? false,
     );
   }
