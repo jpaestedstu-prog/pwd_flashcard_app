@@ -582,6 +582,37 @@ service cloud.firestore {
       );
     }
 
+    // ─── Blocks (one-sided, directional) ─────────────────
+    // Doc id is `{blockerProfileId}_{blockedProfileId}`. A block is the
+    // learner's own safeguarding switch, so ONLY the blocker may read,
+    // write, or clear it: unlike friendships this must NOT be readable
+    // by the other party — "who blocked me" is exactly the signal a
+    // bully would go looking for. The client queries its own blocks
+    // with a single-field `where('blocker_profile_id', ==)`, which the
+    // read rule below permits because the blocker owns that profile.
+    match /blocks/{blockId} {
+      allow read: if signedIn() && ownsProfile(resource.data.blocker_profile_id);
+      allow create, update: if signedIn()
+        && request.resource.data.blocker_uid == request.auth.uid
+        && ownsProfile(request.resource.data.blocker_profile_id);
+      allow delete: if signedIn()
+        && ownsProfile(resource.data.blocker_profile_id);
+    }
+
+    // ─── Safeguarding reports ────────────────────────────
+    // Write-only from the app: a child files a report, and nobody in the
+    // client can read them back (review happens in the Firebase console,
+    // where a grown-up can see the reporter, the reported profile, and
+    // the sample message). Denying read also means a reported user can
+    // never discover that they were reported.
+    match /message_reports/{reportId} {
+      allow read: if false;
+      allow create: if signedIn()
+        && request.resource.data.reporter_uid == request.auth.uid
+        && ownsProfile(request.resource.data.reporter_profile_id);
+      allow update, delete: if false;
+    }
+
     // ─── Multiplayer game rooms ("Play Together") ─────────
     // One doc per online match. The host writes the shared game content
     // (questions / memory layout) into the room; both players race their
