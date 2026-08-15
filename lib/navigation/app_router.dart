@@ -33,6 +33,9 @@ import '../features/games/screens/fsl_word_to_sign_screen.dart';
 import '../features/fsl_interpreter/screens/sign_it_screen.dart';
 import '../features/games/screens/jigsaw_puzzle_screen.dart';
 import '../features/games/screens/picture_word_screen.dart';
+import '../features/games/screens/yes_or_no_screen.dart';
+import '../features/games/screens/odd_one_out_screen.dart';
+import '../features/games/screens/first_letter_screen.dart';
 import '../features/progress/screens/progress_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
 import '../features/settings/screens/dashboard_screen.dart';
@@ -96,6 +99,7 @@ import '../features/guided_practice/screens/guided_practice_screen.dart';
 import '../features/ai_tutor/screens/ai_tutor_screen.dart';
 import '../features/messaging/screens/messaging_screen.dart';
 import '../features/object_scan/screens/object_scan_screen.dart';
+import '../features/object_scan/screens/word_hunt_collection_screen.dart';
 import '../features/gaze_control/screens/gaze_control_screen.dart';
 import '../features/gaze_control/screens/gaze_settings_screen.dart';
 import '../features/peer_collaboration/screens/peer_collaboration_screen.dart';
@@ -159,7 +163,14 @@ const _educatorOnlyRoutes = [
   '/assessment/assign',
   '/assessment/tracking',
   '/worksheets',
-  '/adaptive-analytics',
+  // NOTE: '/adaptive-analytics' is deliberately NOT here any more. It renders
+  // the *active* profile's own progress — the same source and very nearly the
+  // same charts as '/analytics', which learners have always been able to open.
+  // Being on this list is why it had no button anywhere in the app for anyone:
+  // a learner tapping through to it would have been redirected to /home. The
+  // educator "view as student" flow is unaffected (this list blocks learners
+  // from educator routes, not the reverse), and which learners are *offered*
+  // it is now [ProgressPresentation.showChartScreens]'s call.
   '/parental-controls',
   '/progress-timeline',
   '/student-comparison',
@@ -181,10 +192,29 @@ const _educatorOnlyRoutes = [
 /// Players reach them via their home surfaces; guest Players are blocked
 /// separately through [_playerBlockedRoutes] since they have no entry point
 /// and no persisted star economy.
-const _studentOnlyRoutes = [
-  '/shop',
-  '/sticker-album',
-];
+const _studentOnlyRoutes = ['/shop', '/sticker-album'];
+
+/// Routes a locked learner may still reach.
+///
+/// Deliberately just the profile switcher: it shows no learning content,
+/// so letting a locked child reach it costs nothing, while blocking it
+/// would strand the device on a lock screen that only an absent adult can
+/// clear. Selecting the locked child again re-trips the lock-state
+/// redirect below, so this is not a way around the limit.
+///
+/// `/profile` (the role picker → profile creation) is deliberately NOT
+/// here: a locked learner could mint a fresh Player profile and keep
+/// playing, which would be a real bypass.
+const _lockExemptRoutes = ['/profile-switcher'];
+
+/// Whether [location] is a route a locked learner is allowed to sit on.
+///
+/// Shared with [LockEnforcerGate] so the redirect and the live gate agree.
+/// They must: the gate re-fires on every 10-second lock re-evaluation, so
+/// if it didn't honour the same exemption it would yank the child off the
+/// profile switcher a few seconds after "Switch account" got them there.
+bool isLockExemptRoute(String location) =>
+    _lockExemptRoutes.any(location.startsWith);
 
 /// Routes the Player (guest) role cannot reach. Player profiles never
 /// sync to Firestore, so anything that requires a remote roster, a
@@ -238,9 +268,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
-    observers: [
-      ?tracker,
-    ],
+    observers: [?tracker],
     redirect: (context, state) {
       final profile = ref.read(profileProvider);
       if (profile == null) return null; // not logged in yet
@@ -249,8 +277,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final role = profile.role;
 
       // When an educator is viewing as a student, allow educator-only routes
-      final isViewingAsStudent =
-          ref.read(profileProvider.notifier).isViewingAsStudent;
+      final isViewingAsStudent = ref
+          .read(profileProvider.notifier)
+          .isViewingAsStudent;
 
       // ── Lock-state redirect ──────────────────────────────
       // Active learner with a non-null LockReason → force the
@@ -258,12 +287,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       // exempt (otherwise we'd loop). Educators viewing a student
       // dashboard are exempt too — they're not subject to the
       // student's limits.
+      //
+      // The profile switcher is exempt as well, so the lock screen's
+      // "Switch account" button actually lands somewhere: on a shared
+      // classroom or family tablet the next learner must be able to
+      // start without an adult first unlocking this child. It is not a
+      // bypass — the switcher shows no learning content, and selecting
+      // this same child again trips this very redirect and re-locks
+      // them.
       final isLearner =
           (role == UserRole.student || role == UserRole.child) &&
-              !profile.isGuestPlayer;
+          !profile.isGuestPlayer;
       if (isLearner &&
           !isViewingAsStudent &&
-          location != '/time-up-lock') {
+          location != '/time-up-lock' &&
+          !isLockExemptRoute(location)) {
         final reason = ref.read(lockStateProvider(profile.id));
         if (reason != null) return '/time-up-lock';
       }
@@ -470,8 +508,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           if (viewer == null) return null;
           final target = state.extra;
           if (target is! UserProfile) return '/home';
-          final isViewingAsStudent =
-              ref.read(profileProvider.notifier).isViewingAsStudent;
+          final isViewingAsStudent = ref
+              .read(profileProvider.notifier)
+              .isViewingAsStudent;
           if (isViewingAsStudent) return null;
           switch (viewer.role) {
             case UserRole.teacher:
@@ -628,20 +667,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                 // (With Progress)" learners get the full Student-style home
                 // (streak, XP, stats) to match their Home/Cards/Games/Stories/
                 // Progress navigation.
-                UserRole.player => profile?.isGuestPlayer == true
-                    ? const PlayerHomeScreen()
-                    : const HomeScreen(),
+                UserRole.player =>
+                  profile?.isGuestPlayer == true
+                      ? const PlayerHomeScreen()
+                      : const HomeScreen(),
                 UserRole.child => const ChildHomeScreen(),
                 UserRole.teacher ||
-                UserRole.parent =>
-                  const EducatorHomeScreen(),
+                UserRole.parent => const EducatorHomeScreen(),
                 // student or null falls through to the default learner home
                 _ => const HomeScreen(),
               };
-              return AppPageTransitions.fade(
-                key: state.pageKey,
-                child: widget,
-              );
+              return AppPageTransitions.fade(key: state.pageKey, child: widget);
             },
           ),
           GoRoute(
@@ -653,9 +689,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'viewer/:category',
+                // Root navigator, like the game activities: the viewer is a
+                // full-screen immersive surface that Recommendations pushes
+                // from *outside* the shell. Building it inside the shell
+                // navigator duplicates the shell page key and trips the
+                // Navigator's `!keyReservation.contains(key)` assertion.
+                parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) {
                   final catIndex = int.parse(state.pathParameters['category']!);
-                  if (catIndex < 0 || catIndex >= FlashcardCategory.values.length) {
+                  if (catIndex < 0 ||
+                      catIndex >= FlashcardCategory.values.length) {
                     return AppPageTransitions.slideRight(
                       key: state.pageKey,
                       child: const DeckListScreen(),
@@ -663,9 +706,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                   }
                   return AppPageTransitions.slideRight(
                     key: state.pageKey,
-                    child: _slow(FlashcardViewerScreen(
-                      category: FlashcardCategory.values[catIndex],
-                    )),
+                    child: _slow(
+                      FlashcardViewerScreen(
+                        category: FlashcardCategory.values[catIndex],
+                      ),
+                    ),
                   );
                 },
               ),
@@ -705,11 +750,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: _slow(WordMatchScreen(
-                    difficulty: _parseDifficulty(state),
-                    categories: _parseCategories(state),
-                    timedMode: _parseTimedMode(state),
-                  )),
+                  child: _slow(
+                    WordMatchScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                    ),
+                  ),
                 ),
               ),
               GoRoute(
@@ -717,12 +764,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: _slow(SpellingBeeScreen(
-                    difficulty: _parseDifficulty(state),
-                    categories: _parseCategories(state),
-                    timedMode: _parseTimedMode(state),
-                    focusWordId: _parseFocusWord(state),
-                  )),
+                  child: _slow(
+                    SpellingBeeScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                      focusWordId: _parseFocusWord(state),
+                    ),
+                  ),
                 ),
               ),
               GoRoute(
@@ -730,11 +779,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: _slow(MemoryMatchScreen(
-                    difficulty: _parseDifficulty(state),
-                    categories: _parseCategories(state),
-                    timedMode: _parseTimedMode(state),
-                  )),
+                  child: _slow(
+                    MemoryMatchScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                    ),
+                  ),
                 ),
               ),
               GoRoute(
@@ -742,11 +793,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: _slow(DragDropScreen(
-                    difficulty: _parseDifficulty(state),
-                    categories: _parseCategories(state),
-                    timedMode: _parseTimedMode(state),
-                  )),
+                  child: _slow(
+                    DragDropScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                    ),
+                  ),
                 ),
               ),
               GoRoute(
@@ -754,11 +807,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: _slow(FlashcardQuizScreen(
-                    difficulty: _parseDifficulty(state),
-                    categories: _parseCategories(state),
-                    timedMode: _parseTimedMode(state),
-                  )),
+                  child: _slow(
+                    FlashcardQuizScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                    ),
+                  ),
                 ),
               ),
               GoRoute(
@@ -766,12 +821,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: _slow(PronunciationScreen(
-                    difficulty: _parseDifficulty(state),
-                    categories: _parseCategories(state),
-                    timedMode: _parseTimedMode(state),
-                    focusWordId: _parseFocusWord(state),
-                  )),
+                  child: _slow(
+                    PronunciationScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                      focusWordId: _parseFocusWord(state),
+                    ),
+                  ),
                 ),
               ),
               GoRoute(
@@ -779,11 +836,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: _slow(SentenceBuilderScreen(
-                    difficulty: _parseDifficulty(state),
-                    categories: _parseCategories(state),
-                    timedMode: _parseTimedMode(state),
-                  )),
+                  child: _slow(
+                    SentenceBuilderScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                    ),
+                  ),
                 ),
               ),
               GoRoute(
@@ -791,11 +850,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: _slow(TracingScreen(
-                    difficulty: _parseDifficulty(state),
-                    categories: _parseCategories(state),
-                    timedMode: _parseTimedMode(state),
-                  )),
+                  child: _slow(
+                    TracingScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                    ),
+                  ),
                 ),
               ),
               GoRoute(
@@ -803,11 +864,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: _slow(JigsawPuzzleScreen(
-                    difficulty: _parseDifficulty(state),
-                    categories: _parseCategories(state),
-                    timedMode: _parseTimedMode(state),
-                  )),
+                  child: _slow(
+                    JigsawPuzzleScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                    ),
+                  ),
                 ),
               ),
               GoRoute(
@@ -815,11 +878,55 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: _slow(PictureWordScreen(
-                    difficulty: _parseDifficulty(state),
-                    categories: _parseCategories(state),
-                    timedMode: _parseTimedMode(state),
-                  )),
+                  child: _slow(
+                    PictureWordScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                    ),
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: 'yes-or-no',
+                parentNavigatorKey: rootNavigatorKey,
+                pageBuilder: (context, state) => AppPageTransitions.scaleUp(
+                  key: state.pageKey,
+                  child: _slow(
+                    YesOrNoScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                    ),
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: 'odd-one-out',
+                parentNavigatorKey: rootNavigatorKey,
+                pageBuilder: (context, state) => AppPageTransitions.scaleUp(
+                  key: state.pageKey,
+                  child: _slow(
+                    OddOneOutScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                    ),
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: 'first-letter',
+                parentNavigatorKey: rootNavigatorKey,
+                pageBuilder: (context, state) => AppPageTransitions.scaleUp(
+                  key: state.pageKey,
+                  child: _slow(
+                    FirstLetterScreen(
+                      difficulty: _parseDifficulty(state),
+                      categories: _parseCategories(state),
+                      timedMode: _parseTimedMode(state),
+                    ),
+                  ),
                 ),
               ),
               GoRoute(
@@ -838,9 +945,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                     parentNavigatorKey: rootNavigatorKey,
                     pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                       key: state.pageKey,
-                      child: _slow(FslSignToWordScreen(
-                        categories: _parseCategories(state),
-                      )),
+                      child: _slow(
+                        FslSignToWordScreen(
+                          categories: _parseCategories(state),
+                        ),
+                      ),
                     ),
                   ),
                   GoRoute(
@@ -848,9 +957,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                     parentNavigatorKey: rootNavigatorKey,
                     pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                       key: state.pageKey,
-                      child: _slow(FslWordToSignScreen(
-                        categories: _parseCategories(state),
-                      )),
+                      child: _slow(
+                        FslWordToSignScreen(
+                          categories: _parseCategories(state),
+                        ),
+                      ),
                     ),
                   ),
                   // "Sign It!" — production practice: watch the reference sign
@@ -860,9 +971,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     parentNavigatorKey: rootNavigatorKey,
                     pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                       key: state.pageKey,
-                      child: SignItScreen(
-                        categories: _parseCategories(state),
-                      ),
+                      child: SignItScreen(categories: _parseCategories(state)),
                     ),
                   ),
                 ],
@@ -900,9 +1009,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                   key: state.pageKey,
-                  child: _slow(StoryQuizScreen(
-                    storyId: state.pathParameters['storyId']!,
-                  )),
+                  child: _slow(
+                    StoryQuizScreen(storyId: state.pathParameters['storyId']!),
+                  ),
                 ),
               ),
             ],
@@ -1073,8 +1182,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/leaderboard-config/:scopeId',
         pageBuilder: (context, state) {
           final id = state.pathParameters['scopeId']!;
-          final isHomeGroup =
-              state.uri.queryParameters['kind'] == 'homeGroup';
+          final isHomeGroup = state.uri.queryParameters['kind'] == 'homeGroup';
           final name = state.uri.queryParameters['name'];
           final scope = isHomeGroup
               ? LeaderboardScope.homeGroup(id, displayName: name)
@@ -1105,9 +1213,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/learning-paths/:pathId',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
-          child: LessonScreen(
-            pathId: state.pathParameters['pathId']!,
-          ),
+          child: LessonScreen(pathId: state.pathParameters['pathId']!),
         ),
       ),
       // Game-like "adventure trail" view of the same path (additive — the
@@ -1116,9 +1222,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/learning-paths/:pathId/trail',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
-          child: LessonTrailScreen(
-            pathId: state.pathParameters['pathId']!,
-          ),
+          child: LessonTrailScreen(pathId: state.pathParameters['pathId']!),
         ),
       ),
       // Flashcard viewer launched from a learning-path step (full-screen,
@@ -1135,18 +1239,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
           final pathId = state.uri.queryParameters['pathId'];
           final stepIndex = int.tryParse(
-              state.uri.queryParameters['stepIndex'] ?? '');
+            state.uri.queryParameters['stepIndex'] ?? '',
+          );
           final totalSteps = int.tryParse(
-              state.uri.queryParameters['totalSteps'] ?? '');
+            state.uri.queryParameters['totalSteps'] ?? '',
+          );
           return AppPageTransitions.slideRight(
             key: state.pageKey,
-            child: _slow(FlashcardViewerScreen(
-              category: FlashcardCategory.values[catIndex],
-              learningPathId: pathId,
-              learningStepIndex: stepIndex,
-              learningTotalSteps: totalSteps,
-              focusWordId: _parseFocusWord(state),
-            )),
+            child: _slow(
+              FlashcardViewerScreen(
+                category: FlashcardCategory.values[catIndex],
+                learningPathId: pathId,
+                learningStepIndex: stepIndex,
+                learningTotalSteps: totalSteps,
+                focusWordId: _parseFocusWord(state),
+              ),
+            ),
           );
         },
       ),
@@ -1409,9 +1517,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/guided-practice',
         pageBuilder: (context, state) {
-          final categoryIndex =
-              int.tryParse(state.uri.queryParameters['category'] ?? '');
-          final category = categoryIndex != null &&
+          final categoryIndex = int.tryParse(
+            state.uri.queryParameters['category'] ?? '',
+          );
+          final category =
+              categoryIndex != null &&
                   categoryIndex >= 0 &&
                   categoryIndex < FlashcardCategory.values.length
               ? FlashcardCategory.values[categoryIndex]
@@ -1436,6 +1546,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
           child: const ObjectScanScreen(),
+        ),
+      ),
+      // "My Finds" — the discovered-word collection behind Word Hunt. A
+      // separate route so it stays reachable when the camera is not (no
+      // camera, permission denied) and from the hub tile's long-press.
+      GoRoute(
+        path: '/word-hunt-collection',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const WordHuntCollectionScreen(),
         ),
       ),
       // ─── Gaze Control (experimental head/blink accessibility) ──

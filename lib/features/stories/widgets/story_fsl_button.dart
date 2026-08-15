@@ -9,7 +9,7 @@ import '../../../widgets/square_action_button.dart';
 /// A self-contained "watch in Filipino Sign Language" control for the Stories
 /// feature.
 ///
-/// Tapping it resolves [pageUrl] (a Streamable share page) to a cached video
+/// Tapping it resolves [pageUrl] to a cached video
 /// via [FslAssetsService.videoSourceForUrl] and opens the fullscreen FSL
 /// player. It owns its own loading state, so it can be dropped into a story
 /// page or a quiz option row without the parent screen coordinating a loading
@@ -30,12 +30,12 @@ import '../../../widgets/square_action_button.dart';
 ///   • [compact] = true  → a single sign-language icon button, sized to sit at
 ///     the trailing edge of a quiz answer-option row without crowding it.
 class StoryFslButton extends StatefulWidget {
-  /// Streamable (or other) share-page URL for the sign-language clip.
+  /// Direct (or share-page) URL for the sign-language clip.
   final String pageUrl;
 
   /// Stable, unique on-disk cache key for this clip (e.g.
-  /// `story_s_a01_q0_o1`). Lets the resolved file survive Streamable URL
-  /// rotations and replay offline.
+  /// `story_s_a01_q0_o1`). Lets the resolved file survive a re-host and
+  /// replay offline.
   final String cacheKey;
 
   /// Primary caption shown over the video (the sentence / question / option

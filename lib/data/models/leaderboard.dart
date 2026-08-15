@@ -9,6 +9,16 @@ class LeaderboardEntry {
   final int gamesPlayed;
   final DateTime lastActivity;
 
+  /// Equipped Star Shop cosmetics, so a learner's purchases are visible in the
+  /// one place they are meant to be seen by other people.
+  ///
+  /// Null when nothing is equipped, or when the row came from a member whose
+  /// equipped state has not reached this device — the UI then falls back to
+  /// the profile's starting avatar, which is exactly what it always showed.
+  final String? equippedAvatarId;
+  final String? equippedBorderId;
+  final String? equippedTitleId;
+
   const LeaderboardEntry({
     required this.profileId,
     required this.profileName,
@@ -18,6 +28,9 @@ class LeaderboardEntry {
     this.streakDays = 0,
     this.gamesPlayed = 0,
     required this.lastActivity,
+    this.equippedAvatarId,
+    this.equippedBorderId,
+    this.equippedTitleId,
   });
 
   /// A combined score for ranking: stars + words × 2 + streak × 3
@@ -32,6 +45,9 @@ class LeaderboardEntry {
     'streakDays': streakDays,
     'gamesPlayed': gamesPlayed,
     'lastActivity': lastActivity.toIso8601String(),
+    'equippedAvatarId': equippedAvatarId,
+    'equippedBorderId': equippedBorderId,
+    'equippedTitleId': equippedTitleId,
   };
 
   factory LeaderboardEntry.fromJson(Map<String, dynamic> json) =>
@@ -44,6 +60,9 @@ class LeaderboardEntry {
         streakDays: json['streakDays'] as int? ?? 0,
         gamesPlayed: json['gamesPlayed'] as int? ?? 0,
         lastActivity: DateTime.parse(json['lastActivity'] as String),
+        equippedAvatarId: json['equippedAvatarId'] as String?,
+        equippedBorderId: json['equippedBorderId'] as String?,
+        equippedTitleId: json['equippedTitleId'] as String?,
       );
 }
 

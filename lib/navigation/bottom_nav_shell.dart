@@ -7,9 +7,12 @@ import '../core/services/celebration_service.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/services/xp_level_service.dart';
 import '../providers/app_providers.dart';
+import '../providers/fullscreen_provider.dart';
 import '../providers/level_up_provider.dart';
 import '../providers/experiment_provider.dart';
 import '../features/experiment/models/experiment_models.dart';
+import '../features/gaze_control/controllers/gaze_controller.dart'
+    show GazeStatus;
 import '../features/gaze_control/widgets/nav_gaze_scope.dart';
 import '../widgets/level_up_celebration_screen.dart';
 
@@ -44,11 +47,7 @@ class BottomNavShell extends ConsumerStatefulWidget {
   final GoRouterState state;
   final Widget child;
 
-  const BottomNavShell({
-    super.key,
-    required this.state,
-    required this.child,
-  });
+  const BottomNavShell({super.key, required this.state, required this.child});
 
   @override
   ConsumerState<BottomNavShell> createState() => _BottomNavShellState();
@@ -95,9 +94,34 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
 
   static const _animDuration = Duration(milliseconds: 300);
 
+  /// The router's **full** current location.
+  ///
+  /// [BottomNavShell.state] only describes the shell's own route match, which
+  /// stops at the tab path (`/games`) whenever the page on top was *pushed*
+  /// onto the root navigator — every game, FSL practice mode and story
+  /// activity is. Checking that against [_immersiveRoutePrefixes] would report
+  /// "not immersive" for a game opened from a learning-path step or Word Hunt,
+  /// leaving [bottomNavVisibleProvider] true and the floating AI Companion
+  /// drawn on top of the running game.
+  ///
+  /// `GoRouter.state` reports the top-most match for `go()` and `push()`
+  /// alike, so immersive mode now engages identically however the activity was
+  /// launched. Falls back to the shell's own match if no router is in scope
+  /// (widget tests that build this shell directly).
+  String get _location {
+    try {
+      return GoRouter.of(context).state.uri.toString();
+    } catch (_) {
+      return widget.state.uri.toString();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    // `GoRouter.of` needs an inherited-widget lookup, which initState can't do
+    // — but the first location is always reached with `go()`, so the shell's
+    // own match is the full location here.
     _animController = AnimationController(
       vsync: this,
       duration: _animDuration,
@@ -107,10 +131,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       parent: _animController,
       curve: Curves.easeInOut,
     );
-    _opacity = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeIn,
-    );
+    _opacity = CurvedAnimation(parent: _animController, curve: Curves.easeIn);
   }
 
   @override
@@ -120,19 +141,33 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
   }
 
   void _syncVisibility() {
-    final location = widget.state.uri.toString();
-    final shouldShow = !_isImmersiveRoute(location);
+    _applyVisibility(
+      !_isImmersiveRoute(_location) && !ref.read(fullscreenModeProvider),
+    );
+  }
 
-    // Update the Riverpod provider so other widgets can react too
-    Future.microtask(() {
-      ref.read(bottomNavVisibleProvider.notifier).state = shouldShow;
-    });
-
+  /// Animates the bar to match [shouldShow] and publishes the same answer to
+  /// [bottomNavVisibleProvider] for the widgets that key off it — chiefly the
+  /// floating AI Companion, which must not cover a screen whose chrome has
+  /// been taken away.
+  ///
+  /// Called from `build` as well as `didUpdateWidget`, because fullscreen mode
+  /// can be toggled without navigating anywhere. That is also why the provider
+  /// write is deferred to a microtask: mutating a provider synchronously
+  /// during a build is not allowed. The equality check keeps the ordinary case
+  /// (a rebuild that changes nothing) from scheduling one every frame.
+  void _applyVisibility(bool shouldShow) {
     if (shouldShow) {
       _animController.forward();
     } else {
       _animController.reverse();
     }
+
+    if (ref.read(bottomNavVisibleProvider) == shouldShow) return;
+    Future.microtask(() {
+      if (!mounted) return;
+      ref.read(bottomNavVisibleProvider.notifier).state = shouldShow;
+    });
   }
 
   @override
@@ -145,8 +180,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
   }
 
   UserRole? get _role => ref.read(profileProvider)?.role;
-  bool get _isEducator =>
-      _role == UserRole.teacher || _role == UserRole.parent;
+  bool get _isEducator => _role == UserRole.teacher || _role == UserRole.parent;
   bool get _isPlayer => _role == UserRole.player;
 
   /// Only *guest* players get the nav-less, single-button home. "Player (With
@@ -161,7 +195,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
     '/flashcards',
     '/games',
     '/stories',
-    '/progress'
+    '/progress',
   ];
   // ─── Educator tabs: Home, Students, Analytics, Reports
   // Settings is reached from the top-right gear on the educator home (matching
@@ -192,21 +226,35 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
   @override
   Widget build(BuildContext context) {
     // Listen for level-up transitions (gated by experiment config)
-    ref.listen<PlayerLevel>(levelUpProvider, (previous, next) {
-      if (previous != null && next.level > previous.level) {
-        final levelUpEnabled = ref.read(gamificationFeatureProvider(GamificationFeature.levelUp));
-        final celebrationsEnabled = ref.read(gamificationFeatureProvider(GamificationFeature.celebrations));
-        if (levelUpEnabled) {
-          if (celebrationsEnabled) {
-            ref.read(celebrationServiceProvider).celebrate(CelebrationType.levelUp);
-          }
-          setState(() => _celebratingLevel = next);
+    // Only a climb *by the same learner* is a level-up. Switching profiles also
+    // moves this provider — see [LevelSnapshot] — and used to fire the
+    // celebration for a level the incoming learner had earned days ago.
+    ref.listen<LevelSnapshot>(levelUpProvider, (previous, next) {
+      if (!next.isLevelUpFrom(previous)) return;
+      final levelUpEnabled = ref.read(
+        gamificationFeatureProvider(GamificationFeature.levelUp),
+      );
+      final celebrationsEnabled = ref.read(
+        gamificationFeatureProvider(GamificationFeature.celebrations),
+      );
+      if (levelUpEnabled) {
+        if (celebrationsEnabled) {
+          ref
+              .read(celebrationServiceProvider)
+              .celebrate(CelebrationType.levelUp);
         }
+        setState(() => _celebratingLevel = next.level);
       }
     });
 
-    final currentIndex = _currentIndex(widget.state.uri.toString());
-    final navShown = !_isImmersiveRoute(widget.state.uri.toString());
+    final location = _location;
+    final currentIndex = _currentIndex(location);
+    // Educator fullscreen hides the tab bar the same way an immersive route
+    // does. Watched (not read) so toggling the mode reaches the bar
+    // immediately — `_syncVisibility` only runs on navigation.
+    final fullscreen = ref.watch(fullscreenModeProvider);
+    final navShown = !_isImmersiveRoute(location) && !fullscreen;
+    _applyVisibility(navShown);
 
     // Guest Player mode: skip the bottom nav entirely. The PlayerHomeScreen is
     // self-contained (one big "Start Learning" button); a tab bar would imply
@@ -237,8 +285,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
         ),
       );
     }
-    final items =
-        _isEducator ? _educatorNavItems() : _studentNavItems();
+    final items = _isEducator ? _educatorNavItems() : _studentNavItems();
 
     // Hands-free bottom-nav: look ◀ ▶ to move the highlight, blink to open the
     // tab. Inert unless Gaze Control is enabled; runs the single camera only
@@ -250,121 +297,157 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       enabled: navShown,
       onCommit: (index) => _onTap(context, index),
       builder: (context, gaze) => Stack(
-      children: [
-        Scaffold(
-          body: RepaintBoundary(child: widget.child),
-          bottomNavigationBar: Builder(
-            builder: (context) {
-              final hc = HCColor.of(context);
-              final metrics = _computeMetrics(context);
-              return AnimatedBuilder(
-                animation: _animController,
-                builder: (context, child) {
-                  return ClipRect(
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      heightFactor: _heightFactor.value,
-                      child: Opacity(
-                        opacity: _opacity.value,
-                        child: child,
+        children: [
+          Scaffold(
+            body: RepaintBoundary(child: widget.child),
+            bottomNavigationBar: Builder(
+              builder: (context) {
+                final hc = HCColor.of(context);
+                final metrics = _computeMetrics(context);
+                return AnimatedBuilder(
+                  animation: _animController,
+                  builder: (context, child) {
+                    return ClipRect(
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        heightFactor: _heightFactor.value,
+                        child: Opacity(opacity: _opacity.value, child: child),
                       ),
-                    ),
-                  );
-                },
-                child: RepaintBoundary(
-                  // SafeArea(top: false) lifts the bar above Android gesture-nav
-                  // insets on Android 10+ — Scaffold's bottomNavigationBar slot
-                  // does NOT auto-pad for the system gesture area.
-                  child: SafeArea(
-                    top: false,
-                    child: Container(
-                      height: metrics.bar,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(28),
-                          topRight: Radius.circular(28),
-                        ),
-                        border: Border(
-                          top: BorderSide(
-                            color: hc.primary.withValues(alpha: 0.08),
+                    );
+                  },
+                  child: RepaintBoundary(
+                    // SafeArea(top: false) lifts the bar above Android gesture-nav
+                    // insets on Android 10+ — Scaffold's bottomNavigationBar slot
+                    // does NOT auto-pad for the system gesture area.
+                    child: SafeArea(
+                      top: false,
+                      child: Container(
+                        height: metrics.bar,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(28),
+                            topRight: Radius.circular(28),
                           ),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: hc.primary.withValues(alpha: 0.08),
-                            blurRadius: 24,
-                            offset: const Offset(0, -6),
+                          border: Border(
+                            top: BorderSide(
+                              color: hc.primary.withValues(alpha: 0.08),
+                            ),
                           ),
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, -2),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(28),
-                          topRight: Radius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: hc.primary.withValues(alpha: 0.08),
+                              blurRadius: 24,
+                              offset: const Offset(0, -6),
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, -2),
+                            ),
+                          ],
                         ),
-                        child: _AnimatedNavBar(
-                          currentIndex: currentIndex,
-                          gazeTargetIndex:
-                              gaze.active ? gaze.targetIndex : null,
-                          items: items,
-                          onTap: (index) => _onTap(context, index),
-                          bounceControllers: _bounceControllers,
-                          vsync: this,
-                          metrics: metrics,
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(28),
+                            topRight: Radius.circular(28),
+                          ),
+                          child: _AnimatedNavBar(
+                            currentIndex: currentIndex,
+                            gazeTargetIndex: gaze.active
+                                ? gaze.targetIndex
+                                : null,
+                            items: items,
+                            onTap: (index) => _onTap(context, index),
+                            bounceControllers: _bounceControllers,
+                            vsync: this,
+                            metrics: metrics,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              );
-            },
-          ),
-    ),
-
-        // Gaze-navigation hint, sitting just above the bar while gaze nav runs.
-        if (gaze.active)
-          _GazeNavHint(
-            ready: gaze.ready,
-            faceVisible: gaze.faceVisible,
-            featureTilesActive: gaze.featureTilesActive,
-            bottomOffset: _computeMetrics(context).bar +
-                MediaQuery.paddingOf(context).bottom,
+                );
+              },
+            ),
           ),
 
-        // Level-up celebration overlay
-        if (_celebratingLevel != null)
-          LevelUpCelebrationScreen(
-            newLevel: _celebratingLevel!,
-            reducedMotion: ref.read(settingsProvider).reducedMotion,
-            onDismiss: () => setState(() => _celebratingLevel = null),
-          ),
-      ],
+          // Gaze-navigation hint, sitting just above the bar while gaze nav runs.
+          if (gaze.active)
+            _GazeNavHint(
+              ready: gaze.ready,
+              faceVisible: gaze.faceVisible,
+              status: gaze.status,
+              featureTilesActive: gaze.featureTilesActive,
+              bottomOffset:
+                  _computeMetrics(context).bar +
+                  MediaQuery.paddingOf(context).bottom,
+            ),
+
+          // Level-up celebration overlay
+          if (_celebratingLevel != null)
+            LevelUpCelebrationScreen(
+              newLevel: _celebratingLevel!,
+              reducedMotion: ref.read(settingsProvider).reducedMotion,
+              onDismiss: () => setState(() => _celebratingLevel = null),
+            ),
+        ],
       ),
     );
   }
 
   List<_NavItem> _studentNavItems() {
     return const [
-      _NavItem(icon: Icons.home_outlined, selectedIcon: Icons.home_rounded, label: 'Home'),
-      _NavItem(icon: Icons.style_outlined, selectedIcon: Icons.style_rounded, label: 'Cards'),
-      _NavItem(icon: Icons.sports_esports_outlined, selectedIcon: Icons.sports_esports_rounded, label: 'Games'),
-      _NavItem(icon: Icons.auto_stories_outlined, selectedIcon: Icons.auto_stories_rounded, label: 'Stories'),
-      _NavItem(icon: Icons.emoji_events_outlined, selectedIcon: Icons.emoji_events_rounded, label: 'Progress'),
+      _NavItem(
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home_rounded,
+        label: 'Home',
+      ),
+      _NavItem(
+        icon: Icons.style_outlined,
+        selectedIcon: Icons.style_rounded,
+        label: 'Cards',
+      ),
+      _NavItem(
+        icon: Icons.sports_esports_outlined,
+        selectedIcon: Icons.sports_esports_rounded,
+        label: 'Games',
+      ),
+      _NavItem(
+        icon: Icons.auto_stories_outlined,
+        selectedIcon: Icons.auto_stories_rounded,
+        label: 'Stories',
+      ),
+      _NavItem(
+        icon: Icons.emoji_events_outlined,
+        selectedIcon: Icons.emoji_events_rounded,
+        label: 'Progress',
+      ),
     ];
   }
 
   List<_NavItem> _educatorNavItems() {
     return const [
-      _NavItem(icon: Icons.home_outlined, selectedIcon: Icons.home_rounded, label: 'Home'),
-      _NavItem(icon: Icons.people_outlined, selectedIcon: Icons.people_rounded, label: 'Students'),
-      _NavItem(icon: Icons.analytics_outlined, selectedIcon: Icons.analytics_rounded, label: 'Analytics'),
-      _NavItem(icon: Icons.assessment_outlined, selectedIcon: Icons.assessment_rounded, label: 'Reports'),
+      _NavItem(
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home_rounded,
+        label: 'Home',
+      ),
+      _NavItem(
+        icon: Icons.people_outlined,
+        selectedIcon: Icons.people_rounded,
+        label: 'Students',
+      ),
+      _NavItem(
+        icon: Icons.analytics_outlined,
+        selectedIcon: Icons.analytics_rounded,
+        label: 'Analytics',
+      ),
+      _NavItem(
+        icon: Icons.assessment_outlined,
+        selectedIcon: Icons.assessment_rounded,
+        label: 'Reports',
+      ),
     ];
   }
 
@@ -473,10 +556,7 @@ class _AnimatedNavBar extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.accent.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: AppColors.accent,
-                          width: 2.5,
-                        ),
+                        border: Border.all(color: AppColors.accent, width: 2.5),
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.accent.withValues(alpha: 0.45),
@@ -579,10 +659,11 @@ class _AnimatedNavItemState extends State<_AnimatedNavItem> {
   @override
   void initState() {
     super.initState();
-    _bounceCtrl = widget.bounceControllers[widget.index] ??= AnimationController(
-      vsync: widget.vsync,
-      duration: const Duration(milliseconds: 400),
-    );
+    _bounceCtrl = widget.bounceControllers[widget.index] ??=
+        AnimationController(
+          vsync: widget.vsync,
+          duration: const Duration(milliseconds: 400),
+        );
   }
 
   void _handleTap() {
@@ -616,10 +697,7 @@ class _AnimatedNavItemState extends State<_AnimatedNavItem> {
             final t = _bounceCtrl.value;
             final bounceScale =
                 1.0 + 0.12 * Curves.elasticOut.transform(t) * (1 - t);
-            return Transform.scale(
-              scale: bounceScale,
-              child: child,
-            );
+            return Transform.scale(scale: bounceScale, child: child);
           },
           // 4dp horizontal padding keeps adjacent cells from kissing at XL
           // scale; 6dp vertical matches the +12 budget in _computeMetrics.
@@ -643,12 +721,8 @@ class _AnimatedNavItemState extends State<_AnimatedNavItem> {
                         ? widget.item.selectedIcon
                         : widget.item.icon,
                     key: ValueKey(widget.isSelected),
-                    size: widget.isSelected
-                        ? m.iconSelected
-                        : m.iconUnselected,
-                    color: widget.isSelected
-                        ? primaryColor
-                        : unselectedColor,
+                    size: widget.isSelected ? m.iconSelected : m.iconUnselected,
+                    color: widget.isSelected ? primaryColor : unselectedColor,
                   ),
                 ),
                 SizedBox(height: m.gap),
@@ -730,25 +804,48 @@ class _GazeNavHint extends StatelessWidget {
   /// chip floats just above it at any text scale / device.
   final double bottomOffset;
 
+  /// Why the camera isn't ready — drives the "permission needed" / "no front
+  /// camera" wording instead of an endless "Starting gaze…".
+  final GazeStatus status;
+
   const _GazeNavHint({
     required this.ready,
     required this.faceVisible,
     required this.bottomOffset,
+    required this.status,
     this.featureTilesActive = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final (IconData icon, String text) = !ready
-        ? (Icons.hourglass_top_rounded, 'Starting gaze…')
-        : !faceVisible
+    // A camera that will never come up must say so. Reporting "Starting gaze…"
+    // for a denied permission or a missing front lens leaves a hands-free
+    // learner waiting on something that is never going to happen — the one
+    // person who can least afford to guess. Same wording as `GazeOverlay`.
+    final (IconData icon, String text) = switch (status) {
+      GazeStatus.permissionDenied => (
+        Icons.lock_rounded,
+        'Gaze: camera permission needed',
+      ),
+      GazeStatus.noCamera => (
+        Icons.videocam_off_rounded,
+        'Gaze: no front camera',
+      ),
+      GazeStatus.failed => (Icons.error_outline_rounded, 'Gaze unavailable'),
+      GazeStatus.initializing => (
+        Icons.hourglass_top_rounded,
+        'Starting gaze…',
+      ),
+      GazeStatus.ready =>
+        !faceVisible
             ? (Icons.face_retouching_natural_rounded, 'Look at the screen')
             : (
                 Icons.visibility_rounded,
                 featureTilesActive
                     ? 'Look ◀ ▶ ▲ ▼ to choose · blink to open'
                     : 'Look ◀ ▶ to choose · blink to open',
-              );
+              ),
+    };
     return Positioned(
       left: 0,
       right: 0,

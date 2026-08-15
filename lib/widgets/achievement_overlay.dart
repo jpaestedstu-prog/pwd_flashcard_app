@@ -2,6 +2,7 @@ import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:pwdpwdpwd/widgets/celebration_confetti.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/responsive_utils.dart';
@@ -74,21 +75,10 @@ class _AchievementUnlockedOverlayState
             child: IgnorePointer(
               child: Align(
                 alignment: Alignment.topCenter,
-                child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              emissionFrequency: 0.06,
-              numberOfParticles: 25,
-              maxBlastForce: 25,
-              minBlastForce: 8,
-              colors: [
-                achievement.color,
-                AppColors.warning,
-                AppColors.primary,
-                AppColors.accent,
-                Colors.white,
-              ],
-            ),
+                child: CelebrationConfetti(
+                  controller: _confettiController,
+                  accentColor: achievement.color,
+                ),
             ),
           ),
           ),

@@ -8,10 +8,12 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/accessibility/tts_service.dart';
-import '../../../core/accessibility/haptic_service.dart' show hapticServiceProvider;
+import '../../../core/accessibility/haptic_service.dart'
+    show hapticServiceProvider;
 import '../../../core/services/celebration_service.dart';
 import '../../../widgets/accessible_celebration_overlay.dart';
-import '../../../data/local/seed_stories.dart' show SeedStories, Story, StoryQuestion;
+import '../../../data/local/seed_stories.dart'
+    show SeedStories, Story, StoryQuestion;
 import '../../../data/models/enums.dart';
 import '../../../data/models/achievements.dart';
 import '../../../l10n/app_localizations.dart';
@@ -21,6 +23,8 @@ import '../../../widgets/achievement_overlay.dart';
 import '../../../widgets/language_replay_bar.dart';
 import '../widgets/story_fsl_button.dart';
 import '../widgets/story_image_flip.dart';
+import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 /// Reading-comprehension quiz — 3 multiple-choice questions per story.
 class StoryQuizScreen extends ConsumerStatefulWidget {
@@ -113,13 +117,15 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
   }
 
   void _saveProgress() {
-    ref.read(progressProvider.notifier).recordGameResult(
-      gameType: GameType.storyQuiz,
-      score: _correctCount,
-      total: _story!.questions.length,
-      starsEarned: _starsEarned,
-      categoriesPlayed: [_story!.category],
-    );
+    ref
+        .read(progressProvider.notifier)
+        .recordGameResult(
+          gameType: GameType.storyQuiz,
+          score: _correctCount,
+          total: _story!.questions.length,
+          starsEarned: _starsEarned,
+          categoriesPlayed: [_story!.category],
+        );
     // Track the best star score for this specific story (drives the ★ badge
     // on the story card). Reaching the quiz also implies the story was read.
     ref.read(progressProvider.notifier)
@@ -127,7 +133,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
       ..recordStoryQuizStars(_story!.id, _starsEarned);
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
     AccessibleCelebrationOverlay.show(
-      context: context, ref: ref, type: CelebrationType.gameComplete,
+      context: context,
+      ref: ref,
+      type: CelebrationType.gameComplete,
     );
   }
 
@@ -135,14 +143,24 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
   Widget build(BuildContext context) {
     if (_story == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(AppLocalizations.of(context)!.quizNotFound)),
+        appBar: fullscreenBar(
+          ref,
+          AppBar(title: Text(AppLocalizations.of(context)!.quizNotFound)),
+        ),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline_rounded, size: 64, color: HCColor.of(context).textSecondary),
+              Icon(
+                Icons.error_outline_rounded,
+                size: 64,
+                color: HCColor.of(context).textSecondary,
+              ),
               const SizedBox(height: 16),
-              Text(AppLocalizations.of(context)!.storyNotFoundMsg, style: AppTypography.headlineSmall),
+              Text(
+                AppLocalizations.of(context)!.storyNotFoundMsg,
+                style: AppTypography.headlineSmall,
+              ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => context.pop(),
@@ -174,7 +192,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                       _showResult = false;
                     });
                   },
-                  onExit: () => context.go('/stories'),
+                  onExit: () => context.popOrGo('/stories'),
                 ),
               ),
             ),
@@ -202,13 +220,16 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
     final question = _question!;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
-          onPressed: () => context.pop(),
+      appBar: fullscreenBar(
+        ref,
+        AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.close_rounded),
+            tooltip: 'Close',
+            onPressed: () => context.pop(),
+          ),
+          title: Text('Quiz: ${_story!.titleEn}'),
         ),
-        title: Text('Quiz: ${_story!.titleEn}'),
       ),
       body: SafeArea(
         child: Center(
@@ -237,8 +258,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Question ${_currentQ + 1} of ${_story!.questions.length}',
-                    style: AppTypography.labelSmall
-                        .copyWith(color: hc.textSecondary),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
                     textAlign: TextAlign.center,
                   ),
 
@@ -259,48 +281,53 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                         children: [
                           // Question
                           Container(
-                            padding: EdgeInsets.all(
-                              context.responsiveTier(
-                                phone: 20.0,
-                                tablet: 24.0,
-                                large: 28.0,
-                              ),
-                            ),
-                            decoration: BoxDecoration(
-                              color: hc.surface,
-                              borderRadius: BorderRadius.circular(20),
-                              border: hc.hc
-                                  ? Border.all(color: AppColors.hcPrimary, width: 2)
-                                  : null,
-                              boxShadow: AppColors.cardShadow,
-                            ),
-                            // Both languages are shown together — English as
-                            // the main line with the Tagalog translation
-                            // beneath it, mirroring the Flashcards → Cards
-                            // layout (large English word over a smaller
-                            // Filipino word).
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  question.questionEn,
-                                  style: AppTypography.headlineSmall
-                                      .copyWith(fontWeight: FontWeight.w600),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  question.questionFil,
-                                  style: AppTypography.titleMedium.copyWith(
-                                    color: _story!.category.darkColor,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.4,
+                                padding: EdgeInsets.all(
+                                  context.responsiveTier(
+                                    phone: 20.0,
+                                    tablet: 24.0,
+                                    large: 28.0,
                                   ),
-                                  textAlign: TextAlign.center,
                                 ),
-                              ],
-                            ),
-                          )
+                                decoration: BoxDecoration(
+                                  color: hc.surface,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: hc.hc
+                                      ? Border.all(
+                                          color: AppColors.hcPrimary,
+                                          width: 2,
+                                        )
+                                      : null,
+                                  boxShadow: AppColors.cardShadow,
+                                ),
+                                // Both languages are shown together — English as
+                                // the main line with the Tagalog translation
+                                // beneath it, mirroring the Flashcards → Cards
+                                // layout (large English word over a smaller
+                                // Filipino word).
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      question.questionEn,
+                                      style: AppTypography.headlineSmall
+                                          .copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      question.questionFil,
+                                      style: AppTypography.titleMedium.copyWith(
+                                        color: _story!.category.darkColor,
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.4,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              )
                               .animate()
                               .fadeIn(duration: 300.ms)
                               .slideY(begin: 0.05, end: 0),
@@ -381,7 +408,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                   ? _story!.category.color
                                   : AppColors.border;
                             } else if (isCorrect) {
-                              bgColor = AppColors.success.withValues(alpha: 0.12);
+                              bgColor = AppColors.success.withValues(
+                                alpha: 0.12,
+                              );
                               borderColor = AppColors.success;
                               textColor = AppColors.success;
                             } else if (isSelected && !isCorrect) {
@@ -399,8 +428,8 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                             // both lines read as one piece of feedback.
                             final subColor =
                                 (_answered && (isCorrect || isSelected))
-                                    ? textColor
-                                    : _story!.category.darkColor;
+                                ? textColor
+                                : _story!.category.darkColor;
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
@@ -408,16 +437,23 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                 label: '$text, $textFil',
                                 selected: isSelected,
                                 child: InkWell(
-                                  onTap: _answered ? null : () => _selectAnswer(idx),
+                                  onTap: _answered
+                                      ? null
+                                      : () => _selectAnswer(idx),
                                   borderRadius: BorderRadius.circular(16),
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 250),
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 20, vertical: 16),
+                                      horizontal: 20,
+                                      vertical: 16,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: bgColor,
                                       borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: borderColor, width: 2),
+                                      border: Border.all(
+                                        color: borderColor,
+                                        width: 2,
+                                      ),
                                     ),
                                     child: Column(
                                       crossAxisAlignment:
@@ -435,8 +471,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                               key: ValueKey(
                                                 'story_${_story!.id}_q${_currentQ}_o$idx',
                                               ),
-                                              pair:
-                                                  question.imageForOption(idx)!,
+                                              pair: question.imageForOption(
+                                                idx,
+                                              )!,
                                               cacheKey:
                                                   '${_story!.id}_q${_currentQ}_o$idx',
                                               color: _story!.category.color,
@@ -455,17 +492,21 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                               width: context.scaleIcon(36),
                                               height: context.scaleIcon(36),
                                               decoration: BoxDecoration(
-                                                color: borderColor
-                                                    .withValues(alpha: 0.15),
+                                                color: borderColor.withValues(
+                                                  alpha: 0.15,
+                                                ),
                                                 shape: BoxShape.circle,
                                               ),
                                               child: Center(
                                                 child: Text(
                                                   String.fromCharCode(
-                                                      65 + idx), // A, B, C
-                                                  style: AppTypography.titleSmall
+                                                    65 + idx,
+                                                  ), // A, B, C
+                                                  style: AppTypography
+                                                      .titleSmall
                                                       .copyWith(
-                                                          color: textColor),
+                                                        color: textColor,
+                                                      ),
                                                 ),
                                               ),
                                             ),
@@ -482,7 +523,8 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                                     style: AppTypography
                                                         .bodyLarge
                                                         .copyWith(
-                                                            color: textColor),
+                                                          color: textColor,
+                                                        ),
                                                   ),
                                                   const SizedBox(height: 2),
                                                   // Tagalog translation beneath,
@@ -493,24 +535,28 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                                     style: AppTypography
                                                         .bodyMedium
                                                         .copyWith(
-                                                      color: subColor,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                    ),
+                                                          color: subColor,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
                                                   ),
                                                 ],
                                               ),
                                             ),
                                             if (_answered && isCorrect)
-                                              Icon(Icons.check_circle_rounded,
-                                                  color: AppColors.success,
-                                                  size: context.scaleIcon(24)),
+                                              Icon(
+                                                Icons.check_circle_rounded,
+                                                color: AppColors.success,
+                                                size: context.scaleIcon(24),
+                                              ),
                                             if (_answered &&
                                                 isSelected &&
                                                 !isCorrect)
-                                              Icon(Icons.cancel_rounded,
-                                                  color: AppColors.error,
-                                                  size: context.scaleIcon(24)),
+                                              Icon(
+                                                Icons.cancel_rounded,
+                                                color: AppColors.error,
+                                                size: context.scaleIcon(24),
+                                              ),
                                           ],
                                         ),
                                         // Per-choice helpers: hear this choice in
@@ -527,7 +573,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                             question.fslForOption(idx) != null)
                                           Padding(
                                             padding: const EdgeInsets.only(
-                                                top: 12, left: 50),
+                                              top: 12,
+                                              left: 50,
+                                            ),
                                             child: Wrap(
                                               spacing: 8,
                                               runSpacing: 8,
@@ -559,7 +607,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                                 // Watch this choice signed (when
                                                 // the story has an FSL track).
                                                 if (showFsl &&
-                                                    question.fslForOption(idx) !=
+                                                    question.fslForOption(
+                                                          idx,
+                                                        ) !=
                                                         null)
                                                   StoryFslButton(
                                                     pageUrl: question
@@ -582,10 +632,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                   ),
                                 ),
                               ),
-                            )
-                                .animate()
-                                .fadeIn(duration: 300.ms, delay: (100 * idx).ms)
-                                .slideX(begin: 0.03, end: 0);
+                            ).animate().fadeIn(duration: 300.ms, delay: (100 * idx).ms).slideX(begin: 0.03, end: 0);
                           }),
                         ],
                       ),
@@ -597,21 +644,26 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                   // Next / Finish button (fixed at bottom)
                   if (_answered)
                     ElevatedButton.icon(
-                      onPressed: _next,
-                      icon: Icon(_isLastQuestion
-                          ? Icons.emoji_events_rounded
-                          : Icons.arrow_forward_rounded),
-                      label: Text(
-                        _isLastQuestion ? 'See Results' : 'Next Question',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _story!.category.color,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 52),
-                      ),
-                    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1, end: 0),
+                          onPressed: _next,
+                          icon: Icon(
+                            _isLastQuestion
+                                ? Icons.emoji_events_rounded
+                                : Icons.arrow_forward_rounded,
+                          ),
+                          label: Text(
+                            _isLastQuestion ? 'See Results' : 'Next Question',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _story!.category.color,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(double.infinity, 52),
+                          ),
+                        )
+                        .animate()
+                        .fadeIn(duration: 300.ms)
+                        .slideY(begin: 0.1, end: 0),
 
                   const SizedBox(height: 16),
                 ],
@@ -673,8 +725,9 @@ class _ChoiceListenButton extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            textStyle:
-                AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w700),
+            textStyle: AppTypography.labelLarge.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),

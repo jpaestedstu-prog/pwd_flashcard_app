@@ -6,6 +6,7 @@ import '../data/local/hive_service.dart';
 import '../data/models/leaderboard.dart';
 import '../data/models/leaderboard_config.dart';
 import '../data/models/models.dart';
+import '../data/models/shop_data.dart';
 import '../data/remote/firestore_repository.dart';
 import 'classroom_management_provider.dart';
 import 'home_group_provider.dart';
@@ -29,8 +30,18 @@ LeaderboardEntry _toEntry((UserProfile, LearningProgress) record) {
     totalStars: progress.totalStars,
     wordsLearned: progress.wordsLearned,
     streakDays: progress.streakDays,
-    gamesPlayed: progress.recentScores.length,
+    gamesPlayed: progress.effectiveGamesPlayed,
     lastActivity: progress.lastActivityDate,
+    // Synced value first, local Hive row second. The profile document now
+    // carries these, so a classmate on another tablet arrives already wearing
+    // what they bought; the Hive fallback covers this device's own learners
+    // and any profile whose remote document predates the change.
+    equippedAvatarId: profile.equippedAvatarId ??
+        HiveService.getEquippedItem(profile.id, ShopItemType.avatar.name),
+    equippedBorderId: profile.equippedBorderId ??
+        HiveService.getEquippedItem(profile.id, ShopItemType.border.name),
+    equippedTitleId: profile.equippedTitleId ??
+        HiveService.getEquippedItem(profile.id, ShopItemType.title.name),
   );
 }
 
@@ -41,11 +52,11 @@ LeaderboardEntry _toEntry((UserProfile, LearningProgress) record) {
 List<LeaderboardEntry> _localEntries(LeaderboardScope scope) {
   final memberIds = scope.kind == LeaderboardScopeKind.classroom
       ? HiveService.getMembers(scope.id!).map((m) => m.profileId).toSet()
-      : HiveService.getHomeGroupMembers(scope.id!)
-          .map((m) => m.profileId)
-          .toSet();
+      : HiveService.getHomeGroupMembers(
+          scope.id!,
+        ).map((m) => m.profileId).toSet();
   final byId = {
-    for (final rec in HiveService.getAllProfilesWithProgress()) rec.$1.id: rec
+    for (final rec in HiveService.getAllProfilesWithProgress()) rec.$1.id: rec,
   };
   final entries = <LeaderboardEntry>[];
   for (final pid in memberIds) {
@@ -65,28 +76,28 @@ List<LeaderboardEntry> _localEntries(LeaderboardScope scope) {
 /// because it `ref.watch`es the membership stream.
 final onlineLeaderboardProvider = FutureProvider.family
     .autoDispose<List<LeaderboardEntry>, LeaderboardScope>((ref, scope) async {
-  if (!scope.isReal) return const [];
-  final id = scope.id!;
+      if (!scope.isReal) return const [];
+      final id = scope.id!;
 
-  // Dependency: re-fetch when the roster changes.
-  if (scope.kind == LeaderboardScopeKind.classroom) {
-    ref.watch(classroomMembersProvider(id));
-  } else {
-    ref.watch(homeGroupMembersProvider(id));
-  }
+      // Dependency: re-fetch when the roster changes.
+      if (scope.kind == LeaderboardScopeKind.classroom) {
+        ref.watch(classroomMembersProvider(id));
+      } else {
+        ref.watch(homeGroupMembersProvider(id));
+      }
 
-  if (!FirebaseService.isConfigured) {
-    return _localEntries(scope);
-  }
+      if (!FirebaseService.isConfigured) {
+        return _localEntries(scope);
+      }
 
-  const remote = FirestoreRepository();
-  final pairs = scope.kind == LeaderboardScopeKind.classroom
-      ? await remote.getStudentsWithProgressByClassroom(id)
-      : await remote.getChildrenWithProgressByHomeGroup(id);
-  final entries = pairs.map(_toEntry).toList()
-    ..sort((a, b) => b.rankScore.compareTo(a.rankScore));
-  return entries;
-});
+      const remote = FirestoreRepository();
+      final pairs = scope.kind == LeaderboardScopeKind.classroom
+          ? await remote.getStudentsWithProgressByClassroom(id)
+          : await remote.getChildrenWithProgressByHomeGroup(id);
+      final entries = pairs.map(_toEntry).toList()
+        ..sort((a, b) => b.rankScore.compareTo(a.rankScore));
+      return entries;
+    });
 
 /// Live leaderboard config for a scope (educator-controlled). Hive-cache
 /// first, then the Firestore doc stream — same offline-first shape as
@@ -94,27 +105,30 @@ final onlineLeaderboardProvider = FutureProvider.family
 /// (the screen then treats the board as "not enabled").
 final leaderboardConfigProvider = StreamProvider.family
     .autoDispose<LeaderboardConfig?, LeaderboardScope>((ref, scope) async* {
-  if (!scope.isReal) {
-    yield null;
-    return;
-  }
-  final id = scope.id!;
-  yield HiveService.getLeaderboardConfig(scope.kind, id);
-  if (!FirebaseService.isConfigured) return;
+      if (!scope.isReal) {
+        yield null;
+        return;
+      }
+      final id = scope.id!;
+      yield HiveService.getLeaderboardConfig(scope.kind, id);
+      if (!FirebaseService.isConfigured) return;
 
-  final coll = scope.kind == LeaderboardScopeKind.classroom
-      ? 'leaderboard_config_classroom'
-      : 'leaderboard_config_homegroup';
-  yield* FirebaseService.db.collection(coll).doc(id).snapshots().map((snap) {
-    if (!snap.exists || snap.data() == null) return null;
-    final cfg =
-        LeaderboardConfig.fromJson(Map<String, dynamic>.from(snap.data()!));
-    // Fire-and-forget Hive write so offline launches stay fresh.
-    // ignore: discarded_futures
-    HiveService.cacheLeaderboardConfig(scope.kind, cfg);
-    return cfg;
-  });
-});
+      final coll = scope.kind == LeaderboardScopeKind.classroom
+          ? 'leaderboard_config_classroom'
+          : 'leaderboard_config_homegroup';
+      yield* FirebaseService.db.collection(coll).doc(id).snapshots().map((
+        snap,
+      ) {
+        if (!snap.exists || snap.data() == null) return null;
+        final cfg = LeaderboardConfig.fromJson(
+          Map<String, dynamic>.from(snap.data()!),
+        );
+        // Fire-and-forget Hive write so offline launches stay fresh.
+        // ignore: discarded_futures
+        HiveService.cacheLeaderboardConfig(scope.kind, cfg);
+        return cfg;
+      });
+    });
 
 /// Writes leaderboard config. The stream provider above reflects the change;
 /// this also writes through to Hive optimistically so an offline educator
@@ -144,5 +158,6 @@ class LeaderboardConfigWriter {
   }
 }
 
-final leaderboardConfigWriterProvider =
-    Provider<LeaderboardConfigWriter>((ref) => LeaderboardConfigWriter(ref));
+final leaderboardConfigWriterProvider = Provider<LeaderboardConfigWriter>(
+  (ref) => LeaderboardConfigWriter(ref),
+);

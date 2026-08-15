@@ -13,6 +13,8 @@ import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/theme_preview_card.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../widgets/celebration_confetti.dart';
+import '../logic/shop_advice.dart';
 
 class ShopScreen extends ConsumerStatefulWidget {
   const ShopScreen({super.key});
@@ -27,12 +29,34 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
   late ConfettiController _confettiController;
   bool _showCelebration = false;
 
+  /// Only the categories with something to sell. Built once: the catalogue is
+  /// compile-time data, and the TabController's length must match it.
+  late final List<ShopItemType> _types;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _types = ShopData.sellableTypes;
+    _tabController = TabController(length: _types.length, vsync: this);
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 2));
+    // After the first frame: this writes to Hive and bumps progress state,
+    // which is not safe to do while the tree is still building.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refundWithdrawn());
+  }
+
+  /// Returns the stars for anything the learner bought that has since been
+  /// pulled from sale, and tells them it happened — a balance that changes
+  /// without explanation is worse than the original problem.
+  void _refundWithdrawn() {
+    if (!mounted) return;
+    final refunded =
+        ref.read(progressProvider.notifier).refundWithdrawnPurchases();
+    if (refunded <= 0 || !mounted) return;
+    AppSnackBar.info(
+      context,
+      message: AppLocalizations.of(context)!.starsRefunded(refunded),
+    );
   }
 
   @override
@@ -60,12 +84,22 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
           backgroundColor: Colors.transparent,
           appBar: AppBar(
             leading: const AppBackButton(),
+            // The star-balance chip in `actions` takes its width first, so on a
+            // narrow phone the title box is left with less than the icon +
+            // "Star Shop" need — 49 px short at the default font, 149 px at 2.0x.
+            // Flexible lets the words give way instead of overflowing.
             title: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.store_rounded, size: 24),
                 const SizedBox(width: 8),
-                Text(AppLocalizations.of(context)!.starShop),
+                Flexible(
+                  child: Text(
+                    AppLocalizations.of(context)!.starShop,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             actions: [
@@ -100,63 +134,36 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
               indicatorColor: AppColors.primary,
               tabAlignment: TabAlignment.start,
               tabs: [
-                Tab(icon: const Icon(Icons.face_rounded), text: AppLocalizations.of(context)!.avatars),
-                Tab(icon: const Icon(Icons.palette_rounded), text: AppLocalizations.of(context)!.themes),
-                Tab(icon: const Icon(Icons.border_all_rounded), text: AppLocalizations.of(context)!.borders),
-                const Tab(icon: Icon(Icons.badge_rounded), text: 'Titles'),
-                const Tab(icon: Icon(Icons.music_note_rounded), text: 'Sounds'),
-                const Tab(icon: Icon(Icons.celebration_rounded), text: 'Effects'),
+                for (final type in _types)
+                  Tab(
+                    icon: Icon(_iconFor(type)),
+                    text: _labelFor(context, type),
+                  ),
               ],
             ),
           ),
           body: TabBarView(
             controller: _tabController,
             children: [
-              _ShopGrid(
-                items: ShopData.byType(ShopItemType.avatar),
-                onPurchase: _handlePurchase,
-              ),
-              _ThemeShopGrid(
-                items: ShopData.byType(ShopItemType.theme),
-                onPurchase: _handlePurchase,
-              ),
-              _ShopGrid(
-                items: ShopData.byType(ShopItemType.border),
-                onPurchase: _handlePurchase,
-              ),
-              _ShopGrid(
-                items: ShopData.byType(ShopItemType.title),
-                onPurchase: _handlePurchase,
-              ),
-              _ShopGrid(
-                items: ShopData.byType(ShopItemType.soundPack),
-                onPurchase: _handlePurchase,
-              ),
-              _ShopGrid(
-                items: ShopData.byType(ShopItemType.celebration),
-                onPurchase: _handlePurchase,
-              ),
+              for (final type in _types)
+                if (type == ShopItemType.theme)
+                  _ThemeShopGrid(
+                    items: ShopData.sellableByType(type),
+                    onPurchase: _handlePurchase,
+                  )
+                else
+                  _ShopGrid(
+                    items: ShopData.sellableByType(type),
+                    onPurchase: _handlePurchase,
+                  ),
             ],
           ),
         ),
         // Confetti overlay
         Align(
           alignment: Alignment.topCenter,
-          child: ConfettiWidget(
-            confettiController: _confettiController,
-            blastDirectionality: BlastDirectionality.explosive,
-            numberOfParticles: 20,
-            gravity: 0.3,
-            emissionFrequency: 0.05,
-            maxBlastForce: 15,
-            colors: const [
-              AppColors.primary,
-              AppColors.accent,
-              AppColors.warning,
-              AppColors.success,
-              AppColors.info,
-            ],
-          ),
+          // Buying an effect shows you the effect you just bought.
+          child: CelebrationConfetti(controller: _confettiController),
         ),
       ],
     ),
@@ -164,8 +171,57 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     );
   }
 
+  /// Whether the learner has chosen Filipino. Item names and descriptions are
+  /// catalogue data rather than ARB entries (see [ShopItem.nameFilipino]), so
+  /// they are resolved against this rather than through [AppLocalizations].
+  bool get _isFilipino => ref.read(settingsProvider).locale == 'fil';
+
+  String _name(ShopItem item) => item.localizedName(_isFilipino);
+
+  /// The advice sentence for [advice], or null when there is nothing to say.
+  static String? adviceText(BuildContext context, ShopAdvice advice) {
+    final l10n = AppLocalizations.of(context)!;
+    return switch (advice) {
+      ShopAdvice.none => null,
+      ShopAdvice.themeOverriddenByContrast => l10n.themeOverriddenByContrast,
+      ShopAdvice.themeOverriddenByDyslexia => l10n.themeOverriddenByDyslexia,
+      ShopAdvice.effectPlaysGently => l10n.effectPlaysGently,
+    };
+  }
+
+  IconData _iconFor(ShopItemType type) => switch (type) {
+        ShopItemType.avatar => Icons.face_rounded,
+        ShopItemType.theme => Icons.palette_rounded,
+        ShopItemType.border => Icons.border_all_rounded,
+        ShopItemType.title => Icons.badge_rounded,
+        ShopItemType.soundPack => Icons.music_note_rounded,
+        ShopItemType.celebration => Icons.celebration_rounded,
+      };
+
+  String _labelFor(BuildContext context, ShopItemType type) {
+    final l10n = AppLocalizations.of(context)!;
+    return switch (type) {
+      ShopItemType.avatar => l10n.avatars,
+      ShopItemType.theme => l10n.themes,
+      ShopItemType.border => l10n.borders,
+      ShopItemType.title => l10n.titles,
+      ShopItemType.soundPack => l10n.sounds,
+      ShopItemType.celebration => l10n.effects,
+    };
+  }
+
   void _handlePurchase(ShopItem item) {
     final balance = ref.read(progressProvider).starBalance;
+
+    // Belt and braces: withdrawn items are already filtered out of the grid,
+    // so reaching here means a stale build — never take the stars.
+    if (!item.available) {
+      AppSnackBar.info(
+        context,
+        message: AppLocalizations.of(context)!.itemNotReady(_name(item)),
+      );
+      return;
+    }
 
     if (ref.read(progressProvider.notifier).hasPurchased(item.id)) {
       AppSnackBar.info(context, message: AppLocalizations.of(context)!.alreadyOwned);
@@ -173,7 +229,11 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     }
 
     if (balance < item.cost) {
-      AppSnackBar.warning(context, message: 'Not enough stars! You need ${item.cost - balance} more ⭐');
+      AppSnackBar.warning(
+        context,
+        message: AppLocalizations.of(context)!
+            .notEnoughStars(item.cost - balance),
+      );
       return;
     }
 
@@ -181,7 +241,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Buy ${item.name}?'),
+        title: Text(AppLocalizations.of(context)!.buyItem(_name(item))),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -191,10 +251,40 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              item.description,
+              item.localizedDescription(_isFilipino),
               style: AppTypography.bodyMedium,
               textAlign: TextAlign.center,
             ),
+            // A learner whose own settings will override what they are about
+            // to buy deserves to hear it here, not discover it afterwards.
+            if (adviceText(
+                  context,
+                  adviceFor(item, ref.read(settingsProvider)),
+                )
+                case final advice?) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.info.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline_rounded,
+                        size: 18, color: AppColors.info),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        advice,
+                        style: AppTypography.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -237,9 +327,27 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       _confettiController.play();
       setState(() => _showCelebration = true);
       ref.read(celebrationServiceProvider).celebrate(CelebrationType.purchase);
-      AppSnackBar.success(context, message: '🎉 You got ${item.name}!');
+      AppSnackBar.success(
+        context,
+        message: AppLocalizations.of(context)!.purchaseSuccess(_name(item)),
+      );
     }
   }
+}
+
+/// Grid cells are sized as a fraction of their width, but every part of a shop
+/// card — emoji, name, status chip — grows with the learner's Font Size
+/// setting. A fixed ratio therefore holds the cell still while its contents
+/// grow: at XL font on a 360 dp phone the cards overflowed by 23 px (5.7 px on
+/// the Themes tab). Trading width-for-height as the text scales keeps the
+/// accessible font sizes readable instead of clipped.
+///
+/// Growth is capped at 2.0x — the largest scale the app supports (`main.dart`
+/// clamps its own font setting to 1.5x, the rest comes from the OS) — so the
+/// cells never grow without bound.
+double _scaledAspect(BuildContext context, double base) {
+  final scale = MediaQuery.textScalerOf(context).scale(1.0);
+  return base / (1 + 0.5 * (scale - 1).clamp(0.0, 1.0));
 }
 
 class _ShopGrid extends ConsumerWidget {
@@ -251,14 +359,16 @@ class _ShopGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = ref.watch(progressProvider);
+    final settings = ref.watch(settingsProvider);
+    final isFilipino = settings.locale == 'fil';
 
     return GridView.builder(
       padding: const EdgeInsets.all(20),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         mainAxisSpacing: 16,
         crossAxisSpacing: 16,
-        childAspectRatio: 0.75,
+        childAspectRatio: _scaledAspect(context, 0.75),
       ),
       itemCount: items.length,
       itemBuilder: (context, index) {
@@ -271,6 +381,9 @@ class _ShopGrid extends ConsumerWidget {
 
         return _ShopItemCard(
           item: item,
+          isFilipino: isFilipino,
+          advice: adviceFor(item, settings),
+          recommended: isRecommendedFor(item, settings),
           owned: owned,
           canAfford: canAfford,
           isEquipped: isEquipped,
@@ -308,14 +421,16 @@ class _ThemeShopGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = ref.watch(progressProvider);
+    final settings = ref.watch(settingsProvider);
+    final isFilipino = settings.locale == 'fil';
 
     return GridView.builder(
       padding: const EdgeInsets.all(20),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         mainAxisSpacing: 16,
         crossAxisSpacing: 16,
-        childAspectRatio: 0.65,
+        childAspectRatio: _scaledAspect(context, 0.65),
       ),
       itemCount: items.length,
       itemBuilder: (context, index) {
@@ -328,6 +443,8 @@ class _ThemeShopGrid extends ConsumerWidget {
 
         return ThemePreviewCard(
           item: item,
+          isFilipino: isFilipino,
+          hasAdvice: adviceFor(item, settings) != ShopAdvice.none,
           owned: owned,
           canAfford: canAfford,
           isEquipped: isEquipped,
@@ -357,6 +474,9 @@ class _ThemeShopGrid extends ConsumerWidget {
 
 class _ShopItemCard extends StatelessWidget {
   final ShopItem item;
+  final bool isFilipino;
+  final ShopAdvice advice;
+  final bool recommended;
   final bool owned;
   final bool canAfford;
   final bool isEquipped;
@@ -364,6 +484,9 @@ class _ShopItemCard extends StatelessWidget {
 
   const _ShopItemCard({
     required this.item,
+    required this.isFilipino,
+    required this.advice,
+    required this.recommended,
     required this.owned,
     required this.canAfford,
     required this.isEquipped,
@@ -372,10 +495,21 @@ class _ShopItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final status = isEquipped
+        ? l10n.equipped
+        : owned
+            ? l10n.tapToEquip
+            : '${item.cost} ${l10n.stars}';
+
+    final adviceLine = _ShopScreenState.adviceText(context, advice);
+    final recommendedLine = recommended ? '${l10n.recommendedForYou}. ' : '';
+
     return Semantics(
       button: true,
-      label: '${item.name}, ${item.description}, '
-          '${isEquipped ? "Equipped" : owned ? "Owned, tap to equip" : "${item.cost} stars"}',
+      label: '${item.localizedName(isFilipino)}, '
+          '${item.localizedDescription(isFilipino)}, $recommendedLine$status'
+          '${adviceLine == null ? '' : '. $adviceLine'}',
       child: Card(
         elevation: 2,
         clipBehavior: Clip.antiAlias,
@@ -400,23 +534,55 @@ class _ShopItemCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
-          child: Padding(
+          child: Stack(
+            children: [
+              if (adviceLine != null)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Tooltip(
+                    message: adviceLine,
+                    child: const Icon(Icons.info_outline_rounded,
+                        size: 18, color: AppColors.info),
+                  ),
+                ),
+              if (recommended)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Tooltip(
+                    message: l10n.recommendedForYou,
+                    child: const Icon(Icons.thumb_up_rounded,
+                        size: 16, color: AppColors.success),
+                  ),
+                ),
+              Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Emoji
-              Text(
-                item.emoji,
-                style: TextStyle(
-                  fontSize: 48,
-                  color: owned || canAfford ? null : HCColor.of(context).textHint,
+              // Emoji. Flexible + scaleDown so the picture yields space to the
+              // name and price rather than pushing them out of the card: for a
+              // pre-literate learner the picture IS the product, so it must
+              // survive every font size even if it has to shrink to do it.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    item.emoji,
+                    style: TextStyle(
+                      fontSize: 48,
+                      color: owned || canAfford
+                          ? null
+                          : HCColor.of(context).textHint,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
               // Name
               Text(
-                item.name,
+                item.localizedName(isFilipino),
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: isEquipped
@@ -426,6 +592,8 @@ class _ShopItemCard extends StatelessWidget {
                           : HCColor.of(context).textPrimary,
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
               // Status badge
@@ -491,6 +659,8 @@ class _ShopItemCard extends StatelessWidget {
                 ),
             ],
           ),
+          ),
+            ],
           ),
         ),
       ),

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/data/models/shop_data.dart';
 
@@ -75,6 +76,39 @@ void main() {
         expect(item.color, isNotNull,
             reason: '${item.id} should have a color');
       }
+    });
+  });
+
+  group('ShopData — Filipino', () {
+    test('every item is translated', () {
+      for (final item in ShopData.allItems) {
+        expect(item.nameFilipino, isNotEmpty,
+            reason: '${item.id} has no Filipino name');
+        expect(item.descriptionFilipino, isNotEmpty,
+            reason: '${item.id} has no Filipino description');
+      }
+    });
+
+    test('localizedName and localizedDescription follow the language', () {
+      final shark = ShopData.findById('avatar_shark')!;
+      expect(shark.localizedName(false), 'Shark');
+      expect(shark.localizedName(true), 'Pating');
+      expect(shark.localizedDescription(true), startsWith('Isang'));
+    });
+
+    test('an untranslated item falls back to English rather than blank', () {
+      const untranslated = ShopItem(
+        id: 'test_item',
+        name: 'Test Item',
+        description: 'A test item',
+        cost: 10,
+        type: ShopItemType.avatar,
+        emoji: '🧪',
+        color: Color(0xFF000000),
+      );
+
+      expect(untranslated.localizedName(true), 'Test Item');
+      expect(untranslated.localizedDescription(true), 'A test item');
     });
   });
 }

@@ -18,6 +18,7 @@ import '../../../widgets/page_turn_switcher.dart';
 import '../../../widgets/square_action_button.dart';
 import '../widgets/story_fsl_button.dart';
 import '../widgets/story_image_flip.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 /// Paginated story reader with TTS and vocabulary highlights.
 class StoryReaderScreen extends ConsumerStatefulWidget {
@@ -109,8 +110,9 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
   Widget build(BuildContext context) {
     if (_story == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.storyNotFound),
+        appBar: fullscreenBar(
+          ref,
+          AppBar(title: Text(AppLocalizations.of(context)!.storyNotFound)),
         ),
         body: Center(
           child: Column(
@@ -149,8 +151,9 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     final showFsl = ref.watch(
       accessibilityContentPolicyProvider.select((p) => p.showFsl),
     );
-    final sentenceFslUrl =
-        showFsl ? _story!.fslForSentence(_currentSentence) : null;
+    final sentenceFslUrl = showFsl
+        ? _story!.fslForSentence(_currentSentence)
+        : null;
     // Cartoon ⇄ real-life flip picture for this page, if the story has one.
     // Visual aid — shown regardless of the TTS / audio settings.
     final sentenceImage = _story!.imageForSentence(_currentSentence);
@@ -159,13 +162,16 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(
-        leading: AppIconButton(
-          icon: Icons.close_rounded,
-          tooltip: 'Close',
-          onPressed: () => context.pop(),
+      appBar: fullscreenBar(
+        ref,
+        AppBar(
+          leading: AppIconButton(
+            icon: Icons.close_rounded,
+            tooltip: 'Close',
+            onPressed: () => context.pop(),
+          ),
+          title: Text(_story!.titleEn),
         ),
-        title: Text(_story!.titleEn),
       ),
       body: SafeArea(
         child: Column(

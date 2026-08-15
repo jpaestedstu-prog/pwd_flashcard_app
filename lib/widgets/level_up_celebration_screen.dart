@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import '../core/theme/app_colors.dart';
+import 'package:pwdpwdpwd/widgets/celebration_confetti.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/services/xp_level_service.dart';
@@ -378,34 +378,20 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
               RepaintBoundary(
                 child: Align(
                   alignment: Alignment.topLeft,
-                  child: ConfettiWidget(
-                    confettiController: _confettiController,
+                  child: CelebrationConfetti(
+                    controller: _confettiController,
+                    accentColor: color,
                     blastDirection: -math.pi / 4,
-                    minBlastForce: 8,
-                    colors: [
-                      color,
-                      AppColors.warning,
-                      AppColors.accent,
-                      AppColors.primary,
-                      Colors.white,
-                    ],
                   ),
                 ),
               ),
               RepaintBoundary(
                 child: Align(
                   alignment: Alignment.topRight,
-                  child: ConfettiWidget(
-                    confettiController: _confettiController,
+                  child: CelebrationConfetti(
+                    controller: _confettiController,
+                    accentColor: color,
                     blastDirection: -3 * math.pi / 4,
-                    minBlastForce: 8,
-                    colors: [
-                      color,
-                      AppColors.warning,
-                      AppColors.accent,
-                      AppColors.primary,
-                      Colors.white,
-                    ],
                   ),
                 ),
               ),
