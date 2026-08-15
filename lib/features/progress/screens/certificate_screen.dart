@@ -7,8 +7,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../core/services/certificate_service.dart';
 import '../../../data/models/enums.dart';
-import '../../../data/local/seed_data.dart';
 import '../../../providers/app_providers.dart';
+import '../models/category_mastery.dart';
 import '../../../widgets/app_back_button.dart';
 
 class CertificateScreen extends ConsumerWidget {
@@ -24,31 +24,45 @@ class CertificateScreen extends ConsumerWidget {
     // Build available certificates
     final certificates = <_CertificateItem>[];
 
-    // Category mastery certificates (for categories with >= 80% progress)
+    // Category mastery certificates.
+    //
+    // Gated on how much of the category the learner actually covered, and the
+    // printed word count is that same real figure. Both used to come from
+    // `categoryProgress`, which is a rolling *accuracy* average rather than a
+    // completion ratio — `accuracy * cardCount` put a number on a physical
+    // award that the learner had never reached (five perfect three-question
+    // games read as "17/20 words learned"). See [CategoryMastery].
+    final mastery = ref.watch(categoryMasteryProvider);
     for (final cat in FlashcardCategory.values) {
-      final catProgress = progress.categoryProgress[cat.label] ?? 0.0;
-      if (catProgress >= 0.8) {
-        final catCards = SeedData.getByCategory(cat);
-        final mastered = (catProgress * catCards.length).round();
+      final catMastery = mastery[cat];
+      if (catMastery != null && catMastery.isMastered) {
         certificates.add(_CertificateItem(
           title: '${cat.label} Mastery',
-          subtitle: '$mastered/${catCards.length} words learned',
+          subtitle:
+              '${catMastery.wordsLearned}/${catMastery.totalWords} words learned',
           emoji: '🏆',
           color: cat.color,
           onGenerate: () => CertificateService.categoryMastery(
             studentName: studentName,
             category: cat,
-            wordsLearned: mastered,
-            totalWords: catCards.length,
+            wordsLearned: catMastery.wordsLearned,
+            totalWords: catMastery.totalWords,
           ),
         ));
       }
     }
 
-    // Streak milestone certificates
+    // Streak milestone certificates.
+    //
+    // Awarded against the all-time best streak, not the current run. Keying
+    // these off `streakDays` meant a learner who reached 30 days and then
+    // missed one had their certificate taken off the shelf — a printed award
+    // for something that demonstrably happened. Being ill costs the flame on
+    // the Progress tab, never the award.
+    final bestStreak = progress.effectiveBestStreak;
     final milestones = [7, 14, 30, 60, 100];
     for (final days in milestones) {
-      if (progress.streakDays >= days) {
+      if (bestStreak >= days) {
         certificates.add(_CertificateItem(
           title: '$days-Day Streak',
           subtitle: 'Consistent study dedication',
@@ -73,7 +87,9 @@ class CertificateScreen extends ConsumerWidget {
           studentName: studentName,
           totalWords: progress.wordsLearned,
           totalStars: progress.totalStars,
-          streakDays: progress.streakDays,
+          // The best streak reached, for the same reason as the milestone
+          // certificates above — a printed award should not shrink.
+          streakDays: bestStreak,
         ),
       ));
     }

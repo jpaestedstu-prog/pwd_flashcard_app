@@ -5,7 +5,9 @@ import 'package:printing/printing.dart';
 import '../../data/models/models.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/achievements.dart';
+import '../../data/local/hive_service.dart';
 import '../../data/local/spaced_repetition_service.dart';
+import '../../features/progress/models/category_mastery.dart';
 
 /// Generates a shareable PDF progress report for teacher/parent use.
 class ReportGenerator {
@@ -37,15 +39,28 @@ class ReportGenerator {
     final streak = progress.streakDays;
     final totalStars = progress.totalStars;
 
-    // Achievements
-    final unlockedIds = Achievements.unlockedIds(progress);
+    // Achievements — the stored record union the live check, so the report a
+    // parent or teacher receives counts the same badges the learner sees on
+    // their Progress tab.
+    final unlockedIds = Achievements.durableUnlockedIds(
+      progress: progress,
+      previouslyUnlockedIds: HiveService.getUnlockedAchievements(
+        progress.profileId,
+      ),
+    );
     final totalAchievements = Achievements.all.length;
     final unlockedCount = unlockedIds.length;
 
-    // Category data
+    // Category data — share of each category's words actually learned.
+    //
+    // This used to report `categoryProgress`, a rolling accuracy average, under
+    // a heading that reads as completion; a parent saw "Colors & Shapes 83%"
+    // for a child who had met three of its thirteen words, and the "lowest
+    // progress" recommendation below pointed at the wrong category as a result.
+    final mastery = CategoryMastery.forProgress(progress, allCards);
     final categories = FlashcardCategory.values.map((cat) {
-      final pct = progress.categoryProgress[cat.label] ?? 0.0;
-      return (cat.label, (pct * 100).round());
+      final coverage = mastery[cat]?.coverage ?? 0.0;
+      return (cat.label, (coverage * 100).round());
     }).toList();
 
     // Recent game scores

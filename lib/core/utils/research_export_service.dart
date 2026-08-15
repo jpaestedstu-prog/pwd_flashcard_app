@@ -5,7 +5,9 @@ import 'package:share_plus/share_plus.dart';
 import '../../data/models/models.dart';
 import '../../data/models/enums.dart';
 import '../../data/local/hive_service.dart';
+import '../../data/local/seed_data.dart';
 import '../../data/local/spaced_repetition_service.dart';
+import '../../features/progress/models/category_mastery.dart';
 import '../../features/assessment/services/assessment_service.dart';
 import '../../features/survey/services/survey_service.dart';
 import '../../features/survey/models/survey_models.dart';
@@ -24,7 +26,7 @@ import 'research_export_rows.dart';
 /// 1. `students_overview.csv`  – one row per student (anonymized)
 /// 2. `learning_curves.csv`    – game scores over time per student
 /// 3. `session_patterns.csv`   – session logs across all students
-/// 4. `category_mastery.csv`   – per-category progress per student
+/// 4. `category_mastery.csv`   – per-category coverage *and* accuracy per student
 /// 5. `word_accuracy.csv`      – per-word spaced-repetition data
 /// 6. `assessment_results.csv` – pre/post test, learning & normalized gains
 /// 6b. `item_responses.csv`    – per-question correctness & response time
@@ -33,6 +35,9 @@ import 'research_export_rows.dart';
 /// 8. `adaptive_difficulty.csv` – per-game difficulty adjustments over time
 /// 9. `sus_survey_results.csv` – teacher-administered SUS (respondent + role)
 /// 9b. `student_experience.csv` – learner Smileyometer (descriptive, 1–3)
+/// 10. `fsl_engagement.csv`    – per-view sign-language log + distinct signs
+/// 10b. `fsl_mastery.csv`     – self-claimed vs educator-verified production
+///     (the calibration measure: does a learner know what they can sign?)
 /// 10. `summary_stats.json`    – high-level aggregates for quick analysis
 class ResearchExportService {
   const ResearchExportService._();
@@ -55,8 +60,7 @@ class ResearchExportService {
 
     final dir = await getTemporaryDirectory();
     final dateStr = DateTime.now().toString().split(' ').first;
-    final exportDir =
-        Directory('${dir.path}/FlashLearn_Research_$dateStr');
+    final exportDir = Directory('${dir.path}/FlashLearn_Research_$dateStr');
     if (await exportDir.exists()) {
       await exportDir.delete(recursive: true);
     }
@@ -71,89 +75,133 @@ class ResearchExportService {
     // Generate all CSV files in parallel
     final files = <XFile>[];
 
-    files.add(await _writeFile(
-      exportDir,
-      'students_overview.csv',
-      _buildStudentsOverview(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'students_overview.csv',
+        _buildStudentsOverview(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'learning_curves.csv',
-      _buildLearningCurves(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'learning_curves.csv',
+        _buildLearningCurves(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'session_patterns.csv',
-      _buildSessionPatterns(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'session_patterns.csv',
+        _buildSessionPatterns(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'category_mastery.csv',
-      _buildCategoryMastery(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'category_mastery.csv',
+        _buildCategoryMastery(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'word_accuracy.csv',
-      _buildWordAccuracy(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'word_accuracy.csv',
+        _buildWordAccuracy(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'assessment_results.csv',
-      _buildAssessmentResults(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'assessment_results.csv',
+        _buildAssessmentResults(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'item_responses.csv',
-      _buildItemResponses(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'item_responses.csv',
+        _buildItemResponses(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'mood_data.csv',
-      _buildMoodData(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'mood_data.csv',
+        _buildMoodData(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'adaptive_difficulty.csv',
-      _buildAdaptiveDifficulty(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'adaptive_difficulty.csv',
+        _buildAdaptiveDifficulty(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'sus_survey_results.csv',
-      _buildSusSurveyResults(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'sus_survey_results.csv',
+        _buildSusSurveyResults(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'student_experience.csv',
-      _buildStudentExperience(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'student_experience.csv',
+        _buildStudentExperience(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'experiment_groups.csv',
-      _buildExperimentGroups(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'experiment_groups.csv',
+        _buildExperimentGroups(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'engagement_metrics.csv',
-      _buildEngagementMetrics(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'engagement_metrics.csv',
+        _buildEngagementMetrics(students, idMap),
+      ),
+    );
 
-    files.add(await _writeFile(
-      exportDir,
-      'summary_stats.json',
-      _buildSummaryJson(students, idMap),
-    ));
+    files.add(
+      await _writeFile(
+        exportDir,
+        'fsl_engagement.csv',
+        _buildFslEngagement(students, idMap),
+      ),
+    );
+
+    files.add(
+      await _writeFile(
+        exportDir,
+        'fsl_mastery.csv',
+        _buildFslMastery(students, idMap),
+      ),
+    );
+
+    files.add(
+      await _writeFile(
+        exportDir,
+        'summary_stats.json',
+        _buildSummaryJson(students, idMap),
+      ),
+    );
 
     await Share.shareXFiles(
       files,
@@ -173,6 +221,10 @@ class ResearchExportService {
       'words_learned,total_stars,streak_days,games_played,'
       'avg_accuracy,study_minutes_total,days_active,'
       'achievements_unlocked,categories_explored,'
+      // Distinct FSL signs watched, out of the 142 that exist. Sign-language
+      // engagement is the intervention this study is actually about, and it was
+      // absent from every one of these files.
+      'signs_watched,'
       'account_age_days',
     );
 
@@ -187,8 +239,9 @@ class ResearchExportService {
           .map((s) => (s['date'] as String? ?? '').split(' ').first)
           .toSet()
           .length;
-      final achievements =
-          HiveService.getUnlockedAchievements(profile.id).length;
+      final achievements = HiveService.getUnlockedAchievements(
+        profile.id,
+      ).length;
       final categoriesExplored = progress.categoryProgress.entries
           .where((e) => e.value > 0)
           .length;
@@ -196,8 +249,7 @@ class ResearchExportService {
       final avgAcc = srSummary.totalAttempted > 0
           ? (srSummary.totalCorrect / srSummary.totalAttempted * 100).round()
           : 0;
-      final accountAge =
-          DateTime.now().difference(profile.createdAt).inDays;
+      final accountAge = DateTime.now().difference(profile.createdAt).inDays;
 
       buf.writeln(
         '$sid,'
@@ -207,12 +259,16 @@ class ResearchExportService {
         '${progress.wordsLearned},'
         '${progress.totalStars},'
         '${progress.streakDays},'
-        '${progress.recentScores.length},'
+        // Lifetime total. `recentScores` is trimmed to the last 20 entries, so
+        // reading its length silently censored every participant's game count
+        // at 20 in the exported research data.
+        '${progress.effectiveGamesPlayed},'
         '$avgAcc,'
         '$totalMinutes,'
         '$uniqueDays,'
         '$achievements,'
         '$categoriesExplored,'
+        '${progress.signsLearned},'
         '$accountAge',
       );
     }
@@ -239,8 +295,7 @@ class ResearchExportService {
 
       for (var i = 0; i < scores.length; i++) {
         final s = scores[i];
-        final pct =
-            s.total > 0 ? (s.score / s.total * 100).round() : 0;
+        final pct = s.total > 0 ? (s.score / s.total * 100).round() : 0;
         buf.writeln(
           '$sid,'
           '${s.date.toIso8601String()},'
@@ -276,7 +331,9 @@ class ResearchExportService {
       for (final s in sessions) {
         final dateStr = s['date'] as String? ?? '';
         final date = DateTime.tryParse(dateStr);
-        final datePart = dateStr.contains(' ') ? dateStr.split(' ').first : dateStr;
+        final datePart = dateStr.contains(' ')
+            ? dateStr.split(' ').first
+            : dateStr;
         final durMin = ((s['durationSeconds'] as int?) ?? 0) ~/ 60;
         final dayOfWeek = date != null ? date.weekday : '';
 
@@ -295,26 +352,44 @@ class ResearchExportService {
 
   // ─── File 4: Category Mastery ───────────────────────────
 
+  /// Two measures per category, because they answer different questions and
+  /// the single column here used to conflate them.
+  ///
+  ///   * `<category>_coverage_pct` — share of the category's words the learner
+  ///     has answered correctly at least once. The completion measure.
+  ///   * `<category>_accuracy_pct` — the rolling accuracy average carried on
+  ///     `LearningProgress.categoryProgress`. Empty when the learner has never
+  ///     played the category, which is not the same as scoring zero.
+  ///
+  /// The old file exported accuracy alone under the category's bare name, so
+  /// any analysis that read it as "percent of the category learned" — the
+  /// reading its column header invited — overstated coverage for every learner
+  /// who played a short game well. See [CategoryMastery].
   static String _buildCategoryMastery(
     List<(UserProfile, LearningProgress)> students,
     Map<String, String> idMap,
   ) {
     final buf = StringBuffer();
-    // Header: student_id + one column per category
     const cats = FlashcardCategory.values;
+    final cards = [...SeedData.allFlashcards, ...HiveService.getCustomCards()];
+
     buf.write('student_id,disability_type');
     for (final cat in cats) {
-      buf.write(',${_esc(cat.label)}');
+      buf.write(',${_esc('${cat.label}_coverage_pct')}');
+      buf.write(',${_esc('${cat.label}_accuracy_pct')}');
     }
     buf.writeln();
 
     for (final (profile, progress) in students) {
       final sid = idMap[profile.id]!;
+      final mastery = CategoryMastery.forProgress(progress, cards);
       buf.write('$sid,${profile.disabilityType.name}');
       for (final cat in cats) {
-        final pct =
-            ((progress.categoryProgress[cat.label] ?? 0.0) * 100).round();
-        buf.write(',$pct');
+        final m = mastery[cat];
+        final coverage = ((m?.coverage ?? 0.0) * 100).round();
+        final accuracy = m?.accuracy;
+        buf.write(',$coverage');
+        buf.write(',${accuracy == null ? '' : (accuracy * 100).round()}');
       }
       buf.writeln();
     }
@@ -340,8 +415,7 @@ class ResearchExportService {
       for (final entry in accs.entries) {
         final wa = entry.value;
         final accPct = (wa.accuracy * 100).round();
-        final daysSince =
-            DateTime.now().difference(wa.lastSeen).inDays;
+        final daysSince = DateTime.now().difference(wa.lastSeen).inDays;
         buf.writeln(
           '$sid,'
           '${entry.key},'
@@ -397,8 +471,7 @@ class ResearchExportService {
     List<(UserProfile, LearningProgress)> students,
     Map<String, String> idMap,
   ) {
-    final buf = StringBuffer()
-      ..writeln(ResearchExportRows.itemResponsesHeader);
+    final buf = StringBuffer()..writeln(ResearchExportRows.itemResponsesHeader);
 
     for (final (profile, _) in students) {
       final rows = ResearchExportRows.itemResponseRows(
@@ -420,9 +493,7 @@ class ResearchExportService {
     Map<String, String> idMap,
   ) {
     final buf = StringBuffer();
-    buf.writeln(
-      'student_id,timestamp,mood,activity_context,note_length',
-    );
+    buf.writeln('student_id,timestamp,mood,activity_context,note_length');
 
     for (final (profile, _) in students) {
       final sid = idMap[profile.id]!;
@@ -550,8 +621,9 @@ class ResearchExportService {
     for (final (profile, _) in students) {
       final sid = idMap[profile.id]!;
       final config = ExperimentService.getConfig(profile.id);
-      final featureStatuses = GamificationFeature.values
-          .map((f) => config.isFeatureEnabled(f) ? '1' : '0');
+      final featureStatuses = GamificationFeature.values.map(
+        (f) => config.isFeatureEnabled(f) ? '1' : '0',
+      );
 
       buf.writeln(
         '$sid,'
@@ -619,7 +691,125 @@ class ResearchExportService {
     return buf.toString();
   }
 
-  // ─── File 12: Summary Stats (JSON) ──────────────────────
+  // ─── File 12: FSL Engagement ────────────────────────────
+
+  /// One row per sign-language clip a learner opened, plus the distinct-signs
+  /// tally alongside it.
+  ///
+  /// The other files describe an app that happens to teach vocabulary; this one
+  /// describes the Filipino Sign Language intervention itself, which is the
+  /// distinctive claim of the study and previously produced no exportable data
+  /// at all. `repeat_view` separates a learner returning to a sign from meeting
+  /// it for the first time — the difference between rehearsal and coverage.
+  ///
+  /// The per-view log is capped at the most recent 200 entries per learner (see
+  /// `HiveService.recordFslVideoView`), so `signs_distinct_total` is the
+  /// complete figure and the rows are a recent window. For a deployment longer
+  /// than that window, read the total from `students_overview.csv`.
+  static String _buildFslEngagement(
+    List<(UserProfile, LearningProgress)> students,
+    Map<String, String> idMap,
+  ) {
+    final buf = StringBuffer();
+    buf.writeln(
+      'student_id,disability_type,category,word,viewed_at,'
+      'repeat_view,signs_distinct_total',
+    );
+
+    for (final (profile, progress) in students) {
+      final sid = idMap[profile.id]!;
+      final views = HiveService.getFslVideoViews(profile.id);
+      // Words already met earlier in the log, so a repeat can be told from a
+      // first encounter without post-processing the timestamps.
+      final seen = <String>{};
+      for (final view in views) {
+        final category = '${view['category'] ?? ''}';
+        final word = '${view['word'] ?? ''}';
+        final repeat = !seen.add(HiveService.fslWordKey(category, word));
+        buf.writeln(
+          '$sid,'
+          '${profile.disabilityType.name},'
+          '${_esc(category)},'
+          '${_esc(word)},'
+          '${view['date'] ?? ''},'
+          '${repeat ? 1 : 0},'
+          '${progress.signsLearned}',
+        );
+      }
+    }
+    return buf.toString();
+  }
+
+  // ─── File 13: FSL Mastery / Calibration ─────────────────
+
+  /// One row per word the learner has said something about, pairing their own
+  /// claim with the educator's verdict.
+  ///
+  /// This is the calibration dataset. Sign production has no automatic grader
+  /// in this app — there is no pose model — so the learner's self-report and a
+  /// teacher's confirmation are two independent measurements of the same thing,
+  /// and the interesting quantity is the *disagreement* between them:
+  ///
+  ///   claim=can_sign & verdict=confirmed      → accurate self-assessment
+  ///   claim=can_sign & verdict=not_confirmed  → over-confidence
+  ///   claim=learning & verdict=confirmed      → under-confidence
+  ///   verdict=unreviewed                      → not yet measurable, exclude
+  ///
+  /// `verifier_role` separates a classroom check from a home one; they are not
+  /// equivalent evidence and a reader should be able to filter on it.
+  /// `watched` is included so a claim about a sign the learner never opened in
+  /// this app can be spotted rather than silently trusted.
+  static String _buildFslMastery(
+    List<(UserProfile, LearningProgress)> students,
+    Map<String, String> idMap,
+  ) {
+    final buf = StringBuffer();
+    buf.writeln(
+      'student_id,disability_type,category,word,'
+      'self_claim,educator_verdict,verified_at,verifier_role,watched',
+    );
+
+    for (final (profile, _) in students) {
+      final sid = idMap[profile.id]!;
+      final claims = HiveService.fslMastery(profile.id);
+      final rows = <String, Map<String, dynamic>>{
+        for (final r in HiveService.fslVerificationRows(profile.id))
+          '${r['key']}': r,
+      };
+      final watched = HiveService.fslWordsViewed(profile.id);
+
+      for (final entry in claims.entries) {
+        // Keys are `[Category label]__[word]`; split on the last separator so a
+        // category containing an underscore cannot corrupt the word.
+        final sep = entry.key.indexOf('_');
+        final category = sep < 0 ? '' : entry.key.substring(0, sep);
+        final word = sep < 0 ? entry.key : entry.key.substring(sep + 1);
+        final row = rows[entry.key];
+        final verdictIndex = (row?['state'] as num?)?.toInt();
+        final verdict =
+            verdictIndex != null &&
+                verdictIndex >= 0 &&
+                verdictIndex < SignVerification.values.length
+            ? SignVerification.values[verdictIndex]
+            : SignVerification.unreviewed;
+
+        buf.writeln(
+          '$sid,'
+          '${profile.disabilityType.name},'
+          '${_esc(category)},'
+          '${_esc(word)},'
+          '${entry.value.exportCode},'
+          '${verdict.exportCode},'
+          '${row?['at'] ?? ''},'
+          '${row?['role'] ?? ''},'
+          '${watched.contains(entry.key) ? 1 : 0}',
+        );
+      }
+    }
+    return buf.toString();
+  }
+
+  // ─── File 14: Summary Stats (JSON) ──────────────────────
 
   static String _buildSummaryJson(
     List<(UserProfile, LearningProgress)> students,
@@ -644,7 +834,7 @@ class ResearchExportService {
     final normalizedGains = <double>[];
 
     for (final (profile, progress) in students) {
-      totalGames += progress.recentScores.length;
+      totalGames += progress.effectiveGamesPlayed;
       totalWords += progress.wordsLearned;
       totalStars += progress.totalStars;
 
@@ -675,8 +865,7 @@ class ResearchExportService {
         final key = score.gameType.name;
         gameTypeScores.putIfAbsent(key, () => []);
         if (score.total > 0) {
-          gameTypeScores[key]!
-              .add((score.score / score.total * 100).round());
+          gameTypeScores[key]!.add((score.score / score.total * 100).round());
         }
       }
 
@@ -720,8 +909,9 @@ class ResearchExportService {
           : null,
       'game_type_avg_scores': gameTypeAvg,
       'students_with_learning_gain': learningGains.length,
-      'average_learning_gain_pct':
-          avgGain != null ? (avgGain * 100).round() : null,
+      'average_learning_gain_pct': avgGain != null
+          ? (avgGain * 100).round()
+          : null,
       'students_with_normalized_gain': normalizedGains.length,
       'average_normalized_gain': avgNormGain != null
           ? double.parse(avgNormGain.toStringAsFixed(3))

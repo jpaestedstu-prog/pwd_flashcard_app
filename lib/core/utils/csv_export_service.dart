@@ -5,6 +5,7 @@ import '../../data/models/models.dart';
 import '../../data/models/enums.dart';
 import '../../data/local/spaced_repetition_service.dart';
 import '../../data/local/hive_service.dart';
+import '../../features/progress/models/category_mastery.dart';
 
 /// Generates CSV data exports for teacher/parent use.
 ///
@@ -84,12 +85,25 @@ class CsvExportService {
     buf.writeln();
 
     // ── Section 2: Category Breakdown ──
+    //
+    // Coverage and accuracy are separate columns because they are separate
+    // facts. The old single `Progress` column carried the rolling accuracy
+    // average, which a teacher reasonably read as "how much of this category
+    // is done" — and it can sit at 83% while most of the category is untouched.
     buf.writeln('CATEGORY BREAKDOWN');
-    buf.writeln('Category,Progress');
+    buf.writeln('Category,Words Learned,Total Words,Coverage,Accuracy');
+    final mastery = CategoryMastery.forProgress(progress, allCards);
     for (final cat in FlashcardCategory.values) {
-      final pct =
-          ((progress.categoryProgress[cat.label] ?? 0.0) * 100).round();
-      buf.writeln('${_esc(cat.label)},$pct%');
+      final m = mastery[cat];
+      final coverage = ((m?.coverage ?? 0.0) * 100).round();
+      final accuracy = m?.accuracy;
+      buf.writeln(
+        '${_esc(cat.label)},'
+        '${m?.wordsLearned ?? 0},'
+        '${m?.totalWords ?? 0},'
+        '$coverage%,'
+        '${accuracy == null ? '' : '${(accuracy * 100).round()}%'}',
+      );
     }
     buf.writeln();
 

@@ -19,7 +19,11 @@ void main() {
     String name = 'Juan dela Cruz',
     List<GameScore> scores = const [],
     Map<String, double> categoryProgress = const {},
+    Map<String, double> categoryCoverage = const {},
     Map<String, int> dailyStudyMinutes = const {},
+    int wordHuntFinds = 0,
+    int signsWatched = 0,
+    int wordHuntStreak = 0,
   }) {
     return ChildSummary(
       profileId: 'p1',
@@ -37,6 +41,10 @@ void main() {
       totalSessions: 8,
       dailyStudyMinutes: dailyStudyMinutes,
       categoryProgress: categoryProgress,
+      categoryCoverage: categoryCoverage,
+      wordHuntFinds: wordHuntFinds,
+      signsWatched: signsWatched,
+      wordHuntStreak: wordHuntStreak,
       recentScores: scores,
       lastActivityDate: DateTime.now(),
     );

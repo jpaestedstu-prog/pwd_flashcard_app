@@ -28,22 +28,31 @@ class StickerUnlockChecker {
       'stars_50' => progress.totalStars >= 50,
       'stars_100' => progress.totalStars >= 100,
       'stars_500' => progress.totalStars >= 500,
-      // Game milestones
-      'games_1' => progress.recentScores.isNotEmpty,
-      'games_10' => progress.recentScores.length >= 10,
-      'perfect_score' =>
-        progress.recentScores.any((s) => s.score == s.total && s.total > 0),
+      // Game milestones. Lifetime counts — `recentScores` is trimmed to the
+      // last 20, and is empty on a profile restored from the cloud before any
+      // game is played on this device, which would strip an earned sticker.
+      'games_1' => progress.effectiveGamesPlayed >= 1,
+      'games_10' => progress.effectiveGamesPlayed >= 10,
+      'perfect_score' => progress.recentScores.any(
+        (s) => s.score == s.total && s.total > 0,
+      ),
       'perfect_5' =>
         progress.recentScores
                 .where((s) => s.score == s.total && s.total > 0)
                 .length >=
             5,
       // Story milestones — check if any story quiz was played
-      'stories_1' =>
-        progress.recentScores.any((s) => s.gameType == GameType.storyQuiz),
+      'stories_1' => progress.recentScores.any(
+        (s) => s.gameType == GameType.storyQuiz,
+      ),
       // Learning path
       'path_complete_1' => completedPaths >= 1,
-      // Category mastery (progress >= 0.8)
+      // Category accuracy >= 0.8. Deliberately still keyed off
+      // `categoryProgress` (a rolling accuracy average) rather than the true
+      // coverage measure the certificates and exports moved to: these are
+      // rewards a learner already holds, and re-scoring them against a stricter
+      // rule would silently take stickers back off the shelf. Measurement
+      // surfaces owe accuracy; the sticker book owes durability.
       'categories_3' =>
         progress.categoryProgress.values.where((v) => v >= 0.8).length >= 3,
       'categories_12' =>
@@ -116,8 +125,9 @@ class StickerNotifier extends StateNotifier<Set<String>> {
   int get totalCount => StickerData.allStickers.length;
 }
 
-final stickerProvider =
-    StateNotifierProvider<StickerNotifier, Set<String>>((ref) {
+final stickerProvider = StateNotifierProvider<StickerNotifier, Set<String>>((
+  ref,
+) {
   final profile = ref.watch(profileProvider);
   return StickerNotifier(profile?.id ?? '');
 });
