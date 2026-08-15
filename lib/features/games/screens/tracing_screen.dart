@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
@@ -19,13 +18,15 @@ import '../../../core/services/celebration_service.dart';
 import '../../../widgets/accessible_celebration_overlay.dart';
 import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
-import '../../../core/constants/flashcard_emojis.dart';
+import '../../../widgets/flashcard_image.dart';
 import '../../../core/constants/letter_paths.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 class TracingScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -120,10 +121,12 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
   /// The text to trace depends on difficulty:
   /// Easy: first letter only, Medium: first 3 chars, Hard: full word
   String get _traceText => switch (widget.difficulty) {
-    GameDifficulty.easy => _currentCard.wordEnglish.substring(0, 1).toUpperCase(),
-    GameDifficulty.medium => _currentCard.wordEnglish
-        .substring(0, min(3, _currentCard.wordEnglish.length))
-        .toUpperCase(),
+    GameDifficulty.easy =>
+      _currentCard.wordEnglish.substring(0, 1).toUpperCase(),
+    GameDifficulty.medium =>
+      _currentCard.wordEnglish
+          .substring(0, min(3, _currentCard.wordEnglish.length))
+          .toUpperCase(),
     GameDifficulty.hard => _currentCard.wordEnglish.toUpperCase(),
   };
 
@@ -144,7 +147,9 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
   void onTimeUp() {
     _saveProgress();
     AccessibleCelebrationOverlay.show(
-      context: context, ref: ref, type: CelebrationType.gameComplete,
+      context: context,
+      ref: ref,
+      type: CelebrationType.gameComplete,
     );
     setState(() => _showResult = true);
   }
@@ -177,7 +182,10 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
   void _checkTracing(Size canvasSize) {
     final text = _traceText;
     final wordStrokes = LetterPaths.forWord(text);
-    final guideDots = LetterPaths.guideDots(wordStrokes, density: _guideDensity);
+    final guideDots = LetterPaths.guideDots(
+      wordStrokes,
+      density: _guideDensity,
+    );
 
     // Scale guide dots to canvas size
     final scaledDots = guideDots
@@ -191,9 +199,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
     }
 
     // Flatten all drawn points
-    final allDrawn = [
-      for (final stroke in _drawnStrokes) ...stroke,
-    ];
+    final allDrawn = [for (final stroke in _drawnStrokes) ...stroke];
 
     if (allDrawn.isEmpty) {
       _handleWordResult(false, 0.0);
@@ -246,7 +252,9 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
       } else {
         _saveProgress();
         AccessibleCelebrationOverlay.show(
-          context: context, ref: ref, type: CelebrationType.gameComplete,
+          context: context,
+          ref: ref,
+          type: CelebrationType.gameComplete,
         );
         setState(() => _showResult = true);
       }
@@ -262,34 +270,38 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
   }
 
   void _saveProgress() {
-    final categories =
-        _flashcards.map((c) => c.category).toSet().toList();
-    ref.read(progressProvider.notifier).recordGameResult(
-      gameType: GameType.tracing,
-      score: _correctCount,
-      total: _totalItems,
-      starsEarned: _starsEarned,
-      categoriesPlayed: categories,
-      correctWordIds: _wordResults.correctWordIds,
-    );
-    _newAchievements =
-        ref.read(progressProvider.notifier).checkAchievements();
+    final categories = _flashcards.map((c) => c.category).toSet().toList();
+    ref
+        .read(progressProvider.notifier)
+        .recordGameResult(
+          gameType: GameType.tracing,
+          score: _correctCount,
+          total: _totalItems,
+          starsEarned: _starsEarned,
+          categoriesPlayed: categories,
+          correctWordIds: _wordResults.correctWordIds,
+        );
+    _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
     // Record per-word accuracy for spaced repetition
     final profile = ref.read(profileProvider);
     if (profile != null) {
       SpacedRepetitionService.recordBatch(
-          profileId: profile.id, results: _wordResults);
+        profileId: profile.id,
+        results: _wordResults,
+      );
     }
   }
 
   List<GameReviewItem> get _reviewItems => _flashcards
-      .map((c) => GameReviewItem(
-            wordEnglish: c.wordEnglish,
-            wordFilipino: c.wordFilipino,
-            category: c.category,
-            isCorrect: _wordResults[c.id] ?? false,
-          ))
+      .map(
+        (c) => GameReviewItem(
+          wordEnglish: c.wordEnglish,
+          wordFilipino: c.wordFilipino,
+          category: c.category,
+          isCorrect: _wordResults[c.id] ?? false,
+        ),
+      )
       .toList();
 
   @override
@@ -306,7 +318,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
                   total: _totalItems,
                   starsEarned: _starsEarned,
                   onPlayAgain: () => setState(() => _startGame()),
-                  onExit: () => context.go('/games'),
+                  onExit: () => context.popOrGo('/games'),
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
@@ -330,107 +342,108 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) pauseGame();
       },
-      child: Stack(children: [
-        Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
-          onPressed: pauseGame,
-        ),
-        title: Text(AppLocalizations.of(context)!.tracing),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.pause_circle_outline_rounded),
-            tooltip: 'Pause',
-            onPressed: pauseGame,
-          ),
-          if (isTimedMode)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GameTimerWidget(
-                remainingSeconds: remainingSeconds,
-                totalSeconds: totalTimerSeconds,
-                size: 44,
+      child: Stack(
+        children: [
+          Scaffold(
+            appBar: fullscreenBar(
+              ref,
+              AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  tooltip: 'Close',
+                  onPressed: pauseGame,
+                ),
+                title: Text(AppLocalizations.of(context)!.tracing),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.pause_circle_outline_rounded),
+                    tooltip: 'Pause',
+                    onPressed: pauseGame,
+                  ),
+                  if (isTimedMode)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GameTimerWidget(
+                        remainingSeconds: remainingSeconds,
+                        totalSeconds: totalTimerSeconds,
+                        size: 44,
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Center(
+                      child: Text(
+                        '${_currentIndex + 1} / $_totalItems',
+                        style: AppTypography.titleMedium.copyWith(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Text(
-                '${_currentIndex + 1} / $_totalItems',
-                style: AppTypography.titleMedium
-                    .copyWith(color: AppColors.primary),
+            body: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Word info card
+                  _buildWordInfoCard()
+                      .animate()
+                      .fadeIn(duration: 400.ms)
+                      .slideY(begin: -0.1, end: 0),
+                  const SizedBox(height: 12),
+
+                  // Tracing canvas
+                  Expanded(
+                    child: _buildTracingCanvas().animate().fadeIn(
+                      duration: 400.ms,
+                      delay: 150.ms,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Action buttons
+                  _buildActionButtons()
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 300.ms)
+                      .slideY(begin: 0.1, end: 0),
+                ],
               ),
             ),
           ),
+          GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
+          if (isPaused)
+            PauseOverlay(
+              onResume: resumeGame,
+              onRestart: () {
+                resumeGame();
+                setState(_startGame);
+              },
+              onQuit: () async {
+                await savePartialProgress();
+                if (context.mounted) context.popOrGo('/games');
+              },
+            ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Word info card
-            _buildWordInfoCard()
-                .animate()
-                .fadeIn(duration: 400.ms)
-                .slideY(begin: -0.1, end: 0),
-            const SizedBox(height: 12),
-
-            // Tracing canvas
-            Expanded(
-              child: _buildTracingCanvas()
-                  .animate()
-                  .fadeIn(duration: 400.ms, delay: 150.ms),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Action buttons
-            _buildActionButtons()
-                .animate()
-                .fadeIn(duration: 400.ms, delay: 300.ms)
-                .slideY(begin: 0.1, end: 0),
-          ],
-        ),
-      ),
-    ),
-        GameBreakButton(
-          onHold: holdForBreak,
-          onResume: resumeFromBreak,
-        ),
-        if (isPaused)
-          PauseOverlay(
-            onResume: resumeGame,
-            onRestart: () {
-              resumeGame();
-              setState(_startGame);
-            },
-            onQuit: () async {
-              await savePartialProgress();
-              if (context.mounted) context.go('/games');
-            },
-          ),
-      ]),
     );
   }
 
   Widget _buildWordInfoCard() {
     final card = _currentCard;
-    final emoji = FlashcardEmojis.forId(card.id);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: card.category.color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: card.category.color.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: card.category.color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 40)),
+          FlashcardPicture(card: card, extent: 46),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -474,8 +487,10 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
         final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
         final text = _traceText;
         final wordStrokes = LetterPaths.forWord(text);
-        final guideDots =
-            LetterPaths.guideDots(wordStrokes, density: _guideDensity);
+        final guideDots = LetterPaths.guideDots(
+          wordStrokes,
+          density: _guideDensity,
+        );
 
         return Container(
           decoration: BoxDecoration(
@@ -484,8 +499,8 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
             border: Border.all(
               color: _wordCompleted
                   ? ((_wordResults[_currentCard.id] ?? false)
-                      ? AppColors.success
-                      : AppColors.error)
+                        ? AppColors.success
+                        : AppColors.error)
                   : AppColors.primary.withValues(alpha: 0.3),
               width: _wordCompleted ? 3 : 1.5,
             ),
@@ -552,10 +567,12 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
                   if (renderBox == null) return;
                   // Use current layout constraints for the canvas size
                   // We need the canvas size which is the Expanded area
-                  _checkTracing(Size(
-                    renderBox.size.width - 32,
-                    renderBox.size.height - 250,
-                  ));
+                  _checkTracing(
+                    Size(
+                      renderBox.size.width - 32,
+                      renderBox.size.height - 250,
+                    ),
+                  );
                 },
           icon: const Icon(Icons.check_rounded),
           label: Text(AppLocalizations.of(context)!.check),
@@ -634,8 +651,11 @@ class _TracingPainter extends CustomPainter {
     if (charCount > 1) {
       for (var i = 1; i < charCount; i++) {
         final x = size.width * i / charCount;
-        canvas.drawLine(Offset(x, 0), Offset(x, size.height),
-            paint..color = Colors.grey.withValues(alpha: 0.05));
+        canvas.drawLine(
+          Offset(x, 0),
+          Offset(x, size.height),
+          paint..color = Colors.grey.withValues(alpha: 0.05),
+        );
       }
     }
   }

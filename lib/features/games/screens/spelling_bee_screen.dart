@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -24,13 +23,19 @@ import '../../../widgets/accessible_celebration_overlay.dart';
 import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../object_scan/services/object_scan_discovery_service.dart';
-import '../../../core/constants/flashcard_emojis.dart';
+import '../../../widgets/flashcard_image.dart';
 import '../../../widgets/accessibility_visual_feedback.dart';
+import '../../gaze_control/models/gaze_action.dart';
+import '../../gaze_control/models/gaze_models.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 class SpellingBeeScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -62,6 +67,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
   List<String> _scrambledLetters = [];
   List<String?> _answerSlots = [];
   List<bool> _letterUsed = [];
+  int _cursorIndex = 0;
   bool _showResult = false;
   bool _wordComplete = false;
   List<Achievement> _newAchievements = [];
@@ -111,10 +117,14 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     } else {
       var source = List.of(SeedData.allFlashcards);
       if (widget.categories.isNotEmpty) {
-        source = source.where((c) => widget.categories.contains(c.category)).toList();
+        source = source
+            .where((c) => widget.categories.contains(c.category))
+            .toList();
       }
       // Exclude multi-word entries — spaces/hyphens produce invisible tiles
-      source.removeWhere((c) => c.wordEnglish.contains(' ') || c.wordEnglish.contains('-'));
+      source.removeWhere(
+        (c) => c.wordEnglish.contains(' ') || c.wordEnglish.contains('-'),
+      );
       _cards = AdaptiveDifficultyService.pickGameCards(
         profileId: ref.read(profileProvider)?.id,
         cards: source,
@@ -126,8 +136,11 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
       // Schedule navigation back; build() will show a safe placeholder
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          AppSnackBar.warning(context, message: AppLocalizations.of(context)!.noWordsAvailable);
-          context.go('/games');
+          AppSnackBar.warning(
+            context,
+            message: AppLocalizations.of(context)!.noWordsAvailable,
+          );
+          context.popOrGo('/games');
         }
       });
       return;
@@ -154,7 +167,9 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
   void onTimeUp() {
     _saveProgress();
     AccessibleCelebrationOverlay.show(
-      context: context, ref: ref, type: CelebrationType.gameComplete,
+      context: context,
+      ref: ref,
+      type: CelebrationType.gameComplete,
     );
     setState(() => _showResult = true);
   }
@@ -166,6 +181,81 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     _letterUsed = List.filled(word.length, false);
     _wordComplete = false;
     _hintsUsed = 0;
+    _cursorIndex = 0;
+  }
+
+  // ─── Gaze cursor (hands-free) ────────────────────
+  // Spelling Bee is on the Motor Impairment roster. The letter bank is the only
+  // thing a learner has to reach: look ◀ ▶ to move along it (skipping letters
+  // already placed, so the cursor never rests on a dead tile), look ▼ or blink
+  // to place the highlighted letter in the next slot, and look ▲ to take the
+  // last letter back — the hands-free equivalent of tapping a filled slot.
+
+  void _moveCursor(int delta) {
+    final n = _scrambledLetters.length;
+    if (n <= 0) return;
+    var index = _cursorIndex;
+    for (var step = 0; step < n; step++) {
+      index = (((index + delta) % n) + n) % n;
+      if (!_letterUsed[index]) break;
+    }
+    setState(() => _cursorIndex = index);
+  }
+
+  void _selectCursor() {
+    if (_wordComplete || isPaused) return;
+    if (_cursorIndex < 0 || _cursorIndex >= _scrambledLetters.length) return;
+    if (_letterUsed[_cursorIndex]) return;
+    _placeLetter(_cursorIndex);
+    // Move on to a letter that can still be placed, so the learner is aimed at
+    // a live tile for the next pick.
+    if (!_wordComplete) _moveCursor(1);
+  }
+
+  /// Undo: clears the last filled slot, mirroring a tap on it.
+  void _undoLastLetter() {
+    if (_wordComplete || isPaused) return;
+    final lastFilled = _answerSlots.lastIndexWhere((slot) => slot != null);
+    if (lastFilled < 0) return;
+    _removeLetterAtSlot(lastFilled);
+  }
+
+  List<GazeAction> _gazeActions() {
+    final canPlay = !_wordComplete && !isPaused;
+    return [
+      GazeAction(
+        zone: GazeZone.left,
+        label: 'Prev',
+        icon: Icons.chevron_left_rounded,
+        color: AppColors.secondary,
+        enabled: canPlay,
+        onSelect: () => _moveCursor(-1),
+      ),
+      GazeAction(
+        zone: GazeZone.right,
+        label: 'Next',
+        icon: Icons.chevron_right_rounded,
+        color: AppColors.secondary,
+        enabled: canPlay,
+        onSelect: () => _moveCursor(1),
+      ),
+      GazeAction(
+        zone: GazeZone.up,
+        label: 'Undo',
+        icon: Icons.backspace_rounded,
+        color: AppColors.warning,
+        enabled: canPlay && _answerSlots.any((s) => s != null),
+        onSelect: _undoLastLetter,
+      ),
+      GazeAction(
+        zone: GazeZone.down,
+        label: 'Place',
+        icon: Icons.check_circle_rounded,
+        color: AppColors.success,
+        enabled: canPlay,
+        onSelect: _selectCursor,
+      ),
+    ];
   }
 
   void _placeLetter(int letterIndex) {
@@ -207,12 +297,14 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     if (answer == word) {
       sound.playCorrect();
       ref.read(hapticServiceProvider).success();
-      _reviewItems.add(GameReviewItem(
-        wordEnglish: _cards[_currentIndex].wordEnglish,
-        wordFilipino: _cards[_currentIndex].wordFilipino,
-        category: _cards[_currentIndex].category,
-        isCorrect: true,
-      ));
+      _reviewItems.add(
+        GameReviewItem(
+          wordEnglish: _cards[_currentIndex].wordEnglish,
+          wordFilipino: _cards[_currentIndex].wordFilipino,
+          category: _cards[_currentIndex].category,
+          isCorrect: true,
+        ),
+      );
       setState(() {
         _wordComplete = true;
         _score++;
@@ -222,14 +314,18 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
       sound.playWrong();
       ref.read(hapticServiceProvider).error();
       // Track wrong review only on first failed attempt per word
-      if (!_reviewItems.any((r) => r.wordEnglish == _cards[_currentIndex].wordEnglish)) {
-        _reviewItems.add(GameReviewItem(
-          wordEnglish: _cards[_currentIndex].wordEnglish,
-          wordFilipino: _cards[_currentIndex].wordFilipino,
-          category: _cards[_currentIndex].category,
-          isCorrect: false,
-          userAnswer: answer,
-        ));
+      if (!_reviewItems.any(
+        (r) => r.wordEnglish == _cards[_currentIndex].wordEnglish,
+      )) {
+        _reviewItems.add(
+          GameReviewItem(
+            wordEnglish: _cards[_currentIndex].wordEnglish,
+            wordFilipino: _cards[_currentIndex].wordFilipino,
+            category: _cards[_currentIndex].category,
+            isCorrect: false,
+            userAnswer: answer,
+          ),
+        );
       }
       // Wrong — reset
       Future.delayed(const Duration(milliseconds: 600), () {
@@ -317,10 +413,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
   }
 
   void _saveProgress() {
-    final categories = _cards
-        .map((c) => c.category)
-        .toSet()
-        .toList();
+    final categories = _cards.map((c) => c.category).toSet().toList();
     var stars = _starsEarned;
     if (_isFocusMode && stars > 0) {
       // Once-per-day star per word: replays still celebrate (3/3 rating)
@@ -335,24 +428,31 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     // Per-word results — feeds both wordsLearned and spaced repetition.
     final srResults = <String, bool>{};
     for (final r in _reviewItems) {
-      final card = _cards.where((c) => c.wordEnglish == r.wordEnglish).firstOrNull;
+      final card = _cards
+          .where((c) => c.wordEnglish == r.wordEnglish)
+          .firstOrNull;
       if (card != null) srResults[card.id] = r.isCorrect;
     }
 
-    ref.read(progressProvider.notifier).recordGameResult(
-      gameType: GameType.spellingBee,
-      score: _score,
-      total: _cards.length,
-      starsEarned: _finalStars,
-      categoriesPlayed: categories,
-      correctWordIds: srResults.correctWordIds,
-    );
+    ref
+        .read(progressProvider.notifier)
+        .recordGameResult(
+          gameType: GameType.spellingBee,
+          score: _score,
+          total: _cards.length,
+          starsEarned: _finalStars,
+          categoriesPlayed: categories,
+          correctWordIds: srResults.correctWordIds,
+        );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
     // Record per-word accuracy for spaced repetition
     final profile = ref.read(profileProvider);
     if (profile != null) {
-      SpacedRepetitionService.recordBatch(profileId: profile.id, results: srResults);
+      SpacedRepetitionService.recordBatch(
+        profileId: profile.id,
+        results: srResults,
+      );
     }
   }
 
@@ -365,7 +465,9 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     } else {
       _saveProgress();
       AccessibleCelebrationOverlay.show(
-        context: context, ref: ref, type: CelebrationType.gameComplete,
+        context: context,
+        ref: ref,
+        type: CelebrationType.gameComplete,
       );
       setState(() => _showResult = true);
     }
@@ -384,10 +486,14 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
       } else {
         var source = List.of(SeedData.allFlashcards);
         if (widget.categories.isNotEmpty) {
-          source = source.where((c) => widget.categories.contains(c.category)).toList();
+          source = source
+              .where((c) => widget.categories.contains(c.category))
+              .toList();
         }
         // Exclude multi-word entries — spaces/hyphens produce invisible tiles
-        source.removeWhere((c) => c.wordEnglish.contains(' ') || c.wordEnglish.contains('-'));
+        source.removeWhere(
+          (c) => c.wordEnglish.contains(' ') || c.wordEnglish.contains('-'),
+        );
         _cards = AdaptiveDifficultyService.pickGameCards(
           profileId: ref.read(profileProvider)?.id,
           cards: source,
@@ -411,24 +517,17 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     return 0;
   }
 
-  /// Exits return to the launcher (Word Hunt sheet) in focus mode, the
-  /// games hub otherwise.
-  void _exitGame() {
-    if (_isFocusMode) {
-      context.pop();
-    } else {
-      context.go('/games');
-    }
-  }
+  /// Exits return to whatever launched this game — the Word Hunt sheet in
+  /// focus mode, a learning-path step, or the games hub — falling back to the
+  /// hub only when the game was opened with no stack behind it.
+  void _exitGame() => context.popOrGo('/games');
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     // Guard: if no cards were loaded, show safe placeholder while navigating back
     if (_cards.isEmpty) {
-      return const Scaffold(
-        body: ShimmerPageSkeleton(),
-      );
+      return const Scaffold(body: ShimmerPageSkeleton());
     }
 
     if (_showResult) {
@@ -447,8 +546,8 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                   rating: _isFocusMode ? (_score >= 1 ? 3 : 0) : null,
                   footnote: _isFocusMode
                       ? '📷 You\'ve found '
-                          '${ObjectScanDiscoveryService.discoveredWordIds(ref.read(profileProvider)?.id).length} '
-                          'words with your camera!'
+                            '${ObjectScanDiscoveryService.discoveredWordIds(ref.read(profileProvider)?.id).length} '
+                            'words with your camera!'
                       : null,
                   onPlayAgain: _restart,
                   onExit: _exitGame,
@@ -471,297 +570,351 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     }
 
     final card = _cards[_currentIndex];
+    // The letter highlight only means something while letters can still be
+    // placed.
+    final showCursor =
+        ref.watch(gazeSettingsProvider.select((s) => s.enabled)) &&
+        !_wordComplete;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) pauseGame();
-      },
-      child: Stack(children: [
-        Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
-          onPressed: pauseGame,
-        ),
-        title: Text('Spelling Bee  •  ${_currentIndex + 1}/${_cards.length}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.pause_circle_outline_rounded),
-            tooltip: 'Pause',
-            onPressed: pauseGame,
-          ),
-          if (isTimedMode)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GameTimerWidget(
-                remainingSeconds: remainingSeconds,
-                totalSeconds: totalTimerSeconds,
-                size: 44,
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Row(
-                children: [
-                  const Icon(Icons.star_rounded, size: 20, color: AppColors.warning),
-                  const SizedBox(width: 4),
-                  Text('$_score', style: AppTypography.labelLarge.copyWith(color: AppColors.warning)),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
+    return GazeScope(
+      actions: _gazeActions(),
+      onBlink: _selectCursor,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) pauseGame();
+        },
+        child: Stack(
           children: [
-            // Progress bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: (_currentIndex + 1) / _cards.length,
-                minHeight: 6,
-                backgroundColor: AppColors.accentLight.withValues(alpha: 0.3),
-                valueColor: const AlwaysStoppedAnimation(AppColors.accent),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // ─── Clue Area ────────────────────────
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: card.category.color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: card.category.color.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    FlashcardEmojis.forId(card.id),
-                    style: const TextStyle(fontSize: 48),
+            Scaffold(
+              appBar: fullscreenBar(
+                ref,
+                AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'Close',
+                    onPressed: pauseGame,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    card.wordFilipino,
-                    style: AppTypography.titleLarge.copyWith(
-                      color: card.category.darkColor,
-                    ),
+                  title: Text(
+                    'Spelling Bee  •  ${_currentIndex + 1}/${_cards.length}',
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Spell the English word',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: hc.textSecondary,
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.pause_circle_outline_rounded),
+                      tooltip: 'Pause',
+                      onPressed: pauseGame,
                     ),
-                  ),
-                ],
-              ),
-            )
-                .animate(key: ValueKey('clue_$_currentIndex'))
-                .fadeIn(duration: 300.ms)
-                .slideY(begin: -0.05, end: 0),
-
-            const SizedBox(height: 28),
-
-            // ─── Answer Slots ─────────────────────
-            Semantics(
-              label: 'Answer: ${_answerSlots.where((s) => s != null).join()}'
-                  '${_wordComplete ? ', Correct!' : ', ${_answerSlots.where((s) => s == null).length} letters remaining'}',
-              liveRegion: true,
-              child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: List.generate(_answerSlots.length, (i) {
-                final filled = _answerSlots[i] != null;
-                final isCorrectSlot = _wordComplete;
-                return Semantics(
-                  button: true,
-                  label: _answerSlots[i] != null
-                      ? 'Slot ${i + 1}: ${_answerSlots[i]}, tap to remove'
-                      : 'Slot ${i + 1}: empty',
-                  child: GestureDetector(
-                  onTap: () => _removeLetterAtSlot(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: context.responsiveSize(48),
-                    height: context.responsiveSize(56),
-                    decoration: BoxDecoration(
-                      color: isCorrectSlot
-                          ? AppColors.successLight
-                          : filled
-                              ? AppColors.primaryLight
-                              : hc.surfaceVariant,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isCorrectSlot
-                            ? AppColors.success
-                            : filled
-                                ? AppColors.primary
-                                : hc.textSecondary.withValues(alpha: 0.2),
-                        width: 2,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        _answerSlots[i] ?? '',
-                        style: AppTypography.titleLarge.copyWith(
-                          color: isCorrectSlot
-                              ? AppColors.successDark
-                              : hc.textPrimary,
-                          fontWeight: FontWeight.w800,
+                    if (isTimedMode)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: GameTimerWidget(
+                          remainingSeconds: remainingSeconds,
+                          totalSeconds: totalTimerSeconds,
+                          size: 44,
                         ),
                       ),
-                    ),
-                  ),
-                  ),
-                );
-              }),
-            ),
-            ),
-
-            if (_wordComplete)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text(
-                  'Correct! 🎉',
-                  style: AppTypography.titleMedium.copyWith(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ).animate().fadeIn().scale(
-                    begin: const Offset(0.8, 0.8),
-                    end: const Offset(1, 1),
-                    curve: Curves.elasticOut),
-              ),
-
-            const SizedBox(height: 28),
-
-            // ─── Scrambled Letters ─────────────────
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: List.generate(_scrambledLetters.length, (i) {
-                final used = _letterUsed[i];
-                return Semantics(
-                  button: true,
-                  label: used
-                      ? 'Letter ${_scrambledLetters[i]}, already used'
-                      : 'Letter ${_scrambledLetters[i]}, tap to place',
-                  child: GestureDetector(
-                  onTap: () => _placeLetter(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: context.responsiveSize(52),
-                    height: context.responsiveSize(56),
-                    decoration: BoxDecoration(
-                      color: used
-                          ? hc.surfaceVariant
-                          : AppColors.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: used
-                            ? Colors.transparent
-                            : AppColors.primary.withValues(alpha: 0.4),
-                        width: 2,
-                      ),
-                      boxShadow: used ? [] : AppColors.softShadow,
-                    ),
-                    child: Center(
-                      child: Text(
-                        used ? '' : _scrambledLetters[i],
-                        style: AppTypography.titleLarge.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                  ),
-                );
-              }),
-            )
-                .animate(key: ValueKey('letters_$_currentIndex'))
-                .fadeIn(duration: 300.ms, delay: 100.ms),
-
-            const SizedBox(height: 20),
-
-            // ─── Hint Button ──────────────────────
-            TextButton.icon(
-              onPressed: _hintsUsed < _maxHints ? _useHint : null,
-              icon: const Icon(Icons.lightbulb_rounded),
-              label: Text('Hint (${_maxHints - _hintsUsed} left)'),
-            ),
-
-            // ─── Voice Input ──────────────────────
-            if (ref.watch(settingsProvider).speechToText) ...[
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: _wordComplete ? null : _handleVoiceInput,
-                    child: MicrophoneWaveform(
-                      isListening: _isListening,
-                      size: 44,
-                      color: _isListening
-                          ? AppColors.error
-                          : AppColors.accent,
-                    ),
-                  ),
-                  if (_voiceHint.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    // Flexible + ellipsis so a long hint at XL font scale wraps
-                    // / truncates instead of overflowing next to the mic.
-                    Flexible(
-                      child: Text(
-                        _voiceHint,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: _isListening ? AppColors.info : AppColors.error,
-                          fontWeight: FontWeight.w600,
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Center(
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 20,
+                              color: AppColors.warning,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$_score',
+                              style: AppTypography.labelLarge.copyWith(
+                                color: AppColors.warning,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
-            ],
+              body: SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      // Progress bar
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (_currentIndex + 1) / _cards.length,
+                          minHeight: 6,
+                          backgroundColor: AppColors.accentLight.withValues(
+                            alpha: 0.3,
+                          ),
+                          valueColor: const AlwaysStoppedAnimation(
+                            AppColors.accent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
 
-            const SizedBox(height: 16),
+                      // ─── Clue Area ────────────────────────
+                      Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: card.category.color.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: card.category.color.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                FlashcardPicture(card: card, extent: 56),
+                                const SizedBox(height: 8),
+                                Text(
+                                  card.wordFilipino,
+                                  style: AppTypography.titleLarge.copyWith(
+                                    color: card.category.darkColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Spell the English word',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: hc.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                          .animate(key: ValueKey('clue_$_currentIndex'))
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: -0.05, end: 0),
+
+                      const SizedBox(height: 28),
+
+                      // ─── Answer Slots ─────────────────────
+                      Semantics(
+                        label:
+                            'Answer: ${_answerSlots.where((s) => s != null).join()}'
+                            '${_wordComplete ? ', Correct!' : ', ${_answerSlots.where((s) => s == null).length} letters remaining'}',
+                        liveRegion: true,
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: List.generate(_answerSlots.length, (i) {
+                            final filled = _answerSlots[i] != null;
+                            final isCorrectSlot = _wordComplete;
+                            return Semantics(
+                              button: true,
+                              label: _answerSlots[i] != null
+                                  ? 'Slot ${i + 1}: ${_answerSlots[i]}, tap to remove'
+                                  : 'Slot ${i + 1}: empty',
+                              child: GestureDetector(
+                                onTap: () => _removeLetterAtSlot(i),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: context.responsiveSize(48),
+                                  height: context.responsiveSize(56),
+                                  decoration: BoxDecoration(
+                                    color: isCorrectSlot
+                                        ? AppColors.successLight
+                                        : filled
+                                        ? AppColors.primaryLight
+                                        : hc.surfaceVariant,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isCorrectSlot
+                                          ? AppColors.success
+                                          : filled
+                                          ? AppColors.primary
+                                          : hc.textSecondary.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      _answerSlots[i] ?? '',
+                                      style: AppTypography.titleLarge.copyWith(
+                                        color: isCorrectSlot
+                                            ? AppColors.successDark
+                                            : hc.textPrimary,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+
+                      if (_wordComplete)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child:
+                              Text(
+                                'Correct! 🎉',
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: AppColors.success,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ).animate().fadeIn().scale(
+                                begin: const Offset(0.8, 0.8),
+                                end: const Offset(1, 1),
+                                curve: Curves.elasticOut,
+                              ),
+                        ),
+
+                      const SizedBox(height: 28),
+
+                      // ─── Scrambled Letters ─────────────────
+                      Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
+                            children: List.generate(_scrambledLetters.length, (
+                              i,
+                            ) {
+                              final used = _letterUsed[i];
+                              final highlighted =
+                                  showCursor && !used && i == _cursorIndex;
+                              return Semantics(
+                                button: true,
+                                label: used
+                                    ? 'Letter ${_scrambledLetters[i]}, already used'
+                                    : 'Letter ${_scrambledLetters[i]}, tap to place',
+                                child: GestureDetector(
+                                  onTap: () => _placeLetter(i),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: context.responsiveSize(52),
+                                    height: context.responsiveSize(56),
+                                    decoration: BoxDecoration(
+                                      color: used
+                                          ? hc.surfaceVariant
+                                          : AppColors.primary.withValues(
+                                              alpha: 0.12,
+                                            ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: highlighted
+                                            ? AppColors.accent
+                                            : used
+                                            ? Colors.transparent
+                                            : AppColors.primary.withValues(
+                                                alpha: 0.4,
+                                              ),
+                                        width: highlighted ? 4 : 2,
+                                      ),
+                                      boxShadow: highlighted
+                                          ? [
+                                              BoxShadow(
+                                                color: AppColors.accent
+                                                    .withValues(alpha: 0.5),
+                                                blurRadius: 14,
+                                                spreadRadius: 1,
+                                              ),
+                                            ]
+                                          : used
+                                          ? []
+                                          : AppColors.softShadow,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        used ? '' : _scrambledLetters[i],
+                                        style: AppTypography.titleLarge
+                                            .copyWith(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          )
+                          .animate(key: ValueKey('letters_$_currentIndex'))
+                          .fadeIn(duration: 300.ms, delay: 100.ms),
+
+                      const SizedBox(height: 20),
+
+                      // ─── Hint Button ──────────────────────
+                      TextButton.icon(
+                        onPressed: _hintsUsed < _maxHints ? _useHint : null,
+                        icon: const Icon(Icons.lightbulb_rounded),
+                        label: Text('Hint (${_maxHints - _hintsUsed} left)'),
+                      ),
+
+                      // ─── Voice Input ──────────────────────
+                      if (ref.watch(settingsProvider).speechToText) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: _wordComplete ? null : _handleVoiceInput,
+                              child: MicrophoneWaveform(
+                                isListening: _isListening,
+                                size: 44,
+                                color: _isListening
+                                    ? AppColors.error
+                                    : AppColors.accent,
+                              ),
+                            ),
+                            if (_voiceHint.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              // Flexible + ellipsis so a long hint at XL font scale wraps
+                              // / truncates instead of overflowing next to the mic.
+                              Flexible(
+                                child: Text(
+                                  _voiceHint,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: _isListening
+                                        ? AppColors.info
+                                        : AppColors.error,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
+            if (isPaused)
+              PauseOverlay(
+                onResume: resumeGame,
+                onRestart: () {
+                  resumeGame();
+                  _restart();
+                },
+                onQuit: () async {
+                  await savePartialProgress();
+                  if (context.mounted) _exitGame();
+                },
+              ),
           ],
         ),
-        ),
       ),
-    ),
-        GameBreakButton(
-          onHold: holdForBreak,
-          onResume: resumeFromBreak,
-        ),
-        if (isPaused)
-          PauseOverlay(
-            onResume: resumeGame,
-            onRestart: () {
-              resumeGame();
-              _restart();
-            },
-            onQuit: () async {
-              await savePartialProgress();
-              if (context.mounted) _exitGame();
-            },
-          ),
-      ]),
     );
   }
 }

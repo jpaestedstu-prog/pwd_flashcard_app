@@ -103,7 +103,10 @@ GazeZone? voiceZoneFor(String text) {
 /// then a fuzzy match against the action labels (so "flip", "hear", "speak",
 /// "choose" work too), then the select words → a blink (fires the screen's
 /// blink action, mirroring the camera).
-VoiceCommandResult resolveVoiceCommand(String spoken, List<GazeAction> actions) {
+VoiceCommandResult resolveVoiceCommand(
+  String spoken,
+  List<GazeAction> actions,
+) {
   final t = spoken.trim().toLowerCase();
   if (t.isEmpty) return VoiceCommandResult.none;
 
@@ -330,9 +333,7 @@ DpadVoiceResult? _findButton(
     for (var c = 0; c < row.length; c++) {
       final target = row[c];
       if (!target.enabled) continue;
-      final tokens = target.label
-          .toLowerCase()
-          .split(RegExp(r'[^a-z0-9]+'))
+      final tokens = target.label.toLowerCase().split(RegExp(r'[^a-z0-9]+'))
         ..removeWhere((s) => s.isEmpty);
       if (tokens.isEmpty || tokens.length > 2) continue;
       if (tokens.any(keywords.contains)) {
@@ -341,4 +342,119 @@ DpadVoiceResult? _findButton(
     }
   }
   return null;
+}
+
+// ─── Word Hunt ──────────────────────────────────────────────────────────────
+//
+// Word Hunt points the *back* camera at the world, so head control genuinely
+// cannot run there (one camera, and the gaze detector needs the front lens).
+// The microphone is a separate resource though, so voice is the whole of
+// hands-free control on that screen — which makes this vocabulary the motor
+// learner's only way to take a photo, pick a found word, or leave.
+
+const _captureWords = [
+  'take a photo', 'take photo', 'photo', 'picture', 'take a picture',
+  'take picture', 'snap', 'shoot', 'capture', 'camera', 'cheese', // English
+  'kuha', 'kunan', 'kuhanan', 'litrato', 'kumuha', // Filipino
+];
+const _retakeWords = [
+  'again', 'retake', 'new photo', 'another', 'try again', // English
+  'ulit', 'muli', 'bagong litrato', 'uli', // Filipino
+];
+// No "backpack" here: it is a vocabulary word the camera can find, and a
+// learner naming what they photographed must open the word, not the screen.
+const _collectionWords = [
+  'my finds',
+  'finds',
+  'collection',
+  'my words',
+  'nahanap',
+  'mga nahanap',
+];
+
+/// Spoken ordinals for picking one of the found words, in result order.
+const _ordinalWords = <List<String>>[
+  ['one', 'first', 'number one', 'isa', 'una'],
+  ['two', 'second', 'number two', 'dalawa', 'pangalawa', 'ikalawa'],
+  ['three', 'third', 'number three', 'tatlo', 'pangatlo', 'ikatlo'],
+];
+
+/// What a spoken phrase means on the Word Hunt camera screen.
+enum WordHuntVoiceIntent {
+  /// Press the shutter.
+  capture,
+
+  /// Discard the photo on screen and go back to aiming.
+  retake,
+
+  /// Open one of the found words (see [WordHuntVoiceResult.wordIndex]).
+  openWord,
+
+  /// Open the "My Finds" collection.
+  openCollection,
+
+  /// Leave the screen.
+  goBack,
+  none,
+}
+
+/// Result of [resolveWordHuntVoiceCommand].
+class WordHuntVoiceResult {
+  final WordHuntVoiceIntent intent;
+
+  /// Index into the visible results, only meaningful for
+  /// [WordHuntVoiceIntent.openWord].
+  final int wordIndex;
+
+  const WordHuntVoiceResult(this.intent, [this.wordIndex = -1]);
+
+  static const WordHuntVoiceResult none = WordHuntVoiceResult(
+    WordHuntVoiceIntent.none,
+  );
+}
+
+/// Maps a recognised phrase to a Word Hunt action. [wordNames] is one entry
+/// per visible result, holding that word's spoken names (English + Filipino),
+/// so "chair" and "upuan" both open the same row.
+///
+/// Order: leave the screen, then retake (checked before capture, since "take
+/// another photo" is a retake), then capture, then the collection, then a
+/// spoken ordinal ("two"), then the word's own name. Every step is an exact
+/// phrase or whole-word match so a word like *Backpack* can never be heard as
+/// the bare "back" that means "leave".
+WordHuntVoiceResult resolveWordHuntVoiceCommand(
+  String spoken,
+  List<List<String>> wordNames,
+) {
+  final t = spoken.trim().toLowerCase();
+  if (t.isEmpty) return WordHuntVoiceResult.none;
+
+  if (_has(t, _backOutWords) || _isPhrase(t, _prevWords)) {
+    return const WordHuntVoiceResult(WordHuntVoiceIntent.goBack);
+  }
+  if (_isPhrase(t, _retakeWords) || _has(t, const ['new photo'])) {
+    return const WordHuntVoiceResult(WordHuntVoiceIntent.retake);
+  }
+  if (_isPhrase(t, _captureWords) || _hasWord(t, const ['photo', 'picture'])) {
+    return const WordHuntVoiceResult(WordHuntVoiceIntent.capture);
+  }
+  if (_isPhrase(t, _collectionWords)) {
+    return const WordHuntVoiceResult(WordHuntVoiceIntent.openCollection);
+  }
+
+  for (var i = 0; i < _ordinalWords.length && i < wordNames.length; i++) {
+    if (_isPhrase(t, _ordinalWords[i])) {
+      return WordHuntVoiceResult(WordHuntVoiceIntent.openWord, i);
+    }
+  }
+
+  for (var i = 0; i < wordNames.length; i++) {
+    for (final name in wordNames[i]) {
+      if (_labelMatches(t, name.toLowerCase())) {
+        return WordHuntVoiceResult(WordHuntVoiceIntent.openWord, i);
+      }
+    }
+  }
+
+  return WordHuntVoiceResult.none;
 }

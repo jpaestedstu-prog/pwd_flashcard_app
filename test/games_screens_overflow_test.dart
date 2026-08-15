@@ -2,6 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/features/games/screens/drag_drop_screen.dart';
+import 'package:pwdpwdpwd/features/games/screens/first_letter_screen.dart';
+import 'package:pwdpwdpwd/features/games/screens/odd_one_out_screen.dart';
+import 'package:pwdpwdpwd/features/games/screens/yes_or_no_screen.dart';
 import 'package:pwdpwdpwd/features/games/screens/flashcard_quiz_screen.dart';
 import 'package:pwdpwdpwd/features/games/screens/jigsaw_puzzle_screen.dart';
 import 'package:pwdpwdpwd/features/games/screens/memory_match_screen.dart';
@@ -135,6 +138,31 @@ void main() {
     await expectScreenNoOverflowAcrossDevices(
       tester,
       () => const PronunciationScreen(difficulty: _hard),
+    );
+  });
+
+  testWidgets('YesOrNoScreen first frame survives the device matrix',
+      (tester) async {
+    await expectScreenNoOverflowAcrossDevices(
+      tester,
+      () => const YesOrNoScreen(difficulty: _hard),
+    );
+  });
+
+  testWidgets('OddOneOutScreen first frame survives the device matrix',
+      (tester) async {
+    await expectScreenNoOverflowAcrossDevices(
+      tester,
+      () => const OddOneOutScreen(difficulty: _hard),
+    );
+  });
+
+  testWidgets('FirstLetterScreen first frame survives the device matrix',
+      (tester) async {
+    // Hard offers six letter tiles — the densest answer grid of the three.
+    await expectScreenNoOverflowAcrossDevices(
+      tester,
+      () => const FirstLetterScreen(difficulty: _hard),
     );
   });
 }

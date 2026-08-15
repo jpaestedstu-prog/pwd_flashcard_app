@@ -17,6 +17,7 @@ import '../models/gaze_settings.dart';
 import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_settings_provider.dart';
 import 'gaze_overlay.dart';
+import 'gaze_route_guard.dart';
 import 'voice_control_mixin.dart';
 
 /// Wrap any screen in a [GazeScope] to make it controllable by gaze in a few
@@ -60,7 +61,7 @@ class GazeScope extends ConsumerStatefulWidget {
 }
 
 class _GazeScopeState extends ConsumerState<GazeScope>
-    with VoiceControlMixin {
+    with VoiceControlMixin, GazeRouteGuard {
   GazeController? _gaze;
   GazeSettings? _settings;
   ScanCycler? _scanner;
@@ -95,14 +96,18 @@ class _GazeScopeState extends ConsumerState<GazeScope>
     if (settings.scanMode) _startScanning(settings);
     // Voice is additive — it layers on top of the targets.
     if (settings.voiceCommands) startVoiceControl();
+    // Watch for a dialog / sheet / pushed page covering this screen, so the
+    // overlay and chip stop claiming gaze is live while it is gated off.
+    startGazeCoverageWatch();
   }
 
   /// A spoken phrase → the target on a matching edge / label, a "select" that
   /// fires the screen's blink action (mirroring the camera), or a global
-  /// scroll / leave-screen action.
+  /// scroll / leave-screen action. Ignored while another route covers this
+  /// screen, exactly like the head targets.
   @override
   void onVoiceCommand(String text) {
-    if (!mounted) return;
+    if (!mounted || gazeCovered) return;
     final result = resolveVoiceCommand(text, widget.actions);
     if (kDebugMode) {
       debugPrint('VoiceCmd scope "$text" → ${result.intent}');
@@ -144,6 +149,7 @@ class _GazeScopeState extends ConsumerState<GazeScope>
   @override
   void dispose() {
     _scanTimer?.cancel();
+    stopGazeCoverageWatch();
     _gaze?.dispose();
     disposeVoiceControl();
     if (_ownsCamera) gazeCameraOwners.release();
@@ -151,11 +157,13 @@ class _GazeScopeState extends ConsumerState<GazeScope>
   }
 
   /// Head-dwell selection. Ignored in scanning mode (head movement isn't used
-  /// there).
+  /// there), and while another route covers this screen — a head move must
+  /// never fire a button hidden under a dialog or bottom sheet.
   void _onSelect(GazeZone zone) {
-    if (!mounted || _scanning) return;
-    final action =
-        widget.actions.where((a) => a.zone == zone && a.enabled).firstOrNull;
+    if (!mounted || _scanning || gazeCovered) return;
+    final action = widget.actions
+        .where((a) => a.zone == zone && a.enabled)
+        .firstOrNull;
     if (action != null) {
       ref.read(hapticServiceProvider).success();
       action.onSelect();
@@ -163,7 +171,7 @@ class _GazeScopeState extends ConsumerState<GazeScope>
   }
 
   void _onBlink() {
-    if (!mounted) return;
+    if (!mounted || gazeCovered) return;
     if (_scanning) {
       _selectScanned();
     } else {
@@ -186,8 +194,13 @@ class _GazeScopeState extends ConsumerState<GazeScope>
 
   @override
   Widget build(BuildContext context) {
-    final hasGaze = _gaze != null;
-    final chip = voiceChip();
+    // While a dialog / sheet / pushed page covers this screen the scope is
+    // gated off, so it must not keep drawing its dwell rings or mic chip on
+    // top of whatever is now in front — that would advertise a live control
+    // the learner's head cannot actually move.
+    final covered = gazeCoveredForUi;
+    final hasGaze = _gaze != null && !covered;
+    final chip = covered ? null : voiceChip();
     // Nothing active → totally transparent (no wrapper, no behaviour change).
     if (!hasGaze && chip == null) return widget.child;
 

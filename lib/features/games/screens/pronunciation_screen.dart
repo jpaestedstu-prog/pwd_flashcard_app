@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -12,7 +11,7 @@ import '../../../core/accessibility/haptic_service.dart';
 import '../../../core/accessibility/stt_service.dart';
 import '../../../core/services/celebration_service.dart';
 import '../../../widgets/accessible_celebration_overlay.dart';
-import '../../../core/constants/flashcard_emojis.dart';
+import '../../../widgets/flashcard_image.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/seed_data.dart';
@@ -25,11 +24,17 @@ import '../../../widgets/game_widgets.dart';
 import '../../../widgets/achievement_overlay.dart';
 import '../../../widgets/game_review_sheet.dart';
 import '../../../widgets/accessibility_visual_feedback.dart';
+import '../../gaze_control/models/gaze_action.dart';
+import '../../gaze_control/models/gaze_models.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 /// Pronunciation Practice — an audio-first game.
 ///
@@ -68,6 +73,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
   bool _answered = false;
   bool _showResult = false;
   bool _isListening = false;
+  int _cursorIndex = 0;
   String _voiceHint = '';
   List<Achievement> _newAchievements = [];
   final List<GameReviewItem> _reviewItems = [];
@@ -117,8 +123,9 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
     _focusCard = _resolveFocusCard();
     var source = List.of(SeedData.allFlashcards);
     if (widget.categories.isNotEmpty) {
-      source =
-          source.where((c) => widget.categories.contains(c.category)).toList();
+      source = source
+          .where((c) => widget.categories.contains(c.category))
+          .toList();
     }
     // Full adaptive reorder, no count cap: rounds take the weak words from
     // the front while the whole pool stays available for distractors.
@@ -180,8 +187,8 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
     _rounds = [];
     for (int i = 0; i < _totalRounds && i < source.length; i++) {
       final correct = source[i];
-      final others =
-          source.where((c) => c.id != correct.id).toList()..shuffle(_random);
+      final others = source.where((c) => c.id != correct.id).toList()
+        ..shuffle(_random);
       final choices = [correct, ...others.take(_numChoices - 1)]
         ..shuffle(_random);
 
@@ -189,12 +196,14 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
       // and "hear Filipino → pick English" for variety.
       final isEnglishPrompt = i.isEven;
 
-      _rounds.add(_PronunciationRound(
-        correctCard: correct,
-        choices: choices,
-        correctIndex: choices.indexOf(correct),
-        isEnglishPrompt: isEnglishPrompt,
-      ));
+      _rounds.add(
+        _PronunciationRound(
+          correctCard: correct,
+          choices: choices,
+          correctIndex: choices.indexOf(correct),
+          isEnglishPrompt: isEnglishPrompt,
+        ),
+      );
     }
   }
 
@@ -212,6 +221,61 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
     }
   }
 
+  // ─── Gaze cursor (hands-free) ────────────────────
+  // Pronunciation is on the Motor Impairment roster. Speaking the word is the
+  // headline interaction, but the screen also accepts a tapped answer — and
+  // that fallback is exactly what a learner needs when a motor disability
+  // affects speech too. Look ◀ ▶ across the choices, look ▼ or blink to pick.
+
+  void _moveCursor(int delta) {
+    final n = _rounds[_currentRound].choices.length;
+    if (n <= 0) return;
+    setState(() => _cursorIndex = (((_cursorIndex + delta) % n) + n) % n);
+  }
+
+  void _selectCursor() {
+    if (_answered || _isListening || isPaused) return;
+    _selectAnswer(_cursorIndex);
+  }
+
+  List<GazeAction> _gazeActions() {
+    final canMove = !_answered && !_isListening && !isPaused;
+    return [
+      GazeAction(
+        zone: GazeZone.left,
+        label: 'Prev',
+        icon: Icons.chevron_left_rounded,
+        color: AppColors.secondary,
+        enabled: canMove,
+        onSelect: () => _moveCursor(-1),
+      ),
+      GazeAction(
+        zone: GazeZone.right,
+        label: 'Next',
+        icon: Icons.chevron_right_rounded,
+        color: AppColors.secondary,
+        enabled: canMove,
+        onSelect: () => _moveCursor(1),
+      ),
+      GazeAction(
+        zone: GazeZone.up,
+        label: 'Hear it',
+        icon: Icons.volume_up_rounded,
+        color: AppColors.primary,
+        enabled: !isPaused,
+        onSelect: _speakCurrentWord,
+      ),
+      GazeAction(
+        zone: GazeZone.down,
+        label: 'Choose',
+        icon: Icons.check_circle_rounded,
+        color: AppColors.success,
+        enabled: canMove,
+        onSelect: _selectCursor,
+      ),
+    ];
+  }
+
   void _selectAnswer(int index) {
     if (_answered) return;
     final round = _rounds[_currentRound];
@@ -219,14 +283,15 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
     final sound = ref.read(soundServiceProvider);
     final haptic = ref.read(hapticServiceProvider);
 
-    _reviewItems.add(GameReviewItem(
-      wordEnglish: round.correctCard.wordEnglish,
-      wordFilipino: round.correctCard.wordFilipino,
-      category: round.correctCard.category,
-      isCorrect: isCorrect,
-      userAnswer:
-          isCorrect ? null : round.choices[index].wordEnglish,
-    ));
+    _reviewItems.add(
+      GameReviewItem(
+        wordEnglish: round.correctCard.wordEnglish,
+        wordFilipino: round.correctCard.wordFilipino,
+        category: round.correctCard.category,
+        isCorrect: isCorrect,
+        userAnswer: isCorrect ? null : round.choices[index].wordEnglish,
+      ),
+    );
 
     setState(() {
       _selectedIndex = index;
@@ -257,7 +322,8 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
 
     final round = _rounds[_currentRound];
     // Determine which language the student should say
-    final isEnglish = round.isEnglishPrompt; // prompt is English → answer is Filipino
+    final isEnglish =
+        round.isEnglishPrompt; // prompt is English → answer is Filipino
     final locale = isEnglish ? 'fil-PH' : 'en-US';
     final expected = isEnglish
         ? round.correctCard.wordFilipino
@@ -298,6 +364,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
         _currentRound++;
         _answered = false;
         _selectedIndex = null;
+        _cursorIndex = 0;
       });
       _speakCurrentWord();
     } else {
@@ -307,7 +374,10 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
 
   void _finishGame() {
     // Record progress
-    final categories = _rounds.map((r) => r.correctCard.category).toSet().toList();
+    final categories = _rounds
+        .map((r) => r.correctCard.category)
+        .toSet()
+        .toList();
     var stars = _starsEarned;
     if (_isFocusMode && stars > 0) {
       // Once-per-day star per word: replays still celebrate (3/3 rating)
@@ -329,14 +399,16 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
       if (card != null) sr[card.id] = r.isCorrect;
     }
 
-    ref.read(progressProvider.notifier).recordGameResult(
-      gameType: GameType.pronunciation,
-      score: _score,
-      total: _rounds.length,
-      starsEarned: _finalStars,
-      categoriesPlayed: categories,
-      correctWordIds: sr.correctWordIds,
-    );
+    ref
+        .read(progressProvider.notifier)
+        .recordGameResult(
+          gameType: GameType.pronunciation,
+          score: _score,
+          total: _rounds.length,
+          starsEarned: _finalStars,
+          categoriesPlayed: categories,
+          correctWordIds: sr.correctWordIds,
+        );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
     // Spaced repetition
@@ -346,7 +418,9 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
     }
 
     AccessibleCelebrationOverlay.show(
-      context: context, ref: ref, type: CelebrationType.gameComplete,
+      context: context,
+      ref: ref,
+      type: CelebrationType.gameComplete,
     );
     setState(() => _showResult = true);
   }
@@ -363,15 +437,10 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
 
   void _restart() => setState(() => _startGame());
 
-  /// Exits return to the launcher (Word Hunt sheet) in focus mode, the
-  /// games hub otherwise.
-  void _exitGame() {
-    if (_isFocusMode) {
-      context.pop();
-    } else {
-      context.go('/games');
-    }
-  }
+  /// Exits return to whatever launched this game — the Word Hunt sheet in
+  /// focus mode, a learning-path step, or the games hub — falling back to the
+  /// hub only when the game was opened with no stack behind it.
+  void _exitGame() => context.popOrGo('/games');
 
   @override
   Widget build(BuildContext context) {
@@ -393,8 +462,8 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                   rating: _isFocusMode ? (_score >= 1 ? 3 : 0) : null,
                   footnote: _isFocusMode
                       ? '📷 You\'ve found '
-                          '${ObjectScanDiscoveryService.discoveredWordIds(ref.read(profileProvider)?.id).length} '
-                          'words with your camera!'
+                            '${ObjectScanDiscoveryService.discoveredWordIds(ref.read(profileProvider)?.id).length} '
+                            'words with your camera!'
                       : null,
                   onPlayAgain: _restart,
                   onExit: _exitGame,
@@ -417,346 +486,443 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
     }
 
     final round = _rounds[_currentRound];
+    final showCursor =
+        ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) pauseGame();
-      },
-      child: Stack(children: [
-        Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
-          onPressed: pauseGame,
-        ),
-        title: Text(
-          'Listen & Pick  •  ${_currentRound + 1}/${_rounds.length}',
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.pause_circle_outline_rounded),
-            tooltip: 'Pause',
-            onPressed: pauseGame,
-          ),
-          if (isTimedMode)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GameTimerWidget(
-                remainingSeconds: remainingSeconds,
-                totalSeconds: totalTimerSeconds,
-                size: 44,
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+    return GazeScope(
+      actions: _gazeActions(),
+      onBlink: _selectCursor,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) pauseGame();
+        },
+        child: Stack(
+          children: [
+            Scaffold(
+              appBar: fullscreenBar(
+                ref,
+                AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'Close',
+                    onPressed: pauseGame,
+                  ),
+                  title: Text(
+                    'Listen & Pick  •  ${_currentRound + 1}/${_rounds.length}',
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.pause_circle_outline_rounded),
+                      tooltip: 'Pause',
+                      onPressed: pauseGame,
+                    ),
+                    if (isTimedMode)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: GameTimerWidget(
+                          remainingSeconds: remainingSeconds,
+                          totalSeconds: totalTimerSeconds,
+                          size: 44,
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 20,
+                                color: AppColors.warning,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$_score',
+                                style: AppTypography.labelLarge.copyWith(
+                                  color: AppColors.warning,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                child: Row(
+              ),
+              body: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
                   children: [
-                    const Icon(Icons.star_rounded,
-                        size: 20, color: AppColors.warning),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_score',
-                      style: AppTypography.labelLarge
-                          .copyWith(color: AppColors.warning),
+                    // ─── Progress Bar ────────────────
+                    Semantics(
+                      label:
+                          'Round ${_currentRound + 1} of ${_rounds.length}, score $_score',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (_currentRound + 1) / _rounds.length,
+                          minHeight: 6,
+                          backgroundColor: AppColors.infoLight.withValues(
+                            alpha: 0.3,
+                          ),
+                          valueColor: const AlwaysStoppedAnimation(
+                            AppColors.info,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // ─── Prompt Area ─────────────────
+                    Expanded(
+                      flex: 3,
+                      child:
+                          Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: round.correctCard.category.color
+                                      .withValues(alpha: 0.10),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: round.correctCard.category.color
+                                        .withValues(alpha: 0.3),
+                                    width: 2,
+                                  ),
+                                ),
+                                // Keep the prompt centred when there's room, but scroll it
+                                // instead of overflowing on a short viewport / large font.
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) =>
+                                      SingleChildScrollView(
+                                        child: ConstrainedBox(
+                                          constraints: BoxConstraints(
+                                            minHeight: constraints.maxHeight,
+                                          ),
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              // Big speaker button
+                                              Semantics(
+                                                button: true,
+                                                label:
+                                                    'Play sound: tap to hear the ${round.isEnglishPrompt ? 'English' : 'Filipino'} word',
+                                                child: GestureDetector(
+                                                  onTap: _speakCurrentWord,
+                                                  child: Container(
+                                                    width: context
+                                                        .responsiveSize(88),
+                                                    height: context
+                                                        .responsiveSize(88),
+                                                    decoration: BoxDecoration(
+                                                      gradient: AppColors
+                                                          .primaryGradient,
+                                                      shape: BoxShape.circle,
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: AppColors
+                                                              .primary
+                                                              .withValues(
+                                                                alpha: 0.3,
+                                                              ),
+                                                          blurRadius: 16,
+                                                          offset: const Offset(
+                                                            0,
+                                                            6,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.volume_up_rounded,
+                                                      size: context
+                                                          .responsiveSize(44),
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 16),
+                                              Text(
+                                                round.isEnglishPrompt
+                                                    ? AppLocalizations.of(
+                                                        context,
+                                                      )!.listenEnglish
+                                                    : AppLocalizations.of(
+                                                        context,
+                                                      )!.listenFilipino,
+                                                style: AppTypography.titleMedium
+                                                    .copyWith(
+                                                      color: hc.textSecondary,
+                                                    ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                round.isEnglishPrompt
+                                                    ? AppLocalizations.of(
+                                                        context,
+                                                      )!.pickFilipino
+                                                    : AppLocalizations.of(
+                                                        context,
+                                                      )!.pickEnglish,
+                                                style: AppTypography.bodyMedium
+                                                    .copyWith(
+                                                      color: round
+                                                          .correctCard
+                                                          .category
+                                                          .darkColor,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              // Tap to replay hint
+                                              Text(
+                                                AppLocalizations.of(
+                                                  context,
+                                                )!.tapSpeakerReplay,
+                                                style: AppTypography.labelSmall
+                                                    .copyWith(
+                                                      color: AppColors.textHint,
+                                                    ),
+                                              ),
+                                              // Voice answer mic button
+                                              if (ref
+                                                  .watch(settingsProvider)
+                                                  .speechToText) ...[
+                                                const SizedBox(height: 12),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    GestureDetector(
+                                                      onTap: _answered
+                                                          ? null
+                                                          : _handleVoiceAnswer,
+                                                      child: MicrophoneWaveform(
+                                                        isListening:
+                                                            _isListening,
+                                                        size: 48,
+                                                        color: _isListening
+                                                            ? AppColors.error
+                                                            : AppColors.accent,
+                                                      ),
+                                                    ),
+                                                    if (_voiceHint
+                                                        .isNotEmpty) ...[
+                                                      const SizedBox(width: 8),
+                                                      Flexible(
+                                                        child: Text(
+                                                          _voiceHint,
+                                                          style: AppTypography
+                                                              .labelSmall
+                                                              .copyWith(
+                                                                color:
+                                                                    _isListening
+                                                                    ? AppColors
+                                                                          .info
+                                                                    : AppColors
+                                                                          .error,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                ),
+                              )
+                              .animate(key: ValueKey(_currentRound))
+                              .fadeIn(duration: 300.ms)
+                              .slideX(begin: 0.1, end: 0),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // ─── Answer Choices ──────────────
+                    Expanded(
+                      flex: 4,
+                      child: GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: context.responsiveTier<int>(
+                            phone: 2,
+                            tablet: 2,
+                            large: 3,
+                            xl: 4,
+                          ),
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          // Shrink aspect ratio as text scales up so cells stay
+                          // tall enough to hold scaled label text at XL font.
+                          childAspectRatio:
+                              ((_numChoices <= 3 ? 1.3 : 1.1) /
+                                      MediaQuery.textScalerOf(
+                                        context,
+                                      ).scale(1.0))
+                                  .clamp(0.7, 1.3),
+                        ),
+                        itemCount: round.choices.length,
+                        itemBuilder: (context, index) {
+                          final choice = round.choices[index];
+                          final isSelected = _selectedIndex == index;
+                          final isCorrect = index == round.correctIndex;
+                          final showCorrect = _answered && isCorrect;
+                          final showWrong =
+                              _answered && isSelected && !isCorrect;
+
+                          Color bgColor = hc.surface;
+                          Color borderColor = AppColors.primary.withValues(
+                            alpha: 0.2,
+                          );
+                          Color textColor = hc.textPrimary;
+
+                          if (showCorrect) {
+                            bgColor = AppColors.successLight;
+                            borderColor = AppColors.success;
+                            textColor = AppColors.successDark;
+                          } else if (showWrong) {
+                            bgColor = AppColors.errorLight;
+                            borderColor = AppColors.error;
+                            textColor = AppColors.errorDark;
+                          }
+
+                          final highlighted =
+                              showCursor && index == _cursorIndex;
+                          if (highlighted) borderColor = AppColors.accent;
+
+                          // Show the answer language (opposite of prompt)
+                          final choiceText = round.isEnglishPrompt
+                              ? choice.wordFilipino
+                              : choice.wordEnglish;
+
+                          Widget card = Semantics(
+                            button: true,
+                            label:
+                                'Answer choice: $choiceText${showCorrect
+                                    ? ', correct answer'
+                                    : showWrong
+                                    ? ', wrong answer'
+                                    : ''}',
+                            child: GestureDetector(
+                              onTap: () => _selectAnswer(index),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                decoration: BoxDecoration(
+                                  color: bgColor,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: borderColor,
+                                    width: highlighted ? 4 : 2,
+                                  ),
+                                  boxShadow: highlighted
+                                      ? [
+                                          BoxShadow(
+                                            color: AppColors.accent.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                            blurRadius: 14,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
+                                      : AppColors.softShadow,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    FlashcardPicture(card: choice, extent: 42),
+                                    const SizedBox(height: 8),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      child: Text(
+                                        choiceText,
+                                        style: AppTypography.titleSmall
+                                            .copyWith(
+                                              color: textColor,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+
+                          // Shake animation for wrong answer
+                          if (showWrong) {
+                            card = card.animate().shakeX(
+                              hz: 6,
+                              amount: 4,
+                              duration: 400.ms,
+                            );
+                          }
+                          // Scale up for correct
+                          if (showCorrect) {
+                            card = card
+                                .animate()
+                                .scale(
+                                  begin: const Offset(1, 1),
+                                  end: const Offset(1.05, 1.05),
+                                  duration: 300.ms,
+                                )
+                                .then()
+                                .scale(
+                                  begin: const Offset(1.05, 1.05),
+                                  end: const Offset(1, 1),
+                                  duration: 200.ms,
+                                );
+                          }
+
+                          return card
+                              .animate(key: ValueKey('$_currentRound-$index'))
+                              .fadeIn(duration: 300.ms, delay: (index * 80).ms)
+                              .slideY(begin: 0.1, end: 0);
+                        },
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // ─── Progress Bar ────────────────
-            Semantics(
-              label: 'Round ${_currentRound + 1} of ${_rounds.length}, score $_score',
-              child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: (_currentRound + 1) / _rounds.length,
-                minHeight: 6,
-                backgroundColor: AppColors.infoLight.withValues(alpha: 0.3),
-                valueColor: const AlwaysStoppedAnimation(AppColors.info),
-              ),
-            ),
-            ),
-            const SizedBox(height: 28),
-
-            // ─── Prompt Area ─────────────────
-            Expanded(
-              flex: 3,
-              child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: round.correctCard.category.color
-                          .withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: round.correctCard.category.color
-                            .withValues(alpha: 0.3),
-                        width: 2,
-                      ),
-                    ),
-                    // Keep the prompt centred when there's room, but scroll it
-                    // instead of overflowing on a short viewport / large font.
-                    child: LayoutBuilder(
-                      builder: (context, constraints) => SingleChildScrollView(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                              minHeight: constraints.maxHeight),
-                          child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Big speaker button
-                        Semantics(
-                          button: true,
-                          label: 'Play sound: tap to hear the ${round.isEnglishPrompt ? 'English' : 'Filipino'} word',
-                          child: GestureDetector(
-                          onTap: _speakCurrentWord,
-                          child: Container(
-                            width: context.responsiveSize(88),
-                            height: context.responsiveSize(88),
-                            decoration: BoxDecoration(
-                              gradient: AppColors.primaryGradient,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color:
-                                      AppColors.primary.withValues(alpha: 0.3),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.volume_up_rounded,
-                              size: context.responsiveSize(44),
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          round.isEnglishPrompt
-                              ? AppLocalizations.of(context)!.listenEnglish
-                              : AppLocalizations.of(context)!.listenFilipino,
-                          style: AppTypography.titleMedium.copyWith(
-                            color: hc.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          round.isEnglishPrompt
-                              ? AppLocalizations.of(context)!.pickFilipino
-                              : AppLocalizations.of(context)!.pickEnglish,
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: round.correctCard.category.darkColor,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Tap to replay hint
-                        Text(
-                          AppLocalizations.of(context)!.tapSpeakerReplay,
-                          style: AppTypography.labelSmall.copyWith(
-                            color: AppColors.textHint,
-                          ),
-                        ),
-                        // Voice answer mic button
-                        if (ref.watch(settingsProvider).speechToText) ...[
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              GestureDetector(
-                                onTap: _answered ? null : _handleVoiceAnswer,
-                                child: MicrophoneWaveform(
-                                  isListening: _isListening,
-                                  size: 48,
-                                  color: _isListening
-                                      ? AppColors.error
-                                      : AppColors.accent,
-                                ),
-                              ),
-                              if (_voiceHint.isNotEmpty) ...[
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    _voiceHint,
-                                    style: AppTypography.labelSmall.copyWith(
-                                      color: _isListening ? AppColors.info : AppColors.error,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                  .animate(key: ValueKey(_currentRound))
-                  .fadeIn(duration: 300.ms)
-                  .slideX(begin: 0.1, end: 0),
-            ),
-            const SizedBox(height: 24),
-
-            // ─── Answer Choices ──────────────
-            Expanded(
-              flex: 4,
-              child: GridView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: context.responsiveTier<int>(
-                    phone: 2,
-                    tablet: 2,
-                    large: 3,
-                    xl: 4,
-                  ),
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  // Shrink aspect ratio as text scales up so cells stay
-                  // tall enough to hold scaled label text at XL font.
-                  childAspectRatio: ((_numChoices <= 3 ? 1.3 : 1.1) /
-                          MediaQuery.textScalerOf(context).scale(1.0))
-                      .clamp(0.7, 1.3),
-                ),
-                itemCount: round.choices.length,
-                itemBuilder: (context, index) {
-                  final choice = round.choices[index];
-                  final isSelected = _selectedIndex == index;
-                  final isCorrect = index == round.correctIndex;
-                  final showCorrect = _answered && isCorrect;
-                  final showWrong = _answered && isSelected && !isCorrect;
-
-                  Color bgColor = hc.surface;
-                  Color borderColor = AppColors.primary.withValues(alpha: 0.2);
-                  Color textColor = hc.textPrimary;
-
-                  if (showCorrect) {
-                    bgColor = AppColors.successLight;
-                    borderColor = AppColors.success;
-                    textColor = AppColors.successDark;
-                  } else if (showWrong) {
-                    bgColor = AppColors.errorLight;
-                    borderColor = AppColors.error;
-                    textColor = AppColors.errorDark;
-                  }
-
-                  // Show the answer language (opposite of prompt)
-                  final choiceText = round.isEnglishPrompt
-                      ? choice.wordFilipino
-                      : choice.wordEnglish;
-
-                  Widget card = Semantics(
-                    button: true,
-                    label: 'Answer choice: $choiceText${showCorrect ? ', correct answer' : showWrong ? ', wrong answer' : ''}',
-                    child: GestureDetector(
-                    onTap: () => _selectAnswer(index),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: borderColor, width: 2),
-                        boxShadow: AppColors.softShadow,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            FlashcardEmojis.forId(choice.id),
-                            style: const TextStyle(fontSize: 36),
-                          ),
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              choiceText,
-                              style: AppTypography.titleSmall.copyWith(
-                                color: textColor,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ),
-                  );
-
-                  // Shake animation for wrong answer
-                  if (showWrong) {
-                    card = card
-                        .animate()
-                        .shakeX(hz: 6, amount: 4, duration: 400.ms);
-                  }
-                  // Scale up for correct
-                  if (showCorrect) {
-                    card = card
-                        .animate()
-                        .scale(
-                          begin: const Offset(1, 1),
-                          end: const Offset(1.05, 1.05),
-                          duration: 300.ms,
-                        )
-                        .then()
-                        .scale(
-                          begin: const Offset(1.05, 1.05),
-                          end: const Offset(1, 1),
-                          duration: 200.ms,
-                        );
-                  }
-
-                  return card
-                      .animate(key: ValueKey('$_currentRound-$index'))
-                      .fadeIn(duration: 300.ms, delay: (index * 80).ms)
-                      .slideY(begin: 0.1, end: 0);
+            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
+            if (isPaused)
+              PauseOverlay(
+                onResume: resumeGame,
+                onRestart: () {
+                  resumeGame();
+                  _restart();
+                },
+                onQuit: () async {
+                  await savePartialProgress();
+                  if (context.mounted) _exitGame();
                 },
               ),
-            ),
           ],
         ),
       ),
-    ),
-        GameBreakButton(
-          onHold: holdForBreak,
-          onResume: resumeFromBreak,
-        ),
-        if (isPaused)
-          PauseOverlay(
-            onResume: resumeGame,
-            onRestart: () {
-              resumeGame();
-              _restart();
-            },
-            onQuit: () async {
-              await savePartialProgress();
-              if (context.mounted) _exitGame();
-            },
-          ),
-      ]),
     );
   }
 }

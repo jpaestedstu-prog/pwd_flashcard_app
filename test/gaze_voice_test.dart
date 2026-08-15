@@ -259,6 +259,83 @@ void main() {
       expect(d('nakaraan').intent, DpadVoiceIntent.moveLeft);
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Word Hunt
+  // ─────────────────────────────────────────────────────────────────────
+  //
+  // Word Hunt holds the back camera, so head control cannot run there at all.
+  // The microphone is free, which makes this vocabulary the *whole* of
+  // hands-free control on that screen: without it a learner who drives the app
+  // by gaze can reach Word Hunt and then do nothing — not even leave.
+  group('resolveWordHuntVoiceCommand', () {
+    // Two results on screen, as the panel shows them.
+    const results = [
+      ['Chair', 'Upuan'],
+      ['Backpack', 'Bag'],
+    ];
+
+    WordHuntVoiceIntent intent(String spoken,
+            [List<List<String>> words = results]) =>
+        resolveWordHuntVoiceCommand(spoken, words).intent;
+
+    test('fires the shutter', () {
+      for (final phrase in const [
+        'take a photo',
+        'photo',
+        'picture',
+        'snap',
+        'kuha',
+      ]) {
+        expect(intent(phrase, const []), WordHuntVoiceIntent.capture,
+            reason: phrase);
+      }
+    });
+
+    test('leaves the screen', () {
+      for (final phrase in const ['go back', 'exit', 'close', 'umalis']) {
+        expect(intent(phrase, const []), WordHuntVoiceIntent.goBack,
+            reason: phrase);
+      }
+    });
+
+    test('a retake is heard as a retake, not a fresh capture', () {
+      // "again" and "new photo" both contain capture-ish words; reviewing a
+      // photo, they must discard it rather than re-fire the shutter.
+      expect(intent('again'), WordHuntVoiceIntent.retake);
+      expect(intent('new photo'), WordHuntVoiceIntent.retake);
+      expect(intent('ulit'), WordHuntVoiceIntent.retake);
+    });
+
+    test('opens a found word by its ordinal, in either language', () {
+      expect(resolveWordHuntVoiceCommand('two', results).wordIndex, 1);
+      expect(resolveWordHuntVoiceCommand('una', results).wordIndex, 0);
+      expect(resolveWordHuntVoiceCommand('one', results).intent,
+          WordHuntVoiceIntent.openWord);
+    });
+
+    test('opens a found word by name, English or Filipino', () {
+      expect(resolveWordHuntVoiceCommand('chair', results).wordIndex, 0);
+      expect(resolveWordHuntVoiceCommand('upuan', results).wordIndex, 0);
+      expect(resolveWordHuntVoiceCommand('backpack', results).wordIndex, 1);
+    });
+
+    test('"backpack" is a word, never the collection or an exit', () {
+      // Bare "back" leaves; the vocabulary word that starts with it must not.
+      expect(intent('back'), WordHuntVoiceIntent.goBack);
+      expect(intent('backpack'), WordHuntVoiceIntent.openWord);
+      expect(intent('my finds'), WordHuntVoiceIntent.openCollection);
+    });
+
+    test('an ordinal beyond the results on screen is ignored', () {
+      expect(intent('three'), WordHuntVoiceIntent.none);
+    });
+
+    test('an unrelated phrase does nothing', () {
+      expect(intent('what time is it'), WordHuntVoiceIntent.none);
+      expect(intent(''), WordHuntVoiceIntent.none);
+    });
+  });
 }
 
 Matcher _action(int index) => predicate<VoiceCommandResult>(

@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/fsl_assets_service.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/hands_free_pause_notice.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/game_widgets.dart';
+import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 /// Hub screen for FSL (Filipino Sign Language) Practice.
 ///
@@ -15,62 +20,82 @@ import '../../../widgets/game_widgets.dart';
 /// - **Word → Sign**: See a word and pick which video shows the correct sign.
 /// - **Sign It!**: Watch a reference sign, copy it in a live camera mirror,
 ///   then self-assess (production practice — no automatic recognition).
-class FslPracticeHubScreen extends StatelessWidget {
+class FslPracticeHubScreen extends ConsumerWidget {
   const FslPracticeHubScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Sign It records the learner, so it takes the camera away from Gaze
+    // Control. Say so on the card rather than letting a hands-free learner
+    // discover it by getting stuck.
+    final gazeOn = ref.watch(gazeSettingsProvider.select((s) => s.enabled));
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
-          onPressed: () => context.go('/games'),
-        ),
-        title: Text(
-          'FSL Practice',
-          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
+      appBar: fullscreenBar(
+        ref,
+        AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.close_rounded),
+            tooltip: 'Close',
+            // Retrace the stack: this hub is reachable from the Games grid, a
+            // home feature tile, and a learning-path step, so a hard-coded
+            // '/games' would strand the last two.
+            onPressed: () => context.popOrGo('/games'),
+          ),
+          title: Text(
+            'FSL Practice',
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
       ),
       body: SafeArea(
-        child: OverflowSafeBody(
+        // Always scrollable, not `OverflowSafeBody`: that only engages its
+        // scroll wrapper at text scale ≥ 1.25, and this hub's content (header
+        // block + three tall mode cards) is already taller than a small phone
+        // portrait viewport at the *default* font — so it overflowed with no
+        // way to reach the third card. A hub that is a list of cards should
+        // simply scroll.
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ─── Header ───
               Center(
-                child: Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFFB388FF),
-                        Color(0xFF7C4DFF),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFB388FF).withValues(alpha: 0.4),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
+                    child: Container(
+                      width: 96,
+                      height: 96,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFB388FF), Color(0xFF7C4DFF)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFFB388FF,
+                            ).withValues(alpha: 0.4),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.sign_language_rounded,
-                    size: 48,
-                    color: Colors.white,
-                  ),
-                ),
-              )
+                      child: const Icon(
+                        Icons.sign_language_rounded,
+                        size: 48,
+                        color: Colors.white,
+                      ),
+                    ),
+                  )
                   .animate()
                   .fadeIn(duration: 500.ms)
-                  .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1)),
+                  .scale(
+                    begin: const Offset(0.8, 0.8),
+                    end: const Offset(1, 1),
+                  ),
               const SizedBox(height: 20),
               Center(
                 child: Text(
@@ -80,9 +105,7 @@ class FslPracticeHubScreen extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-              )
-                  .animate()
-                  .fadeIn(duration: 400.ms, delay: 150.ms),
+              ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
               const SizedBox(height: 8),
               Center(
                 child: Text(
@@ -92,9 +115,7 @@ class FslPracticeHubScreen extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-              )
-                  .animate()
-                  .fadeIn(duration: 400.ms, delay: 250.ms),
+              ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
               const SizedBox(height: 40),
 
               // ─── Mode Cards ───
@@ -103,43 +124,50 @@ class FslPracticeHubScreen extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                    // Sign → Word mode
-                    _FslModeCard(
-                      icon: Icons.videocam_rounded,
-                      title: 'Sign → Word',
-                      subtitle: 'Watch a sign language video, then pick the correct word from choices.',
-                      gradient: const [Color(0xFF7C4DFF), Color(0xFFB388FF)],
-                      onTap: () => _launchMode(context, 'sign-to-word'),
-                    )
-                        .animate()
-                        .fadeIn(duration: 400.ms, delay: 350.ms)
-                        .slideY(begin: 0.15, end: 0),
-                    const SizedBox(height: 16),
-                    // Word → Sign mode
-                    _FslModeCard(
-                      icon: Icons.abc_rounded,
-                      title: 'Word → Sign',
-                      subtitle: 'See a word, then pick which video shows the correct sign.',
-                      gradient: const [Color(0xFF00BFA5), Color(0xFF64FFDA)],
-                      onTap: () => _launchMode(context, 'word-to-sign'),
-                    )
-                        .animate()
-                        .fadeIn(duration: 400.ms, delay: 450.ms)
-                        .slideY(begin: 0.15, end: 0),
-                    const SizedBox(height: 16),
-                    // Sign It! — production practice (watch, copy, self-check)
-                    _FslModeCard(
-                      icon: Icons.front_hand_rounded,
-                      title: 'Sign It!',
-                      subtitle: 'Watch a sign, copy it in the camera, then check yourself.',
-                      gradient: const [Color(0xFFFF8A65), Color(0xFFFFB74D)],
-                      onTap: () => _launchMode(context, 'sign-it', minVideos: 1),
-                    )
-                        .animate()
-                        .fadeIn(duration: 400.ms, delay: 550.ms)
-                        .slideY(begin: 0.15, end: 0),
-                  ],
-                ),
+                  // Sign → Word mode
+                  _FslModeCard(
+                        icon: Icons.videocam_rounded,
+                        title: 'Sign → Word',
+                        subtitle:
+                            'Watch a sign language video, then pick the correct word from choices.',
+                        gradient: const [Color(0xFF7C4DFF), Color(0xFFB388FF)],
+                        onTap: () => _launchMode(context, ref, 'sign-to-word'),
+                      )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 350.ms)
+                      .slideY(begin: 0.15, end: 0),
+                  const SizedBox(height: 16),
+                  // Word → Sign mode
+                  _FslModeCard(
+                        icon: Icons.abc_rounded,
+                        title: 'Word → Sign',
+                        subtitle:
+                            'See a word, then pick which video shows the correct sign.',
+                        gradient: const [Color(0xFF00BFA5), Color(0xFF64FFDA)],
+                        onTap: () => _launchMode(context, ref, 'word-to-sign'),
+                      )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 450.ms)
+                      .slideY(begin: 0.15, end: 0),
+                  const SizedBox(height: 16),
+                  // Sign It! — production practice (watch, copy, self-check)
+                  _FslModeCard(
+                        icon: Icons.front_hand_rounded,
+                        title: 'Sign It!',
+                        subtitle: gazeOn
+                            ? 'Watch a sign, copy it in the camera, then check '
+                                  'yourself. Uses your hands — head control pauses '
+                                  'here.'
+                            : 'Watch a sign, copy it in the camera, then check yourself.',
+                        gradient: const [Color(0xFFFF8A65), Color(0xFFFFB74D)],
+                        onTap: () =>
+                            _launchMode(context, ref, 'sign-it', minVideos: 1),
+                      )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 550.ms)
+                      .slideY(begin: 0.15, end: 0),
+                ],
+              ),
             ],
           ),
         ),
@@ -147,8 +175,29 @@ class FslPracticeHubScreen extends StatelessWidget {
     );
   }
 
-  void _launchMode(BuildContext context, String mode,
-      {int minVideos = 3}) async {
+  void _launchMode(
+    BuildContext context,
+    WidgetRef ref,
+    String mode, {
+    int minVideos = 3,
+  }) async {
+    // Sign It records the learner, so it holds the front camera exclusively —
+    // video recording and the gaze detector's image stream cannot share one
+    // controller. Head control therefore genuinely stops for the duration, and
+    // a learner who walked in hands-free would have no way back out. Warn and
+    // let them choose; this dialog is on the hub, where the focus-traversal
+    // fallback is live, so the choice itself is reachable hands-free.
+    if (mode == 'sign-it') {
+      final gaze = ref.read(gazeSettingsProvider);
+      if (gaze.enabled) {
+        final proceed = await confirmHandsFreePause(
+          context,
+          activityName: 'Sign It!',
+          voiceAvailable: gaze.voiceCommands,
+        );
+        if (!proceed || !context.mounted) return;
+      }
+    }
     // Word → Sign needs at least 3 videos in a category (1 prompt + 2
     // distractors); Sign → Word can run with 2; "Sign It!" needs only 1 (no
     // distractors). Callers pass the right floor via [minVideos] so the user
@@ -177,7 +226,7 @@ class FslPracticeHubScreen extends StatelessWidget {
     final catParam = categories.isEmpty
         ? ''
         : '?categories=${categories.map((c) => c.index).join(',')}';
-    context.go('/games/fsl-practice/$mode$catParam');
+    context.push('/games/fsl-practice/$mode$catParam');
   }
 }
 
@@ -235,70 +284,70 @@ class _FslModeCardState extends State<_FslModeCard> {
                 ),
               ],
             ),
-            child: IntrinsicHeight(
-              child: Row(
-                children: [
-                  Container(
-                    width: context.scaledHeightCapped(64),
-                    height: context.scaledHeightCapped(64),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(20),
+            // No IntrinsicHeight here. It measures children at *unbounded*
+            // width, so the subtitle reports a one-line height, the Row is
+            // then forced to that, and the text wraps to three lines at the
+            // real width — overflowing by ~112 px at large accessibility
+            // fonts. The leading icon and trailing play button are both fixed
+            // size, so nothing needed the intrinsic pass anyway.
+            child: Row(
+              children: [
+                Container(
+                  width: context.scaledHeightCapped(64),
+                  height: context.scaledHeightCapped(64),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: FittedBox(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Icon(widget.icon, size: 36, color: Colors.white),
                     ),
-                    child: FittedBox(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Icon(
-                          widget.icon,
-                          size: 36,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: AppTypography.titleLarge.copyWith(
                           color: Colors.white,
+                          fontWeight: FontWeight.w800,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.title,
-                          style: AppTypography.titleLarge.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.subtitle,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: Colors.white.withValues(alpha: 0.85),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.subtitle,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: Colors.white.withValues(alpha: 0.85),
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: context.scaledHeightCapped(44),
-                    height: context.scaledHeightCapped(44),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.play_arrow_rounded,
-                      color: Colors.white,
-                      size: context.scaleIcon(28),
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: context.scaledHeightCapped(44),
+                  height: context.scaledHeightCapped(44),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    shape: BoxShape.circle,
                   ),
-                ],
-              ),
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: context.scaleIcon(28),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

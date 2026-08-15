@@ -15,6 +15,7 @@ import '../../../providers/app_providers.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Turn-based multiplayer vocabulary quiz for two players on the same device.
 ///
@@ -23,18 +24,14 @@ import '../widgets/pause_overlay.dart';
 class MultiplayerQuizScreen extends ConsumerStatefulWidget {
   final List<FlashcardCategory> categories;
 
-  const MultiplayerQuizScreen({
-    super.key,
-    this.categories = const [],
-  });
+  const MultiplayerQuizScreen({super.key, this.categories = const []});
 
   @override
   ConsumerState<MultiplayerQuizScreen> createState() =>
       _MultiplayerQuizScreenState();
 }
 
-class _MultiplayerQuizScreenState
-    extends ConsumerState<MultiplayerQuizScreen>
+class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
     with TickerProviderStateMixin, TimedGameMixin, GamePauseMixin {
   // Game state
   _GamePhase _phase = _GamePhase.setup;
@@ -127,13 +124,17 @@ class _MultiplayerQuizScreenState
     }
     final profile = ref.read(profileProvider);
     if (profile == null) return;
-    ref.read(progressProvider.notifier).recordGameResult(
-      gameType: GameType.flashcardQuiz,
-      score: _player1Score > _player2Score ? _player1Correct : _player2Correct,
-      total: _roundsPerPlayer,
-      starsEarned: 0,
-      categoriesPlayed: widget.categories,
-    );
+    ref
+        .read(progressProvider.notifier)
+        .recordGameResult(
+          gameType: GameType.flashcardQuiz,
+          score: _player1Score > _player2Score
+              ? _player1Correct
+              : _player2Correct,
+          total: _roundsPerPlayer,
+          starsEarned: 0,
+          categoriesPlayed: widget.categories,
+        );
   }
 
   bool get _isMidGame =>
@@ -148,35 +149,37 @@ class _MultiplayerQuizScreenState
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _isMidGame) pauseGame();
       },
-      child: Stack(children: [
-        Scaffold(
-          backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              child: switch (_phase) {
-                _GamePhase.setup => _buildSetup(),
-                _GamePhase.turnTransition => _buildTurnTransition(),
-                _GamePhase.playing => _buildPlaying(),
-                _GamePhase.roundResult => _buildRoundResult(),
-                _GamePhase.gameOver => _buildGameOver(),
-              },
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: AppColors.background,
+            body: SafeArea(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                child: switch (_phase) {
+                  _GamePhase.setup => _buildSetup(),
+                  _GamePhase.turnTransition => _buildTurnTransition(),
+                  _GamePhase.playing => _buildPlaying(),
+                  _GamePhase.roundResult => _buildRoundResult(),
+                  _GamePhase.gameOver => _buildGameOver(),
+                },
+              ),
             ),
           ),
-        ),
-        if (isPaused && _isMidGame)
-          PauseOverlay(
-            onResume: resumeGame,
-            onRestart: () {
-              resumeGame();
-              _rematch();
-            },
-            onQuit: () async {
-              await savePartialProgress();
-              if (context.mounted) context.go('/home');
-            },
-          ),
-      ]),
+          if (isPaused && _isMidGame)
+            PauseOverlay(
+              onResume: resumeGame,
+              onRestart: () {
+                resumeGame();
+                _rematch();
+              },
+              onQuit: () async {
+                await savePartialProgress();
+                if (context.mounted) context.popOrGo('/home');
+              },
+            ),
+        ],
+      ),
     );
   }
 
@@ -187,124 +190,131 @@ class _MultiplayerQuizScreenState
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
-        children: [
-          // Header
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () => context.pop(),
-              ),
-              const Spacer(),
-              Text(
-                'Multiplayer Quiz',
-                style: AppTypography.titleLarge.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Spacer(),
-              const SizedBox(width: 48),
-            ],
-          ),
-
-          const SizedBox(height: 32),
-
-          // Player avatars
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _PlayerSetupCard(
-                controller: _player1Controller,
-                playerNum: 1,
-                color: AppColors.info,
-                emoji: '🔵',
-              ),
-              const SizedBox(width: 24),
-              Text('VS',
-                  style: AppTypography.displaySmall.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: HCColor.of(context).textSecondary,
-                  )),
-              const SizedBox(width: 24),
-              _PlayerSetupCard(
-                controller: _player2Controller,
-                playerNum: 2,
-                color: AppColors.error,
-                emoji: '🔴',
-              ),
-            ],
-          )
-              .animate()
-              .fadeIn(duration: 600.ms)
-              .scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1)),
-
-          const SizedBox(height: 32),
-
-          // Rounds selector
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: HCColor.of(context).surface,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: AppColors.softShadow,
-            ),
-            child: Column(
+          children: [
+            // Header
+            Row(
               children: [
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => context.pop(),
+                ),
+                const Spacer(),
                 Text(
-                  'Rounds per Player',
-                  style: AppTypography.labelMedium.copyWith(
-                    fontWeight: FontWeight.w700,
+                  'Multiplayer Quiz',
+                  style: AppTypography.titleLarge.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [3, 5, 7, 10].map((count) {
-                    final isSelected = _roundsPerPlayer == count;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: ChoiceChip(
-                        label: Text('$count'),
-                        selected: isSelected,
-                        onSelected: (_) =>
-                            setState(() => _roundsPerPlayer = count),
-                        selectedColor: AppColors.primary,
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : HCColor.of(context).textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                const Spacer(),
+                const SizedBox(width: 48),
               ],
             ),
-          ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
 
-          const SizedBox(height: 40),
+            const SizedBox(height: 32),
 
-          // Start button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _startGame,
-              icon: const Icon(Icons.play_arrow_rounded, size: 28),
-              label: Text(
-                'Start Battle!',
-                style: AppTypography.buttonText.copyWith(fontSize: 18),
+            // Player avatars
+            Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _PlayerSetupCard(
+                      controller: _player1Controller,
+                      playerNum: 1,
+                      color: AppColors.info,
+                      emoji: '🔵',
+                    ),
+                    const SizedBox(width: 24),
+                    Text(
+                      'VS',
+                      style: AppTypography.displaySmall.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: HCColor.of(context).textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    _PlayerSetupCard(
+                      controller: _player2Controller,
+                      playerNum: 2,
+                      color: AppColors.error,
+                      emoji: '🔴',
+                    ),
+                  ],
+                )
+                .animate()
+                .fadeIn(duration: 600.ms)
+                .scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1)),
+
+            const SizedBox(height: 32),
+
+            // Rounds selector
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: HCColor.of(context).surface,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: AppColors.softShadow,
               ),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
+              child: Column(
+                children: [
+                  Text(
+                    'Rounds per Player',
+                    style: AppTypography.labelMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [3, 5, 7, 10].map((count) {
+                      final isSelected = _roundsPerPlayer == count;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: ChoiceChip(
+                          label: Text('$count'),
+                          selected: isSelected,
+                          onSelected: (_) =>
+                              setState(() => _roundsPerPlayer = count),
+                          selectedColor: AppColors.primary,
+                          labelStyle: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : HCColor.of(context).textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
               ),
-            ),
-          ).animate(delay: 400.ms).fadeIn(duration: 400.ms).slideY(begin: 0.2),
+            ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
 
-          const SizedBox(height: 24),
-        ],
+            const SizedBox(height: 40),
+
+            // Start button
+            SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _startGame,
+                    icon: const Icon(Icons.play_arrow_rounded, size: 28),
+                    label: Text(
+                      'Start Battle!',
+                      style: AppTypography.buttonText.copyWith(fontSize: 18),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                )
+                .animate(delay: 400.ms)
+                .fadeIn(duration: 400.ms)
+                .slideY(begin: 0.2),
+
+            const SizedBox(height: 24),
+          ],
         ),
       ),
     );
@@ -328,7 +338,11 @@ class _MultiplayerQuizScreenState
             children: [
               Text(emoji, style: const TextStyle(fontSize: 64))
                   .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 800.ms),
+                  .scale(
+                    begin: const Offset(1, 1),
+                    end: const Offset(1.2, 1.2),
+                    duration: 800.ms,
+                  ),
               const SizedBox(height: 16),
               Text(
                 '$name\'s Turn!',
@@ -346,19 +360,23 @@ class _MultiplayerQuizScreenState
               ),
               const SizedBox(height: 32),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  'Tap anywhere to start!',
-                  style: AppTypography.titleMedium.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ).animate(onPlay: (c) => c.repeat(reverse: true))
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'Tap anywhere to start!',
+                      style: AppTypography.titleMedium.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
                   .fadeIn()
                   .then()
                   .fade(begin: 1, end: 0.5, duration: 800.ms),
@@ -388,7 +406,9 @@ class _MultiplayerQuizScreenState
               Flexible(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
@@ -441,46 +461,46 @@ class _MultiplayerQuizScreenState
 
           // Question
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: HCColor.of(context).surface,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: AppColors.softShadow,
-            ),
-            child: Column(
-              children: [
-                Text(
-                  question.promptLabel,
-                  style: AppTypography.labelMedium.copyWith(
-                    color: HCColor.of(context).textSecondary,
-                  ),
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: HCColor.of(context).surface,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: AppColors.softShadow,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  question.prompt,
-                  style: AppTypography.displaySmall.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: HCColor.of(context).textPrimary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                if (question.subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    question.subtitle!,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: HCColor.of(context).textSecondary,
-                      fontStyle: FontStyle.italic,
+                child: Column(
+                  children: [
+                    Text(
+                      question.promptLabel,
+                      style: AppTypography.labelMedium.copyWith(
+                        color: HCColor.of(context).textSecondary,
+                      ),
                     ),
-                  ),
-                ],
-              ],
-            ),
-          ).animate().fadeIn(duration: 300.ms).scale(
-                begin: const Offset(0.95, 0.95),
-                end: const Offset(1, 1),
-              ),
+                    const SizedBox(height: 8),
+                    Text(
+                      question.prompt,
+                      style: AppTypography.displaySmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: HCColor.of(context).textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (question.subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        question.subtitle!,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: HCColor.of(context).textSecondary,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              )
+              .animate()
+              .fadeIn(duration: 300.ms)
+              .scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1)),
 
           const SizedBox(height: 24),
 
@@ -499,64 +519,66 @@ class _MultiplayerQuizScreenState
             ),
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: (2.2 /
-                    MediaQuery.textScalerOf(context).scale(1.0))
-                .clamp(1.2, 2.2),
+            childAspectRatio:
+                (2.2 / MediaQuery.textScalerOf(context).scale(1.0)).clamp(
+                  1.2,
+                  2.2,
+                ),
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-              children: List.generate(question.options.length, (idx) {
-                final option = question.options[idx];
-                final isCorrect = idx == question.correctIndex;
-                final isSelected = _selectedAnswer == idx;
+            children: List.generate(question.options.length, (idx) {
+              final option = question.options[idx];
+              final isCorrect = idx == question.correctIndex;
+              final isSelected = _selectedAnswer == idx;
 
-                Color bgColor = HCColor.of(context).surface;
-                Color borderColor = AppColors.border;
-                Color textColor = HCColor.of(context).textPrimary;
+              Color bgColor = HCColor.of(context).surface;
+              Color borderColor = AppColors.border;
+              Color textColor = HCColor.of(context).textPrimary;
 
-                if (_answered) {
-                  if (isCorrect) {
-                    bgColor = AppColors.success.withValues(alpha: 0.15);
-                    borderColor = AppColors.success;
-                    textColor = AppColors.success;
-                  } else if (isSelected && !isCorrect) {
-                    bgColor = AppColors.error.withValues(alpha: 0.15);
-                    borderColor = AppColors.error;
-                    textColor = AppColors.error;
-                  }
-                } else if (isSelected) {
-                  bgColor = color.withValues(alpha: 0.1);
-                  borderColor = color;
+              if (_answered) {
+                if (isCorrect) {
+                  bgColor = AppColors.success.withValues(alpha: 0.15);
+                  borderColor = AppColors.success;
+                  textColor = AppColors.success;
+                } else if (isSelected && !isCorrect) {
+                  bgColor = AppColors.error.withValues(alpha: 0.15);
+                  borderColor = AppColors.error;
+                  textColor = AppColors.error;
                 }
+              } else if (isSelected) {
+                bgColor = color.withValues(alpha: 0.1);
+                borderColor = color;
+              }
 
-                return GestureDetector(
-                  onTap: _answered ? null : () => _selectAnswer(idx),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    decoration: BoxDecoration(
-                      color: bgColor,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: borderColor, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: borderColor.withValues(alpha: 0.15),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      option,
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: textColor,
+              return GestureDetector(
+                onTap: _answered ? null : () => _selectAnswer(idx),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: borderColor, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: borderColor.withValues(alpha: 0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
+                    ],
                   ),
-                ).animate(delay: (100 * idx).ms).fadeIn().slideY(begin: 0.1);
-              }),
-            ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    option,
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ).animate(delay: (100 * idx).ms).fadeIn().slideY(begin: 0.1);
+            }),
+          ),
 
           // Score bar
           Container(
@@ -607,11 +629,11 @@ class _MultiplayerQuizScreenState
             size: context.scaleIcon(80),
             color: isCorrect ? AppColors.success : AppColors.error,
           ).animate().scale(
-                begin: const Offset(0, 0),
-                end: const Offset(1, 1),
-                duration: 400.ms,
-                curve: Curves.elasticOut,
-              ),
+            begin: const Offset(0, 0),
+            end: const Offset(1, 1),
+            duration: 400.ms,
+            curve: Curves.elasticOut,
+          ),
           const SizedBox(height: 16),
           Text(
             isCorrect ? 'Correct! 🎉' : 'Wrong! 😅',
@@ -659,92 +681,93 @@ class _MultiplayerQuizScreenState
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
-        children: [
-          const SizedBox(height: 32),
+          children: [
+            const SizedBox(height: 32),
 
-          Text(winnerEmoji, style: const TextStyle(fontSize: 72))
-              .animate()
-              .scale(
-                begin: const Offset(0, 0),
-                end: const Offset(1, 1),
-                duration: 600.ms,
-                curve: Curves.elasticOut,
-              ),
-          const SizedBox(height: 16),
-          Text(
-            isDraw ? 'It\'s a Draw!' : '$winnerName Wins!',
-            style: AppTypography.displayMedium.copyWith(
-              fontWeight: FontWeight.w900,
-              color: winnerColor,
+            Text(
+              winnerEmoji,
+              style: const TextStyle(fontSize: 72),
+            ).animate().scale(
+              begin: const Offset(0, 0),
+              end: const Offset(1, 1),
+              duration: 600.ms,
+              curve: Curves.elasticOut,
             ),
-          ).animate().fadeIn(delay: 300.ms),
-
-          const SizedBox(height: 32),
-
-          // Score cards
-          Row(
-            children: [
-              _PlayerResultCard(
-                name: p1Name,
-                emoji: '🔵',
-                score: _player1Score,
-                correct: _player1Correct,
-                total: _roundsPerPlayer,
-                bestStreak: _player1BestStreak,
-                color: AppColors.info,
-                isWinner: !isDraw && p1Wins,
+            const SizedBox(height: 16),
+            Text(
+              isDraw ? 'It\'s a Draw!' : '$winnerName Wins!',
+              style: AppTypography.displayMedium.copyWith(
+                fontWeight: FontWeight.w900,
+                color: winnerColor,
               ),
-              const SizedBox(width: 16),
-              _PlayerResultCard(
-                name: p2Name,
-                emoji: '🔴',
-                score: _player2Score,
-                correct: _player2Correct,
-                total: _roundsPerPlayer,
-                bestStreak: _player2BestStreak,
-                color: AppColors.error,
-                isWinner: !isDraw && !p1Wins,
-              ),
-            ],
-          ).animate(delay: 500.ms).fadeIn().slideY(begin: 0.15),
+            ).animate().fadeIn(delay: 300.ms),
 
-          const SizedBox(height: 40),
+            const SizedBox(height: 32),
 
-          // Action buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => context.pop(),
-                  icon: const Icon(Icons.home_rounded),
-                  label: const Text('Home'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+            // Score cards
+            Row(
+              children: [
+                _PlayerResultCard(
+                  name: p1Name,
+                  emoji: '🔵',
+                  score: _player1Score,
+                  correct: _player1Correct,
+                  total: _roundsPerPlayer,
+                  bestStreak: _player1BestStreak,
+                  color: AppColors.info,
+                  isWinner: !isDraw && p1Wins,
+                ),
+                const SizedBox(width: 16),
+                _PlayerResultCard(
+                  name: p2Name,
+                  emoji: '🔴',
+                  score: _player2Score,
+                  correct: _player2Correct,
+                  total: _roundsPerPlayer,
+                  bestStreak: _player2BestStreak,
+                  color: AppColors.error,
+                  isWinner: !isDraw && !p1Wins,
+                ),
+              ],
+            ).animate(delay: 500.ms).fadeIn().slideY(begin: 0.15),
+
+            const SizedBox(height: 40),
+
+            // Action buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.pop(),
+                    icon: const Icon(Icons.home_rounded),
+                    label: const Text('Home'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _rematch,
-                  icon: const Icon(Icons.replay_rounded),
-                  label: const Text('Rematch!'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _rematch,
+                    icon: const Icon(Icons.replay_rounded),
+                    label: const Text('Rematch!'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ).animate(delay: 700.ms).fadeIn(),
+              ],
+            ).animate(delay: 700.ms).fadeIn(),
 
-          const SizedBox(height: 24),
-        ],
+            const SizedBox(height: 24),
+          ],
         ),
       ),
     );
@@ -786,9 +809,11 @@ class _MultiplayerQuizScreenState
       wrongCards.shuffle(rng);
       final wrongOptions = wrongCards
           .take(3)
-          .map((c) => questionType == _QuestionType.englishToFilipino
-              ? c.wordFilipino
-              : c.wordEnglish)
+          .map(
+            (c) => questionType == _QuestionType.englishToFilipino
+                ? c.wordFilipino
+                : c.wordEnglish,
+          )
           .toList();
 
       final correctAnswer = questionType == _QuestionType.englishToFilipino
@@ -798,19 +823,21 @@ class _MultiplayerQuizScreenState
       final options = [...wrongOptions, correctAnswer];
       options.shuffle(rng);
 
-      _questions.add(_QuizQuestion(
-        card: card,
-        type: questionType,
-        prompt: questionType == _QuestionType.englishToFilipino
-            ? card.wordEnglish
-            : card.wordFilipino,
-        promptLabel: questionType == _QuestionType.englishToFilipino
-            ? 'What is this in Filipino?'
-            : 'What is this in English?',
-        subtitle: card.exampleSentence,
-        options: options,
-        correctIndex: options.indexOf(correctAnswer),
-      ));
+      _questions.add(
+        _QuizQuestion(
+          card: card,
+          type: questionType,
+          prompt: questionType == _QuestionType.englishToFilipino
+              ? card.wordEnglish
+              : card.wordFilipino,
+          promptLabel: questionType == _QuestionType.englishToFilipino
+              ? 'What is this in Filipino?'
+              : 'What is this in English?',
+          subtitle: card.exampleSentence,
+          options: options,
+          correctIndex: options.indexOf(correctAnswer),
+        ),
+      );
     }
 
     setState(() {
@@ -929,13 +956,17 @@ class _MultiplayerQuizScreenState
       // Record game result for the active profile
       final profile = ref.read(profileProvider);
       if (profile != null) {
-        ref.read(progressProvider.notifier).recordGameResult(
-          gameType: GameType.flashcardQuiz,
-          score: _player1Score > _player2Score ? _player1Correct : _player2Correct,
-          total: _roundsPerPlayer,
-          starsEarned: 1,
-          categoriesPlayed: widget.categories,
-        );
+        ref
+            .read(progressProvider.notifier)
+            .recordGameResult(
+              gameType: GameType.flashcardQuiz,
+              score: _player1Score > _player2Score
+                  ? _player1Correct
+                  : _player2Correct,
+              total: _roundsPerPlayer,
+              starsEarned: 1,
+              categoriesPlayed: widget.categories,
+            );
       }
 
       setState(() => _phase = _GamePhase.gameOver);
@@ -1002,7 +1033,10 @@ class _PlayerSetupCard extends StatelessWidget {
             ),
             decoration: InputDecoration(
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 8,
+                horizontal: 8,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: color.withValues(alpha: 0.3)),
@@ -1057,8 +1091,7 @@ class _PlayerResultCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            if (isWinner)
-              const Text('👑', style: TextStyle(fontSize: 28)),
+            if (isWinner) const Text('👑', style: TextStyle(fontSize: 28)),
             Text(emoji, style: const TextStyle(fontSize: 36)),
             const SizedBox(height: 8),
             Text(
@@ -1086,7 +1119,12 @@ class _PlayerResultCard extends StatelessWidget {
             const Divider(),
             const SizedBox(height: 4),
             _resultRow(context, '✅', 'Correct', '$correct/$total'),
-            _resultRow(context, '🎯', 'Accuracy', '${total > 0 ? (correct / total * 100).toStringAsFixed(0) : 0}%'),
+            _resultRow(
+              context,
+              '🎯',
+              'Accuracy',
+              '${total > 0 ? (correct / total * 100).toStringAsFixed(0) : 0}%',
+            ),
             _resultRow(context, '🔥', 'Best Streak', '$bestStreak'),
           ],
         ),
@@ -1094,7 +1132,12 @@ class _PlayerResultCard extends StatelessWidget {
     );
   }
 
-  Widget _resultRow(BuildContext context, String emoji, String label, String value) {
+  Widget _resultRow(
+    BuildContext context,
+    String emoji,
+    String label,
+    String value,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -1121,6 +1164,7 @@ class _PlayerResultCard extends StatelessWidget {
 // ─── Models ─────────────────────────────────────────────
 
 enum _GamePhase { setup, turnTransition, playing, roundResult, gameOver }
+
 enum _QuestionType { englishToFilipino, filipinoToEnglish }
 
 class _QuizQuestion {

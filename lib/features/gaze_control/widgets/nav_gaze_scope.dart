@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
 import '../controllers/gaze_controller.dart';
+import '../logic/gaze_focus_driver.dart';
 import '../logic/gaze_grid_cursor.dart';
 import '../logic/voice_commands.dart';
 import '../models/gaze_models.dart';
@@ -15,6 +16,8 @@ import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_home_grid.dart';
 import '../providers/gaze_settings_provider.dart';
 import '../services/gaze_detector.dart';
+import 'gaze_focus_overlay.dart';
+import 'gaze_route_guard.dart';
 import 'voice_control_mixin.dart';
 
 /// Snapshot of the gaze-navigation state handed to [NavGazeScope.builder] so the
@@ -26,6 +29,14 @@ class NavGazeState {
 
   /// The face camera is initialised and streaming.
   final bool ready;
+
+  /// Why the camera isn't [ready] yet — still starting, or permanently
+  /// unavailable (permission denied / no front lens / failed).
+  ///
+  /// Without this the nav bar could only say "Starting gaze…", which it then
+  /// said *forever* when the learner had denied the camera: a hands-free user
+  /// staring at a spinner with nothing telling them a permission is missing.
+  final GazeStatus status;
 
   /// A face is currently visible to the camera.
   final bool faceVisible;
@@ -46,6 +57,7 @@ class NavGazeState {
     required this.faceVisible,
     required this.targetIndex,
     this.featureTilesActive = false,
+    this.status = GazeStatus.initializing,
   });
 
   static const NavGazeState inactive = NavGazeState(
@@ -128,7 +140,7 @@ class NavGazeScope extends ConsumerStatefulWidget {
 }
 
 class _NavGazeScopeState extends ConsumerState<NavGazeScope>
-    with VoiceControlMixin {
+    with VoiceControlMixin, GazeRouteGuard {
   GazeController? _gaze;
   late GazeGridCursor _cursor;
 
@@ -141,11 +153,18 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   bool _evalScheduled = false;
   bool _syncScheduled = false;
 
+  /// The bright ring drawn over whatever the focus-traversal fallback is
+  /// pointing at, while a route covers the shell.
+  final GazeFocusOverlay _focusRing = GazeFocusOverlay();
+
   @override
   void initState() {
     super.initState();
     _appliedRows = [if (_hasNavRow) widget.itemCount];
-    _cursor = GazeGridCursor(rowLengths: _appliedRows, col: widget.currentIndex);
+    _cursor = GazeGridCursor(
+      rowLengths: _appliedRows,
+      col: widget.currentIndex,
+    );
     // Stand the camera up/down as foreground camera surfaces come and go, and
     // re-shape the cursor as the Home tile grid appears / disappears.
     gazeCameraOwners.addListener(_scheduleEvaluate);
@@ -163,7 +182,18 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
         widget.currentIndex != oldWidget.currentIndex) {
       _scheduleSyncCursor();
     }
-    if (widget.enabled != oldWidget.enabled) _scheduleEvaluate();
+    // Entering / leaving an immersive activity switches this scope between the
+    // grid D-pad and focus traversal. The coverage ticker won't notice — the
+    // shell's route is still "current" — so swap the affordances here.
+    if (widget.enabled != oldWidget.enabled) {
+      _scheduleEvaluate();
+      scheduleMicrotask(() {
+        if (!mounted) return;
+        _publishFocus();
+        _syncFocusRing();
+        setState(() {});
+      });
+    }
   }
 
   @override
@@ -174,15 +204,34 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     super.dispose();
   }
 
+  /// Whether this scope's camera should be running at all.
+  ///
+  /// Deliberately **not** gated on [NavGazeScope.enabled]: an immersive route
+  /// (nav bar hidden) has no tab row to drive, but it still has controls — and
+  /// standing the camera down there is what made screens like Drag & Drop,
+  /// Tracing and Create-a-Card hard dead ends, with no gaze *and* no way back.
+  /// The camera stays up and drives focus traversal instead; the single-camera
+  /// rule is still enforced by [gazeCameraOwners], which any screen opening its
+  /// own camera acquires.
   bool get _shouldRun =>
-      widget.enabled &&
-      ref.read(gazeSettingsProvider).enabled &&
-      !gazeCameraOwners.isBusy;
+      ref.read(gazeSettingsProvider).enabled && !gazeCameraOwners.isBusy;
 
   /// True when another route is layered over the navigation shell (a pushed
-  /// screen or a dialog). Read live at event time, so a head move can never
-  /// fire a tab change while the learner is looking at something on top.
-  bool get _shellCovered => ModalRoute.of(context)?.isCurrent == false;
+  /// screen or a dialog). Read live at event time via [GazeRouteGuard], so a
+  /// head move can never fire a tab change while the learner is looking at
+  /// something on top.
+  bool get _shellCovered => gazeCovered;
+
+  /// Drive **focus traversal** rather than the tab / tile grid: either
+  /// something is layered over the shell, or the shell's own nav bar is hidden
+  /// (an immersive activity). Either way the grid's targets are not on screen,
+  /// so the same head gesture should steer whatever is.
+  ///
+  /// Read live at event time, like [_shellCovered].
+  bool get _useTraversal => !widget.enabled || _shellCovered;
+
+  /// Cached counterpart of [_useTraversal] for `build` — see [GazeRouteGuard].
+  bool get _useTraversalForUi => !widget.enabled || gazeCoveredForUi;
 
   /// Whether the D-pad should currently extend over the foreground hub's feature
   /// tiles: the visible hub screen has published a grid (it only does so under
@@ -196,9 +245,9 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// The combined row shape: feature-tile rows (when active) stacked on top of
   /// the single bottom-nav row, which — when present — is always the last row.
   List<int> _rowLengths() => [
-        if (_useFeatureGrid) ...gazeHomeGrid.rowLengths,
-        if (_hasNavRow) widget.itemCount,
-      ];
+    if (_useFeatureGrid) ...gazeHomeGrid.rowLengths,
+    if (_hasNavRow) widget.itemCount,
+  ];
 
   /// Index of the bottom-nav row within the cursor (always the last row).
   /// Without a nav row this is one past the end, so no cursor row matches it.
@@ -262,10 +311,16 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     // Voice runs exactly while the shell owns the camera, so it can never fight
     // a foreground scope's own voice controller over the single microphone.
     if (settings.voiceCommands) startVoiceControl();
+    // A pushed screen or dialog switches this scope from the grid D-pad to the
+    // focus-traversal fallback; watch for it so the right highlight is live.
+    startGazeCoverageWatch();
+    _syncFocusRing();
     setState(() {});
   }
 
   void _teardown() {
+    stopGazeCoverageWatch();
+    _focusRing.hide();
     disposeVoiceControl();
     final controller = _gaze;
     _gaze = null;
@@ -285,7 +340,14 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// screen), exactly like the head D-pad.
   @override
   void onVoiceCommand(String text) {
-    if (!mounted || _gaze == null || _shellCovered) return;
+    if (!mounted || _gaze == null) return;
+    // Grid not on screen: spoken movement / select drive the same focus
+    // traversal the head gestures do, keeping voice at D-pad parity in this
+    // mode too. "go back" still pops, which is often the whole point.
+    if (_useTraversal) {
+      _voiceTraverse(text);
+      return;
+    }
     final tileRows = gazeHomeGrid.rows;
     final rows = <List<VoiceTarget>>[
       ...tileRows,
@@ -294,7 +356,8 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     final result = resolveDpadVoiceCommand(text, rows);
     if (kDebugMode) {
       debugPrint(
-          'VoiceCmd nav "$text" → ${result.intent} (${result.row},${result.col})');
+        'VoiceCmd nav "$text" → ${result.intent} (${result.row},${result.col})',
+      );
     }
     switch (result.intent) {
       case DpadVoiceIntent.activate:
@@ -360,7 +423,14 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// a head-only learner keeps an open gesture (rows are still reachable by
   /// looking down, which wraps).
   void _onZone(GazeZone zone) {
-    if (_shellCovered) return;
+    // The grid isn't on screen — either something is layered over the shell (a
+    // dialog, a pushed screen) or this is an immersive activity with the nav
+    // bar hidden. Hand the same head gesture to Flutter's focus traversal and
+    // drive whatever *is* on screen instead of doing nothing.
+    if (_useTraversal) {
+      _traverse(zone);
+      return;
+    }
     final multiRow = _cursor.rowCount > 1;
     final blink = ref.read(gazeSettingsProvider).blinkEnabled;
     switch (zone) {
@@ -395,8 +465,92 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     _publishFocus();
   }
 
+  /// A spoken phrase while a route covers the shell. Movement and select map
+  /// onto focus traversal; scroll and go-back keep working as they always did.
+  /// Resolved against an empty grid so only the global intents can match — a
+  /// dialog publishes no cells to address by name.
+  void _voiceTraverse(String text) {
+    final result = resolveDpadVoiceCommand(text, const []);
+    if (kDebugMode) {
+      debugPrint('VoiceCmd nav(covered) "$text" → ${result.intent}');
+    }
+    switch (result.intent) {
+      case DpadVoiceIntent.moveLeft:
+        _traverseMove(TraversalDirection.left);
+      case DpadVoiceIntent.moveRight:
+        _traverseMove(TraversalDirection.right);
+      case DpadVoiceIntent.moveUp:
+        _traverseMove(TraversalDirection.up);
+      case DpadVoiceIntent.moveDown:
+        _traverseMove(TraversalDirection.down);
+      case DpadVoiceIntent.select:
+      case DpadVoiceIntent.activate:
+        _traverseCommit();
+      case DpadVoiceIntent.scrollUp:
+        voiceScroll(-1);
+      case DpadVoiceIntent.scrollDown:
+        voiceScroll(1);
+      case DpadVoiceIntent.goBack:
+        Navigator.of(context).maybePop();
+      case DpadVoiceIntent.none:
+        break;
+    }
+  }
+
+  /// Head zone → directional focus traversal on the covering route. Look-up
+  /// doubles as "open it" when blink is off, mirroring the grid D-pad's rule so
+  /// a head-only learner always has a commit gesture.
+  void _traverse(GazeZone zone) {
+    if (!mounted) return;
+    final blink = ref.read(gazeSettingsProvider).blinkEnabled;
+    switch (zone) {
+      case GazeZone.left:
+        _traverseMove(TraversalDirection.left);
+      case GazeZone.right:
+        _traverseMove(TraversalDirection.right);
+      case GazeZone.up:
+        // With blink off, look-up is the only commit gesture a head-only
+        // learner has; ▼ still reaches everything, so nothing is stranded.
+        blink ? _traverseMove(TraversalDirection.up) : _traverseCommit();
+      case GazeZone.down:
+        _traverseMove(TraversalDirection.down);
+      case GazeZone.none:
+        break;
+    }
+  }
+
+  /// One traversal step. When the route has nothing focusable that way, the
+  /// focus is probably still on its bare scope node — pull it onto the first
+  /// control so the next gesture has somewhere to go.
+  void _traverseMove(TraversalDirection direction) {
+    if (!mounted) return;
+    final moved =
+        GazeFocusDriver.move(direction) || GazeFocusDriver.moveFirst();
+    if (moved) ref.read(hapticServiceProvider).selectionClick();
+  }
+
+  /// Blink (or look-up with blink off) while covered: press whatever the
+  /// traversal ring is on. A freshly-opened dialog often has focus still
+  /// resting on its bare scope node with nothing to press — pull focus onto its
+  /// first control instead, so the learner's first blink is never swallowed.
+  void _traverseCommit() {
+    if (!mounted) return;
+    if (GazeFocusDriver.activate()) {
+      ref.read(hapticServiceProvider).success();
+    } else if (GazeFocusDriver.moveFirst()) {
+      ref.read(hapticServiceProvider).selectionClick();
+    }
+  }
+
   void _commit() {
-    if (!mounted || _shellCovered || _cursor.rowCount == 0) return;
+    if (!mounted) return;
+    // Traversal first: it works even when this shell has no grid of its own
+    // (the nav-less guest Player shell).
+    if (_useTraversal) {
+      _traverseCommit();
+      return;
+    }
+    if (_cursor.rowCount == 0) return;
     if (_onTileRow) {
       // Opening a feature tile on the foreground hub.
       final cell = gazeHomeGrid.cellAt(_cursor.row, _cursor.col);
@@ -413,13 +567,34 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
 
   /// Publishes the focused cell to [gazeHomeGrid]: a (row, col) while up in the
   /// tiles (so the hub screen highlights it), or null while on the nav row (so
-  /// the bottom-nav ring shows instead).
+  /// the bottom-nav ring shows instead). Nothing is published while the shell
+  /// is covered — the hub is still visible behind a dialog's scrim, and a ring
+  /// sitting on a tile the learner cannot open is a false promise.
   void _publishFocus() {
-    if (_onTileRow) {
+    if (_onTileRow && !_useTraversalForUi) {
       gazeHomeGrid.setFocus(_cursor.row, _cursor.col);
     } else {
       gazeHomeGrid.setFocus(null, null);
     }
+  }
+
+  /// As a route covers or uncovers the shell, swap which highlight is live:
+  /// the hub's tile ring belongs to the grid D-pad, the overlay ring belongs to
+  /// the focus-traversal fallback, and exactly one of them applies at a time.
+  @override
+  void onGazeCoverageChanged(bool covered) {
+    _publishFocus();
+    _syncFocusRing();
+  }
+
+  /// The traversal ring is shown only while gaze is actually running *and* a
+  /// route is covering the shell — otherwise the grid D-pad is in charge and
+  /// draws its own highlight.
+  void _syncFocusRing() {
+    if (!mounted) return;
+    final wanted = _gaze != null && _useTraversalForUi;
+    if (wanted == _focusRing.isShowing) return;
+    wanted ? _focusRing.show(context) : _focusRing.hide();
   }
 
   @override
@@ -443,7 +618,12 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
       }),
     );
 
-    final gaze = _gaze;
+    // In traversal mode the tab / tile grid is not what the head is driving,
+    // so present the shell as inactive for the duration: no tab ring, no hint
+    // chip. Leaving them lit is the one thing worse than no affordance — it
+    // tells a hands-free learner to aim at a control that will not answer.
+    // (The traversal ring in the root overlay is the live affordance instead.)
+    final gaze = _useTraversalForUi ? null : _gaze;
     final ready = gaze != null && gaze.status == GazeStatus.ready;
     final onTileRow = gaze != null && _onTileRow;
     final state = NavGazeState(
@@ -454,11 +634,13 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
       // tiles the hub screen draws the highlight instead.
       targetIndex: gaze != null && !onTileRow ? _cursor.col : null,
       featureTilesActive: gaze != null && _useFeatureGrid,
+      status: gaze?.status ?? GazeStatus.initializing,
     );
     final content = widget.builder(context, state);
 
     // While voice is listening, float the small mic status chip near the top
-    // (the bottom belongs to the nav bar). Informational only.
+    // (the bottom belongs to the nav bar). Informational only. Shown even while
+    // covered — spoken commands still work there, via focus traversal.
     final chip = voiceChip();
     if (chip == null) return content;
     return Stack(

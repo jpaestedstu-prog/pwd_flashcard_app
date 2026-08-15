@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
@@ -26,10 +25,16 @@ import '../../../data/local/spaced_repetition_service.dart';
 import '../../../widgets/fsl_fullscreen_player.dart';
 import '../../../widgets/fsl_loading_overlay.dart';
 import '../widgets/fsl_empty_state.dart';
+import '../../gaze_control/models/gaze_action.dart';
+import '../../gaze_control/models/gaze_models.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
+import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 /// FSL Word → Sign game.
 ///
@@ -54,6 +59,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
   int _score = 0;
   int? _selectedIndex;
   bool _answered = false;
+  int _cursorIndex = 0;
   bool _showResult = false;
   bool _loading = true;
   List<Achievement> _newAchievements = [];
@@ -317,6 +323,52 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
     super.dispose();
   }
 
+  // ─── Gaze cursor (hands-free) ────────────────────
+  // The mirror of Sign→Word, and the same plain multiple choice: look ◀ ▶
+  // across the sign clips, look ▼ or blink to pick the one that matches the
+  // word. Inert unless Gaze Control is on.
+
+  void _moveCursor(int delta) {
+    final n = _rounds[_currentRound].choices.length;
+    if (n <= 0) return;
+    setState(() => _cursorIndex = (((_cursorIndex + delta) % n) + n) % n);
+  }
+
+  void _selectCursor() {
+    if (_answered || isPaused) return;
+    _selectAnswer(_cursorIndex);
+  }
+
+  List<GazeAction> _gazeActions() {
+    final canMove = !_answered && !isPaused;
+    return [
+      GazeAction(
+        zone: GazeZone.left,
+        label: 'Prev',
+        icon: Icons.chevron_left_rounded,
+        color: AppColors.secondary,
+        enabled: canMove,
+        onSelect: () => _moveCursor(-1),
+      ),
+      GazeAction(
+        zone: GazeZone.right,
+        label: 'Next',
+        icon: Icons.chevron_right_rounded,
+        color: AppColors.secondary,
+        enabled: canMove,
+        onSelect: () => _moveCursor(1),
+      ),
+      GazeAction(
+        zone: GazeZone.down,
+        label: 'Choose',
+        icon: Icons.check_circle_rounded,
+        color: AppColors.success,
+        enabled: canMove,
+        onSelect: _selectCursor,
+      ),
+    ];
+  }
+
   void _selectAnswer(int index) {
     if (_answered) return;
     final sound = ref.read(soundServiceProvider);
@@ -353,6 +405,9 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
         card.category.label,
         card.wordEnglish,
       );
+      // Static write the progress notifier cannot see — tell it, so the
+      // Signs stat and the sign achievements do not lag a view behind.
+      ref.read(progressProvider.notifier).refreshSignsWatched();
     }
 
     // Start pre-fetching next round's videos immediately while user sees feedback
@@ -364,6 +419,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
         setState(() {
           _currentRound++;
           _selectedIndex = null;
+          _cursorIndex = 0;
           _answered = false;
         });
         _prepareChoiceVideos();
@@ -442,13 +498,16 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
     // ─── Loading ─────────────────────────────
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.close_rounded),
-            tooltip: 'Close',
-            onPressed: () => context.go('/games/fsl-practice'),
+        appBar: fullscreenBar(
+          ref,
+          AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.close_rounded),
+              tooltip: 'Close',
+              onPressed: () => context.popOrGo('/games/fsl-practice'),
+            ),
+            title: const Text('Word → Sign'),
           ),
-          title: const Text('Word → Sign'),
         ),
         body: const ShimmerPageSkeleton(),
       );
@@ -460,7 +519,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
     if (_rounds.isEmpty) {
       return FslEmptyStateScaffold(
         title: 'Word → Sign',
-        onClose: () => context.go('/games/fsl-practice'),
+        onClose: () => context.popOrGo('/games/fsl-practice'),
       );
     }
 
@@ -477,7 +536,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                   total: _rounds.length,
                   starsEarned: _starsEarned,
                   onPlayAgain: _restart,
-                  onExit: () => context.go('/games/fsl-practice'),
+                  onExit: () => context.popOrGo('/games/fsl-practice'),
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
@@ -498,376 +557,401 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
 
     // ─── Game Play ───────────────────────────
     final round = _rounds[_currentRound];
+    final showCursor =
+        ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) pauseGame();
-      },
-      child: Stack(
-        children: [
-          Scaffold(
-            appBar: AppBar(
-              leading: IconButton(
-                icon: const Icon(Icons.close_rounded),
-                tooltip: 'Close',
-                onPressed: pauseGame,
-              ),
-              title: Text(
-                'Word → Sign  •  ${_currentRound + 1}/${_rounds.length}',
-              ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.pause_circle_outline_rounded),
-                  tooltip: 'Pause',
-                  onPressed: pauseGame,
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _scoreBadgeBg,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.star_rounded,
-                            size: 20,
-                            color: AppColors.warning,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$_score',
-                            style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.warning,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+    return GazeScope(
+      actions: _gazeActions(),
+      onBlink: _selectCursor,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) pauseGame();
+        },
+        child: Stack(
+          children: [
+            Scaffold(
+              appBar: fullscreenBar(
+                ref,
+                AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'Close',
+                    onPressed: pauseGame,
                   ),
-                ),
-              ],
-            ),
-            body: Padding(
-              padding: EdgeInsets.all(context.pagePadding),
-              child: Column(
-                children: [
-                  // Progress bar
-                  Semantics(
-                    label: 'Round ${_currentRound + 1} of ${_rounds.length}',
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: (_currentRound + 1) / _rounds.length,
-                        minHeight: 6,
-                        backgroundColor: _progressBg,
-                        valueColor: const AlwaysStoppedAnimation(
-                          AppColors.primary,
-                        ),
-                      ),
-                    ),
+                  title: Text(
+                    'Word → Sign  •  ${_currentRound + 1}/${_rounds.length}',
                   ),
-                  const SizedBox(height: 20),
-
-                  // ─── Word prompt ─────────────────
-                  Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 20,
-                          horizontal: 24,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _promptBg,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: _promptBorder, width: 2),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Which sign means…',
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: hc.textSecondary,
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.pause_circle_outline_rounded),
+                      tooltip: 'Pause',
+                      onPressed: pauseGame,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _scoreBadgeBg,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 20,
+                                color: AppColors.warning,
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              round.correctCard.wordEnglish,
-                              style: AppTypography.headlineMedium.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF00695C),
-                              ),
-                            ),
-                            Text(
-                              round.correctCard.wordFilipino,
-                              style: AppTypography.titleMedium.copyWith(
-                                color: const Color(0xFF00897B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                      .animate(key: ValueKey(_currentRound))
-                      .fadeIn(duration: 250.ms)
-                      .slideX(begin: 0.1, end: 0),
-                  const SizedBox(height: 20),
-
-                  // ─── Video choice grid ───────────
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: round.choices.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final choice = round.choices[index];
-                        final isSelected = _selectedIndex == index;
-                        final isCorrect = index == round.correctIndex;
-                        final showCorrect = _answered && isCorrect;
-                        final showWrong = _answered && isSelected && !isCorrect;
-
-                        Color borderColor = _borderDefault;
-                        Color bgColor = hc.surface;
-
-                        if (showCorrect) {
-                          borderColor = AppColors.success;
-                          bgColor = AppColors.successLight;
-                        } else if (showWrong) {
-                          borderColor = AppColors.error;
-                          bgColor = AppColors.errorLight;
-                        }
-
-                        final hasController =
-                            index < _choiceControllers.length &&
-                            index < _choiceReady.length &&
-                            _choiceReady[index];
-
-                        // Responsive tile dimensions for tablet
-                        final tileHeight = context.responsive(
-                          phone: 120.0,
-                          tablet: 160.0,
-                        );
-                        final videoWidth = context.responsive(
-                          phone: 140.0,
-                          tablet: 220.0,
-                        );
-                        final iconSize = context.responsiveSize(28);
-                        final expandBtnSize = context.responsive(
-                          phone: 28.0,
-                          tablet: 36.0,
-                        );
-                        final expandIconSize = context.responsive(
-                          phone: 18.0,
-                          tablet: 24.0,
-                        );
-
-                        Widget videoTile = Semantics(
-                          button: true,
-                          label:
-                              'Video choice ${index + 1}${showCorrect ? ', correct' : ''}${showWrong ? ', wrong' : ''}',
-                          child: GestureDetector(
-                            onTap: () => _selectAnswer(index),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
-                              height: tileHeight,
-                              decoration: BoxDecoration(
-                                color: bgColor,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: borderColor,
-                                  width: 2.5,
+                              const SizedBox(width: 4),
+                              Text(
+                                '$_score',
+                                style: AppTypography.labelLarge.copyWith(
+                                  color: AppColors.warning,
                                 ),
-                                boxShadow: AppColors.softShadow,
                               ),
-                              child: Row(
-                                children: [
-                                  // Video preview
-                                  ClipRRect(
-                                    borderRadius: const BorderRadius.only(
-                                      topLeft: Radius.circular(14),
-                                      bottomLeft: Radius.circular(14),
-                                    ),
-                                    child: SizedBox(
-                                      width: videoWidth,
-                                      height: tileHeight,
-                                      child: hasController
-                                          ? Stack(
-                                              children: [
-                                                Positioned.fill(
-                                                  child: RepaintBoundary(
-                                                    child: VideoPlayer(
-                                                      _choiceControllers[index],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              body: Padding(
+                padding: EdgeInsets.all(context.pagePadding),
+                child: Column(
+                  children: [
+                    // Progress bar
+                    Semantics(
+                      label: 'Round ${_currentRound + 1} of ${_rounds.length}',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (_currentRound + 1) / _rounds.length,
+                          minHeight: 6,
+                          backgroundColor: _progressBg,
+                          valueColor: const AlwaysStoppedAnimation(
+                            AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ─── Word prompt ─────────────────
+                    Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 20,
+                            horizontal: 24,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _promptBg,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _promptBorder, width: 2),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                'Which sign means…',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: hc.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                round.correctCard.wordEnglish,
+                                style: AppTypography.headlineMedium.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF00695C),
+                                ),
+                              ),
+                              Text(
+                                round.correctCard.wordFilipino,
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: const Color(0xFF00897B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        .animate(key: ValueKey(_currentRound))
+                        .fadeIn(duration: 250.ms)
+                        .slideX(begin: 0.1, end: 0),
+                    const SizedBox(height: 20),
+
+                    // ─── Video choice grid ───────────
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: round.choices.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final choice = round.choices[index];
+                          final isSelected = _selectedIndex == index;
+                          final isCorrect = index == round.correctIndex;
+                          final showCorrect = _answered && isCorrect;
+                          final showWrong =
+                              _answered && isSelected && !isCorrect;
+
+                          Color borderColor = _borderDefault;
+                          Color bgColor = hc.surface;
+
+                          if (showCorrect) {
+                            borderColor = AppColors.success;
+                            bgColor = AppColors.successLight;
+                          } else if (showWrong) {
+                            borderColor = AppColors.error;
+                            bgColor = AppColors.errorLight;
+                          }
+
+                          final highlighted =
+                              showCursor && index == _cursorIndex;
+                          if (highlighted) borderColor = AppColors.accent;
+
+                          final hasController =
+                              index < _choiceControllers.length &&
+                              index < _choiceReady.length &&
+                              _choiceReady[index];
+
+                          // Responsive tile dimensions for tablet
+                          final tileHeight = context.responsive(
+                            phone: 120.0,
+                            tablet: 160.0,
+                          );
+                          final videoWidth = context.responsive(
+                            phone: 140.0,
+                            tablet: 220.0,
+                          );
+                          final iconSize = context.responsiveSize(28);
+                          final expandBtnSize = context.responsive(
+                            phone: 28.0,
+                            tablet: 36.0,
+                          );
+                          final expandIconSize = context.responsive(
+                            phone: 18.0,
+                            tablet: 24.0,
+                          );
+
+                          Widget videoTile = Semantics(
+                            button: true,
+                            label:
+                                'Video choice ${index + 1}${showCorrect ? ', correct' : ''}${showWrong ? ', wrong' : ''}',
+                            child: GestureDetector(
+                              onTap: () => _selectAnswer(index),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                height: tileHeight,
+                                decoration: BoxDecoration(
+                                  color: bgColor,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: borderColor,
+                                    width: highlighted ? 4.5 : 2.5,
+                                  ),
+                                  boxShadow: highlighted
+                                      ? [
+                                          BoxShadow(
+                                            color: AppColors.accent.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                            blurRadius: 14,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
+                                      : AppColors.softShadow,
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Video preview
+                                    ClipRRect(
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(14),
+                                        bottomLeft: Radius.circular(14),
+                                      ),
+                                      child: SizedBox(
+                                        width: videoWidth,
+                                        height: tileHeight,
+                                        child: hasController
+                                            ? Stack(
+                                                children: [
+                                                  Positioned.fill(
+                                                    child: RepaintBoundary(
+                                                      child: VideoPlayer(
+                                                        _choiceControllers[index],
+                                                      ),
                                                     ),
                                                   ),
-                                                ),
-                                                // Fullscreen expand icon
-                                                Positioned(
-                                                  right: 4,
-                                                  bottom: 4,
-                                                  child: GestureDetector(
-                                                    onTap: () => _openFullscreen(
-                                                      choice,
-                                                      _choiceControllers[index],
-                                                    ),
-                                                    child: Container(
-                                                      width: expandBtnSize,
-                                                      height: expandBtnSize,
-                                                      decoration: BoxDecoration(
-                                                        color: _expandBtnBg,
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              8,
-                                                            ),
+                                                  // Fullscreen expand icon
+                                                  Positioned(
+                                                    right: 4,
+                                                    bottom: 4,
+                                                    child: GestureDetector(
+                                                      onTap: () => _openFullscreen(
+                                                        choice,
+                                                        _choiceControllers[index],
                                                       ),
-                                                      child: Icon(
-                                                        Icons
-                                                            .fullscreen_rounded,
-                                                        color: Colors.white,
-                                                        size: expandIconSize,
+                                                      child: Container(
+                                                        width: expandBtnSize,
+                                                        height: expandBtnSize,
+                                                        decoration: BoxDecoration(
+                                                          color: _expandBtnBg,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
+                                                        ),
+                                                        child: Icon(
+                                                          Icons
+                                                              .fullscreen_rounded,
+                                                          color: Colors.white,
+                                                          size: expandIconSize,
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
-                                                ),
-                                              ],
-                                            )
-                                          : Container(
-                                              color: AppColors.surfaceVariant,
-                                              child: const Center(
-                                                child: SizedBox(
-                                                  width: 24,
-                                                  height: 24,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                      ),
+                                                ],
+                                              )
+                                            : Container(
+                                                color: AppColors.surfaceVariant,
+                                                child: const Center(
+                                                  child: SizedBox(
+                                                    width: 24,
+                                                    height: 24,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
+                                      ),
                                     ),
-                                  ),
-                                  // Label area
-                                  Expanded(
-                                    child: Center(
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.sign_language_rounded,
-                                            size: iconSize,
-                                            color: showCorrect
-                                                ? AppColors.success
-                                                : showWrong
-                                                ? AppColors.error
-                                                : hc.textSecondary,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Sign ${index + 1}',
-                                            style: AppTypography.labelLarge
-                                                .copyWith(
-                                                  color: showCorrect
-                                                      ? AppColors.successDark
-                                                      : showWrong
-                                                      ? AppColors.errorDark
-                                                      : hc.textSecondary,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                          // Show the actual word when answered
-                                          if (_answered)
+                                    // Label area
+                                    Expanded(
+                                      child: Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.sign_language_rounded,
+                                              size: iconSize,
+                                              color: showCorrect
+                                                  ? AppColors.success
+                                                  : showWrong
+                                                  ? AppColors.error
+                                                  : hc.textSecondary,
+                                            ),
+                                            const SizedBox(height: 4),
                                             Text(
-                                              choice.wordEnglish,
-                                              style: AppTypography.bodySmall
+                                              'Sign ${index + 1}',
+                                              style: AppTypography.labelLarge
                                                   .copyWith(
                                                     color: showCorrect
                                                         ? AppColors.successDark
                                                         : showWrong
                                                         ? AppColors.errorDark
-                                                        : AppColors.textHint,
-                                                    fontWeight: FontWeight.w500,
+                                                        : hc.textSecondary,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
                                             ),
-                                        ],
+                                            // Show the actual word when answered
+                                            if (_answered)
+                                              Text(
+                                                choice.wordEnglish,
+                                                style: AppTypography.bodySmall
+                                                    .copyWith(
+                                                      color: showCorrect
+                                                          ? AppColors
+                                                                .successDark
+                                                          : showWrong
+                                                          ? AppColors.errorDark
+                                                          : AppColors.textHint,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                              ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  // Correct / Wrong icon
-                                  if (showCorrect || showWrong)
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 12),
-                                      child: Icon(
-                                        showCorrect
-                                            ? Icons.check_circle_rounded
-                                            : Icons.cancel_rounded,
-                                        color: showCorrect
-                                            ? AppColors.success
-                                            : AppColors.error,
-                                        size: iconSize,
+                                    // Correct / Wrong icon
+                                    if (showCorrect || showWrong)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 12,
+                                        ),
+                                        child: Icon(
+                                          showCorrect
+                                              ? Icons.check_circle_rounded
+                                              : Icons.cancel_rounded,
+                                          color: showCorrect
+                                              ? AppColors.success
+                                              : AppColors.error,
+                                          size: iconSize,
+                                        ),
                                       ),
-                                    ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        );
-
-                        if (showWrong) {
-                          videoTile = videoTile.animate().shakeX(
-                            hz: 6,
-                            amount: 4,
-                            duration: 350.ms,
                           );
-                        }
-                        if (showCorrect) {
-                          videoTile = videoTile
-                              .animate()
-                              .scale(
-                                begin: const Offset(1, 1),
-                                end: const Offset(1.02, 1.02),
-                                duration: 250.ms,
-                              )
-                              .then()
-                              .scale(
-                                begin: const Offset(1.02, 1.02),
-                                end: const Offset(1, 1),
-                                duration: 150.ms,
-                              );
-                        }
 
-                        return videoTile
-                            .animate(key: ValueKey('$_currentRound-$index'))
-                            .fadeIn(duration: 250.ms, delay: (index * 80).ms)
-                            .slideY(begin: 0.1, end: 0);
-                      },
+                          if (showWrong) {
+                            videoTile = videoTile.animate().shakeX(
+                              hz: 6,
+                              amount: 4,
+                              duration: 350.ms,
+                            );
+                          }
+                          if (showCorrect) {
+                            videoTile = videoTile
+                                .animate()
+                                .scale(
+                                  begin: const Offset(1, 1),
+                                  end: const Offset(1.02, 1.02),
+                                  duration: 250.ms,
+                                )
+                                .then()
+                                .scale(
+                                  begin: const Offset(1.02, 1.02),
+                                  end: const Offset(1, 1),
+                                  duration: 150.ms,
+                                );
+                          }
+
+                          return videoTile
+                              .animate(key: ValueKey('$_currentRound-$index'))
+                              .fadeIn(duration: 250.ms, delay: (index * 80).ms)
+                              .slideY(begin: 0.1, end: 0);
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          if (_openingFullscreen) const FslLoadingOverlay(),
-          GameBreakButton(
-            onHold: holdForBreak,
-            onResume: resumeFromBreak,
-          ),
-          if (isPaused)
-            PauseOverlay(
-              onResume: resumeGame,
-              onRestart: () {
-                resumeGame();
-                _restart();
-              },
-              onQuit: () async {
-                await savePartialProgress();
-                if (context.mounted) context.go('/games/fsl-practice');
-              },
-            ),
-        ],
+            if (_openingFullscreen) const FslLoadingOverlay(),
+            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
+            if (isPaused)
+              PauseOverlay(
+                onResume: resumeGame,
+                onRestart: () {
+                  resumeGame();
+                  _restart();
+                },
+                onQuit: () async {
+                  await savePartialProgress();
+                  if (context.mounted) context.popOrGo('/games/fsl-practice');
+                },
+              ),
+          ],
+        ),
       ),
     );
   }

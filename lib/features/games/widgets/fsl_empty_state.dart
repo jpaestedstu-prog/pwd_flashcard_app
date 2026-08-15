@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 /// Friendly empty state shown when an FSL game can't run with the user's
 /// chosen categories — usually because that category doesn't have enough
@@ -32,19 +33,23 @@ class FslEmptyStateScaffold extends ConsumerWidget {
     final availability = ref.watch(fslAvailabilityProvider);
 
     final readyCategories = availability.maybeWhen(
-      data: (a) => a.playableCategories().toList()
-        ..sort((x, y) => x.label.compareTo(y.label)),
+      data: (a) =>
+          a.playableCategories().toList()
+            ..sort((x, y) => x.label.compareTo(y.label)),
       orElse: () => const <FlashcardCategory>[],
     );
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
-          onPressed: onClose,
+      appBar: fullscreenBar(
+        ref,
+        AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.close_rounded),
+            tooltip: 'Close',
+            onPressed: onClose,
+          ),
+          title: Text(title),
         ),
-        title: Text(title),
       ),
       body: Center(
         // Scrolls when the category chips outgrow a short viewport (phone
@@ -102,7 +107,9 @@ class FslEmptyStateScaffold extends ConsumerWidget {
                     for (final cat in readyCategories)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: cat.darkColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(999),
@@ -114,8 +121,7 @@ class FslEmptyStateScaffold extends ConsumerWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(cat.icon,
-                                size: 16, color: cat.darkColor),
+                            Icon(cat.icon, size: 16, color: cat.darkColor),
                             const SizedBox(width: 6),
                             Text(
                               cat.label,

@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -32,6 +31,8 @@ import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
+import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 /// Picture-Word Association Game
 ///
@@ -336,7 +337,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                   total: _rounds.length,
                   starsEarned: _starsEarned,
                   onPlayAgain: _restart,
-                  onExit: () => context.go('/games'),
+                  onExit: () => context.popOrGo('/games'),
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
@@ -374,62 +375,65 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
         child: Stack(
           children: [
             Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  tooltip: 'Close',
-                  onPressed: pauseGame,
-                ),
-                title: Text(
-                  'Picture-Word  •  ${_currentRound + 1}/${_rounds.length}',
-                ),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.pause_circle_outline_rounded),
-                    tooltip: 'Pause',
+              appBar: fullscreenBar(
+                ref,
+                AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'Close',
                     onPressed: pauseGame,
                   ),
-                  if (isTimedMode)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: GameTimerWidget(
-                        remainingSeconds: remainingSeconds,
-                        totalSeconds: totalTimerSeconds,
-                        size: 44,
-                      ),
+                  title: Text(
+                    'Picture-Word  •  ${_currentRound + 1}/${_rounds.length}',
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.pause_circle_outline_rounded),
+                      tooltip: 'Pause',
+                      onPressed: pauseGame,
                     ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
+                    if (isTimedMode)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: GameTimerWidget(
+                          remainingSeconds: remainingSeconds,
+                          totalSeconds: totalTimerSeconds,
+                          size: 44,
                         ),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 20,
-                              color: AppColors.warning,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$_score',
-                              style: AppTypography.labelLarge.copyWith(
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 20,
                                 color: AppColors.warning,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Text(
+                                '$_score',
+                                style: AppTypography.labelLarge.copyWith(
+                                  color: AppColors.warning,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               body: Padding(
                 padding: const EdgeInsets.all(24),
@@ -472,7 +476,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                 },
                 onQuit: () async {
                   await savePartialProgress();
-                  if (context.mounted) context.go('/games');
+                  if (context.mounted) context.popOrGo('/games');
                 },
               ),
           ],

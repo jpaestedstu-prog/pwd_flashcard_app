@@ -40,15 +40,16 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     required GazeSettings settings,
     this.camerasLoader = availableCameras,
     GazeDetector Function()? detectorFactory,
-  })  : _turnThreshold = settings.turnThresholdDeg,
-        _tiltThreshold = settings.tiltThresholdDeg,
-        _blinkEnabled = settings.blinkEnabled,
-        _dwell = DwellTracker(dwellDuration: settings.dwellDuration),
-        _detector = detectorFactory?.call() ??
-            MlKitGazeDetector(
-              mirrorHorizontal: settings.mirrorHorizontal,
-              invertVertical: settings.invertVertical,
-            );
+  }) : _turnThreshold = settings.turnThresholdDeg,
+       _tiltThreshold = settings.tiltThresholdDeg,
+       _blinkEnabled = settings.blinkEnabled,
+       _dwell = DwellTracker(dwellDuration: settings.dwellDuration),
+       _detector =
+           detectorFactory?.call() ??
+           MlKitGazeDetector(
+             mirrorHorizontal: settings.mirrorHorizontal,
+             invertVertical: settings.invertVertical,
+           );
   final Future<List<CameraDescription>> Function() camerasLoader;
   final GazeDetector _detector;
   final DwellTracker _dwell;
@@ -183,7 +184,12 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     List<CameraDescription> cameras;
     try {
       cameras = await camerasLoader();
-    } on CameraException {
+    } catch (_) {
+      // Any failure enumerating cameras — a CameraException, or a platform
+      // channel that isn't there at all — means the same thing to a learner:
+      // gaze can't run here. Degrade to the friendly no-camera fallback rather
+      // than letting it escape as an unhandled async error, which is what the
+      // initialize() path below already does.
       cameras = const [];
     }
     if (_disposed) return;
@@ -202,8 +208,9 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
       front,
       ResolutionPreset.medium,
       enableAudio: false,
-      imageFormatGroup:
-          Platform.isAndroid ? ImageFormatGroup.nv21 : ImageFormatGroup.bgra8888,
+      imageFormatGroup: Platform.isAndroid
+          ? ImageFormatGroup.nv21
+          : ImageFormatGroup.bgra8888,
     );
     _controller = controller;
 
@@ -276,7 +283,8 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
       tiltThresholdDeg: _tiltThreshold,
     );
     final reading = _dwell.update(zone, now);
-    final blinked = _blinkEnabled &&
+    final blinked =
+        _blinkEnabled &&
         signal.hasFace &&
         _blink.update(signal.leftEyeOpen, signal.rightEyeOpen, now);
 

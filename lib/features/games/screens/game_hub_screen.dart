@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/accessibility/accessibility_content_policy.dart';
+import '../../../core/accessibility/game_catalog.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -26,17 +26,15 @@ class GameHubScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final padding = context.pagePadding;
-    // Content gating by the learner's assigned accessibility category:
-    // FSL Practice is hidden where signing isn't the right modality, and the
-    // audio-only Pronunciation game is hidden for Deaf / hard-of-hearing
-    // learners. (Story Quiz always lives in the Stories tab.)
-    final policy = ref.watch(accessibilityContentPolicyProvider);
-    final games = GameType.values.where((g) {
-      if (g == GameType.storyQuiz) return false;
-      if (g == GameType.fslPractice && !policy.showFsl) return false;
-      if (g == GameType.pronunciation && !policy.showAudioGame) return false;
-      return true;
-    }).toList();
+    // What this profile plays, and how it's presented:
+    //   • Student / Child — the roster curated for their accessibility
+    //     category, under that category's heading, so a Visual-Impairment
+    //     learner and a Hearing-Impairment learner see visibly different sets.
+    //   • Player (guest or with progress), educators, no profile — every game
+    //     in one combined list, no heading.
+    // (Story Quiz is never here; it lives in the Stories tab with its picker.)
+    final catalog = ref.watch(gameHubCatalogProvider);
+    final games = catalog.games;
 
     // Hands-free "Bottom nav + feature tiles" reach: when enabled, each game
     // card registers with the shell's gaze D-pad and shows a focus ring. A pure
@@ -50,134 +48,156 @@ class GameHubScreen extends ConsumerWidget {
       active: gazeGrid.active,
       rows: gazeGrid.rows,
       child: AnimatedGradientBackground(
-      preset: GradientPreset.games,
-      child: Stack(
-        children: [
-          Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
-              child: CustomScrollView(
-                slivers: [
-                  // ─── Header ───────────────────────────
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(padding, 20, padding, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                                AppLocalizations.of(context)!.games,
-                                style: AppTypography.headlineLarge,
-                              )
-                              .animate()
-                              .fadeIn(duration: 400.ms)
-                              .slideX(begin: -0.05, end: 0),
-                          const SizedBox(height: 4),
-                          Text(
-                            AppLocalizations.of(context)!.learnWhileHavingFun,
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: HCColor.of(context).textSecondary,
-                            ),
-                          ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // ─── Motivational Tip ─────────────────
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: padding),
-                      child: _MotivationalTip(),
-                    ),
-                  ),
-
-                  // ─── Play Together CTA (star-free multiplayer) ──
-                  // Its own gaze row above the game cards, so the D-pad
-                  // reaches it too.
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
-                      child: gazeGrid.section(
-                        columns: 1,
-                        expand: false,
-                        entries: [
-                          (
-                            tile: _PlayTogetherBanner(
-                              onTap: () => context.push('/multiplayer'),
-                            ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
-                            cell: GazeTileCell(
-                              label: 'Play Together',
-                              onActivate: () => context.push('/multiplayer'),
-                            ),
-                          ),
-                        ],
-                      ).first,
-                    ),
-                  ),
-
-                  // ─── Game Cards Grid ──────────────────
-                  // 1 col on phones, 2 on tablets, 3 on XL/ultra tablets in
-                  // landscape. Aspect ratio widens as columns grow so cards
-                  // don't go tall-and-skinny on big screens. Aspect ratio is
-                  // also divided by the text scaler so cells grow taller at
-                  // Extra Large font (1.5×) — otherwise the label + 2-line
-                  // description column overflows the card by ~10 px.
-                  SliverPadding(
-                    padding: EdgeInsets.all(padding),
-                    sliver: SliverGrid(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: context.gridColumns,
-                        mainAxisSpacing: 16,
-                        crossAxisSpacing: 16,
-                        childAspectRatio:
-                            ((context.isLargeTablet
-                                        ? 1.8
-                                        : (context.isTablet ? 2.0 : 2.5)) /
-                                    MediaQuery.textScalerOf(context).scale(1.0))
-                                .clamp(1.1, 2.5),
-                      ),
-                      delegate: SliverChildListDelegate(
-                        gazeGrid.section(
-                          columns: context.gridColumns,
-                          entries: [
-                            for (final game in games)
-                              (
-                                tile: RepaintBoundary(
-                                  child:
-                                      _GameCard(
-                                            game: game,
-                                            onTap: () => _navigateToGame(
-                                              context,
-                                              ref,
-                                              game,
-                                            ),
-                                          )
-                                          .animate()
-                                          .fadeIn(duration: 350.ms)
-                                          .slideY(begin: 0.1, end: 0),
-                                ),
-                                cell: GazeTileCell(
-                                  label: game.label,
-                                  onActivate: () =>
-                                      _navigateToGame(context, ref, game),
-                                ),
+        preset: GradientPreset.games,
+        child: Stack(
+          children: [
+            Scaffold(
+              backgroundColor: Colors.transparent,
+              body: SafeArea(
+                child: CustomScrollView(
+                  slivers: [
+                    // ─── Header ───────────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 20, padding, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                  AppLocalizations.of(context)!.games,
+                                  style: AppTypography.headlineLarge,
+                                )
+                                .animate()
+                                .fadeIn(duration: 400.ms)
+                                .slideX(begin: -0.05, end: 0),
+                            const SizedBox(height: 4),
+                            Text(
+                              AppLocalizations.of(context)!.learnWhileHavingFun,
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: HCColor.of(context).textSecondary,
                               ),
+                            ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
                           ],
                         ),
                       ),
                     ),
-                  ),
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                ],
+                    // ─── Motivational Tip ─────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: padding),
+                        child: _MotivationalTip(),
+                      ),
+                    ),
+
+                    // ─── Play Together CTA (star-free multiplayer) ──
+                    // Its own gaze row above the game cards, so the D-pad
+                    // reaches it too.
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
+                        child: gazeGrid
+                            .section(
+                              columns: 1,
+                              expand: false,
+                              entries: [
+                                (
+                                  tile:
+                                      _PlayTogetherBanner(
+                                        onTap: () =>
+                                            context.push('/multiplayer'),
+                                      ).animate().fadeIn(
+                                        duration: 400.ms,
+                                        delay: 150.ms,
+                                      ),
+                                  cell: GazeTileCell(
+                                    label: 'Play Together',
+                                    onActivate: () =>
+                                        context.push('/multiplayer'),
+                                  ),
+                                ),
+                              ],
+                            )
+                            .first,
+                      ),
+                    ),
+
+                    // ─── Accessibility category heading ───
+                    // Only for Student / Child, the roles that carry a category.
+                    // Not a gaze row: it's a label, nothing to activate, so the
+                    // D-pad order stays banner → game cards.
+                    if (catalog.isCategorised)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(padding, 4, padding, 0),
+                          child: _CategoryHeader(type: catalog.category!),
+                        ),
+                      ),
+
+                    // ─── Game Cards Grid ──────────────────
+                    // 1 col on phones, 2 on tablets, 3 on XL/ultra tablets in
+                    // landscape. Aspect ratio widens as columns grow so cards
+                    // don't go tall-and-skinny on big screens. Aspect ratio is
+                    // also divided by the text scaler so cells grow taller at
+                    // Extra Large font (1.5×) — otherwise the label + 2-line
+                    // description column overflows the card by ~10 px.
+                    SliverPadding(
+                      padding: EdgeInsets.all(padding),
+                      sliver: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: context.gridColumns,
+                          mainAxisSpacing: 16,
+                          crossAxisSpacing: 16,
+                          childAspectRatio:
+                              ((context.isLargeTablet
+                                          ? 1.8
+                                          : (context.isTablet ? 2.0 : 2.5)) /
+                                      MediaQuery.textScalerOf(
+                                        context,
+                                      ).scale(1.0))
+                                  .clamp(1.1, 2.5),
+                        ),
+                        delegate: SliverChildListDelegate(
+                          gazeGrid.section(
+                            columns: context.gridColumns,
+                            entries: [
+                              for (final game in games)
+                                (
+                                  tile: RepaintBoundary(
+                                    child:
+                                        _GameCard(
+                                              game: game,
+                                              onTap: () => _navigateToGame(
+                                                context,
+                                                ref,
+                                                game,
+                                              ),
+                                            )
+                                            .animate()
+                                            .fadeIn(duration: 350.ms)
+                                            .slideY(begin: 0.1, end: 0),
+                                  ),
+                                  cell: GazeTileCell(
+                                    label: game.label,
+                                    onActivate: () =>
+                                        _navigateToGame(context, ref, game),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  ],
+                ),
               ),
             ),
-          ),
-          const AnimatedMascotBuddy(),
-          const SeasonalDecorations(showBanner: false),
-        ],
-      ),
+            const AnimatedMascotBuddy(),
+            const SeasonalDecorations(showBanner: false),
+          ],
+        ),
       ),
     );
   }
@@ -193,9 +213,10 @@ class GameHubScreen extends ConsumerWidget {
       return;
     }
 
-    // FSL Practice has its own hub with mode selection
+    // FSL Practice has its own hub with mode selection. Pushed, so Back from
+    // the hub returns here to the Games grid.
     if (game == GameType.fslPractice) {
-      context.go('/games/fsl-practice');
+      context.push('/games/fsl-practice');
       return;
     }
 
@@ -222,6 +243,9 @@ class GameHubScreen extends ConsumerWidget {
       GameType.fslPractice => '/games/fsl-practice',
       GameType.jigsawPuzzle => '/games/jigsaw-puzzle',
       GameType.pictureWord => '/games/picture-word',
+      GameType.yesOrNo => '/games/yes-or-no',
+      GameType.oddOneOut => '/games/odd-one-out',
+      GameType.firstLetter => '/games/first-letter',
     };
     final catParam = categories.isEmpty
         ? ''
@@ -242,9 +266,13 @@ class GameHubScreen extends ConsumerWidget {
           reducedMotion: reducedMotion,
           onComplete: () {
             if (context.mounted) {
-              // Pop the transition overlay then navigate
+              // Pop the transition overlay, then push the activity so Back /
+              // back-swipe out of the game returns to this hub rather than
+              // resetting the stack. Game routes carry
+              // `parentNavigatorKey: rootNavigatorKey`, which is what makes
+              // pushing them safe from anywhere (see shell_route_push_nav_test).
               Navigator.of(context).pop();
-              context.go(fullRoute);
+              context.push(fullRoute);
             }
           },
         ),
@@ -361,6 +389,76 @@ class _PlayTogetherBanner extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ─── Accessibility Category Heading ───────────────────
+/// Names the accessibility category whose roster follows, so a Student or
+/// Child can see at a glance that these games were chosen for them — and so
+/// two learners on different categories can tell their Games tabs apart.
+class _CategoryHeader extends StatelessWidget {
+  final DisabilityType type;
+  const _CategoryHeader({required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final count = GameCatalog.forCategory(type).length;
+    final label = type.profileTypeLabel;
+    return Semantics(
+      header: true,
+      label: '$label. $count games picked for you.',
+      child: ExcludeSemantics(
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: type.color.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: type.color.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              Badge3D(
+                size: 42,
+                emoji: type.emoji,
+                iconSize: 22,
+                circle: false,
+                borderRadius: 13,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label.toUpperCase(),
+                      style: AppTypography.labelLarge.copyWith(
+                        color: hc.textPrimary,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$count games picked for you',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: hc.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 400.ms, delay: 180.ms);
   }
 }
 

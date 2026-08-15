@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
@@ -26,10 +25,16 @@ import '../../../data/local/spaced_repetition_service.dart';
 import '../../../widgets/fsl_fullscreen_player.dart';
 import '../../../widgets/fsl_loading_overlay.dart';
 import '../widgets/fsl_empty_state.dart';
+import '../../gaze_control/models/gaze_action.dart';
+import '../../gaze_control/models/gaze_models.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
+import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 /// FSL Sign → Word game.
 ///
@@ -54,6 +59,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
   int _score = 0;
   int? _selectedIndex;
   bool _answered = false;
+  int _cursorIndex = 0;
   bool _showResult = false;
   bool _loading = true;
   List<Achievement> _newAchievements = [];
@@ -224,6 +230,53 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
     super.dispose();
   }
 
+  // ─── Gaze cursor (hands-free) ────────────────────
+  // FSL Practice is the last game on the Motor Impairment roster; this mode
+  // (watch the sign, pick the word) is a plain multiple choice, so it takes the
+  // same cursor as the other gaze games: look ◀ ▶ across the choices, look ▼ or
+  // blink to pick. Inert unless Gaze Control is on.
+
+  void _moveCursor(int delta) {
+    final n = _rounds[_currentRound].choices.length;
+    if (n <= 0) return;
+    setState(() => _cursorIndex = (((_cursorIndex + delta) % n) + n) % n);
+  }
+
+  void _selectCursor() {
+    if (_answered || isPaused) return;
+    _selectAnswer(_cursorIndex);
+  }
+
+  List<GazeAction> _gazeActions() {
+    final canMove = !_answered && !isPaused;
+    return [
+      GazeAction(
+        zone: GazeZone.left,
+        label: 'Prev',
+        icon: Icons.chevron_left_rounded,
+        color: AppColors.secondary,
+        enabled: canMove,
+        onSelect: () => _moveCursor(-1),
+      ),
+      GazeAction(
+        zone: GazeZone.right,
+        label: 'Next',
+        icon: Icons.chevron_right_rounded,
+        color: AppColors.secondary,
+        enabled: canMove,
+        onSelect: () => _moveCursor(1),
+      ),
+      GazeAction(
+        zone: GazeZone.down,
+        label: 'Choose',
+        icon: Icons.check_circle_rounded,
+        color: AppColors.success,
+        enabled: canMove,
+        onSelect: _selectCursor,
+      ),
+    ];
+  }
+
   void _selectAnswer(int index) {
     if (_answered) return;
     final sound = ref.read(soundServiceProvider);
@@ -260,6 +313,9 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
         card.category.label,
         card.wordEnglish,
       );
+      // Static write the progress notifier cannot see — tell it, so the
+      // Signs stat and the sign achievements do not lag a view behind.
+      ref.read(progressProvider.notifier).refreshSignsWatched();
     }
 
     Future.delayed(const Duration(milliseconds: 1400), () {
@@ -268,6 +324,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
         setState(() {
           _currentRound++;
           _selectedIndex = null;
+          _cursorIndex = 0;
           _answered = false;
           _videoReady = false;
         });
@@ -349,13 +406,16 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
     // ─── Loading ─────────────────────────────
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.close_rounded),
-            tooltip: 'Close',
-            onPressed: () => context.go('/games/fsl-practice'),
+        appBar: fullscreenBar(
+          ref,
+          AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.close_rounded),
+              tooltip: 'Close',
+              onPressed: () => context.popOrGo('/games/fsl-practice'),
+            ),
+            title: const Text('Sign → Word'),
           ),
-          title: const Text('Sign → Word'),
         ),
         body: const ShimmerPageSkeleton(),
       );
@@ -367,7 +427,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
     if (_rounds.isEmpty) {
       return FslEmptyStateScaffold(
         title: 'Sign → Word',
-        onClose: () => context.go('/games/fsl-practice'),
+        onClose: () => context.popOrGo('/games/fsl-practice'),
       );
     }
 
@@ -384,7 +444,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                   total: _rounds.length,
                   starsEarned: _starsEarned,
                   onPlayAgain: _restart,
-                  onExit: () => context.go('/games/fsl-practice'),
+                  onExit: () => context.popOrGo('/games/fsl-practice'),
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
@@ -405,404 +465,440 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
 
     // ─── Game Play ───────────────────────────
     final round = _rounds[_currentRound];
+    final showCursor =
+        ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) pauseGame();
-      },
-      child: Stack(
-        children: [
-          Scaffold(
-            appBar: AppBar(
-              leading: IconButton(
-                icon: const Icon(Icons.close_rounded),
-                tooltip: 'Close',
-                onPressed: pauseGame,
-              ),
-              title: Text(
-                'Sign → Word  •  ${_currentRound + 1}/${_rounds.length}',
-              ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.pause_circle_outline_rounded),
-                  tooltip: 'Pause',
-                  onPressed: pauseGame,
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.star_rounded,
-                            size: 20,
-                            color: AppColors.warning,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$_score',
-                            style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.warning,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+    return GazeScope(
+      actions: _gazeActions(),
+      onBlink: _selectCursor,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) pauseGame();
+        },
+        child: Stack(
+          children: [
+            Scaffold(
+              appBar: fullscreenBar(
+                ref,
+                AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'Close',
+                    onPressed: pauseGame,
                   ),
-                ),
-              ],
-            ),
-            body: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // Progress bar
-                  Semantics(
-                    label: 'Round ${_currentRound + 1} of ${_rounds.length}',
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: (_currentRound + 1) / _rounds.length,
-                        minHeight: 6,
-                        backgroundColor: AppColors.primaryLight.withValues(
-                          alpha: 0.3,
-                        ),
-                        valueColor: const AlwaysStoppedAnimation(
-                          AppColors.primary,
+                  title: Text(
+                    'Sign → Word  •  ${_currentRound + 1}/${_rounds.length}',
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.pause_circle_outline_rounded),
+                      tooltip: 'Pause',
+                      onPressed: pauseGame,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 20,
+                                color: AppColors.warning,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$_score',
+                                style: AppTypography.labelLarge.copyWith(
+                                  color: AppColors.warning,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+              body: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    // Progress bar
+                    Semantics(
+                      label: 'Round ${_currentRound + 1} of ${_rounds.length}',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (_currentRound + 1) / _rounds.length,
+                          minHeight: 6,
+                          backgroundColor: AppColors.primaryLight.withValues(
+                            alpha: 0.3,
+                          ),
+                          valueColor: const AlwaysStoppedAnimation(
+                            AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-                  // ─── Video Area ──────────────────
-                  Expanded(
-                    flex: 5,
-                    child: Semantics(
-                      label:
-                          'Watch the sign language video and choose the correct word',
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(
-                            0xFFB388FF,
-                          ).withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
+                    // ─── Video Area ──────────────────
+                    Expanded(
+                      flex: 5,
+                      child: Semantics(
+                        label:
+                            'Watch the sign language video and choose the correct word',
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
                             color: const Color(
                               0xFFB388FF,
-                            ).withValues(alpha: 0.3),
-                            width: 2,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.sign_language_rounded,
-                                  color: Color(0xFF7C4DFF),
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'What word is this sign?',
-                                  style: AppTypography.titleMedium.copyWith(
-                                    color: const Color(0xFF7C4DFF),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
+                            ).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFB388FF,
+                              ).withValues(alpha: 0.3),
+                              width: 2,
                             ),
-                            const SizedBox(height: 8),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  12,
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: _videoReady && _videoController != null
-                                      ? GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              _videoController!.value.isPlaying
-                                                  ? _videoController!.pause()
-                                                  : _videoController!.play();
-                                            });
-                                          },
-                                          child: Stack(
-                                            alignment: Alignment.center,
-                                            children: [
-                                              AspectRatio(
-                                                aspectRatio: _videoController!
+                          ),
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.sign_language_rounded,
+                                    color: Color(0xFF7C4DFF),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'What word is this sign?',
+                                    style: AppTypography.titleMedium.copyWith(
+                                      color: const Color(0xFF7C4DFF),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    12,
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child:
+                                        _videoReady && _videoController != null
+                                        ? GestureDetector(
+                                            onTap: () {
+                                              setState(() {
+                                                _videoController!
+                                                        .value
+                                                        .isPlaying
+                                                    ? _videoController!.pause()
+                                                    : _videoController!.play();
+                                              });
+                                            },
+                                            child: Stack(
+                                              alignment: Alignment.center,
+                                              children: [
+                                                AspectRatio(
+                                                  aspectRatio: _videoController!
+                                                      .value
+                                                      .aspectRatio,
+                                                  child: VideoPlayer(
+                                                    _videoController!,
+                                                  ),
+                                                ),
+                                                if (!_videoController!
                                                     .value
-                                                    .aspectRatio,
-                                                child: VideoPlayer(
-                                                  _videoController!,
-                                                ),
-                                              ),
-                                              if (!_videoController!
-                                                  .value
-                                                  .isPlaying)
-                                                Container(
-                                                  width: 56,
-                                                  height: 56,
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.black
-                                                        .withValues(alpha: 0.5),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.play_arrow_rounded,
-                                                    color: Colors.white,
-                                                    size: 36,
-                                                  ),
-                                                ),
-                                              // Fullscreen button
-                                              Positioned(
-                                                right: 6,
-                                                bottom: 6,
-                                                child: GestureDetector(
-                                                  onTap: () => _openFullscreen(
-                                                    _rounds[_currentRound]
-                                                        .correctCard,
-                                                  ),
-                                                  child: Container(
-                                                    width: 32,
-                                                    height: 32,
+                                                    .isPlaying)
+                                                  Container(
+                                                    width: 56,
+                                                    height: 56,
                                                     decoration: BoxDecoration(
                                                       color: Colors.black
                                                           .withValues(
                                                             alpha: 0.5,
                                                           ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
+                                                      shape: BoxShape.circle,
                                                     ),
                                                     child: const Icon(
-                                                      Icons.fullscreen_rounded,
+                                                      Icons.play_arrow_rounded,
                                                       color: Colors.white,
-                                                      size: 20,
+                                                      size: 36,
+                                                    ),
+                                                  ),
+                                                // Fullscreen button
+                                                Positioned(
+                                                  right: 6,
+                                                  bottom: 6,
+                                                  child: GestureDetector(
+                                                    onTap: () =>
+                                                        _openFullscreen(
+                                                          _rounds[_currentRound]
+                                                              .correctCard,
+                                                        ),
+                                                    child: Container(
+                                                      width: 32,
+                                                      height: 32,
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.black
+                                                            .withValues(
+                                                              alpha: 0.5,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons
+                                                            .fullscreen_rounded,
+                                                        color: Colors.white,
+                                                        size: 20,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
-                                            ],
-                                          ),
-                                        )
-                                      : Container(
-                                          color: AppColors.surfaceVariant,
-                                          child: ShimmerLoading(
-                                            child: Center(
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    Icons
-                                                        .play_circle_outline_rounded,
-                                                    size: 48,
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurfaceVariant
-                                                        .withValues(alpha: 0.3),
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  const ShimmerBox(
-                                                    width: 100,
-                                                    height: 12,
-                                                  ),
-                                                ],
+                                              ],
+                                            ),
+                                          )
+                                        : Container(
+                                            color: AppColors.surfaceVariant,
+                                            child: ShimmerLoading(
+                                              child: Center(
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons
+                                                          .play_circle_outline_rounded,
+                                                      size: 48,
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant
+                                                          .withValues(
+                                                            alpha: 0.3,
+                                                          ),
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    const ShimmerBox(
+                                                      width: 100,
+                                                      height: 12,
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ),
+                                  ),
                                 ),
                               ),
-                            ),
-                            // Replay button
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: TextButton.icon(
-                                onPressed: () {
-                                  _videoController?.seekTo(Duration.zero);
-                                  _videoController?.play();
-                                },
-                                icon: const Icon(
-                                  Icons.replay_rounded,
-                                  size: 18,
-                                ),
-                                label: const Text('Replay'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: const Color(0xFF7C4DFF),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ).animate(key: ValueKey(_currentRound)).fadeIn(duration: 300.ms).slideX(begin: 0.1, end: 0),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // ─── Answer choices ──────────────
-                  Expanded(
-                    flex: 3,
-                    child: GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: context.responsiveTier<int>(
-                          phone: 2,
-                          tablet: 2,
-                          large: 3,
-                          xl: 4,
-                        ),
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        // Shrink aspect ratio as text scales up so answer cells
-                        // stay tall enough to hold scaled label text.
-                        childAspectRatio:
-                            ((context.isLargeTablet ? 3.0 : 2.5) /
-                                    MediaQuery.textScalerOf(context).scale(1.0))
-                                .clamp(1.4, 3.0),
-                      ),
-                      itemCount: round.choices.length,
-                      itemBuilder: (context, index) {
-                        final choice = round.choices[index];
-                        final isSelected = _selectedIndex == index;
-                        final isCorrect = index == round.correctIndex;
-                        final showCorrect = _answered && isCorrect;
-                        final showWrong = _answered && isSelected && !isCorrect;
-
-                        Color bgColor = hc.surface;
-                        Color borderColor = AppColors.primary.withValues(
-                          alpha: 0.2,
-                        );
-                        Color textColor = hc.textPrimary;
-
-                        if (showCorrect) {
-                          bgColor = AppColors.successLight;
-                          borderColor = AppColors.success;
-                          textColor = AppColors.successDark;
-                        } else if (showWrong) {
-                          bgColor = AppColors.errorLight;
-                          borderColor = AppColors.error;
-                          textColor = AppColors.errorDark;
-                        }
-
-                        Widget card = Semantics(
-                          button: true,
-                          label:
-                              'Answer choice: ${choice.wordEnglish}'
-                              '${showCorrect ? ', correct answer' : ''}'
-                              '${showWrong ? ', wrong answer' : ''}',
-                          child: GestureDetector(
-                            onTap: () => _selectAnswer(index),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              decoration: BoxDecoration(
-                                color: bgColor,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: borderColor,
-                                  width: 2,
-                                ),
-                                boxShadow: AppColors.softShadow,
-                              ),
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      choice.wordEnglish,
-                                      style: AppTypography.titleMedium.copyWith(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    Text(
-                                      choice.wordFilipino,
-                                      style: AppTypography.bodySmall.copyWith(
-                                        color: textColor.withValues(alpha: 0.7),
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
+                              // Replay button
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    _videoController?.seekTo(Duration.zero);
+                                    _videoController?.play();
+                                  },
+                                  icon: const Icon(
+                                    Icons.replay_rounded,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Replay'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF7C4DFF),
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        );
-
-                        if (showWrong) {
-                          card = card.animate().shakeX(
-                            hz: 6,
-                            amount: 4,
-                            duration: 400.ms,
-                          );
-                        }
-                        if (showCorrect) {
-                          card = card
-                              .animate()
-                              .scale(
-                                begin: const Offset(1, 1),
-                                end: const Offset(1.05, 1.05),
-                                duration: 300.ms,
-                              )
-                              .then()
-                              .scale(
-                                begin: const Offset(1.05, 1.05),
-                                end: const Offset(1, 1),
-                                duration: 200.ms,
-                              );
-                        }
-
-                        return card
-                            .animate(key: ValueKey('$_currentRound-$index'))
-                            .fadeIn(duration: 300.ms, delay: (index * 80).ms)
-                            .slideY(begin: 0.1, end: 0);
-                      },
+                        ),
+                      ).animate(key: ValueKey(_currentRound)).fadeIn(duration: 300.ms).slideX(begin: 0.1, end: 0),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+
+                    // ─── Answer choices ──────────────
+                    Expanded(
+                      flex: 3,
+                      child: GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: context.responsiveTier<int>(
+                            phone: 2,
+                            tablet: 2,
+                            large: 3,
+                            xl: 4,
+                          ),
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          // Shrink aspect ratio as text scales up so answer cells
+                          // stay tall enough to hold scaled label text.
+                          childAspectRatio:
+                              ((context.isLargeTablet ? 3.0 : 2.5) /
+                                      MediaQuery.textScalerOf(
+                                        context,
+                                      ).scale(1.0))
+                                  .clamp(1.4, 3.0),
+                        ),
+                        itemCount: round.choices.length,
+                        itemBuilder: (context, index) {
+                          final choice = round.choices[index];
+                          final isSelected = _selectedIndex == index;
+                          final isCorrect = index == round.correctIndex;
+                          final showCorrect = _answered && isCorrect;
+                          final showWrong =
+                              _answered && isSelected && !isCorrect;
+
+                          Color bgColor = hc.surface;
+                          Color borderColor = AppColors.primary.withValues(
+                            alpha: 0.2,
+                          );
+                          Color textColor = hc.textPrimary;
+
+                          if (showCorrect) {
+                            bgColor = AppColors.successLight;
+                            borderColor = AppColors.success;
+                            textColor = AppColors.successDark;
+                          } else if (showWrong) {
+                            bgColor = AppColors.errorLight;
+                            borderColor = AppColors.error;
+                            textColor = AppColors.errorDark;
+                          }
+
+                          final highlighted =
+                              showCursor && index == _cursorIndex;
+                          if (highlighted) borderColor = AppColors.accent;
+
+                          Widget card = Semantics(
+                            button: true,
+                            label:
+                                'Answer choice: ${choice.wordEnglish}'
+                                '${showCorrect ? ', correct answer' : ''}'
+                                '${showWrong ? ', wrong answer' : ''}',
+                            child: GestureDetector(
+                              onTap: () => _selectAnswer(index),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                decoration: BoxDecoration(
+                                  color: bgColor,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: borderColor,
+                                    width: highlighted ? 4 : 2,
+                                  ),
+                                  boxShadow: highlighted
+                                      ? [
+                                          BoxShadow(
+                                            color: AppColors.accent.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                            blurRadius: 14,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
+                                      : AppColors.softShadow,
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        choice.wordEnglish,
+                                        style: AppTypography.titleMedium
+                                            .copyWith(
+                                              color: textColor,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      Text(
+                                        choice.wordFilipino,
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: textColor.withValues(
+                                            alpha: 0.7,
+                                          ),
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+
+                          if (showWrong) {
+                            card = card.animate().shakeX(
+                              hz: 6,
+                              amount: 4,
+                              duration: 400.ms,
+                            );
+                          }
+                          if (showCorrect) {
+                            card = card
+                                .animate()
+                                .scale(
+                                  begin: const Offset(1, 1),
+                                  end: const Offset(1.05, 1.05),
+                                  duration: 300.ms,
+                                )
+                                .then()
+                                .scale(
+                                  begin: const Offset(1.05, 1.05),
+                                  end: const Offset(1, 1),
+                                  duration: 200.ms,
+                                );
+                          }
+
+                          return card
+                              .animate(key: ValueKey('$_currentRound-$index'))
+                              .fadeIn(duration: 300.ms, delay: (index * 80).ms)
+                              .slideY(begin: 0.1, end: 0);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          if (_openingFullscreen) const FslLoadingOverlay(),
-          GameBreakButton(
-            onHold: holdForBreak,
-            onResume: resumeFromBreak,
-          ),
-          if (isPaused)
-            PauseOverlay(
-              onResume: resumeGame,
-              onRestart: () {
-                resumeGame();
-                _restart();
-              },
-              onQuit: () async {
-                await savePartialProgress();
-                if (context.mounted) context.go('/games/fsl-practice');
-              },
-            ),
-        ],
+            if (_openingFullscreen) const FslLoadingOverlay(),
+            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
+            if (isPaused)
+              PauseOverlay(
+                onResume: resumeGame,
+                onRestart: () {
+                  resumeGame();
+                  _restart();
+                },
+                onQuit: () async {
+                  await savePartialProgress();
+                  if (context.mounted) context.popOrGo('/games/fsl-practice');
+                },
+              ),
+          ],
+        ),
       ),
     );
   }

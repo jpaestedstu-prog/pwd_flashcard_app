@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
@@ -28,6 +27,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
+import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 class FlashcardQuizScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -271,7 +272,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                   total: _totalCards,
                   starsEarned: _starsEarned,
                   onPlayAgain: () => setState(() => _startGame()),
-                  onExit: () => context.go('/games'),
+                  onExit: () => context.popOrGo('/games'),
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
@@ -302,29 +303,32 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
         child: Stack(
           children: [
             Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  tooltip: 'Close',
-                  onPressed: pauseGame,
-                ),
-                title: Text('${_currentIndex + 1} / $_totalCards'),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.pause_circle_outline_rounded),
-                    tooltip: 'Pause',
+              appBar: fullscreenBar(
+                ref,
+                AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'Close',
                     onPressed: pauseGame,
                   ),
-                  if (isTimedMode)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: GameTimerWidget(
-                        remainingSeconds: remainingSeconds,
-                        totalSeconds: totalTimerSeconds,
-                        size: 44,
-                      ),
+                  title: Text('${_currentIndex + 1} / $_totalCards'),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.pause_circle_outline_rounded),
+                      tooltip: 'Pause',
+                      onPressed: pauseGame,
                     ),
-                ],
+                    if (isTimedMode)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: GameTimerWidget(
+                          remainingSeconds: remainingSeconds,
+                          totalSeconds: totalTimerSeconds,
+                          size: 44,
+                        ),
+                      ),
+                  ],
+                ),
               ),
               body: Column(
                 children: [
@@ -446,7 +450,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                 },
                 onQuit: () async {
                   await savePartialProgress();
-                  if (context.mounted) context.go('/games');
+                  if (context.mounted) context.popOrGo('/games');
                 },
               ),
           ],

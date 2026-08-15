@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -22,11 +21,17 @@ import '../../../core/services/celebration_service.dart';
 import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../../../widgets/flashcard_image.dart';
+import '../../gaze_control/models/gaze_action.dart';
+import '../../gaze_control/models/gaze_models.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/fullscreen_host.dart';
 
 class WordMatchScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -50,6 +55,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
   int _currentRound = 0;
   int _score = 0;
   int? _selectedIndex;
+  int _cursorIndex = 0;
   bool _answered = false;
   bool _showResult = false;
   List<Achievement> _newAchievements = [];
@@ -74,7 +80,9 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
     super.initState();
     var source = List.of(SeedData.allFlashcards);
     if (widget.categories.isNotEmpty) {
-      source = source.where((c) => widget.categories.contains(c.category)).toList();
+      source = source
+          .where((c) => widget.categories.contains(c.category))
+          .toList();
     }
     _allCards = source..shuffle();
     _generateRounds();
@@ -101,7 +109,11 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
     final celebType = _starsEarned >= 3
         ? CelebrationType.perfectScore
         : CelebrationType.gameComplete;
-    AccessibleCelebrationOverlay.show(context: context, ref: ref, type: celebType);
+    AccessibleCelebrationOverlay.show(
+      context: context,
+      ref: ref,
+      type: celebType,
+    );
     ref.read(hapticServiceProvider).gameComplete();
     setState(() => _showResult = true);
   }
@@ -118,13 +130,63 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
       final correct = shuffled[i];
       final others = _allCards.where((c) => c.id != correct.id).toList()
         ..shuffle(_random);
-      final choices = [correct, ...others.take(_numChoices - 1)]..shuffle(_random);
-      _rounds.add(_WordMatchRound(
-        correctCard: correct,
-        choices: choices,
-        correctIndex: choices.indexOf(correct),
-      ));
+      final choices = [correct, ...others.take(_numChoices - 1)]
+        ..shuffle(_random);
+      _rounds.add(
+        _WordMatchRound(
+          correctCard: correct,
+          choices: choices,
+          correctIndex: choices.indexOf(correct),
+        ),
+      );
     }
+  }
+
+  // ─── Gaze cursor (hands-free) ────────────────────
+  // Word Match is on the Motor Impairment roster, so a learner who cannot tap
+  // is offered it by name — it has to be playable without tapping. Same model
+  // as Picture-Word: look ◀ ▶ to move the highlight across the choices, then
+  // look ▼ or blink to choose. Inert unless Gaze Control is on.
+
+  void _moveCursor(int delta) {
+    final n = _rounds[_currentRound].choices.length;
+    if (n <= 0) return;
+    setState(() => _cursorIndex = (((_cursorIndex + delta) % n) + n) % n);
+  }
+
+  void _selectCursor() {
+    if (_answered || isPaused) return;
+    _selectAnswer(_cursorIndex);
+  }
+
+  List<GazeAction> _gazeActions() {
+    final canMove = !_answered && !isPaused;
+    return [
+      GazeAction(
+        zone: GazeZone.left,
+        label: 'Prev',
+        icon: Icons.chevron_left_rounded,
+        color: AppColors.secondary,
+        enabled: canMove,
+        onSelect: () => _moveCursor(-1),
+      ),
+      GazeAction(
+        zone: GazeZone.right,
+        label: 'Next',
+        icon: Icons.chevron_right_rounded,
+        color: AppColors.secondary,
+        enabled: canMove,
+        onSelect: () => _moveCursor(1),
+      ),
+      GazeAction(
+        zone: GazeZone.down,
+        label: 'Choose',
+        icon: Icons.check_circle_rounded,
+        color: AppColors.success,
+        enabled: canMove,
+        onSelect: _selectCursor,
+      ),
+    ];
   }
 
   void _selectAnswer(int index) {
@@ -141,13 +203,15 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
       _answered = true;
       final round = _rounds[_currentRound];
       final isCorrect = index == round.correctIndex;
-      _reviewItems.add(GameReviewItem(
-        wordEnglish: round.correctCard.wordEnglish,
-        wordFilipino: round.correctCard.wordFilipino,
-        category: round.correctCard.category,
-        isCorrect: isCorrect,
-        userAnswer: isCorrect ? null : round.choices[index].wordEnglish,
-      ));
+      _reviewItems.add(
+        GameReviewItem(
+          wordEnglish: round.correctCard.wordEnglish,
+          wordFilipino: round.correctCard.wordFilipino,
+          category: round.correctCard.category,
+          isCorrect: isCorrect,
+          userAnswer: isCorrect ? null : round.choices[index].wordEnglish,
+        ),
+      );
       if (isCorrect) {
         _score++;
         sound.playCorrect();
@@ -164,6 +228,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
         setState(() {
           _currentRound++;
           _selectedIndex = null;
+          _cursorIndex = 0;
           _answered = false;
         });
       } else {
@@ -171,7 +236,11 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
         final celebType = _starsEarned >= 3
             ? CelebrationType.perfectScore
             : CelebrationType.gameComplete;
-        AccessibleCelebrationOverlay.show(context: context, ref: ref, type: celebType);
+        AccessibleCelebrationOverlay.show(
+          context: context,
+          ref: ref,
+          type: celebType,
+        );
         ref.read(hapticServiceProvider).gameComplete();
         setState(() => _showResult = true);
       }
@@ -183,6 +252,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
       _currentRound = 0;
       _score = 0;
       _selectedIndex = null;
+      _cursorIndex = 0;
       _answered = false;
       _showResult = false;
       _reviewItems.clear();
@@ -208,24 +278,31 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
     // Per-word results — feeds both wordsLearned and spaced repetition.
     final srResults = <String, bool>{};
     for (final r in _reviewItems) {
-      final card = _allCards.where((c) => c.wordEnglish == r.wordEnglish).firstOrNull;
+      final card = _allCards
+          .where((c) => c.wordEnglish == r.wordEnglish)
+          .firstOrNull;
       if (card != null) srResults[card.id] = r.isCorrect;
     }
 
-    ref.read(progressProvider.notifier).recordGameResult(
-      gameType: GameType.wordMatch,
-      score: _score,
-      total: _rounds.length,
-      starsEarned: _starsEarned,
-      categoriesPlayed: categories,
-      correctWordIds: srResults.correctWordIds,
-    );
+    ref
+        .read(progressProvider.notifier)
+        .recordGameResult(
+          gameType: GameType.wordMatch,
+          score: _score,
+          total: _rounds.length,
+          starsEarned: _starsEarned,
+          categoriesPlayed: categories,
+          correctWordIds: srResults.correctWordIds,
+        );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
     // Record per-word accuracy for spaced repetition
     final profile = ref.read(profileProvider);
     if (profile != null) {
-      SpacedRepetitionService.recordBatch(profileId: profile.id, results: srResults);
+      SpacedRepetitionService.recordBatch(
+        profileId: profile.id,
+        results: srResults,
+      );
     }
   }
 
@@ -241,296 +318,358 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
         show: true,
         lottieAsset: celebration.lottieAssetFor(celebType),
         child: Stack(
-        children: [
-          CelebrationOverlay(
-            show: true,
-            child: Scaffold(
-              body: Center(
-                child: GameResultDialog(
-                  score: _score,
-                  total: _rounds.length,
-                  starsEarned: _starsEarned,
-                  onPlayAgain: _restart,
-                  onExit: () => context.go('/games'),
-                  onReview: () => showGameReview(
-                    context,
-                    items: _reviewItems,
-                    gameTitle: 'Word Match',
+          children: [
+            CelebrationOverlay(
+              show: true,
+              child: Scaffold(
+                body: Center(
+                  child: GameResultDialog(
+                    score: _score,
+                    total: _rounds.length,
+                    starsEarned: _starsEarned,
+                    onPlayAgain: _restart,
+                    onExit: () => context.popOrGo('/games'),
+                    onReview: () => showGameReview(
+                      context,
+                      items: _reviewItems,
+                      gameTitle: 'Word Match',
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          if (_newAchievements.isNotEmpty)
-            AchievementUnlockedOverlay(
-              achievements: _newAchievements,
-              onDismiss: () => setState(() => _newAchievements = []),
-            ),
-        ],
-      ),
+            if (_newAchievements.isNotEmpty)
+              AchievementUnlockedOverlay(
+                achievements: _newAchievements,
+                onDismiss: () => setState(() => _newAchievements = []),
+              ),
+          ],
+        ),
       );
     }
 
     final round = _rounds[_currentRound];
+    // The gaze highlight only makes sense while a choice can still be made —
+    // once answered, the correct/wrong colours own the cards.
+    final showCursor =
+        ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) pauseGame();
-      },
-      child: Stack(children: [
-        Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
-          onPressed: pauseGame,
-        ),
-        title: Text('Word Match  •  ${_currentRound + 1}/${_rounds.length}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.pause_circle_outline_rounded),
-            tooltip: 'Pause',
-            onPressed: pauseGame,
-          ),
-          if (isTimedMode)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GameTimerWidget(
-                remainingSeconds: remainingSeconds,
-                totalSeconds: totalTimerSeconds,
-                size: 44,
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+    return GazeScope(
+      actions: _gazeActions(),
+      onBlink: _selectCursor,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) pauseGame();
+        },
+        child: Stack(
+          children: [
+            Scaffold(
+              appBar: fullscreenBar(
+                ref,
+                AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'Close',
+                    onPressed: pauseGame,
+                  ),
+                  title: Text(
+                    'Word Match  •  ${_currentRound + 1}/${_rounds.length}',
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.pause_circle_outline_rounded),
+                      tooltip: 'Pause',
+                      onPressed: pauseGame,
+                    ),
+                    if (isTimedMode)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: GameTimerWidget(
+                          remainingSeconds: remainingSeconds,
+                          totalSeconds: totalTimerSeconds,
+                          size: 44,
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 20,
+                                color: AppColors.warning,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$_score',
+                                style: AppTypography.labelLarge.copyWith(
+                                  color: AppColors.warning,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                child: Row(
+              ),
+              body: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
                   children: [
-                    const Icon(Icons.star_rounded,
-                        size: 20, color: AppColors.warning),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_score',
-                      style: AppTypography.labelLarge
-                          .copyWith(color: AppColors.warning),
+                    // ─── Progress bar ─────────────────────
+                    Semantics(
+                      label: 'Round ${_currentRound + 1} of ${_rounds.length}',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (_currentRound + 1) / _rounds.length,
+                          minHeight: 6,
+                          backgroundColor: AppColors.primaryLight.withValues(
+                            alpha: 0.3,
+                          ),
+                          valueColor: const AlwaysStoppedAnimation(
+                            AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // ─── Question Image Area ──────────────
+                    Expanded(
+                      flex: 3,
+                      child:
+                          Semantics(
+                                label:
+                                    'Question: What is the English word for ${round.correctCard.wordFilipino}?',
+                                child: Container(
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: round.correctCard.category.color
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(
+                                      color: round.correctCard.category.color
+                                          .withValues(alpha: 0.3),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  // Scale the prompt down to fit a short (landscape) viewport or
+                                  // a large font scale rather than overflowing the flex region.
+                                  child: Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            FlashcardImage(
+                                              card: round.correctCard,
+                                              size: 84,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.whatIsThisWord,
+                                              style: AppTypography.titleMedium
+                                                  .copyWith(
+                                                    color: hc.textSecondary,
+                                                  ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              round.correctCard.wordFilipino,
+                                              style: AppTypography
+                                                  .headlineMedium
+                                                  .copyWith(
+                                                    color: round
+                                                        .correctCard
+                                                        .category
+                                                        .darkColor,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .animate(key: ValueKey(_currentRound))
+                              .fadeIn(duration: 300.ms)
+                              .slideX(begin: 0.1, end: 0),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // ─── Answer Choices ───────────────────
+                    Expanded(
+                      flex: 3,
+                      child: GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: context.isLargeTablet ? 4 : 2,
+                          mainAxisSpacing: context.gridSpacing * 0.75,
+                          crossAxisSpacing: context.gridSpacing * 0.75,
+                          // Shrink aspect ratio as text scales up so answer cells
+                          // stay tall enough to hold scaled label text at XL font.
+                          childAspectRatio:
+                              ((context.isLargeTablet ? 2.2 : 2.5) /
+                                      MediaQuery.textScalerOf(
+                                        context,
+                                      ).scale(1.0))
+                                  .clamp(1.2, 2.5),
+                        ),
+                        itemCount: round.choices.length,
+                        itemBuilder: (context, index) {
+                          final choice = round.choices[index];
+                          final isSelected = _selectedIndex == index;
+                          final isCorrect = index == round.correctIndex;
+                          final showCorrect = _answered && isCorrect;
+                          final showWrong =
+                              _answered && isSelected && !isCorrect;
+
+                          final highlighted =
+                              showCursor && index == _cursorIndex;
+
+                          Color bgColor = hc.surface;
+                          Color borderColor = AppColors.primary.withValues(
+                            alpha: 0.2,
+                          );
+                          Color textColor = hc.textPrimary;
+
+                          if (highlighted) {
+                            // Same bright ring the hub tiles use, so the hands-free
+                            // highlight reads identically everywhere in the app.
+                            borderColor = AppColors.accent;
+                          }
+                          if (showCorrect) {
+                            bgColor = AppColors.successLight;
+                            borderColor = AppColors.success;
+                            textColor = AppColors.successDark;
+                          } else if (showWrong) {
+                            bgColor = AppColors.errorLight;
+                            borderColor = AppColors.error;
+                            textColor = AppColors.errorDark;
+                          }
+
+                          Widget card = Semantics(
+                            button: true,
+                            label:
+                                'Answer choice: ${choice.wordEnglish}'
+                                '${showCorrect ? ', correct answer' : ''}'
+                                '${showWrong ? ', wrong answer' : ''}',
+                            child: GestureDetector(
+                              onTap: () => _selectAnswer(index),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                decoration: BoxDecoration(
+                                  color: bgColor,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: borderColor,
+                                    width: highlighted ? 4 : 2,
+                                  ),
+                                  boxShadow: highlighted
+                                      ? [
+                                          BoxShadow(
+                                            color: AppColors.accent.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                            blurRadius: 14,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
+                                      : AppColors.softShadow,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Center(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        choice.wordEnglish,
+                                        style: AppTypography.titleMedium
+                                            .copyWith(
+                                              color: textColor,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+
+                          // Shake animation for wrong answer
+                          if (showWrong) {
+                            card = card.animate().shakeX(
+                              hz: 6,
+                              amount: 4,
+                              duration: 400.ms,
+                            );
+                          }
+                          // Scale up for correct
+                          if (showCorrect) {
+                            card = card
+                                .animate()
+                                .scale(
+                                  begin: const Offset(1, 1),
+                                  end: const Offset(1.05, 1.05),
+                                  duration: 300.ms,
+                                )
+                                .then()
+                                .scale(
+                                  begin: const Offset(1.05, 1.05),
+                                  end: const Offset(1, 1),
+                                  duration: 200.ms,
+                                );
+                          }
+
+                          return card
+                              .animate(key: ValueKey('$_currentRound-$index'))
+                              .fadeIn(duration: 300.ms, delay: (index * 80).ms)
+                              .slideY(begin: 0.1, end: 0);
+                        },
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // ─── Progress bar ─────────────────────
-            Semantics(
-              label: 'Round ${_currentRound + 1} of ${_rounds.length}',
-              child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: (_currentRound + 1) / _rounds.length,
-                minHeight: 6,
-                backgroundColor: AppColors.primaryLight.withValues(alpha: 0.3),
-                valueColor:
-                    const AlwaysStoppedAnimation(AppColors.primary),
-              ),
-            ),
-            ),
-            const SizedBox(height: 28),
-
-            // ─── Question Image Area ──────────────
-            Expanded(
-              flex: 3,
-              child: Semantics(
-                label: 'Question: What is the English word for ${round.correctCard.wordFilipino}?',
-                child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: round.correctCard.category.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: round.correctCard.category.color.withValues(alpha: 0.3),
-                    width: 2,
-                  ),
-                ),
-                // Scale the prompt down to fit a short (landscape) viewport or
-                // a large font scale rather than overflowing the flex region.
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FlashcardImage(
-                            card: round.correctCard,
-                            size: 84,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            AppLocalizations.of(context)!.whatIsThisWord,
-                            style: AppTypography.titleMedium.copyWith(
-                              color: hc.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            round.correctCard.wordFilipino,
-                            style: AppTypography.headlineMedium.copyWith(
-                              color: round.correctCard.category.darkColor,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              )
-                  .animate(key: ValueKey(_currentRound))
-                  .fadeIn(duration: 300.ms)
-                  .slideX(begin: 0.1, end: 0),
-            ),
-            const SizedBox(height: 24),
-
-            // ─── Answer Choices ───────────────────
-            Expanded(
-              flex: 3,
-              child: GridView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: context.isLargeTablet ? 4 : 2,
-                  mainAxisSpacing: context.gridSpacing * 0.75,
-                  crossAxisSpacing: context.gridSpacing * 0.75,
-                  // Shrink aspect ratio as text scales up so answer cells
-                  // stay tall enough to hold scaled label text at XL font.
-                  childAspectRatio: ((context.isLargeTablet ? 2.2 : 2.5) /
-                          MediaQuery.textScalerOf(context).scale(1.0))
-                      .clamp(1.2, 2.5),
-                ),
-                itemCount: round.choices.length,
-                itemBuilder: (context, index) {
-                  final choice = round.choices[index];
-                  final isSelected = _selectedIndex == index;
-                  final isCorrect = index == round.correctIndex;
-                  final showCorrect = _answered && isCorrect;
-                  final showWrong = _answered && isSelected && !isCorrect;
-
-                  Color bgColor = hc.surface;
-                  Color borderColor = AppColors.primary.withValues(alpha: 0.2);
-                  Color textColor = hc.textPrimary;
-
-                  if (showCorrect) {
-                    bgColor = AppColors.successLight;
-                    borderColor = AppColors.success;
-                    textColor = AppColors.successDark;
-                  } else if (showWrong) {
-                    bgColor = AppColors.errorLight;
-                    borderColor = AppColors.error;
-                    textColor = AppColors.errorDark;
-                  }
-
-                  Widget card = Semantics(
-                    button: true,
-                    label: 'Answer choice: ${choice.wordEnglish}'
-                        '${showCorrect ? ', correct answer' : ''}'
-                        '${showWrong ? ', wrong answer' : ''}',
-                    child: GestureDetector(
-                      onTap: () => _selectAnswer(index),
-                      child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: borderColor, width: 2),
-                        boxShadow: AppColors.softShadow,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Center(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              choice.wordEnglish,
-                              style: AppTypography.titleMedium.copyWith(
-                                color: textColor,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    ),
-                  );
-
-                  // Shake animation for wrong answer
-                  if (showWrong) {
-                    card = card
-                        .animate()
-                        .shakeX(hz: 6, amount: 4, duration: 400.ms);
-                  }
-                  // Scale up for correct
-                  if (showCorrect) {
-                    card = card
-                        .animate()
-                        .scale(
-                          begin: const Offset(1, 1),
-                          end: const Offset(1.05, 1.05),
-                          duration: 300.ms,
-                        )
-                        .then()
-                        .scale(
-                          begin: const Offset(1.05, 1.05),
-                          end: const Offset(1, 1),
-                          duration: 200.ms,
-                        );
-                  }
-
-                  return card
-                      .animate(key: ValueKey('$_currentRound-$index'))
-                      .fadeIn(
-                        duration: 300.ms,
-                        delay: (index * 80).ms,
-                      )
-                      .slideY(begin: 0.1, end: 0);
+            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
+            if (isPaused)
+              PauseOverlay(
+                onResume: resumeGame,
+                onRestart: () {
+                  resumeGame();
+                  _restart();
+                },
+                onQuit: () async {
+                  await savePartialProgress();
+                  if (context.mounted) context.popOrGo('/games');
                 },
               ),
-            ),
           ],
         ),
       ),
-    ),
-        GameBreakButton(
-          onHold: holdForBreak,
-          onResume: resumeFromBreak,
-        ),
-        if (isPaused)
-          PauseOverlay(
-            onResume: resumeGame,
-            onRestart: () {
-              resumeGame();
-              _restart();
-            },
-            onQuit: () async {
-              await savePartialProgress();
-              if (context.mounted) context.go('/games');
-            },
-          ),
-      ]),
     );
   }
 }
