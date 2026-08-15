@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_test/flutter_test.dart';
@@ -158,6 +159,101 @@ void main() {
           .take(5);
       for (final url in sample) {
         expect(await MediaUrlResolver.resolve(url), url);
+      }
+    });
+  });
+
+  // ─── The source manifest ────────────────────────────────────────
+  //
+  // `tools/fsl_video_manifest.json` is the hand-edited source of truth that
+  // `tools/publish_fsl_videos.mjs` reads; the bundled manifest above is its
+  // *output*. Everything above therefore only catches a mistake after the
+  // upload has already happened. These run against the input, so a bad row
+  // fails on `flutter test` — before anything is published.
+  group('Source manifest (tools/fsl_video_manifest.json)', () {
+    late List<Map<String, dynamic>> sourceRows;
+
+    setUpAll(() {
+      final file = File('tools/fsl_video_manifest.json');
+      sourceRows =
+          ((json.decode(file.readAsStringSync()) as Map<String, dynamic>)
+                  ['entries']
+              as List)
+              .cast<Map<String, dynamic>>();
+    });
+
+    test('every row matches a real seed flashcard', () {
+      final seedKeys = {
+        for (final c in SeedData.allFlashcards)
+          '${c.category.label}__${c.wordEnglish.toLowerCase()}',
+      };
+      for (final row in sourceRows) {
+        expect(
+          seedKeys,
+          contains('${row['category']}__${row['slug']}'),
+          reason: 'Source row "${row['category']}__${row['slug']}" matches no '
+              'seed card — publishing it would upload a clip nothing can reach.',
+        );
+      }
+    });
+
+    test('rows use the source shape, not the app shape', () {
+      // The publisher destructures `wordEnglish` / `wordFilipino` / `source`.
+      // A row pasted in the bundled manifest's snake_case shape publishes as
+      // `word_english: undefined` with no file to upload — silently.
+      for (final row in sourceRows) {
+        final where = '${row['category']}__${row['slug']}';
+        for (final field in const [
+          'category',
+          'slug',
+          'wordEnglish',
+          'wordFilipino',
+          'source',
+        ]) {
+          expect(
+            row[field],
+            isNotNull,
+            reason: 'Source row "$where" is missing "$field"',
+          );
+        }
+        expect(
+          row.keys.any(
+            (k) => const [
+              'word_english',
+              'word_filipino',
+              'download_url',
+              'stream_url',
+            ].contains(k),
+          ),
+          isFalse,
+          reason: 'Source row "$where" carries app-manifest fields — this file '
+              'uses wordEnglish / wordFilipino / source',
+        );
+      }
+    });
+
+    test('keys are unique', () {
+      final keys = sourceRows
+          .map((r) => '${r['category']}__${r['slug']}')
+          .toList();
+      expect(keys.toSet().length, keys.length, reason: 'Duplicate source row');
+    });
+
+    test('every published sign still has a source row', () {
+      // The publisher rewrites the bundled manifest from the source rows it
+      // walked, so a sign dropped from the source would be dropped from the
+      // app on the next publish even though its video is still hosted.
+      // Coverage only ever grows.
+      final sourceKeys = {
+        for (final r in sourceRows) '${r['category']}__${r['slug']}',
+      };
+      for (final e in entries) {
+        expect(
+          sourceKeys,
+          contains('${e['category']}__${e['slug']}'),
+          reason: 'Published sign "${e['category']}__${e['slug']}" has no row '
+              'in the source manifest — the next publish would drop it.',
+        );
       }
     });
   });

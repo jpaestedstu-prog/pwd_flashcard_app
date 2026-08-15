@@ -1,159 +1,1237 @@
 {
   "$schema_note": "One entry per source recording. category MUST match a FlashcardCategory.label, slug MUST match Flashcard.wordEnglish.toLowerCase() from seed_data.dart. source is the .MOV filename in assets/fsl videos/; the script reads the matching .mp4 from build/fsl_mp4/. Edit freely — re-running upload_fsl_videos.mjs is idempotent.",
   "entries": [
-    { "category": "Animals",            "slug": "dog",           "wordEnglish": "Dog",          "wordFilipino": "Aso",                  "source": "DOG.MOV" },
-    { "category": "Animals",            "slug": "cat",           "wordEnglish": "Cat",          "wordFilipino": "Pusa",                 "source": "CAT.MOV" },
-    { "category": "Animals",            "slug": "bird",          "wordEnglish": "Bird",         "wordFilipino": "Ibon",                 "source": "BIRD.MOV" },
-    { "category": "Animals",            "slug": "fish",          "wordEnglish": "Fish",         "wordFilipino": "Isda",                 "source": "FISH.MOV" },
-    { "category": "Animals",            "slug": "butterfly",     "wordEnglish": "Butterfly",    "wordFilipino": "Paru-paro",            "source": "BUTTTERFLY.MOV" },
-    { "category": "Animals",            "slug": "horse",         "wordEnglish": "Horse",        "wordFilipino": "Kabayo",               "source": "HORSE.MOV" },
-    { "category": "Animals",            "slug": "chicken",       "wordEnglish": "Chicken",      "wordFilipino": "Manok",                "source": "CHICKEN.MOV" },
-    { "category": "Animals",            "slug": "pig",           "wordEnglish": "Pig",          "wordFilipino": "Baboy",                "source": "PIG.MOV" },
-    { "category": "Animals",            "slug": "cow",           "wordEnglish": "Cow",          "wordFilipino": "Baka",                 "source": "COW.MOV" },
-    { "category": "Animals",            "slug": "frog",          "wordEnglish": "Frog",         "wordFilipino": "Palaka",               "source": "FROG.MOV" },
-    { "category": "Animals",            "slug": "elephant",      "wordEnglish": "Elephant",     "wordFilipino": "Elepante",             "source": "ELEPHANT.MOV" },
-    { "category": "Animals",            "slug": "rabbit",        "wordEnglish": "Rabbit",       "wordFilipino": "Kuneho",               "source": "RABBIT.MOV" },
-
-    { "category": "Colors & Shapes",    "slug": "red",           "wordEnglish": "Red",          "wordFilipino": "Pula",                 "source": "RED.MOV" },
-    { "category": "Colors & Shapes",    "slug": "blue",          "wordEnglish": "Blue",         "wordFilipino": "Asul",                 "source": "BLUE.MOV" },
-    { "category": "Colors & Shapes",    "slug": "yellow",        "wordEnglish": "Yellow",       "wordFilipino": "Dilaw",                "source": "YELLOW.MOV" },
-    { "category": "Colors & Shapes",    "slug": "orange",        "wordEnglish": "Orange",       "wordFilipino": "Kahel",                "source": "ORANGE.MOV" },
-    { "category": "Colors & Shapes",    "slug": "purple",        "wordEnglish": "Purple",       "wordFilipino": "Lila",                 "source": "PURPLE.MOV" },
-    { "category": "Colors & Shapes",    "slug": "circle",        "wordEnglish": "Circle",       "wordFilipino": "Bilog",                "source": "CIRCLE.MOV" },
-    { "category": "Colors & Shapes",    "slug": "square",        "wordEnglish": "Square",       "wordFilipino": "Parisukat",            "source": "SQUARE.MOV" },
-    { "category": "Colors & Shapes",    "slug": "triangle",      "wordEnglish": "Triangle",     "wordFilipino": "Tatsulok",             "source": "TRIANGLE.MOV" },
-    { "category": "Colors & Shapes",    "slug": "star",          "wordEnglish": "Star",         "wordFilipino": "Bituin",               "source": "STAR.MOV" },
-    { "category": "Colors & Shapes",    "slug": "heart",         "wordEnglish": "Heart",        "wordFilipino": "Puso",                 "source": "HEART.MOV" },
-    { "category": "Colors & Shapes",    "slug": "white",         "wordEnglish": "White",        "wordFilipino": "Puti",                 "source": "WHITE.MOV" },
-
-    { "category": "Numbers",            "slug": "one",           "wordEnglish": "One",          "wordFilipino": "Isa",                  "source": "ONE.MOV" },
-    { "category": "Numbers",            "slug": "two",           "wordEnglish": "Two",          "wordFilipino": "Dalawa",               "source": "TWO.MOV" },
-    { "category": "Numbers",            "slug": "three",         "wordEnglish": "Three",        "wordFilipino": "Tatlo",                "source": "THREE.MOV" },
-    { "category": "Numbers",            "slug": "four",          "wordEnglish": "Four",         "wordFilipino": "Apat",                 "source": "FOUR.MOV" },
-    { "category": "Numbers",            "slug": "five",          "wordEnglish": "Five",         "wordFilipino": "Lima",                 "source": "FIVE.MOV" },
-    { "category": "Numbers",            "slug": "six",           "wordEnglish": "Six",          "wordFilipino": "Anim",                 "source": "SIX.MOV" },
-    { "category": "Numbers",            "slug": "seven",         "wordEnglish": "Seven",        "wordFilipino": "Pito",                 "source": "SEVEN.MOV" },
-    { "category": "Numbers",            "slug": "eight",         "wordEnglish": "Eight",        "wordFilipino": "Walo",                 "source": "EIGHT.MOV" },
-    { "category": "Numbers",            "slug": "nine",          "wordEnglish": "Nine",         "wordFilipino": "Siyam",                "source": "NINE.MOV" },
-    { "category": "Numbers",            "slug": "ten",           "wordEnglish": "Ten",          "wordFilipino": "Sampu",                "source": "TEN.MOV" },
-    { "category": "Numbers",            "slug": "twenty",        "wordEnglish": "Twenty",       "wordFilipino": "Dalawampu",            "source": "TWENTY.MOV" },
-    { "category": "Numbers",            "slug": "hundred",       "wordEnglish": "Hundred",      "wordFilipino": "Isang Daan",           "source": "HUNDRED.MOV" },
-
-    { "category": "Body Parts",         "slug": "head",          "wordEnglish": "Head",         "wordFilipino": "Ulo",                  "source": "HEAD.MOV" },
-    { "category": "Body Parts",         "slug": "eyes",          "wordEnglish": "Eyes",         "wordFilipino": "Mata",                 "source": "EYES.MOV" },
-    { "category": "Body Parts",         "slug": "ears",          "wordEnglish": "Ears",         "wordFilipino": "Tenga",                "source": "EARS.MOV" },
-    { "category": "Body Parts",         "slug": "nose",          "wordEnglish": "Nose",         "wordFilipino": "Ilong",                "source": "NOSE.MOV" },
-    { "category": "Body Parts",         "slug": "mouth",         "wordEnglish": "Mouth",        "wordFilipino": "Bibig",                "source": "MOUTH.MOV" },
-    { "category": "Body Parts",         "slug": "hands",         "wordEnglish": "Hands",        "wordFilipino": "Kamay",                "source": "HANDS.MOV" },
-    { "category": "Body Parts",         "slug": "feet",          "wordEnglish": "Feet",         "wordFilipino": "Paa",                  "source": "FEET.MOV" },
-    { "category": "Body Parts",         "slug": "fingers",       "wordEnglish": "Fingers",      "wordFilipino": "Daliri",               "source": "FINGERS.MOV" },
-    { "category": "Body Parts",         "slug": "hair",          "wordEnglish": "Hair",         "wordFilipino": "Buhok",                "source": "HAIR.MOV" },
-    { "category": "Body Parts",         "slug": "teeth",         "wordEnglish": "Teeth",        "wordFilipino": "Ngipin",               "source": "TEETH.MOV" },
-    { "category": "Body Parts",         "slug": "shoulders",     "wordEnglish": "Shoulders",    "wordFilipino": "Balikat",              "source": "SHOULDERS.MOV" },
-    { "category": "Body Parts",         "slug": "knees",         "wordEnglish": "Knees",        "wordFilipino": "Tuhod",                "source": "KNEES.MOV" },
-
-    { "category": "Food & Drinks",      "slug": "rice",          "wordEnglish": "Rice",         "wordFilipino": "Kanin",                "source": "RICE.MOV" },
-    { "category": "Food & Drinks",      "slug": "water",         "wordEnglish": "Water",        "wordFilipino": "Tubig",                "source": "WATER.MOV" },
-    { "category": "Food & Drinks",      "slug": "bread",         "wordEnglish": "Bread",        "wordFilipino": "Tinapay",              "source": "BREAD.MOV" },
-    { "category": "Food & Drinks",      "slug": "milk",          "wordEnglish": "Milk",         "wordFilipino": "Gatas",                "source": "MILK.MOV" },
-    { "category": "Food & Drinks",      "slug": "apple",         "wordEnglish": "Apple",        "wordFilipino": "Mansanas",             "source": "APPLE.MOV" },
-    { "category": "Food & Drinks",      "slug": "banana",        "wordEnglish": "Banana",       "wordFilipino": "Saging",               "source": "BANANA.MOV" },
-    { "category": "Food & Drinks",      "slug": "egg",           "wordEnglish": "Egg",          "wordFilipino": "Itlog",                "source": "EGG.MOV" },
-    { "category": "Food & Drinks",      "slug": "chicken",       "wordEnglish": "Chicken",      "wordFilipino": "Manok",                "source": "CHICKEN- FOOD.MOV" },
-    { "category": "Food & Drinks",      "slug": "juice",         "wordEnglish": "Juice",        "wordFilipino": "Katas",                "source": "JUICE.MOV" },
-    { "category": "Food & Drinks",      "slug": "vegetables",    "wordEnglish": "Vegetables",   "wordFilipino": "Gulay",                "source": "VEGETABLES.MOV" },
-    { "category": "Food & Drinks",      "slug": "soup",          "wordEnglish": "Soup",         "wordFilipino": "Sabaw",                "source": "SOUP.MOV" },
-    { "category": "Food & Drinks",      "slug": "candy",         "wordEnglish": "Candy",        "wordFilipino": "Kendi",                "source": "CANDY.MOV" },
-
-    { "category": "Family & Greetings", "slug": "mother",        "wordEnglish": "Mother",       "wordFilipino": "Nanay",                "source": "MOTHER.MOV" },
-    { "category": "Family & Greetings", "slug": "father",        "wordEnglish": "Father",       "wordFilipino": "Tatay",                "source": "FATHER.MOV" },
-    { "category": "Family & Greetings", "slug": "brother",       "wordEnglish": "Brother",      "wordFilipino": "Kapatid na lalaki",    "source": "BROTHER.MOV" },
-    { "category": "Family & Greetings", "slug": "sister",        "wordEnglish": "Sister",       "wordFilipino": "Kapatid na babae",     "source": "SISTER.MOV" },
-    { "category": "Family & Greetings", "slug": "grandmother",   "wordEnglish": "Grandmother",  "wordFilipino": "Lola",                 "source": "GRANDMOTHER.MOV" },
-    { "category": "Family & Greetings", "slug": "grandfather",   "wordEnglish": "Grandfather",  "wordFilipino": "Lolo",                 "source": "GRANDFATHER.MOV" },
-    { "category": "Family & Greetings", "slug": "hello",         "wordEnglish": "Hello",        "wordFilipino": "Kumusta",              "source": "HELLO.MOV" },
-    { "category": "Family & Greetings", "slug": "thank you",     "wordEnglish": "Thank You",    "wordFilipino": "Salamat",              "source": "THANK YOU.MOV" },
-    { "category": "Family & Greetings", "slug": "please",        "wordEnglish": "Please",       "wordFilipino": "Pakiusap",             "source": "PLEASE.MOV" },
-    { "category": "Family & Greetings", "slug": "sorry",         "wordEnglish": "Sorry",        "wordFilipino": "Pasensya",             "source": "SORRY.MOV" },
-    { "category": "Family & Greetings", "slug": "good morning",  "wordEnglish": "Good Morning", "wordFilipino": "Magandang Umaga",      "source": "GOOD MORNING.MOV" },
-    { "category": "Family & Greetings", "slug": "friend",        "wordEnglish": "Friend",       "wordFilipino": "Kaibigan",             "source": "FRIEND.MOV" },
-
-    { "category": "Clothing",           "slug": "t-shirt",       "wordEnglish": "T-shirt",      "wordFilipino": "T-shirt",              "source": "T - SHIRT.MOV" },
-    { "category": "Clothing",           "slug": "pants",         "wordEnglish": "Pants",        "wordFilipino": "Pantalon",             "source": "PANTS.MOV" },
-    { "category": "Clothing",           "slug": "dress",         "wordEnglish": "Dress",        "wordFilipino": "Bestida",              "source": "DRESS.MOV" },
-    { "category": "Clothing",           "slug": "socks",         "wordEnglish": "Socks",        "wordFilipino": "Medyas",               "source": "SOCKS.MOV" },
-    { "category": "Clothing",           "slug": "shoes",         "wordEnglish": "Shoes",        "wordFilipino": "Sapatos",              "source": "SHOES.MOV" },
-    { "category": "Clothing",           "slug": "cap",           "wordEnglish": "Cap",          "wordFilipino": "Sombrero",             "source": "CAP.MOV" },
-    { "category": "Clothing",           "slug": "jacket",        "wordEnglish": "Jacket",       "wordFilipino": "Dyaket",               "source": "JACKET.MOV" },
-    { "category": "Clothing",           "slug": "uniform",       "wordEnglish": "Uniform",      "wordFilipino": "Uniporme",             "source": "UNIFORM.MOV" },
-    { "category": "Clothing",           "slug": "shorts",        "wordEnglish": "Shorts",       "wordFilipino": "Shorts",               "source": "SHORTS.MOV" },
-    { "category": "Clothing",           "slug": "gloves",        "wordEnglish": "Gloves",       "wordFilipino": "Guwantes",             "source": "GLOVES.MOV" },
-    { "category": "Clothing",           "slug": "glasses",       "wordEnglish": "Glasses",      "wordFilipino": "Salamin sa mata",      "source": "GLASSES.MOV" },
-    { "category": "Clothing",           "slug": "backpack",      "wordEnglish": "Backpack",     "wordFilipino": "Bag",                  "source": "BACKPACK.MOV" },
-
-    { "category": "Weather",            "slug": "sunny",         "wordEnglish": "Sunny",        "wordFilipino": "Maaraw",               "source": "SUNNY.MOV" },
-    { "category": "Weather",            "slug": "rainy",         "wordEnglish": "Rainy",        "wordFilipino": "Maulan",               "source": "RAINY.MOV" },
-    { "category": "Weather",            "slug": "cloudy",        "wordEnglish": "Cloudy",       "wordFilipino": "Maulap",               "source": "CLOUDY.MOV" },
-    { "category": "Weather",            "slug": "rainbow",       "wordEnglish": "Rainbow",      "wordFilipino": "Bahaghari",            "source": "RAINBOW.MOV" },
-    { "category": "Weather",            "slug": "storm",         "wordEnglish": "Storm",        "wordFilipino": "Bagyo",                "source": "STORM.MOV" },
-    { "category": "Weather",            "slug": "windy",         "wordEnglish": "Windy",        "wordFilipino": "Mahangin",             "source": "WINDY.MOV" },
-    { "category": "Weather",            "slug": "hot",           "wordEnglish": "Hot",          "wordFilipino": "Mainit",               "source": "HOT.MOV" },
-    { "category": "Weather",            "slug": "cold",          "wordEnglish": "Cold",         "wordFilipino": "Malamig",              "source": "COLD.MOV" },
-    { "category": "Weather",            "slug": "flood",         "wordEnglish": "Flood",        "wordFilipino": "Baha",                 "source": "FLOOD.MOV" },
-    { "category": "Weather",            "slug": "lightning",     "wordEnglish": "Lightning",    "wordFilipino": "Kidlat",               "source": "LIGHTNING.MOV" },
-    { "category": "Weather",            "slug": "partly cloudy", "wordEnglish": "Partly Cloudy","wordFilipino": "Bahagyang Maulap",     "source": "PARTLY CLOUDY.MOV" },
-    { "category": "Weather",            "slug": "night",         "wordEnglish": "Night",        "wordFilipino": "Gabi",                 "source": "NIGHT.MOV" },
-
-    { "category": "Classroom",          "slug": "book",          "wordEnglish": "Book",         "wordFilipino": "Aklat",                "source": "BOOK.MOV" },
-    { "category": "Classroom",          "slug": "pencil",        "wordEnglish": "Pencil",       "wordFilipino": "Lapis",                "source": "PENCIL.MOV" },
-    { "category": "Classroom",          "slug": "notebook",      "wordEnglish": "Notebook",     "wordFilipino": "Kuwaderno",            "source": "NOTEBOOK.MOV" },
-    { "category": "Classroom",          "slug": "crayon",        "wordEnglish": "Crayon",       "wordFilipino": "Krayola",              "source": "CRAYON.MOV" },
-    { "category": "Classroom",          "slug": "ruler",         "wordEnglish": "Ruler",        "wordFilipino": "Ruler",                "source": "RULER.MOV" },
-    { "category": "Classroom",          "slug": "scissors",      "wordEnglish": "Scissors",     "wordFilipino": "Gunting",              "source": "SCISSORS.MOV" },
-    { "category": "Classroom",          "slug": "pen",           "wordEnglish": "Pen",          "wordFilipino": "Bolpen",               "source": "PEN.MOV" },
-    { "category": "Classroom",          "slug": "paint",         "wordEnglish": "Paint",        "wordFilipino": "Pintura",              "source": "PAINT.MOV" },
-    { "category": "Classroom",          "slug": "eraser",        "wordEnglish": "Eraser",       "wordFilipino": "Pambura",              "source": "ERASER.MOV" },
-    { "category": "Classroom",          "slug": "chair",         "wordEnglish": "Chair",        "wordFilipino": "Upuan",                "source": "CHAIR.MOV" },
-    { "category": "Classroom",          "slug": "school",        "wordEnglish": "School",       "wordFilipino": "Paaralan",             "source": "SCHOOL.MOV" },
-    { "category": "Classroom",          "slug": "teacher",       "wordEnglish": "Teacher",      "wordFilipino": "Guro",                 "source": "TEACHER.MOV" },
-
-    { "category": "Transportation",     "slug": "car",           "wordEnglish": "Car",          "wordFilipino": "Kotse",                "source": "CAR.MOV" },
-    { "category": "Transportation",     "slug": "bus",           "wordEnglish": "Bus",          "wordFilipino": "Bus",                  "source": "BUS.MOV" },
-    { "category": "Transportation",     "slug": "bicycle",       "wordEnglish": "Bicycle",     "wordFilipino": "Bisikleta",             "source": "BICYCLE.MOV" },
-    { "category": "Transportation",     "slug": "airplane",      "wordEnglish": "Airplane",    "wordFilipino": "Eroplano",              "source": "AIRPLANE.MOV" },
-    { "category": "Transportation",     "slug": "ship",          "wordEnglish": "Ship",         "wordFilipino": "Barko",                "source": "SHIP.MOV" },
-    { "category": "Transportation",     "slug": "train",         "wordEnglish": "Train",        "wordFilipino": "Tren",                 "source": "TRAIN.MOV" },
-    { "category": "Transportation",     "slug": "motorcycle",    "wordEnglish": "Motorcycle",   "wordFilipino": "Motorsiklo",           "source": "MOTORCYCLE.MOV" },
-    { "category": "Transportation",     "slug": "helicopter",    "wordEnglish": "Helicopter",   "wordFilipino": "Helikopter",           "source": "HELICOPTER.MOV" },
-    { "category": "Transportation",     "slug": "taxi",          "wordEnglish": "Taxi",         "wordFilipino": "Taksi",                "source": "TAXI.MOV" },
-    { "category": "Transportation",     "slug": "boat",          "wordEnglish": "Boat",         "wordFilipino": "Bangka",               "source": "BOAT.MOV" },
-    { "category": "Transportation",     "slug": "walk",          "wordEnglish": "Walk",         "wordFilipino": "Lakad",                "source": "WALK.MOV" },
-    { "category": "Transportation",     "slug": "road",          "wordEnglish": "Road",         "wordFilipino": "Daan",                 "source": "ROAD.MOV" },
-
-    { "category": "Emotions",           "slug": "happy",         "wordEnglish": "Happy",        "wordFilipino": "Masaya",               "source": "HAPPY.MOV" },
-    { "category": "Emotions",           "slug": "sad",           "wordEnglish": "Sad",          "wordFilipino": "Malungkot",            "source": "SAD.MOV" },
-    { "category": "Emotions",           "slug": "angry",         "wordEnglish": "Angry",        "wordFilipino": "Galit",                "source": "ANGRY.MOV" },
-    { "category": "Emotions",           "slug": "scared",        "wordEnglish": "Scared",       "wordFilipino": "Takot",                "source": "SCARED.MOV" },
-    { "category": "Emotions",           "slug": "surprised",     "wordEnglish": "Surprised",    "wordFilipino": "Nagulat",              "source": "SUPRISED.MOV" },
-    { "category": "Emotions",           "slug": "loved",         "wordEnglish": "Loved",        "wordFilipino": "Minamahal",            "source": "LOVED.MOV" },
-    { "category": "Emotions",           "slug": "sleepy",        "wordEnglish": "Sleepy",       "wordFilipino": "Inaantok",             "source": "SLEEPY.MOV" },
-    { "category": "Emotions",           "slug": "sick",          "wordEnglish": "Sick",         "wordFilipino": "May sakit",            "source": "SICK.MOV" },
-    { "category": "Emotions",           "slug": "proud",         "wordEnglish": "Proud",        "wordFilipino": "Proud",                "source": "PROUD.MOV" },
-    { "category": "Emotions",           "slug": "confused",      "wordEnglish": "Confused",     "wordFilipino": "Naguguluhan",          "source": "CONFUSED.MOV" },
-    { "category": "Emotions",           "slug": "excited",       "wordEnglish": "Excited",      "wordFilipino": "Nasasabik",            "source": "EXCITED.MOV" },
-    { "category": "Emotions",           "slug": "calm",          "wordEnglish": "Calm",         "wordFilipino": "Kalmado",              "source": "CALM.MOV" },
-
-    { "category": "Days & Time",        "slug": "monday",        "wordEnglish": "Monday",       "wordFilipino": "Lunes",                "source": "MONDAY.MOV" },
-    { "category": "Days & Time",        "slug": "tuesday",       "wordEnglish": "Tuesday",      "wordFilipino": "Martes",               "source": "TUESDAY.MOV" },
-    { "category": "Days & Time",        "slug": "wednesday",     "wordEnglish": "Wednesday",    "wordFilipino": "Miyerkules",           "source": "WEDNESDAY.MOV" },
-    { "category": "Days & Time",        "slug": "thursday",      "wordEnglish": "Thursday",     "wordFilipino": "Huwebes",              "source": "THURSDAY.MOV" },
-    { "category": "Days & Time",        "slug": "friday",        "wordEnglish": "Friday",       "wordFilipino": "Biyernes",             "source": "FRIDAY.MOV" },
-    { "category": "Days & Time",        "slug": "saturday",      "wordEnglish": "Saturday",     "wordFilipino": "Sabado",               "source": "SATURDAY.MOV" },
-    { "category": "Days & Time",        "slug": "sunday",        "wordEnglish": "Sunday",       "wordFilipino": "Linggo",               "source": "SUNDAY.MOV" },
-    { "category": "Days & Time",        "slug": "morning",       "wordEnglish": "Morning",      "wordFilipino": "Umaga",                "source": "MORNING.MOV" },
-    { "category": "Days & Time",        "slug": "afternoon",     "wordEnglish": "Afternoon",    "wordFilipino": "Hapon",                "source": "AFTERNOON.MOV" },
-    { "category": "Days & Time",        "slug": "evening",       "wordEnglish": "Evening",      "wordFilipino": "Gabi",                 "source": "EVENING.MOV" },
-    { "category": "Days & Time",        "slug": "clock",         "wordEnglish": "Clock",        "wordFilipino": "Orasan",               "source": "CLOCK.MOV" },
-    { "category": "Days & Time",        "slug": "today",         "wordEnglish": "Today",        "wordFilipino": "Ngayon",               "source": "TODAY.MOV" }
+    {
+      "category": "Animals",
+      "slug": "dog",
+      "wordEnglish": "Dog",
+      "wordFilipino": "Aso",
+      "source": "DOG.MOV"
+    },
+    {
+      "category": "Animals",
+      "slug": "cat",
+      "wordEnglish": "Cat",
+      "wordFilipino": "Pusa",
+      "source": "CAT.MOV"
+    },
+    {
+      "category": "Animals",
+      "slug": "bird",
+      "wordEnglish": "Bird",
+      "wordFilipino": "Ibon",
+      "source": "BIRD.MOV"
+    },
+    {
+      "category": "Animals",
+      "slug": "fish",
+      "wordEnglish": "Fish",
+      "wordFilipino": "Isda",
+      "source": "FISH.MOV"
+    },
+    {
+      "category": "Animals",
+      "slug": "butterfly",
+      "wordEnglish": "Butterfly",
+      "wordFilipino": "Paru-paro",
+      "source": "BUTTTERFLY.MOV"
+    },
+    {
+      "category": "Animals",
+      "slug": "horse",
+      "wordEnglish": "Horse",
+      "wordFilipino": "Kabayo",
+      "source": "HORSE.MOV"
+    },
+    {
+      "category": "Animals",
+      "slug": "chicken",
+      "wordEnglish": "Chicken",
+      "wordFilipino": "Manok",
+      "source": "CHICKEN.MOV"
+    },
+    {
+      "category": "Animals",
+      "slug": "pig",
+      "wordEnglish": "Pig",
+      "wordFilipino": "Baboy",
+      "source": "PIG.MOV"
+    },
+    {
+      "category": "Animals",
+      "slug": "cow",
+      "wordEnglish": "Cow",
+      "wordFilipino": "Baka",
+      "source": "COW.MOV"
+    },
+    {
+      "category": "Animals",
+      "slug": "frog",
+      "wordEnglish": "Frog",
+      "wordFilipino": "Palaka",
+      "source": "FROG.MOV"
+    },
+    {
+      "category": "Animals",
+      "slug": "elephant",
+      "wordEnglish": "Elephant",
+      "wordFilipino": "Elepante",
+      "source": "ELEPHANT.MOV"
+    },
+    {
+      "category": "Animals",
+      "slug": "rabbit",
+      "wordEnglish": "Rabbit",
+      "wordFilipino": "Kuneho",
+      "source": "RABBIT.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "red",
+      "wordEnglish": "Red",
+      "wordFilipino": "Pula",
+      "source": "RED.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "blue",
+      "wordEnglish": "Blue",
+      "wordFilipino": "Asul",
+      "source": "BLUE.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "yellow",
+      "wordEnglish": "Yellow",
+      "wordFilipino": "Dilaw",
+      "source": "YELLOW.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "orange",
+      "wordEnglish": "Orange",
+      "wordFilipino": "Kahel",
+      "source": "ORANGE.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "purple",
+      "wordEnglish": "Purple",
+      "wordFilipino": "Lila",
+      "source": "PURPLE.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "circle",
+      "wordEnglish": "Circle",
+      "wordFilipino": "Bilog",
+      "source": "CIRCLE.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "square",
+      "wordEnglish": "Square",
+      "wordFilipino": "Parisukat",
+      "source": "SQUARE.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "triangle",
+      "wordEnglish": "Triangle",
+      "wordFilipino": "Tatsulok",
+      "source": "TRIANGLE.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "star",
+      "wordEnglish": "Star",
+      "wordFilipino": "Bituin",
+      "source": "STAR.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "heart",
+      "wordEnglish": "Heart",
+      "wordFilipino": "Puso",
+      "source": "HEART.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "white",
+      "wordEnglish": "White",
+      "wordFilipino": "Puti",
+      "source": "WHITE.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "one",
+      "wordEnglish": "One",
+      "wordFilipino": "Isa",
+      "source": "ONE.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "two",
+      "wordEnglish": "Two",
+      "wordFilipino": "Dalawa",
+      "source": "TWO.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "three",
+      "wordEnglish": "Three",
+      "wordFilipino": "Tatlo",
+      "source": "THREE.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "four",
+      "wordEnglish": "Four",
+      "wordFilipino": "Apat",
+      "source": "FOUR.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "five",
+      "wordEnglish": "Five",
+      "wordFilipino": "Lima",
+      "source": "FIVE.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "six",
+      "wordEnglish": "Six",
+      "wordFilipino": "Anim",
+      "source": "SIX.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "seven",
+      "wordEnglish": "Seven",
+      "wordFilipino": "Pito",
+      "source": "SEVEN.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "eight",
+      "wordEnglish": "Eight",
+      "wordFilipino": "Walo",
+      "source": "EIGHT.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "nine",
+      "wordEnglish": "Nine",
+      "wordFilipino": "Siyam",
+      "source": "NINE.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "ten",
+      "wordEnglish": "Ten",
+      "wordFilipino": "Sampu",
+      "source": "TEN.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "twenty",
+      "wordEnglish": "Twenty",
+      "wordFilipino": "Dalawampu",
+      "source": "TWENTY.MOV"
+    },
+    {
+      "category": "Numbers",
+      "slug": "hundred",
+      "wordEnglish": "Hundred",
+      "wordFilipino": "Isang Daan",
+      "source": "HUNDRED.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "head",
+      "wordEnglish": "Head",
+      "wordFilipino": "Ulo",
+      "source": "HEAD.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "eyes",
+      "wordEnglish": "Eyes",
+      "wordFilipino": "Mata",
+      "source": "EYES.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "ears",
+      "wordEnglish": "Ears",
+      "wordFilipino": "Tenga",
+      "source": "EARS.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "nose",
+      "wordEnglish": "Nose",
+      "wordFilipino": "Ilong",
+      "source": "NOSE.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "mouth",
+      "wordEnglish": "Mouth",
+      "wordFilipino": "Bibig",
+      "source": "MOUTH.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "hands",
+      "wordEnglish": "Hands",
+      "wordFilipino": "Kamay",
+      "source": "HANDS.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "feet",
+      "wordEnglish": "Feet",
+      "wordFilipino": "Paa",
+      "source": "FEET.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "fingers",
+      "wordEnglish": "Fingers",
+      "wordFilipino": "Daliri",
+      "source": "FINGERS.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "hair",
+      "wordEnglish": "Hair",
+      "wordFilipino": "Buhok",
+      "source": "HAIR.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "teeth",
+      "wordEnglish": "Teeth",
+      "wordFilipino": "Ngipin",
+      "source": "TEETH.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "shoulders",
+      "wordEnglish": "Shoulders",
+      "wordFilipino": "Balikat",
+      "source": "SHOULDERS.MOV"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "knees",
+      "wordEnglish": "Knees",
+      "wordFilipino": "Tuhod",
+      "source": "KNEES.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "rice",
+      "wordEnglish": "Rice",
+      "wordFilipino": "Kanin",
+      "source": "RICE.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "water",
+      "wordEnglish": "Water",
+      "wordFilipino": "Tubig",
+      "source": "WATER.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "bread",
+      "wordEnglish": "Bread",
+      "wordFilipino": "Tinapay",
+      "source": "BREAD.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "milk",
+      "wordEnglish": "Milk",
+      "wordFilipino": "Gatas",
+      "source": "MILK.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "apple",
+      "wordEnglish": "Apple",
+      "wordFilipino": "Mansanas",
+      "source": "APPLE.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "banana",
+      "wordEnglish": "Banana",
+      "wordFilipino": "Saging",
+      "source": "BANANA.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "egg",
+      "wordEnglish": "Egg",
+      "wordFilipino": "Itlog",
+      "source": "EGG.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "chicken",
+      "wordEnglish": "Chicken",
+      "wordFilipino": "Manok",
+      "source": "CHICKEN- FOOD.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "juice",
+      "wordEnglish": "Juice",
+      "wordFilipino": "Katas",
+      "source": "JUICE.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "vegetables",
+      "wordEnglish": "Vegetables",
+      "wordFilipino": "Gulay",
+      "source": "VEGETABLES.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "soup",
+      "wordEnglish": "Soup",
+      "wordFilipino": "Sabaw",
+      "source": "SOUP.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "candy",
+      "wordEnglish": "Candy",
+      "wordFilipino": "Kendi",
+      "source": "CANDY.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "mother",
+      "wordEnglish": "Mother",
+      "wordFilipino": "Nanay",
+      "source": "MOTHER.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "father",
+      "wordEnglish": "Father",
+      "wordFilipino": "Tatay",
+      "source": "FATHER.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "brother",
+      "wordEnglish": "Brother",
+      "wordFilipino": "Kapatid na lalaki",
+      "source": "BROTHER.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "sister",
+      "wordEnglish": "Sister",
+      "wordFilipino": "Kapatid na babae",
+      "source": "SISTER.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "grandmother",
+      "wordEnglish": "Grandmother",
+      "wordFilipino": "Lola",
+      "source": "GRANDMOTHER.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "grandfather",
+      "wordEnglish": "Grandfather",
+      "wordFilipino": "Lolo",
+      "source": "GRANDFATHER.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "hello",
+      "wordEnglish": "Hello",
+      "wordFilipino": "Kumusta",
+      "source": "HELLO.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "thank you",
+      "wordEnglish": "Thank You",
+      "wordFilipino": "Salamat",
+      "source": "THANK YOU.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "please",
+      "wordEnglish": "Please",
+      "wordFilipino": "Pakiusap",
+      "source": "PLEASE.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "sorry",
+      "wordEnglish": "Sorry",
+      "wordFilipino": "Pasensya",
+      "source": "SORRY.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "good morning",
+      "wordEnglish": "Good Morning",
+      "wordFilipino": "Magandang Umaga",
+      "source": "GOOD MORNING.MOV"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "friend",
+      "wordEnglish": "Friend",
+      "wordFilipino": "Kaibigan",
+      "source": "FRIEND.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "t-shirt",
+      "wordEnglish": "T-shirt",
+      "wordFilipino": "T-shirt",
+      "source": "T - SHIRT.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "pants",
+      "wordEnglish": "Pants",
+      "wordFilipino": "Pantalon",
+      "source": "PANTS.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "dress",
+      "wordEnglish": "Dress",
+      "wordFilipino": "Bestida",
+      "source": "DRESS.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "socks",
+      "wordEnglish": "Socks",
+      "wordFilipino": "Medyas",
+      "source": "SOCKS.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "shoes",
+      "wordEnglish": "Shoes",
+      "wordFilipino": "Sapatos",
+      "source": "SHOES.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "cap",
+      "wordEnglish": "Cap",
+      "wordFilipino": "Sombrero",
+      "source": "CAP.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "jacket",
+      "wordEnglish": "Jacket",
+      "wordFilipino": "Dyaket",
+      "source": "JACKET.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "uniform",
+      "wordEnglish": "Uniform",
+      "wordFilipino": "Uniporme",
+      "source": "UNIFORM.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "shorts",
+      "wordEnglish": "Shorts",
+      "wordFilipino": "Shorts",
+      "source": "SHORTS.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "gloves",
+      "wordEnglish": "Gloves",
+      "wordFilipino": "Guwantes",
+      "source": "GLOVES.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "glasses",
+      "wordEnglish": "Glasses",
+      "wordFilipino": "Salamin sa mata",
+      "source": "GLASSES.MOV"
+    },
+    {
+      "category": "Clothing",
+      "slug": "backpack",
+      "wordEnglish": "Backpack",
+      "wordFilipino": "Bag",
+      "source": "BACKPACK.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "sunny",
+      "wordEnglish": "Sunny",
+      "wordFilipino": "Maaraw",
+      "source": "SUNNY.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "rainy",
+      "wordEnglish": "Rainy",
+      "wordFilipino": "Maulan",
+      "source": "RAINY.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "cloudy",
+      "wordEnglish": "Cloudy",
+      "wordFilipino": "Maulap",
+      "source": "CLOUDY.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "rainbow",
+      "wordEnglish": "Rainbow",
+      "wordFilipino": "Bahaghari",
+      "source": "RAINBOW.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "storm",
+      "wordEnglish": "Storm",
+      "wordFilipino": "Bagyo",
+      "source": "STORM.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "windy",
+      "wordEnglish": "Windy",
+      "wordFilipino": "Mahangin",
+      "source": "WINDY.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "hot",
+      "wordEnglish": "Hot",
+      "wordFilipino": "Mainit",
+      "source": "HOT.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "cold",
+      "wordEnglish": "Cold",
+      "wordFilipino": "Malamig",
+      "source": "COLD.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "flood",
+      "wordEnglish": "Flood",
+      "wordFilipino": "Baha",
+      "source": "FLOOD.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "lightning",
+      "wordEnglish": "Lightning",
+      "wordFilipino": "Kidlat",
+      "source": "LIGHTNING.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "partly cloudy",
+      "wordEnglish": "Partly Cloudy",
+      "wordFilipino": "Bahagyang Maulap",
+      "source": "PARTLY CLOUDY.MOV"
+    },
+    {
+      "category": "Weather",
+      "slug": "night",
+      "wordEnglish": "Night",
+      "wordFilipino": "Gabi",
+      "source": "NIGHT.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "book",
+      "wordEnglish": "Book",
+      "wordFilipino": "Aklat",
+      "source": "BOOK.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "pencil",
+      "wordEnglish": "Pencil",
+      "wordFilipino": "Lapis",
+      "source": "PENCIL.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "notebook",
+      "wordEnglish": "Notebook",
+      "wordFilipino": "Kuwaderno",
+      "source": "NOTEBOOK.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "crayon",
+      "wordEnglish": "Crayon",
+      "wordFilipino": "Krayola",
+      "source": "CRAYON.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "ruler",
+      "wordEnglish": "Ruler",
+      "wordFilipino": "Ruler",
+      "source": "RULER.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "scissors",
+      "wordEnglish": "Scissors",
+      "wordFilipino": "Gunting",
+      "source": "SCISSORS.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "pen",
+      "wordEnglish": "Pen",
+      "wordFilipino": "Bolpen",
+      "source": "PEN.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "paint",
+      "wordEnglish": "Paint",
+      "wordFilipino": "Pintura",
+      "source": "PAINT.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "eraser",
+      "wordEnglish": "Eraser",
+      "wordFilipino": "Pambura",
+      "source": "ERASER.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "chair",
+      "wordEnglish": "Chair",
+      "wordFilipino": "Upuan",
+      "source": "CHAIR.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "school",
+      "wordEnglish": "School",
+      "wordFilipino": "Paaralan",
+      "source": "SCHOOL.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "teacher",
+      "wordEnglish": "Teacher",
+      "wordFilipino": "Guro",
+      "source": "TEACHER.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "car",
+      "wordEnglish": "Car",
+      "wordFilipino": "Kotse",
+      "source": "CAR.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "bus",
+      "wordEnglish": "Bus",
+      "wordFilipino": "Bus",
+      "source": "BUS.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "bicycle",
+      "wordEnglish": "Bicycle",
+      "wordFilipino": "Bisikleta",
+      "source": "BICYCLE.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "airplane",
+      "wordEnglish": "Airplane",
+      "wordFilipino": "Eroplano",
+      "source": "AIRPLANE.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "ship",
+      "wordEnglish": "Ship",
+      "wordFilipino": "Barko",
+      "source": "SHIP.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "train",
+      "wordEnglish": "Train",
+      "wordFilipino": "Tren",
+      "source": "TRAIN.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "motorcycle",
+      "wordEnglish": "Motorcycle",
+      "wordFilipino": "Motorsiklo",
+      "source": "MOTORCYCLE.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "helicopter",
+      "wordEnglish": "Helicopter",
+      "wordFilipino": "Helikopter",
+      "source": "HELICOPTER.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "taxi",
+      "wordEnglish": "Taxi",
+      "wordFilipino": "Taksi",
+      "source": "TAXI.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "boat",
+      "wordEnglish": "Boat",
+      "wordFilipino": "Bangka",
+      "source": "BOAT.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "walk",
+      "wordEnglish": "Walk",
+      "wordFilipino": "Lakad",
+      "source": "WALK.MOV"
+    },
+    {
+      "category": "Transportation",
+      "slug": "road",
+      "wordEnglish": "Road",
+      "wordFilipino": "Daan",
+      "source": "ROAD.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "happy",
+      "wordEnglish": "Happy",
+      "wordFilipino": "Masaya",
+      "source": "HAPPY.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "sad",
+      "wordEnglish": "Sad",
+      "wordFilipino": "Malungkot",
+      "source": "SAD.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "angry",
+      "wordEnglish": "Angry",
+      "wordFilipino": "Galit",
+      "source": "ANGRY.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "scared",
+      "wordEnglish": "Scared",
+      "wordFilipino": "Takot",
+      "source": "SCARED.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "surprised",
+      "wordEnglish": "Surprised",
+      "wordFilipino": "Nagulat",
+      "source": "SUPRISED.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "loved",
+      "wordEnglish": "Loved",
+      "wordFilipino": "Minamahal",
+      "source": "LOVED.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "sleepy",
+      "wordEnglish": "Sleepy",
+      "wordFilipino": "Inaantok",
+      "source": "SLEEPY.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "sick",
+      "wordEnglish": "Sick",
+      "wordFilipino": "May sakit",
+      "source": "SICK.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "proud",
+      "wordEnglish": "Proud",
+      "wordFilipino": "Proud",
+      "source": "PROUD.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "confused",
+      "wordEnglish": "Confused",
+      "wordFilipino": "Naguguluhan",
+      "source": "CONFUSED.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "excited",
+      "wordEnglish": "Excited",
+      "wordFilipino": "Nasasabik",
+      "source": "EXCITED.MOV"
+    },
+    {
+      "category": "Emotions",
+      "slug": "calm",
+      "wordEnglish": "Calm",
+      "wordFilipino": "Kalmado",
+      "source": "CALM.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "monday",
+      "wordEnglish": "Monday",
+      "wordFilipino": "Lunes",
+      "source": "MONDAY.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "tuesday",
+      "wordEnglish": "Tuesday",
+      "wordFilipino": "Martes",
+      "source": "TUESDAY.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "wednesday",
+      "wordEnglish": "Wednesday",
+      "wordFilipino": "Miyerkules",
+      "source": "WEDNESDAY.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "thursday",
+      "wordEnglish": "Thursday",
+      "wordFilipino": "Huwebes",
+      "source": "THURSDAY.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "friday",
+      "wordEnglish": "Friday",
+      "wordFilipino": "Biyernes",
+      "source": "FRIDAY.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "saturday",
+      "wordEnglish": "Saturday",
+      "wordFilipino": "Sabado",
+      "source": "SATURDAY.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "sunday",
+      "wordEnglish": "Sunday",
+      "wordFilipino": "Linggo",
+      "source": "SUNDAY.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "morning",
+      "wordEnglish": "Morning",
+      "wordFilipino": "Umaga",
+      "source": "MORNING.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "afternoon",
+      "wordEnglish": "Afternoon",
+      "wordFilipino": "Hapon",
+      "source": "AFTERNOON.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "evening",
+      "wordEnglish": "Evening",
+      "wordFilipino": "Gabi",
+      "source": "EVENING.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "clock",
+      "wordEnglish": "Clock",
+      "wordFilipino": "Orasan",
+      "source": "CLOCK.MOV"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "today",
+      "wordEnglish": "Today",
+      "wordFilipino": "Ngayon",
+      "source": "TODAY.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "green",
+      "wordEnglish": "Green",
+      "wordFilipino": "Berde",
+      "source": "GREEN.MOV"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "flower",
+      "wordEnglish": "Flower",
+      "wordFilipino": "Bulaklak",
+      "source": "FLOWER.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "bottle",
+      "wordEnglish": "Bottle",
+      "wordFilipino": "Bote",
+      "source": "BOTTLE.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "cup",
+      "wordEnglish": "Cup",
+      "wordFilipino": "Tasa",
+      "source": "CUP.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "spoon",
+      "wordEnglish": "Spoon",
+      "wordFilipino": "Kutsara",
+      "source": "SPOON.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "fork",
+      "wordEnglish": "Fork",
+      "wordFilipino": "Tinidor",
+      "source": "FORK.MOV"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "plate",
+      "wordEnglish": "Plate",
+      "wordFilipino": "Plato",
+      "source": "PLATE.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "table",
+      "wordEnglish": "Table",
+      "wordFilipino": "Mesa",
+      "source": "TABLE.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "paper",
+      "wordEnglish": "Paper",
+      "wordFilipino": "Papel",
+      "source": "PAPER.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "ball",
+      "wordEnglish": "Ball",
+      "wordFilipino": "Bola",
+      "source": "BALL.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "door",
+      "wordEnglish": "Door",
+      "wordFilipino": "Pinto",
+      "source": "DOOR.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "window",
+      "wordEnglish": "Window",
+      "wordFilipino": "Bintana",
+      "source": "WINDOW.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "television",
+      "wordEnglish": "Television",
+      "wordFilipino": "Telebisyon",
+      "source": "TELEVISION.MOV"
+    },
+    {
+      "category": "Classroom",
+      "slug": "phone",
+      "wordEnglish": "Phone",
+      "wordFilipino": "Telepono",
+      "source": "PHONE.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "run",
+      "wordEnglish": "Run",
+      "wordFilipino": "Tumakbo",
+      "source": "RUN.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "jump",
+      "wordEnglish": "Jump",
+      "wordFilipino": "Tumalon",
+      "source": "JUMP.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "eat",
+      "wordEnglish": "Eat",
+      "wordFilipino": "Kumain",
+      "source": "EAT.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "drink",
+      "wordEnglish": "Drink",
+      "wordFilipino": "Uminom",
+      "source": "DRINK.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "sleep",
+      "wordEnglish": "Sleep",
+      "wordFilipino": "Matulog",
+      "source": "SLEEP.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "read",
+      "wordEnglish": "Read",
+      "wordFilipino": "Magbasa",
+      "source": "READ.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "write",
+      "wordEnglish": "Write",
+      "wordFilipino": "Magsulat",
+      "source": "WRITE.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "sing",
+      "wordEnglish": "Sing",
+      "wordFilipino": "Kumanta",
+      "source": "SING.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "dance",
+      "wordEnglish": "Dance",
+      "wordFilipino": "Sumayaw",
+      "source": "DANCE.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "clap",
+      "wordEnglish": "Clap",
+      "wordFilipino": "Pumalakpak",
+      "source": "CLAP.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "sit",
+      "wordEnglish": "Sit",
+      "wordFilipino": "Umupo",
+      "source": "SIT.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "stand",
+      "wordEnglish": "Stand",
+      "wordFilipino": "Tumayo",
+      "source": "STAND.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "open",
+      "wordEnglish": "Open",
+      "wordFilipino": "Magbukas",
+      "source": "OPEN.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "close",
+      "wordEnglish": "Close",
+      "wordFilipino": "Magsara",
+      "source": "CLOSE.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "wave",
+      "wordEnglish": "Wave",
+      "wordFilipino": "Kumaway",
+      "source": "WAVE.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "cry",
+      "wordEnglish": "Cry",
+      "wordFilipino": "Umiyak",
+      "source": "CRY.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "laugh",
+      "wordEnglish": "Laugh",
+      "wordFilipino": "Tumawa",
+      "source": "LAUGH.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "swim",
+      "wordEnglish": "Swim",
+      "wordFilipino": "Lumangoy",
+      "source": "SWIM.MOV"
+    },
+    {
+      "category": "Actions",
+      "slug": "play",
+      "wordEnglish": "Play",
+      "wordFilipino": "Maglaro",
+      "source": "PLAY.MOV"
+    }
   ]
 }

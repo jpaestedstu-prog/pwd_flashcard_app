@@ -96,8 +96,8 @@ Useful flags:
 - `node tools/publish_fsl_videos.mjs --only=dog` — push just one entry
   (re-runs are safe; `--clobber` overwrites existing assets).
 
-When you record `GREEN` later, drop it in `build/fsl_mp4/`, add a row to
-`tools/fsl_video_manifest.json`, and re-run `node tools/publish_fsl_videos.mjs`.
+See **Recording the remaining clips** below for the incremental workflow —
+you do not have to record everything before publishing again.
 
 ## Step 4 — Verify in the app
 
@@ -154,3 +154,54 @@ mode and replay them. They should still work (served from
   Release asset names disambiguate (`animals__chicken.mp4` vs
   `food-and-drinks__chicken.mp4`), and the app's catalog keys on
   `(category, slug)`.
+
+
+## Recording the remaining clips
+
+34 seed words still have no sign. `node tools/fsl_coverage_report.mjs` lists
+them; `docs/fsl_recording_checklist.csv` is the same list as a shooting sheet.
+
+**All 34 rows are already staged** in `tools/fsl_video_manifest.json`
+(`node tools/fsl_coverage_report.mjs --apply` did it, and is idempotent if you
+add seed words later). A staged row whose `.mp4` is not on disk is skipped, so
+you can record a few at a time and publish after each session.
+
+Per session:
+
+1. **Record**, then transcode into `build/fsl_mp4/` using the Step 2 recipe.
+   Name each file after the row's `source` field with `.MOV` swapped for
+   `.mp4` — `GREEN.mp4`, `BOTTLE.mp4`, `RUN.mp4`. **Not** the release asset
+   name (`colors-shapes__green.mp4`); the publisher derives that itself, and a
+   file named the wrong way fails as a silent `SKIP`.
+2. **Check** the source manifest: `node tools/fsl_coverage_report.mjs --check`.
+   Catches a typo'd slug or an app-shaped row *before* anything uploads.
+3. **Publish**: `node tools/publish_fsl_videos.mjs`. Rows with no file yet print
+   `SKIP`; signs already live print `KEEP` and are carried into the regenerated
+   manifest unchanged.
+4. **Verify**: `flutter test test/fsl_video_manifest_test.dart`, then commit
+   `assets/data/fsl_video_manifest.json` and `tools/fsl_video_manifest.json`.
+
+### Why the manifest can only grow
+
+The bundled manifest is rewritten from the rows the publisher walked. Before
+the `KEEP` behaviour existed, publishing five newly recorded clips with only
+those five files in `build/fsl_mp4/` would have rewritten the manifest with
+**five entries** — dropping the other 143 signs out of the app while printing
+what looked like a successful run. The videos would still be on the release;
+the app would simply stop knowing about them.
+
+Two things now prevent that: previously-published entries are carried forward,
+and the script refuses to write a manifest smaller than the one it is replacing
+(naming the signs that would be lost). `--allow-shrink` overrides it, and is
+only correct when you genuinely mean to retire a sign.
+
+`test/fsl_video_manifest_test.dart` guards the same invariant from the other
+side: every published sign must still have a row in the source manifest.
+
+### Matching the existing recordings
+
+New clips sit next to 143 already in the app, so keep them consistent: plain
+light background, signer framed head-to-mid-torso and centred, solid dark top,
+even front lighting, no on-screen text, and just the sign — start and end with
+hands at rest. The app plays these at 0.25x–1.5x, so a clip that is rushed at
+1x becomes unreadable slowed down.

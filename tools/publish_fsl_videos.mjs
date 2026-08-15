@@ -109,9 +109,32 @@ if (existsSync(STAGE_DIR)) {
 }
 mkdirSync(STAGE_DIR, { recursive: true });
 
+// What the app already ships, keyed the same way as the source rows.
+//
+// The bundled manifest is rewritten from `publishedEntries` at the end of this
+// script, and a row whose .mp4 is not in build/fsl_mp4/ never reaches that
+// list. Without carrying the previous entry forward, publishing a handful of
+// newly recorded clips would rewrite the manifest with *only* those clips and
+// silently drop every sign already live — the videos would still be on the
+// release, but the app would go dark for all of them. Recording the remaining
+// clips a few at a time is the expected workflow, so the manifest has to grow,
+// never shrink.
+const existingByKey = new Map();
+if (existsSync(APP_MANIFEST)) {
+  try {
+    const prev = JSON.parse(readFileSync(APP_MANIFEST, 'utf8'));
+    for (const e of prev.entries ?? []) {
+      existingByKey.set(`${e.category}__${e.slug}`, e);
+    }
+  } catch {
+    console.warn('! Could not read the existing app manifest — nothing to carry forward.');
+  }
+}
+
 const publishedEntries = [];
 let staged = 0;
 let skipped = 0;
+let carried = 0;
 
 for (const entry of entries) {
   const { category, slug, wordEnglish, wordFilipino, source: sourceFile } = entry;
@@ -119,8 +142,15 @@ for (const entry of entries) {
   const localPath = join(MP4_DIR, mp4Name);
 
   if (!existsSync(localPath)) {
-    console.log(`• SKIP ${slug.padEnd(20)} missing ${mp4Name}`);
-    skipped++;
+    const prior = existingByKey.get(`${category}__${slug}`);
+    if (prior) {
+      publishedEntries.push(prior);
+      carried++;
+      console.log(`• KEEP ${slug.padEnd(20)} already published`);
+    } else {
+      console.log(`• SKIP ${slug.padEnd(20)} missing ${mp4Name}`);
+      skipped++;
+    }
     continue;
   }
 
@@ -226,6 +256,32 @@ if (!dryRun) {
   process.exit(0);
 }
 
+// Last line of defence before overwriting the file the app ships.
+//
+// Coverage is only ever supposed to grow. If this run would publish fewer
+// signs than are already live, something is wrong with the inputs (a
+// half-populated build/fsl_mp4/, a truncated source manifest) — and writing it
+// out would take working signs away from learners. Refuse instead, and say
+// exactly what was about to be lost.
+if (publishedEntries.length < existingByKey.size) {
+  const now = new Set(publishedEntries.map((e) => `${e.category}__${e.slug}`));
+  const lost = [...existingByKey.keys()].filter((k) => !now.has(k));
+  console.error(
+    `\n✗ Refusing to write the manifest: it would drop from ` +
+      `${existingByKey.size} to ${publishedEntries.length} entries.`,
+  );
+  console.error(`  These signs would disappear from the app:`);
+  for (const k of lost.slice(0, 15)) console.error(`    - ${k}`);
+  if (lost.length > 15) console.error(`    … and ${lost.length - 15} more`);
+  console.error(
+    `\n  The uploads above are safe on the release; nothing was lost. Restore\n` +
+      `  the missing rows in tools/fsl_video_manifest.json (or the .mp4 files in\n` +
+      `  build/fsl_mp4/) and re-run. Pass --allow-shrink only if you genuinely\n` +
+      `  mean to retire those signs.`,
+  );
+  if (!process.argv.includes('--allow-shrink')) process.exit(3);
+}
+
 // Only regenerate the bundled manifest once we know the upload succeeded.
 const appManifest = {
   generated_at: new Date().toISOString(),
@@ -235,9 +291,12 @@ const appManifest = {
 };
 writeFileSync(APP_MANIFEST, JSON.stringify(appManifest, null, 2) + '\n');
 console.log(
-  `\nWrote ${APP_MANIFEST} with ${publishedEntries.length} entries.`,
+  `\nWrote ${APP_MANIFEST} with ${publishedEntries.length} entries ` +
+    `(${uploaded} new this run, ${carried} carried forward).`,
 );
-console.log(`uploaded=${uploaded} skipped=${skipped} failed=${failed}`);
+console.log(
+  `uploaded=${uploaded} carried=${carried} skipped=${skipped} failed=${failed}`,
+);
 
 function safeSlug(s) {
   return s
