@@ -24,6 +24,10 @@ import '../services/conversation_directory_service.dart';
 import '../services/friend_service.dart';
 import '../services/profile_directory_service.dart';
 import '../widgets/friend_ui.dart';
+import '../models/composer_presentation.dart';
+import '../widgets/composer_pickers.dart';
+import '../../../data/local/seed_data.dart';
+import '../../ai_tutor/services/tutor_sign_launcher.dart';
 
 const _uuid = Uuid();
 
@@ -504,10 +508,34 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
 
   List<Map<String, String>> _quickRepliesFor(Conversation convo) {
     final profile = ref.read(profileProvider);
-    return QuickEncouragements.forAudience(
+    final all = QuickEncouragements.forAudience(
       senderRole: profile?.role.name ?? 'student',
       recipientRole: convo.otherProfileRole,
     );
+    // Trimmed to the profile's cap: a wall of chips is its own barrier for a
+    // learner who finds choice hard, and for a gaze learner every extra chip
+    // is another cell to walk past.
+    final limit = ComposerPresentation.forProfile(profile).maxQuickReplies;
+    return all.length <= limit ? all : all.sublist(0, limit);
+  }
+
+  /// Sends the picture [sticker] as its own message type, so the bubble can
+  /// render it large instead of as tiny body text.
+  void _sendSticker(String sticker) =>
+      _sendMessage(sticker, MessageType.sticker);
+
+  /// Sends [word] as a sign message — the recipient gets a bubble that plays
+  /// the FSL clip rather than a bare string.
+  void _sendSign(String word) => _sendMessage(word, MessageType.sign);
+
+  Future<void> _openStickerPicker(bool isFilipino) async {
+    final choice = await showMessageStickerPicker(context, isFilipino: isFilipino);
+    if (choice != null) _sendSticker(choice);
+  }
+
+  Future<void> _openSignPicker(bool isFilipino) async {
+    final choice = await showMessageSignPicker(context, isFilipino: isFilipino);
+    if (choice != null) _sendSign(choice);
   }
 
   // ─── Inbox ────────────────────────────────────────────
@@ -611,6 +639,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
 
   Widget _buildThread(bool isFilipino, double padding, GazeDpadState gaze) {
     final profile = ref.read(profileProvider);
+    final composer = ComposerPresentation.forProfile(profile);
     final hc = HCColor.of(context);
     final messages = _activeConversation!.messages;
     final quickReplies = _quickRepliesFor(_activeConversation!);
@@ -690,10 +719,31 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
           ),
           child: Row(
             children: [
-              Expanded(
-                child: Semantics(
-                  label: isFilipino ? 'I-type ang mensahe' : 'Type a message',
-                  child: TextField(
+              if (composer.allowsSigns)
+                Semantics(
+                  button: true,
+                  label: isFilipino ? 'Magpadala ng senyas' : 'Send a sign',
+                  child: IconButton(
+                    onPressed: () => _openSignPicker(isFilipino),
+                    icon: const Icon(Icons.sign_language_rounded),
+                    color: AppColors.primary,
+                  ),
+                ),
+              if (composer.allowsStickers)
+                Semantics(
+                  button: true,
+                  label: isFilipino ? 'Magpadala ng sticker' : 'Send a sticker',
+                  child: IconButton(
+                    onPressed: () => _openStickerPicker(isFilipino),
+                    icon: const Icon(Icons.emoji_emotions_rounded),
+                    color: AppColors.primary,
+                  ),
+                ),
+              if (composer.allowsText)
+                Expanded(
+                  child: Semantics(
+                    label: isFilipino ? 'I-type ang mensahe' : 'Type a message',
+                    child: TextField(
                     controller: _textController,
                     onSubmitted: (v) => _sendMessage(
                       v.trim(),
@@ -722,23 +772,30 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Semantics(
-                button: true,
-                label: isFilipino ? 'Ipadala' : 'Send',
-                child: IconButton.filled(
-                  onPressed: () => _sendMessage(
-                    _textController.text.trim(),
-                    MessageType.text,
-                    fromComposer: true,
-                  ),
-                  icon: const Icon(Icons.send_rounded),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
+              // Without a text field there is nothing to send from, and the
+              // chips and pickers post on tap — so the send button goes with it.
+              if (composer.allowsText) ...[
+                const SizedBox(width: 8),
+                Semantics(
+                  button: true,
+                  label: isFilipino ? 'Ipadala' : 'Send',
+                  child: IconButton.filled(
+                    onPressed: () => _sendMessage(
+                      _textController.text.trim(),
+                      MessageType.text,
+                      fromComposer: true,
+                    ),
+                    icon: const Icon(Icons.send_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ),
-              ),
+              ] else
+                // Pickers alone can leave the row unbalanced; a spacer keeps
+                // the buttons left-aligned instead of stretched.
+                const Spacer(),
             ],
           ),
         ),
@@ -1086,12 +1143,28 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                    Text(
-                      message.content,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: hc.textPrimary,
+                    // A sticker is the whole message, so it renders at picture
+                    // size rather than as body text a learner has to squint at.
+                    if (message.type == MessageType.sticker)
+                      Semantics(
+                        label: message.content,
+                        child: Text(
+                          message.content,
+                          style: const TextStyle(fontSize: 44),
+                        ),
+                      )
+                    else if (message.type == MessageType.sign)
+                      _SignMessageBody(
+                        word: message.content,
+                        isFilipino: isFilipino,
+                      )
+                    else
+                      Text(
+                        message.content,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: hc.textPrimary,
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 4),
                     // Time + (for my own messages) the read receipt. Without
                     // these a thread was an undated wall with no way to tell
@@ -1225,6 +1298,116 @@ class _ThreadOverflowButton extends StatelessWidget {
       tooltip: isFilipino ? 'Mga pagpipilian' : 'Options',
       icon: const Icon(Icons.more_vert_rounded),
       onPressed: onManage,
+    );
+  }
+}
+
+/// The body of a Filipino Sign Language message.
+///
+/// The word travels as plain text so any device can show *something*, and the
+/// clip is resolved on tap through the same launcher the tutor and flashcard
+/// viewer use — which is also what makes the offline case honest: a Deaf
+/// learner gets "could not be fetched" rather than "this sign does not exist".
+class _SignMessageBody extends ConsumerStatefulWidget {
+  final String word;
+  final bool isFilipino;
+
+  const _SignMessageBody({required this.word, required this.isFilipino});
+
+  @override
+  ConsumerState<_SignMessageBody> createState() => _SignMessageBodyState();
+}
+
+class _SignMessageBodyState extends ConsumerState<_SignMessageBody> {
+  /// Guards against a second tap while a resolve is already in flight — the
+  /// launcher's contract.
+  bool _resolving = false;
+
+  Flashcard? get _card {
+    for (final card in SeedData.allFlashcards) {
+      if (card.wordEnglish.toLowerCase() == widget.word.toLowerCase()) {
+        return card;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _play() async {
+    final card = _card;
+    if (card == null || _resolving) return;
+    setState(() => _resolving = true);
+    try {
+      // Counted as a sign view like any other surface: watching a clip a
+      // friend sent is still exposure, which is all `signedWordKeys` claims.
+      await showSignForCard(
+        context,
+        card: card,
+        profileId: ref.read(profileProvider)?.id,
+      );
+    } finally {
+      if (mounted) setState(() => _resolving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final playable = _card != null;
+
+    return Semantics(
+      button: playable,
+      label: widget.isFilipino
+          ? 'Senyas para sa ${widget.word}'
+          : 'Sign for ${widget.word}',
+      child: InkWell(
+        onTap: playable ? _play : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_resolving)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              const Icon(
+                Icons.sign_language_rounded,
+                size: 20,
+                color: AppColors.primary,
+              ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.word,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: hc.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    playable
+                        ? (widget.isFilipino
+                              ? 'Pindutin upang makita ang senyas'
+                              : 'Tap to watch the sign')
+                        : (widget.isFilipino
+                              ? 'Walang senyas para dito'
+                              : 'No sign for this word'),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

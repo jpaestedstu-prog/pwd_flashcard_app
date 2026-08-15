@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// Type of message in the local message board
-enum MessageType { text, encouragement, sticker, achievement }
+/// Type of message in the local message board.
+///
+/// Persisted by `index` (see [LocalMessage.fromJson]), so new values must be
+/// appended and never reordered.
+enum MessageType { text, encouragement, sticker, achievement, sign }
 
 extension MessageTypeExt on MessageType {
   String get label {
@@ -14,6 +17,8 @@ extension MessageTypeExt on MessageType {
         return 'Sticker';
       case MessageType.achievement:
         return 'Achievement';
+      case MessageType.sign:
+        return 'Sign';
     }
   }
 
@@ -27,6 +32,8 @@ extension MessageTypeExt on MessageType {
         return 'Sticker';
       case MessageType.achievement:
         return 'Achievement';
+      case MessageType.sign:
+        return 'Senyas';
     }
   }
 
@@ -40,8 +47,22 @@ extension MessageTypeExt on MessageType {
         return Icons.emoji_emotions_rounded;
       case MessageType.achievement:
         return Icons.emoji_events_rounded;
+      case MessageType.sign:
+        return Icons.sign_language_rounded;
     }
   }
+}
+
+/// Reads a persisted [MessageType] index safely.
+///
+/// Types are stored as an int, so a device on an older build can receive a
+/// message whose type it has never heard of. Falling back to [MessageType.text]
+/// shows the content rather than throwing a range error mid-thread.
+MessageType _messageTypeFromIndex(int? index) {
+  if (index == null || index < 0 || index >= MessageType.values.length) {
+    return MessageType.text;
+  }
+  return MessageType.values[index];
 }
 
 /// A single message in a conversation
@@ -96,7 +117,9 @@ class LocalMessage {
     senderName: json['senderName'] as String? ?? '',
     recipientId: json['recipientId'] as String,
     content: json['content'] as String,
-    type: MessageType.values[json['type'] as int? ?? 0],
+    // Clamped rather than indexed blind: a device running an older build must
+    // degrade a newer message type to text, not crash on a range error.
+    type: _messageTypeFromIndex(json['type'] as int?),
     timestamp: DateTime.parse(json['timestamp'] as String),
     isRead: json['isRead'] as bool? ?? false,
   );
