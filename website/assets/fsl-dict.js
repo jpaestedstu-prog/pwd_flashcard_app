@@ -97,6 +97,7 @@ window.FSL_DICT = [
 {c:7,f:"cold",en:"Cold",fil:"Malamig",e:"\u2744\ufe0f",s:"It is cold in December."},
 {c:7,f:"flood",en:"Flood",fil:"Baha",e:"\ud83c\udf0a",s:"The rain caused a flood."},
 {c:7,f:"lightning",en:"Lightning",fil:"Kidlat",e:"\u26a1",s:"Lightning is bright and fast."},
+{c:7,f:"partly-cloudy",en:"Partly Cloudy",fil:"Bahagyang Maulap",e:"\ud83c\udf24\ufe0f",s:"It is partly cloudy today."},
 {c:7,f:"night",en:"Night",fil:"Gabi",e:"\ud83c\udf19",s:"The stars come out at night."},
 {c:8,f:"book",en:"Book",fil:"Aklat",e:"\ud83d\udcda",s:"I like to read a book."},
 {c:8,f:"pencil",en:"Pencil",fil:"Lapis",e:"\u270f\ufe0f",s:"I write with a pencil."},

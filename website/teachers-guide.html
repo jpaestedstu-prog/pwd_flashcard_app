@@ -115,7 +115,10 @@ html.hc header.site{ background:#fff; border-bottom:3px solid #12122A; }
   .nav{ gap:8px; padding:10px 14px; }
   .brand{ order:1; }
   .a11y-bar{ order:2; margin-left:auto; }
-  nav.links{ order:3; flex-basis:100%; margin-left:0; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
+  /* `.nav nav.links` (not plain `nav.links`) on purpose — see index.html: the
+     unconditional rule below is later in the sheet and a media query adds no
+     specificity, so a matching selector would lose and the links would stack. */
+  .nav nav.links{ order:3; flex-basis:100%; margin-left:0; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
   nav.links a{ white-space:nowrap; padding:6px 10px; font-size:.9em; }
 }
 .brand{ display:flex; align-items:center; gap:10px; font-family:var(--font-head); font-size:1.25rem; color:var(--purple-deep); text-decoration:none; }
@@ -186,6 +189,7 @@ html.hc .tip{ border-left-color:var(--pink); }
     <a class="brand" href="index.html"><span class="logo" aria-hidden="true">🎴</span> FlashLearn <span style="color:var(--pink)">PWD</span></a>
     <nav class="links" aria-label="Main navigation">
       <a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a>
+      <a href="fsl-dictionary.html"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a>
       <a href="index.html#download"><span class="en">Download</span><span class="fil">I-download</span></a>
       <a href="index.html#faq"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></a>
     </nav>
@@ -242,13 +246,14 @@ html.hc .tip{ border-left-color:var(--pink); }
   <tr><td>👂 <span class="en">Hearing impairment</span><span class="fil">Kapansanan sa pandinig</span></td><td><span class="en">Filipino Sign Language content first, picture-led cards, visual-only games</span><span class="fil">Unang-una ang Filipino Sign Language, mga card na nakabatay sa larawan, mga larong puro visual</span></td></tr>
   <tr><td>🦽 <span class="en">Motor impairment</span><span class="fil">Kapansanan sa paggalaw</span></td><td><span class="en">Gaze control &amp; voice commands (uses camera/microphone), extra-large touch targets</span><span class="fil">Gaze control at voice commands (gumagamit ng camera/mikropono), sobrang laki ng touch targets</span></td></tr>
   <tr><td>🧠 <span class="en">Cognitive / learning disability</span><span class="fil">Kapansanang kognitibo / sa pagkatuto</span></td><td><span class="en">Dyslexia-friendly font, calm reduced-motion screens, adaptive difficulty, gentle pacing</span><span class="fil">Dyslexia-friendly na font, kalmadong reduced-motion na screen, adaptive difficulty, banayad na bilis</span></td></tr>
+  <tr><td>🤝 <span class="en">Multiple disabilities</span><span class="fil">Maramihang kapansanan</span></td><td><span class="en">Text at 130%, high contrast, slow text-to-speech, reduced motion, voice navigation and adaptive difficulty all on together</span><span class="fil">Teksto sa 130%, high contrast, mabagal na text-to-speech, reduced motion, voice navigation at adaptive difficulty — sabay na nakabukas</span></td></tr>
 </table>
 
 <h2>4. <span class="en">Teaching with FlashLearn</span><span class="fil">Pagtuturo gamit ang FlashLearn</span></h2>
 <div class="box">
   <h3>🃏 <span class="en">Flashcards (Cards tab)</span><span class="fil">Flashcards (Cards tab)</span></h3>
   <ul>
-    <li><span class="en">10 decks · 177 words, each with picture, real photo, English &amp; Filipino audio, and FSL.</span><span class="fil">10 deck · 177 salita, bawat isa ay may larawan, totoong litrato, English at Filipino audio, at FSL.</span></li>
+    <li><span class="en">13 decks · 177 words, each with picture, real photo, English &amp; Filipino audio, and FSL.</span><span class="fil">13 deck · 177 salita, bawat isa ay may larawan, totoong litrato, English at Filipino audio, at FSL.</span></li>
     <li><span class="en">Great for <strong>guided vocabulary time</strong>: project one device, or let pairs explore a deck.</span><span class="fil">Mainam para sa <strong>guided vocabulary time</strong>: i-project ang isang device, o hayaang mag-explore ng deck ang magkapares.</span></li>
   </ul>
   <h3>🎮 <span class="en">Games (Games tab)</span><span class="fil">Mga Laro (Games tab)</span></h3>
