@@ -17,6 +17,48 @@ import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 
 final _letter = RegExp(r'^[A-Z]$');
 
+/// Every category a given English word appears in.
+///
+/// Deliberately a *set*: "Chicken" is a card in both Animals and Food & Drinks,
+/// and "Walk" is a card in both Transportation and Actions. A plain
+/// `{wordEnglish: category}` map keeps only whichever card is seeded last, so a
+/// round containing either word had its category mis-attributed — which made
+/// the Odd One Out assertions below fail at random, roughly whenever the
+/// shuffle happened to deal one of those two words.
+final _wordCategories = () {
+  final map = <String, Set<FlashcardCategory>>{};
+  for (final c in SeedData.allFlashcards) {
+    map.putIfAbsent(c.wordEnglish, () => <FlashcardCategory>{}).add(c.category);
+  }
+  return map;
+}();
+
+/// Every word in [shown] that could be the odd one out.
+///
+/// A round is built as (n-1) words from one category plus one word from
+/// another, so a well-formed round admits at least one such split. Empty means
+/// the round is malformed and the game has a real bug.
+///
+/// More than one candidate means the round is genuinely undecidable from what
+/// is painted on screen: "Chicken" is a card in both Animals and Food & Drinks
+/// *with the same Filipino word*, so a round of Chicken + two Food words reads
+/// identically whether Chicken is the animal (a valid round) or the food (a
+/// malformed one). Callers that need a single answer re-deal rather than guess.
+/// ("Walk" is duplicated too, but its Filipino differs — Lakad vs Maglakad.)
+List<String> _oddCandidates(List<String> shown) {
+  final candidates = <String>{};
+  for (final group in FlashcardCategory.values) {
+    for (final word in shown) {
+      final rest = shown.where((w) => w != word);
+      if (rest.every((w) => _wordCategories[w]!.contains(group)) &&
+          _wordCategories[word]!.any((c) => c != group)) {
+        candidates.add(word);
+      }
+    }
+  }
+  return candidates.toList();
+}
+
 Future<void> _pump(WidgetTester tester, Widget screen) async {
   tester.view.physicalSize = const Size(800, 1280);
   tester.view.devicePixelRatio = 1.0;
@@ -127,45 +169,50 @@ void main() {
 
       expect(find.text('Which one does not belong?'), findsOneWidget);
 
-      final byWord = {
-        for (final c in SeedData.allFlashcards) c.wordEnglish: c.category,
-      };
-      final shown = _texts(tester).where(byWord.containsKey).toSet().toList();
+      final shown =
+          _texts(tester).where(_wordCategories.containsKey).toSet().toList();
       expect(shown.length, 3);
 
-      // Exactly one word must sit outside the shared category — otherwise the
+      // One word must sit outside the category the others share — otherwise the
       // question has two defensible answers.
-      final counts = <FlashcardCategory, int>{};
-      for (final w in shown) {
-        counts[byWord[w]!] = (counts[byWord[w]] ?? 0) + 1;
-      }
-      expect(counts.length, 2);
-      expect(counts.values.toList()..sort(), [1, 2]);
+      expect(
+        _oddCandidates(shown),
+        isNotEmpty,
+        reason: 'no word sits outside a category shared by the rest: $shown',
+      );
 
       await _settle(tester);
     });
 
     testWidgets('medium shows four words and scores the odd one correct',
         (tester) async {
-      // Medium is the default difficulty.
-      await _pump(tester, const OddOneOutScreen());
-
-      final byWord = {
-        for (final c in SeedData.allFlashcards) c.wordEnglish: c.category,
-      };
-      final shown = _texts(tester).where(byWord.containsKey).toSet().toList();
-      expect(shown.length, 4);
-
-      final counts = <FlashcardCategory, int>{};
-      for (final w in shown) {
-        counts[byWord[w]!] = (counts[byWord[w]] ?? 0) + 1;
+      // Rounds are dealt at random, and a few of them are undecidable from the
+      // rendered words alone (see _oddCandidates). Re-deal rather than guess:
+      // tapping the wrong word here would look like a scoring bug.
+      List<String> shown = const [];
+      String? odd;
+      for (var attempt = 0; attempt < 12 && odd == null; attempt++) {
+        // Medium is the default difficulty.
+        await _pump(tester, const OddOneOutScreen());
+        shown =
+            _texts(tester).where(_wordCategories.containsKey).toSet().toList();
+        expect(shown.length, 4);
+        final candidates = _oddCandidates(shown);
+        expect(
+          candidates,
+          isNotEmpty,
+          reason: 'no word sits outside a category shared by the rest: $shown',
+        );
+        if (candidates.length == 1) odd = candidates.single;
       }
-      final oddCategory =
-          counts.entries.firstWhere((e) => e.value == 1).key;
-      final odd = shown.firstWhere((w) => byWord[w] == oddCategory);
+      expect(
+        odd,
+        isNotNull,
+        reason: 'every deal was ambiguous over 12 tries — last was $shown',
+      );
 
       expect(_score(tester), 0);
-      await tester.tap(find.text(odd).first);
+      await tester.tap(find.text(odd!).first);
       await tester.pump(const Duration(milliseconds: 100));
       expect(_score(tester), 1, reason: 'the odd word must be the right answer');
 
@@ -256,10 +303,8 @@ void main() {
         (tester) async {
       await _pump(tester, const OddOneOutScreen());
 
-      final byWord = {
-        for (final c in SeedData.allFlashcards) c.wordEnglish: c.category,
-      };
-      final shown = _texts(tester).where(byWord.containsKey).toSet().toList();
+      final shown =
+          _texts(tester).where(_wordCategories.containsKey).toSet().toList();
       expect(shown.length, 4);
       _expectAllOnScreen(tester, shown);
 
