@@ -1126,36 +1126,65 @@ header.site{
   border-bottom:1px solid rgba(124,111,222,.15);
 }
 html.hc header.site{ background:#fff; border-bottom:3px solid #12122A; }
-.nav{ display:flex; align-items:center; gap:16px; padding:12px 20px; max-width:1180px; margin:0 auto; flex-wrap:wrap; }
+/* One row, always — see index.html. The links strip is the only flexible
+   part: it shrinks and scrolls rather than wrapping, so the header keeps a
+   fixed height at every width and at every font-size setting. */
+.nav{ display:flex; align-items:center; gap:16px; padding:12px 20px; max-width:1240px; margin:0 auto; flex-wrap:nowrap; }
 @media (max-width:900px){
-  .nav{ gap:8px; padding:10px 14px; }
-  .brand{ order:1; }
-  .a11y-bar{ order:2; margin-left:auto; }
+  /* Too narrow for brand + links + a11y on one line: brand and the a11y
+     buttons share row 1, the scrolling links strip takes row 2. */
+  .nav{ gap:8px 10px; padding:10px 14px; flex-wrap:wrap; }
+  /* The brand shares row 1 with the a11y buttons, so it has to be the part
+     that gives: shrinkable and smaller, rather than wrapping to its own row
+     and making the sticky header three rows tall.
+     `.nav .brand` / `.nav .a11y-bar`, not the bare classes: the unconditional
+     rules below are later in the sheet and a media query adds no specificity
+     (same trap as `.nav nav.links`). */
+  .nav .brand{ order:1; flex:0 1 auto; min-width:0; font-size:1.05rem; gap:8px; }
+  .nav .brand .logo{ width:34px; height:34px; border-radius:11px; font-size:1.05rem; }
+  .nav .a11y-bar{ order:2; margin-left:auto; }
+}
+/* Phones: the wordmark is what gives, so the logo and the accessibility
+   buttons still share one row instead of the header growing to three.
+   Hidden visually, never from screen readers - the link keeps its name. */
+@media (max-width:430px){
+  .nav .brand-name{
+    position:absolute; width:1px; height:1px; overflow:hidden;
+    clip-path:inset(50%); white-space:nowrap;
+  }
   /* `.nav nav.links` (not plain `nav.links`) on purpose — see index.html: the
      unconditional rule below is later in the sheet and a media query adds no
      specificity, so a matching selector would lose and the links would stack. */
-  .nav nav.links{ order:3; flex-basis:100%; margin-left:0; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
-  nav.links a{ white-space:nowrap; padding:6px 10px; font-size:.9em; }
+  .nav nav.links{ order:3; flex-basis:100%; margin-left:0; padding-bottom:4px; }
+  nav.links a{ padding:6px 10px; font-size:.9em; }
 }
-.brand{ display:flex; align-items:center; gap:10px; font-family:var(--font-head); font-size:1.25rem; color:var(--purple-deep); text-decoration:none; }
+.brand{ display:flex; align-items:center; gap:10px; font-family:var(--font-head); font-size:1.25rem; color:var(--purple-deep); text-decoration:none; flex:0 0 auto; white-space:nowrap; }
+.brand .brand-name b{ color:var(--pink); font-weight:inherit; }
 .brand .logo{
-  width:42px; height:42px; border-radius:14px; display:grid; place-items:center; font-size:1.3rem;
+  width:42px; height:42px; flex:0 0 auto; border-radius:14px; display:grid; place-items:center; font-size:1.3rem;
   background:linear-gradient(145deg,#8F7BF0 0%,#6C5CE7 55%,#5B4DBE 100%);
   box-shadow:inset 0 2px 3px rgba(255,255,255,.45), inset 0 -3px 5px rgba(0,0,0,.18), 0 6px 14px rgba(108,92,231,.4);
 }
-nav.links{ display:flex; gap:4px; margin-left:auto; flex-wrap:wrap; }
+nav.links{
+  display:flex; gap:2px; margin-left:auto; flex-wrap:nowrap;
+  min-width:0; overflow-x:auto; overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none;
+}
+nav.links::-webkit-scrollbar{ display:none; }
 nav.links a{
-  text-decoration:none; color:var(--ink-soft); font-weight:700; padding:8px 13px; border-radius:12px; font-size:.95em;
+  text-decoration:none; color:var(--ink-soft); font-weight:700; padding:8px 11px; border-radius:12px;
+  font-size:.95em; white-space:nowrap; flex:0 0 auto;
 }
 nav.links a:hover,nav.links a:focus-visible{ background:#EFE9FF; color:#5B4DBE; }
-nav.links a[aria-current="page"]{ background:#EFE9FF; color:#5B4DBE; }
+nav.links a[aria-current]{ background:#EFE9FF; color:#5B4DBE; }
 @media (prefers-color-scheme:dark){
   html:not(.hc):not(.dys) nav.links a:hover,
   html:not(.hc):not(.dys) nav.links a:focus-visible,
-  html:not(.hc):not(.dys) nav.links a[aria-current="page"]{ background:#3A3260; color:#D8CFFF; }
+  html:not(.hc):not(.dys) nav.links a[aria-current]{ background:#3A3260; color:#D8CFFF; }
 }
 html.hc nav.links a{ color:#12122A; text-decoration:underline; }
-.a11y-bar{ display:flex; gap:6px; margin-left:8px; }
+html.hc nav.links a[aria-current]{ background:#12122A; color:#fff; }
+.a11y-bar{ display:flex; gap:6px; margin-left:8px; flex:0 0 auto; }
 .a11y-bar button{
   font-family:var(--font-body); font-weight:800; font-size:.85em; cursor:pointer;
   border:2px solid rgba(124,111,222,.35); background:var(--card); color:var(--purple-deep);
@@ -1281,6 +1310,33 @@ footer.site a{ color:var(--purple-deep); font-weight:700; }
 .note{ background:var(--card); border-radius:18px; padding:16px 20px; box-shadow:var(--shadow-soft); margin-top:26px; color:var(--ink-soft); font-size:.93em; }
 .note b{ color:var(--ink); }
 .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+/* ============ Footer (identical on all three pages) ============ */
+footer{
+  padding:52px 0 40px; color:#EFEAFE;
+  background:linear-gradient(160deg,#6C5CE7 0%,#5B4DBE 55%,#41338F 100%);
+}
+html.hc footer{ background:#12122A; }
+footer .wrap{ display:block; max-width:1100px; padding:0 20px; }
+footer a{ color:#fff; }
+.foot-top{ display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:34px; }
+@media (max-width:760px){ .foot-top{ grid-template-columns:1fr; gap:26px; } }
+/* Every colour here is explicit: the sub-pages set their own `p,li` and
+   `strong` colours, which otherwise bleed in and put dark text on purple. */
+.foot-brand strong{ font-family:var(--font-head); font-size:1.2rem; display:block; margin-bottom:8px; color:#fff; }
+.foot-brand p{ font-size:.95em; color:#EFEAFE; opacity:.92; max-width:32em; }
+.foot-col h3{ font-family:var(--font-head); font-size:1rem; color:#fff; margin:0 0 12px; }
+.foot-col li{ color:#EFEAFE; }
+.foot-bottom span,.foot-bottom small{ color:#EFEAFE; }
+.foot-col ul{ list-style:none; display:grid; gap:9px; }
+.foot-col a{ text-decoration:none; font-weight:700; font-size:.95em; color:#EFEAFE; }
+.foot-col a:hover,.foot-col a:focus-visible{ text-decoration:underline; color:#fff; }
+.foot-bottom{
+  margin-top:32px; padding-top:18px; border-top:1px solid rgba(255,255,255,.25);
+  display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+}
+.foot-bottom small{ opacity:.85; }
+html.hc footer a{ text-decoration:underline; }
+html.hc .foot-bottom{ border-top-color:#fff; }
 </style>
 </head>
 <body>
@@ -1288,12 +1344,14 @@ footer.site a{ color:var(--purple-deep); font-weight:700; }
 
 <header class="site">
   <div class="nav">
-    <a class="brand" href="index.html"><span class="logo" aria-hidden="true">🎴</span> FlashLearn <span style="color:var(--pink)">PWD</span></a>
+    <a class="brand" href="index.html"><span class="logo" aria-hidden="true">🎴</span><span class="brand-name">FlashLearn <b>PWD</b></span></a>
     <nav class="links" aria-label="Main navigation">
       <a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a>
-      <a href="fsl-dictionary.html" aria-current="page"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a>
+      <a href="index.html#try"><span class="en">Try It</span><span class="fil">Subukan</span></a>
       <a href="index.html#download"><span class="en">Download</span><span class="fil">I-download</span></a>
-      <a href="teachers-guide.html"><span class="en">Teacher's Guide</span><span class="fil">Gabay ng Guro</span></a>
+      <a href="index.html#how"><span class="en">How to Use</span><span class="fil">Paano Gamitin</span></a>
+      <a href="fsl-dictionary.html" aria-current="page"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a>
+      <a href="teachers-guide.html"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></a>
       <a href="index.html#faq"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></a>
     </nav>
     <div class="a11y-bar" role="group" aria-label="Accessibility and language options">
@@ -1528,11 +1586,40 @@ footer.site a{ color:var(--purple-deep); font-weight:700; }
   </div>
 </dialog>
 
-<footer class="site">
-  <p>
-    <span class="en">Part of <a href="index.html">FlashLearn PWD</a> — a free bilingual learning app for Filipino students with disabilities.</span>
-    <span class="fil">Bahagi ng <a href="index.html">FlashLearn PWD</a> — libreng bilingual learning app para sa mga mag-aaral na Pilipinong may kapansanan.</span>
-  </p>
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <strong>🎴 FlashLearn PWD</strong>
+        <p><span class="en">Interactive flashcard app for PWD students — a college thesis / capstone project (2023–2027). Free, offline, and built with Filipino learners first.</span><span class="fil">Interactive flashcard app para sa mga mag-aaral na PWD — isang college thesis / capstone project (2023–2027). Libre, offline, at ginawa para sa mga mag-aaral na Pilipino.</span></p>
+      </div>
+      <nav class="foot-col" aria-label="Site sections">
+        <h3><span class="en">Explore</span><span class="fil">Tuklasin</span></h3>
+        <ul>
+          <li><a href="index.html#try"><span class="en">Try a flashcard</span><span class="fil">Sumubok ng flashcard</span></a></li>
+          <li><a href="index.html#download"><span class="en">Download the app</span><span class="fil">I-download ang app</span></a></li>
+          <li><a href="index.html#how"><span class="en">How to use it</span><span class="fil">Paano gamitin</span></a></li>
+          <li><a href="index.html#features"><span class="en">Features</span><span class="fil">Mga Tampok</span></a></li>
+          <li><a href="index.html#awareness"><span class="en">PWD Awareness</span><span class="fil">Kamalayang PWD</span></a></li>
+        </ul>
+      </nav>
+      <nav class="foot-col" aria-label="Resources and contact">
+        <h3><span class="en">Resources</span><span class="fil">Mga Sanggunian</span></h3>
+        <ul>
+          <li><a href="fsl-dictionary.html"><span class="en">FSL Sign Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a></li>
+          <li><a href="teachers-guide.html"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></a></li>
+          <li><a href="index.html#faq"><span class="en">FAQ</span><span class="fil">Mga Madalas Itanong</span></a></li>
+          <li><a href="index.html#about"><span class="en">About the team</span><span class="fil">Tungkol sa pangkat</span></a></li>
+          <li><a href="index.html#feedback"><span class="en">Send feedback</span><span class="fil">Magpadala ng feedback</span></a></li>
+          <li><a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app" rel="noopener">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="foot-bottom">
+      <span><span class="en">Made with 💜 for inclusive education in the Philippines.</span><span class="fil">Ginawa nang may 💜 para sa inklusibong edukasyon sa Pilipinas.</span></span>
+      <small>© 2026 FlashLearn PWD. <span class="en">Screenshots and demo video are from the actual app running on an Android tablet.</span><span class="fil">Ang mga screenshot at demo video ay mula sa totoong app na tumatakbo sa Android tablet.</span></small>
+    </div>
+  </div>
 </footer>
 
 <script src="assets/site.js"></script>
