@@ -1,5 +1,5 @@
 /* FlashLearn PWD site service worker — offline support for the core pages. */
-const CACHE = 'flp-site-v5';
+const CACHE = 'flp-site-v6';
 const CORE = [
   './',
   'index.html',
@@ -7,6 +7,7 @@ const CORE = [
   'fsl-dictionary.html',
   'manifest.webmanifest',
   'assets/site.js',
+  'assets/fsl-dict.js',
   'assets/videos/app-demo.en.vtt',
   'assets/videos/app-demo.fil.vtt',
   'assets/icon-192.png',
