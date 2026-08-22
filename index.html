@@ -492,7 +492,8 @@ details .body{ padding:0 22px 18px; color:var(--ink-soft); }
 .try-points li:nth-child(1)::before{ content:"👆"; }
 .try-points li:nth-child(2)::before{ content:"🔊"; }
 .try-points li:nth-child(3)::before{ content:"🤟"; }
-.try-points li:nth-child(4)::before{ content:"🎴"; }
+.try-points li:nth-child(4)::before{ content:"🎮"; }
+.try-points li:nth-child(5)::before{ content:"🎴"; }
 .try-card{
   display:block; width:min(400px,100%); margin:0 auto; border:none; cursor:pointer;
   background:transparent; padding:0; font:inherit; color:inherit; text-align:center;
@@ -513,6 +514,50 @@ details .body{ padding:0 22px 18px; color:var(--ink-soft); }
 .try-hint{ color:var(--ink-soft); font-size:.85em; font-weight:700; margin-top:10px; }
 .try-sentence{ font-size:1.15rem; color:var(--ink); max-width:22em; }
 .try-back-emoji{ font-size:2.6rem; line-height:1.15; }
+/* ---- Try-It: mode tabs + the playable Word Match round ---- */
+.try-tabs{ display:flex; gap:8px; justify-content:center; margin-bottom:16px; flex-wrap:wrap; }
+.try-tabs button{
+  font-family:var(--font-body); font-weight:800; font-size:.95em; cursor:pointer;
+  padding:9px 16px; border-radius:999px; min-height:44px;
+  border:2px solid rgba(124,111,222,.3); background:var(--card); color:var(--ink-soft);
+}
+.try-tabs button[aria-selected="true"]{ background:var(--purple-deep); border-color:var(--purple-deep); color:#fff; }
+html.hc .try-tabs button{ border-color:#000; }
+html.hc .try-tabs button[aria-selected="true"]{ background:#000; }
+
+.wm{
+  background:var(--card); border:2px solid rgba(124,111,222,.22); border-radius:var(--radius);
+  padding:20px; box-shadow:var(--shadow-soft); text-align:center;
+}
+html.hc .wm{ border-color:#000; }
+.wm-head{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:6px; }
+.wm-head span{ font-family:var(--font-head); color:var(--ink-soft); font-size:.95em; font-variant-numeric:tabular-nums; }
+.wm-emoji{ font-size:5rem; line-height:1.15; display:block; }
+.wm-ask{ font-family:var(--font-head); font-size:1.15rem; color:var(--ink); margin:2px 0 4px; }
+.wm-choices{ display:grid; gap:10px; margin-top:14px; }
+.wm-choices button{
+  font-family:var(--font-body); font-weight:800; font-size:1.05rem; cursor:pointer;
+  padding:15px 14px; border-radius:16px; min-height:56px;
+  border:2px solid rgba(124,111,222,.3); background:var(--bg-soft); color:var(--ink);
+}
+.wm-choices button:hover:not(:disabled){ border-color:var(--purple-deep); }
+.wm-choices button:disabled{ cursor:default; }
+.wm-choices button.right{ background:#DFF5E1; border-color:#3FA34D; color:#1E5B29; }
+.wm-choices button.wrong{ background:#FDE4E4; border-color:#D9534F; color:#8A2B28; opacity:.85; }
+html.hc .wm-choices button{ border-color:#000; }
+html.hc .wm-choices button.right{ background:#fff; border-color:#000; color:#000; outline:3px solid #000; }
+html.hc .wm-choices button.wrong{ background:#fff; border-color:#000; color:#000; text-decoration:line-through; }
+.wm-feedback{ min-height:1.6em; margin-top:12px; font-weight:800; color:var(--ink-soft); }
+.wm-feedback.good{ color:#2E7D32; }
+.wm-feedback.bad{ color:#C62828; }
+html.hc .wm-feedback.good, html.hc .wm-feedback.bad{ color:#000; }
+.wm-done .wm-score-big{ font-family:var(--font-head); font-size:2.4rem; color:var(--purple-deep); display:block; }
+.wm-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:14px; }
+@media (prefers-reduced-motion: reduce){
+  .wm-choices button{ transition:none; }
+}
+@media (max-width:520px){ .wm-emoji{ font-size:3.6rem; } }
+
 .try-controls{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
 .btn-sm{ padding:10px 18px; font-size:.95em; border-radius:14px; }
 .try-pager{ display:flex; gap:14px; align-items:center; justify-content:center; margin-top:16px; }
@@ -642,19 +687,29 @@ html.hc .foot-bottom{ border-top-color:#fff; }
 <section id="try">
   <div class="wrap">
     <span class="section-label">🎴 <span class="en">Try before installing</span><span class="fil">Subukan bago mag-install</span></span>
-    <h2 class="title"><span class="en">Try a flashcard right now</span><span class="fil">Sumubok ng flashcard ngayon mismo</span></h2>
-    <p class="lead"><span class="en">These are real cards from the app — the same words, pictures, and example sentences your child or student will learn. No installation needed for this little taste!</span><span class="fil">Totoong cards ito mula sa app — parehong mga salita, larawan, at halimbawang pangungusap na matututuhan ng inyong anak o mag-aaral. Hindi kailangang mag-install para sa maliit na tikim na ito!</span></p>
+    <h2 class="title"><span class="en">Try a card, then play a round</span><span class="fil">Sumubok ng card, tapos maglaro</span></h2>
+    <p class="lead"><span class="en">Real cards from the app — the same words, pictures, and example sentences your child or student will learn — and a real round of Word Match, the game every accessibility roster includes. Nothing to install.</span><span class="fil">Totoong cards mula sa app — parehong mga salita, larawan, at halimbawang pangungusap na matututuhan ng inyong anak o mag-aaral — at totoong laro ng Word Match, ang larong nasa bawat roster. Walang i-install.</span></p>
     <div class="try-wrap">
       <div>
         <ul class="try-points">
           <li><span class="en"><strong>Tap the card</strong> to flip it and see the word used in a sentence.</span><span class="fil"><strong>I-tap ang card</strong> para baliktarin at makita ang salita sa isang pangungusap.</span></li>
           <li><span class="en"><strong>Press the sound buttons</strong> to hear the word in English or Filipino.</span><span class="fil"><strong>Pindutin ang mga sound button</strong> para marinig ang salita sa English o Filipino.</span></li>
           <li><span class="en"><strong>Tap 🤟 FSL</strong> to watch the word signed in Filipino Sign Language — real clips from the app.</span><span class="fil"><strong>I-tap ang 🤟 FSL</strong> para mapanood ang salita sa Filipino Sign Language — totoong clips mula sa app.</span></li>
-          <li><span class="en">This demo has 10 words — <strong>the full app has 177</strong>, plus games, stories, and FSL practice.</span><span class="fil">May 10 salita ang demo na ito — <strong>177 ang nasa buong app</strong>, pati mga laro, kuwento, at FSL practice.</span></li>
+          <li><span class="en"><strong>Switch to Play Word Match</strong> for a real round of the app's most-used game — it is in every accessibility roster.</span><span class="fil"><strong>Lumipat sa Play Word Match</strong> para sa totoong laro ng pinakaginagamit na laro ng app — nasa bawat roster ito.</span></li>
+          <li><span class="en">This demo has 10 words — <strong>the full app has 177</strong>, plus 15 games, stories, and FSL practice.</span><span class="fil">May 10 salita ang demo na ito — <strong>177 ang nasa buong app</strong>, pati 15 laro, kuwento, at FSL practice.</span></li>
         </ul>
         <a class="btn btn-primary" href="#download">⬇️ <span class="en">Get the full app — it's free</span><span class="fil">Kunin ang buong app — libre ito</span></a>
       </div>
       <div>
+        <div class="try-tabs" role="tablist" aria-label="Try it: choose flashcards or the game">
+          <button type="button" role="tab" id="tabCards" aria-selected="true" aria-controls="panelCards">
+            🎴 <span class="en">Flashcards</span><span class="fil">Mga Flashcard</span>
+          </button>
+          <button type="button" role="tab" id="tabPlay" aria-selected="false" aria-controls="panelPlay" tabindex="-1">
+            🎮 <span class="en">Play Word Match</span><span class="fil">Laruin ang Pagtutugma</span>
+          </button>
+        </div>
+        <div id="panelCards" role="tabpanel" aria-labelledby="tabCards">
         <button class="try-card" id="tryCard" type="button" aria-pressed="false">
           <span class="try-inner" id="tryInner"></span>
         </button>
@@ -670,6 +725,31 @@ html.hc .foot-bottom{ border-top-color:#fff; }
           <button id="tryNext" type="button" aria-label="Next card">→</button>
         </div>
         <p class="try-tts-note" id="tryTtsNote">🔉 <span class="en">The sound buttons use your device's built-in voices. If a Filipino voice isn't installed, the word may be read with an English accent.</span><span class="fil">Gumagamit ang mga sound button ng boses ng inyong device. Kung walang naka-install na Filipino voice, maaaring bigkasin ang salita nang may English accent.</span></p>
+        </div>
+
+        <div id="panelPlay" role="tabpanel" aria-labelledby="tabPlay" hidden>
+          <div class="wm">
+            <div class="wm-head">
+              <span id="wmRound"></span>
+              <span id="wmScore"></span>
+            </div>
+            <div id="wmPlay">
+              <span class="wm-emoji" id="wmEmoji" aria-hidden="true"></span>
+              <p class="wm-ask"><span class="en">Which word is this?</span><span class="fil">Aling salita ito?</span></p>
+              <div class="wm-choices" id="wmChoices"></div>
+            </div>
+            <div class="wm-done" id="wmDone" hidden>
+              <span class="wm-emoji" id="wmDoneEmoji" aria-hidden="true">🎉</span>
+              <span class="wm-score-big" id="wmFinal"></span>
+              <p id="wmDoneMsg"></p>
+              <div class="wm-actions">
+                <button class="btn btn-ghost btn-sm" id="wmAgain" type="button">🔁 <span class="en">Play again</span><span class="fil">Ulitin</span></button>
+                <a class="btn btn-primary btn-sm" href="#download">⬇️ <span class="en">Get the app</span><span class="fil">Kunin ang app</span></a>
+              </div>
+            </div>
+            <p class="wm-feedback" id="wmFeedback" role="status" aria-live="polite"></p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1190,6 +1270,9 @@ html.hc .foot-bottom{ border-top-color:#fff; }
 
   // Speech via the device's built-in voices (same idea as the app's TTS).
   var synth = window.speechSynthesis;
+  // Declared out here (not inside the else) so the Word Match round below can
+  // speak too; a no-op when the browser has no speech synthesis.
+  var speak = function(){};
   if (!synth) {
     document.getElementById('trySayEn').hidden = true;
     document.getElementById('trySayFil').hidden = true;
@@ -1205,7 +1288,7 @@ html.hc .foot-bottom{ border-top-color:#fff; }
           if ((vs[j].lang || '').toLowerCase().replace('_','-').indexOf(prefixes[i]) === 0) return vs[j];
       return null;
     };
-    var speak = function(text, lang, prefixes){
+    speak = function(text, lang, prefixes){
       synth.cancel();
       var u = new SpeechSynthesisUtterance(text);
       u.lang = lang; u.rate = 0.9;
@@ -1216,6 +1299,149 @@ html.hc .foot-bottom{ border-top-color:#fff; }
     document.getElementById('trySayFil').addEventListener('click', function(){ speak(CARDS[idx].fil, 'fil-PH', ['fil','tl']); });
     document.getElementById('trySaySentence').addEventListener('click', function(){ speak(CARDS[idx].s, 'en-US', ['en']); });
   }
+  // ---- Playable Word Match round ---------------------------------------
+  // Word Match is the game worth demoing: with Memory Match it is one of only
+  // two that appear in all six accessibility rosters, and picture -> word is
+  // the app's core learning loop. Reuses the same ten cards as the flashcard.
+  (function(){
+    var ROUNDS = 5, CHOICES = 3;
+    var tabCards = document.getElementById('tabCards');
+    var tabPlay = document.getElementById('tabPlay');
+    var panelCards = document.getElementById('panelCards');
+    var panelPlay = document.getElementById('panelPlay');
+    if (!tabPlay || !panelPlay) return;
+
+    var elRound = document.getElementById('wmRound');
+    var elScore = document.getElementById('wmScore');
+    var elEmoji = document.getElementById('wmEmoji');
+    var elChoices = document.getElementById('wmChoices');
+    var elFeedback = document.getElementById('wmFeedback');
+    var elPlay = document.getElementById('wmPlay');
+    var elDone = document.getElementById('wmDone');
+    var elFinal = document.getElementById('wmFinal');
+    var elDoneMsg = document.getElementById('wmDoneMsg');
+
+    var deck = [], round = 0, score = 0, missed = false, timer = null, started = false;
+
+    function shuffle(a){
+      a = a.slice();
+      for (var i = a.length - 1; i > 0; i--){
+        var j = Math.floor(Math.random() * (i + 1)), tmp = a[i];
+        a[i] = a[j]; a[j] = tmp;
+      }
+      return a;
+    }
+    // Both languages are emitted and CSS shows the active one, so the FIL
+    // toggle keeps working on content injected mid-game.
+    function bi(en, fil){
+      return '<span class="en">' + en + '</span><span class="fil">' + fil + '</span>';
+    }
+
+    function start(){
+      clearTimeout(timer);
+      deck = shuffle(CARDS).slice(0, ROUNDS);
+      round = 0; score = 0; started = true;
+      elDone.hidden = true; elPlay.hidden = false;
+      renderRound();
+    }
+
+    function renderRound(){
+      missed = false;
+      var c = deck[round];
+      elEmoji.textContent = c.emoji;
+      elRound.innerHTML = bi('Round ' + (round + 1) + ' of ' + ROUNDS,
+                             'Round ' + (round + 1) + ' ng ' + ROUNDS);
+      elScore.textContent = '\u2B50 ' + score;
+      elFeedback.textContent = '';
+      elFeedback.className = 'wm-feedback';
+
+      var others = shuffle(CARDS.filter(function(x){ return x.en !== c.en; })).slice(0, CHOICES - 1);
+      var opts = shuffle(others.concat([c]));
+      elChoices.innerHTML = '';
+      opts.forEach(function(o){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.innerHTML = bi(o.en, o.fil);
+        b.addEventListener('click', function(){ pick(b, o, c); });
+        elChoices.appendChild(b);
+      });
+    }
+
+    function pick(btn, chosen, correct){
+      if (btn.disabled) return;
+      if (chosen.en === correct.en) {
+        btn.classList.add('right');
+        if (!missed) score++;             // only a first-try answer scores
+        [].forEach.call(elChoices.children, function(b){ b.disabled = true; });
+        elScore.textContent = '\u2B50 ' + score;
+        elFeedback.className = 'wm-feedback good';
+        elFeedback.innerHTML = bi(
+          '\u2705 Correct! ' + correct.en + ' = ' + correct.fil,
+          '\u2705 Tama! ' + correct.en + ' = ' + correct.fil);
+        speak(correct.en, 'en-US', ['en']);
+        timer = setTimeout(next, 1500);
+      } else {
+        btn.classList.add('wrong');
+        btn.disabled = true;
+        missed = true;
+        elFeedback.className = 'wm-feedback bad';
+        elFeedback.innerHTML = bi('\u274C Not quite \u2014 try again.',
+                                  '\u274C Hindi tama \u2014 subukan ulit.');
+      }
+    }
+
+    function next(){
+      round++;
+      if (round >= ROUNDS) finish(); else renderRound();
+    }
+
+    function finish(){
+      elPlay.hidden = true;
+      elDone.hidden = false;
+      elRound.innerHTML = bi('Finished', 'Tapos na');
+      elScore.textContent = '\u2B50 ' + score;
+      elFinal.textContent = score + ' / ' + ROUNDS;
+      elDoneMsg.innerHTML = (score === ROUNDS)
+        ? bi('Perfect score! That is one of the app\u2019s 15 games.',
+             'Perpektong puntos! Isa iyan sa 15 laro ng app.')
+        : bi('Well played! The app has 15 games and 177 words to practise.',
+             'Magaling! May 15 laro at 177 salita ang app.');
+      elFeedback.textContent = '';
+      elFeedback.className = 'wm-feedback';
+    }
+
+    function select(which){
+      var playing = (which === 'play');
+      clearTimeout(timer);
+      if (synth) synth.cancel();
+      tabPlay.setAttribute('aria-selected', String(playing));
+      tabCards.setAttribute('aria-selected', String(!playing));
+      tabPlay.tabIndex = playing ? 0 : -1;
+      tabCards.tabIndex = playing ? -1 : 0;
+      panelPlay.hidden = !playing;
+      panelCards.hidden = playing;
+      if (playing && !started) start();
+    }
+
+    tabCards.addEventListener('click', function(){ select('cards'); });
+    tabPlay.addEventListener('click', function(){ select('play'); });
+    // Arrow keys move between tabs, as a tablist is expected to.
+    [tabCards, tabPlay].forEach(function(tab){
+      tab.addEventListener('keydown', function(e){
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        e.preventDefault();
+        var other = (tab === tabCards) ? tabPlay : tabCards;
+        select(other === tabPlay ? 'play' : 'cards');
+        other.focus();
+      });
+    });
+    document.getElementById('wmAgain').addEventListener('click', function(){
+      start();
+      var first = elChoices.querySelector('button');
+      if (first) first.focus();
+    });
+  })();
+
   render();
 })();
 
