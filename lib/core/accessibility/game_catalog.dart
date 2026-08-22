@@ -125,9 +125,10 @@ class GameCatalog {
   ];
 
   // ─── No Accessibility Needs ───────────────────────────
-  // The full classic roster. Out: only Picture-Word, which for a learner with
-  // no perception constraint is Word Match with the prompt and answer swapped.
-  // The three low-barrier games are aimed at categories that need them.
+  // The full classic roster. Out: Picture-Word, which for a learner with no
+  // perception constraint is Word Match with the prompt and answer swapped,
+  // and the three low-barrier games (yesOrNo, oddOneOut, firstLetter), which
+  // are aimed at the categories that need them.
   static const List<GameType> _none = [
     GameType.wordMatch,
     GameType.spellingBee,
