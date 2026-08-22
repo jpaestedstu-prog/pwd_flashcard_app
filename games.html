@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<!-- GENERATED FILE - do not edit website/games.html by hand.
+     Edit tools/games_page.template.html (or the app's own game data) and run
+     `python tools/games_page_build.py`. -->
+<html lang="en" class="" data-title-en="Learning Games — FlashLearn PWD" data-title-fil="Mga Larong Pampagkatuto — FlashLearn PWD">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learning Games — FlashLearn PWD</title>
+<meta name="description" content="All 15 learning games in FlashLearn PWD, and the ten each accessibility type is given. Free, offline, bilingual English and Filipino.">
+<link rel="canonical" href="https://jpaestedstu-prog.github.io/pwd_flashcard_app/games.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/games.html">
+<meta property="og:title" content="Learning Games — FlashLearn PWD">
+<meta property="og:description" content="15 bilingual learning games, and the curated ten each accessibility type receives.">
+<meta property="og:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Learning Games — FlashLearn PWD">
+<meta name="twitter:description" content="15 bilingual learning games, free and offline.">
+<meta name="twitter:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon-192.png">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "ItemList",
+ "name": "FlashLearn PWD — learning games",
+ "description": "The 15 learning games in FlashLearn PWD, and the 10 each accessibility type is given.",
+ "numberOfItems": 15,
+ "itemListElement": [
+  {
+   "@type": "ListItem",
+   "position": 1,
+   "name": "Word Match",
+   "description": "Match the picture to the correct word!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 2,
+   "name": "Spelling Bee",
+   "description": "Unscramble the letters to spell the word!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 3,
+   "name": "Memory Match",
+   "description": "Find matching pairs of cards!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 4,
+   "name": "Drag & Drop",
+   "description": "Drag each word to its matching picture!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 5,
+   "name": "Flashcard Quiz",
+   "description": "Swipe right if you know it, left to learn!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 6,
+   "name": "Pronunciation Practice",
+   "description": "Listen and pick the correct word!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 7,
+   "name": "Sentence Builder",
+   "description": "Fill in the missing word in the sentence!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 8,
+   "name": "Story Quiz",
+   "description": "Read a story and answer questions!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 9,
+   "name": "Tracing",
+   "description": "Trace the letters of each word!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 10,
+   "name": "FSL Practice",
+   "description": "Learn Filipino Sign Language!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 11,
+   "name": "Jigsaw Puzzle",
+   "description": "Assemble the picture puzzle!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 12,
+   "name": "Picture-Word",
+   "description": "Match pictures to words by listening!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 13,
+   "name": "Yes or No",
+   "description": "Is this the right word? Tap Yes or No!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 14,
+   "name": "Odd One Out",
+   "description": "Tap the word that does not belong!"
+  },
+  {
+   "@type": "ListItem",
+   "position": 15,
+   "name": "First Letter",
+   "description": "Pick the letter the word starts with!"
+  }
+ ]
+}
+</script>
+<style>
+
+/* ============ Fonts (bundled from the app itself) ============ */
+@font-face { font-family:'Fredoka'; src:url('assets/fonts/Fredoka-SemiBold.ttf') format('truetype'); font-weight:600; font-display:swap; }
+@font-face { font-family:'Fredoka'; src:url('assets/fonts/Fredoka-Medium.ttf') format('truetype'); font-weight:500; font-display:swap; }
+@font-face { font-family:'Nunito'; src:url('assets/fonts/Nunito-Regular.ttf') format('truetype'); font-weight:400; font-display:swap; }
+@font-face { font-family:'Nunito'; src:url('assets/fonts/Nunito-Bold.ttf') format('truetype'); font-weight:700; font-display:swap; }
+@font-face { font-family:'Nunito'; src:url('assets/fonts/Nunito-ExtraBold.ttf') format('truetype'); font-weight:800; font-display:swap; }
+@font-face { font-family:'Lexend'; src:url('assets/fonts/Lexend-Regular.ttf') format('truetype'); font-weight:400; font-display:swap; }
+@font-face { font-family:'Lexend'; src:url('assets/fonts/Lexend-SemiBold.ttf') format('truetype'); font-weight:600; font-display:swap; }
+
+/* ============ Design tokens (shared with index.html) ============ */
+:root{
+  --bg:#FFF9EF;
+  --bg-soft:#FDF3FA;
+  --card:#FFFFFF;
+  --ink:#3A3A55;
+  --ink-soft:#6B6B85;
+  --purple:#7C6FDE;
+  --purple-deep:#5B4DBE;
+  --pink:#E9739F;
+  --teal:#4DB6AC;
+  --orange:#EF8A3C;
+  --blue:#4D9DE0;
+  --green:#5CB85C;
+  --gold:#F2B705;
+  --radius:26px;
+  --shadow-soft:0 10px 30px rgba(124,111,222,.14), 0 3px 8px rgba(58,58,85,.08);
+  --shadow-lift:0 18px 44px rgba(124,111,222,.22), 0 6px 14px rgba(58,58,85,.10);
+  --font-head:'Fredoka','Nunito',system-ui,sans-serif;
+  --font-body:'Nunito',system-ui,sans-serif;
+  --fs-base:1rem;
+}
+/* Dark mode follows the device setting; High Contrast (html.hc) always wins. */
+@media (prefers-color-scheme:dark){
+  html:not(.hc):not(.dys){
+    --bg:#221D36; --bg-soft:#262040; --card:#2E284A;
+    --ink:#EFEBFF; --ink-soft:#BCB4DC;
+    --purple:#9C8CF2; --purple-deep:#C6BCFA; --pink:#F291B5;
+    --shadow-soft:0 10px 30px rgba(0,0,0,.45), 0 3px 8px rgba(0,0,0,.3);
+    --shadow-lift:0 18px 44px rgba(0,0,0,.55), 0 6px 14px rgba(0,0,0,.35);
+  }
+}
+html.fs-lg{ --fs-base:1.14rem; }
+html.fs-xl{ --fs-base:1.3rem; }
+html.dys body{ font-family:'Lexend',var(--font-body); letter-spacing:.03em; word-spacing:.08em; line-height:1.85; }
+html.dys{ --bg:#FBF3E4; --bg-soft:#FBF3E4; }
+html.hc{
+  --bg:#FFFFFF; --bg-soft:#FFFFFF; --card:#FFFFFF;
+  --ink:#12122A; --ink-soft:#2E2E4E;
+  --purple:#4A38C7; --purple-deep:#32229E; --pink:#B2124F; --teal:#0B6E63;
+  --orange:#A85300; --blue:#0F5FA8; --green:#1C7A1C; --gold:#8A6400;
+  --shadow-soft:0 0 0 2px #12122A; --shadow-lift:0 0 0 3px #12122A;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+html{ scroll-behavior:smooth; scroll-padding-top:140px; }
+@media (min-width:901px){ html{ scroll-padding-top:88px; } }
+@media (prefers-reduced-motion:reduce){ html{ scroll-behavior:auto; } *,*::before,*::after{ animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+body{
+  font-family:var(--font-body); font-size:var(--fs-base); color:var(--ink);
+  background:var(--bg); line-height:1.7; overflow-x:hidden;
+}
+/* Language toggle: html.fil shows Filipino, default shows English */
+html:not(.fil) .fil{ display:none !important; }
+html.fil .en{ display:none !important; }
+img{ max-width:100%; display:block; }
+h1,h2,h3{ font-family:var(--font-head); font-weight:600; line-height:1.25; }
+a{ color:var(--purple-deep); }
+.wrap{ max-width:1120px; margin:0 auto; padding:0 20px 60px; }
+:focus-visible{ outline:3px solid var(--purple-deep); outline-offset:2px; }
+
+/* ============ Skip link ============ */
+.skip{ position:absolute; left:-999px; top:8px; background:var(--purple-deep); color:#fff; padding:10px 18px; border-radius:12px; z-index:200; }
+.skip:focus{ left:8px; }
+html.hc .skip{ color:#fff; }
+
+/* ============ Header (shared with index.html) ============ */
+header.site{
+  position:sticky; top:0; z-index:100;
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(124,111,222,.15);
+}
+html.hc header.site{ background:#fff; border-bottom:3px solid #12122A; }
+/* One row, always — see index.html. The links strip is the only flexible
+   part: it shrinks and scrolls rather than wrapping, so the header keeps a
+   fixed height at every width and at every font-size setting. */
+.nav{ display:flex; align-items:center; gap:16px; padding:12px 20px; max-width:1240px; margin:0 auto; flex-wrap:nowrap; }
+@media (max-width:900px){
+  /* Too narrow for brand + links + a11y on one line: brand and the a11y
+     buttons share row 1, the scrolling links strip takes row 2. */
+  .nav{ gap:8px 10px; padding:10px 14px; flex-wrap:wrap; }
+  /* The brand shares row 1 with the a11y buttons, so it has to be the part
+     that gives: shrinkable and smaller, rather than wrapping to its own row
+     and making the sticky header three rows tall.
+     `.nav .brand` / `.nav .a11y-bar`, not the bare classes: the unconditional
+     rules below are later in the sheet and a media query adds no specificity
+     (same trap as `.nav nav.links`). */
+  .nav .brand{ order:1; flex:0 1 auto; min-width:0; font-size:1.05rem; gap:8px; }
+  .nav .brand .logo{ width:34px; height:34px; border-radius:11px; font-size:1.05rem; }
+  .nav .a11y-bar{ order:2; margin-left:auto; }
+}
+/* Phones: the wordmark is what gives, so the logo and the accessibility
+   buttons still share one row instead of the header growing to three.
+   Hidden visually, never from screen readers - the link keeps its name. */
+@media (max-width:430px){
+  .nav .brand-name{
+    position:absolute; width:1px; height:1px; overflow:hidden;
+    clip-path:inset(50%); white-space:nowrap;
+  }
+  /* `.nav nav.links` (not plain `nav.links`) on purpose — see index.html: the
+     unconditional rule below is later in the sheet and a media query adds no
+     specificity, so a matching selector would lose and the links would stack. */
+  .nav nav.links{ order:3; flex-basis:100%; margin-left:0; padding-bottom:4px; }
+  nav.links a{ padding:6px 10px; font-size:.9em; }
+}
+.brand{ display:flex; align-items:center; gap:10px; font-family:var(--font-head); font-size:1.25rem; color:var(--purple-deep); text-decoration:none; flex:0 0 auto; white-space:nowrap; }
+.brand .brand-name b{ color:var(--pink); font-weight:inherit; }
+.brand .logo{
+  width:42px; height:42px; flex:0 0 auto; border-radius:14px; display:grid; place-items:center; font-size:1.3rem;
+  background:linear-gradient(145deg,#8F7BF0 0%,#6C5CE7 55%,#5B4DBE 100%);
+  box-shadow:inset 0 2px 3px rgba(255,255,255,.45), inset 0 -3px 5px rgba(0,0,0,.18), 0 6px 14px rgba(108,92,231,.4);
+}
+nav.links{
+  display:flex; gap:2px; margin-left:auto; flex-wrap:nowrap;
+  min-width:0; overflow-x:auto; overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none;
+}
+nav.links::-webkit-scrollbar{ display:none; }
+nav.links a{
+  text-decoration:none; color:var(--ink-soft); font-weight:700; padding:8px 11px; border-radius:12px;
+  font-size:.95em; white-space:nowrap; flex:0 0 auto;
+}
+nav.links a:hover,nav.links a:focus-visible{ background:#EFE9FF; color:#5B4DBE; }
+nav.links a[aria-current]{ background:#EFE9FF; color:#5B4DBE; }
+@media (prefers-color-scheme:dark){
+  html:not(.hc):not(.dys) nav.links a:hover,
+  html:not(.hc):not(.dys) nav.links a:focus-visible,
+  html:not(.hc):not(.dys) nav.links a[aria-current]{ background:#3A3260; color:#D8CFFF; }
+}
+html.hc nav.links a{ color:#12122A; text-decoration:underline; }
+html.hc nav.links a[aria-current]{ background:#12122A; color:#fff; }
+.a11y-bar{ display:flex; gap:6px; margin-left:8px; flex:0 0 auto; }
+.a11y-bar button{
+  font-family:var(--font-body); font-weight:800; font-size:.85em; cursor:pointer;
+  border:2px solid rgba(124,111,222,.35); background:var(--card); color:var(--purple-deep);
+  border-radius:10px; padding:6px 10px; min-width:40px; min-height:40px;
+}
+.a11y-bar button[aria-pressed="true"]{ background:var(--purple-deep); color:#fff; border-color:var(--purple-deep); }
+@media (prefers-color-scheme:dark){ html:not(.hc):not(.dys) .a11y-bar button[aria-pressed="true"]{ background:#6C5CE7; border-color:#6C5CE7; } }
+.a11y-bar button:hover{ border-color:var(--purple-deep); }
+
+/* ============ Page head ============ */
+header.top{ padding:34px 0 6px; text-align:center; }
+.eyebrow{
+  display:inline-flex; align-items:center; gap:.5em; font-family:var(--font-head);
+  background:linear-gradient(135deg,#EFE9FF,#FDE9F3); color:#5B4DBE;
+  padding:.35em 1em; border-radius:999px; font-size:.95em; box-shadow:var(--shadow-soft); margin-bottom:14px;
+}
+html.hc .eyebrow{ background:#fff; color:var(--purple-deep); }
+h1{ font-size:clamp(1.9rem,5vw,2.7rem); }
+h1 .accent{ color:var(--pink); }
+p.lead{ color:var(--ink-soft); max-width:64ch; margin:12px auto 0; }
+
+/* ============ Controls ============ */
+.controls{
+  position:sticky; top:66px; z-index:60; padding:16px 0 12px;
+  background:color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+}
+@media (max-width:900px){ .controls{ top:104px; } }
+html.hc .controls{ background:#fff; }
+.search-row{ display:flex; justify-content:center; margin-bottom:12px; }
+.search{
+  position:relative; width:min(100%,460px);
+}
+.search input{
+  width:100%; font-family:var(--font-body); font-size:1em; color:var(--ink);
+  background:var(--card); border:2px solid rgba(124,111,222,.35); border-radius:16px;
+  padding:13px 44px 13px 16px; box-shadow:var(--shadow-soft);
+}
+.search input::placeholder{ color:var(--ink-soft); opacity:.85; }
+.search input:focus-visible{ border-color:var(--purple-deep); }
+.search .clear{
+  position:absolute; right:7px; top:50%; transform:translateY(-50%);
+  width:34px; height:34px; border:none; border-radius:50%; cursor:pointer;
+  background:transparent; color:var(--ink-soft); font-size:1.05rem; font-weight:800;
+}
+.search .clear:hover{ background:#EFE9FF; color:var(--purple-deep); }
+.chips{ display:flex; flex-wrap:wrap; gap:7px; justify-content:center; }
+.chip{
+  display:inline-flex; align-items:center; gap:.4em; cursor:pointer;
+  font-family:var(--font-body); font-weight:700; font-size:.88em; color:var(--ink-soft);
+  background:var(--card); border:2px solid rgba(124,111,222,.28); border-radius:999px;
+  padding:7px 13px; min-height:40px;
+}
+.chip:hover{ border-color:var(--purple-deep); color:var(--purple-deep); }
+.chip[aria-pressed="true"]{ background:var(--purple-deep); color:#fff; border-color:var(--purple-deep); }
+.chip-n{
+  font-size:.85em; font-weight:800; opacity:.75; font-variant-numeric:tabular-nums;
+}
+.chip[aria-pressed="true"] .chip-n{ opacity:.9; }
+.count{ text-align:center; color:var(--ink-soft); font-size:.92em; margin-top:12px; }
+
+/* ============ Sign grid ============ */
+.grid{
+  display:grid; gap:14px; margin-top:18px;
+  grid-template-columns:repeat(auto-fill,minmax(148px,1fr));
+}
+.sign{
+  display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer;
+  font-family:var(--font-body); text-align:center;
+  background:var(--card); border:2px solid transparent; border-radius:20px;
+  padding:16px 12px 13px; box-shadow:var(--shadow-soft);
+  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.sign:hover,.sign:focus-visible{ transform:translateY(-3px); box-shadow:var(--shadow-lift); border-color:var(--purple); }
+.sign-emoji{ font-size:2.3rem; line-height:1.1; }
+.sign-en{ font-family:var(--font-head); font-size:1.03em; color:var(--ink); }
+.sign-fil{ color:var(--pink); font-weight:700; font-size:.9em; }
+.sign-cat{ color:var(--ink-soft); font-size:.76em; margin-top:5px; }
+html.hc .sign{ border-color:#12122A; }
+.sign[hidden]{ display:none; }
+
+.empty{
+  text-align:center; padding:52px 20px; color:var(--ink-soft);
+  background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow-soft); margin-top:18px;
+}
+.empty .big{ font-size:2.4rem; display:block; margin-bottom:8px; }
+
+/* ============ Video dialog (same look as the Try-It dialog on the home page) ============ */
+dialog.lightbox{
+  border:none; border-radius:22px; padding:10px; background:#1E1B2E; max-width:min(92vw,560px); width:auto;
+  margin:auto; /* restore native dialog centering lost to the global margin reset */
+  box-shadow:0 30px 80px rgba(0,0,0,.5);
+}
+dialog.lightbox::backdrop{ background:rgba(20,16,40,.75); backdrop-filter:blur(4px); }
+dialog.lightbox .close{
+  position:absolute; top:14px; right:14px; width:44px; height:44px; border-radius:50%;
+  border:none; cursor:pointer; font-size:1.2rem; font-weight:800; color:#fff;
+  background:rgba(108,92,231,.9); box-shadow:0 4px 12px rgba(0,0,0,.4);
+}
+dialog.lightbox video{ display:block; border-radius:14px; width:min(84vw,520px); height:auto; max-height:60vh; background:#000; margin:0 auto; }
+.fsl-controls{ display:flex; justify-content:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+.btn{ display:inline-flex; align-items:center; gap:.5em; text-decoration:none; cursor:pointer; border:none;
+  font-family:var(--font-head); font-size:1em; padding:12px 22px; border-radius:15px; }
+.btn-sm{ font-size:.9em; padding:9px 15px; }
+.btn-ghost{ color:var(--purple-deep); background:var(--card); border:2px solid rgba(124,111,222,.4); box-shadow:var(--shadow-soft); }
+#fslSlow[aria-pressed="true"]{ background:var(--purple-deep); color:#fff; border-color:var(--purple-deep); }
+.fsl-cap{ color:#EFEAFE; text-align:center; font-weight:700; font-size:.95em; padding:10px 8px 2px; }
+.fsl-sentence{ color:#C9C1E8; text-align:center; font-size:.9em; font-weight:400; font-style:italic; padding:0 8px 6px; }
+.fsl-nav{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:4px 4px 2px; }
+.fsl-nav button{
+  border:none; cursor:pointer; background:rgba(255,255,255,.12); color:#fff;
+  width:44px; height:44px; border-radius:50%; font-size:1.1rem; font-weight:800;
+}
+.fsl-nav button:hover{ background:rgba(108,92,231,.9); }
+.fsl-pos{ color:#C9C1E8; font-size:.85em; font-weight:700; font-variant-numeric:tabular-nums; }
+
+/* ============ Footer ============ */
+footer.site{ background:var(--bg-soft); border-top:1px solid rgba(124,111,222,.18); padding:34px 20px; text-align:center; color:var(--ink-soft); font-size:.92em; }
+footer.site a{ color:var(--purple-deep); font-weight:700; }
+.cta-row{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:22px 0 6px; }
+.btn-primary{ color:#fff; background:linear-gradient(160deg,#8F7BF0,#5B4DBE);
+  box-shadow:inset 0 2px 3px rgba(255,255,255,.4), inset 0 -3px 5px rgba(0,0,0,.16), 0 8px 18px rgba(108,92,231,.4); }
+.note{ background:var(--card); border-radius:18px; padding:16px 20px; box-shadow:var(--shadow-soft); margin-top:26px; color:var(--ink-soft); font-size:.93em; }
+.note b{ color:var(--ink); }
+.sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+/* ============ Footer (identical on all three pages) ============ */
+footer{
+  padding:52px 0 40px; color:#EFEAFE;
+  background:linear-gradient(160deg,#6C5CE7 0%,#5B4DBE 55%,#41338F 100%);
+}
+html.hc footer{ background:#12122A; }
+footer .wrap{ display:block; max-width:1100px; padding:0 20px; }
+footer a{ color:#fff; }
+.foot-top{ display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:34px; }
+@media (max-width:760px){ .foot-top{ grid-template-columns:1fr; gap:26px; } }
+/* Every colour here is explicit: the sub-pages set their own `p,li` and
+   `strong` colours, which otherwise bleed in and put dark text on purple. */
+.foot-brand strong{ font-family:var(--font-head); font-size:1.2rem; display:block; margin-bottom:8px; color:#fff; }
+.foot-brand p{ font-size:.95em; color:#EFEAFE; opacity:.92; max-width:32em; }
+.foot-col h3{ font-family:var(--font-head); font-size:1rem; color:#fff; margin:0 0 12px; }
+.foot-col li{ color:#EFEAFE; }
+.foot-bottom span,.foot-bottom small{ color:#EFEAFE; }
+.foot-col ul{ list-style:none; display:grid; gap:9px; }
+.foot-col a{ text-decoration:none; font-weight:700; font-size:.95em; color:#EFEAFE; }
+.foot-col a:hover,.foot-col a:focus-visible{ text-decoration:underline; color:#fff; }
+.foot-bottom{
+  margin-top:32px; padding-top:18px; border-top:1px solid rgba(255,255,255,.25);
+  display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+}
+.foot-bottom small{ opacity:.85; }
+html.hc footer a{ text-decoration:underline; }
+html.hc .foot-bottom{ border-top-color:#fff; }
+
+/* ============ Borrowed from index.html so this page matches the rest of the
+   site. The three other pages each carry their own copy of the shared CSS;
+   these are the rules the dictionary template did not already have. ======= */
+.stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px; margin-top:-8px; }
+.stat{
+  text-align:center; background:var(--card); border-radius:var(--radius); padding:22px 12px; box-shadow:var(--shadow-soft);
+  background-image:linear-gradient(160deg, rgba(255,255,255,.9), rgba(255,255,255,0)), linear-gradient(160deg,#F4F0FF,#FDEFF6);
+}
+html.hc .stat{ background-image:none; }
+@media (prefers-color-scheme:dark){ html:not(.hc):not(.dys) .stat{ background-image:none; } }
+.stat b{ display:block; font-family:var(--font-head); font-size:1.9rem; color:var(--purple-deep); }
+.stat span{ color:var(--ink-soft); font-weight:700; font-size:.92em; }
+h2.title{ font-size:clamp(1.7rem,4vw,2.5rem); margin-bottom:10px; }
+.center{ text-align:center; }
+p.lead.center{ margin-left:auto; margin-right:auto; }
+section.band{ background:var(--bg-soft); padding:44px 0 8px; margin:38px 0; }
+html.hc section.band{ background:#fff; border-block:2px solid #000; }
+
+/* ============ Games page ============ */
+.game-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:16px; }
+.game{
+  position:relative; text-align:left; padding:18px 18px 18px 20px; border-radius:18px;
+  background:var(--card); border:2px solid rgba(124,111,222,.28); overflow:hidden;
+  display:flex; flex-direction:column; gap:6px; min-width:0;
+}
+/* The stripe carries each game's real accent colour from the app. */
+.game::before{
+  content:""; position:absolute; inset:0 auto 0 0; width:6px; background:var(--g);
+}
+.game .g-emoji{ font-size:1.9rem; line-height:1; }
+.game h3{ font-family:var(--font-head); font-size:1.06rem; color:var(--ink); margin:0; }
+.game .g-alt{ font-size:.9em; color:var(--purple-deep); font-weight:700; }
+.game p{ font-size:.92em; color:var(--ink-soft); margin:0; }
+.game .g-tag{
+  margin-top:6px; align-self:flex-start; font-size:.76em; font-weight:800; letter-spacing:.02em;
+  padding:3px 9px; border-radius:999px; background:rgba(124,111,222,.14); color:var(--purple-deep);
+}
+html.hc .game{ border-color:#000; }
+html.hc .game .g-tag{ background:#000; color:#fff; }
+
+/* Roster explorer - the category chips reuse .chips/.chip/.chip-n. */
+.roster{ background:var(--card); border:2px solid rgba(124,111,222,.28); border-radius:22px; padding:22px; }
+html.hc .roster{ border-color:#000; }
+.roster-head{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+.roster-head .r-emoji{ font-size:1.7rem; }
+.roster-head h3{ font-family:var(--font-head); font-size:1.25rem; margin:0; color:var(--ink); }
+.roster-head .r-count{
+  font-size:.8em; font-weight:800; padding:3px 10px; border-radius:999px;
+  background:rgba(124,111,222,.14); color:var(--purple-deep);
+}
+.roster .r-why{ color:var(--ink-soft); font-size:.97em; margin:0 0 16px; }
+.roster-list{ display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:10px; margin-bottom:20px; }
+.r-game{
+  display:flex; align-items:center; gap:9px; padding:10px 12px; border-radius:13px;
+  background:var(--bg-soft); border:1px solid rgba(124,111,222,.28); font-weight:700; font-size:.93em; min-width:0;
+}
+.r-game .r-dot{ width:11px; height:11px; border-radius:50%; background:var(--g); flex:0 0 auto; }
+.r-game span{ min-width:0; overflow-wrap:anywhere; }
+html.hc .r-game{ border-color:#000; }
+.r-out{ border-top:1px dashed rgba(124,111,222,.28); padding-top:16px; }
+.r-out h4{ font-family:var(--font-head); font-size:1rem; margin:0 0 6px; color:var(--ink); }
+.r-out p{ color:var(--ink-soft); font-size:.93em; margin:0 0 10px; }
+.r-out ul{ display:flex; flex-wrap:wrap; gap:8px; list-style:none; }
+.r-out li{
+  font-size:.87em; font-weight:700; padding:5px 11px; border-radius:999px;
+  background:var(--bg-soft); border:1px dashed rgba(124,111,222,.28); color:var(--ink-soft);
+}
+html.hc .r-out li{ border-color:#000; }
+@media (max-width:560px){
+  .roster{ padding:16px; }
+  .roster-list{ grid-template-columns:1fr 1fr; }
+}
+@media (max-width:400px){ .roster-list{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site">
+  <div class="nav">
+    <a class="brand" href="index.html"><span class="logo" aria-hidden="true">🎴</span><span class="brand-name">FlashLearn <b>PWD</b></span></a>
+    <nav class="links" aria-label="Main navigation">
+      <a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a>
+      <a href="index.html#try"><span class="en">Try It</span><span class="fil">Subukan</span></a>
+      <a href="index.html#download"><span class="en">Download</span><span class="fil">I-download</span></a>
+      <a href="index.html#how"><span class="en">How to Use</span><span class="fil">Paano Gamitin</span></a>
+      <a href="games.html" aria-current="page"><span class="en">Games</span><span class="fil">Mga Laro</span></a>
+      <a href="fsl-dictionary.html"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a>
+      <a href="teachers-guide.html"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></a>
+      <a href="index.html#faq"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></a>
+    </nav>
+    <div class="a11y-bar" role="group" aria-label="Accessibility and language options">
+      <button id="btnFont" aria-pressed="false" title="Larger text">A+</button>
+      <button id="btnDys" aria-pressed="false" title="Dyslexia-friendly font">Dys</button>
+      <button id="btnHC" aria-pressed="false" title="High contrast">HC</button>
+      <button id="btnLang" aria-pressed="false" title="Filipino / English">FIL</button>
+    </div>
+  </div>
+</header>
+<main id="main">
+  <section><div class="wrap">
+    <header class="top">
+      <span class="eyebrow">🎮 <span class="en">Learning games</span><span class="fil">Mga larong pampagkatuto</span></span>
+      <h1><span class="en">15 games, and not every learner gets the same ten</span><span class="fil">15 laro, at hindi pare-pareho ang sampung nakukuha ng bawat mag-aaral</span></h1>
+      <p class="lead">
+        <span class="en">Every game teaches the same 177 bilingual words, but a learner's Games tab is built for their accessibility needs — a student with a visual impairment and a student who is Deaf open the app and see different games, each set chosen so nothing in it works against them.</span>
+        <span class="fil">Itinuturo ng bawat laro ang parehong 177 salitang bilingguwal, ngunit ang Games tab ng isang mag-aaral ay ginawa ayon sa kanyang pangangailangan — magkaiba ang nakikitang laro ng mag-aaral na may kapansanan sa paningin at ng mag-aaral na Bingi, bawat set ay piniling walang lalaban sa kanila.</span>
+      </p>
+    </header>
+
+    <div class="stats" role="list">
+      <div class="stat" role="listitem"><b class="num">15</b><span class="en">Learning games</span><span class="fil">Larong pampagkatuto</span></div>
+      <div class="stat" role="listitem"><b class="num">10</b><span class="en">Games per learner</span><span class="fil">Laro bawat mag-aaral</span></div>
+      <div class="stat" role="listitem"><b class="num">6</b><span class="en">Curated rosters</span><span class="fil">Mga piling roster</span></div>
+      <div class="stat" role="listitem"><b class="num">3</b><span class="en">Difficulty levels</span><span class="fil">Antas ng hirap</span></div>
+    </div>
+  </div></section>
+
+  <section class="band" id="rosters"><div class="wrap">
+    <h2 class="title"><span class="en">Ten games, chosen for each learner</span><span class="fil">Sampung laro, piniling para sa bawat mag-aaral</span></h2>
+    <p class="lead center">
+      <span class="en">Pick an accessibility type to see the exact set that learner is given, and what is deliberately left out.</span>
+      <span class="fil">Pumili ng uri ng kapansanan para makita ang eksaktong set na ibinibigay sa mag-aaral na iyon, at kung ano ang sinadyang hindi isama.</span>
+    </p>
+    <div class="chips" role="group" aria-label="Accessibility type">
+      <button class="chip" type="button" data-cat="visual" aria-pressed="true"><span class="en">Visual impairment</span><span class="fil">Kapansanan sa paningin</span><span class="chip-n">10</span></button>
+      <button class="chip" type="button" data-cat="hearing" aria-pressed="false"><span class="en">Hearing impairment</span><span class="fil">Kapansanan sa pandinig</span><span class="chip-n">10</span></button>
+      <button class="chip" type="button" data-cat="motor" aria-pressed="false"><span class="en">Motor impairment</span><span class="fil">Kapansanan sa paggalaw</span><span class="chip-n">10</span></button>
+      <button class="chip" type="button" data-cat="cognitive" aria-pressed="false"><span class="en">Cognitive &amp; learning</span><span class="fil">Kognitibo at pagkatuto</span><span class="chip-n">10</span></button>
+      <button class="chip" type="button" data-cat="multiple" aria-pressed="false"><span class="en">Multiple disabilities</span><span class="fil">Maramihang kapansanan</span><span class="chip-n">10</span></button>
+      <button class="chip" type="button" data-cat="none" aria-pressed="false"><span class="en">No accessibility needs</span><span class="fil">Walang kailangang akomodasyon</span><span class="chip-n">10</span></button>
+    </div>
+    <div class="roster" data-cat="visual"><div class="roster-head"><span class="r-emoji" aria-hidden="true">👁️</span><h3><span class="en">Visual impairment</span><span class="fil">Kapansanan sa paningin</span></h3><span class="r-count"><span class="en">10 games</span><span class="fil">10 laro</span></span></div><p class="r-why"><span class="en">Audio and text-to-speech carry the prompt, so nothing depends on seeing a picture.</span><span class="fil">Ang audio at text-to-speech ang naghahatid ng tanong, kaya walang umaasa sa pagkakita ng larawan.</span></p><div class="roster-list"><div class="r-game" style="--g:#81D4FA"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Pronunciation Practice</span><span class="fil">Pagsasanay sa Pagbigkas</span></span></div><div class="r-game" style="--g:#80DEEA"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Word Match</span><span class="fil">Pagtutugma ng Salita</span></span></div><div class="r-game" style="--g:#F48FB1"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Spelling Bee</span><span class="fil">Spelling Bee</span></span></div><div class="r-game" style="--g:#A5D6A7"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Memory Match</span><span class="fil">Memory Match</span></span></div><div class="r-game" style="--g:#FFAB91"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Sentence Builder</span><span class="fil">Sentence Builder</span></span></div><div class="r-game" style="--g:#B39DDB"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Flashcard Quiz</span><span class="fil">Flashcard Quiz</span></span></div><div class="r-game" style="--g:#80CBC4"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Tracing</span><span class="fil">Pagsu-sulat</span></span></div><div class="r-game" style="--g:#90CAF9"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Yes or No</span><span class="fil">Oo o Hindi</span></span></div><div class="r-game" style="--g:#CE93D8"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Odd One Out</span><span class="fil">Ang Naiiba</span></span></div><div class="r-game" style="--g:#FFAB40"><span class="r-dot" aria-hidden="true"></span><span><span class="en">First Letter</span><span class="fil">Unang Letra</span></span></div></div><div class="r-out"><h4><span class="en">Deliberately left out</span><span class="fil">Sinadyang hindi isinama</span></h4><p><span class="en">Sign language is visual, precise placement needs sight, and Picture-Word&#x27;s prompt is an image with no text to read aloud.</span><span class="fil">Biswal ang sign language, kailangan ng paningin sa tumpak na paglalagay, at larawan ang tanong ng Larawan-Salita na walang tekstong mababasa nang malakas.</span></p><ul><li><span class="en">Drag &amp; Drop</span><span class="fil">I-drag at I-drop</span></li><li><span class="en">FSL Practice</span><span class="fil">Pagsasanay sa FSL</span></li><li><span class="en">Jigsaw Puzzle</span><span class="fil">Palaisipang Jigsaw</span></li><li><span class="en">Picture-Word</span><span class="fil">Larawan-Salita</span></li></ul></div></div>
+    <div class="roster" data-cat="hearing" hidden><div class="roster-head"><span class="r-emoji" aria-hidden="true">👂</span><h3><span class="en">Hearing impairment</span><span class="fil">Kapansanan sa pandinig</span></h3><span class="r-count"><span class="en">10 games</span><span class="fil">10 laro</span></span></div><p class="r-why"><span class="en">Filipino Sign Language leads, and nothing in the set depends on hearing.</span><span class="fil">Nangunguna ang Filipino Sign Language, at walang umaasa sa pandinig.</span></p><div class="roster-list"><div class="r-game" style="--g:#B388FF"><span class="r-dot" aria-hidden="true"></span><span><span class="en">FSL Practice</span><span class="fil">Pagsasanay sa FSL</span></span></div><div class="r-game" style="--g:#80DEEA"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Word Match</span><span class="fil">Pagtutugma ng Salita</span></span></div><div class="r-game" style="--g:#F48FB1"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Spelling Bee</span><span class="fil">Spelling Bee</span></span></div><div class="r-game" style="--g:#A5D6A7"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Memory Match</span><span class="fil">Memory Match</span></span></div><div class="r-game" style="--g:#FFCC80"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Drag &amp; Drop</span><span class="fil">I-drag at I-drop</span></span></div><div class="r-game" style="--g:#B39DDB"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Flashcard Quiz</span><span class="fil">Flashcard Quiz</span></span></div><div class="r-game" style="--g:#FFAB91"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Sentence Builder</span><span class="fil">Sentence Builder</span></span></div><div class="r-game" style="--g:#80CBC4"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Tracing</span><span class="fil">Pagsu-sulat</span></span></div><div class="r-game" style="--g:#FFE082"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Jigsaw Puzzle</span><span class="fil">Palaisipang Jigsaw</span></span></div><div class="r-game" style="--g:#C5E1A5"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Picture-Word</span><span class="fil">Larawan-Salita</span></span></div></div><div class="r-out"><h4><span class="en">Deliberately left out</span><span class="fil">Sinadyang hindi isinama</span></h4><p><span class="en">Pronunciation Practice is audio-only. The three low-barrier games are left out on purpose — they lower an input barrier these learners do not have.</span><span class="fil">Puro audio ang Pagsasanay sa Pagbigkas. Sinadyang hindi isama ang tatlong low-barrier na laro — inaalis nila ang hadlang sa pag-input na wala naman sa mga mag-aaral na ito.</span></p><ul><li><span class="en">First Letter</span><span class="fil">Unang Letra</span></li><li><span class="en">Odd One Out</span><span class="fil">Ang Naiiba</span></li><li><span class="en">Pronunciation Practice</span><span class="fil">Pagsasanay sa Pagbigkas</span></li><li><span class="en">Yes or No</span><span class="fil">Oo o Hindi</span></li></ul></div></div>
+    <div class="roster" data-cat="motor" hidden><div class="roster-head"><span class="r-emoji" aria-hidden="true">🖐️</span><h3><span class="en">Motor impairment</span><span class="fil">Kapansanan sa paggalaw</span></h3><span class="r-count"><span class="en">10 games</span><span class="fil">10 laro</span></span></div><p class="r-why"><span class="en">Single taps on large targets only — no dragging, no sustained gestures.</span><span class="fil">Iisang pindot lamang sa malalaking target — walang paghila o matagalang galaw.</span></p><div class="roster-list"><div class="r-game" style="--g:#90CAF9"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Yes or No</span><span class="fil">Oo o Hindi</span></span></div><div class="r-game" style="--g:#80DEEA"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Word Match</span><span class="fil">Pagtutugma ng Salita</span></span></div><div class="r-game" style="--g:#CE93D8"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Odd One Out</span><span class="fil">Ang Naiiba</span></span></div><div class="r-game" style="--g:#FFAB40"><span class="r-dot" aria-hidden="true"></span><span><span class="en">First Letter</span><span class="fil">Unang Letra</span></span></div><div class="r-game" style="--g:#A5D6A7"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Memory Match</span><span class="fil">Memory Match</span></span></div><div class="r-game" style="--g:#F48FB1"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Spelling Bee</span><span class="fil">Spelling Bee</span></span></div><div class="r-game" style="--g:#81D4FA"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Pronunciation Practice</span><span class="fil">Pagsasanay sa Pagbigkas</span></span></div><div class="r-game" style="--g:#C5E1A5"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Picture-Word</span><span class="fil">Larawan-Salita</span></span></div><div class="r-game" style="--g:#FFAB91"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Sentence Builder</span><span class="fil">Sentence Builder</span></span></div><div class="r-game" style="--g:#B388FF"><span class="r-dot" aria-hidden="true"></span><span><span class="en">FSL Practice</span><span class="fil">Pagsasanay sa FSL</span></span></div></div><div class="r-out"><h4><span class="en">Deliberately left out</span><span class="fil">Sinadyang hindi isinama</span></h4><p><span class="en">Drag &amp; Drop, Tracing and Jigsaw need sustained drag or fine stroke control. Flashcard Quiz is designed around swiping; its buttons are a fallback, not the design.</span><span class="fil">Kailangan ng matagalang paghila o pinong kontrol sa I-drag at I-drop, Pagsu-sulat at Jigsaw. Nakabatay sa pag-swipe ang Flashcard Quiz; ang mga button ay pamalit lamang, hindi ang disenyo.</span></p><ul><li><span class="en">Drag &amp; Drop</span><span class="fil">I-drag at I-drop</span></li><li><span class="en">Flashcard Quiz</span><span class="fil">Flashcard Quiz</span></li><li><span class="en">Jigsaw Puzzle</span><span class="fil">Palaisipang Jigsaw</span></li><li><span class="en">Tracing</span><span class="fil">Pagsu-sulat</span></li></ul></div></div>
+    <div class="roster" data-cat="cognitive" hidden><div class="roster-head"><span class="r-emoji" aria-hidden="true">🧠</span><h3><span class="en">Cognitive &amp; learning</span><span class="fil">Kognitibo at pagkatuto</span></h3><span class="r-count"><span class="en">10 games</span><span class="fil">10 laro</span></span></div><p class="r-why"><span class="en">Concrete and pictorial, with low reading and low metacognitive load.</span><span class="fil">Konkreto at may larawan, mababa ang pagbabasa at mababa ang metacognitive na pasanin.</span></p><div class="roster-list"><div class="r-game" style="--g:#80DEEA"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Word Match</span><span class="fil">Pagtutugma ng Salita</span></span></div><div class="r-game" style="--g:#90CAF9"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Yes or No</span><span class="fil">Oo o Hindi</span></span></div><div class="r-game" style="--g:#C5E1A5"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Picture-Word</span><span class="fil">Larawan-Salita</span></span></div><div class="r-game" style="--g:#CE93D8"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Odd One Out</span><span class="fil">Ang Naiiba</span></span></div><div class="r-game" style="--g:#FFAB40"><span class="r-dot" aria-hidden="true"></span><span><span class="en">First Letter</span><span class="fil">Unang Letra</span></span></div><div class="r-game" style="--g:#A5D6A7"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Memory Match</span><span class="fil">Memory Match</span></span></div><div class="r-game" style="--g:#FFE082"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Jigsaw Puzzle</span><span class="fil">Palaisipang Jigsaw</span></span></div><div class="r-game" style="--g:#FFCC80"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Drag &amp; Drop</span><span class="fil">I-drag at I-drop</span></span></div><div class="r-game" style="--g:#80CBC4"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Tracing</span><span class="fil">Pagsu-sulat</span></span></div><div class="r-game" style="--g:#81D4FA"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Pronunciation Practice</span><span class="fil">Pagsasanay sa Pagbigkas</span></span></div></div><div class="r-out"><h4><span class="en">Deliberately left out</span><span class="fil">Sinadyang hindi isinama</span></h4><p><span class="en">Spelling Bee and Sentence Builder carry the heaviest literacy load. Flashcard Quiz asks “do I know this?”, the hardest judgement to make here. FSL Practice is left out because unrelated signing can confuse.</span><span class="fil">Pinakamabigat sa literasiya ang Spelling Bee at Sentence Builder. Nagtatanong ang Flashcard Quiz ng “alam ko ba ito?”, ang pinakamahirap na paghatol dito. Hindi kasama ang FSL dahil nakalilito ang di-kaugnay na pagsenyas.</span></p><ul><li><span class="en">Flashcard Quiz</span><span class="fil">Flashcard Quiz</span></li><li><span class="en">FSL Practice</span><span class="fil">Pagsasanay sa FSL</span></li><li><span class="en">Sentence Builder</span><span class="fil">Sentence Builder</span></li><li><span class="en">Spelling Bee</span><span class="fil">Spelling Bee</span></li></ul></div></div>
+    <div class="roster" data-cat="multiple" hidden><div class="roster-head"><span class="r-emoji" aria-hidden="true">♿</span><h3><span class="en">Multiple disabilities</span><span class="fil">Maramihang kapansanan</span></h3><span class="r-count"><span class="en">10 games</span><span class="fil">10 laro</span></span></div><p class="r-why"><span class="en">The motor input limits, with every alternative modality — both FSL and audio — kept available.</span><span class="fil">Ang mga limitasyon sa motor input, habang nananatiling available ang lahat ng alternatibong modalidad — FSL at audio.</span></p><div class="roster-list"><div class="r-game" style="--g:#90CAF9"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Yes or No</span><span class="fil">Oo o Hindi</span></span></div><div class="r-game" style="--g:#80DEEA"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Word Match</span><span class="fil">Pagtutugma ng Salita</span></span></div><div class="r-game" style="--g:#CE93D8"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Odd One Out</span><span class="fil">Ang Naiiba</span></span></div><div class="r-game" style="--g:#FFAB40"><span class="r-dot" aria-hidden="true"></span><span><span class="en">First Letter</span><span class="fil">Unang Letra</span></span></div><div class="r-game" style="--g:#C5E1A5"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Picture-Word</span><span class="fil">Larawan-Salita</span></span></div><div class="r-game" style="--g:#A5D6A7"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Memory Match</span><span class="fil">Memory Match</span></span></div><div class="r-game" style="--g:#81D4FA"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Pronunciation Practice</span><span class="fil">Pagsasanay sa Pagbigkas</span></span></div><div class="r-game" style="--g:#B39DDB"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Flashcard Quiz</span><span class="fil">Flashcard Quiz</span></span></div><div class="r-game" style="--g:#FFAB91"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Sentence Builder</span><span class="fil">Sentence Builder</span></span></div><div class="r-game" style="--g:#B388FF"><span class="r-dot" aria-hidden="true"></span><span><span class="en">FSL Practice</span><span class="fil">Pagsasanay sa FSL</span></span></div></div><div class="r-out"><h4><span class="en">Deliberately left out</span><span class="fil">Sinadyang hindi isinama</span></h4><p><span class="en">The same motor exclusions, plus Spelling Bee for its literacy load. Led by the lowest-barrier games.</span><span class="fil">Parehong motor na eksklusyon, dagdag ang Spelling Bee dahil sa bigat nito sa literasiya. Pinangungunahan ng pinakamababang-hadlang na laro.</span></p><ul><li><span class="en">Drag &amp; Drop</span><span class="fil">I-drag at I-drop</span></li><li><span class="en">Jigsaw Puzzle</span><span class="fil">Palaisipang Jigsaw</span></li><li><span class="en">Spelling Bee</span><span class="fil">Spelling Bee</span></li><li><span class="en">Tracing</span><span class="fil">Pagsu-sulat</span></li></ul></div></div>
+    <div class="roster" data-cat="none" hidden><div class="roster-head"><span class="r-emoji" aria-hidden="true">✅</span><h3><span class="en">No accessibility needs</span><span class="fil">Walang kailangang akomodasyon</span></h3><span class="r-count"><span class="en">10 games</span><span class="fil">10 laro</span></span></div><p class="r-why"><span class="en">The full classic roster.</span><span class="fil">Ang kumpletong klasikong roster.</span></p><div class="roster-list"><div class="r-game" style="--g:#80DEEA"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Word Match</span><span class="fil">Pagtutugma ng Salita</span></span></div><div class="r-game" style="--g:#F48FB1"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Spelling Bee</span><span class="fil">Spelling Bee</span></span></div><div class="r-game" style="--g:#A5D6A7"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Memory Match</span><span class="fil">Memory Match</span></span></div><div class="r-game" style="--g:#FFCC80"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Drag &amp; Drop</span><span class="fil">I-drag at I-drop</span></span></div><div class="r-game" style="--g:#B39DDB"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Flashcard Quiz</span><span class="fil">Flashcard Quiz</span></span></div><div class="r-game" style="--g:#81D4FA"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Pronunciation Practice</span><span class="fil">Pagsasanay sa Pagbigkas</span></span></div><div class="r-game" style="--g:#FFAB91"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Sentence Builder</span><span class="fil">Sentence Builder</span></span></div><div class="r-game" style="--g:#80CBC4"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Tracing</span><span class="fil">Pagsu-sulat</span></span></div><div class="r-game" style="--g:#FFE082"><span class="r-dot" aria-hidden="true"></span><span><span class="en">Jigsaw Puzzle</span><span class="fil">Palaisipang Jigsaw</span></span></div><div class="r-game" style="--g:#B388FF"><span class="r-dot" aria-hidden="true"></span><span><span class="en">FSL Practice</span><span class="fil">Pagsasanay sa FSL</span></span></div></div><div class="r-out"><h4><span class="en">Deliberately left out</span><span class="fil">Sinadyang hindi isinama</span></h4><p><span class="en">Picture-Word is Word Match with prompt and answer swapped when there is no perception constraint. The three low-barrier games are aimed at the categories that need them.</span><span class="fil">Ang Larawan-Salita ay Pagtutugma ng Salita na binaligtad ang tanong at sagot kapag walang limitasyon sa pang-unawa. Nakatuon ang tatlong low-barrier na laro sa mga kategoryang nangangailangan nito.</span></p><ul><li><span class="en">First Letter</span><span class="fil">Unang Letra</span></li><li><span class="en">Odd One Out</span><span class="fil">Ang Naiiba</span></li><li><span class="en">Picture-Word</span><span class="fil">Larawan-Salita</span></li><li><span class="en">Yes or No</span><span class="fil">Oo o Hindi</span></li></ul></div></div>
+  </div></section>
+
+  <section id="all"><div class="wrap">
+    <h2 class="title"><span class="en">Every game in the app</span><span class="fil">Lahat ng laro sa app</span></h2>
+    <p class="lead center">
+      <span class="en">All 15 games, with the name and description exactly as they appear in the app.</span>
+      <span class="fil">Lahat ng 15 laro, kasama ang pangalan at paglalarawang tulad mismo ng nasa app.</span>
+    </p>
+    <div class="game-grid">
+      <article class="game" style="--g:#80DEEA"><span class="g-emoji" aria-hidden="true">🎯</span><h3><span class="en">Word Match</span><span class="fil">Pagtutugma ng Salita</span></h3><span class="g-alt"><span class="fil">Word Match</span><span class="en">Pagtutugma ng Salita</span></span><p><span class="en">Match the picture to the correct word!</span><span class="fil">Itugma ang larawan sa tamang salita!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#F48FB1"><span class="g-emoji" aria-hidden="true">🔤</span><h3><span class="en">Spelling Bee</span><span class="fil">Spelling Bee</span></h3><p><span class="en">Unscramble the letters to spell the word!</span><span class="fil">Ayusin ang mga letra para mabaybay ang salita!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#A5D6A7"><span class="g-emoji" aria-hidden="true">🃏</span><h3><span class="en">Memory Match</span><span class="fil">Memory Match</span></h3><p><span class="en">Find matching pairs of cards!</span><span class="fil">Hanapin ang magkatugmang pares ng card!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#FFCC80"><span class="g-emoji" aria-hidden="true">🫳</span><h3><span class="en">Drag &amp; Drop</span><span class="fil">I-drag at I-drop</span></h3><span class="g-alt"><span class="fil">Drag &amp; Drop</span><span class="en">I-drag at I-drop</span></span><p><span class="en">Drag each word to its matching picture!</span><span class="fil">Hilahin ang bawat salita sa katugmang larawan!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#B39DDB"><span class="g-emoji" aria-hidden="true">↔️</span><h3><span class="en">Flashcard Quiz</span><span class="fil">Flashcard Quiz</span></h3><p><span class="en">Swipe right if you know it, left to learn!</span><span class="fil">I-swipe pakanan kung alam mo, pakaliwa para matuto!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#81D4FA"><span class="g-emoji" aria-hidden="true">🔊</span><h3><span class="en">Pronunciation Practice</span><span class="fil">Pagsasanay sa Pagbigkas</span></h3><span class="g-alt"><span class="fil">Pronunciation Practice</span><span class="en">Pagsasanay sa Pagbigkas</span></span><p><span class="en">Listen and pick the correct word!</span><span class="fil">Makinig at piliin ang tamang salita!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#FFAB91"><span class="g-emoji" aria-hidden="true">📝</span><h3><span class="en">Sentence Builder</span><span class="fil">Sentence Builder</span></h3><p><span class="en">Fill in the missing word in the sentence!</span><span class="fil">Punan ang nawawalang salita sa pangungusap!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#9FA8DA"><span class="g-emoji" aria-hidden="true">📖</span><h3><span class="en">Story Quiz</span><span class="fil">Quiz sa Kwento</span></h3><span class="g-alt"><span class="fil">Story Quiz</span><span class="en">Quiz sa Kwento</span></span><p><span class="en">Read a story and answer questions!</span><span class="fil">Magbasa ng kuwento at sagutin ang mga tanong!</span></p><span class="g-tag"><span class="en">Opens from Stories</span><span class="fil">Bubukas mula sa Stories</span></span></article>
+      <article class="game" style="--g:#80CBC4"><span class="g-emoji" aria-hidden="true">✏️</span><h3><span class="en">Tracing</span><span class="fil">Pagsu-sulat</span></h3><span class="g-alt"><span class="fil">Tracing</span><span class="en">Pagsu-sulat</span></span><p><span class="en">Trace the letters of each word!</span><span class="fil">Bakatin ang mga letra ng bawat salita!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#B388FF"><span class="g-emoji" aria-hidden="true">🤟</span><h3><span class="en">FSL Practice</span><span class="fil">Pagsasanay sa FSL</span></h3><span class="g-alt"><span class="fil">FSL Practice</span><span class="en">Pagsasanay sa FSL</span></span><p><span class="en">Learn Filipino Sign Language!</span><span class="fil">Matuto ng Filipino Sign Language!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#FFE082"><span class="g-emoji" aria-hidden="true">🧩</span><h3><span class="en">Jigsaw Puzzle</span><span class="fil">Palaisipang Jigsaw</span></h3><span class="g-alt"><span class="fil">Jigsaw Puzzle</span><span class="en">Palaisipang Jigsaw</span></span><p><span class="en">Assemble the picture puzzle!</span><span class="fil">Buuin ang palaisipang larawan!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#C5E1A5"><span class="g-emoji" aria-hidden="true">🖼️</span><h3><span class="en">Picture-Word</span><span class="fil">Larawan-Salita</span></h3><span class="g-alt"><span class="fil">Picture-Word</span><span class="en">Larawan-Salita</span></span><p><span class="en">Match pictures to words by listening!</span><span class="fil">Itugma ang larawan sa salita sa pakikinig!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#90CAF9"><span class="g-emoji" aria-hidden="true">👍</span><h3><span class="en">Yes or No</span><span class="fil">Oo o Hindi</span></h3><span class="g-alt"><span class="fil">Yes or No</span><span class="en">Oo o Hindi</span></span><p><span class="en">Is this the right word? Tap Yes or No!</span><span class="fil">Tama ba ang salitang ito? Pindutin ang Oo o Hindi!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#CE93D8"><span class="g-emoji" aria-hidden="true">🔍</span><h3><span class="en">Odd One Out</span><span class="fil">Ang Naiiba</span></h3><span class="g-alt"><span class="fil">Odd One Out</span><span class="en">Ang Naiiba</span></span><p><span class="en">Tap the word that does not belong!</span><span class="fil">Pindutin ang salitang hindi kabilang!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+      <article class="game" style="--g:#FFAB40"><span class="g-emoji" aria-hidden="true">🔡</span><h3><span class="en">First Letter</span><span class="fil">Unang Letra</span></h3><span class="g-alt"><span class="fil">First Letter</span><span class="en">Unang Letra</span></span><p><span class="en">Pick the letter the word starts with!</span><span class="fil">Piliin ang letrang pinagsimulan ng salita!</span></p><span class="g-tag"><span class="en">In the Games tab</span><span class="fil">Nasa Games tab</span></span></article>
+    </div>
+    <p class="note">
+      <span class="en">Difficulty adapts as a learner plays — Easy, Medium and Hard adjust the number of choices and the time allowed. Story Quiz is not in the Games tab — it opens from the Stories tab, where it has its own story picker.</span>
+      <span class="fil">Umaangkop ang hirap habang naglalaro — inaayos ng Madali, Katamtaman at Mahirap ang dami ng pagpipilian at ang oras. Ang Quiz sa Kwento ay wala sa Games tab — bumubukas ito mula sa Stories tab, kung saan may sarili itong pampili ng kuwento.</span>
+    </p>
+  </div></section>
+
+  <section class="center"><div class="wrap">
+    <h2 class="title"><span class="en">Play them on a real tablet</span><span class="fil">Laruin ang mga ito sa tunay na tablet</span></h2>
+    <p class="lead"><span class="en">Every game works offline, with no account and no ads.</span><span class="fil">Gumagana offline ang bawat laro, walang account at walang ads.</span></p>
+    <p><a class="btn primary" href="index.html#download"><span class="en">⬇️ Download the app</span><span class="fil">⬇️ I-download ang app</span></a></p>
+  </div></section>
+</main>
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <strong>🎴 FlashLearn PWD</strong>
+        <p><span class="en">Interactive flashcard app for PWD students — a college thesis / capstone project (2023–2027). Free, offline, and built with Filipino learners first.</span><span class="fil">Interactive flashcard app para sa mga mag-aaral na PWD — isang college thesis / capstone project (2023–2027). Libre, offline, at ginawa para sa mga mag-aaral na Pilipino.</span></p>
+      </div>
+      <nav class="foot-col" aria-label="Site sections">
+        <h3><span class="en">Explore</span><span class="fil">Tuklasin</span></h3>
+        <ul>
+          <li><a href="index.html#try"><span class="en">Try a flashcard</span><span class="fil">Sumubok ng flashcard</span></a></li>
+          <li><a href="index.html#download"><span class="en">Download the app</span><span class="fil">I-download ang app</span></a></li>
+          <li><a href="index.html#how"><span class="en">How to use it</span><span class="fil">Paano gamitin</span></a></li>
+          <li><a href="games.html"><span class="en">The 15 games</span><span class="fil">Ang 15 laro</span></a></li>
+          <li><a href="index.html#features"><span class="en">Features</span><span class="fil">Mga Tampok</span></a></li>
+          <li><a href="index.html#awareness"><span class="en">PWD Awareness</span><span class="fil">Kamalayang PWD</span></a></li>
+        </ul>
+      </nav>
+      <nav class="foot-col" aria-label="Resources and contact">
+        <h3><span class="en">Resources</span><span class="fil">Mga Sanggunian</span></h3>
+        <ul>
+          <li><a href="fsl-dictionary.html"><span class="en">FSL Sign Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a></li>
+          <li><a href="teachers-guide.html"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></a></li>
+          <li><a href="index.html#faq"><span class="en">FAQ</span><span class="fil">Mga Madalas Itanong</span></a></li>
+          <li><a href="index.html#about"><span class="en">About the team</span><span class="fil">Tungkol sa pangkat</span></a></li>
+          <li><a href="index.html#feedback"><span class="en">Send feedback</span><span class="fil">Magpadala ng feedback</span></a></li>
+          <li><a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app" rel="noopener">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="foot-bottom">
+      <span><span class="en">Made with 💜 for inclusive education in the Philippines.</span><span class="fil">Ginawa nang may 💜 para sa inklusibong edukasyon sa Pilipinas.</span></span>
+      <small>© 2026 FlashLearn PWD. <span class="en">Screenshots and demo video are from the actual app running on an Android tablet.</span><span class="fil">Ang mga screenshot at demo video ay mula sa totoong app na tumatakbo sa Android tablet.</span></small>
+    </div>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+<script>
+(function(){
+  // Roster switcher. Every roster is in the HTML already, so with JS off the
+  // page simply shows all six - readable, just longer.
+  var chips = [].slice.call(document.querySelectorAll('.chips .chip[data-cat]'));
+  var panels = [].slice.call(document.querySelectorAll('.roster[data-cat]'));
+  if (!chips.length || !panels.length) return;
+  function show(cat){
+    chips.forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.cat === cat)); });
+    panels.forEach(function(p){ p.hidden = (p.dataset.cat !== cat); });
+  }
+  chips.forEach(function(c){
+    c.addEventListener('click', function(){ show(c.dataset.cat); });
+  });
+  // Deep link: #visual, #hearing, ... opens that roster. Handled on load AND
+  // on hashchange - a same-document hash change (a link to #motor from this
+  // page, or the back button after following one) never re-runs this script,
+  // so without the listener those silently do nothing.
+  function fromHash(){
+    var want = location.hash.replace('#','');
+    if (want && panels.some(function(p){ return p.dataset.cat === want; })) show(want);
+  }
+  addEventListener('hashchange', fromHash);
+  fromHash();
+})();
+</script>
+</body>
+</html>
