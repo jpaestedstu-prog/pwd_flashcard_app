@@ -165,6 +165,16 @@ class RichEmptyState extends StatelessWidget {
     );
   }
 
+  /// Whether the app is in reduced-motion mode.
+  ///
+  /// `main.dart` sets [Animate.defaultDuration] to zero when the learner turns
+  /// reduced motion on, which is enough to flatten one-shot entrances — but
+  /// not a `repeat()`, which explicitly passes its own durations and would
+  /// keep looping forever regardless. That left the decorative ring pulsing
+  /// on every empty state in the app for exactly the learners who asked it to
+  /// stop, and kept the screen from ever reaching an idle frame.
+  static bool get _reducedMotion => Animate.defaultDuration == Duration.zero;
+
   /// Generates small decorative dots positioned around the ring.
   List<Widget> _buildDots(Color accent, double ringSize) {
     final rng = math.Random(emoji.hashCode);
@@ -185,13 +195,16 @@ class RichEmptyState extends StatelessWidget {
           ),
         )
             .animate(
-              onPlay: (c) => c.repeat(reverse: true),
+              onPlay: _reducedMotion ? null : (c) => c.repeat(reverse: true),
             )
             .fadeIn(duration: 300.ms, delay: (300 + i * 100).ms)
             .scale(
               begin: const Offset(0.5, 0.5),
+              // Settle at full size instead of pulsing when motion is off:
+              // without the repeat, the scale must END where the dot should
+              // rest, or it would freeze half-drawn.
               end: const Offset(1.0, 1.0),
-              duration: (1800 + i * 200).ms,
+              duration: _reducedMotion ? Duration.zero : (1800 + i * 200).ms,
               curve: Curves.easeInOut,
             ),
       );

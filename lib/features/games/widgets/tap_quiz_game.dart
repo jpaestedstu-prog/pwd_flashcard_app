@@ -6,6 +6,8 @@ import '../../../core/accessibility/haptic_service.dart';
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/services/adaptive_difficulty_service.dart';
 import '../../../core/services/celebration_service.dart';
+import '../../../core/services/game_session_service.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -27,14 +29,17 @@ import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../game_pause_mixin.dart';
+import '../game_resume_mixin.dart';
 import '../timed_game_mixin.dart';
 import 'pause_overlay.dart';
 import '../../../widgets/fullscreen_host.dart';
 
 /// One tappable answer in a [TapQuizRound].
 class TapChoice {
-  /// Main text on the button.
-  final String label;
+  /// Main text on the button, for choices that are vocabulary words — those
+  /// are the words themselves and are never translated. Games whose choices
+  /// are fixed *interface* words (Yes / No) supply [labelOf] instead.
+  final String? label;
 
   /// Optional second line (e.g. the Filipino word).
   final String? sublabel;
@@ -46,7 +51,28 @@ class TapChoice {
   /// red) always overrides it once the round is answered.
   final Color? tint;
 
-  const TapChoice({required this.label, this.sublabel, this.icon, this.tint});
+  /// Resolves the button text per locale, overriding [label] when set.
+  ///
+  /// Needed because rounds are generated in `initState`, where looking up an
+  /// InheritedWidget is not yet legal — so a game whose choices are fixed
+  /// words (Yes / No) cannot bake the translation in at build-round time. Games
+  /// whose choices are vocabulary words keep using [label]: those are the words
+  /// themselves and are not translated.
+  final String Function(AppLocalizations l10n)? labelOf;
+
+  const TapChoice({
+    this.label,
+    this.sublabel,
+    this.icon,
+    this.tint,
+    this.labelOf,
+  }) : assert(
+         label != null || labelOf != null,
+         'a choice needs either a literal label or a locale resolver',
+       );
+
+  /// The text to show for this choice in [l10n]'s language.
+  String textIn(AppLocalizations l10n) => labelOf?.call(l10n) ?? label!;
 }
 
 /// One question: a prompt built from [card], plus the answers to tap.
@@ -83,11 +109,17 @@ abstract class TapQuizScreen extends ConsumerStatefulWidget {
   final List<FlashcardCategory> categories;
   final bool timedMode;
 
+  /// Pick up the unfinished run the learner left behind rather than dealing a
+  /// fresh one. The Games hub sets this after asking; see
+  /// [GameSessionService].
+  final bool resume;
+
   const TapQuizScreen({
     super.key,
     this.difficulty = GameDifficulty.medium,
     this.categories = const [],
     this.timedMode = false,
+    this.resume = false,
   });
 }
 
@@ -97,14 +129,37 @@ abstract class TapQuizScreen extends ConsumerStatefulWidget {
 /// achievements, the timer, pause / break and the hands-free gaze cursor, so a
 /// concrete game only supplies its rounds and its prompt.
 abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
-    with TimedGameMixin, GamePauseMixin {
+    with TimedGameMixin, GamePauseMixin, GameResumeMixin {
+  // ─── Resume wiring ────────────────────────────────────
+  @override
+  GameDifficulty get resumeDifficulty => widget.difficulty;
+  @override
+  List<FlashcardCategory> get resumeCategories => widget.categories;
+  @override
+  bool get resumeTimedMode => widget.timedMode;
+  @override
+  String? get resumeProfileId => ref.read(profileProvider)?.id;
+  @override
+  GameType get resumeGameType => gameType;
+  @override
+  List<String> get resumeDeckIds => _rounds.map((r) => r.card.id).toList();
+  @override
+  int get resumeIndex => _currentRound;
+  @override
+  int get resumeScore => _score;
+  @override
+  Map<String, bool> get resumeResults => _cardResults;
+  @override
+  bool get resumeFinished => _showResult;
+
   // ─── Subclass hooks ───────────────────────────────────
 
   /// Which game this is — recorded against progress and achievements.
   GameType get gameType;
 
-  /// Title shown in the app bar and the review sheet.
-  String get gameTitle;
+  /// Title shown in the app bar and the review sheet — the localized game
+  /// name, so it matches the hub card the learner tapped to get here.
+  String gameTitle(AppLocalizations l10n) => gameType.labelOf(l10n);
 
   /// Build one round for [card], drawing distractors from [pool] (which
   /// excludes [card]). Return `null` to skip the card when no valid round can
@@ -115,8 +170,10 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
   Widget buildPrompt(BuildContext context, TapQuizRound round);
 
   /// Screen-reader description of the prompt, so the question is spoken even
-  /// when it is drawn as an image or a letter tile.
-  String promptSemantics(TapQuizRound round);
+  /// when it is drawn as an image or a letter tile. Takes [l10n] because this
+  /// is exactly the text a Visual-Impairment learner hears — it has to be in
+  /// their language, not just the visible copy.
+  String promptSemantics(AppLocalizations l10n, TapQuizRound round);
 
   /// Columns in the answer grid. Two by default; Yes-or-No keeps two large
   /// targets, First Letter uses more.
@@ -166,8 +223,60 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
     }
     _allCards = source..shuffle(random);
     _generateRounds();
+    if (widget.resume) _restoreSaved();
     startTimerIfNeeded(widget.timedMode);
     initPause();
+  }
+
+  /// Re-deal the run the learner walked away from.
+  ///
+  /// The snapshot holds the deck (card ids, in order) and how far in they got,
+  /// not the rendered rounds — distractors are drawn fresh here, which keeps
+  /// each game owning its own round shape and stops a learner from farming an
+  /// answer they already saw. Any mismatch (a card that no longer exists, a
+  /// round this game can no longer build from it) falls back to the fresh deal
+  /// already in `_rounds` rather than resuming into a half-broken state.
+  void _restoreSaved() {
+    final snapshot = readResumePoint();
+    if (snapshot == null) return;
+
+    final byId = {for (final c in SeedData.allFlashcards) c.id: c};
+    final deck = snapshot.cardIds
+        .map((id) => byId[id])
+        .whereType<Flashcard>()
+        .toList();
+    if (deck.length != snapshot.cardIds.length) return;
+
+    final rebuilt = <TapQuizRound>[];
+    for (final card in deck) {
+      final pool = _allCards.where((c) => c.id != card.id).toList()
+        ..shuffle(random);
+      final round = buildRound(card, pool, random);
+      if (round == null) return; // Cannot rebuild faithfully — start fresh.
+      rebuilt.add(round);
+    }
+
+    setState(() {
+      _rounds = rebuilt;
+      _currentRound = snapshot.roundIndex;
+      _score = snapshot.score;
+      _cardResults
+        ..clear()
+        ..addAll(snapshot.cardResults);
+      // The review sheet's per-word verdicts survive; the exact wrong answer
+      // tapped before the break does not, and is not worth persisting.
+      _reviewItems.clear();
+      for (final card in deck.take(snapshot.roundIndex)) {
+        _reviewItems.add(
+          GameReviewItem(
+            wordEnglish: card.wordEnglish,
+            wordFilipino: card.wordFilipino,
+            category: card.category,
+            isCorrect: snapshot.cardResults[card.id] ?? false,
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -197,7 +306,10 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
   @override
   Future<void> savePartialProgress() async {
     if (_rounds.isEmpty) return;
-    _saveProgress();
+    _saveProgress(completed: false);
+    // Quitting is the moment worth remembering: the hub can offer to bring
+    // the learner straight back to this round.
+    saveResumePoint();
   }
 
   @override
@@ -224,7 +336,9 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
           wordFilipino: round.card.wordFilipino,
           category: round.card.category,
           isCorrect: isCorrect,
-          userAnswer: isCorrect ? null : round.choices[index].label,
+          userAnswer: isCorrect
+              ? null
+              : round.choices[index].textIn(AppLocalizations.of(context)!),
         ),
       );
       // A word only counts as known if every round that asked about it was
@@ -257,6 +371,8 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
   }
 
   void _finish() {
+    // The run is over, so there is nothing left to come back to.
+    clearResumePoint();
     _saveProgress();
     final celebType = _starsEarned >= 3
         ? CelebrationType.perfectScore
@@ -271,6 +387,9 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
   }
 
   void _restart() {
+    // "Play Again" and the pause overlay's Restart both deal a new run, which
+    // supersedes whatever was saved.
+    clearResumePoint();
     setState(() {
       _currentRound = 0;
       _score = 0;
@@ -295,7 +414,10 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
     return 0;
   }
 
-  void _saveProgress() {
+  /// [completed] is false only on the "Quit to Games" path — an abandoned run
+  /// still counts toward stats but is not fed to the adaptive engine as if
+  /// every unplayed round were a miss.
+  void _saveProgress({bool completed = true}) {
     final categories = _rounds.map((r) => r.card.category).toSet().toList();
     ref
         .read(progressProvider.notifier)
@@ -306,6 +428,8 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
           correctWordIds: _cardResults.correctWordIds,
+          durationSeconds: elapsedSeconds,
+          playedDifficulty: completed ? widget.difficulty : null,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
@@ -334,11 +458,12 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
   }
 
   List<GazeAction> _gazeActions() {
+    final l10n = AppLocalizations.of(context)!;
     final canMove = !_answered && !isPaused;
     return [
       GazeAction(
         zone: GazeZone.left,
-        label: 'Prev',
+        label: l10n.gazePrev,
         icon: Icons.chevron_left_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -346,7 +471,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
       ),
       GazeAction(
         zone: GazeZone.right,
-        label: 'Next',
+        label: l10n.gazeNext,
         icon: Icons.chevron_right_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -354,7 +479,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
       ),
       GazeAction(
         zone: GazeZone.down,
-        label: 'Choose',
+        label: l10n.gazeChoose,
         icon: Icons.check_circle_rounded,
         color: AppColors.success,
         enabled: canMove,
@@ -377,16 +502,17 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
 
   Widget _buildEmptyState(BuildContext context) {
     final hc = HCColor.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: fullscreenBar(
         ref,
         AppBar(
           leading: IconButton(
             icon: const Icon(Icons.close_rounded),
-            tooltip: 'Close',
+            tooltip: l10n.close,
             onPressed: () => context.popOrGo('/games'),
           ),
-          title: Text(gameTitle),
+          title: Text(gameTitle(l10n)),
         ),
       ),
       body: Center(
@@ -398,13 +524,13 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
               Icon(Icons.category_outlined, size: 64, color: hc.textSecondary),
               const SizedBox(height: 16),
               Text(
-                'Not enough words',
+                l10n.notEnoughWords,
                 style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'Pick more categories to play $gameTitle.',
+                l10n.notEnoughWordsBody(gameTitle(l10n)),
                 style: AppTypography.bodyMedium.copyWith(
                   color: hc.textSecondary,
                 ),
@@ -413,7 +539,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: () => context.popOrGo('/games'),
-                child: const Text('Back to Games'),
+                child: Text(l10n.backToGames),
               ),
             ],
           ),
@@ -445,7 +571,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
-                    gameTitle: gameTitle,
+                    gameTitle: gameTitle(AppLocalizations.of(context)!),
                   ),
                 ),
               ),
@@ -463,6 +589,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
 
   Widget _buildGameScreen(BuildContext context) {
     final round = _rounds[_currentRound];
+    final l10n = AppLocalizations.of(context)!;
     final showCursor =
         ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
@@ -482,16 +609,20 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                 AppBar(
                   leading: IconButton(
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Close',
+                    tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
                   title: Text(
-                    '$gameTitle  •  ${_currentRound + 1}/${_rounds.length}',
+                    l10n.gameRoundHeader(
+                      gameTitle(l10n),
+                      _currentRound + 1,
+                      _rounds.length,
+                    ),
                   ),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
-                      tooltip: 'Pause',
+                      tooltip: l10n.pauseLabel,
                       onPressed: pauseGame,
                     ),
                     if (isTimedMode)
@@ -542,7 +673,10 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                 child: Column(
                   children: [
                     Semantics(
-                      label: 'Round ${_currentRound + 1} of ${_rounds.length}',
+                      label: l10n.resumeRoundProgress(
+                        _currentRound + 1,
+                        _rounds.length,
+                      ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
@@ -564,7 +698,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                       flex: promptFlex,
                       child:
                           Semantics(
-                                label: promptSemantics(round),
+                                label: promptSemantics(l10n, round),
                                 child: buildPrompt(context, round),
                               )
                               .animate(key: ValueKey(_currentRound))
@@ -647,6 +781,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
     HCColor hc,
     bool showCursor,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final choice = round.choices[index];
     final isSelected = _selectedIndex == index;
     final isCorrect = index == round.correctIndex;
@@ -675,9 +810,9 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
     Widget card = Semantics(
       button: true,
       label:
-          'Answer: ${choice.label}'
-          '${showCorrect ? ', correct answer' : ''}'
-          '${showWrong ? ', wrong answer' : ''}',
+          '${l10n.answerSemantics(choice.textIn(l10n))}'
+          '${showCorrect ? l10n.correctAnswerSuffix : ''}'
+          '${showWrong ? l10n.wrongAnswerSuffix : ''}',
       child: GestureDetector(
         onTap: () => _selectAnswer(index),
         child: AnimatedContainer(
@@ -701,7 +836,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                       const SizedBox(height: 4),
                     ],
                     Text(
-                      choice.label,
+                      choice.textIn(l10n),
                       style: AppTypography.titleMedium.copyWith(
                         color: textColor,
                         fontWeight: FontWeight.w700,

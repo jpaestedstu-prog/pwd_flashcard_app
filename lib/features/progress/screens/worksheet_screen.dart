@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
@@ -56,12 +57,14 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
             // ─── Worksheet Type ────────────────
             _SectionTitle(label: 'Worksheet Type', hc: hc),
             const SizedBox(height: 12),
-            ...WorksheetType.values.map((type) => _WorksheetTypeCard(
-                  type: type,
-                  isSelected: _selectedType == type,
-                  hc: hc,
-                  onTap: () => setState(() => _selectedType = type),
-                )),
+            ...WorksheetType.values.map(
+              (type) => _WorksheetTypeCard(
+                type: type,
+                isSelected: _selectedType == type,
+                hc: hc,
+                onTap: () => setState(() => _selectedType = type),
+              ),
+            ),
             const SizedBox(height: 24),
 
             // ─── Category ──────────────────────
@@ -80,8 +83,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
                     color: selected ? hc.primary : hc.textSecondary,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                   ),
-                  onSelected: (_) =>
-                      setState(() => _selectedCategory = cat),
+                  onSelected: (_) => setState(() => _selectedCategory = cat),
                 );
               }).toList(),
             ),
@@ -100,8 +102,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
                       difficulty: diff,
                       isSelected: selected,
                       hc: hc,
-                      onTap: () =>
-                          setState(() => _selectedDifficulty = diff),
+                      onTap: () => setState(() => _selectedDifficulty = diff),
                     ),
                   ),
                 );
@@ -125,7 +126,9 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
                             ),
                           )
                         : const Icon(Icons.preview_rounded),
-                    label: Text(_isGenerating ? 'Generating...' : 'Preview & Print'),
+                    label: Text(
+                      _isGenerating ? 'Generating...' : 'Preview & Print',
+                    ),
                     style: FilledButton.styleFrom(
                       backgroundColor: hc.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -233,9 +236,7 @@ class _WorksheetTypeCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: isSelected
-            ? hc.primary.withValues(alpha: 0.08)
-            : hc.surface,
+        color: isSelected ? hc.primary.withValues(alpha: 0.08) : hc.surface,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: onTap,
@@ -274,8 +275,7 @@ class _WorksheetTypeCard extends StatelessWidget {
                   ),
                 ),
                 if (isSelected)
-                  Icon(Icons.check_circle_rounded,
-                      color: hc.primary, size: 22),
+                  Icon(Icons.check_circle_rounded, color: hc.primary, size: 22),
               ],
             ),
           ),
@@ -306,9 +306,7 @@ class _DifficultyButton extends StatelessWidget {
     };
 
     return Material(
-      color: isSelected
-          ? hc.primary.withValues(alpha: 0.1)
-          : hc.surface,
+      color: isSelected ? hc.primary.withValues(alpha: 0.1) : hc.surface,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -325,7 +323,7 @@ class _DifficultyButton extends StatelessWidget {
           child: Column(
             children: [
               Text(
-                difficulty.label,
+                difficulty.labelOf(AppLocalizations.of(context)!),
                 style: AppTypography.bodyMedium.copyWith(
                   fontWeight: FontWeight.w600,
                   color: isSelected ? hc.primary : hc.textPrimary,

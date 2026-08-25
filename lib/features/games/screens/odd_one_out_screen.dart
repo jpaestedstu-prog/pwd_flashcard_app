@@ -6,6 +6,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../widgets/tap_quiz_game.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Odd One Out
 ///
@@ -22,6 +23,7 @@ class OddOneOutScreen extends TapQuizScreen {
     super.difficulty,
     super.categories,
     super.timedMode,
+    super.resume,
   });
 
   @override
@@ -37,9 +39,6 @@ class _OddPayload {
 class _OddOneOutScreenState extends TapQuizState<OddOneOutScreen> {
   @override
   GameType get gameType => GameType.oddOneOut;
-
-  @override
-  String get gameTitle => 'Odd One Out';
 
   @override
   int get choiceColumns => 2;
@@ -95,16 +94,20 @@ class _OddOneOutScreenState extends TapQuizState<OddOneOutScreen> {
   _OddPayload _payload(TapQuizRound round) => round.payload as _OddPayload;
 
   @override
-  String promptSemantics(TapQuizRound round) {
+  String promptSemantics(AppLocalizations l10n, TapQuizRound round) {
     final words = round.choices.map((c) => c.label).join(', ');
     final hint = _showHint
-        ? ' ${_choiceCount - 1} of them are ${_payload(round).groupCategory.label}.'
+        ? l10n.oddOneOutHintSpoken(
+            _choiceCount - 1,
+            _payload(round).groupCategory.labelOf(l10n),
+          )
         : '';
-    return 'Question: which word does not belong? The words are $words.$hint';
+    return '${l10n.oddOneOutQuestion(words)}$hint';
   }
 
   @override
   Widget buildPrompt(BuildContext context, TapQuizRound round) {
+    final l10n = AppLocalizations.of(context)!;
     final hc = HCColor.of(context);
     final payload = _payload(round);
     return promptPanel(
@@ -116,7 +119,7 @@ class _OddOneOutScreenState extends TapQuizState<OddOneOutScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Which one does not belong?',
+            l10n.whichDoesNotBelong,
             style: AppTypography.headlineSmall.copyWith(
               color: hc.textPrimary,
               fontWeight: FontWeight.w800,
@@ -132,7 +135,10 @@ class _OddOneOutScreenState extends TapQuizState<OddOneOutScreen> {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                '${_choiceCount - 1} are ${payload.groupCategory.label}',
+                l10n.oddOneOutHint(
+                  _choiceCount - 1,
+                  payload.groupCategory.labelOf(l10n),
+                ),
                 style: AppTypography.labelLarge.copyWith(
                   color: payload.groupCategory.darkColor,
                 ),

@@ -31,6 +31,7 @@ import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
+import '../game_resume_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
@@ -42,6 +43,10 @@ class SpellingBeeScreen extends ConsumerStatefulWidget {
   final List<FlashcardCategory> categories;
   final bool timedMode;
 
+  /// Pick up the unfinished run the learner left behind rather than dealing a
+  /// fresh one. Set by the Games hub after asking.
+  final bool resume;
+
   /// Focus mode (Word Hunt): play exactly one round with this seed word.
   /// A correct answer earns exactly 1 star, and exits pop back to the
   /// launcher instead of going to the games hub.
@@ -52,6 +57,7 @@ class SpellingBeeScreen extends ConsumerStatefulWidget {
     this.difficulty = GameDifficulty.medium,
     this.categories = const [],
     this.timedMode = false,
+    this.resume = false,
     this.focusWordId,
   });
 
@@ -60,7 +66,53 @@ class SpellingBeeScreen extends ConsumerStatefulWidget {
 }
 
 class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
-    with TimedGameMixin, GamePauseMixin {
+    with TimedGameMixin, GamePauseMixin, GameResumeMixin {
+  // ─── Resume wiring ───────────────────────────────
+  @override
+  GameType get resumeGameType => GameType.spellingBee;
+  @override
+  GameDifficulty get resumeDifficulty => widget.difficulty;
+  @override
+  List<FlashcardCategory> get resumeCategories => widget.categories;
+  @override
+  bool get resumeTimedMode => widget.timedMode;
+  @override
+  String? get resumeProfileId => ref.read(profileProvider)?.id;
+  @override
+  List<String> get resumeDeckIds => _cards.map((c) => c.id).toList();
+  @override
+  int get resumeIndex => _currentIndex;
+  @override
+  int get resumeScore => _score;
+  @override
+  bool get resumeFinished => _showResult;
+
+  /// Re-deal the run the learner walked away from. This game's deck is a plain
+  /// card list, so restoring is just reordering it to the saved ids and
+  /// jumping the index. A deck that no longer lines up (a card dropped from
+  /// the seed data) falls back to the fresh deal.
+  void _restoreSaved() {
+    final snapshot = readResumePoint();
+    if (snapshot == null) return;
+    // Look the saved ids up in the whole pool, not in the deck that was
+    // just dealt — the fresh deal is a different random hand, so a lookup
+    // against it would miss every card and always fall back.
+    final byId = {for (final c in SeedData.allFlashcards) c.id: c};
+    final deck = snapshot.cardIds
+        .map((id) => byId[id])
+        .whereType<Flashcard>()
+        .toList();
+    if (deck.length != snapshot.cardIds.length) return;
+    setState(() {
+      _cards = deck;
+      _currentIndex = snapshot.roundIndex;
+      _score = snapshot.score;
+      // The scrambled letter bank is derived per word, so it has to be
+      // rebuilt for the round we are jumping to.
+      _setupWord();
+    });
+  }
+
   late List<Flashcard> _cards;
   int _currentIndex = 0;
   int _score = 0;
@@ -146,6 +198,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
       return;
     }
     _setupWord();
+    if (widget.resume) _restoreSaved();
     startTimerIfNeeded(widget.timedMode);
     initPause();
   }
@@ -160,7 +213,10 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
   @override
   Future<void> savePartialProgress() async {
     if (_cards.isEmpty) return;
-    _saveProgress();
+    _saveProgress(completed: false);
+    // Quitting is the moment worth remembering: the hub can offer to
+    // bring the learner straight back to this round.
+    saveResumePoint();
   }
 
   @override
@@ -171,6 +227,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
       ref: ref,
       type: CelebrationType.gameComplete,
     );
+    clearResumePoint();
     setState(() => _showResult = true);
   }
 
@@ -221,11 +278,12 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
   }
 
   List<GazeAction> _gazeActions() {
+    final l10n = AppLocalizations.of(context)!;
     final canPlay = !_wordComplete && !isPaused;
     return [
       GazeAction(
         zone: GazeZone.left,
-        label: 'Prev',
+        label: l10n.gazePrev,
         icon: Icons.chevron_left_rounded,
         color: AppColors.secondary,
         enabled: canPlay,
@@ -233,7 +291,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
       ),
       GazeAction(
         zone: GazeZone.right,
-        label: 'Next',
+        label: l10n.gazeNext,
         icon: Icons.chevron_right_rounded,
         color: AppColors.secondary,
         enabled: canPlay,
@@ -241,7 +299,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
       ),
       GazeAction(
         zone: GazeZone.up,
-        label: 'Undo',
+        label: l10n.gazeUndo,
         icon: Icons.backspace_rounded,
         color: AppColors.warning,
         enabled: canPlay && _answerSlots.any((s) => s != null),
@@ -249,7 +307,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
       ),
       GazeAction(
         zone: GazeZone.down,
-        label: 'Place',
+        label: l10n.gazePlace,
         icon: Icons.check_circle_rounded,
         color: AppColors.success,
         enabled: canPlay,
@@ -390,9 +448,10 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
           });
           _checkWord();
         } else {
+          final l10n = AppLocalizations.of(context)!;
           setState(() {
             _isListening = false;
-            _voiceHint = 'Heard: "$spoken" — try again!';
+            _voiceHint = l10n.heardTryAgain(spoken);
           });
           Future.delayed(const Duration(seconds: 2), () {
             if (mounted) setState(() => _voiceHint = '');
@@ -412,7 +471,10 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     });
   }
 
-  void _saveProgress() {
+  /// [completed] is false only on the "Quit to Games" path — an abandoned run
+  /// still counts toward stats but is not fed to the adaptive engine as if
+  /// every unplayed round were a miss.
+  void _saveProgress({bool completed = true}) {
     final categories = _cards.map((c) => c.category).toSet().toList();
     var stars = _starsEarned;
     if (_isFocusMode && stars > 0) {
@@ -443,6 +505,8 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
           starsEarned: _finalStars,
           categoriesPlayed: categories,
           correctWordIds: srResults.correctWordIds,
+          durationSeconds: elapsedSeconds,
+          playedDifficulty: completed ? widget.difficulty : null,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
@@ -469,6 +533,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
         ref: ref,
         type: CelebrationType.gameComplete,
       );
+      clearResumePoint();
       setState(() => _showResult = true);
     }
   }
@@ -524,6 +589,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hc = HCColor.of(context);
     // Guard: if no cards were loaded, show safe placeholder while navigating back
     if (_cards.isEmpty) {
@@ -554,7 +620,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
-                    gameTitle: 'Spelling Bee',
+                    gameTitle: GameType.spellingBee.labelOf(l10n),
                   ),
                 ),
               ),
@@ -592,16 +658,20 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                 AppBar(
                   leading: IconButton(
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Close',
+                    tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
                   title: Text(
-                    'Spelling Bee  •  ${_currentIndex + 1}/${_cards.length}',
+                    l10n.gameRoundHeader(
+                      GameType.spellingBee.labelOf(l10n),
+                      _currentIndex + 1,
+                      _cards.length,
+                    ),
                   ),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
-                      tooltip: 'Pause',
+                      tooltip: l10n.pauseLabel,
                       onPressed: pauseGame,
                     ),
                     if (isTimedMode)
@@ -683,7 +753,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Spell the English word',
+                                  l10n.spellTheWord,
                                   style: AppTypography.bodySmall.copyWith(
                                     color: hc.textSecondary,
                                   ),
@@ -700,8 +770,8 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                       // ─── Answer Slots ─────────────────────
                       Semantics(
                         label:
-                            'Answer: ${_answerSlots.where((s) => s != null).join()}'
-                            '${_wordComplete ? ', Correct!' : ', ${_answerSlots.where((s) => s == null).length} letters remaining'}',
+                            '${l10n.spelledSoFar(_answerSlots.where((s) => s != null).join())}'
+                            '${_wordComplete ? ', ${l10n.wordComplete}' : ''}',
                         liveRegion: true,
                         child: Wrap(
                           spacing: 8,
@@ -713,8 +783,8 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                             return Semantics(
                               button: true,
                               label: _answerSlots[i] != null
-                                  ? 'Slot ${i + 1}: ${_answerSlots[i]}, tap to remove'
-                                  : 'Slot ${i + 1}: empty',
+                                  ? l10n.slotFilled(i + 1, _answerSlots[i]!)
+                                  : l10n.slotEmpty(i + 1),
                               child: GestureDetector(
                                 onTap: () => _removeLetterAtSlot(i),
                                 child: AnimatedContainer(
@@ -762,7 +832,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                           padding: const EdgeInsets.only(top: 12),
                           child:
                               Text(
-                                'Correct! 🎉',
+                                l10n.correct,
                                 style: AppTypography.titleMedium.copyWith(
                                   color: AppColors.success,
                                   fontWeight: FontWeight.w700,
@@ -790,8 +860,12 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                               return Semantics(
                                 button: true,
                                 label: used
-                                    ? 'Letter ${_scrambledLetters[i]}, already used'
-                                    : 'Letter ${_scrambledLetters[i]}, tap to place',
+                                    ? l10n.letterAlreadyUsed(
+                                        _scrambledLetters[i],
+                                      )
+                                    : l10n.letterTapToPlace(
+                                        _scrambledLetters[i],
+                                      ),
                                 child: GestureDetector(
                                   onTap: () => _placeLetter(i),
                                   child: AnimatedContainer(
@@ -852,7 +926,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                       TextButton.icon(
                         onPressed: _hintsUsed < _maxHints ? _useHint : null,
                         icon: const Icon(Icons.lightbulb_rounded),
-                        label: Text('Hint (${_maxHints - _hintsUsed} left)'),
+                        label: Text(l10n.hintsLeft(_maxHints - _hintsUsed)),
                       ),
 
                       // ─── Voice Input ──────────────────────

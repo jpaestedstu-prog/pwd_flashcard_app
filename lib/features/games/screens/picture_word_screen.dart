@@ -25,6 +25,7 @@ import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
+import '../game_resume_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../gaze_control/models/gaze_action.dart';
@@ -33,6 +34,7 @@ import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Picture-Word Association Game
 ///
@@ -45,11 +47,16 @@ class PictureWordScreen extends ConsumerStatefulWidget {
   final List<FlashcardCategory> categories;
   final bool timedMode;
 
+  /// Pick up the unfinished run the learner left behind rather than dealing a
+  /// fresh one. Set by the Games hub after asking.
+  final bool resume;
+
   const PictureWordScreen({
     super.key,
     this.difficulty = GameDifficulty.medium,
     this.categories = const [],
     this.timedMode = false,
+    this.resume = false,
   });
 
   @override
@@ -57,7 +64,65 @@ class PictureWordScreen extends ConsumerStatefulWidget {
 }
 
 class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
-    with TimedGameMixin, GamePauseMixin {
+    with TimedGameMixin, GamePauseMixin, GameResumeMixin {
+  // ─── Resume wiring ───────────────────────────────
+  @override
+  GameType get resumeGameType => GameType.pictureWord;
+  @override
+  GameDifficulty get resumeDifficulty => widget.difficulty;
+  @override
+  List<FlashcardCategory> get resumeCategories => widget.categories;
+  @override
+  bool get resumeTimedMode => widget.timedMode;
+  @override
+  String? get resumeProfileId => ref.read(profileProvider)?.id;
+  @override
+  List<String> get resumeDeckIds =>
+      _rounds.map((r) => r.correctCard.id).toList();
+  @override
+  int get resumeIndex => _currentRound;
+  @override
+  int get resumeScore => _score;
+  @override
+  bool get resumeFinished => _showResult;
+
+  /// Re-deal the run the learner walked away from. The snapshot holds the deck
+  /// and how far in they got; the choices are drawn fresh here. The picture /
+  /// word alternation is positional, so rebuilding in order keeps each round
+  /// in the mode it was originally shown in.
+  void _restoreSaved() {
+    final snapshot = readResumePoint();
+    if (snapshot == null) return;
+    final byId = {for (final c in SeedData.allFlashcards) c.id: c};
+    final deck = snapshot.cardIds
+        .map((id) => byId[id])
+        .whereType<Flashcard>()
+        .toList();
+    if (deck.length != snapshot.cardIds.length) return;
+
+    final rebuilt = <_PictureWordRound>[];
+    for (var i = 0; i < deck.length; i++) {
+      final correct = deck[i];
+      final others = _allCards.where((c) => c.id != correct.id).toList()
+        ..shuffle(_random);
+      final choices = [correct, ...others.take(_numChoices - 1)]
+        ..shuffle(_random);
+      rebuilt.add(
+        _PictureWordRound(
+          correctCard: correct,
+          choices: choices,
+          correctIndex: choices.indexOf(correct),
+          isPictureMode: i % 2 == 0,
+        ),
+      );
+    }
+    setState(() {
+      _rounds = rebuilt;
+      _currentRound = snapshot.roundIndex;
+      _score = snapshot.score;
+    });
+  }
+
   late List<Flashcard> _allCards;
   late List<_PictureWordRound> _rounds;
   int _currentRound = 0;
@@ -96,6 +161,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
     }
     _allCards = source..shuffle(_random);
     _generateRounds();
+    if (widget.resume) _restoreSaved();
     startTimerIfNeeded(widget.timedMode);
     initPause();
   }
@@ -110,7 +176,10 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
   @override
   Future<void> savePartialProgress() async {
     if (_rounds.isEmpty) return;
-    _saveProgress();
+    _saveProgress(completed: false);
+    // Quitting is the moment worth remembering: the hub can offer to bring
+    // the learner straight back to this round.
+    saveResumePoint();
   }
 
   @override
@@ -125,6 +194,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
       type: celebType,
     );
     ref.read(hapticServiceProvider).gameComplete();
+    clearResumePoint();
     setState(() => _showResult = true);
   }
 
@@ -200,6 +270,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
           type: celebType,
         );
         ref.read(hapticServiceProvider).gameComplete();
+        clearResumePoint();
         setState(() => _showResult = true);
       }
     });
@@ -228,7 +299,10 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
     return 0;
   }
 
-  void _saveProgress() {
+  /// [completed] is false only on the "Quit to Games" path — an abandoned run
+  /// still counts toward stats but is not fed to the adaptive engine as if
+  /// every unplayed round were a miss.
+  void _saveProgress({bool completed = true}) {
     final categories = _rounds
         .map((r) => r.correctCard.category)
         .toSet()
@@ -251,6 +325,8 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
           correctWordIds: srResults.correctWordIds,
+          durationSeconds: elapsedSeconds,
+          playedDifficulty: completed ? widget.difficulty : null,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
@@ -280,11 +356,12 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
   }
 
   List<GazeAction> _gazeActions() {
+    final l10n = AppLocalizations.of(context)!;
     final canMove = !_answered && !isPaused;
     return [
       GazeAction(
         zone: GazeZone.left,
-        label: 'Prev',
+        label: l10n.gazePrev,
         icon: Icons.chevron_left_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -292,7 +369,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
       ),
       GazeAction(
         zone: GazeZone.right,
-        label: 'Next',
+        label: l10n.gazeNext,
         icon: Icons.chevron_right_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -300,7 +377,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
       ),
       GazeAction(
         zone: GazeZone.down,
-        label: 'Choose',
+        label: l10n.gazeChoose,
         icon: Icons.check_circle_rounded,
         color: AppColors.success,
         enabled: canMove,
@@ -318,6 +395,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
   }
 
   Widget _buildResultScreen(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final celebration = ref.read(celebrationServiceProvider);
     final celebType = _starsEarned >= 3
         ? CelebrationType.perfectScore
@@ -341,7 +419,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
-                    gameTitle: 'Picture-Word',
+                    gameTitle: GameType.pictureWord.labelOf(l10n),
                   ),
                 ),
               ),
@@ -358,6 +436,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
   }
 
   Widget _buildGameScreen(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final round = _rounds[_currentRound];
     // Show the gaze cursor only when hands-free control is on and the round
     // hasn't been answered yet (the answer colours take over after that).
@@ -380,16 +459,20 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                 AppBar(
                   leading: IconButton(
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Close',
+                    tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
                   title: Text(
-                    'Picture-Word  •  ${_currentRound + 1}/${_rounds.length}',
+                    l10n.gameRoundHeader(
+                      GameType.pictureWord.labelOf(l10n),
+                      _currentRound + 1,
+                      _rounds.length,
+                    ),
                   ),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
-                      tooltip: 'Pause',
+                      tooltip: l10n.pauseLabel,
                       onPressed: pauseGame,
                     ),
                     if (isTimedMode)
@@ -441,7 +524,10 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                   children: [
                     // ─── Progress bar ─────────────────────
                     Semantics(
-                      label: 'Round ${_currentRound + 1} of ${_rounds.length}',
+                      label: l10n.resumeRoundProgress(
+                        _currentRound + 1,
+                        _rounds.length,
+                      ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
@@ -487,12 +573,15 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
 
   /// Mode A: Show word prompt at top, show 4 pictures as choices
   Widget _buildPictureMode(_PictureWordRound round, bool showCursor) {
+    final l10n = AppLocalizations.of(context)!;
     return Expanded(
       child: Column(
         children: [
           // ─── Word prompt ────────────────────
           Semantics(
-                label: 'Find the picture for: ${round.correctCard.wordEnglish}',
+                label: l10n.findPictureForSemantics(
+                  round.correctCard.wordEnglish,
+                ),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 20),
@@ -511,7 +600,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                   child: Column(
                     children: [
                       Text(
-                        'Find the picture for:',
+                        l10n.findPictureFor,
                         style: AppTypography.bodyMedium.copyWith(
                           color: HCColor.of(context).textSecondary,
                         ),
@@ -572,9 +661,9 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                 return Semantics(
                   button: true,
                   label:
-                      'Picture of ${choice.wordEnglish}'
-                      '${showCorrect ? ', correct answer' : ''}'
-                      '${showWrong ? ', wrong answer' : ''}',
+                      '${l10n.pictureOfSemantics(choice.wordEnglish)}'
+                      '${showCorrect ? l10n.correctAnswerSuffix : ''}'
+                      '${showWrong ? l10n.wrongAnswerSuffix : ''}',
                   child: GestureDetector(
                     onTap: () => _selectAnswer(index),
                     child: AnimatedContainer(
@@ -622,6 +711,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
 
   /// Mode B: Show 1 picture at top, show 4 word choices at bottom
   Widget _buildWordMode(_PictureWordRound round, bool showCursor) {
+    final l10n = AppLocalizations.of(context)!;
     return Expanded(
       child: Column(
         children: [
@@ -630,8 +720,9 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
             flex: 3,
             child:
                 Semantics(
-                      label:
-                          'Which word matches this picture? ${round.correctCard.wordEnglish}',
+                      label: l10n.whichWordMatchesSemantics(
+                        round.correctCard.wordEnglish,
+                      ),
                       child: Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
@@ -658,7 +749,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  'Which word matches?',
+                                  l10n.whichWordMatches,
                                   style: AppTypography.titleMedium.copyWith(
                                     color: HCColor.of(context).textSecondary,
                                   ),
@@ -724,9 +815,9 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                 return Semantics(
                   button: true,
                   label:
-                      'Answer: ${choice.wordEnglish}'
-                      '${showCorrect ? ', correct' : ''}'
-                      '${showWrong ? ', wrong' : ''}',
+                      '${l10n.answerSemantics(choice.wordEnglish)}'
+                      '${showCorrect ? l10n.correctAnswerSuffix : ''}'
+                      '${showWrong ? l10n.wrongAnswerSuffix : ''}',
                   child: GestureDetector(
                     onTap: () => _selectAnswer(index),
                     child: AnimatedContainer(

@@ -7,6 +7,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../widgets/tap_quiz_game.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// First Letter
 ///
@@ -20,6 +21,7 @@ class FirstLetterScreen extends TapQuizScreen {
     super.difficulty,
     super.categories,
     super.timedMode,
+    super.resume,
   });
 
   @override
@@ -31,9 +33,6 @@ class _FirstLetterScreenState extends TapQuizState<FirstLetterScreen> {
 
   @override
   GameType get gameType => GameType.firstLetter;
-
-  @override
-  String get gameTitle => 'First Letter';
 
   // Letter tiles are narrow, so Hard's six fit three-up in two rows rather
   // than stacking into three rows of shallow, hard-to-hit cells.
@@ -95,12 +94,12 @@ class _FirstLetterScreenState extends TapQuizState<FirstLetterScreen> {
   }
 
   @override
-  String promptSemantics(TapQuizRound round) =>
-      'Question: which letter does the word ${round.card.wordEnglish} '
-      'start with?';
+  String promptSemantics(AppLocalizations l10n, TapQuizRound round) =>
+      l10n.firstLetterQuestion(round.card.wordEnglish);
 
   @override
   Widget buildPrompt(BuildContext context, TapQuizRound round) {
+    final l10n = AppLocalizations.of(context)!;
     final hc = HCColor.of(context);
     return promptPanel(
       context,
@@ -119,7 +118,7 @@ class _FirstLetterScreenState extends TapQuizState<FirstLetterScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'starts with which letter?',
+            l10n.startsWithWhichLetter,
             style: AppTypography.titleMedium.copyWith(color: hc.textSecondary),
           ),
         ],

@@ -35,6 +35,7 @@ import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// FSL Sign → Word game.
 ///
@@ -43,8 +44,13 @@ import '../../../widgets/fullscreen_host.dart';
 /// exactly like the other games.
 class FslSignToWordScreen extends ConsumerStatefulWidget {
   final List<FlashcardCategory> categories;
+  final GameDifficulty difficulty;
 
-  const FslSignToWordScreen({super.key, this.categories = const []});
+  const FslSignToWordScreen({
+    super.key,
+    this.categories = const [],
+    this.difficulty = GameDifficulty.medium,
+  });
 
   @override
   ConsumerState<FslSignToWordScreen> createState() =>
@@ -74,8 +80,19 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
   /// drives the loading overlay during the (usually cached) resolve.
   bool _openingFullscreen = false;
 
-  static const int _numChoices = 4;
-  static const int _maxRounds = 10;
+  /// Word choices under the video. Fewer options is the single biggest lever
+  /// on how hard a "which word was that?" round is.
+  int get _numChoices => switch (widget.difficulty) {
+    GameDifficulty.easy => 2,
+    GameDifficulty.medium => 4,
+    GameDifficulty.hard => 6,
+  };
+
+  int get _maxRounds => switch (widget.difficulty) {
+    GameDifficulty.easy => 6,
+    GameDifficulty.medium => 10,
+    GameDifficulty.hard => 14,
+  };
 
   /// Tracks whether the video was playing pre-pause so resume can restore.
   bool _wasPlayingBeforePause = false;
@@ -113,7 +130,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
   Future<void> savePartialProgress() async {
     if (!mounted) return;
     if (_loading) return;
-    _saveProgress();
+    _saveProgress(completed: false);
   }
 
   Future<void> _initCards() async {
@@ -248,11 +265,12 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
   }
 
   List<GazeAction> _gazeActions() {
+    final l10n = AppLocalizations.of(context)!;
     final canMove = !_answered && !isPaused;
     return [
       GazeAction(
         zone: GazeZone.left,
-        label: 'Prev',
+        label: l10n.gazePrev,
         icon: Icons.chevron_left_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -260,7 +278,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
       ),
       GazeAction(
         zone: GazeZone.right,
-        label: 'Next',
+        label: l10n.gazeNext,
         icon: Icons.chevron_right_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -268,7 +286,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
       ),
       GazeAction(
         zone: GazeZone.down,
-        label: 'Choose',
+        label: l10n.gazeChoose,
         icon: Icons.check_circle_rounded,
         color: AppColors.success,
         enabled: canMove,
@@ -365,7 +383,10 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
     return 0;
   }
 
-  void _saveProgress() {
+  /// [completed] is false only on the quit path — an abandoned run still
+  /// counts toward stats but is not fed to the adaptive engine as if every
+  /// unplayed round were a miss.
+  void _saveProgress({bool completed = true}) {
     final categories = _rounds
         .map((r) => r.correctCard.category)
         .toSet()
@@ -388,6 +409,8 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
           correctWordIds: srResults.correctWordIds,
+          durationSeconds: elapsedSeconds,
+          playedDifficulty: completed ? widget.difficulty : null,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
@@ -403,6 +426,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // ─── Loading ─────────────────────────────
     if (_loading) {
       return Scaffold(
@@ -411,10 +435,10 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
           AppBar(
             leading: IconButton(
               icon: const Icon(Icons.close_rounded),
-              tooltip: 'Close',
+              tooltip: l10n.close,
               onPressed: () => context.popOrGo('/games/fsl-practice'),
             ),
-            title: const Text('Sign → Word'),
+            title: Text(l10n.fslSignToWord),
           ),
         ),
         body: const ShimmerPageSkeleton(),
@@ -426,7 +450,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
     // ─── Not enough cards with video ─────────
     if (_rounds.isEmpty) {
       return FslEmptyStateScaffold(
-        title: 'Sign → Word',
+        title: l10n.fslSignToWord,
         onClose: () => context.popOrGo('/games/fsl-practice'),
       );
     }
@@ -448,7 +472,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
-                    gameTitle: 'FSL Sign → Word',
+                    gameTitle: l10n.fslSignToWord,
                   ),
                 ),
               ),
@@ -484,16 +508,20 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                 AppBar(
                   leading: IconButton(
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Close',
+                    tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
                   title: Text(
-                    'Sign → Word  •  ${_currentRound + 1}/${_rounds.length}',
+                    l10n.gameRoundHeader(
+                      l10n.fslSignToWord,
+                      _currentRound + 1,
+                      _rounds.length,
+                    ),
                   ),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
-                      tooltip: 'Pause',
+                      tooltip: l10n.pauseLabel,
                       onPressed: pauseGame,
                     ),
                     Padding(
@@ -536,7 +564,10 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                   children: [
                     // Progress bar
                     Semantics(
-                      label: 'Round ${_currentRound + 1} of ${_rounds.length}',
+                      label: l10n.resumeRoundProgress(
+                        _currentRound + 1,
+                        _rounds.length,
+                      ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
@@ -557,8 +588,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                     Expanded(
                       flex: 5,
                       child: Semantics(
-                        label:
-                            'Watch the sign language video and choose the correct word',
+                        label: l10n.fslWatchAndChoose,
                         child: Container(
                           width: double.infinity,
                           decoration: BoxDecoration(
@@ -586,7 +616,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'What word is this sign?',
+                                    l10n.fslWhatWordIsThisSign,
                                     style: AppTypography.titleMedium.copyWith(
                                       color: const Color(0xFF7C4DFF),
                                       fontWeight: FontWeight.w700,
@@ -726,7 +756,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                                     Icons.replay_rounded,
                                     size: 18,
                                   ),
-                                  label: const Text('Replay'),
+                                  label: Text(l10n.replayVideo),
                                   style: TextButton.styleFrom(
                                     foregroundColor: const Color(0xFF7C4DFF),
                                   ),
@@ -794,9 +824,9 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                           Widget card = Semantics(
                             button: true,
                             label:
-                                'Answer choice: ${choice.wordEnglish}'
-                                '${showCorrect ? ', correct answer' : ''}'
-                                '${showWrong ? ', wrong answer' : ''}',
+                                '${l10n.answerChoiceSemantics(choice.wordEnglish)}'
+                                '${showCorrect ? l10n.correctAnswerSuffix : ''}'
+                                '${showWrong ? l10n.wrongAnswerSuffix : ''}',
                             child: GestureDetector(
                               onTap: () => _selectAnswer(index),
                               child: AnimatedContainer(

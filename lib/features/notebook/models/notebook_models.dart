@@ -1,5 +1,36 @@
 import '../../../data/models/enums.dart';
 
+/// A note that does not exist yet, pre-filled from wherever the learner
+/// started writing it.
+///
+/// The notebook could only ever be entered from its own "New Note" button, so
+/// a note about a word was always written away from the word — the learner had
+/// to leave the card, open the notebook, and type the word again from memory.
+/// This carries that context across, and is what makes
+/// [NoteEntry.linkedFlashcardIds] get filled in without the learner going
+/// looking for the picker.
+///
+/// Passed as go_router `extra`. The editor route accepts either this or a
+/// [NoteEntry]; see the `is` checks there — an unexpected `extra` type must
+/// never throw or silently render the wrong screen.
+class NoteDraft {
+  /// Pre-filled title, so writing about "Rice" does not start by typing
+  /// "Rice".
+  final String? title;
+
+  /// Files the note under the word's own category by default.
+  final FlashcardCategory? category;
+
+  /// The cards this note is about.
+  final List<String> linkedFlashcardIds;
+
+  const NoteDraft({
+    this.title,
+    this.category,
+    this.linkedFlashcardIds = const [],
+  });
+}
+
 /// A single study note in the student's notebook.
 class NoteEntry {
   final String id;

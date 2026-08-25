@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
+import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 import 'package:pwdpwdpwd/widgets/game_review_sheet.dart';
 import 'package:pwdpwdpwd/widgets/game_widgets.dart';
 import 'package:pwdpwdpwd/widgets/animated_score_reveal.dart';
@@ -51,6 +52,10 @@ Future<void> _expectSheetNoOverflow(
       await tester.pumpWidget(
         MaterialApp(
           debugShowCheckedModeBanner: false,
+          // The game sheets read their copy from AppLocalizations, so the
+          // harness has to supply the delegates a real app would.
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context)
                 .copyWith(textScaler: TextScaler.linear(scale)),

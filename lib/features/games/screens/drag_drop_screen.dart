@@ -104,7 +104,7 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
   @override
   Future<void> savePartialProgress() async {
     if (_flashcards.isEmpty) return;
-    _saveProgress();
+    _saveProgress(completed: false);
   }
 
   @override
@@ -162,7 +162,12 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
 
   int get _starsEarned => 3; // completed the puzzle
 
-  void _saveProgress() {
+  /// [completed] is false only on the "Quit to Games" path. The score counts
+  /// toward stats exactly as before either way, but a run abandoned after two
+  /// of ten rounds is not fed to the adaptive engine as 20 % accuracy — that
+  /// reads as a struggling learner and would drop the suggested difficulty
+  /// for quitting rather than for missing.
+  void _saveProgress({bool completed = true}) {
     final categories = _flashcards.map((c) => c.category).toSet().toList();
     // Per-word results — feeds both wordsLearned and spaced repetition.
     final srResults = <String, bool>{};
@@ -179,6 +184,8 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
           correctWordIds: srResults.correctWordIds,
+          durationSeconds: elapsedSeconds,
+          playedDifficulty: completed ? widget.difficulty : null,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
@@ -205,6 +212,7 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (_showResult) {
       return Stack(
         children: [
@@ -221,7 +229,7 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
-                    gameTitle: 'Drag & Drop',
+                    gameTitle: GameType.dragAndDrop.labelOf(l10n),
                   ),
                 ),
               ),
@@ -249,14 +257,14 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
               AppBar(
                 leading: IconButton(
                   icon: const Icon(Icons.close_rounded),
-                  tooltip: 'Close',
+                  tooltip: l10n.close,
                   onPressed: pauseGame,
                 ),
                 title: Text(AppLocalizations.of(context)!.dragAndDrop),
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.pause_circle_outline_rounded),
-                    tooltip: 'Pause',
+                    tooltip: l10n.pauseLabel,
                     onPressed: pauseGame,
                   ),
                   if (isTimedMode)
@@ -335,8 +343,7 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
                         }
                         return Semantics(
                           button: true,
-                          label:
-                              'Draggable word: $word, drag to matching Filipino word',
+                          label: l10n.draggableWordSemantics(word),
                           child: Draggable<String>(
                             data: word,
                             feedback: Material(
@@ -475,10 +482,13 @@ class _DropTargetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Semantics(
       label: target.isCorrect
-          ? 'Matched: ${target.filipino} is ${target.englishAnswer}'
-          : 'Drop target: ${target.filipino}, ${matchedWord != null ? 'currently has $matchedWord (wrong)' : 'empty, drop English match here'}',
+          ? l10n.dropTargetMatched(target.filipino, target.englishAnswer)
+          : (matchedWord != null
+                ? l10n.dropTargetHolding(target.filipino, matchedWord!)
+                : l10n.dropTargetEmptyHint(target.filipino)),
       child: DragTarget<String>(
         onWillAcceptWithDetails: (_) => !target.isCorrect,
         onAcceptWithDetails: (details) => onAccept(details.data),

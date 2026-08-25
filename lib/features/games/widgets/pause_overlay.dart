@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../break_time/break_time.dart';
 
@@ -20,13 +21,15 @@ class PauseOverlay extends ConsumerWidget {
     required this.onResume,
     required this.onRestart,
     required this.onQuit,
-    this.title = 'Paused',
+    this.title,
   });
 
   final VoidCallback onResume;
   final VoidCallback onRestart;
   final Future<void> Function() onQuit;
-  final String title;
+
+  /// Overrides the heading. Null uses the localized "Paused".
+  final String? title;
 
   double _cardWidth(BuildContext context) {
     final w = context.responsiveTier<double>(
@@ -46,6 +49,7 @@ class PauseOverlay extends ConsumerWidget {
     final theme = Theme.of(context);
     final soundOn = ref.watch(settingsProvider.select((s) => s.soundEffects));
     final width = _cardWidth(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Stack(
       children: [
@@ -90,7 +94,7 @@ class PauseOverlay extends ConsumerWidget {
                             const SizedBox(width: AppSpacing.sm),
                             Expanded(
                               child: Text(
-                                title,
+                                title ?? l10n.paused,
                                 style: theme.textTheme.headlineSmall?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -101,7 +105,7 @@ class PauseOverlay extends ConsumerWidget {
                         AppSpacing.gapLg,
                         _OverlayButton(
                           icon: Icons.play_arrow_rounded,
-                          label: 'Resume',
+                          label: l10n.resumeGame,
                           primary: true,
                           onTap: onResume,
                         ),
@@ -111,33 +115,31 @@ class PauseOverlay extends ConsumerWidget {
                         // exactly as it was; returning resumes the same round.
                         _OverlayButton(
                           icon: Icons.self_improvement_rounded,
-                          label: 'I Need a Break',
+                          label: l10n.iNeedABreak,
                           onTap: () => showBreakTime(context),
                         ),
                         AppSpacing.gapMd,
                         _OverlayButton(
                           icon: Icons.refresh_rounded,
-                          label: 'Restart',
+                          label: l10n.restartGame,
                           onTap: () {
                             // Confirm before discarding the in-progress run.
                             showDialog<void>(
                               context: context,
                               builder: (ctx) => AlertDialog(
-                                title: const Text('Restart this game?'),
-                                content: const Text(
-                                  'Your current progress in this round will be lost.',
-                                ),
+                                title: Text(l10n.restartGameTitle),
+                                content: Text(l10n.restartGameBody),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.of(ctx).pop(),
-                                    child: const Text('Cancel'),
+                                    child: Text(l10n.cancel),
                                   ),
                                   FilledButton(
                                     onPressed: () {
                                       Navigator.of(ctx).pop();
                                       onRestart();
                                     },
-                                    child: const Text('Restart'),
+                                    child: Text(l10n.restartGame),
                                   ),
                                 ],
                               ),
@@ -147,7 +149,7 @@ class PauseOverlay extends ConsumerWidget {
                         AppSpacing.gapMd,
                         _OverlayButton(
                           icon: Icons.exit_to_app_rounded,
-                          label: 'Quit to Games',
+                          label: l10n.quitToGames,
                           onTap: () async {
                             await onQuit();
                           },
@@ -162,7 +164,7 @@ class PauseOverlay extends ConsumerWidget {
                                 ? Icons.volume_up_rounded
                                 : Icons.volume_off_rounded,
                           ),
-                          title: const Text('Sound effects'),
+                          title: Text(l10n.soundEffects),
                           value: soundOn,
                           onChanged: (_) => ref
                               .read(settingsProvider.notifier)

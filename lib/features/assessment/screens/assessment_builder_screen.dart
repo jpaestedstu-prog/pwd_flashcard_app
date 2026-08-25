@@ -8,6 +8,7 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../data/models/enums.dart';
+import '../../../providers/app_providers.dart';
 import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
 
@@ -313,7 +314,11 @@ class _AssessmentBuilderScreenState
       categories: _selectedCategories.toList(),
       difficulty: _difficulty,
       timeLimitMinutes: _timeLimitMinutes,
-      createdBy: 'teacher',
+      // The educator's profile id, matching QuizBuilder and the field's own
+      // doc comment. Legacy rows hold the literal 'teacher', which is why the
+      // cloud mirror stamps `created_by_profile_id` separately rather than
+      // trusting this.
+      createdBy: ref.read(profileProvider)?.id ?? '',
       createdAt: DateTime.now(),
     );
 

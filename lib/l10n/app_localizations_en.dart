@@ -1713,4 +1713,823 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get chartDifficultyEmpty =>
       'Play some games to see your\ndifficulty adaptation history!';
+
+  @override
+  String get gameTipDifficulty =>
+      '💡 Tip: Try different difficulty levels to challenge yourself!';
+
+  @override
+  String get gameTipDaily => '🔥 Playing games daily builds stronger memory!';
+
+  @override
+  String get gameTipReview => '🌟 Review words you missed to learn faster!';
+
+  @override
+  String get gameTipStartEasy =>
+      '🎯 Start with Easy mode, then level up when ready!';
+
+  @override
+  String get gameTipVariety =>
+      '🧩 Each game teaches in a different way — try them all!';
+
+  @override
+  String get gameTipTimed => '⏱️ Timed mode is great for building speed!';
+
+  @override
+  String get playTogether => 'Play Together';
+
+  @override
+  String get playTogetherSubtitle => 'Race a friend — just for fun!';
+
+  @override
+  String get playTogetherSemantics =>
+      'Play Together. Race a friend online or on this device, just for fun.';
+
+  @override
+  String gamesPickedForYou(int count) {
+    return '$count games picked for you';
+  }
+
+  @override
+  String get badgeNew => 'NEW';
+
+  @override
+  String get notPlayedYet => 'Not played yet.';
+
+  @override
+  String yourBestStars(int best) {
+    return 'Your best: $best of 3 stars.';
+  }
+
+  @override
+  String playGameSemantics(String game, String description) {
+    return 'Play $game. $description';
+  }
+
+  @override
+  String get chooseYourDifficulty => 'Choose your difficulty';
+
+  @override
+  String get beatTheClock => 'Beat the Clock ⏱️';
+
+  @override
+  String get beatTheClockSubtitle => '60 seconds to finish!';
+
+  @override
+  String get lastPlayed => 'Last played';
+
+  @override
+  String get startWithAllCategories => 'Start with All Categories';
+
+  @override
+  String get startWithOneCategory => 'Start with 1 Category';
+
+  @override
+  String startWithCategories(int count) {
+    return 'Start with $count Categories';
+  }
+
+  @override
+  String get comingSoon => 'Coming soon';
+
+  @override
+  String gameReviewTitle(String game) {
+    return '$game Review';
+  }
+
+  @override
+  String reviewCorrectCount(int count) {
+    return '$count correct';
+  }
+
+  @override
+  String reviewWrongCount(int count) {
+    return '$count wrong';
+  }
+
+  @override
+  String get yourAnswerLabel => 'Your answer: ';
+
+  @override
+  String get paused => 'Paused';
+
+  @override
+  String get resumeGame => 'Resume';
+
+  @override
+  String get iNeedABreak => 'I Need a Break';
+
+  @override
+  String get restartGame => 'Restart';
+
+  @override
+  String get restartGameTitle => 'Restart this game?';
+
+  @override
+  String get restartGameBody =>
+      'Your current progress in this round will be lost.';
+
+  @override
+  String get quitToGames => 'Quit to Games';
+
+  @override
+  String get pauseLabel => 'Pause';
+
+  @override
+  String get resultAmazing => 'Amazing! 🌟';
+
+  @override
+  String get resultAmazingHint =>
+      'You\'re a superstar! Try a harder level next!';
+
+  @override
+  String get resultGreat => 'Great Job! 🎉';
+
+  @override
+  String get resultGreatHint => 'You\'re doing wonderfully! Keep it up!';
+
+  @override
+  String get resultGood => 'Good Try! 👍';
+
+  @override
+  String get resultGoodHint => 'You\'re learning! Review the words you missed.';
+
+  @override
+  String get resultKeepPracticing => 'Keep Practicing! 💪';
+
+  @override
+  String get resultKeepPracticingHint =>
+      'Every try makes you stronger! Try again!';
+
+  @override
+  String get fslPracticeHeading => 'Filipino Sign Language Practice';
+
+  @override
+  String get fslSignToWord => 'Sign → Word';
+
+  @override
+  String get fslSignToWordSubtitle =>
+      'Watch a sign language video, then pick the correct word from choices.';
+
+  @override
+  String get fslWordToSign => 'Word → Sign';
+
+  @override
+  String get fslWordToSignSubtitle =>
+      'See a word, then pick which video shows the correct sign.';
+
+  @override
+  String get fslSignIt => 'Sign It!';
+
+  @override
+  String get fslSignItSubtitle =>
+      'Watch a sign, copy it in the camera, then check yourself.';
+
+  @override
+  String get fslSignItSubtitleGaze =>
+      'Watch a sign, copy it in the camera, then check yourself. Uses your hands — head control pauses here.';
+
+  @override
+  String get fslVideosComingSoon =>
+      'FSL videos are still being added. Try the FSL Dictionary in the meantime.';
+
+  @override
+  String get resumeBadge => 'PAUSED';
+
+  @override
+  String get resumeTitle => 'Continue where you left off?';
+
+  @override
+  String resumeBody(int round, int total) {
+    return 'You stopped at round $round of $total.';
+  }
+
+  @override
+  String get resumeContinue => 'Continue';
+
+  @override
+  String get resumeStartOver => 'Start Over';
+
+  @override
+  String resumeRoundProgress(int round, int total) {
+    return 'Round $round of $total';
+  }
+
+  @override
+  String get notEnoughWords => 'Not enough words';
+
+  @override
+  String notEnoughWordsBody(String game) {
+    return 'Pick more categories to play $game.';
+  }
+
+  @override
+  String get backToGames => 'Back to Games';
+
+  @override
+  String get fslPracticeIntro =>
+      'Watch sign language videos and test your knowledge.\nChoose a practice mode below!';
+
+  @override
+  String starsEarnedChip(int count) {
+    return '+$count ⭐ earned';
+  }
+
+  @override
+  String gameResultsSemantics(int score, int total, int rating, int stars) {
+    return 'Game results: $score out of $total, rating $rating out of 3 stars, $stars stars earned';
+  }
+
+  @override
+  String get jigsawPuzzle => 'Jigsaw Puzzle';
+
+  @override
+  String get pictureWord => 'Picture-Word';
+
+  @override
+  String get yesOrNo => 'Yes or No';
+
+  @override
+  String get oddOneOut => 'Odd One Out';
+
+  @override
+  String get firstLetter => 'First Letter';
+
+  @override
+  String get gameDescWordMatch => 'Match the picture to the correct word!';
+
+  @override
+  String get gameDescSpellingBee => 'Unscramble the letters to spell the word!';
+
+  @override
+  String get gameDescMemoryMatch => 'Find matching pairs of cards!';
+
+  @override
+  String get gameDescDragAndDrop => 'Drag each word to its matching picture!';
+
+  @override
+  String get gameDescFlashcardQuiz =>
+      'Swipe right if you know it, left to learn!';
+
+  @override
+  String get gameDescPronunciation => 'Listen and pick the correct word!';
+
+  @override
+  String get gameDescSentenceBuilder =>
+      'Fill in the missing word in the sentence!';
+
+  @override
+  String get gameDescStoryQuiz => 'Read a story and answer questions!';
+
+  @override
+  String get gameDescTracing => 'Trace the letters of each word!';
+
+  @override
+  String get gameDescFslPractice => 'Learn Filipino Sign Language!';
+
+  @override
+  String get gameDescJigsawPuzzle => 'Assemble the picture puzzle!';
+
+  @override
+  String get gameDescPictureWord => 'Match pictures to words by listening!';
+
+  @override
+  String get gameDescYesOrNo => 'Is this the right word? Tap Yes or No!';
+
+  @override
+  String get gameDescOddOneOut => 'Tap the word that does not belong!';
+
+  @override
+  String get gameDescFirstLetter => 'Pick the letter the word starts with!';
+
+  @override
+  String get difficultyDescEasy =>
+      'Fewer questions, more hints — great for beginners!';
+
+  @override
+  String get difficultyDescMedium =>
+      'Balanced challenge — the standard experience';
+
+  @override
+  String get difficultyDescHard =>
+      'More questions, fewer hints — test your skills!';
+
+  @override
+  String get suggestStarting =>
+      'You\'re just getting started! We\'ll begin with easy questions.';
+
+  @override
+  String suggestScopeGame(String game, int percent) {
+    return 'In $game, your recent accuracy is $percent%.';
+  }
+
+  @override
+  String suggestScopeRecent(int percent) {
+    return 'Across your recent games, your accuracy is $percent%.';
+  }
+
+  @override
+  String suggestScopeLifetime(int percent) {
+    return 'Your accuracy is $percent%.';
+  }
+
+  @override
+  String get suggestTierEasy =>
+      'Let\'s practice with easier questions to build confidence!';
+
+  @override
+  String get suggestTierMedium => 'A balanced challenge to keep you growing!';
+
+  @override
+  String get suggestTierHard =>
+      'You\'re doing great — time for a real challenge!';
+
+  @override
+  String gameRoundHeader(String game, int current, int total) {
+    return '$game  •  $current/$total';
+  }
+
+  @override
+  String get findPictureFor => 'Find the picture for:';
+
+  @override
+  String get whichWordMatches => 'Which word matches?';
+
+  @override
+  String get whichDoesNotBelong => 'Which one does not belong?';
+
+  @override
+  String get startsWithWhichLetter => 'starts with which letter?';
+
+  @override
+  String get isThisPrompt => 'Is this…';
+
+  @override
+  String get hearIt => 'Hear it';
+
+  @override
+  String heardTryAgain(String spoken) {
+    return 'Heard: \"$spoken\" — try again!';
+  }
+
+  @override
+  String cameraWordsFound(int count) {
+    return '📷 You\'ve found $count words with your camera!';
+  }
+
+  @override
+  String oddOneOutHint(int count, String category) {
+    return '$count are $category';
+  }
+
+  @override
+  String get allPiecesPlaced => 'All pieces placed! 🎉';
+
+  @override
+  String get jigsawHowTo => 'Tap a piece, then tap a grid slot';
+
+  @override
+  String movesUsed(int count) {
+    return 'Moves: $count';
+  }
+
+  @override
+  String knownCount(int count) {
+    return '$count known';
+  }
+
+  @override
+  String stillLearningCount(int count) {
+    return '$count still learning';
+  }
+
+  @override
+  String answerChoiceSemantics(String answer) {
+    return 'Answer choice: $answer';
+  }
+
+  @override
+  String answerSemantics(String answer) {
+    return 'Answer: $answer';
+  }
+
+  @override
+  String get correctAnswerSuffix => ', correct answer';
+
+  @override
+  String get wrongAnswerSuffix => ', wrong answer';
+
+  @override
+  String questionEnglishFor(String word) {
+    return 'Question: What is the English word for $word?';
+  }
+
+  @override
+  String findPictureForSemantics(String word) {
+    return 'Find the picture for: $word';
+  }
+
+  @override
+  String pictureOfSemantics(String word) {
+    return 'Picture of $word';
+  }
+
+  @override
+  String whichWordMatchesSemantics(String word) {
+    return 'Which word matches this picture? $word';
+  }
+
+  @override
+  String firstLetterQuestion(String word) {
+    return 'Question: which letter does the word $word start with?';
+  }
+
+  @override
+  String yesNoQuestion(String pictureWord, String english, String filipino) {
+    return 'Question: is this picture of a $pictureWord the word $english, $filipino? Answer Yes or No.';
+  }
+
+  @override
+  String flashcardSemantics(String english, String filipino, String category) {
+    return 'Flashcard: $english, $filipino, category $category. Swipe right for I Know, left for Still Learning';
+  }
+
+  @override
+  String flashcardProgressSemantics(
+    int current,
+    int total,
+    int known,
+    int learning,
+  ) {
+    return 'Card $current of $total, $known known, $learning still learning';
+  }
+
+  @override
+  String draggableWordSemantics(String word) {
+    return 'Draggable word: $word, drag to matching Filipino word';
+  }
+
+  @override
+  String dropTargetMatched(String filipino, String english) {
+    return 'Matched: $filipino is $english';
+  }
+
+  @override
+  String dropTargetEmpty(String filipino) {
+    return 'Drop target: $filipino, not yet matched';
+  }
+
+  @override
+  String slotFilled(int position, String letter) {
+    return 'Slot $position: $letter, tap to remove';
+  }
+
+  @override
+  String slotEmpty(int position) {
+    return 'Slot $position: empty';
+  }
+
+  @override
+  String letterAlreadyUsed(String letter) {
+    return 'Letter $letter, already used';
+  }
+
+  @override
+  String letterTapToPlace(String letter) {
+    return 'Letter $letter, tap to place';
+  }
+
+  @override
+  String get playSoundEnglish => 'Play sound: tap to hear the English word';
+
+  @override
+  String get playSoundFilipino => 'Play sound: tap to hear the Filipino word';
+
+  @override
+  String roundScoreSemantics(int current, int total, int score) {
+    return 'Round $current of $total, score $score';
+  }
+
+  @override
+  String spelledSoFar(String letters) {
+    return 'Answer: $letters';
+  }
+
+  @override
+  String get wordComplete => 'word complete';
+
+  @override
+  String oddOneOutQuestion(String words) {
+    return 'Question: which word does not belong? The words are $words.';
+  }
+
+  @override
+  String oddOneOutHintSpoken(int count, String category) {
+    return ' $count of them are $category.';
+  }
+
+  @override
+  String get fslWatchAndChoose =>
+      'Watch the sign language video and choose the correct word';
+
+  @override
+  String get fslWhatWordIsThisSign => 'What word is this sign?';
+
+  @override
+  String get fslWhichSignMeans => 'Which sign means…';
+
+  @override
+  String videoChoice(int index) {
+    return 'Video choice $index';
+  }
+
+  @override
+  String dropTargetHolding(String filipino, String word) {
+    return 'Drop target: $filipino, currently has $word (wrong)';
+  }
+
+  @override
+  String dropTargetEmptyHint(String filipino) {
+    return 'Drop target: $filipino, empty, drop English match here';
+  }
+
+  @override
+  String memoryCardMatched(String word) {
+    return 'Matched card: $word';
+  }
+
+  @override
+  String memoryCardShowing(String word) {
+    return 'Card showing: $word';
+  }
+
+  @override
+  String get memoryCardFaceDown => 'Face-down card, tap to flip';
+
+  @override
+  String get breakButton => 'Break';
+
+  @override
+  String get iNeedABreakTooltip => 'I need a break';
+
+  @override
+  String get replayVideo => 'Replay';
+
+  @override
+  String get showMe => 'Show Me';
+
+  @override
+  String get answerYes => 'Yes';
+
+  @override
+  String get answerNo => 'No';
+
+  @override
+  String jigsawPuzzleProgress(int current, int total) {
+    return 'Puzzle $current of $total';
+  }
+
+  @override
+  String jigsawCompleteFor(String word) {
+    return 'Complete the puzzle for: $word';
+  }
+
+  @override
+  String jigsawPieceSemantics(int row, int column) {
+    return 'Puzzle piece row $row, column $column, tap to place';
+  }
+
+  @override
+  String memoryProgressSemantics(int matched, int total, int moves) {
+    return 'Matched $matched of $total pairs in $moves moves';
+  }
+
+  @override
+  String jigsawPiecePlaced(int row, int column) {
+    return 'Puzzle piece row $row, column $column, placed correctly';
+  }
+
+  @override
+  String get gazePrev => 'Prev';
+
+  @override
+  String get gazeNext => 'Next';
+
+  @override
+  String get gazeChoose => 'Choose';
+
+  @override
+  String get gazeFlip => 'Flip';
+
+  @override
+  String get gazePlace => 'Place';
+
+  @override
+  String get gazeUndo => 'Undo';
+
+  @override
+  String showMeTitle(String word) {
+    return 'Show Me — $word';
+  }
+
+  @override
+  String get collabLearnTogether => 'Learn Together!';
+
+  @override
+  String get collabTeamTagline =>
+      'You\'re one team — you score together, not against each other.';
+
+  @override
+  String get collabPlayer2NameLabel => 'Player 2\'s Name:';
+
+  @override
+  String get collabPlayer2NameSemantics => 'Player 2\'s name';
+
+  @override
+  String get collabPlayer2NameHint => 'Enter name...';
+
+  @override
+  String get collabChooseActivity => 'Choose an Activity';
+
+  @override
+  String get collabEnterPlayer2Name => 'Enter Player 2\'s name';
+
+  @override
+  String get collabNoWords => 'No words available right now';
+
+  @override
+  String get collabHearAgain => 'Hear it again';
+
+  @override
+  String get collabWordRelay => 'Word Relay';
+
+  @override
+  String get collabPictureGuess => 'Picture Guess';
+
+  @override
+  String get collabSignChallenge => 'Sign Challenge';
+
+  @override
+  String get collabStoryBuilder => 'Story Builder';
+
+  @override
+  String get collabWordRelayDesc =>
+      'Take turns spelling words letter by letter';
+
+  @override
+  String get collabPictureGuessDesc =>
+      'One player describes, the other guesses the picture';
+
+  @override
+  String get collabSignChallengeDesc =>
+      'Sign the word, then guess your partner\'s sign';
+
+  @override
+  String get collabStoryBuilderDesc =>
+      'Build a story together, one sentence at a time';
+
+  @override
+  String get collabTeam => 'Team';
+
+  @override
+  String collabPromptDescribe(String name, String partner) {
+    return '$name, describe the word for $partner';
+  }
+
+  @override
+  String collabPromptNextLetter(String name) {
+    return '$name, what\'s the next letter?';
+  }
+
+  @override
+  String collabPromptAddSentence(String name) {
+    return '$name, add the next sentence';
+  }
+
+  @override
+  String collabPromptGuess(String name) {
+    return '$name, guess the word';
+  }
+
+  @override
+  String collabAnswerWas(String word) {
+    return 'The answer was $word';
+  }
+
+  @override
+  String get collabHintClue => 'Type a clue...';
+
+  @override
+  String get collabHintLetter => 'One letter...';
+
+  @override
+  String get collabHintSentence => 'Add the next sentence...';
+
+  @override
+  String get collabHintGuess => 'Guess the word...';
+
+  @override
+  String get collabWordToSpell => 'Word to spell:';
+
+  @override
+  String get collabWordToDescribe => 'Word to describe:';
+
+  @override
+  String get collabSignToShow => 'Sign to show:';
+
+  @override
+  String get collabWhatIsTheWord => 'What is the word?';
+
+  @override
+  String get collabClueLabel => 'Clue:';
+
+  @override
+  String get collabBuildStoryTogether => 'Build the story together!';
+
+  @override
+  String get collabStartTheStory => 'Start the story!';
+
+  @override
+  String get collabWatchTheSign => 'Watch the sign';
+
+  @override
+  String collabPhraseBig(String word) {
+    return 'The $word is big.';
+  }
+
+  @override
+  String collabPhraseISee(String word) {
+    return 'I can see a $word.';
+  }
+
+  @override
+  String collabPhraseHappy(String word) {
+    return 'The $word is happy.';
+  }
+
+  @override
+  String collabPhraseWeLike(String word) {
+    return 'We like the $word.';
+  }
+
+  @override
+  String get collabGreatTeamwork => 'Great teamwork!';
+
+  @override
+  String collabPointsTogether(int score, int total) {
+    return '$score of $total points together';
+  }
+
+  @override
+  String get collabSubmitAnswer => 'Submit';
+
+  @override
+  String collabSetUpForYou(String list) {
+    return 'Set up for you: $list.';
+  }
+
+  @override
+  String get collabAdaptTapToAnswer => 'tap to answer';
+
+  @override
+  String get collabAdaptReadAloud => 'read aloud';
+
+  @override
+  String get collabAdaptBiggerButtons => 'bigger buttons';
+
+  @override
+  String get collabAdaptShorter => 'shorter session';
+
+  @override
+  String get collabLeaveTitle => 'Leave this activity?';
+
+  @override
+  String get collabLeaveBody =>
+      'Your place is saved — you can carry on together later.';
+
+  @override
+  String get collabLeaveConfirm => 'Leave';
+
+  @override
+  String get collabKeepPlaying => 'Keep playing';
+
+  @override
+  String collabClueCategory(String category) {
+    return 'Category: $category';
+  }
+
+  @override
+  String collabClueFirstLetter(String letter) {
+    return 'It starts with $letter.';
+  }
+
+  @override
+  String collabClueLength(int count) {
+    return 'It has $count letters.';
+  }
+
+  @override
+  String collabPassSpoken(String name) {
+    return 'Or show it — pass to $name';
+  }
 }

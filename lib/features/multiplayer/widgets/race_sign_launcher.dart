@@ -8,15 +8,18 @@ import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/fsl_video_sheet.dart';
 
-/// Opens the Filipino Sign Language clip for the flashcard a race round is
-/// about.
+/// Opens the Filipino Sign Language clip for the flashcard a round is about.
 ///
-/// Shared by the local and online race screens so Play Together's signing path
-/// is indistinguishable from Cards → FSL and Stories' "Watch in FSL": the same
-/// resolver, the same friendly bottom sheet when a clip is missing (never a
-/// SnackBar — easy to miss for the Deaf learners who rely on this path), and
-/// the same analytics record, so signs collected during a match count toward
-/// the learner's FSL progress like any other.
+/// Named for the races it was written for; it is not race-specific.
+///
+/// Shared by the local and online race screens — and by Peer Collab's Sign
+/// Challenge, which is the one activity where watching the sign *is* the round
+/// — so every social signing path is indistinguishable from Cards → FSL and
+/// Stories' "Watch in FSL": the same resolver, the same friendly bottom sheet
+/// when a clip is missing (never a SnackBar — easy to miss for the Deaf
+/// learners who rely on this path), and the same analytics record, so signs
+/// collected during a match or a collab round count toward the learner's FSL
+/// progress like any other.
 ///
 /// Returns when the sheet closes, so the caller can hold the round's timers
 /// suspended for exactly as long as the clip is on screen.

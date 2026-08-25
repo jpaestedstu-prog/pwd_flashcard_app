@@ -128,12 +128,15 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
         .read(progressProvider.notifier)
         .recordGameResult(
           gameType: GameType.flashcardQuiz,
-          score: _player1Score > _player2Score
-              ? _player1Correct
-              : _player2Correct,
+          // The active profile is always player 1 — player 2 is the friend,
+          // on this device or on the other end of the race. Recording the
+          // *winner's* correct count wrote the friend's answers into the
+          // owner's progress whenever the friend won.
+          score: _player1Correct,
           total: _roundsPerPlayer,
           starsEarned: 0,
           categoriesPlayed: widget.categories,
+          durationSeconds: elapsedSeconds,
         );
   }
 
@@ -960,12 +963,16 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
             .read(progressProvider.notifier)
             .recordGameResult(
               gameType: GameType.flashcardQuiz,
-              score: _player1Score > _player2Score
-                  ? _player1Correct
-                  : _player2Correct,
+              // Player 1 is the active profile; see savePartialProgress. The
+              // race's winner is celebrated on screen, but what goes into this
+              // learner's record is what this learner answered.
+              score: _player1Correct,
               total: _roundsPerPlayer,
               starsEarned: 1,
               categoriesPlayed: widget.categories,
+              durationSeconds: elapsedSeconds,
+              // No `playedDifficulty`: a race is paced by the opponent, so its
+              // accuracy is not a clean read on how hard the words were.
             );
       }
 

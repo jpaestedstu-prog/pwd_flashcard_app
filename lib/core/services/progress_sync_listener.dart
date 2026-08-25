@@ -49,10 +49,30 @@ class ProgressSyncListener {
     for (final raw in HiveService.getProfiles()) {
       final id = raw['id'] as String?;
       if (id == null) continue;
-      // Player-mode profiles never reach the cloud.
-      if ((raw['isGuestPlayer'] as bool?) ?? false) continue;
+      if (!_syncsProgress(raw)) continue;
       _subscribe(id);
     }
+  }
+
+  /// Whether a stored profile row's progress belongs in the cloud.
+  ///
+  /// Mirrors [UserProfile.syncsProgressToCloud], read straight off the Hive
+  /// map so `start()` does not have to inflate every profile. The rule this
+  /// enforces is that **the down leg is only open where the up leg is**:
+  /// subscribing to a document this device never writes means a stale
+  /// snapshot can roll local progress backwards, which is exactly what
+  /// happened to Player-with-Progress and unlinked Student profiles.
+  static bool _syncsProgress(Map<String, dynamic> raw) {
+    if ((raw['isGuestPlayer'] as bool?) ?? false) return false;
+    final roleIndex = raw['role'] as int?;
+    if (roleIndex != null &&
+        roleIndex >= 0 &&
+        roleIndex < UserRole.values.length &&
+        UserRole.values[roleIndex] == UserRole.player) {
+      return false;
+    }
+    final classroomId = raw['classroomId'] as String?;
+    return classroomId != null && classroomId.isNotEmpty;
   }
 
   void _subscribe(String profileId) {
@@ -82,10 +102,16 @@ class ProgressSyncListener {
     if (data == null) return;
 
     try {
-      final progress = _progressFromMap(profileId, data);
+      final incoming = _progressFromMap(profileId, data);
+      // Merge, never replace. A server-confirmed snapshot is idempotent but
+      // not necessarily newer than what this device has already recorded —
+      // replacing outright let a yesterday's-tablet document erase a round
+      // played on this phone five minutes ago. See
+      // [LearningProgress.mergeWith].
+      final merged = HiveService.getProgress(profileId).mergeWith(incoming);
       // Bypass LocalRepository so this hydration doesn't bounce back
       // out as a remote write.
-      HiveService.saveProgress(progress);
+      HiveService.saveProgress(merged);
       // Watched signs live in their own Hive key, not on the progress row, so
       // `saveProgress` does not carry them — without this the pull would drop
       // every sign the other device recorded. Merged as a union so neither
@@ -112,6 +138,9 @@ class ProgressSyncListener {
     final catRaw = r['category_progress'] as Map<String, dynamic>? ?? {};
     final scoresRaw = r['recent_scores'] as List<dynamic>? ?? [];
     final wordsRaw = r['learned_word_ids'] as List<dynamic>? ?? [];
+    final storyIdsRaw = r['completed_story_ids'] as List<dynamic>? ?? [];
+    final storyStarsRaw = r['story_best_stars'] as Map<String, dynamic>? ?? {};
+    final gameStarsRaw = r['game_best_stars'] as Map<String, dynamic>? ?? {};
 
     return LearningProgress(
       profileId: profileId,
@@ -136,6 +165,17 @@ class ProgressSyncListener {
       bestStreakDays: (r['best_streak_days'] as int?) ?? 0,
       gamesPlayed: (r['games_played'] as int?) ?? 0,
       playedGameTypes: gameTypesFromNames(r['played_game_types']),
+      // Story and per-game records, for the same reason as the counters above:
+      // `saveProgress` writes all three, so anything not read here is written
+      // back empty and the pull silently erases a learner's read stories,
+      // their story ★ badges and their per-game personal bests.
+      completedStoryIds: Set<String>.from(storyIdsRaw.map((e) => e.toString())),
+      storyBestStars: storyStarsRaw.map(
+        (k, v) => MapEntry(k, (v as num).toInt()),
+      ),
+      gameBestStars: gameStarsRaw.map(
+        (k, v) => MapEntry(k, (v as num).toInt()),
+      ),
       // Deliberately not read here: `signedWordKeys` is not persisted by
       // `saveProgress`, so setting it on this model would achieve nothing.
       // `_handleSnapshot` merges it into its own Hive key instead.

@@ -21,6 +21,7 @@ import '../../../widgets/flashcard_image.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
+import '../game_resume_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
@@ -34,11 +35,16 @@ class FlashcardQuizScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
   final List<FlashcardCategory> categories;
   final bool timedMode;
+
+  /// Pick up the unfinished run the learner left behind rather than dealing a
+  /// fresh one. Set by the Games hub after asking.
+  final bool resume;
   const FlashcardQuizScreen({
     super.key,
     this.difficulty = GameDifficulty.medium,
     this.categories = const [],
     this.timedMode = false,
+    this.resume = false,
   });
 
   @override
@@ -47,7 +53,54 @@ class FlashcardQuizScreen extends ConsumerStatefulWidget {
 }
 
 class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
-    with SingleTickerProviderStateMixin, TimedGameMixin, GamePauseMixin {
+    with
+        SingleTickerProviderStateMixin,
+        TimedGameMixin,
+        GamePauseMixin,
+        GameResumeMixin {
+  // ─── Resume wiring ───────────────────────────────
+  @override
+  GameType get resumeGameType => GameType.flashcardQuiz;
+  @override
+  GameDifficulty get resumeDifficulty => widget.difficulty;
+  @override
+  List<FlashcardCategory> get resumeCategories => widget.categories;
+  @override
+  bool get resumeTimedMode => widget.timedMode;
+  @override
+  String? get resumeProfileId => ref.read(profileProvider)?.id;
+  @override
+  List<String> get resumeDeckIds => _cards.map((c) => c.id).toList();
+  @override
+  int get resumeIndex => _currentIndex;
+  @override
+  int get resumeScore => _knowCount;
+  @override
+  bool get resumeFinished => _showResult;
+
+  /// Re-deal the run the learner walked away from. This game's deck is a plain
+  /// card list, so restoring is just reordering it to the saved ids and
+  /// jumping the index. A deck that no longer lines up (a card dropped from
+  /// the seed data) falls back to the fresh deal.
+  void _restoreSaved() {
+    final snapshot = readResumePoint();
+    if (snapshot == null) return;
+    // Look the saved ids up in the whole pool, not in the deck that was
+    // just dealt — the fresh deal is a different random hand, so a lookup
+    // against it would miss every card and always fall back.
+    final byId = {for (final c in SeedData.allFlashcards) c.id: c};
+    final deck = snapshot.cardIds
+        .map((id) => byId[id])
+        .whereType<Flashcard>()
+        .toList();
+    if (deck.length != snapshot.cardIds.length) return;
+    setState(() {
+      _cards = deck;
+      _currentIndex = snapshot.roundIndex;
+      _knowCount = snapshot.score;
+    });
+  }
+
   /// Difficulty-based card count
   int get _totalCards => switch (widget.difficulty) {
     GameDifficulty.easy => 6,
@@ -91,6 +144,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
     _reviewItems.clear();
     _dragOffset = Offset.zero;
     _dragRotation = 0;
+    if (widget.resume) _restoreSaved();
     startTimerIfNeeded(widget.timedMode);
   }
 
@@ -104,7 +158,10 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
   @override
   Future<void> savePartialProgress() async {
     if (_cards.isEmpty) return;
-    _saveProgress();
+    _saveProgress(completed: false);
+    // Quitting is the moment worth remembering: the hub can offer to
+    // bring the learner straight back to this round.
+    saveResumePoint();
   }
 
   @override
@@ -115,6 +172,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
       ref: ref,
       type: CelebrationType.gameComplete,
     );
+    clearResumePoint();
     setState(() => _showResult = true);
   }
 
@@ -197,7 +255,10 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
     return 1;
   }
 
-  void _saveProgress() {
+  /// [completed] is false only on the "Quit to Games" path — an abandoned run
+  /// still counts toward stats but is not fed to the adaptive engine as if
+  /// every unplayed round were a miss.
+  void _saveProgress({bool completed = true}) {
     final categories = _cards.map((c) => c.category).toSet().toList();
     // Per-word results — feeds both wordsLearned and spaced repetition.
     final srResults = <String, bool>{};
@@ -217,6 +278,8 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
           correctWordIds: srResults.correctWordIds,
+          durationSeconds: elapsedSeconds,
+          playedDifficulty: completed ? widget.difficulty : null,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
@@ -259,6 +322,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (_showResult) {
       return Stack(
         children: [
@@ -276,7 +340,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
-                    gameTitle: 'Flashcard Quiz',
+                    gameTitle: GameType.flashcardQuiz.labelOf(l10n),
                   ),
                 ),
               ),
@@ -308,14 +372,14 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                 AppBar(
                   leading: IconButton(
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Close',
+                    tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
                   title: Text('${_currentIndex + 1} / $_totalCards'),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
-                      tooltip: 'Pause',
+                      tooltip: l10n.pauseLabel,
                       onPressed: pauseGame,
                     ),
                     if (isTimedMode)
@@ -336,8 +400,12 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: Semantics(
-                      label:
-                          'Card ${_currentIndex + 1} of $_totalCards, $_knowCount known, $_learningCount still learning',
+                      label: l10n.flashcardProgressSemantics(
+                        _currentIndex + 1,
+                        _totalCards,
+                        _knowCount,
+                        _learningCount,
+                      ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
@@ -357,14 +425,14 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                         icon: Icons.check_circle_rounded,
                         color: AppColors.success,
                         value: _knowCount,
-                        semanticLabel: '$_knowCount known',
+                        semanticLabel: l10n.knownCount(_knowCount),
                       ),
                       const SizedBox(width: 12),
                       _StatChip(
                         icon: Icons.school_rounded,
                         color: AppColors.warning,
                         value: _learningCount,
-                        semanticLabel: '$_learningCount still learning',
+                        semanticLabel: l10n.stillLearningCount(_learningCount),
                       ),
                     ],
                   ),
@@ -387,8 +455,11 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                         child: AspectRatio(
                           aspectRatio: 3 / 4,
                           child: Semantics(
-                            label:
-                                'Flashcard: ${card.wordEnglish}, ${card.wordFilipino}, category ${card.category.label}. Swipe right for I Know, left for Still Learning',
+                            label: l10n.flashcardSemantics(
+                              card.wordEnglish,
+                              card.wordFilipino,
+                              card.category.labelOf(l10n),
+                            ),
                             child: GestureDetector(
                               onHorizontalDragUpdate: _onDragUpdate,
                               onHorizontalDragEnd: _onDragEnd,
@@ -817,6 +888,7 @@ class _ResultView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.all(24),
       padding: const EdgeInsets.all(28),
@@ -837,7 +909,7 @@ class _ResultView extends StatelessWidget {
 
           const SizedBox(height: 16),
           Text(
-            know >= total * 0.8 ? '🎉 Amazing!' : '💪 Keep Going!',
+            know >= total * 0.8 ? l10n.amazing : l10n.keepGoing,
             style: AppTypography.headlineSmall.copyWith(
               fontWeight: FontWeight.w800,
             ),
@@ -851,13 +923,13 @@ class _ResultView extends StatelessWidget {
               _StatBubble(
                 icon: Icons.check_circle_rounded,
                 color: AppColors.success,
-                label: 'I Know',
+                label: l10n.iKnow,
                 value: '$know',
               ),
               _StatBubble(
                 icon: Icons.school_rounded,
                 color: AppColors.warning,
-                label: 'Learning',
+                label: l10n.learning,
                 value: '$learning',
               ),
             ],
@@ -876,7 +948,7 @@ class _ResultView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '${(know / total * 100).round()}% mastered',
+            l10n.percentMastered((know / total * 100).round()),
             style: AppTypography.labelMedium.copyWith(
               color: HCColor.of(context).textSecondary,
             ),

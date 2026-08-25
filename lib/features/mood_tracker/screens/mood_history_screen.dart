@@ -8,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/mood_provider.dart';
 import '../../../providers/app_providers.dart';
+import '../models/mood_context.dart';
 import '../models/mood_models.dart';
 
 class MoodHistoryScreen extends ConsumerWidget {
@@ -26,6 +27,12 @@ class MoodHistoryScreen extends ConsumerWidget {
     final recent30 = notifier.recentEntries(30);
     final avgMood7 = notifier.averageMood(7);
     final avgMood30 = notifier.averageMood(30);
+
+    // Sorted once here, not inside the item builder — building item N used to
+    // copy and re-sort the whole history, so a learner with a long record
+    // paid O(n log n) per visible tile.
+    final newestFirst = List.of(moods)
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     return Scaffold(
       appBar: AppBar(
@@ -250,22 +257,21 @@ class MoodHistoryScreen extends ConsumerWidget {
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          // Show newest first
-                          final sorted = List.of(moods)
-                            ..sort((a, b) =>
-                                b.timestamp.compareTo(a.timestamp));
-                          final entry = sorted[index];
+                          final entry = newestFirst[index];
+                          // No per-index stagger: this list is lazy, so a
+                          // tile built after a scroll would start its delay
+                          // from the moment it scrolled in and sit invisible.
                           return _MoodEntryTile(
                             entry: entry,
                             isFilipino: isFilipino,
+                            onDelete: () =>
+                                _confirmDelete(context, ref, entry, isFilipino),
                           )
                               .animate()
-                              .fadeIn(
-                                  duration: 300.ms,
-                                  delay: (50 * index).ms)
+                              .fadeIn(duration: 300.ms)
                               .slideX(begin: 0.03, end: 0);
                         },
-                        childCount: moods.length,
+                        childCount: newestFirst.length,
                       ),
                     ),
                   ),
@@ -276,6 +282,45 @@ class MoodHistoryScreen extends ConsumerWidget {
               ),
       ),
     );
+  }
+
+  /// Remove a single reading.
+  ///
+  /// `MoodNotifier.removeMood` has existed since the feature shipped but had
+  /// no caller — a learner who tapped the wrong face was stuck with it in
+  /// their history and in the research export forever.
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    MoodEntry entry,
+    bool isFilipino,
+  ) async {
+    final label = entry.mood.labelOf(isFilipino: isFilipino);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isFilipino ? 'Burahin ang entry?' : 'Delete this entry?'),
+        content: Text(
+          isFilipino
+              ? 'Tatanggalin ang "$label" sa iyong mood history.'
+              : 'This removes "$label" from your mood history.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(isFilipino ? 'Kanselahin' : 'Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: Text(isFilipino ? 'Burahin' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(moodProvider.notifier).removeMood(entry.id);
+    }
   }
 }
 
@@ -294,17 +339,19 @@ class _SummaryCard extends StatelessWidget {
     required this.isFilipino,
   });
 
+  /// The nearest mood to an average value, named in the learner's language.
+  static String _averageLabel(double avg, bool isFilipino) =>
+      _nearestMood(avg).labelOf(isFilipino: isFilipino);
+
+  static MoodType _nearestMood(double avg) => MoodType.values.firstWhere(
+        (m) => m.numericValue == avg.round().clamp(1, 6),
+        orElse: () => MoodType.neutral,
+      );
+
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    final moodLabel = avgMood != null
-        ? MoodType.values
-            .firstWhere(
-              (m) => m.numericValue == avgMood!.round().clamp(1, 6),
-              orElse: () => MoodType.neutral,
-            )
-            .emoji
-        : '—';
+    final moodLabel = avgMood != null ? _nearestMood(avgMood!).emoji : '—';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -328,7 +375,11 @@ class _SummaryCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '$entries ${isFilipino ? 'entry' : 'entries'}',
+                    // The old ternary was inverted: English always read
+                    // "entries", so a single reading showed "1 entries".
+                    isFilipino
+                        ? '$entries ${entries == 1 ? 'entry' : 'na entry'}'
+                        : '$entries ${entries == 1 ? 'entry' : 'entries'}',
                     style: AppTypography.titleSmall.copyWith(
                       fontWeight: FontWeight.w700,
                       color: hc.textPrimary,
@@ -336,9 +387,12 @@ class _SummaryCard extends StatelessWidget {
                   ),
                   if (avgMood != null)
                     Text(
+                      // Named, not scored. "Avg: 2.0/6" is not an answer a
+                      // learner can use, and it is the only summary a
+                      // cognitive / multiple profile would have been given.
                       isFilipino
-                          ? 'Average: ${avgMood!.toStringAsFixed(1)}/6'
-                          : 'Avg: ${avgMood!.toStringAsFixed(1)}/6',
+                          ? 'Kadalasan: ${_averageLabel(avgMood!, true)}'
+                          : 'Mostly: ${_averageLabel(avgMood!, false)}',
                       style: AppTypography.bodySmall
                           .copyWith(color: hc.textSecondary),
                     ),
@@ -355,10 +409,12 @@ class _SummaryCard extends StatelessWidget {
 class _MoodEntryTile extends StatelessWidget {
   final MoodEntry entry;
   final bool isFilipino;
+  final VoidCallback onDelete;
 
   const _MoodEntryTile({
     required this.entry,
     required this.isFilipino,
+    required this.onDelete,
   });
 
   @override
@@ -367,10 +423,15 @@ class _MoodEntryTile extends StatelessWidget {
     final date = entry.timestamp;
     final dateStr =
         '${date.month}/${date.day}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    final moodLabel = entry.mood.labelOf(isFilipino: isFilipino);
+    final moodContext = MoodContextX.fromKey(entry.activityContext);
 
     return Semantics(
-      label:
-          '${entry.mood.label} mood on $dateStr${entry.note != null ? ', note: ${entry.note}' : ''}',
+      label: isFilipino
+          ? 'Pakiramdam na $moodLabel noong $dateStr'
+              '${entry.note != null ? ', tala: ${entry.note}' : ''}'
+          : '$moodLabel mood on $dateStr'
+              '${entry.note != null ? ', note: ${entry.note}' : ''}',
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
@@ -400,12 +461,31 @@ class _MoodEntryTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isFilipino ? entry.mood.labelFilipino : entry.mood.label,
+                    moodLabel,
                     style: AppTypography.titleSmall.copyWith(
                       fontWeight: FontWeight.w700,
                       color: entry.mood.darkColor,
                     ),
                   ),
+                  // What the learner was doing. Only worth a line when it is
+                  // something more specific than "anytime".
+                  if (moodContext != MoodContext.general)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(moodContext.icon,
+                            size: 12, color: hc.textSecondary),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            moodContext.labelOf(isFilipino: isFilipino),
+                            style: AppTypography.labelSmall
+                                .copyWith(color: hc.textSecondary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   if (entry.note != null && entry.note!.isNotEmpty)
                     Text(
                       entry.note!,
@@ -417,12 +497,25 @@ class _MoodEntryTile extends StatelessWidget {
                 ],
               ),
             ),
-            Text(
-              dateStr,
-              style: AppTypography.bodySmall.copyWith(
-                color: hc.textSecondary,
-                fontSize: 11,
-              ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  dateStr,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: hc.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+                IconButton(
+                  onPressed: onDelete,
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 18,
+                  tooltip: isFilipino ? 'Burahin ang entry' : 'Delete entry',
+                  icon: Icon(Icons.delete_outline_rounded, color: hc.textHint),
+                ),
+              ],
             ),
           ],
         ),

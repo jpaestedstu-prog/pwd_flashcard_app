@@ -5,9 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/student_list_provider.dart';
 import '../models/assessment_models.dart';
+import '../providers/assessment_provider.dart';
 import '../services/assessment_service.dart';
+import '../services/assessment_cloud_service.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../widgets/app_snack_bar.dart';
 
 /// Screen showing all assignments created by the current educator,
 /// with per-student completion tracking.
@@ -20,9 +24,23 @@ class AssignmentTrackingScreen extends ConsumerWidget {
     final hc = HCColor.of(context);
     if (profile == null) return const SizedBox.shrink();
 
-    final assignments = AssessmentService.getAssignments(profile.id);
-    // Sort: most recent first
-    assignments.sort((a, b) => b.assignedAt.compareTo(a.assignedAt));
+    // Pull assignments made on another device, and the results that turn a
+    // row from Pending into a score. Watched so the list repaints when it
+    // lands; the local data renders straight away in the meantime.
+    ref.watch(educatorAssessmentSyncProvider(profile.id));
+
+    // Display names for the assignees. The roster spans devices; local Hive
+    // does not, so without this a cross-device student reads "Unknown".
+    final names = {
+      for (final d in ref.watch(educatorLearnerRosterProvider))
+        d.$1.id: d.$1.name,
+    };
+
+    // Watched, not read: assigning from this screen's "+" action or deleting a
+    // card has to repaint the list immediately.
+    final assignments = [...ref.watch(assignmentsProvider)]
+      // Sort: most recent first
+      ..sort((a, b) => b.assignedAt.compareTo(a.assignedAt));
 
     return Scaffold(
       backgroundColor: hc.background,
@@ -38,6 +56,16 @@ class AssignmentTrackingScreen extends ConsumerWidget {
           ),
         ),
         actions: [
+          // The cloud pull runs once per profile per session, which is right
+          // for a screen you glance at — but this is the screen an educator
+          // sits on waiting for "did they do it yet?", so give them a way to
+          // ask again without restarting the app.
+          IconButton(
+            icon: Icon(Icons.refresh_rounded, color: hc.textSecondary),
+            tooltip: 'Check for new results',
+            onPressed: () =>
+                ref.invalidate(educatorAssessmentSyncProvider(profile.id)),
+          ),
           IconButton(
             icon: Icon(Icons.add_rounded, color: hc.primary),
             tooltip: 'Assign Assessment',
@@ -52,8 +80,10 @@ class AssignmentTrackingScreen extends ConsumerWidget {
               itemCount: assignments.length,
               itemBuilder: (context, index) {
                 final assignment = assignments[index];
-                final statuses =
-                    AssessmentService.getAssignmentStatuses(assignment);
+                final statuses = AssessmentService.getAssignmentStatuses(
+                  assignment,
+                  names: names,
+                );
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: _AssignmentCard(
@@ -80,10 +110,24 @@ class AssignmentTrackingScreen extends ConsumerWidget {
                         ),
                       );
                       if (confirm == true) {
-                        await AssessmentService.deleteAssignment(
-                            profile.id, assignment.id);
-                        // Force rebuild
-                        (context as Element).markNeedsBuild();
+                        final outcome = await ref
+                            .read(assignmentsProvider.notifier)
+                            .deleteAssignment(assignment.id);
+                        // The row leaves this list either way. Whether it also
+                        // left the learner's tablet is the part worth saying —
+                        // a teacher who thinks they withdrew work that is
+                        // still sitting on a pupil's screen finds out the
+                        // hard way.
+                        if (context.mounted &&
+                            outcome == CloudSyncOutcome.notOwner) {
+                          AppSnackBar.warning(
+                            context,
+                            message: 'Removed here only. This profile was '
+                                'restored on another device, so that one now '
+                                'handles syncing — your learners still have '
+                                'this assignment.',
+                          );
+                        }
                       }
                     },
                   ),

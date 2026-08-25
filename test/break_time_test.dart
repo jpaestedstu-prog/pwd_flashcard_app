@@ -9,6 +9,7 @@ import 'package:pwdpwdpwd/features/break_time/screens/break_time_screen.dart';
 import 'package:pwdpwdpwd/features/break_time/widgets/bubble_pop_break.dart';
 import 'package:pwdpwdpwd/features/break_time/widgets/breathing_break.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
+import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 
 /// Fixed-settings notifier so widget tests never read/write Hive (the break
 /// feature is intentionally side-effect free; this keeps the test the same).
@@ -54,7 +55,11 @@ void main() {
             HapticService(enabled: false),
           ),
         ],
-        child: const MaterialApp(home: BreakTimeScreen()),
+        child: const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: BreakTimeScreen(),
+        ),
       );
     }
 
@@ -118,6 +123,8 @@ void main() {
             ),
           ],
           child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
               body: Stack(
                 children: [
@@ -162,6 +169,8 @@ void main() {
       var pops = 0;
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: Center(
               child: SizedBox(

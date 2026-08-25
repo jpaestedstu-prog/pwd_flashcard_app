@@ -17,6 +17,7 @@ import '../../../core/services/daily_login_reward_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/experiment_provider.dart';
+import '../../../providers/sticker_provider.dart';
 import '../../../features/experiment/models/experiment_models.dart';
 import '../../../widgets/shared_widgets.dart';
 import '../../../widgets/tutorial_overlay.dart';
@@ -28,12 +29,15 @@ import '../../../widgets/seasonal_decorations.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../../../widgets/xp_level_bar.dart';
-import '../../assessment/services/assessment_service.dart';
+import '../../assessment/providers/assessment_provider.dart';
+import '../../assessment/widgets/learner_assignment_sync.dart';
+import '../../assessment/widgets/pending_assignments_banner.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../../messaging/providers/messaging_providers.dart';
 import '../../object_scan/word_hunt_entry.dart';
+import '../../stickers/widgets/sticker_sweep.dart';
 import '../widgets/home_tile.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -105,6 +109,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final padding = context.pagePadding;
     final hc = HCColor.of(context);
 
+    // One cloud pull per learner per session for work an educator set from
+    // their own device. Watched here rather than inside the Assessment Center
+    // because the Pending Assignments banner below is the only thing that
+    // tells a learner the work exists at all. No-op without Firebase.
+    if (profile != null && !profile.isGuestPlayer) {
+      ref.watch(learnerAssignmentSyncProvider(profile.id));
+    }
+
     // Hands-free "Bottom nav + Home tiles" reach: when enabled, the feature
     // tiles register with the shell's gaze D-pad and show a focus ring. Inert
     // (a pure pass-through) otherwise, so touch / the gaze-off layout are
@@ -120,6 +132,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: AnimatedGradientBackground(
         child: Stack(
           children: [
+            // Decorative only, and deliberately the FIRST child: as the
+            // last one the falling emoji painted over the UI, drifting across
+            // the mood check-in's faces and the stat cards. Behind the
+            // (transparent) Scaffold it still shows through the page
+            // background without ever crossing content.
+            const SeasonalDecorations(showBanner: false),
             Scaffold(
               backgroundColor: Colors.transparent,
               body: SafeArea(
@@ -130,6 +148,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     // first row of feature tiles and stayed there while the
                     // page scrolled underneath.
                     const SliverToBoxAdapter(child: SeasonalBannerStrip()),
+
+                    // Awards stickers earned since the last visit, so the
+                    // Sticker Album tile below can carry an accurate badge.
+                    // Renders nothing.
+                    const SliverToBoxAdapter(child: StickerSweep()),
 
                     // ─── App Bar ──────────────────────────
                     SliverToBoxAdapter(
@@ -474,13 +497,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
 
+                    // Re-pulls assigned work whenever the app is resumed, so
+                    // the banner below can appear without a restart. Invisible.
+                    if (profile != null && !profile.isGuestPlayer)
+                      SliverToBoxAdapter(
+                        child: LearnerAssignmentSync(profileId: profile.id),
+                      ),
+
                     // ─── Pending Assignments Banner ────────
                     // Only a gaze target while it's actually visible (the widget
                     // renders nothing when there are no pending assignments).
-                    if (profile != null &&
-                        AssessmentService.getPendingAssignments(
-                          profile.id,
-                        ).isNotEmpty)
+                    //
+                    // This banner is the only place a learner finds out work
+                    // was set for them, so the cloud pull has to happen *here*
+                    // rather than inside the Assessment Center they'd have no
+                    // reason to open. Watching the one-shot provider rebuilds
+                    // this screen when a cross-device assignment lands.
+                    if (PendingAssignmentsBanner.hasPendingWork(profile?.id))
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: EdgeInsets.fromLTRB(padding, 20, padding, 0),
@@ -491,8 +524,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 entries: [
                                   (
                                     tile:
-                                        _PendingAssignmentsBanner(
-                                          profileId: profile.id,
+                                        PendingAssignmentsBanner(
+                                          profileId: profile?.id,
                                         ).animate().fadeIn(
                                           duration: 400.ms,
                                           delay: 250.ms,
@@ -615,9 +648,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             // Mascot companion
             const AnimatedMascotBuddy(),
-            // Particles only — the banner is a sliver above, so it takes its
-            // own space instead of sitting on the tiles.
-            const SeasonalDecorations(showBanner: false),
           ],
         ),
       ),
@@ -819,6 +849,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Unread messages, so a learner sees that someone wrote to them without
     // having to open Messages and check.
     final unreadMessages = ref.watch(unreadMessageCountProvider);
+
+    // Stickers earned but not yet seen, for the same reason.
+    final unseenStickers = ref.watch(unseenStickerCountProvider);
 
     return [
       // ── Learning & Study ──
@@ -1100,6 +1133,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   AppColors.bannerStickerStart,
                   AppColors.bannerStickerEnd,
                 ],
+                // Stickers earned but never shown. A reward the learner is
+                // not told about is not much of a reward.
+                badgeCount: unseenStickers,
                 onTap: () => context.push('/sticker-album'),
               ),
             tile(
@@ -1716,34 +1752,6 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
           ),
         ],
       ),
-    );
-  }
-}
-
-// ─── Pending Assignments Banner ────────────────────────
-class _PendingAssignmentsBanner extends StatelessWidget {
-  final String? profileId;
-  const _PendingAssignmentsBanner({required this.profileId});
-
-  @override
-  Widget build(BuildContext context) {
-    if (profileId == null) return const SizedBox.shrink();
-    final pending = AssessmentService.getPendingAssignments(profileId!);
-    if (pending.isEmpty) return const SizedBox.shrink();
-
-    final count = pending.length;
-    final hasOverdue = pending.any((a) => a.isOverdue);
-
-    return FeatureBanner(
-      emoji: hasOverdue ? '⚠️' : '📋',
-      title: hasOverdue ? 'Overdue Assignments' : 'Pending Assignments',
-      subtitle: 'You have $count assessment${count > 1 ? 's' : ''} to complete',
-      gradientColors: hasOverdue
-          ? const [AppColors.error, AppColors.sectionAssessment]
-          : const [AppColors.info, AppColors.sectionLearning],
-      onTap: () => context.push('/assessment'),
-      semanticLabel:
-          '$count pending assessment${count > 1 ? 's' : ''} assigned to you',
     );
   }
 }

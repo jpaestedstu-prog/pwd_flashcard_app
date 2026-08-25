@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import 'screens/break_time_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Opens the full-screen "I Need a Break" experience and resolves when the
 /// student returns to their lesson.
@@ -46,7 +47,7 @@ class BreakButton extends StatelessWidget {
     this.onBreakStart,
     this.onBreakEnd,
     this.color,
-    this.tooltip = 'I need a break',
+    this.tooltip,
   });
 
   /// Called just before the break opens — pause timers / media here.
@@ -59,7 +60,8 @@ class BreakButton extends StatelessWidget {
   /// Icon tint (defaults to the icon theme colour).
   final Color? color;
 
-  final String tooltip;
+  /// Overrides the label. Null uses the localized "I need a break".
+  final String? tooltip;
 
   Future<void> _open(BuildContext context) async {
     onBreakStart?.call();
@@ -114,6 +116,7 @@ class GameBreakButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hc = HCColor.of(context);
     final bool highContrast = hc.hc;
     final Color bg = highContrast ? Colors.black : const Color(0xFF26A69A);
@@ -127,9 +130,9 @@ class GameBreakButton extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: Semantics(
               button: true,
-              label: 'I need a break',
+              label: l10n.iNeedABreakTooltip,
               child: Tooltip(
-                message: 'I need a break',
+                message: l10n.iNeedABreakTooltip,
                 child: Material(
                   color: bg,
                   elevation: 6,
@@ -162,7 +165,7 @@ class GameBreakButton extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Break',
+                              l10n.breakButton,
                               style: TextStyle(
                                 color: fg,
                                 fontWeight: FontWeight.w800,

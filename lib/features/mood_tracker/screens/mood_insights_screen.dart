@@ -8,6 +8,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../providers/mood_provider.dart';
 import '../../../providers/app_providers.dart';
+import '../models/mood_context.dart';
 import '../models/mood_models.dart';
 
 /// Mood-Activity Correlation Dashboard for thesis research.
@@ -121,31 +122,46 @@ class MoodInsightsScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState(bool isFilipino, ColorScheme colorScheme) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('📊', style: TextStyle(fontSize: 64)),
-          const SizedBox(height: 16),
-          Text(
-            isFilipino
-                ? 'Kailangan ng 3+ mood entries'
-                : 'Need 3+ mood entries',
-            style: AppTypography.titleMedium.copyWith(
-              color: colorScheme.onSurfaceVariant,
+    // Centre it, but let it scroll instead of overflowing a short viewport at
+    // a large font scale — the same shape Mood History and the Notebook
+    // already use. Unwrapped, this burst by 49px on a 640×360 landscape phone
+    // at 2.0x text.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('📊', style: TextStyle(fontSize: 64)),
+                  const SizedBox(height: 16),
+                  Text(
+                    isFilipino
+                        ? 'Kailangan ng 3+ mood entries'
+                        : 'Need 3+ mood entries',
+                    style: AppTypography.titleMedium.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isFilipino
+                        ? 'Mag-check in ng mood para makita ang correlation insights!'
+                        : 'Check in your mood to see correlation insights!',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            isFilipino
-                ? 'Mag-check in ng mood para makita ang correlation insights!'
-                : 'Check in your mood to see correlation insights!',
-            style: AppTypography.bodyMedium.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -308,12 +324,13 @@ class MoodInsightsScreen extends ConsumerWidget {
     return insights;
   }
 
-  static String _contextLabel(String ctx, bool isFilipino) => switch (ctx) {
-        'after_game' => isFilipino ? 'Pagkatapos mag-laro' : 'After games',
-        'start_session' => isFilipino ? 'Simula ng session' : 'Session start',
-        'end_session' => isFilipino ? 'Tapos ng session' : 'Session end',
-        _ => isFilipino ? 'Pangkalahatan' : 'General',
-      };
+  /// Names a stored `activityContext`.
+  ///
+  /// Delegates to [MoodContext] so the chart axis and the writer can never
+  /// drift: this used to be a private switch that knew nothing about
+  /// `break_time` or `after_story`, and would have labelled both "General".
+  static String _contextLabel(String ctx, bool isFilipino) =>
+      MoodContextX.fromKey(ctx).labelOf(isFilipino: isFilipino);
 }
 
 // ─── Data Classes ──────────────────────────────
@@ -731,7 +748,7 @@ class _ActivityContextChart extends StatelessWidget {
                   final entry = sorted[group.x.toInt()];
                   return BarTooltipItem(
                     '${entry.value.average.toStringAsFixed(1)}/6\n'
-                    '(${entry.value.count} entries)',
+                    '(${entry.value.count} ${entry.value.count == 1 ? 'entry' : 'entries'})',
                     AppTypography.labelSmall
                         .copyWith(color: Colors.white),
                   );

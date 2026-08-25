@@ -93,4 +93,16 @@ class BoardSeedData {
   static List<BoardTile> forCategory(BoardTileCategory category) {
     return allTiles.where((t) => t.category == category).toList();
   }
+
+  /// Index of every tile by its id, built once.
+  static final Map<String, BoardTile> _byId = {
+    for (final tile in allTiles) tile.id: tile,
+  };
+
+  /// The tile with [id], or null if the seed no longer has one.
+  ///
+  /// Saved phrases persist tile *ids*, so a tile retired from [allTiles] has
+  /// to resolve to null rather than throw — an old phrase then simply drops
+  /// that word instead of taking the learner's whole phrase list down with it.
+  static BoardTile? byId(String id) => _byId[id];
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../providers/app_providers.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../data/models/enums.dart';
 import '../models/notebook_models.dart';
@@ -20,12 +21,41 @@ class NotebookScreen extends ConsumerStatefulWidget {
 class _NotebookScreenState extends ConsumerState<NotebookScreen> {
   FlashcardCategory? _selectedCategory;
   String _searchQuery = '';
+
+  /// Whether the search field is on screen.
+  ///
+  /// The magnifier used to call a `_showSearchBar()` that set `_searchQuery`
+  /// to `' '` and back to `''` in the same `setState`, and the field rendered
+  /// only when the query was non-empty — so the button was inert. Visibility
+  /// is its own piece of state now, independent of what has been typed.
+  bool _searchOpen = false;
+
   final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _searchOpen = !_searchOpen;
+      if (!_searchOpen) {
+        _searchController.clear();
+        _searchQuery = '';
+      }
+    });
+    if (_searchOpen) {
+      // Focus the real field, not a throwaway node — the old code built a
+      // fresh `FocusNode()` and asked the scope to focus that, which could
+      // never put a caret in the search box.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _searchOpen) _searchFocus.requestFocus();
+      });
+    }
   }
 
   @override
@@ -33,14 +63,14 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
     ref.watch(notebookProvider);
     final notifier = ref.read(notebookProvider.notifier);
     final hc = HCColor.of(context);
+    final isFilipino = ref.watch(settingsProvider).locale == 'fil';
 
-    // Apply filters
-    List<NoteEntry> notes;
-    if (_searchQuery.isNotEmpty) {
-      notes = notifier.search(_searchQuery);
-    } else {
-      notes = notifier.filterByCategory(_selectedCategory);
-    }
+    // Apply filters. Search and the category chips now compose, instead of
+    // search silently discarding the active category.
+    final notes = notifier
+        .search(_searchQuery)
+        .where((n) => _selectedCategory == null || n.category == _selectedCategory)
+        .toList();
 
     return Scaffold(
       backgroundColor: hc.background,
@@ -49,7 +79,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
         elevation: 0,
         leading: const AppBackButton(),
         title: Text(
-          'My Notebook',
+          isFilipino ? 'Aking Kuwaderno' : 'My Notebook',
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -57,36 +87,43 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.search_rounded, color: hc.textSecondary),
-            tooltip: 'Search notes',
-            onPressed: () => _showSearchBar(),
+            icon: Icon(
+              _searchOpen ? Icons.search_off_rounded : Icons.search_rounded,
+              color: _searchOpen ? hc.primary : hc.textSecondary,
+            ),
+            tooltip: isFilipino
+                ? (_searchOpen ? 'Isara ang paghahanap' : 'Maghanap ng tala')
+                : (_searchOpen ? 'Close search' : 'Search notes'),
+            onPressed: _toggleSearch,
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/notebook/editor'),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('New Note'),
+        label: Text(isFilipino ? 'Bagong Tala' : 'New Note'),
         backgroundColor: HCColor.of(context).primary,
         foregroundColor: Colors.white,
       ),
       body: Column(
         children: [
-          // ─── Search Bar (conditionally visible) ─────
-          if (_searchQuery.isNotEmpty || _searchController.text.isNotEmpty)
+          // ─── Search Bar ─────────────────────────────
+          if (_searchOpen)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: TextField(
                 controller: _searchController,
+                focusNode: _searchFocus,
+                textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
-                  hintText: 'Search notes...',
+                  hintText: isFilipino
+                      ? 'Maghanap ng tala...'
+                      : 'Search notes...',
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.close_rounded),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() => _searchQuery = '');
-                    },
+                    tooltip: isFilipino ? 'Isara' : 'Close',
+                    onPressed: _toggleSearch,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -109,7 +146,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
-                    label: const Text('All'),
+                    label: Text(isFilipino ? 'Lahat' : 'All'),
                     selected: _selectedCategory == null,
                     onSelected: (_) =>
                         setState(() => _selectedCategory = null),
@@ -144,6 +181,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
                         child: _EmptyState(
                           hasFilter: _selectedCategory != null ||
                               _searchQuery.isNotEmpty,
+                          isFilipino: isFilipino,
                         ),
                       ),
                     ),
@@ -158,16 +196,21 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _NoteCard(
                           note: note,
+                          isFilipino: isFilipino,
                           onTap: () => context.push(
                             '/notebook/editor',
                             extra: note,
                           ),
-                          onDelete: () => _confirmDelete(context, ref, note),
+                          onDelete: () =>
+                              _confirmDelete(context, ref, note, isFilipino),
                         ),
-                      ).animate().fadeIn(
-                            duration: 350.ms,
-                            delay: Duration(milliseconds: 50 * index),
-                          ).slideY(begin: 0.06, end: 0);
+                        // No per-index stagger: this list is lazy, so a card
+                        // built after a scroll would start its delay only
+                        // once it came into view and sit blank.
+                      ).animate().fadeIn(duration: 350.ms).slideY(
+                            begin: 0.06,
+                            end: 0,
+                          );
                     },
                   ),
           ),
@@ -176,36 +219,30 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
     );
   }
 
-  void _showSearchBar() {
-    setState(() {
-      // Toggle search visibility by setting a non-empty initial state
-      if (_searchQuery.isEmpty && _searchController.text.isEmpty) {
-        _searchQuery = ' ';
-        _searchQuery = '';
-      }
-    });
-    // Focus the search field
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      FocusScope.of(context).requestFocus(FocusNode());
-    });
-  }
-
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, NoteEntry note) async {
+    BuildContext context,
+    WidgetRef ref,
+    NoteEntry note,
+    bool isFilipino,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Note?'),
-        content: Text('Are you sure you want to delete "${note.title}"?'),
+        title: Text(isFilipino ? 'Burahin ang tala?' : 'Delete Note?'),
+        content: Text(
+          isFilipino
+              ? 'Sigurado ka bang burahin ang "${note.title}"?'
+              : 'Are you sure you want to delete "${note.title}"?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(isFilipino ? 'Kanselahin' : 'Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Delete'),
+            child: Text(isFilipino ? 'Burahin' : 'Delete'),
           ),
         ],
       ),
@@ -218,18 +255,25 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
 
 class _EmptyState extends StatelessWidget {
   final bool hasFilter;
-  const _EmptyState({required this.hasFilter});
+  final bool isFilipino;
+  const _EmptyState({required this.hasFilter, required this.isFilipino});
 
   @override
   Widget build(BuildContext context) {
     return RichEmptyState(
       emoji: hasFilter ? '🔍' : '📓',
       title: hasFilter
-          ? 'No notes match your filter'
-          : 'Your notebook is empty',
+          ? (isFilipino
+              ? 'Walang talang tugma'
+              : 'No notes match your filter')
+          : (isFilipino ? 'Walang laman ang kuwaderno' : 'Your notebook is empty'),
       description: hasFilter
-          ? 'Try a different category or clear your search'
-          : 'Tap + to create your first study note!',
+          ? (isFilipino
+              ? 'Subukan ang ibang kategorya o i-clear ang paghahanap'
+              : 'Try a different category or clear your search')
+          : (isFilipino
+              ? 'Pindutin ang + para gumawa ng unang tala!'
+              : 'Tap + to create your first study note!'),
       accentColor: AppColors.info,
     );
   }
@@ -237,11 +281,13 @@ class _EmptyState extends StatelessWidget {
 
 class _NoteCard extends StatelessWidget {
   final NoteEntry note;
+  final bool isFilipino;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
   const _NoteCard({
     required this.note,
+    required this.isFilipino,
     required this.onTap,
     required this.onDelete,
   });
@@ -253,9 +299,13 @@ class _NoteCard extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: 'Note: ${note.title}. ${note.isVoiceNote ? "Voice note. " : ""}'
-          '${note.category != null ? "Category: ${note.category!.label}. " : ""}'
-          'Last edited ${_formatDate(note.updatedAt)}.',
+      label: isFilipino
+          ? 'Tala: ${note.title}. ${note.isVoiceNote ? "Voice note. " : ""}'
+              '${note.category != null ? "Kategorya: ${note.category!.label}. " : ""}'
+              'Huling binago ${_formatDate(note.updatedAt, true)}.'
+          : 'Note: ${note.title}. ${note.isVoiceNote ? "Voice note. " : ""}'
+              '${note.category != null ? "Category: ${note.category!.label}. " : ""}'
+              'Last edited ${_formatDate(note.updatedAt, false)}.',
       child: Card(
         elevation: 0,
         clipBehavior: Clip.antiAlias,
@@ -324,18 +374,19 @@ class _NoteCard extends StatelessWidget {
                   PopupMenuButton<String>(
                     icon: Icon(Icons.more_vert_rounded,
                         size: 20, color: hc.textHint),
+                    tooltip: isFilipino ? 'Mga pagpipilian' : 'Options',
                     onSelected: (v) {
                       if (v == 'delete') onDelete();
                     },
                     itemBuilder: (_) => [
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'delete',
                         child: Row(
                           children: [
-                            Icon(Icons.delete_rounded,
+                            const Icon(Icons.delete_rounded,
                                 size: 18, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Delete'),
+                            const SizedBox(width: 8),
+                            Text(isFilipino ? 'Burahin' : 'Delete'),
                           ],
                         ),
                       ),
@@ -359,7 +410,7 @@ class _NoteCard extends StatelessWidget {
                       size: 12, color: hc.textHint),
                   const SizedBox(width: 4),
                   Text(
-                    _formatDate(note.updatedAt),
+                    _formatDate(note.updatedAt, isFilipino),
                     style: AppTypography.labelSmall.copyWith(
                       color: hc.textHint,
                     ),
@@ -369,7 +420,9 @@ class _NoteCard extends StatelessWidget {
                     Icon(Icons.link_rounded, size: 12, color: hc.textHint),
                     const SizedBox(width: 4),
                     Text(
-                      '${note.linkedFlashcardIds.length} linked',
+                      isFilipino
+                          ? '${note.linkedFlashcardIds.length} nakaugnay'
+                          : '${note.linkedFlashcardIds.length} linked',
                       style: AppTypography.labelSmall.copyWith(
                         color: hc.textHint,
                       ),
@@ -385,13 +438,19 @@ class _NoteCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(DateTime date, bool isFilipino) {
     final now = DateTime.now();
     final diff = now.difference(date);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    if (diff.inMinutes < 1) return isFilipino ? 'Ngayon lang' : 'Just now';
+    if (diff.inHours < 1) {
+      return isFilipino ? '${diff.inMinutes}m nakaraan' : '${diff.inMinutes}m ago';
+    }
+    if (diff.inDays < 1) {
+      return isFilipino ? '${diff.inHours}h nakaraan' : '${diff.inHours}h ago';
+    }
+    if (diff.inDays < 7) {
+      return isFilipino ? '${diff.inDays}d nakaraan' : '${diff.inDays}d ago';
+    }
     return '${date.month}/${date.day}/${date.year}';
   }
 }

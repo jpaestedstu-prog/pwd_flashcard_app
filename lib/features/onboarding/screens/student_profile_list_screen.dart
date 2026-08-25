@@ -12,9 +12,34 @@ import '../../../data/local/hive_service.dart';
 import '../../../data/local/local_repository.dart';
 import '../../../providers/app_providers.dart';
 
+/// Chooses which profiles a device-scoped "Manage Profiles" list may show.
+///
+/// Pulled out of the widget so the two rules that carry real risk are covered
+/// by a plain unit test:
+///  * **educators are included.** They were filtered out before, which is why a
+///    Teacher or Parent profile had no delete path anywhere in the app.
+///  * **the signed-in profile is never listed.** Deleting the one in use would
+///    pull the session out from under the running app.
+///
+/// The guest profile is left out too — the app recreates it on demand, so
+/// offering to delete it would be a button that appears to do nothing.
+@visibleForTesting
+List<UserProfile> deviceScopedProfiles(
+  Iterable<UserProfile> all,
+  String? activeId,
+) =>
+    all.where((p) => p.id != activeId && !p.isGuestPlayer).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
 /// Displays all created student profiles with name, age, and learning level.
 class StudentProfileListScreen extends ConsumerStatefulWidget {
-  const StudentProfileListScreen({super.key});
+  /// When true the screen lists every profile stored on **this device** —
+  /// learners and educators alike — so a teacher/parent can clear out ones
+  /// that are no longer used. When false (the classroom roster entry point)
+  /// it keeps its original behaviour.
+  final bool deviceScope;
+
+  const StudentProfileListScreen({super.key, this.deviceScope = false});
 
   @override
   ConsumerState<StudentProfileListScreen> createState() =>
@@ -27,7 +52,10 @@ class _StudentProfileListScreenState
   /// Returns sorted-by-createdAt-desc list of student profiles.
   Future<List<UserProfile>> _fetchStudents() async {
     final active = ref.read(profileProvider);
-    if (active != null && active.role.isEducator) {
+    // Device scope deliberately skips the roster branch below: that one returns
+    // enrolled students from Firestore, so deleting from it would remove a real
+    // classroom member rather than a profile stored on this tablet.
+    if (!widget.deviceScope && active != null && active.role.isEducator) {
       // Educator: fetch students from their Firestore classrooms.
       final pairs = await ref.read(educatorRosterProvider(active.id).future);
       final list = pairs.map((p) => p.$1).toList()
@@ -36,9 +64,12 @@ class _StudentProfileListScreenState
     }
     // Fallback: local Hive (legacy single-device flow).
     final raw = HiveService.getProfiles();
-    return raw
+    final all = raw
         .map((data) => HiveService.getProfileById(data['id'] as String))
-        .whereType<UserProfile>()
+        .whereType<UserProfile>();
+    if (widget.deviceScope) return deviceScopedProfiles(all, active?.id);
+    return all
+        .where((p) => p.id != active?.id)
         .where((p) => p.role.isEnrollableLearner && !p.isGuestPlayer)
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -46,7 +77,7 @@ class _StudentProfileListScreenState
 
   void _refresh() {
     final active = ref.read(profileProvider);
-    if (active != null && active.role.isEducator) {
+    if (!widget.deviceScope && active != null && active.role.isEducator) {
       // ignore: unused_result
       ref.refresh(educatorRosterProvider(active.id));
     }
@@ -60,7 +91,9 @@ class _StudentProfileListScreenState
         title: const Text('Delete Profile?'),
         content: Text(
           'Are you sure you want to delete "${student.name}"? '
-          'This will permanently remove all progress data for this student.',
+          'This will permanently remove all progress data for this student.'
+          '${student.role.isEducator ? ' Any classes they own will no longer '
+              'have a teacher managing them.' : ''}',
         ),
         actions: [
           TextButton(
@@ -93,7 +126,8 @@ class _StudentProfileListScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Student Profiles'),
+        title: Text(
+            widget.deviceScope ? 'Manage Profiles' : 'Student Profiles'),
         actions: [
           IconButton(
             icon: const Icon(Icons.import_export_rounded),
@@ -135,7 +169,9 @@ class _StudentProfileListScreenState
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No student profiles yet',
+                    widget.deviceScope
+                        ? 'No other profiles on this device'
+                        : 'No student profiles yet',
                     style: AppTypography.titleLarge.copyWith(
                       color: HCColor.of(context).textSecondary,
                     ),

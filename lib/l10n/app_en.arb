@@ -908,5 +908,794 @@
   "chartMinutesShort": "min",
   "chartCategoryMasterySubtitle": "Your progress across all vocabulary categories",
   "chartDifficultySubtitle": "How your accuracy changes across games over time",
-  "chartDifficultyEmpty": "Play some games to see your\ndifficulty adaptation history!"
+  "chartDifficultyEmpty": "Play some games to see your\ndifficulty adaptation history!",
+  "gameTipDifficulty": "💡 Tip: Try different difficulty levels to challenge yourself!",
+  "gameTipDaily": "🔥 Playing games daily builds stronger memory!",
+  "gameTipReview": "🌟 Review words you missed to learn faster!",
+  "gameTipStartEasy": "🎯 Start with Easy mode, then level up when ready!",
+  "gameTipVariety": "🧩 Each game teaches in a different way — try them all!",
+  "gameTipTimed": "⏱️ Timed mode is great for building speed!",
+  "playTogether": "Play Together",
+  "playTogetherSubtitle": "Race a friend — just for fun!",
+  "playTogetherSemantics": "Play Together. Race a friend online or on this device, just for fun.",
+  "gamesPickedForYou": "{count} games picked for you",
+  "@gamesPickedForYou": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "badgeNew": "NEW",
+  "notPlayedYet": "Not played yet.",
+  "yourBestStars": "Your best: {best} of 3 stars.",
+  "@yourBestStars": {
+    "placeholders": {
+      "best": {
+        "type": "int"
+      }
+    }
+  },
+  "playGameSemantics": "Play {game}. {description}",
+  "@playGameSemantics": {
+    "placeholders": {
+      "game": {
+        "type": "String"
+      },
+      "description": {
+        "type": "String"
+      }
+    }
+  },
+  "chooseYourDifficulty": "Choose your difficulty",
+  "beatTheClock": "Beat the Clock ⏱️",
+  "beatTheClockSubtitle": "60 seconds to finish!",
+  "lastPlayed": "Last played",
+  "startWithAllCategories": "Start with All Categories",
+  "startWithOneCategory": "Start with 1 Category",
+  "startWithCategories": "Start with {count} Categories",
+  "@startWithCategories": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "comingSoon": "Coming soon",
+  "gameReviewTitle": "{game} Review",
+  "@gameReviewTitle": {
+    "placeholders": {
+      "game": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewCorrectCount": "{count} correct",
+  "@reviewCorrectCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewWrongCount": "{count} wrong",
+  "@reviewWrongCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "yourAnswerLabel": "Your answer: ",
+  "paused": "Paused",
+  "resumeGame": "Resume",
+  "iNeedABreak": "I Need a Break",
+  "restartGame": "Restart",
+  "restartGameTitle": "Restart this game?",
+  "restartGameBody": "Your current progress in this round will be lost.",
+  "quitToGames": "Quit to Games",
+  "pauseLabel": "Pause",
+  "resultAmazing": "Amazing! 🌟",
+  "resultAmazingHint": "You're a superstar! Try a harder level next!",
+  "resultGreat": "Great Job! 🎉",
+  "resultGreatHint": "You're doing wonderfully! Keep it up!",
+  "resultGood": "Good Try! 👍",
+  "resultGoodHint": "You're learning! Review the words you missed.",
+  "resultKeepPracticing": "Keep Practicing! 💪",
+  "resultKeepPracticingHint": "Every try makes you stronger! Try again!",
+  "fslPracticeHeading": "Filipino Sign Language Practice",
+  "fslSignToWord": "Sign → Word",
+  "fslSignToWordSubtitle": "Watch a sign language video, then pick the correct word from choices.",
+  "fslWordToSign": "Word → Sign",
+  "fslWordToSignSubtitle": "See a word, then pick which video shows the correct sign.",
+  "fslSignIt": "Sign It!",
+  "fslSignItSubtitle": "Watch a sign, copy it in the camera, then check yourself.",
+  "fslSignItSubtitleGaze": "Watch a sign, copy it in the camera, then check yourself. Uses your hands — head control pauses here.",
+  "fslVideosComingSoon": "FSL videos are still being added. Try the FSL Dictionary in the meantime.",
+  "resumeBadge": "PAUSED",
+  "resumeTitle": "Continue where you left off?",
+  "resumeBody": "You stopped at round {round} of {total}.",
+  "@resumeBody": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "resumeContinue": "Continue",
+  "resumeStartOver": "Start Over",
+  "resumeRoundProgress": "Round {round} of {total}",
+  "@resumeRoundProgress": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "notEnoughWords": "Not enough words",
+  "notEnoughWordsBody": "Pick more categories to play {game}.",
+  "@notEnoughWordsBody": {
+    "placeholders": {
+      "game": {
+        "type": "String"
+      }
+    }
+  },
+  "backToGames": "Back to Games",
+  "fslPracticeIntro": "Watch sign language videos and test your knowledge.\nChoose a practice mode below!",
+  "starsEarnedChip": "+{count} ⭐ earned",
+  "@starsEarnedChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gameResultsSemantics": "Game results: {score} out of {total}, rating {rating} out of 3 stars, {stars} stars earned",
+  "@gameResultsSemantics": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "rating": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "jigsawPuzzle": "Jigsaw Puzzle",
+  "pictureWord": "Picture-Word",
+  "yesOrNo": "Yes or No",
+  "oddOneOut": "Odd One Out",
+  "firstLetter": "First Letter",
+  "gameDescWordMatch": "Match the picture to the correct word!",
+  "gameDescSpellingBee": "Unscramble the letters to spell the word!",
+  "gameDescMemoryMatch": "Find matching pairs of cards!",
+  "gameDescDragAndDrop": "Drag each word to its matching picture!",
+  "gameDescFlashcardQuiz": "Swipe right if you know it, left to learn!",
+  "gameDescPronunciation": "Listen and pick the correct word!",
+  "gameDescSentenceBuilder": "Fill in the missing word in the sentence!",
+  "gameDescStoryQuiz": "Read a story and answer questions!",
+  "gameDescTracing": "Trace the letters of each word!",
+  "gameDescFslPractice": "Learn Filipino Sign Language!",
+  "gameDescJigsawPuzzle": "Assemble the picture puzzle!",
+  "gameDescPictureWord": "Match pictures to words by listening!",
+  "gameDescYesOrNo": "Is this the right word? Tap Yes or No!",
+  "gameDescOddOneOut": "Tap the word that does not belong!",
+  "gameDescFirstLetter": "Pick the letter the word starts with!",
+  "difficultyDescEasy": "Fewer questions, more hints — great for beginners!",
+  "difficultyDescMedium": "Balanced challenge — the standard experience",
+  "difficultyDescHard": "More questions, fewer hints — test your skills!",
+  "suggestStarting": "You're just getting started! We'll begin with easy questions.",
+  "suggestScopeGame": "In {game}, your recent accuracy is {percent}%.",
+  "@suggestScopeGame": {
+    "placeholders": {
+      "game": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "suggestScopeRecent": "Across your recent games, your accuracy is {percent}%.",
+  "@suggestScopeRecent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "suggestScopeLifetime": "Your accuracy is {percent}%.",
+  "@suggestScopeLifetime": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "suggestTierEasy": "Let's practice with easier questions to build confidence!",
+  "suggestTierMedium": "A balanced challenge to keep you growing!",
+  "suggestTierHard": "You're doing great — time for a real challenge!",
+  "gameRoundHeader": "{game}  •  {current}/{total}",
+  "@gameRoundHeader": {
+    "placeholders": {
+      "game": {
+        "type": "String"
+      },
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "findPictureFor": "Find the picture for:",
+  "whichWordMatches": "Which word matches?",
+  "whichDoesNotBelong": "Which one does not belong?",
+  "startsWithWhichLetter": "starts with which letter?",
+  "isThisPrompt": "Is this…",
+  "hearIt": "Hear it",
+  "heardTryAgain": "Heard: \"{spoken}\" — try again!",
+  "@heardTryAgain": {
+    "placeholders": {
+      "spoken": {
+        "type": "String"
+      }
+    }
+  },
+  "cameraWordsFound": "📷 You've found {count} words with your camera!",
+  "@cameraWordsFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "oddOneOutHint": "{count} are {category}",
+  "@oddOneOutHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "allPiecesPlaced": "All pieces placed! 🎉",
+  "jigsawHowTo": "Tap a piece, then tap a grid slot",
+  "movesUsed": "Moves: {count}",
+  "@movesUsed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "knownCount": "{count} known",
+  "@knownCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stillLearningCount": "{count} still learning",
+  "@stillLearningCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "answerChoiceSemantics": "Answer choice: {answer}",
+  "@answerChoiceSemantics": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "answerSemantics": "Answer: {answer}",
+  "@answerSemantics": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "correctAnswerSuffix": ", correct answer",
+  "wrongAnswerSuffix": ", wrong answer",
+  "questionEnglishFor": "Question: What is the English word for {word}?",
+  "@questionEnglishFor": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "findPictureForSemantics": "Find the picture for: {word}",
+  "@findPictureForSemantics": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "pictureOfSemantics": "Picture of {word}",
+  "@pictureOfSemantics": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "whichWordMatchesSemantics": "Which word matches this picture? {word}",
+  "@whichWordMatchesSemantics": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "firstLetterQuestion": "Question: which letter does the word {word} start with?",
+  "@firstLetterQuestion": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "yesNoQuestion": "Question: is this picture of a {pictureWord} the word {english}, {filipino}? Answer Yes or No.",
+  "@yesNoQuestion": {
+    "placeholders": {
+      "pictureWord": {
+        "type": "String"
+      },
+      "english": {
+        "type": "String"
+      },
+      "filipino": {
+        "type": "String"
+      }
+    }
+  },
+  "flashcardSemantics": "Flashcard: {english}, {filipino}, category {category}. Swipe right for I Know, left for Still Learning",
+  "@flashcardSemantics": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "filipino": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "flashcardProgressSemantics": "Card {current} of {total}, {known} known, {learning} still learning",
+  "@flashcardProgressSemantics": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "known": {
+        "type": "int"
+      },
+      "learning": {
+        "type": "int"
+      }
+    }
+  },
+  "draggableWordSemantics": "Draggable word: {word}, drag to matching Filipino word",
+  "@draggableWordSemantics": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "dropTargetMatched": "Matched: {filipino} is {english}",
+  "@dropTargetMatched": {
+    "placeholders": {
+      "filipino": {
+        "type": "String"
+      },
+      "english": {
+        "type": "String"
+      }
+    }
+  },
+  "dropTargetEmpty": "Drop target: {filipino}, not yet matched",
+  "@dropTargetEmpty": {
+    "placeholders": {
+      "filipino": {
+        "type": "String"
+      }
+    }
+  },
+  "slotFilled": "Slot {position}: {letter}, tap to remove",
+  "@slotFilled": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      },
+      "letter": {
+        "type": "String"
+      }
+    }
+  },
+  "slotEmpty": "Slot {position}: empty",
+  "@slotEmpty": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
+  "letterAlreadyUsed": "Letter {letter}, already used",
+  "@letterAlreadyUsed": {
+    "placeholders": {
+      "letter": {
+        "type": "String"
+      }
+    }
+  },
+  "letterTapToPlace": "Letter {letter}, tap to place",
+  "@letterTapToPlace": {
+    "placeholders": {
+      "letter": {
+        "type": "String"
+      }
+    }
+  },
+  "playSoundEnglish": "Play sound: tap to hear the English word",
+  "playSoundFilipino": "Play sound: tap to hear the Filipino word",
+  "roundScoreSemantics": "Round {current} of {total}, score {score}",
+  "@roundScoreSemantics": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "spelledSoFar": "Answer: {letters}",
+  "@spelledSoFar": {
+    "placeholders": {
+      "letters": {
+        "type": "String"
+      }
+    }
+  },
+  "wordComplete": "word complete",
+  "oddOneOutQuestion": "Question: which word does not belong? The words are {words}.",
+  "@oddOneOutQuestion": {
+    "placeholders": {
+      "words": {
+        "type": "String"
+      }
+    }
+  },
+  "oddOneOutHintSpoken": " {count} of them are {category}.",
+  "@oddOneOutHintSpoken": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "fslWatchAndChoose": "Watch the sign language video and choose the correct word",
+  "fslWhatWordIsThisSign": "What word is this sign?",
+  "fslWhichSignMeans": "Which sign means…",
+  "videoChoice": "Video choice {index}",
+  "@videoChoice": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "dropTargetHolding": "Drop target: {filipino}, currently has {word} (wrong)",
+  "@dropTargetHolding": {
+    "placeholders": {
+      "filipino": {
+        "type": "String"
+      },
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "dropTargetEmptyHint": "Drop target: {filipino}, empty, drop English match here",
+  "@dropTargetEmptyHint": {
+    "placeholders": {
+      "filipino": {
+        "type": "String"
+      }
+    }
+  },
+  "memoryCardMatched": "Matched card: {word}",
+  "@memoryCardMatched": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "memoryCardShowing": "Card showing: {word}",
+  "@memoryCardShowing": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "memoryCardFaceDown": "Face-down card, tap to flip",
+  "breakButton": "Break",
+  "iNeedABreakTooltip": "I need a break",
+  "replayVideo": "Replay",
+  "showMe": "Show Me",
+  "answerYes": "Yes",
+  "answerNo": "No",
+  "jigsawPuzzleProgress": "Puzzle {current} of {total}",
+  "@jigsawPuzzleProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "jigsawCompleteFor": "Complete the puzzle for: {word}",
+  "@jigsawCompleteFor": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "jigsawPieceSemantics": "Puzzle piece row {row}, column {column}, tap to place",
+  "@jigsawPieceSemantics": {
+    "placeholders": {
+      "row": {
+        "type": "int"
+      },
+      "column": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryProgressSemantics": "Matched {matched} of {total} pairs in {moves} moves",
+  "@memoryProgressSemantics": {
+    "placeholders": {
+      "matched": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "moves": {
+        "type": "int"
+      }
+    }
+  },
+  "jigsawPiecePlaced": "Puzzle piece row {row}, column {column}, placed correctly",
+  "@jigsawPiecePlaced": {
+    "placeholders": {
+      "row": {
+        "type": "int"
+      },
+      "column": {
+        "type": "int"
+      }
+    }
+  },
+  "gazePrev": "Prev",
+  "gazeNext": "Next",
+  "gazeChoose": "Choose",
+  "gazeFlip": "Flip",
+  "gazePlace": "Place",
+  "gazeUndo": "Undo",
+  "showMeTitle": "Show Me — {word}",
+  "@showMeTitle": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "collabLearnTogether": "Learn Together!",
+  "collabTeamTagline": "You're one team — you score together, not against each other.",
+  "collabPlayer2NameLabel": "Player 2's Name:",
+  "collabPlayer2NameSemantics": "Player 2's name",
+  "collabPlayer2NameHint": "Enter name...",
+  "collabChooseActivity": "Choose an Activity",
+  "collabEnterPlayer2Name": "Enter Player 2's name",
+  "collabNoWords": "No words available right now",
+  "collabHearAgain": "Hear it again",
+  "collabWordRelay": "Word Relay",
+  "collabPictureGuess": "Picture Guess",
+  "collabSignChallenge": "Sign Challenge",
+  "collabStoryBuilder": "Story Builder",
+  "collabWordRelayDesc": "Take turns spelling words letter by letter",
+  "collabPictureGuessDesc": "One player describes, the other guesses the picture",
+  "collabSignChallengeDesc": "Sign the word, then guess your partner's sign",
+  "collabStoryBuilderDesc": "Build a story together, one sentence at a time",
+  "collabTeam": "Team",
+  "collabPromptDescribe": "{name}, describe the word for {partner}",
+  "@collabPromptDescribe": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "partner": {
+        "type": "String"
+      }
+    }
+  },
+  "collabPromptNextLetter": "{name}, what's the next letter?",
+  "@collabPromptNextLetter": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "collabPromptAddSentence": "{name}, add the next sentence",
+  "@collabPromptAddSentence": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "collabPromptGuess": "{name}, guess the word",
+  "@collabPromptGuess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "collabAnswerWas": "The answer was {word}",
+  "@collabAnswerWas": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "collabHintClue": "Type a clue...",
+  "collabHintLetter": "One letter...",
+  "collabHintSentence": "Add the next sentence...",
+  "collabHintGuess": "Guess the word...",
+  "collabWordToSpell": "Word to spell:",
+  "collabWordToDescribe": "Word to describe:",
+  "collabSignToShow": "Sign to show:",
+  "collabWhatIsTheWord": "What is the word?",
+  "collabClueLabel": "Clue:",
+  "collabBuildStoryTogether": "Build the story together!",
+  "collabStartTheStory": "Start the story!",
+  "collabWatchTheSign": "Watch the sign",
+  "collabPhraseBig": "The {word} is big.",
+  "@collabPhraseBig": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "collabPhraseISee": "I can see a {word}.",
+  "@collabPhraseISee": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "collabPhraseHappy": "The {word} is happy.",
+  "@collabPhraseHappy": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "collabPhraseWeLike": "We like the {word}.",
+  "@collabPhraseWeLike": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "collabGreatTeamwork": "Great teamwork!",
+  "collabPointsTogether": "{score} of {total} points together",
+  "@collabPointsTogether": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "collabSubmitAnswer": "Submit",
+  "collabSetUpForYou": "Set up for you: {list}.",
+  "@collabSetUpForYou": {
+    "placeholders": {
+      "list": {
+        "type": "String"
+      }
+    }
+  },
+  "collabAdaptTapToAnswer": "tap to answer",
+  "collabAdaptReadAloud": "read aloud",
+  "collabAdaptBiggerButtons": "bigger buttons",
+  "collabAdaptShorter": "shorter session",
+  "collabLeaveTitle": "Leave this activity?",
+  "collabLeaveBody": "Your place is saved — you can carry on together later.",
+  "collabLeaveConfirm": "Leave",
+  "collabKeepPlaying": "Keep playing",
+  "collabClueCategory": "Category: {category}",
+  "@collabClueCategory": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "collabClueFirstLetter": "It starts with {letter}.",
+  "@collabClueFirstLetter": {
+    "placeholders": {
+      "letter": {
+        "type": "String"
+      }
+    }
+  },
+  "collabClueLength": "It has {count} letters.",
+  "@collabClueLength": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "collabPassSpoken": "Or show it — pass to {name}",
+  "@collabPassSpoken": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

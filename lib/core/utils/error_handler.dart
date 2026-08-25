@@ -42,6 +42,17 @@ class ErrorHandler {
     // locally, and a learner should never see an error because their new hat
     // has not reached the leaderboard yet.
     'syncEquippedLook:silent',
+    // The public messaging directory. Both of these are background mirrors of
+    // data already saved locally: `upsert` republishes the username entry on
+    // every profile save (so it fires on a plain sign-in), and `_refreshCache`
+    // tops up a cached display name. Offline they time out and used to put
+    // "Operation timed out. Please try again." in front of a teacher who had
+    // asked for nothing and could do nothing about it — `_refreshCache`'s own
+    // doc comment already promised it "never throws". The user-initiated
+    // lookups are deliberately NOT here: if someone searches for a username,
+    // a failure is theirs to see.
+    'ProfileDirectoryService.upsert',
+    'ProfileDirectoryService._refreshCache',
     // Recoverable Flutter framework assertions (overflow, ListTile ink-hidden,
     // duplicate GlobalKey, hero conflicts, setState-during-build, …). Logged
     // for the developer but never surfaced as the user-facing snackbar — see
@@ -62,6 +73,14 @@ class ErrorHandler {
     // for a safeguarding feature quietly running in the background.
     'FriendService.watchBlocked:silent',
   };
+
+  /// Whether [source] is suppressed from the global snackbar.
+  ///
+  /// Exposed for tests because the failure mode of [_silentSources] is a typo:
+  /// a string no call site ever passes silences nothing, the snackbar keeps
+  /// appearing, and the entry sitting in the set above makes it look handled.
+  @visibleForTesting
+  static bool isSilentSource(String source) => _silentSources.contains(source);
 
   static final _errorStreamController = StreamController<AppError>.broadcast();
 
@@ -186,7 +205,7 @@ class ErrorHandler {
 
     // Silent sources: logged but never surfaced to the global snackbar.
     // See [_silentSources] for the rationale.
-    if (_silentSources.contains(source)) return;
+    if (isSilentSource(source)) return;
 
     // Broadcast to any listening UI
     if (!_errorStreamController.isClosed) {

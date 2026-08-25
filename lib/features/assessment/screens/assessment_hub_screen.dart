@@ -29,7 +29,30 @@ class AssessmentHubScreen extends ConsumerWidget {
     final hasPreTest = AssessmentService.hasCompletedPreTest(profileId);
     final hasPostTest = AssessmentService.hasCompletedPostTest(profileId);
     final gainReport = AssessmentService.getLearningGainReport(profileId);
-    final isTeacher = profile?.role == UserRole.teacher;
+    // The educator sections belong to the *role*, not just the classroom
+    // teacher: a Parent runs the same assessment surface over their home
+    // group. Gating on `== UserRole.teacher` left a Parent who opened this
+    // screen with nothing but a learner hub inviting them to sit their own
+    // pre-test — no builder, no assessments, no way back to their children.
+    final isEducator = profile?.role.isEducator ?? false;
+    // One round trip per profile per session, pulling whatever this device
+    // does not yet know: for an educator their own templates/assignments plus
+    // their assignees' results, for a learner the work set for them elsewhere.
+    // Watched, not awaited — the hub renders local data immediately and
+    // repaints if the pull adds anything.
+    if (profileId.isNotEmpty) {
+      ref.watch(
+        isEducator
+            ? educatorAssessmentSyncProvider(profileId)
+            : learnerAssignmentSyncProvider(profileId),
+      );
+    }
+    // Work an educator has assigned to this learner. Templates live under the
+    // *educator's* key, so these are resolved here and handed to the test
+    // screen directly rather than looked up again by id.
+    final assignedWork = isEducator || profileId.isEmpty
+        ? const <({AssessmentAssignment assignment, Assessment assessment})>[]
+        : AssessmentService.getOpenableAssignments(profileId);
 
     return Scaffold(
       body: SafeArea(
@@ -54,7 +77,9 @@ class AssessmentHubScreen extends ConsumerWidget {
                             ),
                           ),
                           Text(
-                            'Measure your learning progress',
+                            isEducator
+                                ? "Build, assign and track your learners' tests"
+                                : 'Measure your learning progress',
                             style: AppTypography.bodyMedium.copyWith(
                               color: hc.textSecondary,
                             ),
@@ -79,6 +104,85 @@ class AssessmentHubScreen extends ConsumerWidget {
                 ).animate().fadeIn(duration: 400.ms),
               ),
             ),
+
+            // ─── Educator Toolbar ──────────────────────────
+            // An educator arriving from the "Assessments" tile used to land on
+            // a page that only offered to test *them*; their three actual jobs
+            // now sit at the top of it.
+            if (isEducator)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
+                  child:
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _EducatorAction(
+                              icon: Icons.add_circle_rounded,
+                              label: 'Create',
+                              color: AppColors.sectionAssessment,
+                              onTap: () => context.push('/assessment/builder'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _EducatorAction(
+                              icon: Icons.assignment_turned_in_rounded,
+                              label: 'Assign',
+                              color: AppColors.success,
+                              onTap: () => context.push('/assessment/assign'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _EducatorAction(
+                              icon: Icons.track_changes_rounded,
+                              label: 'Track',
+                              color: AppColors.info,
+                              onTap: () => context.push('/assessment/tracking'),
+                            ),
+                          ),
+                        ],
+                      ).animate().fadeIn(duration: 400.ms, delay: 80.ms),
+                ),
+              ),
+
+            // ─── Assigned To You ───────────────────────────
+            // The learner's home already banners "you have N assessments to
+            // complete" and deep-links here. Until this section existed that
+            // was a promise the hub could not keep — nothing on it named an
+            // assignment, and the templates live under the educator's key so
+            // there was no way to reach one at all.
+            if (assignedWork.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(padding, 20, padding, 8),
+                  child: SectionHeader(
+                    title: '📌 Assigned to You',
+                    color: hc.textPrimary,
+                  ).animate().fadeIn(duration: 400.ms, delay: 80.ms),
+                ),
+              ),
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: padding),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final work = assignedWork[index];
+                    return _AssignedWorkTile(
+                          assignment: work.assignment,
+                          assessment: work.assessment,
+                          onTap: () => context.push(
+                            '/assessment/take/${work.assessment.id}',
+                            extra: work.assessment,
+                          ),
+                        )
+                        .animate()
+                        .fadeIn(duration: 400.ms, delay: (120 + index * 60).ms)
+                        .slideY(begin: 0.08, end: 0);
+                  }, childCount: assignedWork.length),
+                ),
+              ),
+            ],
 
             // ─── Learning Gain Banner ──────────────────────
             if (gainReport != null)
@@ -225,11 +329,8 @@ class AssessmentHubScreen extends ConsumerWidget {
                         category: category,
                         bestScore: bestScore,
                         attemptCount: categoryResults.length,
-                        onTap: () {
-                          context.push(
-                            '/assessment/category/${category.index}',
-                          );
-                        },
+                        onTap: () =>
+                            _startCategoryMastery(context, ref, category),
                       )
                       .animate()
                       .fadeIn(duration: 400.ms, delay: (400 + index * 60).ms)
@@ -239,7 +340,7 @@ class AssessmentHubScreen extends ConsumerWidget {
             ),
 
             // ─── Teacher Section: Quiz Builder ────────────
-            if (isTeacher) ...[
+            if (isEducator) ...[
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(padding, 20, padding, 8),
@@ -296,7 +397,7 @@ class AssessmentHubScreen extends ConsumerWidget {
             ],
 
             // ─── Teacher Section: Custom Assessments ───────
-            if (isTeacher) ...[
+            if (isEducator) ...[
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(padding, 20, padding, 8),
@@ -381,6 +482,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                               assessment: assessment,
                               onTap: () => context.push(
                                 '/assessment/take/${assessment.id}',
+                                extra: assessment,
                               ),
                               onDelete: () {
                                 ref
@@ -450,6 +552,27 @@ class AssessmentHubScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// Build this category's mastery test and hand it to the test screen.
+  ///
+  /// The test is generated here rather than inside the route so that a rebuild
+  /// of the router cannot reshuffle a quiz the learner is halfway through.
+  void _startCategoryMastery(
+    BuildContext context,
+    WidgetRef ref,
+    FlashcardCategory category,
+  ) {
+    final profile = ref.read(profileProvider);
+    if (profile == null) return;
+    final assessment = AssessmentService.generateCategoryMastery(
+      profileId: profile.id,
+      category: category,
+    );
+    context.push(
+      '/assessment/category/${category.index}',
+      extra: assessment,
     );
   }
 
@@ -779,6 +902,180 @@ class _CategoryMasteryCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Educator Action ───────────────────────────────────
+
+/// One button in the educator toolbar at the top of the hub.
+class _EducatorAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _EducatorAction({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: hc.surface,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: hc.border),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 26),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: AppTypography.labelMedium.copyWith(
+                    color: hc.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Assigned Work Tile ────────────────────────────────
+
+/// One assessment an educator has assigned to this learner and that they have
+/// not finished yet. Tapping opens the educator's own template — not a freshly
+/// generated look-alike — so the result the educator sees back in Assignment
+/// Tracking matches the assignment they made.
+class _AssignedWorkTile extends StatelessWidget {
+  final AssessmentAssignment assignment;
+  final Assessment assessment;
+  final VoidCallback onTap;
+
+  const _AssignedWorkTile({
+    required this.assignment,
+    required this.assessment,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final overdue = assignment.isOverdue;
+    final accent = overdue ? hc.error : AppColors.sectionAssessment;
+    final due = assignment.deadline;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Semantics(
+        button: true,
+        label: [
+          assignment.assessmentTitle.isEmpty
+              ? assessment.title
+              : assignment.assessmentTitle,
+          '${assessment.questions.length} questions',
+          if (due != null)
+            overdue ? 'Overdue' : 'Due ${_friendlyDate(due)}',
+          'Tap to start',
+        ].join('. '),
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: hc.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: accent.withValues(alpha: 0.45)),
+              boxShadow: AppColors.softShadow,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    overdue
+                        ? Icons.warning_amber_rounded
+                        : Icons.assignment_turned_in_rounded,
+                    color: accent,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        assignment.assessmentTitle.isEmpty
+                            ? assessment.title
+                            : assignment.assessmentTitle,
+                        style: AppTypography.titleSmall.copyWith(
+                          color: hc.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        due == null
+                            ? '${assessment.questions.length} questions'
+                            : '${assessment.questions.length} questions • '
+                                  '${overdue ? "Overdue" : "Due ${_friendlyDate(due)}"}',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: overdue ? hc.error : hc.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (assignment.instructions != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          assignment.instructions!,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: hc.textHint,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: hc.textHint),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _friendlyDate(DateTime dt) =>
+      '${dt.day}/${dt.month}/${dt.year}';
 }
 
 // ─── Custom Assessment Tile ────────────────────────────

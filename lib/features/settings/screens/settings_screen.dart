@@ -733,6 +733,19 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ],
 
+              // Profile clean-up is a teacher/parent tool: it can delete any
+              // other profile on this device, so learners never see it.
+              if (isMonitor)
+                _SettingsTile(
+                  icon: Icons.manage_accounts_rounded,
+                  title: 'Manage Profiles',
+                  subtitle: 'Delete profiles saved on this device',
+                  trailing: IconButton(
+                    icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+                    onPressed: () => context.push('/manage-profiles'),
+                  ),
+                ),
+
               if (isMonitor)
                 _SettingsTile(
                   icon: Icons.family_restroom_rounded,

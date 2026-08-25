@@ -3,6 +3,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/fsl_assets_service.dart';
+import '../../../core/services/game_session_service.dart';
+import '../../../data/models/enums.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../providers/app_providers.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/hands_free_pause_notice.dart';
 import '../../../core/theme/app_colors.dart';
@@ -25,6 +29,7 @@ class FslPracticeHubScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     // Sign It records the learner, so it takes the camera away from Gaze
     // Control. Say so on the card rather than letting a hands-free learner
     // discover it by getting stuck.
@@ -35,14 +40,14 @@ class FslPracticeHubScreen extends ConsumerWidget {
         AppBar(
           leading: IconButton(
             icon: const Icon(Icons.close_rounded),
-            tooltip: 'Close',
+            tooltip: l10n.close,
             // Retrace the stack: this hub is reachable from the Games grid, a
             // home feature tile, and a learning-path step, so a hard-coded
             // '/games' would strand the last two.
             onPressed: () => context.popOrGo('/games'),
           ),
           title: Text(
-            'FSL Practice',
+            l10n.fslPractice,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -99,7 +104,7 @@ class FslPracticeHubScreen extends ConsumerWidget {
               const SizedBox(height: 20),
               Center(
                 child: Text(
-                  'Filipino Sign Language Practice',
+                  l10n.fslPracticeHeading,
                   style: AppTypography.headlineSmall.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -109,7 +114,7 @@ class FslPracticeHubScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  'Watch sign language videos and test your knowledge.\nChoose a practice mode below!',
+                  l10n.fslPracticeIntro,
                   style: AppTypography.bodyMedium.copyWith(
                     color: HCColor.of(context).textSecondary,
                   ),
@@ -127,9 +132,8 @@ class FslPracticeHubScreen extends ConsumerWidget {
                   // Sign → Word mode
                   _FslModeCard(
                         icon: Icons.videocam_rounded,
-                        title: 'Sign → Word',
-                        subtitle:
-                            'Watch a sign language video, then pick the correct word from choices.',
+                        title: l10n.fslSignToWord,
+                        subtitle: l10n.fslSignToWordSubtitle,
                         gradient: const [Color(0xFF7C4DFF), Color(0xFFB388FF)],
                         onTap: () => _launchMode(context, ref, 'sign-to-word'),
                       )
@@ -140,9 +144,8 @@ class FslPracticeHubScreen extends ConsumerWidget {
                   // Word → Sign mode
                   _FslModeCard(
                         icon: Icons.abc_rounded,
-                        title: 'Word → Sign',
-                        subtitle:
-                            'See a word, then pick which video shows the correct sign.',
+                        title: l10n.fslWordToSign,
+                        subtitle: l10n.fslWordToSignSubtitle,
                         gradient: const [Color(0xFF00BFA5), Color(0xFF64FFDA)],
                         onTap: () => _launchMode(context, ref, 'word-to-sign'),
                       )
@@ -153,12 +156,10 @@ class FslPracticeHubScreen extends ConsumerWidget {
                   // Sign It! — production practice (watch, copy, self-check)
                   _FslModeCard(
                         icon: Icons.front_hand_rounded,
-                        title: 'Sign It!',
+                        title: l10n.fslSignIt,
                         subtitle: gazeOn
-                            ? 'Watch a sign, copy it in the camera, then check '
-                                  'yourself. Uses your hands — head control pauses '
-                                  'here.'
-                            : 'Watch a sign, copy it in the camera, then check yourself.',
+                            ? l10n.fslSignItSubtitleGaze
+                            : l10n.fslSignItSubtitle,
                         gradient: const [Color(0xFFFF8A65), Color(0xFFFFB74D)],
                         onTap: () =>
                             _launchMode(context, ref, 'sign-it', minVideos: 1),
@@ -181,6 +182,7 @@ class FslPracticeHubScreen extends ConsumerWidget {
     String mode, {
     int minVideos = 3,
   }) async {
+    final l10n = AppLocalizations.of(context)!;
     // Sign It records the learner, so it holds the front camera exclusively —
     // video recording and the gaze detector's image stream cannot share one
     // controller. Head control therefore genuinely stops for the duration, and
@@ -192,7 +194,7 @@ class FslPracticeHubScreen extends ConsumerWidget {
       if (gaze.enabled) {
         final proceed = await confirmHandsFreePause(
           context,
-          activityName: 'Sign It!',
+          activityName: l10n.fslSignIt,
           voiceAvailable: gaze.voiceCommands,
         );
         if (!proceed || !context.mounted) return;
@@ -208,25 +210,57 @@ class FslPracticeHubScreen extends ConsumerWidget {
     if (!context.mounted) return;
 
     if (playable.isEmpty) {
-      AppSnackBar.info(
-        context,
-        message:
-            'FSL videos are still being added. Try the FSL Dictionary in the meantime.',
-      );
+      AppSnackBar.info(context, message: l10n.fslVideosComingSoon);
       return;
     }
 
+    // "Sign It!" is production practice with self-assessment — there are no
+    // distractors to add or take away, so it has no difficulty to choose. The
+    // two quiz modes do, and now feed the adaptive engine like every other
+    // game.
+    const gameType = GameType.fslPractice;
+    final profileId = ref.read(profileProvider)?.id;
+    final isQuizMode = mode != 'sign-it';
+    GameDifficulty? difficulty;
+    if (isQuizMode) {
+      final picked = await showDifficultyPicker(
+        context,
+        gameType,
+        profileId: profileId,
+        showTimedToggle: false,
+      );
+      if (picked == null || !context.mounted) return;
+      difficulty = picked.difficulty;
+    }
+
+    final last = GameSessionService.lastSetup(
+      profileId: profileId,
+      gameType: gameType,
+    );
     final categories = await showCategoryPicker(
       context,
       availableCategories: playable,
-      unavailableLabel: 'Coming soon',
+      initialSelection: last?.categories,
     );
     if (categories == null || !context.mounted) return;
 
-    final catParam = categories.isEmpty
-        ? ''
-        : '?categories=${categories.map((c) => c.index).join(',')}';
-    context.push('/games/fsl-practice/$mode$catParam');
+    if (difficulty != null) {
+      GameSessionService.saveSetup(
+        profileId: profileId,
+        gameType: gameType,
+        difficulty: difficulty,
+        categories: categories,
+        timedMode: false,
+      );
+    }
+
+    final params = <String>[
+      if (categories.isNotEmpty)
+        'categories=${categories.map((c) => c.index).join(',')}',
+      if (difficulty != null) 'difficulty=${difficulty.name}',
+    ];
+    final query = params.isEmpty ? '' : '?${params.join('&')}';
+    context.push('/games/fsl-practice/$mode$query');
   }
 }
 

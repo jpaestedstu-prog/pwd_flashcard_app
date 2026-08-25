@@ -19,6 +19,7 @@ import '../../../core/accessibility/tts_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
+import '../../notebook/models/notebook_models.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../l10n/app_localizations.dart';
@@ -118,6 +119,26 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     _stopAutoPlay();
     _pageController.dispose();
     super.dispose();
+  }
+
+  /// Open the notebook editor on a new note about the card on screen.
+  ///
+  /// Pre-fills the title with the word and files the note under the card's
+  /// category, so the learner arrives at a blank *body* rather than a blank
+  /// form. Auto-play is stopped first — coming back to a card that has moved
+  /// on is disorienting, and the note would then be about the wrong word.
+  void _writeNoteAboutCurrentCard() {
+    if (_cards.isEmpty) return;
+    if (_autoPlay) _toggleAutoPlay();
+    final card = _cards[_currentIndex];
+    context.push(
+      '/notebook/editor',
+      extra: NoteDraft(
+        title: card.wordEnglish,
+        category: card.category,
+        linkedFlashcardIds: [card.id],
+      ),
+    );
   }
 
   void _toggleAutoPlay() {
@@ -385,6 +406,21 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                     color: AppColors.secondary,
                     onBreakStart: _onBreakStart,
                     onBreakEnd: _onBreakEnd,
+                  ),
+                  // Write a note about this word.
+                  //
+                  // The notebook could only be entered from its own screen, so
+                  // a note about a word was always written away from the word.
+                  // This carries the card across pre-linked, which is also the
+                  // only way most learners will ever fill in
+                  // `linkedFlashcardIds`.
+                  IconButton(
+                    icon: Icon(
+                      Icons.edit_note_rounded,
+                      color: HCColor.of(context).textSecondary,
+                    ),
+                    onPressed: _writeNoteAboutCurrentCard,
+                    tooltip: 'Write a note about this word',
                   ),
                   // Auto-play toggle
                   IconButton(

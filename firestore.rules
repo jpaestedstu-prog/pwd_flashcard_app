@@ -326,6 +326,54 @@ service cloud.firestore {
       allow update, delete: if isOwner(resource.data.author_uid);
     }
 
+    // ─── Assessments: templates, assignments, results ──
+    // The educator → learner assignment loop (AssessmentCloudService).
+    //
+    // Reads are open to any signed-in user, matching classrooms and notes:
+    // a learner must be able to fetch a template their educator wrote and an
+    // educator must be able to read back their assignees' results. Nothing
+    // here is more sensitive than what a classroom roster already exposes.
+    //
+    // Writes are pinned to a profile the caller owns. Note the fields are
+    // camelCase — these docs are the model's own `toJson()` plus a couple of
+    // snake_case additions, the same shape parent_teacher_notes uses.
+
+    // The template. `created_by_profile_id` is stamped by the writer rather
+    // than read from the model's `createdBy`, which legacy rows set to the
+    // literal string 'teacher'.
+    match /assessments/{assessmentId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && ownsProfile(request.resource.data.created_by_profile_id);
+      allow update, delete: if signedIn()
+        && ownsProfile(resource.data.created_by_profile_id);
+    }
+
+    // Who was set what, by whom, and when it is due. Only the assigning
+    // educator may write; `studentIds` is the learner's arrayContains index.
+    match /assessment_assignments/{assignmentId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && ownsProfile(request.resource.data.assignedBy);
+      allow update, delete: if signedIn()
+        && ownsProfile(resource.data.assignedBy);
+    }
+
+    // A learner's submitted answers. Only the learner's own device writes
+    // one — an educator can read a result but can never author or edit one,
+    // which is what keeps Assignment Tracking trustworthy.
+    //
+    // Delete is allowed to the same owner purely so profile deletion can
+    // clean up after itself; no screen offers it, and an educator deleting a
+    // learner's score is still refused.
+    match /assessment_results/{resultId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && ownsProfile(request.resource.data.profileId);
+      allow update, delete: if signedIn()
+        && ownsProfile(resource.data.profileId);
+    }
+
     // ─── Home Groups (parent-owned, parallel to classrooms) ──
     // Reads are open so children can look up by code at join time.
     // Writes are gated on the writer owning the parent profile that

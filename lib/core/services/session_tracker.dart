@@ -63,9 +63,14 @@ class SessionTracker with WidgetsBindingObserver {
   // ─── Analytics Queries ─────────────────────────────
 
   /// Get total study time in minutes for the last N days.
-  static int totalStudyMinutes(String profileId, {int days = 30}) {
+  /// [now] exists so a caller can ask about a fixed point in time — the same
+  /// seam `WeeklySummary.forProfile` already had. Without it the two could
+  /// not be compared against one dataset: a test pinning a date here silently
+  /// drifted out of its own window as the real clock moved on.
+  static int totalStudyMinutes(String profileId,
+      {int days = 30, DateTime? now}) {
     final sessions = HiveService.getSessionLogs(profileId);
-    final cutoff = DateTime.now().subtract(Duration(days: days));
+    final cutoff = (now ?? DateTime.now()).subtract(Duration(days: days));
     int totalSeconds = 0;
     for (final s in sessions) {
       final date = DateTime.tryParse(s['date'] as String? ?? '');
@@ -77,9 +82,10 @@ class SessionTracker with WidgetsBindingObserver {
   }
 
   /// Get average session length in minutes.
-  static double averageSessionMinutes(String profileId, {int days = 30}) {
+  static double averageSessionMinutes(String profileId,
+      {int days = 30, DateTime? now}) {
     final sessions = HiveService.getSessionLogs(profileId);
-    final cutoff = DateTime.now().subtract(Duration(days: days));
+    final cutoff = (now ?? DateTime.now()).subtract(Duration(days: days));
     final filtered = sessions.where((s) {
       final date = DateTime.tryParse(s['date'] as String? ?? '');
       return date != null && date.isAfter(cutoff);
@@ -110,9 +116,10 @@ class SessionTracker with WidgetsBindingObserver {
   /// returned a flat 0 no matter how much the learner played. The ledger is
   /// written by `ProgressNotifier.recordGameResult`, i.e. by the thing that
   /// actually knows a game finished.
-  static int totalGamesPlayed(String profileId, {int days = 30}) {
+  static int totalGamesPlayed(String profileId,
+      {int days = 30, DateTime? now}) {
     final ledger = HiveService.getDailyActivity(profileId);
-    final cutoff = DateTime.now().subtract(Duration(days: days));
+    final cutoff = (now ?? DateTime.now()).subtract(Duration(days: days));
     var total = 0;
     ledger.forEach((key, row) {
       final date = DateTime.tryParse(key);
@@ -126,9 +133,9 @@ class SessionTracker with WidgetsBindingObserver {
   /// Get daily study minutes for the last N days (for charts).
   /// Returns a map of date string (yyyy-MM-dd) -> minutes.
   static Map<String, int> dailyStudyMinutes(
-      String profileId, {int days = 7}) {
+      String profileId, {int days = 7, DateTime? now}) {
     final sessions = HiveService.getSessionLogs(profileId);
-    final cutoff = DateTime.now().subtract(Duration(days: days));
+    final cutoff = (now ?? DateTime.now()).subtract(Duration(days: days));
     final result = <String, int>{};
 
     // Pre-fill with zeros for all days (oldest first for chronological order)

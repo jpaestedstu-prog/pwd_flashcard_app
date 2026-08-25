@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 
 /// Test harness for verifying that a widget lays out without `RenderFlex`
 /// (or any other) overflow across the range of Android tablets and
@@ -105,6 +106,12 @@ Future<void> pumpResponsive(
   final Widget rooted = wrapInApp
       ? MaterialApp(
           debugShowCheckedModeBanner: false,
+          // Widgets under test increasingly read their copy from
+          // AppLocalizations; without the delegates `AppLocalizations.of`
+          // returns null and every such widget fails the matrix on a null
+          // check rather than on the layout this harness is measuring.
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context)
                 .copyWith(textScaler: TextScaler.linear(textScale)),

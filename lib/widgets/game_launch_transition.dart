@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../data/models/enums.dart';
@@ -67,13 +68,17 @@ class _GameLaunchTransitionState extends State<GameLaunchTransition>
     );
     _iconScale = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(begin: 0.0, end: 1.2)
-            .chain(CurveTween(curve: Curves.easeOutBack)),
+        tween: Tween(
+          begin: 0.0,
+          end: 1.2,
+        ).chain(CurveTween(curve: Curves.easeOutBack)),
         weight: 70,
       ),
       TweenSequenceItem(
-        tween: Tween(begin: 1.2, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween(
+          begin: 1.2,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 30,
       ),
     ]).animate(_iconController);
@@ -149,9 +154,9 @@ class _GameLaunchTransitionState extends State<GameLaunchTransition>
   @override
   Widget build(BuildContext context) {
     final gameColor = widget.game.color;
-    final darkerColor = HSLColor.fromColor(gameColor)
-        .withLightness(0.3)
-        .toColor();
+    final darkerColor = HSLColor.fromColor(
+      gameColor,
+    ).withLightness(0.3).toColor();
 
     return Material(
       color: Colors.transparent,
@@ -223,7 +228,7 @@ class _GameLaunchTransitionState extends State<GameLaunchTransition>
                     );
                   },
                   child: Text(
-                    widget.game.label,
+                    widget.game.labelOf(AppLocalizations.of(context)!),
                     style: AppTypography.headlineLarge.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
@@ -242,7 +247,8 @@ class _GameLaunchTransitionState extends State<GameLaunchTransition>
                     animation: _countdownController,
                     builder: (context, _) {
                       final t = _countdownController.value;
-                      final scale = 1.0 + 0.3 * Curves.easeOut.transform(t) * (1 - t);
+                      final scale =
+                          1.0 + 0.3 * Curves.easeOut.transform(t) * (1 - t);
 
                       return Stack(
                         alignment: Alignment.center,
@@ -258,8 +264,9 @@ class _GameLaunchTransitionState extends State<GameLaunchTransition>
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: Colors.white
-                                        .withValues(alpha: 0.4 * (1 - ringT)),
+                                    color: Colors.white.withValues(
+                                      alpha: 0.4 * (1 - ringT),
+                                    ),
                                     width: 3,
                                   ),
                                 ),

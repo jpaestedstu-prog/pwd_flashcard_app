@@ -52,15 +52,13 @@ class ProfileExportService {
         .replaceAll(RegExp(r'\s+'), '_')
         .toLowerCase();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final file =
-        File('${dir.path}/student_${safeName}_$timestamp.json');
+    final file = File('${dir.path}/student_${safeName}_$timestamp.json');
     await file.writeAsString(jsonString);
 
     await Share.shareXFiles(
       [XFile(file.path)],
       subject: 'Student Profile – ${profile.name}',
-      text:
-          'Student profile "${profile.name}" exported from FlashLearn PWD.',
+      text: 'Student profile "${profile.name}" exported from FlashLearn PWD.',
     );
   }
 
@@ -129,8 +127,9 @@ class ProfileExportService {
 
       // Save achievements
       if (data['achievements'] is List) {
-        final achievements =
-            Set<String>.from((data['achievements'] as List).map((e) => e.toString()));
+        final achievements = Set<String>.from(
+          (data['achievements'] as List).map((e) => e.toString()),
+        );
         if (achievements.isNotEmpty) {
           await HiveService.saveUnlockedAchievements(profile.id, achievements);
         }
@@ -138,8 +137,9 @@ class ProfileExportService {
 
       // Save purchases
       if (data['purchases'] is List) {
-        final purchases =
-            Set<String>.from((data['purchases'] as List).map((e) => e.toString()));
+        final purchases = Set<String>.from(
+          (data['purchases'] as List).map((e) => e.toString()),
+        );
         if (purchases.isNotEmpty) {
           await HiveService.savePurchasedItems(profile.id, purchases);
         }
@@ -151,7 +151,10 @@ class ProfileExportService {
         for (final entry in equipped.entries) {
           if (entry.value is String) {
             await HiveService.saveEquippedItem(
-                profile.id, entry.key, entry.value as String);
+              profile.id,
+              entry.key,
+              entry.value as String,
+            );
           }
         }
       }
@@ -169,19 +172,19 @@ class ProfileExportService {
   // ─── Serialisation helpers ─────────────────────────────
 
   static Map<String, dynamic> _profileToMap(UserProfile p) => {
-        'id': p.id,
-        'name': p.name,
-        'role': p.role.index,
-        'avatarIndex': p.avatarIndex,
-        'createdAt': p.createdAt.toIso8601String(),
-        'disabilityType': p.disabilityType.index,
-        'pin': p.pin,
-        'gradeLevel': p.gradeLevel?.index,
-        'section': p.section,
-        'birthDate': p.birthDate?.toIso8601String(),
-        'tags': p.tags,
-        'interests': p.interests.map((c) => c.index).toList(),
-      };
+    'id': p.id,
+    'name': p.name,
+    'role': p.role.index,
+    'avatarIndex': p.avatarIndex,
+    'createdAt': p.createdAt.toIso8601String(),
+    'disabilityType': p.disabilityType.index,
+    'pin': p.pin,
+    'gradeLevel': p.gradeLevel?.index,
+    'section': p.section,
+    'birthDate': p.birthDate?.toIso8601String(),
+    'tags': p.tags,
+    'interests': p.interests.map((c) => c.index).toList(),
+  };
 
   static UserProfile _profileFromMap(Map<String, dynamic> m) {
     final roleIndex = m['role'] as int;
@@ -195,20 +198,23 @@ class ProfileExportService {
       role: UserRole.values[roleIndex.clamp(0, UserRole.values.length - 1)],
       avatarIndex: m['avatarIndex'] as int? ?? 0,
       createdAt: DateTime.parse(m['createdAt'] as String),
-      disabilityType: (disabilityIndex != null &&
+      disabilityType:
+          (disabilityIndex != null &&
               disabilityIndex >= 0 &&
               disabilityIndex < DisabilityType.values.length)
           ? DisabilityType.values[disabilityIndex]
           : DisabilityType.none,
       pin: m['pin'] as String?,
-      gradeLevel: (gradeLevelIndex != null &&
+      gradeLevel:
+          (gradeLevelIndex != null &&
               gradeLevelIndex >= 0 &&
               gradeLevelIndex < GradeLevel.values.length)
           ? GradeLevel.values[gradeLevelIndex]
           : null,
       section: m['section'] as String?,
-      birthDate:
-          m['birthDate'] != null ? DateTime.tryParse(m['birthDate'] as String) : null,
+      birthDate: m['birthDate'] != null
+          ? DateTime.tryParse(m['birthDate'] as String)
+          : null,
       tags: rawTags != null
           ? List<String>.from(rawTags.map((e) => e.toString()))
           : const [],
@@ -224,33 +230,38 @@ class ProfileExportService {
   }
 
   static Map<String, dynamic> _progressToMap(LearningProgress p) => {
-        'wordsLearned': p.wordsLearned,
-        'learnedWordIds': p.learnedWordIds.toList(),
-        'streakDays': p.streakDays,
-        'lastActivityDate': p.lastActivityDate.toIso8601String(),
-        'totalStars': p.totalStars,
-        'spentStars': p.spentStars,
-        // Lifetime high-water marks. A backup that omits them restores a
-        // learner who has "never" had a long streak or tried a second game —
-        // which costs them XP, their level, and their badges.
-        'bestStreakDays': p.effectiveBestStreak,
-        'gamesPlayed': p.effectiveGamesPlayed,
-        'playedGameTypes': gameTypeNames(p.effectivePlayedGameTypes),
-        'categoryProgress': p.categoryProgress,
-        'recentScores': p.recentScores
-            .map((s) => {
-                  'gameType': s.gameType.index,
-                  'score': s.score,
-                  'total': s.total,
-                  'starsEarned': s.starsEarned,
-                  'date': s.date.toIso8601String(),
-                  'durationSeconds': s.durationSeconds,
-                })
-            .toList(),
-      };
+    'wordsLearned': p.wordsLearned,
+    'learnedWordIds': p.learnedWordIds.toList(),
+    'streakDays': p.streakDays,
+    'lastActivityDate': p.lastActivityDate.toIso8601String(),
+    'totalStars': p.totalStars,
+    'spentStars': p.spentStars,
+    // Lifetime high-water marks. A backup that omits them restores a
+    // learner who has "never" had a long streak or tried a second game —
+    // which costs them XP, their level, and their badges.
+    'bestStreakDays': p.effectiveBestStreak,
+    'gamesPlayed': p.effectiveGamesPlayed,
+    'playedGameTypes': gameTypeNames(p.effectivePlayedGameTypes),
+    'gameBestStars': p.effectiveGameBestStars,
+    'categoryProgress': p.categoryProgress,
+    'recentScores': p.recentScores
+        .map(
+          (s) => {
+            'gameType': s.gameType.index,
+            'score': s.score,
+            'total': s.total,
+            'starsEarned': s.starsEarned,
+            'date': s.date.toIso8601String(),
+            'durationSeconds': s.durationSeconds,
+          },
+        )
+        .toList(),
+  };
 
   static LearningProgress _progressFromMap(
-      String profileId, Map<String, dynamic> m) {
+    String profileId,
+    Map<String, dynamic> m,
+  ) {
     final rawScores = m['recentScores'] as List? ?? [];
     final scores = <GameScore>[];
     for (final e in rawScores) {
@@ -260,14 +271,16 @@ class ProfileExportService {
         if (gameTypeIndex < 0 || gameTypeIndex >= GameType.values.length) {
           continue;
         }
-        scores.add(GameScore(
-          gameType: GameType.values[gameTypeIndex],
-          score: sm['score'] as int,
-          total: sm['total'] as int,
-          starsEarned: sm['starsEarned'] as int,
-          date: DateTime.parse(sm['date'] as String),
-          durationSeconds: sm['durationSeconds'] as int?,
-        ));
+        scores.add(
+          GameScore(
+            gameType: GameType.values[gameTypeIndex],
+            score: sm['score'] as int,
+            total: sm['total'] as int,
+            starsEarned: sm['starsEarned'] as int,
+            date: DateTime.parse(sm['date'] as String),
+            durationSeconds: sm['durationSeconds'] as int?,
+          ),
+        );
       } catch (_) {
         continue;
       }
@@ -278,7 +291,9 @@ class ProfileExportService {
 
     return LearningProgress(
       profileId: profileId,
-      wordsLearned: wordIds.isNotEmpty ? wordIds.length : (m['wordsLearned'] ?? 0),
+      wordsLearned: wordIds.isNotEmpty
+          ? wordIds.length
+          : (m['wordsLearned'] ?? 0),
       learnedWordIds: wordIds,
       streakDays: m['streakDays'] ?? 0,
       lastActivityDate: DateTime.parse(m['lastActivityDate'] as String),
@@ -289,6 +304,9 @@ class ProfileExportService {
       bestStreakDays: m['bestStreakDays'] ?? 0,
       gamesPlayed: m['gamesPlayed'] ?? 0,
       playedGameTypes: gameTypesFromNames(m['playedGameTypes']),
+      gameBestStars: ((m['gameBestStars'] as Map?) ?? const {}).map(
+        (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+      ),
       categoryProgress: Map<String, double>.from(m['categoryProgress'] ?? {}),
       recentScores: scores,
     );

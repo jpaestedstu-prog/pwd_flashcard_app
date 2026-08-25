@@ -91,7 +91,7 @@ class GameScoreBarChart extends StatelessWidget {
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final gameType = entries[groupIndex].key;
                       return BarTooltipItem(
-                        '${gameType.label}\n${rod.toY.round()}%',
+                        '${gameType.labelOf(l10n)}\n${rod.toY.round()}%',
                         AppTypography.labelSmall.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,

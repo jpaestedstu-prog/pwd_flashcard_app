@@ -5,6 +5,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
+import '../l10n/app_localizations.dart';
+
+/// Which congratulation tier a result falls in. Kept separate from the
+/// [_ScoreTier] consts so the headline and hint can be looked up per locale
+/// while the colours and emoji stay compile-time constants.
+enum _ScoreTierId { amazing, great, good, practice }
 
 // ─────────────────────────────────────────────────────────────
 //  Animated Score Reveal
@@ -103,256 +109,277 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
     final rating = widget.rating.clamp(0, 3);
     final hc = HCColor.of(context);
     final tier = _ScoreTier.forRating(rating);
+    final l10n = AppLocalizations.of(context)!;
 
     return Semantics(
-      label:
-          'Game results: ${widget.score} out of ${widget.total}, rating $rating out of 3 stars, '
-          '${widget.starsEarned} stars earned',
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.92,
-            maxWidth: 520,
+          label: l10n.gameResultsSemantics(
+            widget.score,
+            widget.total,
+            rating,
+            widget.starsEarned,
           ),
-          child: Card(
-          elevation: 12,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-            side: hc.hc
-                ? const BorderSide(color: AppColors.hcPrimary, width: 2)
-                : BorderSide.none,
-          ),
-          color: hc.surface,
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-                context.pagePadding, 32, context.pagePadding, 24),
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // ─── Score Gauge ──────────────────
-                SizedBox(
-                  width: context.responsiveSize(140),
-                  height: context.responsiveSize(140),
-                  child: AnimatedBuilder(
-                    animation: _gaugeController,
-                    builder: (context, _) {
-                      final gaugeValue = Curves.easeOutCubic
-                          .transform(_gaugeController.value);
-                      return CustomPaint(
-                        painter: _ScoreGaugePainter(
-                          progress: gaugeValue * (rating / 3),
-                          tier: tier,
-                          backgroundColor: hc.isDark
-                              ? AppColors.hcSurface
-                              : AppColors.surfaceLight,
-                        ),
-                        child: Center(
-                          child: _buildGaugeCenter(rating, tier),
-                        ),
-                      );
-                    },
-                  ),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+                maxWidth: 520,
+              ),
+              child: Card(
+                elevation: 12,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  side: hc.hc
+                      ? const BorderSide(color: AppColors.hcPrimary, width: 2)
+                      : BorderSide.none,
                 ),
-
-                const SizedBox(height: 20),
-
-                // ─── Stars ────────────────────────
-                AnimatedBuilder(
-                  animation: _starController,
-                  builder: (context, _) {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(3, (index) {
-                        final isEarned = index < rating;
-                        final starDelay = index * 0.25;
-                        final starProgress = ((_starController.value - starDelay) / 0.5)
-                            .clamp(0.0, 1.0);
-                        final bounced = isEarned
-                            ? Curves.elasticOut.transform(starProgress)
-                            : starProgress;
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Transform.scale(
-                            scale: isEarned ? bounced : 1.0,
-                            child: _StarIcon(
-                              isEarned: isEarned,
-                              size: index == 1
-                                  ? context.responsiveSize(60)
-                                  : context.responsiveSize(44),
-                              glowIntensity: isEarned ? bounced : 0,
-                            ),
-                          ),
-                        );
-                      }),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                // ─── Message ──────────────────────
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    tier.message,
-                    style: AppTypography.displaySmall.copyWith(
-                      color: hc.textPrimary,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
+                color: hc.surface,
+                clipBehavior: Clip.antiAlias,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    context.pagePadding,
+                    32,
+                    context.pagePadding,
+                    24,
                   ),
-                )
-                    .animate(delay: 1400.ms)
-                    .fadeIn(duration: 400.ms)
-                    .slideY(begin: 0.2, end: 0),
-
-                const SizedBox(height: 6),
-
-                // ─── Encouragement ────────────────
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    tier.encouragement,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: hc.textSecondary,
-                      fontStyle: FontStyle.italic,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                  ),
-                )
-                    .animate(delay: 1600.ms)
-                    .fadeIn(duration: 400.ms),
-
-                const SizedBox(height: 12),
-
-                // ─── Score Counter ────────────────
-                AnimatedBuilder(
-                  animation: _scoreController,
-                  builder: (context, _) {
-                    final ease =
-                        Curves.easeOutCubic.transform(_scoreController.value);
-                    final displayScore = (widget.score * ease).round();
-                    final color = Color.lerp(
-                      HCColor.of(context).textSecondary,
-                      tier.color,
-                      ease,
-                    )!;
-
-                    return RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: '$displayScore',
-                            style: AppTypography.gameScore.copyWith(
-                              color: color,
-                            ),
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ─── Score Gauge ──────────────────
+                        SizedBox(
+                          width: context.responsiveSize(140),
+                          height: context.responsiveSize(140),
+                          child: AnimatedBuilder(
+                            animation: _gaugeController,
+                            builder: (context, _) {
+                              final gaugeValue = Curves.easeOutCubic.transform(
+                                _gaugeController.value,
+                              );
+                              return CustomPaint(
+                                painter: _ScoreGaugePainter(
+                                  progress: gaugeValue * (rating / 3),
+                                  tier: tier,
+                                  backgroundColor: hc.isDark
+                                      ? AppColors.hcSurface
+                                      : AppColors.surfaceLight,
+                                ),
+                                child: Center(
+                                  child: _buildGaugeCenter(rating, tier),
+                                ),
+                              );
+                            },
                           ),
-                          TextSpan(
-                            text: ' / ${widget.total}',
-                            style: AppTypography.headlineMedium.copyWith(
-                              color: HCColor.of(context).textSecondary,
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ─── Stars ────────────────────────
+                        AnimatedBuilder(
+                          animation: _starController,
+                          builder: (context, _) {
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(3, (index) {
+                                final isEarned = index < rating;
+                                final starDelay = index * 0.25;
+                                final starProgress =
+                                    ((_starController.value - starDelay) / 0.5)
+                                        .clamp(0.0, 1.0);
+                                final bounced = isEarned
+                                    ? Curves.elasticOut.transform(starProgress)
+                                    : starProgress;
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  child: Transform.scale(
+                                    scale: isEarned ? bounced : 1.0,
+                                    child: _StarIcon(
+                                      isEarned: isEarned,
+                                      size: index == 1
+                                          ? context.responsiveSize(60)
+                                          : context.responsiveSize(44),
+                                      glowIntensity: isEarned ? bounced : 0,
+                                    ),
+                                  ),
+                                );
+                              }),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // ─── Message ──────────────────────
+                        FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                tier.headline(l10n),
+                                style: AppTypography.displaySmall.copyWith(
+                                  color: hc.textPrimary,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                              ),
+                            )
+                            .animate(delay: 1400.ms)
+                            .fadeIn(duration: 400.ms)
+                            .slideY(begin: 0.2, end: 0),
+
+                        const SizedBox(height: 6),
+
+                        // ─── Encouragement ────────────────
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            tier.hint(l10n),
+                            style: AppTypography.bodySmall.copyWith(
+                              color: hc.textSecondary,
+                              fontStyle: FontStyle.italic,
                             ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                          ),
+                        ).animate(delay: 1600.ms).fadeIn(duration: 400.ms),
+
+                        const SizedBox(height: 12),
+
+                        // ─── Score Counter ────────────────
+                        AnimatedBuilder(
+                          animation: _scoreController,
+                          builder: (context, _) {
+                            final ease = Curves.easeOutCubic.transform(
+                              _scoreController.value,
+                            );
+                            final displayScore = (widget.score * ease).round();
+                            final color = Color.lerp(
+                              HCColor.of(context).textSecondary,
+                              tier.color,
+                              ease,
+                            )!;
+
+                            return RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: '$displayScore',
+                                    style: AppTypography.gameScore.copyWith(
+                                      color: color,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: ' / ${widget.total}',
+                                    style: AppTypography.headlineMedium
+                                        .copyWith(
+                                          color: HCColor.of(
+                                            context,
+                                          ).textSecondary,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+
+                        // ─── Stars earned chip ────────────
+                        // The currency reward, separate from the rating above.
+                        if (widget.starsEarned > 0) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.warning.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  l10n.starsEarnedChip(widget.starsEarned),
+                                  style: AppTypography.titleSmall.copyWith(
+                                    color: hc.textPrimary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              )
+                              .animate(delay: 1200.ms)
+                              .fadeIn(duration: 400.ms)
+                              .scale(
+                                begin: const Offset(0.8, 0.8),
+                                end: const Offset(1, 1),
+                                curve: Curves.easeOutBack,
+                              ),
+                        ],
+
+                        // ─── Footnote (e.g. camera-word collection) ──
+                        if (widget.footnote != null) ...[
+                          const SizedBox(height: 10),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              widget.footnote!,
+                              style: AppTypography.bodySmall.copyWith(
+                                color: hc.textSecondary,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                            ),
+                          ).animate(delay: 1400.ms).fadeIn(duration: 400.ms),
+                        ],
+
+                        // ─── Review Button ────────────────
+                        if (widget.onReview != null) ...[
+                          const SizedBox(height: 14),
+                          TextButton.icon(
+                            onPressed: widget.onReview,
+                            icon: const Icon(
+                              Icons.rate_review_rounded,
+                              size: 18,
+                            ),
+                            label: Text(l10n.reviewWords),
                           ),
                         ],
-                      ),
-                    );
-                  },
-                ),
 
-                // ─── Stars earned chip ────────────
-                // The currency reward, separate from the rating above.
-                if (widget.starsEarned > 0) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '+${widget.starsEarned} ⭐ earned',
-                      style: AppTypography.titleSmall.copyWith(
-                        color: hc.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  )
-                      .animate(delay: 1200.ms)
-                      .fadeIn(duration: 400.ms)
-                      .scale(
-                        begin: const Offset(0.8, 0.8),
-                        end: const Offset(1, 1),
-                        curve: Curves.easeOutBack,
-                      ),
-                ],
+                        const SizedBox(height: 24),
 
-                // ─── Footnote (e.g. camera-word collection) ──
-                if (widget.footnote != null) ...[
-                  const SizedBox(height: 10),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      widget.footnote!,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: hc.textSecondary,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
+                        // ─── Action Buttons ───────────────
+                        // OverflowBar lays the buttons in a Row when there's width,
+                        // and stacks them vertically when font scaling forces a wrap.
+                        OverflowBar(
+                              spacing: 12,
+                              overflowSpacing: 8,
+                              alignment: MainAxisAlignment.center,
+                              overflowAlignment: OverflowBarAlignment.center,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: widget.onExit,
+                                  icon: const Icon(Icons.arrow_back_rounded),
+                                  label: Text(l10n.exit),
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: widget.onPlayAgain,
+                                  icon: const Icon(Icons.replay_rounded),
+                                  label: Text(l10n.playAgain),
+                                ),
+                              ],
+                            )
+                            .animate(delay: 1800.ms)
+                            .fadeIn(duration: 300.ms)
+                            .slideY(begin: 0.15, end: 0),
+                      ],
                     ),
-                  ).animate(delay: 1400.ms).fadeIn(duration: 400.ms),
-                ],
-
-                // ─── Review Button ────────────────
-                if (widget.onReview != null) ...[
-                  const SizedBox(height: 14),
-                  TextButton.icon(
-                    onPressed: widget.onReview,
-                    icon: const Icon(Icons.rate_review_rounded, size: 18),
-                    label: const Text('Review Words'),
                   ),
-                ],
-
-                const SizedBox(height: 24),
-
-                // ─── Action Buttons ───────────────
-                // OverflowBar lays the buttons in a Row when there's width,
-                // and stacks them vertically when font scaling forces a wrap.
-                OverflowBar(
-                  spacing: 12,
-                  overflowSpacing: 8,
-                  alignment: MainAxisAlignment.center,
-                  overflowAlignment: OverflowBarAlignment.center,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: widget.onExit,
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('Exit'),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: widget.onPlayAgain,
-                      icon: const Icon(Icons.replay_rounded),
-                      label: const Text('Play Again'),
-                    ),
-                  ],
-                )
-                    .animate(delay: 1800.ms)
-                    .fadeIn(duration: 300.ms)
-                    .slideY(begin: 0.15, end: 0),
-              ],
-            ),
+                ),
+              ),
             ),
           ),
-        ),
-        ),
-      ),
-    )
+        )
         .animate()
         .scale(
           begin: const Offset(0.85, 0.85),
@@ -373,16 +400,13 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
         // emoji/rating text would burst the painted circle. The rating is
         // duplicated by the star row + Semantics so accessibility isn't lost.
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: const TextScaler.linear(1.0),
-          ),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(1.0)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                tier.emoji,
-                style: const TextStyle(fontSize: 28),
-              ),
+              Text(tier.emoji, style: const TextStyle(fontSize: 28)),
               Text(
                 '$displayRating/3',
                 style: AppTypography.titleLarge.copyWith(
@@ -402,19 +426,34 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
 // ─── Score Tier ──────────────────────────────────────
 
 class _ScoreTier {
-  final String message;
   final String emoji;
   final Color color;
   final List<Color> gradientColors;
-  final String encouragement;
 
   const _ScoreTier({
-    required this.message,
+    required this.id,
     required this.emoji,
     required this.color,
     required this.gradientColors,
-    required this.encouragement,
   });
+
+  /// Which tier this is. The headline and hint are looked up per locale via
+  /// [headline] / [hint]; only the colours and emoji live on the const.
+  final _ScoreTierId id;
+
+  String headline(AppLocalizations l10n) => switch (id) {
+    _ScoreTierId.amazing => l10n.resultAmazing,
+    _ScoreTierId.great => l10n.resultGreat,
+    _ScoreTierId.good => l10n.resultGood,
+    _ScoreTierId.practice => l10n.resultKeepPracticing,
+  };
+
+  String hint(AppLocalizations l10n) => switch (id) {
+    _ScoreTierId.amazing => l10n.resultAmazingHint,
+    _ScoreTierId.great => l10n.resultGreatHint,
+    _ScoreTierId.good => l10n.resultGoodHint,
+    _ScoreTierId.practice => l10n.resultKeepPracticingHint,
+  };
 
   static _ScoreTier forRating(int rating) {
     if (rating >= 3) return amazing;
@@ -424,35 +463,31 @@ class _ScoreTier {
   }
 
   static const amazing = _ScoreTier(
-    message: 'Amazing! 🌟',
+    id: _ScoreTierId.amazing,
     emoji: '🏆',
     color: Color(0xFFFFC107),
     gradientColors: [Color(0xFFFFC107), Color(0xFFFF9800)],
-    encouragement: 'You\'re a superstar! Try a harder level next!',
   );
 
   static const great = _ScoreTier(
-    message: 'Great Job! 🎉',
+    id: _ScoreTierId.great,
     emoji: '⭐',
     color: Color(0xFF4CAF50),
     gradientColors: [Color(0xFF66BB6A), Color(0xFF43A047)],
-    encouragement: 'You\'re doing wonderfully! Keep it up!',
   );
 
   static const good = _ScoreTier(
-    message: 'Good Try! 👍',
+    id: _ScoreTierId.good,
     emoji: '💪',
     color: Color(0xFF42A5F5),
     gradientColors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
-    encouragement: 'You\'re learning! Review the words you missed.',
   );
 
   static const practice = _ScoreTier(
-    message: 'Keep Practicing! 💪',
+    id: _ScoreTierId.practice,
     emoji: '📚',
     color: Color(0xFFFF7043),
     gradientColors: [Color(0xFFFF7043), Color(0xFFE64A19)],
-    encouragement: 'Every try makes you stronger! Try again!',
   );
 }
 
@@ -500,13 +535,7 @@ class _ScoreGaugePainter extends CustomPainter {
           transform: const GradientRotation(-math.pi / 2),
         ).createShader(rect);
 
-      canvas.drawArc(
-        rect,
-        -math.pi / 2,
-        sweepAngle,
-        false,
-        gradientPaint,
-      );
+      canvas.drawArc(rect, -math.pi / 2, sweepAngle, false, gradientPaint);
 
       // Glow dot at the end
       final endAngle = -math.pi / 2 + sweepAngle;
@@ -551,7 +580,9 @@ class _StarIcon extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.warning.withValues(alpha: 0.4 * glowIntensity),
+                  color: AppColors.warning.withValues(
+                    alpha: 0.4 * glowIntensity,
+                  ),
                   blurRadius: 12 * glowIntensity,
                   spreadRadius: 2 * glowIntensity,
                 ),

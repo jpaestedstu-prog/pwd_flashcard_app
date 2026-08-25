@@ -7,11 +7,57 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../data/models/enums.dart';
-import '../../../data/local/hive_service.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/student_list_provider.dart';
 import '../models/assessment_models.dart';
+import '../models/custom_quiz_models.dart';
+import '../providers/assessment_provider.dart';
+import '../providers/quiz_builder_provider.dart';
+import '../services/assessment_cloud_service.dart';
 import '../services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
+
+/// Something an educator can hand out.
+///
+/// Two things qualify and they are not the same shape. A saved [Assessment]
+/// already *is* a fixed set of questions. A [CustomQuiz] is only a recipe —
+/// card ids plus permitted formats — that re-rolls its questions on every play.
+/// Handing a recipe out directly would give each learner a different test and
+/// leave the educator's tracking with nothing stable to line up against, so a
+/// quiz is materialised into an immutable Assessment at the moment it is
+/// assigned. See [AssessmentService.materialiseQuiz].
+class AssignableItem {
+  /// Selection key only — the quiz id or the assessment id. The assessment
+  /// that actually gets assigned may have a different, freshly minted id.
+  final String id;
+  final String title;
+  final int questionCount;
+  final GameDifficulty difficulty;
+
+  /// When this was made. Two assignments of one quiz produce two assessments
+  /// with the same title, so the date is what tells them apart in the list.
+  final DateTime createdAt;
+  final Assessment? assessment;
+  final CustomQuiz? quiz;
+
+  AssignableItem.fromAssessment(Assessment this.assessment)
+    : id = assessment.id,
+      title = assessment.title,
+      questionCount = assessment.questions.length,
+      difficulty = assessment.difficulty,
+      createdAt = assessment.createdAt,
+      quiz = null;
+
+  AssignableItem.fromQuiz(CustomQuiz this.quiz)
+    : id = quiz.id,
+      title = quiz.title,
+      questionCount = quiz.flashcardIds.length,
+      difficulty = quiz.difficulty,
+      createdAt = quiz.createdAt,
+      assessment = null;
+
+  bool get isQuiz => quiz != null;
+}
 
 /// Screen for educators to assign an assessment to students.
 class AssessmentAssignScreen extends ConsumerStatefulWidget {
@@ -24,31 +70,23 @@ class AssessmentAssignScreen extends ConsumerStatefulWidget {
 
 class _AssessmentAssignScreenState
     extends ConsumerState<AssessmentAssignScreen> {
-  Assessment? _selectedAssessment;
+  AssignableItem? _selected;
   final Set<String> _selectedStudentIds = {};
   DateTime? _deadline;
   final _instructionsController = TextEditingController();
   bool _saving = false;
 
-  late final List<Assessment> _assessments;
-  late final List<({String id, String name})> _students;
-
-  @override
-  void initState() {
-    super.initState();
-    final profile = ref.read(profileProvider);
-    final profileId = profile?.id ?? '';
-
-    // Load assessments created by this educator + system assessments
-    _assessments = AssessmentService.getAssessments(profileId);
-
-    // Load all student profiles
-    final allData = HiveService.getAllProfilesWithProgress();
-    _students = allData
-        .where((d) => d.$1.role == UserRole.student)
-        .map((d) => (id: d.$1.id, name: d.$1.name))
-        .toList();
-  }
+  /// Assessments this educator may hand out, and the learners they may hand
+  /// them to. Both are read in `build`, never cached in `initState`: each is
+  /// backed by a Firestore pull that can land *after* this screen opens.
+  ///
+  /// The roster in particular spans classroom students *and* home-group
+  /// children — the old local `role == UserRole.student` read showed a Parent
+  /// "No students found" and hid cross-device students from teachers.
+  List<AssignableItem> _assignables = const [];
+  List<AssignableItem> _quizzes = const [];
+  List<AssignableItem> _saved = const [];
+  List<({String id, String name})> _students = const [];
 
   @override
   void dispose() {
@@ -56,18 +94,45 @@ class _AssessmentAssignScreenState
     super.dispose();
   }
 
-  bool get _canAssign =>
-      _selectedAssessment != null && _selectedStudentIds.isNotEmpty;
+  bool get _isParent => ref.read(profileProvider)?.role == UserRole.parent;
+
+  bool get _canAssign => _selected != null && _selectedStudentIds.isNotEmpty;
 
   Future<void> _assign() async {
     if (!_canAssign || _saving) return;
     setState(() => _saving = true);
 
     final profile = ref.read(profileProvider);
+    final selected = _selected!;
+
+    // A quiz becomes a real assessment here, with a fresh id, and is saved
+    // through the same notifier as any other — so it syncs to the cloud and
+    // the learner's device can resolve it by id like anything else. Assigning
+    // the same quiz twice therefore mints two instruments, which is right:
+    // they are two sittings and they are tracked separately.
+    Assessment target;
+    if (selected.isQuiz) {
+      target = AssessmentService.materialiseQuiz(
+        selected.quiz!,
+        ref.read(allFlashcardsProvider),
+      );
+      if (target.questions.isEmpty) {
+        setState(() => _saving = false);
+        AppSnackBar.warning(
+          context,
+          message: 'That quiz has no cards left to ask about.',
+        );
+        return;
+      }
+      await ref.read(customAssessmentsProvider.notifier).saveAssessment(target);
+    } else {
+      target = selected.assessment!;
+    }
+
     final assignment = AssessmentAssignment(
       id: const Uuid().v4(),
-      assessmentId: _selectedAssessment!.id,
-      assessmentTitle: _selectedAssessment!.title,
+      assessmentId: target.id,
+      assessmentTitle: target.title,
       assignedBy: profile!.id,
       studentIds: _selectedStudentIds.toList(),
       assignedAt: DateTime.now(),
@@ -77,10 +142,42 @@ class _AssessmentAssignScreenState
           : _instructionsController.text.trim(),
     );
 
-    await AssessmentService.saveAssignment(profile.id, assignment);
+    final outcome = await ref
+        .read(assignmentsProvider.notifier)
+        .saveAssignment(assignment);
 
     if (mounted) {
-      AppSnackBar.success(context, message: 'Assessment assigned to ${_selectedStudentIds.length} student(s)!');
+      final count = _selectedStudentIds.length;
+      final learners = '$count ${count == 1 ? "learner" : "learners"}';
+      switch (outcome) {
+        case CloudSyncOutcome.synced:
+          AppSnackBar.success(
+            context,
+            message: 'Assessment assigned to $learners!',
+          );
+        case CloudSyncOutcome.localOnly:
+          // Never claim it went out when it didn't: the row is safe locally
+          // and re-uploads on the next connected open, but nobody else has it
+          // yet. Deliberately doesn't name a cause — offline and "rules not
+          // deployed" both land here, and telling a teacher to check their
+          // wifi when the real problem is a missing deploy sends them the
+          // wrong way.
+          AppSnackBar.warning(
+            context,
+            message: 'Saved for $learners on this device — not sent yet. '
+                'It will upload when syncing is working.',
+          );
+        case CloudSyncOutcome.notOwner:
+          // This one is never going out, so saying "not yet" would be a lie
+          // that costs a teacher a lesson. Names the cause because there is a
+          // cause, and it is something they did and can undo.
+          AppSnackBar.warning(
+            context,
+            message: 'Saved on this device only. This profile was restored on '
+                'another device, so that one now handles syncing. Restore it '
+                'back here to send work to your learners.',
+          );
+      }
       context.pop();
     }
   }
@@ -122,9 +219,75 @@ class _AssessmentAssignScreenState
     }
   }
 
+  /// One labelled block of assignable items. Returns nothing at all when the
+  /// block is empty, so a teacher who has never made a quiz never sees an
+  /// empty "Quizzes" heading.
+  List<Widget> _section({
+    required HCColor hc,
+    required String label,
+    required String caption,
+    required List<AssignableItem> items,
+  }) {
+    if (items.isEmpty) return const [];
+    return [
+      Text(
+        label,
+        style: AppTypography.titleSmall.copyWith(
+          fontWeight: FontWeight.w700,
+          color: hc.textPrimary,
+        ),
+      ),
+      Text(
+        caption,
+        style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+      ),
+      const SizedBox(height: 8),
+      ...List.generate(items.length, (i) {
+        final item = items[i];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _AssessmentTile(
+            item: item,
+            selected: _selected?.id == item.id,
+            hc: hc,
+            onTap: () => setState(() => _selected = item),
+          ),
+        ).animate().fadeIn(duration: 300.ms, delay: (50 * i).ms);
+      }),
+      const SizedBox(height: 16),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
+
+    final profileId = ref.watch(profileProvider)?.id ?? '';
+    // Pull anything this educator built on another device before deciding
+    // whether to show them the "no assessments yet" dead end.
+    if (profileId.isNotEmpty) {
+      ref.watch(educatorAssessmentSyncProvider(profileId));
+    }
+    // Newest first in both sections: the thing a teacher just made is the
+    // thing they are most likely reaching for.
+    _quizzes = [
+      for (final q in ref.watch(quizBuilderProvider)) AssignableItem.fromQuiz(q),
+    ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    _saved = [
+      for (final a in ref.watch(customAssessmentsProvider))
+        AssignableItem.fromAssessment(a),
+    ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    _assignables = [..._quizzes, ..._saved];
+
+    _students = ref
+        .watch(educatorLearnerRosterProvider)
+        .map((d) => (id: d.$1.id, name: d.$1.name))
+        .toList();
+    // A learner removed from the roster while this screen is open must not
+    // stay silently ticked, or "Select All" would flip to "Deselect All" on a
+    // selection the educator can no longer see.
+    final rosterIds = _students.map((s) => s.id).toSet();
+    _selectedStudentIds.removeWhere((id) => !rosterIds.contains(id));
 
     return Scaffold(
       backgroundColor: hc.background,
@@ -137,38 +300,32 @@ class _AssessmentAssignScreenState
           ),
         ),
       ),
-      body: _assessments.isEmpty
+      body: _assignables.isEmpty
           ? _EmptyAssessments(hc: hc)
           : _students.isEmpty
-              ? _EmptyStudents(hc: hc)
+              ? _EmptyStudents(hc: hc, isParent: _isParent)
               : ListView(
                   padding: const EdgeInsets.all(20),
                   children: [
-                    // ─── Select Assessment ────────────
-                    Text(
-                      'Select Assessment',
-                      style: AppTypography.titleSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: hc.textPrimary,
-                      ),
+                    // ─── What to hand out ─────────────
+                    // Split in two because they behave differently: a quiz is
+                    // a reusable recipe that mints a fresh test each time it
+                    // is assigned, while a saved assessment is one fixed set
+                    // of questions. Assigning a quiz adds one of the latter,
+                    // so this list grows every week — hence the dates and the
+                    // newest-first order.
+                    ..._section(
+                      hc: hc,
+                      label: 'Quizzes',
+                      caption: 'Makes a fresh test each time you assign it',
+                      items: _quizzes,
                     ),
-                    const SizedBox(height: 8),
-                    ...List.generate(_assessments.length, (i) {
-                      final a = _assessments[i];
-                      final selected = _selectedAssessment?.id == a.id;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _AssessmentTile(
-                          assessment: a,
-                          selected: selected,
-                          hc: hc,
-                          onTap: () =>
-                              setState(() => _selectedAssessment = a),
-                        ),
-                      )
-                          .animate()
-                          .fadeIn(duration: 300.ms, delay: (50 * i).ms);
-                    }),
+                    ..._section(
+                      hc: hc,
+                      label: 'Saved assessments',
+                      caption: 'A fixed set of questions',
+                      items: _saved,
+                    ),
 
                     const SizedBox(height: 24),
 
@@ -187,7 +344,9 @@ class _AssessmentAssignScreenState
                         TextButton(
                           onPressed: _toggleSelectAll,
                           child: Text(
-                            _selectedStudentIds.length == _students.length
+                            _selectedStudentIds.isNotEmpty &&
+                                    _selectedStudentIds.length ==
+                                        _students.length
                                 ? 'Deselect All'
                                 : 'Select All',
                           ),
@@ -329,17 +488,27 @@ class _AssessmentAssignScreenState
 // ─── Assessment Tile ──────────────────────────────────
 
 class _AssessmentTile extends StatelessWidget {
-  final Assessment assessment;
+  final AssignableItem item;
   final bool selected;
   final HCColor hc;
   final VoidCallback onTap;
 
   const _AssessmentTile({
-    required this.assessment,
+    required this.item,
     required this.selected,
     required this.hc,
     required this.onTap,
   });
+
+  /// Day and month is enough to separate this week's copy from last week's,
+  /// and short enough not to wrap on a phone.
+  static String _shortDate(DateTime d) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${d.day} ${months[d.month - 1]}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -364,7 +533,7 @@ class _AssessmentTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(assessment.type.emoji,
+              Text(item.isQuiz ? '🧩' : AssessmentType.custom.emoji,
                   style: const TextStyle(fontSize: 28)),
               const SizedBox(width: 12),
               Expanded(
@@ -372,7 +541,7 @@ class _AssessmentTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      assessment.title,
+                      item.title,
                       style: AppTypography.titleSmall.copyWith(
                         fontWeight: FontWeight.w600,
                         color: hc.textPrimary,
@@ -380,10 +549,14 @@ class _AssessmentTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${assessment.questions.length} questions  •  ${assessment.difficulty.name}',
+                      '${item.questionCount} questions  •  '
+                      '${item.difficulty.name}  •  '
+                      '${_shortDate(item.createdAt)}',
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -419,7 +592,8 @@ class _EmptyAssessments extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Create an assessment first using the Assessment Builder.',
+            'Build one in the Assessment Builder, or make a Quiz — both can '
+            'be assigned.',
             style:
                 AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
             textAlign: TextAlign.center,
@@ -436,36 +610,52 @@ class _EmptyAssessments extends StatelessWidget {
   }
 }
 
+/// Shown when the educator has nobody to assign to. The way out of this is to
+/// share the join code, not to mint a learner profile from the role picker —
+/// so it points at the group the educator actually owns.
 class _EmptyStudents extends StatelessWidget {
   final HCColor hc;
-  const _EmptyStudents({required this.hc});
+  final bool isParent;
+  const _EmptyStudents({required this.hc, required this.isParent});
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('👩‍🎓', style: TextStyle(fontSize: 64)),
-          const SizedBox(height: 16),
-          Text(
-            'No students found',
-            style: AppTypography.titleMedium.copyWith(color: hc.textSecondary),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Create student profiles first to assign assessments.',
-            style:
-                AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: () => context.push('/profile'),
-            icon: const Icon(Icons.person_add_rounded),
-            label: const Text('Create Student'),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              isParent ? '👨‍👩‍👧' : '👩‍🎓',
+              style: const TextStyle(fontSize: 64),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isParent ? 'No children yet' : 'No students yet',
+              style:
+                  AppTypography.titleMedium.copyWith(color: hc.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isParent
+                  ? 'Share your home group code so your child can join, then '
+                        'assign them work here.'
+                  : 'Share your class code so students can join, then assign '
+                        'them work here.',
+              style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () => context.push(
+                isParent ? '/home-group-manage' : '/classroom-manage',
+              ),
+              icon: const Icon(Icons.qr_code_2_rounded),
+              label: Text(isParent ? 'Share Group Code' : 'Share Class Code'),
+            ),
+          ],
+        ),
       ),
     );
   }

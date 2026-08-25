@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// User role in the app.
 ///
 /// Order matters: `child` and `player` are appended at the end so existing
@@ -252,6 +254,14 @@ extension FlashcardCategoryX on FlashcardCategory {
     FlashcardCategory.actions => 'Actions',
   };
 
+  /// The category name in the learner's language.
+  ///
+  /// Picks between [label] and [labelFilipino] rather than going through the
+  /// ARB: these names are *content* labels that already ship translated
+  /// alongside the vocabulary, and the AI tutor matches on both spellings.
+  String labelOf(AppLocalizations l10n) =>
+      l10n.localeName.startsWith('fil') ? labelFilipino : label;
+
   String get labelFilipino => switch (this) {
     FlashcardCategory.animals => 'Mga Hayop',
     FlashcardCategory.colorsAndShapes => 'Mga Kulay at Hugis',
@@ -334,10 +344,28 @@ extension FlashcardCategoryX on FlashcardCategory {
 }
 
 extension GameDifficultyX on GameDifficulty {
+  /// English name. The source of truth for CSV / PDF exports and research
+  /// data, which stay English on purpose so one dataset reads the same
+  /// whatever language the learner's tablet is set to. Anything a *learner*
+  /// reads should call [labelOf] instead.
   String get label => switch (this) {
     GameDifficulty.easy => 'Easy',
     GameDifficulty.medium => 'Medium',
     GameDifficulty.hard => 'Hard',
+  };
+
+  /// Localized name, for every learner-facing surface.
+  String labelOf(AppLocalizations l10n) => switch (this) {
+    GameDifficulty.easy => l10n.easy,
+    GameDifficulty.medium => l10n.medium,
+    GameDifficulty.hard => l10n.hard,
+  };
+
+  /// Localized one-liner under the name in the difficulty picker.
+  String descriptionOf(AppLocalizations l10n) => switch (this) {
+    GameDifficulty.easy => l10n.difficultyDescEasy,
+    GameDifficulty.medium => l10n.difficultyDescMedium,
+    GameDifficulty.hard => l10n.difficultyDescHard,
   };
 
   String get labelFilipino => switch (this) {
@@ -394,6 +422,48 @@ List<String> gameTypeNames(Set<GameType> types) => [
 ];
 
 extension GameTypeX on GameType {
+  /// Localized game name — what the hub card, the difficulty sheet, the launch
+  /// transition and the in-game app bar all show.
+  String labelOf(AppLocalizations l10n) => switch (this) {
+    GameType.wordMatch => l10n.wordMatch,
+    GameType.spellingBee => l10n.spellingBee,
+    GameType.memoryMatch => l10n.memoryMatch,
+    GameType.dragAndDrop => l10n.dragAndDrop,
+    GameType.flashcardQuiz => l10n.flashcardQuiz,
+    GameType.pronunciation => l10n.pronunciationPractice,
+    GameType.sentenceBuilder => l10n.sentenceBuilder,
+    GameType.storyQuiz => l10n.storyQuiz,
+    GameType.tracing => l10n.tracing,
+    GameType.fslPractice => l10n.fslPractice,
+    GameType.jigsawPuzzle => l10n.jigsawPuzzle,
+    GameType.pictureWord => l10n.pictureWord,
+    GameType.yesOrNo => l10n.yesOrNo,
+    GameType.oddOneOut => l10n.oddOneOut,
+    GameType.firstLetter => l10n.firstLetter,
+  };
+
+  /// Localized blurb under the name on the hub card.
+  String descriptionOf(AppLocalizations l10n) => switch (this) {
+    GameType.wordMatch => l10n.gameDescWordMatch,
+    GameType.spellingBee => l10n.gameDescSpellingBee,
+    GameType.memoryMatch => l10n.gameDescMemoryMatch,
+    GameType.dragAndDrop => l10n.gameDescDragAndDrop,
+    GameType.flashcardQuiz => l10n.gameDescFlashcardQuiz,
+    GameType.pronunciation => l10n.gameDescPronunciation,
+    GameType.sentenceBuilder => l10n.gameDescSentenceBuilder,
+    GameType.storyQuiz => l10n.gameDescStoryQuiz,
+    GameType.tracing => l10n.gameDescTracing,
+    GameType.fslPractice => l10n.gameDescFslPractice,
+    GameType.jigsawPuzzle => l10n.gameDescJigsawPuzzle,
+    GameType.pictureWord => l10n.gameDescPictureWord,
+    GameType.yesOrNo => l10n.gameDescYesOrNo,
+    GameType.oddOneOut => l10n.gameDescOddOneOut,
+    GameType.firstLetter => l10n.gameDescFirstLetter,
+  };
+
+  /// English name. Kept for the exports and research data, which stay English
+  /// so one dataset reads the same whatever the tablet's language is — see
+  /// [GameDifficultyX.label]. Learner-facing code wants [labelOf].
   String get label => switch (this) {
     GameType.wordMatch => 'Word Match',
     GameType.spellingBee => 'Spelling Bee',
@@ -412,6 +482,8 @@ extension GameTypeX on GameType {
     GameType.firstLetter => 'First Letter',
   };
 
+  /// English blurb. Kept alongside [descriptionOf] for the same reason
+  /// [label] is: exports and research rows stay English.
   String get description => switch (this) {
     GameType.wordMatch => 'Match the picture to the correct word!',
     GameType.spellingBee => 'Unscramble the letters to spell the word!',

@@ -497,6 +497,16 @@ class ProgressNotifier extends Notifier<LearningProgress> {
       ..addAll(correctWordIds);
     final newWords = newLearnedIds.length - state.learnedWordIds.length;
 
+    // Personal best for this game — a high-water mark, so a bad round after a
+    // good one never takes the badge away. Rated off score/total rather than
+    // `effectiveStars`, which is the currency and is legitimately 0 when the
+    // star economy is switched off for this profile.
+    final bests = state.effectiveGameBestStars;
+    final rating = GameScore.ratingFor(score, total);
+    if (rating > (bests[gameType.name] ?? 0)) {
+      bests[gameType.name] = rating;
+    }
+
     // Day ledger: the only record that can answer "what did I do this week?"
     // once `recentScores` has trimmed the week away.
     HiveService.addDailyActivity(
@@ -516,6 +526,7 @@ class ProgressNotifier extends Notifier<LearningProgress> {
       gamesPlayed: state.effectiveGamesPlayed + 1,
       // Lifetime roster of games tried, for the same reason.
       playedGameTypes: {...state.effectivePlayedGameTypes, gameType},
+      gameBestStars: bests,
       categoryProgress: updated,
       streakDays: newStreak,
       bestStreakDays: math.max(state.effectiveBestStreak, newStreak),
@@ -526,9 +537,10 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     // Cloud sync: only for classroom-linked students. Player Mode and
     // unlinked students stay 100% local.
     final activeProfile = ref.read(profileProvider);
-    if (activeProfile != null &&
-        !activeProfile.isGuestPlayer &&
-        activeProfile.classroomId != null) {
+    // One predicate for both legs of sync, so the pull side can never be
+    // open where the push side is shut — see
+    // [UserProfile.syncsProgressToCloud].
+    if (activeProfile != null && activeProfile.syncsProgressToCloud) {
       // Fire-and-forget — the LocalRepository enqueues for offline-first
       // replay if Firebase is configured.
       ref.read(repositoryProvider).saveProgress(state);
@@ -553,9 +565,10 @@ class ProgressNotifier extends Notifier<LearningProgress> {
   void _persistProgress() {
     HiveService.saveProgress(state);
     final activeProfile = ref.read(profileProvider);
-    if (activeProfile != null &&
-        !activeProfile.isGuestPlayer &&
-        activeProfile.classroomId != null) {
+    // One predicate for both legs of sync, so the pull side can never be
+    // open where the push side is shut — see
+    // [UserProfile.syncsProgressToCloud].
+    if (activeProfile != null && activeProfile.syncsProgressToCloud) {
       ref.read(repositoryProvider).saveProgress(state);
     }
   }
@@ -785,30 +798,65 @@ final allProfilesWithProgressProvider =
 // The parameter is named `educatorProfileId` because it now feeds both
 // teachers and parents; the legacy `teacherId` callsites still work since
 // the binding is positional.
+/// The roster an educator can prove *locally*: the members of the classrooms
+/// and home groups this profile owns, resolved against on-device profiles.
+///
+/// Returns null when this educator owns no group at all on this device — the
+/// single-device demo case, where the caller falls back to every local learner
+/// so a fresh install still shows something.
+///
+/// This exists because the old offline fallback was "every student or child on
+/// the device", which on a shared classroom or family tablet is somebody
+/// else's roster: Sir Kevin's Assign Tasks listed 12 learners offline against 7
+/// online, the extras being another parent's children. Under-reporting a
+/// student who joined from their own device is the safer failure — we cannot
+/// prove that enrolment without the network, and inventing it is worse.
+List<(UserProfile, LearningProgress)>? localEducatorRoster(
+  String educatorProfileId,
+  List<(UserProfile, LearningProgress)> allLocal,
+) {
+  // Never throw. This feeds `_rosterSourceProvider`, whose whole job is to be
+  // the thing that still works when the network doesn't — taking every
+  // educator surface down because a group box is missing would be the same
+  // class of bug as the `AsyncValue.value` rethrow it already guards against.
+  // A closed box simply means "no local enrolment to prove".
+  try {
+    final classrooms = HiveService.getClassroomsByTeacher(educatorProfileId);
+    final homeGroups = HiveService.getHomeGroupsByOwner(educatorProfileId);
+    if (classrooms.isEmpty && homeGroups.isEmpty) return null;
+
+    final memberIds = <String>{
+      for (final c in classrooms)
+        ...HiveService.getMembers(c.id).map((m) => m.profileId),
+      for (final g in homeGroups)
+        ...HiveService.getHomeGroupMembers(g.id).map((m) => m.profileId),
+    };
+    return allLocal.where((p) => memberIds.contains(p.$1.id)).toList();
+  } catch (_) {
+    return null;
+  }
+}
+
 final educatorRosterProvider =
     FutureProvider.family<List<(UserProfile, LearningProgress)>, String>((
       ref,
       educatorProfileId,
     ) async {
       if (!FirebaseService.isConfigured) {
-        // Offline branch: union classroom + home-group children from local Hive.
-        // We also keep the previous "all student profiles" fallback so a single-
-        // device demo (no rosters set up) still shows something.
-        final homeGroupChildIds =
-            HiveService.getHomeGroupsByOwner(educatorProfileId)
-                .expand((g) => HiveService.getHomeGroupMembers(g.id))
-                .map((m) => m.profileId)
-                .toSet();
-        return ref
-            .watch(allProfilesWithProgressProvider)
-            .where(
-              (p) =>
-                  (p.$1.role == UserRole.student ||
-                          p.$1.role == UserRole.child) &&
-                      !p.$1.isGuestPlayer ||
-                  homeGroupChildIds.contains(p.$1.id),
-            )
-            .toList();
+        // No Firebase at all: scope to what local enrolment can prove, and
+        // only fall back to every local learner when this educator owns no
+        // group (the single-device demo).
+        //
+        // The old predicate here read `(student || child) && !guest || inGroup`,
+        // which by precedence is `((student || child) && !guest) || inGroup` —
+        // i.e. every learner on the device regardless of enrolment.
+        final all = ref.watch(allProfilesWithProgressProvider);
+        return localEducatorRoster(educatorProfileId, all) ??
+            all
+                .where(
+                  (p) => p.$1.role.isEnrollableLearner && !p.$1.isGuestPlayer,
+                )
+                .toList();
       }
       // Re-run reactively when the classroom / home-group list or any member
       // roster changes. Mirrors the wiring on `teacherDashboardSnapshotProvider`.

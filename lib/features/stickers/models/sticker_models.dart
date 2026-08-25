@@ -19,6 +19,9 @@ extension StickerRarityX on StickerRarity {
         StickerRarity.legendary => 'Alamat',
       };
 
+  String labelOf({required bool isFilipino}) =>
+      isFilipino ? labelFilipino : label;
+
   Color get color => switch (this) {
         StickerRarity.common => const Color(0xFF78909C),
         StickerRarity.rare => const Color(0xFF42A5F5),
@@ -26,12 +29,18 @@ extension StickerRarityX on StickerRarity {
         StickerRarity.legendary => const Color(0xFFFFB300),
       };
 
-  Color get bgColor => switch (this) {
-        StickerRarity.common => const Color(0xFFECEFF1),
-        StickerRarity.rare => const Color(0xFFE3F2FD),
-        StickerRarity.epic => const Color(0xFFF3E5F5),
-        StickerRarity.legendary => AppColors.background,
-      };
+  /// The tile background for an owned sticker, on the active theme.
+  ///
+  /// This used to be four hard-coded near-white swatches. The tile draws its
+  /// name in `hc.textPrimary`, which is off-white on the dark theme and pure
+  /// white on high contrast — so on exactly the themes a low-vision learner
+  /// selects, every earned sticker's name was white on white. Tinting the
+  /// theme's own surface with the rarity colour keeps the four rarities
+  /// visually distinct in both directions without ever fighting the text.
+  Color surfaceOn(HCColor hc) => Color.alphaBlend(
+        color.withValues(alpha: hc.isDark ? 0.22 : 0.14),
+        hc.surface,
+      );
 
   int get stars => switch (this) {
         StickerRarity.common => 1,
@@ -60,6 +69,23 @@ extension StickerCategoryX on StickerCategory {
         StickerCategory.nature => 'Nature',
         StickerCategory.special => 'Special',
       };
+
+  /// The category name in Filipino.
+  ///
+  /// Every sticker already carried a [Sticker.nameFilipino], but the album's
+  /// six category tabs were hard-wired to [label] — so a Filipino learner met
+  /// a fully translated shelf sitting under English tabs.
+  String get labelFilipino => switch (this) {
+        StickerCategory.animals => 'Mga Hayop',
+        StickerCategory.stars => 'Mga Bituin',
+        StickerCategory.badges => 'Mga Badge',
+        StickerCategory.school => 'Paaralan',
+        StickerCategory.nature => 'Kalikasan',
+        StickerCategory.special => 'Espesyal',
+      };
+
+  String labelOf({required bool isFilipino}) =>
+      isFilipino ? labelFilipino : label;
 
   String get emoji => switch (this) {
         StickerCategory.animals => '🐾',
@@ -106,6 +132,12 @@ class Sticker {
     required this.unlockDescriptionFilipino,
     required this.unlockConditionId,
   });
+
+  String nameOf({required bool isFilipino}) =>
+      isFilipino ? nameFilipino : name;
+
+  String unlockDescriptionOf({required bool isFilipino}) =>
+      isFilipino ? unlockDescriptionFilipino : unlockDescription;
 
   @override
   bool operator ==(Object other) =>

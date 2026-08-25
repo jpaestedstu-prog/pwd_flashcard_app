@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/enums.dart';
+import '../l10n/app_localizations.dart';
 import 'animated_dialogs.dart';
 
 /// Represents one word/item result from a game round.
@@ -46,6 +47,7 @@ class _GameReviewSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final correct = items.where((i) => i.isCorrect).length;
     final wrong = items.length - correct;
+    final l10n = AppLocalizations.of(context)!;
 
     // Shown via [showAnimatedBottomSheet], which already height-caps the sheet
     // (to a fraction of the viewport) and draws the drag handle. So this body
@@ -75,13 +77,16 @@ class _GameReviewSheet extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.rate_review_rounded,
-                        color: AppColors.primary, size: 20),
+                    child: const Icon(
+                      Icons.rate_review_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(
-                      '$gameTitle Review',
+                      l10n.gameReviewTitle(gameTitle),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.headlineSmall.copyWith(
@@ -102,12 +107,12 @@ class _GameReviewSheet extends StatelessWidget {
                 children: [
                   _SummaryBadge(
                     icon: Icons.check_circle_rounded,
-                    label: '$correct correct',
+                    label: l10n.reviewCorrectCount(correct),
                     color: AppColors.success,
                   ),
                   _SummaryBadge(
                     icon: Icons.cancel_rounded,
-                    label: '$wrong wrong',
+                    label: l10n.reviewWrongCount(wrong),
                     color: wrong > 0 ? AppColors.error : AppColors.textHint,
                   ),
                 ],
@@ -152,7 +157,7 @@ class _GameReviewSheet extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Got It!',
+                l10n.gotIt,
                 style: AppTypography.titleMedium.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -262,9 +267,7 @@ class _ReviewCard extends StatelessWidget {
               ],
             ),
             child: Icon(
-              item.isCorrect
-                  ? Icons.check_rounded
-                  : Icons.close_rounded,
+              item.isCorrect ? Icons.check_rounded : Icons.close_rounded,
               color: item.isCorrect ? AppColors.success : AppColors.error,
               size: 22,
             ),
@@ -295,7 +298,7 @@ class _ReviewCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        'Your answer: ',
+                        AppLocalizations.of(context)!.yourAnswerLabel,
                         style: AppTypography.labelSmall.copyWith(
                           color: HCColor.of(context).textHint,
                         ),

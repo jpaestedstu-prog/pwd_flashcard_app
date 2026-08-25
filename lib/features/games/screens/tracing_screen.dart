@@ -22,6 +22,7 @@ import '../../../widgets/flashcard_image.dart';
 import '../../../core/constants/letter_paths.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
+import '../game_resume_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
@@ -33,11 +34,16 @@ class TracingScreen extends ConsumerStatefulWidget {
   final List<FlashcardCategory> categories;
   final bool timedMode;
 
+  /// Pick up the unfinished run the learner left behind rather than dealing a
+  /// fresh one. Set by the Games hub after asking.
+  final bool resume;
+
   const TracingScreen({
     super.key,
     this.difficulty = GameDifficulty.medium,
     this.categories = const [],
     this.timedMode = false,
+    this.resume = false,
   });
 
   @override
@@ -45,7 +51,54 @@ class TracingScreen extends ConsumerStatefulWidget {
 }
 
 class _TracingScreenState extends ConsumerState<TracingScreen>
-    with TickerProviderStateMixin, TimedGameMixin, GamePauseMixin {
+    with
+        TickerProviderStateMixin,
+        TimedGameMixin,
+        GamePauseMixin,
+        GameResumeMixin {
+  // ─── Resume wiring ───────────────────────────────
+  @override
+  GameType get resumeGameType => GameType.tracing;
+  @override
+  GameDifficulty get resumeDifficulty => widget.difficulty;
+  @override
+  List<FlashcardCategory> get resumeCategories => widget.categories;
+  @override
+  bool get resumeTimedMode => widget.timedMode;
+  @override
+  String? get resumeProfileId => ref.read(profileProvider)?.id;
+  @override
+  List<String> get resumeDeckIds => _flashcards.map((c) => c.id).toList();
+  @override
+  int get resumeIndex => _currentIndex;
+  @override
+  int get resumeScore => _correctCount;
+  @override
+  bool get resumeFinished => _showResult;
+
+  /// Re-deal the run the learner walked away from. This game's deck is a plain
+  /// card list, so restoring is just reordering it to the saved ids and
+  /// jumping the index. A deck that no longer lines up (a card dropped from
+  /// the seed data) falls back to the fresh deal.
+  void _restoreSaved() {
+    final snapshot = readResumePoint();
+    if (snapshot == null) return;
+    // Look the saved ids up in the whole pool, not in the deck that was
+    // just dealt — the fresh deal is a different random hand, so a lookup
+    // against it would miss every card and always fall back.
+    final byId = {for (final c in SeedData.allFlashcards) c.id: c};
+    final deck = snapshot.cardIds
+        .map((id) => byId[id])
+        .whereType<Flashcard>()
+        .toList();
+    if (deck.length != snapshot.cardIds.length) return;
+    setState(() {
+      _flashcards = deck;
+      _currentIndex = snapshot.roundIndex;
+      _correctCount = snapshot.score;
+    });
+  }
+
   /// Difficulty-based item count
   int get _totalItems => switch (widget.difficulty) {
     GameDifficulty.easy => 3,
@@ -106,6 +159,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
     _wordResults.clear();
     _newAchievements = [];
     _resetDrawing();
+    if (widget.resume) _restoreSaved();
     startTimerIfNeeded(widget.timedMode);
   }
 
@@ -140,7 +194,10 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
   @override
   Future<void> savePartialProgress() async {
     if (_flashcards.isEmpty) return;
-    _saveProgress();
+    _saveProgress(completed: false);
+    // Quitting is the moment worth remembering: the hub can offer to
+    // bring the learner straight back to this round.
+    saveResumePoint();
   }
 
   @override
@@ -151,6 +208,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
       ref: ref,
       type: CelebrationType.gameComplete,
     );
+    clearResumePoint();
     setState(() => _showResult = true);
   }
 
@@ -256,6 +314,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
           ref: ref,
           type: CelebrationType.gameComplete,
         );
+        clearResumePoint();
         setState(() => _showResult = true);
       }
     });
@@ -269,7 +328,10 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
     return 0;
   }
 
-  void _saveProgress() {
+  /// [completed] is false only on the "Quit to Games" path — an abandoned run
+  /// still counts toward stats but is not fed to the adaptive engine as if
+  /// every unplayed round were a miss.
+  void _saveProgress({bool completed = true}) {
     final categories = _flashcards.map((c) => c.category).toSet().toList();
     ref
         .read(progressProvider.notifier)
@@ -280,6 +342,8 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
           correctWordIds: _wordResults.correctWordIds,
+          durationSeconds: elapsedSeconds,
+          playedDifficulty: completed ? widget.difficulty : null,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
@@ -306,6 +370,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (_showResult) {
       return Stack(
         children: [
@@ -322,7 +387,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
-                    gameTitle: 'Tracing',
+                    gameTitle: GameType.tracing.labelOf(l10n),
                   ),
                 ),
               ),
@@ -350,14 +415,14 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
               AppBar(
                 leading: IconButton(
                   icon: const Icon(Icons.close_rounded),
-                  tooltip: 'Close',
+                  tooltip: l10n.close,
                   onPressed: pauseGame,
                 ),
                 title: Text(AppLocalizations.of(context)!.tracing),
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.pause_circle_outline_rounded),
-                    tooltip: 'Pause',
+                    tooltip: l10n.pauseLabel,
                     onPressed: pauseGame,
                   ),
                   if (isTimedMode)
@@ -432,6 +497,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
   }
 
   Widget _buildWordInfoCard() {
+    final l10n = AppLocalizations.of(context)!;
     final card = _currentCard;
 
     return Container(
@@ -450,7 +516,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Trace: $_traceText',
+                  l10n.traceWord(_traceText),
                   style: AppTypography.titleLarge.copyWith(
                     fontWeight: FontWeight.bold,
                     color: card.category.darkColor,

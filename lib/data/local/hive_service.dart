@@ -466,6 +466,16 @@ class HiveService {
     final storyStars = rawStoryStars.map(
       (k, v) => MapEntry(k.toString(), (v as num).toInt()),
     );
+    // Per-game personal bests. Absent on rows written before the field
+    // existed; `LearningProgress.effectiveGameBestStars` heals those from
+    // whatever is still in `recentScores`, so no migration pass is needed.
+    final rawGameStars = map['gameBestStars'] as Map? ?? {};
+    final gameStars = rawGameStars.map(
+      (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+    );
+    // Unknown keys (a game removed from the enum) are dropped rather than
+    // carried forever.
+    gameStars.removeWhere((k, _) => !GameType.values.any((g) => g.name == k));
 
     final progress = LearningProgress(
       profileId: profileId,
@@ -487,6 +497,7 @@ class HiveService {
       recentScores: scores,
       completedStoryIds: storyIds,
       storyBestStars: storyStars,
+      gameBestStars: gameStars,
       // Read through from the FSL key rather than this row — six surfaces write
       // sign views directly, so the row is not the source of truth. See
       // [LearningProgress.signedWordKeys]; [recordFslVideoView] drops the cache
@@ -530,6 +541,9 @@ class HiveService {
           .toList(),
       'completedStoryIds': progress.completedStoryIds.toList(),
       'storyBestStars': progress.storyBestStars,
+      // Persist the healed map so a legacy row upgrades itself on first write,
+      // same as the lifetime counters above.
+      'gameBestStars': progress.effectiveGameBestStars,
     });
   }
 
@@ -1599,8 +1613,7 @@ class HiveService {
     String profileId,
     String category,
     String word,
-  ) =>
-      fslMastery(profileId)[fslWordKey(category, word)] ?? SignMastery.notSet;
+  ) => fslMastery(profileId)[fslWordKey(category, word)] ?? SignMastery.notSet;
 
   /// Records the learner's own claim. Setting [SignMastery.notSet] clears it.
   ///
@@ -1725,8 +1738,7 @@ class HiveService {
   /// Words currently confirmed. Can go down; drives what educators and
   /// learners *see*, while [fslEverConfirmedKeys] drives what they keep.
   static Set<String> fslConfirmedKeys(String profileId) =>
-      fslVerifications(profileId)
-          .entries
+      fslVerifications(profileId).entries
           .where((e) => e.value == SignVerification.confirmed)
           .map((e) => e.key)
           .toSet();
@@ -1801,6 +1813,46 @@ class HiveService {
     Set<String> ids,
   ) async {
     await _progBox.put('stickers_$profileId', ids.toList());
+  }
+
+  /// When each sticker was unlocked, keyed by sticker id.
+  ///
+  /// Stored beside the owned-id list rather than replacing it, so a profile
+  /// written by an older build keeps every sticker it earned — those simply
+  /// have no date, and a dateless sticker is treated as already seen rather
+  /// than announced years late.
+  static Map<String, DateTime> getStickerUnlockDates(String profileId) {
+    final raw = _progBox.get('sticker_dates_$profileId');
+    if (raw == null) return {};
+    final out = <String, DateTime>{};
+    for (final entry in Map<String, dynamic>.from(raw as Map).entries) {
+      final parsed = DateTime.tryParse(entry.value as String? ?? '');
+      if (parsed != null) out[entry.key] = parsed;
+    }
+    return out;
+  }
+
+  /// Save sticker unlock timestamps for a profile.
+  static Future<void> saveStickerUnlockDates(
+    String profileId,
+    Map<String, DateTime> dates,
+  ) async {
+    await _progBox.put(
+      'sticker_dates_$profileId',
+      dates.map((k, v) => MapEntry(k, v.toIso8601String())),
+    );
+  }
+
+  /// The last time the learner actually looked at their sticker album.
+  /// Anything unlocked after this is still "new" to them.
+  static DateTime? getStickersSeenAt(String profileId) {
+    final raw = _progBox.get('stickers_seen_$profileId') as String?;
+    return raw == null ? null : DateTime.tryParse(raw);
+  }
+
+  /// Mark the album as seen as of [at].
+  static Future<void> setStickersSeenAt(String profileId, DateTime at) async {
+    await _progBox.put('stickers_seen_$profileId', at.toIso8601String());
   }
 
   // ─── Messaging ──────────────────────────────────────────

@@ -1,7 +1,11 @@
 import 'dart:async';
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/core/security/adult_gate.dart';
+import 'package:pwdpwdpwd/widgets/adult_gate_dialog.dart';
 import 'package:pwdpwdpwd/widgets/animated_dialogs.dart';
 
 import 'support/device_matrix.dart';
@@ -91,6 +95,31 @@ void main() {
       ),
     );
   });
+
+  // The adult gate stands between a learner and their own board being emptied,
+  // so it has to lay out at every scale — a burst gate is one an adult cannot
+  // finish, which means an uneditable board.
+  for (final mode
+      in AdultGateMode.values.where((m) => m != AdultGateMode.none)) {
+    testWidgets('AdultGateDialog never overflows — ${mode.name}',
+        (tester) async {
+      await _expectDialogNoOverflow(
+        tester,
+        (context) => showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AdultGateDialog(
+            reason: 'to change this board',
+            candidates: const [],
+            mode: mode,
+            // The widest question the generator can produce, so the row that
+            // has to fit is the worst one.
+            random: Random(0),
+          ),
+        ),
+      );
+    });
+  }
 
   testWidgets('showAnimatedAppDialog never overflows', (tester) async {
     await _expectDialogNoOverflow(

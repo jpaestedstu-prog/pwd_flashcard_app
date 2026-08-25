@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/accessibility/game_catalog.dart';
+import '../../../core/services/game_session_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -36,6 +37,19 @@ class GameHubScreen extends ConsumerWidget {
     final catalog = ref.watch(gameHubCatalogProvider);
     final games = catalog.games;
 
+    // Personal bests, so the roster isn't an undifferentiated wall of cards:
+    // every card says either "you haven't tried this yet" or "your best here
+    // is N stars". Built once here rather than per card. Not a `.select` —
+    // the getter returns a fresh map, which no value equality would match, so
+    // selecting would rebuild just as often for more ceremony.
+    final bests = ref.watch(progressProvider).effectiveGameBestStars;
+
+    // Unfinished runs, so a card can say "you were partway through this" and
+    // the learner can pick it back up. Read once here, like the bests above.
+    final resumes = GameSessionService.allResumes(
+      ref.watch(profileProvider)?.id,
+    );
+
     // Hands-free "Bottom nav + feature tiles" reach: when enabled, each game
     // card registers with the shell's gaze D-pad and shows a focus ring. A pure
     // pass-through otherwise, so touch / the gaze-off layout are unchanged.
@@ -51,6 +65,12 @@ class GameHubScreen extends ConsumerWidget {
         preset: GradientPreset.games,
         child: Stack(
           children: [
+            // Decorative only, and deliberately the FIRST child: as the
+            // last one the falling emoji painted over the UI, drifting across
+            // the mood check-in's faces and the stat cards. Behind the
+            // (transparent) Scaffold it still shows through the page
+            // background without ever crossing content.
+            const SeasonalDecorations(showBanner: false),
             Scaffold(
               backgroundColor: Colors.transparent,
               body: SafeArea(
@@ -111,7 +131,9 @@ class GameHubScreen extends ConsumerWidget {
                                         delay: 150.ms,
                                       ),
                                   cell: GazeTileCell(
-                                    label: 'Play Together',
+                                    label: AppLocalizations.of(
+                                      context,
+                                    )!.playTogether,
                                     onActivate: () =>
                                         context.push('/multiplayer'),
                                   ),
@@ -167,6 +189,8 @@ class GameHubScreen extends ConsumerWidget {
                                     child:
                                         _GameCard(
                                               game: game,
+                                              bestStars: bests[game.name],
+                                              resume: resumes[game],
                                               onTap: () => _navigateToGame(
                                                 context,
                                                 ref,
@@ -178,7 +202,9 @@ class GameHubScreen extends ConsumerWidget {
                                             .slideY(begin: 0.1, end: 0),
                                   ),
                                   cell: GazeTileCell(
-                                    label: game.label,
+                                    label: game.labelOf(
+                                      AppLocalizations.of(context)!,
+                                    ),
                                     onActivate: () =>
                                         _navigateToGame(context, ref, game),
                                   ),
@@ -195,7 +221,6 @@ class GameHubScreen extends ConsumerWidget {
               ),
             ),
             const AnimatedMascotBuddy(),
-            const SeasonalDecorations(showBanner: false),
           ],
         ),
       ),
@@ -220,16 +245,108 @@ class GameHubScreen extends ConsumerWidget {
       return;
     }
 
+    final profileId = ref.read(profileProvider)?.id;
+
+    // An unfinished run comes first: offer to pick it up before asking the
+    // two setup questions again, since resuming answers both of them.
+    final saved = GameSessionService.resumeFor(
+      profileId: profileId,
+      gameType: game,
+    );
+    if (saved != null) {
+      final choice = await _askResume(context, saved);
+      if (!context.mounted) return;
+      if (choice == null) return; // Dismissed — leave the run untouched.
+      if (choice) {
+        _launch(
+          context,
+          ref,
+          game,
+          difficulty: saved.difficulty,
+          categories: saved.categories,
+          timedMode: saved.timedMode,
+          resume: true,
+        );
+        return;
+      }
+      // "Start Over" — drop the snapshot so the fresh run isn't shadowed by it.
+      GameSessionService.clearResume(profileId: profileId, gameType: game);
+    }
+
     final result = await showDifficultyPicker(
       context,
       game,
-      profileId: ref.read(profileProvider)?.id,
+      profileId: profileId,
     );
     if (result == null || !context.mounted) return;
 
-    final categories = await showCategoryPicker(context);
+    final last = GameSessionService.lastSetup(
+      profileId: profileId,
+      gameType: game,
+    );
+    final categories = await showCategoryPicker(
+      context,
+      initialSelection: last?.categories,
+    );
     if (categories == null || !context.mounted) return;
 
+    // Recorded at launch, not at finish, so a run the learner abandons still
+    // counts as "what I picked last time".
+    GameSessionService.saveSetup(
+      profileId: profileId,
+      gameType: game,
+      difficulty: result.difficulty,
+      categories: categories,
+      timedMode: result.timedMode,
+    );
+
+    _launch(
+      context,
+      ref,
+      game,
+      difficulty: result.difficulty,
+      categories: categories,
+      timedMode: result.timedMode,
+      resume: false,
+    );
+  }
+
+  /// Continue the saved run (true), start over (false), or dismissed (null).
+  Future<bool?> _askResume(
+    BuildContext context,
+    GameResumeSnapshot saved,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.resumeTitle),
+        content: Text(
+          l10n.resumeBody(saved.roundIndex + 1, saved.cardIds.length),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.resumeStartOver),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.resumeContinue),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _launch(
+    BuildContext context,
+    WidgetRef ref,
+    GameType game, {
+    required GameDifficulty difficulty,
+    required List<FlashcardCategory> categories,
+    required bool timedMode,
+    required bool resume,
+  }) {
     final route = switch (game) {
       GameType.wordMatch => '/games/word-match',
       GameType.spellingBee => '/games/spelling-bee',
@@ -250,9 +367,10 @@ class GameHubScreen extends ConsumerWidget {
     final catParam = categories.isEmpty
         ? ''
         : '&categories=${categories.map((c) => c.index).join(',')}';
-    final timedParam = result.timedMode ? '&timed=true' : '';
+    final timedParam = timedMode ? '&timed=true' : '';
+    final resumeParam = resume ? '&resume=true' : '';
     final fullRoute =
-        '$route?difficulty=${result.difficulty.name}$catParam$timedParam';
+        '$route?difficulty=${difficulty.name}$catParam$timedParam$resumeParam';
 
     if (!context.mounted) return;
     final reducedMotion = ref.read(settingsProvider).reducedMotion;
@@ -286,19 +404,22 @@ class GameHubScreen extends ConsumerWidget {
 
 // ─── Motivational Tip Widget ──────────────────────────
 class _MotivationalTip extends StatelessWidget {
-  static const _tips = [
-    '💡 Tip: Try different difficulty levels to challenge yourself!',
-    '🔥 Playing games daily builds stronger memory!',
-    '🌟 Review words you missed to learn faster!',
-    '🎯 Start with Easy mode, then level up when ready!',
-    '🧩 Each game teaches in a different way — try them all!',
-    '⏱️ Timed mode is great for building speed!',
+  /// One tip per day, cycled by day-of-month. Built per locale rather than
+  /// held as a const list, so the Filipino build shows Filipino tips.
+  static List<String> _tips(AppLocalizations l10n) => [
+    l10n.gameTipDifficulty,
+    l10n.gameTipDaily,
+    l10n.gameTipReview,
+    l10n.gameTipStartEasy,
+    l10n.gameTipVariety,
+    l10n.gameTipTimed,
   ];
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    final tipIndex = DateTime.now().day % _tips.length;
+    final tips = _tips(AppLocalizations.of(context)!);
+    final tipIndex = DateTime.now().day % tips.length;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -312,7 +433,7 @@ class _MotivationalTip extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              _tips[tipIndex],
+              tips[tipIndex],
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),
           ),
@@ -331,8 +452,7 @@ class _PlayTogetherBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label:
-          'Play Together. Race a friend online or on this device, just for fun.',
+      label: AppLocalizations.of(context)!.playTogetherSemantics,
       child: AppCard(
         onTap: onTap,
         gradient: const LinearGradient(
@@ -359,7 +479,7 @@ class _PlayTogetherBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Play Together',
+                    AppLocalizations.of(context)!.playTogether,
                     style: AppTypography.titleMedium.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
@@ -369,7 +489,7 @@ class _PlayTogetherBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Race a friend — just for fun!',
+                    AppLocalizations.of(context)!.playTogetherSubtitle,
                     style: AppTypography.bodySmall.copyWith(
                       color: Colors.white.withValues(alpha: 0.9),
                     ),
@@ -407,7 +527,8 @@ class _CategoryHeader extends StatelessWidget {
     final label = type.profileTypeLabel;
     return Semantics(
       header: true,
-      label: '$label. $count games picked for you.',
+      label:
+          '$label. ${AppLocalizations.of(context)!.gamesPickedForYou(count)}',
       child: ExcludeSemantics(
         child: Container(
           margin: const EdgeInsets.only(bottom: 4),
@@ -444,7 +565,7 @@ class _CategoryHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '$count games picked for you',
+                      AppLocalizations.of(context)!.gamesPickedForYou(count),
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                       ),
@@ -464,20 +585,59 @@ class _CategoryHeader extends StatelessWidget {
 
 class _GameCard extends StatefulWidget {
   final GameType game;
+
+  /// The learner's best 0–3 rating in this game, or null if never played.
+  /// Zero and null read differently: zero is a played game scored under 50 %,
+  /// null is a game still to try.
+  final int? bestStars;
+
+  /// The learner's unfinished run in this game, if there is one to offer.
+  final GameResumeSnapshot? resume;
+
   final VoidCallback onTap;
 
-  const _GameCard({required this.game, required this.onTap});
+  const _GameCard({
+    required this.game,
+    required this.bestStars,
+    required this.resume,
+    required this.onTap,
+  });
 
   @override
   State<_GameCard> createState() => _GameCardState();
 }
 
 class _GameCardState extends State<_GameCard> {
+  /// Spoken tail on the card's label, so the badges are not sighted-only.
+  ///
+  /// Mirrors what the badges show rather than concatenating both records: an
+  /// unfinished run replaces "not played yet", because announcing *"Not played
+  /// yet. Round 3 of 5."* contradicts itself. A learner who has both a best and
+  /// an unfinished run hears both, which does not.
+  String _bestSemantics(AppLocalizations l10n) {
+    final saved = widget.resume;
+    final best = widget.bestStars;
+    final parts = <String>[
+      if (best != null) l10n.yourBestStars(best),
+      if (saved != null)
+        '${l10n.resumeRoundProgress(saved.roundIndex + 1, saved.cardIds.length)}.'
+      else if (best == null)
+        l10n.notPlayedYet,
+    ];
+    return parts.isEmpty ? '' : ' ${parts.join(' ')}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Semantics(
       button: true,
-      label: 'Play ${widget.game.label}. ${widget.game.description}',
+      label:
+          l10n.playGameSemantics(
+            widget.game.labelOf(l10n),
+            widget.game.descriptionOf(l10n),
+          ) +
+          _bestSemantics(l10n),
       // AppCard.depth owns the tap, the gentle 3D press-tilt (reduced-motion
       // aware) and the glossy sheen/rim/shadow, so no extra Pressable3D wrapper.
       child: AppCard(
@@ -510,7 +670,7 @@ class _GameCardState extends State<_GameCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.game.label,
+                      widget.game.labelOf(l10n),
                       style: AppTypography.titleLarge.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -521,7 +681,7 @@ class _GameCardState extends State<_GameCard> {
                     const SizedBox(height: 4),
                     Flexible(
                       child: Text(
-                        widget.game.description,
+                        widget.game.descriptionOf(l10n),
                         style: AppTypography.bodySmall.copyWith(
                           color: Colors.white.withValues(alpha: 0.85),
                         ),
@@ -533,16 +693,123 @@ class _GameCardState extends State<_GameCard> {
                 ),
               ),
               const SizedBox(width: 8),
-              // Play button — raised 3D coin
-              const Badge3D(
-                size: 44,
-                icon: Icons.play_arrow_rounded,
-                iconSize: 28,
+              // Play button — raised 3D coin — with the personal-best badge
+              // stacked under it. In the Row rather than positioned over the
+              // card so it can never overlap the icon or the play coin at a
+              // large Font Size; the Expanded text column absorbs the width.
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Badge3D(
+                    size: 44,
+                    icon: Icons.play_arrow_rounded,
+                    iconSize: 28,
+                  ),
+                  const SizedBox(height: 6),
+                  // Already spoken by the card's own Semantics label. An
+                  // unfinished run takes the slot: "you were partway through
+                  // this" is the more useful thing to say, and the personal
+                  // best comes back the moment that run is finished.
+                  ExcludeSemantics(
+                    child: widget.resume != null
+                        ? const _ResumeBadge()
+                        : _BestBadge(stars: widget.bestStars),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Marks a card whose run the learner left unfinished. Same fixed-size
+/// treatment as [_BestBadge], in the warning tint so it reads as "picked up
+/// mid-way" rather than as an achievement.
+class _ResumeBadge extends StatelessWidget {
+  const _ResumeBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.32),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.pause_circle_filled_rounded,
+            size: 11,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            AppLocalizations.of(context)!.resumeBadge,
+            maxLines: 1,
+            // Fixed size on purpose — see [_BestBadge]'s class doc.
+            style: const TextStyle(
+              fontSize: 9,
+              height: 1.2,
+              letterSpacing: 0.5,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The personal-best marker on a game card: three pips filled to the best
+/// rating the learner has reached, or a "NEW" pill for a game not yet tried.
+///
+/// Both states are drawn at a fixed pip size rather than a scaled text style —
+/// the card's height is set by the grid's aspect ratio, so a badge that grew
+/// with the Font Size setting is exactly what would push the cell over.
+class _BestBadge extends StatelessWidget {
+  final int? stars;
+  const _BestBadge({required this.stars});
+
+  @override
+  Widget build(BuildContext context) {
+    final best = stars;
+    if (best == null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.28),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          AppLocalizations.of(context)!.badgeNew,
+          maxLines: 1,
+          // Fixed size on purpose — see the class doc.
+          style: const TextStyle(
+            fontSize: 9,
+            height: 1.2,
+            letterSpacing: 0.5,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) {
+        final earned = i < best;
+        return Icon(
+          earned ? Icons.star_rounded : Icons.star_outline_rounded,
+          size: 13,
+          color: Colors.white.withValues(alpha: earned ? 0.95 : 0.4),
+        );
+      }),
     );
   }
 }

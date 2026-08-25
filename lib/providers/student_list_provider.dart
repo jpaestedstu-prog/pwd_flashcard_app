@@ -66,29 +66,53 @@ final studentFilterProvider =
 /// Educators (teacher/parent) get a Firestore-backed list aggregated
 /// across their classrooms — so they can see students from other devices.
 /// Anyone else gets the local Hive list. While the educator fetch is
-/// in flight, falls back to local Hive so the UI doesn't flicker.
+/// in flight — or if it fails — falls back to local Hive so the UI doesn't
+/// flicker or, worse, break.
+///
+/// `valueOrNull`, not `value`: on an `AsyncError` the `value` getter *rethrows*
+/// the error, so a roster fetch that failed (offline, a permissions error, a
+/// missing box) took this provider down with it and every educator surface
+/// watching it — the opposite of the fallback the paragraph above promises.
 final _rosterSourceProvider =
     Provider<List<(UserProfile, LearningProgress)>>((ref) {
   final active = ref.watch(profileProvider);
+  final allLocal = ref.watch(allProfilesWithProgressProvider);
   if (active != null && active.role.isEducator) {
-    final remote = ref.watch(educatorRosterProvider(active.id));
-    final remoteList = remote.value;
+    final remoteList = ref.watch(educatorRosterProvider(active.id)).valueOrNull;
     if (remoteList != null) return remoteList;
+    // In flight, or the fetch failed (offline). Fall back to what local
+    // enrolment can prove rather than to every learner on the device — on a
+    // shared tablet the latter is another family's children. See
+    // [localEducatorRoster].
+    final local = localEducatorRoster(active.id, allLocal);
+    if (local != null) return local;
   }
-  return ref.watch(allProfilesWithProgressProvider);
+  return allLocal;
+});
+
+/// Every learner an educator may act on — classroom students plus home-group
+/// children, guest players excluded — before any search/sort chrome.
+///
+/// Split out of [filteredStudentsProvider] so the other educator surfaces that
+/// need a plain roster cannot drift from the documented `isEnrollableLearner`
+/// rule by rolling their own filter. Assigning an assessment did exactly that:
+/// it read local Hive for `role == UserRole.student`, which showed a Parent
+/// "No students found" for a home group full of children and hid every
+/// student who joined a teacher's class from another device.
+final educatorLearnerRosterProvider =
+    Provider<List<(UserProfile, LearningProgress)>>((ref) {
+  return ref
+      .watch(_rosterSourceProvider)
+      .where((d) => d.$1.role.isEnrollableLearner && !d.$1.isGuestPlayer)
+      .toList();
 });
 
 /// Provides the filtered and sorted student list.
 final filteredStudentsProvider =
     Provider<List<(UserProfile, LearningProgress)>>((ref) {
-  final allData = ref.watch(_rosterSourceProvider);
   final filter = ref.watch(studentFilterProvider);
 
-  // Start with enrollable learners (classroom students + home-group
-  // children), excluding guest players.
-  var students = allData
-      .where((d) => d.$1.role.isEnrollableLearner && !d.$1.isGuestPlayer)
-      .toList();
+  var students = ref.watch(educatorLearnerRosterProvider);
 
   // Search filter
   if (filter.searchQuery.isNotEmpty) {

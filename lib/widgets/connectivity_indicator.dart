@@ -3,6 +3,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../core/utils/connectivity_state.dart';
 
 /// Compact connectivity status indicator for app bars and headers.
 ///
@@ -46,7 +47,7 @@ class _ConnectivityIndicatorState extends State<ConnectivityIndicator>
   }
 
   void _onChanged(List<ConnectivityResult> results) {
-    final offline = results.every((r) => r == ConnectivityResult.none);
+    final offline = isOfflineForDisplay(results);
     if (offline != _isOffline) {
       setState(() => _isOffline = offline);
       if (offline) {

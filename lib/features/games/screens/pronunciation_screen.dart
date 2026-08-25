@@ -30,6 +30,7 @@ import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
+import '../game_resume_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
@@ -51,12 +52,17 @@ class PronunciationScreen extends ConsumerStatefulWidget {
   /// launcher instead of going to the games hub.
   final String? focusWordId;
 
+  /// Pick up the unfinished run the learner left behind rather than dealing a
+  /// fresh one. Set by the Games hub after asking.
+  final bool resume;
+
   const PronunciationScreen({
     super.key,
     this.difficulty = GameDifficulty.medium,
     this.categories = const [],
     this.timedMode = false,
     this.focusWordId,
+    this.resume = false,
   });
 
   @override
@@ -65,7 +71,64 @@ class PronunciationScreen extends ConsumerStatefulWidget {
 }
 
 class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
-    with TimedGameMixin, GamePauseMixin {
+    with TimedGameMixin, GamePauseMixin, GameResumeMixin {
+  // ─── Resume wiring ───────────────────────────────
+  // Focus mode (Word Hunt) is a single round, so it can never produce an
+  // offerable snapshot — the service drops runs with nothing answered.
+  @override
+  GameType get resumeGameType => GameType.pronunciation;
+  @override
+  GameDifficulty get resumeDifficulty => widget.difficulty;
+  @override
+  List<FlashcardCategory> get resumeCategories => widget.categories;
+  @override
+  bool get resumeTimedMode => widget.timedMode;
+  @override
+  String? get resumeProfileId => ref.read(profileProvider)?.id;
+  @override
+  List<String> get resumeDeckIds =>
+      _rounds.map((r) => r.correctCard.id).toList();
+  @override
+  int get resumeIndex => _currentRound;
+  @override
+  int get resumeScore => _score;
+  @override
+  bool get resumeFinished => _showResult;
+
+  /// Re-deal the run the learner walked away from. Choices are drawn fresh;
+  /// the English/Filipino prompt alternation is positional, so rebuilding in
+  /// order keeps each round asking in the language it originally did.
+  void _restoreSaved(List<Flashcard> pool) {
+    final snapshot = readResumePoint();
+    if (snapshot == null) return;
+    final byId = {for (final c in pool) c.id: c};
+    final deck = snapshot.cardIds
+        .map((id) => byId[id])
+        .whereType<Flashcard>()
+        .toList();
+    if (deck.length != snapshot.cardIds.length) return;
+
+    final rebuilt = <_PronunciationRound>[];
+    for (var i = 0; i < deck.length; i++) {
+      final correct = deck[i];
+      final others = pool.where((c) => c.id != correct.id).toList()
+        ..shuffle(_random);
+      final choices = [correct, ...others.take(_numChoices - 1)]
+        ..shuffle(_random);
+      rebuilt.add(
+        _PronunciationRound(
+          correctCard: correct,
+          choices: choices,
+          correctIndex: choices.indexOf(correct),
+          isEnglishPrompt: i.isEven,
+        ),
+      );
+    }
+    _rounds = rebuilt;
+    _currentRound = snapshot.roundIndex;
+    _score = snapshot.score;
+  }
+
   late List<_PronunciationRound> _rounds;
   int _currentRound = 0;
   int _score = 0;
@@ -149,6 +212,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
     _selectedIndex = null;
     _reviewItems.clear();
     _newAchievements = [];
+    if (widget.resume) _restoreSaved(ordered);
     // Speak the first word after a short delay
     WidgetsBinding.instance.addPostFrameCallback((_) => _speakCurrentWord());
     startTimerIfNeeded(widget.timedMode);
@@ -175,7 +239,10 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
   @override
   Future<void> savePartialProgress() async {
     if (_rounds.isEmpty) return;
-    _finishGame();
+    _finishGame(completed: false);
+    // Quitting is the moment worth remembering: the hub can offer to bring
+    // the learner straight back to this round.
+    saveResumePoint();
   }
 
   @override
@@ -239,11 +306,12 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
   }
 
   List<GazeAction> _gazeActions() {
+    final l10n = AppLocalizations.of(context)!;
     final canMove = !_answered && !_isListening && !isPaused;
     return [
       GazeAction(
         zone: GazeZone.left,
-        label: 'Prev',
+        label: l10n.gazePrev,
         icon: Icons.chevron_left_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -251,7 +319,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
       ),
       GazeAction(
         zone: GazeZone.right,
-        label: 'Next',
+        label: l10n.gazeNext,
         icon: Icons.chevron_right_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -259,7 +327,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
       ),
       GazeAction(
         zone: GazeZone.up,
-        label: 'Hear it',
+        label: l10n.hearIt,
         icon: Icons.volume_up_rounded,
         color: AppColors.primary,
         enabled: !isPaused,
@@ -267,7 +335,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
       ),
       GazeAction(
         zone: GazeZone.down,
-        label: 'Choose',
+        label: l10n.gazeChoose,
         icon: Icons.check_circle_rounded,
         color: AppColors.success,
         enabled: canMove,
@@ -345,9 +413,10 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
           });
           _selectAnswer(round.correctIndex);
         } else {
+          final l10n = AppLocalizations.of(context)!;
           setState(() {
             _isListening = false;
-            _voiceHint = 'Heard: "$spoken" — try again!';
+            _voiceHint = l10n.heardTryAgain(spoken);
           });
           Future.delayed(const Duration(seconds: 2), () {
             if (mounted) setState(() => _voiceHint = '');
@@ -372,7 +441,10 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
     }
   }
 
-  void _finishGame() {
+  /// [completed] is false only on the "Quit to Games" path — an abandoned run
+  /// still counts toward stats but is not fed to the adaptive engine as if
+  /// every unplayed round were a miss.
+  void _finishGame({bool completed = true}) {
     // Record progress
     final categories = _rounds
         .map((r) => r.correctCard.category)
@@ -388,6 +460,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
       );
       if (!awarded) stars = 0;
     }
+    clearResumePoint();
     _finalStars = stars;
     // Per-word results — feeds both wordsLearned and spaced repetition.
     final sr = <String, bool>{};
@@ -408,6 +481,8 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
           starsEarned: _finalStars,
           categoriesPlayed: categories,
           correctWordIds: sr.correctWordIds,
+          durationSeconds: elapsedSeconds,
+          playedDifficulty: completed ? widget.difficulty : null,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
@@ -444,6 +519,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hc = HCColor.of(context);
     // ─── Result Screen ──────────────────────
     if (_showResult) {
@@ -470,7 +546,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
-                    gameTitle: 'Pronunciation Practice',
+                    gameTitle: GameType.pronunciation.labelOf(l10n),
                   ),
                 ),
               ),
@@ -505,16 +581,20 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                 AppBar(
                   leading: IconButton(
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Close',
+                    tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
                   title: Text(
-                    'Listen & Pick  •  ${_currentRound + 1}/${_rounds.length}',
+                    l10n.gameRoundHeader(
+                      l10n.listenAndPick,
+                      _currentRound + 1,
+                      _rounds.length,
+                    ),
                   ),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
-                      tooltip: 'Pause',
+                      tooltip: l10n.pauseLabel,
                       onPressed: pauseGame,
                     ),
                     if (isTimedMode)
@@ -566,8 +646,11 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                   children: [
                     // ─── Progress Bar ────────────────
                     Semantics(
-                      label:
-                          'Round ${_currentRound + 1} of ${_rounds.length}, score $_score',
+                      label: l10n.roundScoreSemantics(
+                        _currentRound + 1,
+                        _rounds.length,
+                        _score,
+                      ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
@@ -616,8 +699,9 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                               // Big speaker button
                                               Semantics(
                                                 button: true,
-                                                label:
-                                                    'Play sound: tap to hear the ${round.isEnglishPrompt ? 'English' : 'Filipino'} word',
+                                                label: round.isEnglishPrompt
+                                                    ? l10n.playSoundEnglish
+                                                    : l10n.playSoundFilipino,
                                                 child: GestureDetector(
                                                   onTap: _speakCurrentWord,
                                                   child: Container(
@@ -816,10 +900,11 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                           Widget card = Semantics(
                             button: true,
                             label:
-                                'Answer choice: $choiceText${showCorrect
-                                    ? ', correct answer'
+                                '${l10n.answerChoiceSemantics(choiceText)}'
+                                '${showCorrect
+                                    ? l10n.correctAnswerSuffix
                                     : showWrong
-                                    ? ', wrong answer'
+                                    ? l10n.wrongAnswerSuffix
                                     : ''}',
                             child: GestureDetector(
                               onTap: () => _selectAnswer(index),

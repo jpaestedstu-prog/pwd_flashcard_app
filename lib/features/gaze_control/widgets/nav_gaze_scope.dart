@@ -18,6 +18,7 @@ import '../providers/gaze_settings_provider.dart';
 import '../services/gaze_detector.dart';
 import 'gaze_focus_overlay.dart';
 import 'gaze_route_guard.dart';
+import 'shell_modal_observer.dart';
 import 'voice_control_mixin.dart';
 
 /// Snapshot of the gaze-navigation state handed to [NavGazeScope.builder] so the
@@ -221,6 +222,13 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// head move can never fire a tab change while the learner is looking at
   /// something on top.
   bool get _shellCovered => gazeCovered;
+
+  /// A sheet or dialog opened from the visible hub pushes onto the shell's own
+  /// navigator, which this scope's [ModalRoute] cannot see — so consult the
+  /// observer installed on it. Without this the D-pad kept driving the hub grid
+  /// underneath an open sheet.
+  @override
+  bool get extraCovered => shellModalObserver.isCovering;
 
   /// Drive **focus traversal** rather than the tab / tile grid: either
   /// something is layered over the shell, or the shell's own nav bar is hidden
@@ -522,24 +530,32 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// One traversal step. When the route has nothing focusable that way, the
   /// focus is probably still on its bare scope node — pull it onto the first
   /// control so the next gesture has somewhere to go.
-  void _traverseMove(TraversalDirection direction) {
-    if (!mounted) return;
+  ///
+  /// Returns whether focus actually moved, so a remote press that landed
+  /// nowhere can be reported as unhandled rather than silently swallowed.
+  bool _traverseMove(TraversalDirection direction) {
+    if (!mounted) return false;
     final moved =
         GazeFocusDriver.move(direction) || GazeFocusDriver.moveFirst();
     if (moved) ref.read(hapticServiceProvider).selectionClick();
+    return moved;
   }
 
   /// Blink (or look-up with blink off) while covered: press whatever the
   /// traversal ring is on. A freshly-opened dialog often has focus still
   /// resting on its bare scope node with nothing to press — pull focus onto its
   /// first control instead, so the learner's first blink is never swallowed.
-  void _traverseCommit() {
-    if (!mounted) return;
+  bool _traverseCommit() {
+    if (!mounted) return false;
     if (GazeFocusDriver.activate()) {
       ref.read(hapticServiceProvider).success();
-    } else if (GazeFocusDriver.moveFirst()) {
-      ref.read(hapticServiceProvider).selectionClick();
+      return true;
     }
+    if (GazeFocusDriver.moveFirst()) {
+      ref.read(hapticServiceProvider).selectionClick();
+      return true;
+    }
+    return false;
   }
 
   void _commit() {
@@ -617,7 +633,6 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
         setState(() {});
       }),
     );
-
     // In traversal mode the tab / tile grid is not what the head is driving,
     // so present the shell as inactive for the duration: no tab ring, no hint
     // chip. Leaving them lit is the one thing worse than no affordance — it

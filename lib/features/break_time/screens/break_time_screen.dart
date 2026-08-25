@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
@@ -87,6 +88,18 @@ class _BreakTimeScreenState extends ConsumerState<BreakTimeScreen> {
     _startTimer();
   }
 
+  /// Open the mood check-in, tagged as a break-time reading.
+  ///
+  /// Navigates rather than recording inline, so this screen keeps the
+  /// side-effect-free property described in the class doc — the mood screen
+  /// owns the write, exactly as it does everywhere else.
+  void _checkInMood() {
+    ref.read(hapticServiceProvider).lightTap();
+    // Push, so the learner lands back on the break when they are done and can
+    // still choose to stay longer.
+    context.push('/mood-check-in?ctx=break_time');
+  }
+
   void _close() {
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -152,6 +165,7 @@ class _BreakTimeScreenState extends ConsumerState<BreakTimeScreen> {
                   hc: hc,
                   onBack: _close,
                   onStay: _stayLonger,
+                  onCheckIn: _checkInMood,
                 ),
             ],
           ),
@@ -508,11 +522,15 @@ class _ReturnPrompt extends StatelessWidget {
     required this.hc,
     required this.onBack,
     required this.onStay,
+    required this.onCheckIn,
   });
 
   final HCColor hc;
   final VoidCallback onBack;
   final VoidCallback onStay;
+
+  /// Opens the mood check-in, filed under the break-time context.
+  final VoidCallback onCheckIn;
 
   @override
   Widget build(BuildContext context) {
@@ -574,6 +592,19 @@ class _ReturnPrompt extends StatelessWidget {
                         onPressed: onStay,
                         icon: const Icon(Icons.spa_rounded),
                         label: const Text('Stay a little longer'),
+                      ),
+                    ),
+                    // Offered, never asked. This card already asks whether
+                    // the learner feels calmer, which is the moment they are
+                    // most able to name it — but a break is a place to
+                    // regulate, not a survey, so recording it stays a choice
+                    // and nothing here blocks the way back to the lesson.
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: onCheckIn,
+                        icon: const Icon(Icons.favorite_border_rounded),
+                        label: const Text('How are you feeling?'),
                       ),
                     ),
                   ],

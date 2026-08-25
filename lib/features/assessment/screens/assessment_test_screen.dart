@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +22,20 @@ import '../providers/assessment_provider.dart';
 class AssessmentTestScreen extends ConsumerStatefulWidget {
   final Assessment assessment;
 
-  const AssessmentTestScreen({super.key, required this.assessment});
+  /// Source of "now" for every time this screen measures — question response
+  /// times, total duration, and the countdown on a timed assessment.
+  ///
+  /// A seam, not a feature: the countdown is derived from the wall clock so a
+  /// tablet that slept cannot hand the learner extra minutes, but `DateTime.now`
+  /// is exactly what a widget test's fake-async cannot advance. Production
+  /// leaves this alone and gets the real clock.
+  final DateTime Function()? clock;
+
+  const AssessmentTestScreen({
+    super.key,
+    required this.assessment,
+    this.clock,
+  });
 
   @override
   ConsumerState<AssessmentTestScreen> createState() =>
@@ -39,19 +54,60 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
   late DateTime _assessmentStartTime;
   bool _showHint = false;
 
+  /// Countdown for assessments the educator gave a time limit. Null when the
+  /// assessment is untimed, which is the common case — the field was written
+  /// by the builder and the quiz generator but never read by anything, so
+  /// "10 min" on a teacher's assessment meant nothing at all until now.
+  Timer? _timer;
+  Duration? _remaining;
+
+  /// Guards the single submission. The timer expiring and the learner
+  /// answering the last question can otherwise both fire [_finishAssessment],
+  /// saving the result twice and pushing two summary screens.
+  bool _finished = false;
+
   @override
   void initState() {
     super.initState();
     _questions = widget.assessment.questions;
-    _assessmentStartTime = DateTime.now();
-    _questionStartTime = DateTime.now();
+    _assessmentStartTime = _now();
+    _questionStartTime = _now();
+
+    final limit = widget.assessment.timeLimitMinutes;
+    if (limit != null && limit > 0) {
+      _remaining = Duration(minutes: limit);
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    }
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _fillController.dispose();
     super.dispose();
   }
+
+  /// Recomputes the remaining time from the wall clock rather than counting
+  /// ticks, so a tablet that slept or throttled timers does not hand back
+  /// extra minutes. Runs out of time → submit what has been answered.
+  void _tick() {
+    if (!mounted || _finished) return;
+    final limit = widget.assessment.timeLimitMinutes;
+    if (limit == null) return;
+    final left =
+        Duration(minutes: limit) -
+        _now().difference(_assessmentStartTime);
+    if (left <= Duration.zero) {
+      _timer?.cancel();
+      setState(() => _remaining = Duration.zero);
+      _finishAssessment();
+      return;
+    }
+    setState(() => _remaining = left);
+  }
+
+  /// The screen's clock: the injected one in tests, the real one in the app.
+  DateTime _now() => (widget.clock ?? DateTime.now)();
 
   AssessmentQuestion get _currentQuestion => _questions[_currentIndex];
   bool get _isLastQuestion => _currentIndex >= _questions.length - 1;
@@ -61,7 +117,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     if (_answered) return;
     final haptic = ref.read(hapticServiceProvider);
     final responseTime =
-        DateTime.now().difference(_questionStartTime).inMilliseconds;
+        _now().difference(_questionStartTime).inMilliseconds;
     final correct =
         answer.trim().toLowerCase() == _currentQuestion.correctAnswer.trim().toLowerCase();
 
@@ -103,17 +159,20 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
       _isCorrect = false;
       _showHint = false;
       _fillController.clear();
-      _questionStartTime = DateTime.now();
+      _questionStartTime = _now();
     });
   }
 
   void _finishAssessment() {
+    if (_finished) return;
     final profile = ref.read(profileProvider);
     if (profile == null) return;
+    _finished = true;
+    _timer?.cancel();
 
     final score = _answers.where((a) => a.isCorrect).length;
     final durationSeconds =
-        DateTime.now().difference(_assessmentStartTime).inSeconds;
+        _now().difference(_assessmentStartTime).inSeconds;
 
     // Calculate per-category scores
     final categoryScores = <String, double>{};
@@ -140,7 +199,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
       score: score,
       totalQuestions: _questions.length,
       answers: _answers,
-      completedAt: DateTime.now(),
+      completedAt: _now(),
       durationSeconds: durationSeconds,
       categories: widget.assessment.categories,
       categoryScores: categoryScores,
@@ -271,23 +330,36 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                 ),
               ),
 
-              // ─── Progress Bar ─────────────────────────────
+              // ─── Progress Bar (+ countdown, when timed) ───
+              // The countdown shares this row rather than the top bar: the
+              // bar can give up width, whereas a third chip up there overflows
+              // at large text scales on a small phone.
               Padding(
                 padding:
                     EdgeInsets.symmetric(horizontal: padding, vertical: 12),
-                child: Semantics(
-                  label:
-                      'Progress: ${(_progress * 100).round()} percent complete',
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: _progress,
-                      minHeight: 8,
-                      backgroundColor: hc.border,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(hc.primary),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Semantics(
+                        label:
+                            'Progress: ${(_progress * 100).round()} percent complete',
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: _progress,
+                            minHeight: 8,
+                            backgroundColor: hc.border,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(hc.primary),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    if (_remaining != null) ...[
+                      const SizedBox(width: 12),
+                      _TimeRemainingChip(remaining: _remaining!, hc: hc),
+                    ],
+                  ],
                 ),
               ),
 
@@ -716,5 +788,58 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
           end: const Offset(1.0, 1.0),
           duration: 300.ms,
         );
+  }
+}
+
+// ─── Time Remaining Chip ───────────────────────────────
+
+/// Calm countdown for a timed assessment.
+///
+/// Deliberately not animated, and it does not flash: this app's learners
+/// include children with cognitive and attention disabilities, for whom a
+/// pulsing clock is a reason to stop trying. It changes colour once, in the
+/// last minute, and reads its remaining time to a screen reader as words
+/// rather than as a bare "4:07".
+class _TimeRemainingChip extends StatelessWidget {
+  final Duration remaining;
+  final HCColor hc;
+
+  const _TimeRemainingChip({required this.remaining, required this.hc});
+
+  @override
+  Widget build(BuildContext context) {
+    final urgent = remaining.inSeconds <= 60;
+    final color = urgent ? hc.error : hc.textSecondary;
+    final minutes = remaining.inMinutes;
+    final seconds = remaining.inSeconds % 60;
+
+    return Semantics(
+      liveRegion: urgent,
+      label: minutes > 0
+          ? '$minutes minute${minutes == 1 ? '' : 's'} remaining'
+          : '$seconds second${seconds == 1 ? '' : 's'} remaining',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.schedule_rounded, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              '$minutes:${seconds.toString().padLeft(2, '0')}',
+              style: AppTypography.labelMedium.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

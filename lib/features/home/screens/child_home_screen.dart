@@ -7,15 +7,20 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/sticker_provider.dart';
 import '../../../core/widgets/hub_scaffold.dart';
 import '../../../widgets/accessibility_quick_sheet.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../../widgets/xp_level_bar.dart';
+import '../../assessment/providers/assessment_provider.dart';
+import '../../assessment/widgets/learner_assignment_sync.dart';
+import '../../assessment/widgets/pending_assignments_banner.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../../messaging/providers/messaging_providers.dart';
 import '../../object_scan/word_hunt_entry.dart';
+import '../../stickers/widgets/sticker_sweep.dart';
 import '../widgets/home_tile.dart';
 
 /// Gamified home for the Child role (Family Group).
@@ -84,6 +89,19 @@ class ChildHomeScreen extends ConsumerWidget {
     // them without having to open Messages and check.
     final unreadMessages = ref.watch(unreadMessageCountProvider);
 
+    // Stickers earned but never shown. A Child profile never passes through
+    // the Student home, so without the [StickerSweep] mounted below their
+    // album would be the only place a sticker could come into existence.
+    final unseenStickers = ref.watch(unseenStickerCountProvider);
+
+    // A Parent can assign a child work exactly as a Teacher assigns a student,
+    // and usually does it from their own phone — so pull it, and surface it
+    // below. Until this existed a Child had no banner and no route into the
+    // Assessment Center at all, so assigned work was invisible to them.
+    if (profile != null) {
+      ref.watch(learnerAssignmentSyncProvider(profile.id));
+    }
+
     /// A kid-sized tile grid sliver for one section.
     Widget grid(List<GazeTileEntry> entries) => SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: pad),
@@ -106,6 +124,10 @@ class ChildHomeScreen extends ConsumerWidget {
       child: HubScaffold(
         intensity: 0.30,
         slivers: [
+          // Awards stickers earned since the last visit, so the Stickers tile
+          // below can carry an accurate badge. Renders nothing.
+          const SliverToBoxAdapter(child: StickerSweep()),
+
           // ─── Greeting strip ──────────────────────
           SliverToBoxAdapter(
             child: Padding(
@@ -193,6 +215,41 @@ class ChildHomeScreen extends ConsumerWidget {
               child: XpLevelBar(progress: progress),
             ),
           ),
+
+          // Re-pulls assigned work on resume so the banner below can appear
+          // without a restart. Invisible.
+          if (profile != null)
+            SliverToBoxAdapter(
+              child: LearnerAssignmentSync(profileId: profile.id),
+            ),
+
+          // ─── Pending assignments ─────────────────
+          // Same shared widget the Student home shows, so the two homes can
+          // never disagree about what is outstanding. Only a gaze target while
+          // it is actually on screen.
+          if (PendingAssignmentsBanner.hasPendingWork(profile?.id))
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
+                child: gazeGrid
+                    .section(
+                      columns: 1,
+                      expand: false,
+                      entries: [
+                        (
+                          tile: PendingAssignmentsBanner(
+                            profileId: profile?.id,
+                          ),
+                          cell: GazeTileCell(
+                            label: 'Assignments',
+                            onActivate: () => context.push('/assessment'),
+                          ),
+                        ),
+                      ],
+                    )
+                    .first,
+              ),
+            ),
 
           // ─── Section: Play & Learn (core hub) ────
           // Mirrors the Student home's core tiles: Games, Cards, Stories,
@@ -335,6 +392,20 @@ class ChildHomeScreen extends ConsumerWidget {
               ],
               onTap: () => context.push('/multiplayer'),
             ),
+            // The cooperative half of the Friends section. A Child profile
+            // could reach Play Together but not this — an omission, not a
+            // policy: nothing about Peer Collab is age- or role-gated, and
+            // CollabPresentation already curates the activity roster per
+            // accessibility category exactly as it does for a Student.
+            entry(
+              emoji: '🤝',
+              label: 'Peer Collab',
+              gradient: const [
+                AppColors.bannerPeerStart,
+                AppColors.bannerPeerEnd,
+              ],
+              onTap: () => context.push('/peer-collab'),
+            ),
             entry(
               emoji: '💌',
               label: 'Messages',
@@ -382,6 +453,7 @@ class ChildHomeScreen extends ConsumerWidget {
                 AppColors.bannerStickerStart,
                 AppColors.bannerStickerEnd,
               ],
+              badgeCount: unseenStickers,
               onTap: () => context.push('/sticker-album'),
             ),
             entry(

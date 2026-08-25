@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../data/local/hive_service.dart';
+import '../features/mood_tracker/models/mood_context.dart';
 import '../features/mood_tracker/models/mood_models.dart';
 import 'app_providers.dart';
 
@@ -14,14 +15,26 @@ class MoodNotifier extends StateNotifier<List<MoodEntry>> {
   }
 
   void _load() {
-    state = HiveService.getMoodEntries(profileId);
+    // Tolerates storage not being ready: an empty history is the right
+    // degraded state — nothing is lost, and the next check-in writes
+    // normally.
+    try {
+      state = HiveService.getMoodEntries(profileId);
+    } catch (_) {
+      state = const [];
+    }
   }
 
-  /// Record a new mood check-in
-  Future<void> addMood({
+  /// Record a new mood check-in.
+  ///
+  /// [context] names the moment the mood was captured. It is persisted as
+  /// [MoodContext.storageKey], which is what the Mood Insights dashboard's
+  /// "Mood by Activity" chart reads — before contexts were written, every
+  /// entry landed in a single `general` bucket and that chart was one bar.
+  Future<MoodEntry> addMood({
     required MoodType mood,
     String? note,
-    String? activityContext,
+    MoodContext context = MoodContext.general,
   }) async {
     final entry = MoodEntry(
       id: _uuid.v4(),
@@ -29,9 +42,26 @@ class MoodNotifier extends StateNotifier<List<MoodEntry>> {
       mood: mood,
       note: note,
       timestamp: DateTime.now(),
-      activityContext: activityContext,
+      activityContext: context.storageKey,
     );
     state = [...state, entry];
+    await HiveService.saveMoodEntries(profileId, state);
+    return entry;
+  }
+
+  /// Replace the mood on an existing entry, keeping its id and timestamp.
+  ///
+  /// A learner who taps the wrong face wants to correct it, not to file a
+  /// second reading of the same moment — correcting in place keeps the day's
+  /// history honest.
+  Future<void> updateMood(String entryId, MoodType mood, {String? note}) async {
+    state = [
+      for (final e in state)
+        if (e.id == entryId)
+          e.copyWith(mood: mood, note: () => note ?? e.note)
+        else
+          e,
+    ];
     await HiveService.saveMoodEntries(profileId, state);
   }
 

@@ -244,6 +244,21 @@ class UserProfile {
   /// keep working.
   bool get isPlayerMode => isGuestPlayer || role == UserRole.player;
 
+  /// Whether this profile's learning progress belongs in the cloud at all.
+  ///
+  /// Player Mode and unlinked learners stay 100% local — that is a deliberate
+  /// product decision, not an accident of plumbing.
+  ///
+  /// This exists because the two legs of progress sync used to be gated on
+  /// *different* conditions: `recordGameResult` pushed only when
+  /// `classroomId != null`, while `ProgressSyncListener` subscribed to every
+  /// profile that merely wasn't a *guest*. A Player-with-Progress or an
+  /// unlinked Student therefore received pulls it never fed — so a stale
+  /// cloud document would land on launch and silently roll back progress the
+  /// learner had just earned. Both legs read this one getter now, so they
+  /// cannot drift apart again.
+  bool get syncsProgressToCloud => !isPlayerMode && classroomId != null;
+
   /// Effective learning level for UI display. Defaults to beginner when
   /// the field is null on legacy profiles.
   LearningLevel get effectiveLearningLevel =>
@@ -392,6 +407,18 @@ class LearningProgress {
   /// Drives the ★ badge on story cards.
   final Map<String, int> storyBestStars;
 
+  /// Best 0–3 rating the learner has ever reached in each game, keyed by
+  /// [GameType.name]. Drives the personal-best badge on the Games hub cards.
+  ///
+  /// A high-water mark, like [bestStreakDays]: a bad round never lowers it.
+  /// Scored off [GameScore.ratingFor], not off stars awarded, so a profile
+  /// with the star economy switched off still records real bests.
+  ///
+  /// Keyed by name rather than index so the record survives the enum being
+  /// reordered — unlike [recentScores], which is written by index and must
+  /// keep appending new types at the end.
+  final Map<String, int> gameBestStars;
+
   /// Words whose Filipino Sign Language clip the learner has watched, as
   /// `HiveService.fslWordKey`s. Never shrinks.
   ///
@@ -438,6 +465,7 @@ class LearningProgress {
     this.learnedWordIds = const {},
     this.completedStoryIds = const {},
     this.storyBestStars = const {},
+    this.gameBestStars = const {},
     this.signedWordKeys = const {},
     this.canSignKeys = const {},
     this.everConfirmedSignKeys = const {},
@@ -477,6 +505,120 @@ class LearningProgress {
     ...recentScores.map((s) => s.gameType),
   };
 
+  /// [gameBestStars] healed for records written before the field existed, by
+  /// folding in the best rating still visible in [recentScores]. Legacy rows
+  /// under-report for games whose good round already aged out of the 20-entry
+  /// window, but — like the counters above — they can never report less than
+  /// what is still on hand, and the next finished round writes the healed map
+  /// back.
+  Map<String, int> get effectiveGameBestStars {
+    final healed = Map<String, int>.from(gameBestStars);
+    for (final s in recentScores) {
+      final key = s.gameType.name;
+      final rating = s.rating;
+      if (rating > (healed[key] ?? 0)) healed[key] = rating;
+    }
+    return healed;
+  }
+
+  /// The learner's best 0–3 rating in [game], or null if never played.
+  /// Null and zero are different answers: zero means "played, scored under
+  /// 50 %", which the hub badge shows as three empty stars rather than "New".
+  int? bestStarsFor(GameType game) => effectiveGameBestStars[game.name];
+
+  /// Fold a copy of this progress arriving from another device into this one,
+  /// keeping the better of the two everywhere.
+  ///
+  /// A background cloud pull used to **replace** the local row outright, on
+  /// the reasoning that server-confirmed snapshots are idempotent. They are
+  /// idempotent; they are not necessarily *newer*. A document written by a
+  /// tablet yesterday landing on a phone that played this morning threw the
+  /// morning away — the same class of bug the FSL sign list was already
+  /// special-cased to avoid by unioning.
+  ///
+  /// So: counters take the max, sets take the union, per-key bests take the
+  /// max per key. Nothing a learner has earned can be taken away by a sync.
+  ///
+  /// The two genuinely mutable fields are handled deliberately:
+  ///   * [spentStars] takes the **max** — spending is a debit the other
+  ///     device already applied, and picking the lower figure would refund
+  ///     stars that were used.
+  ///   * [categoryProgress] is a rolling accuracy average, not a lifetime
+  ///     record, so neither value is "better". The higher one is kept, which
+  ///     is the choice that cannot make a learner's shelf look worse than it
+  ///     did a moment ago. See the sticker album's durability note.
+  ///   * [lastActivityDate] and [streakDays] follow whichever row is more
+  ///     recent, since a streak is a statement about calendar days.
+  LearningProgress mergeWith(LearningProgress other) {
+    assert(other.profileId == profileId, 'cannot merge across profiles');
+
+    int maxOf(int a, int b) => a > b ? a : b;
+
+    Map<String, int> maxPerKey(Map<String, int> a, Map<String, int> b) {
+      final out = Map<String, int>.from(a);
+      b.forEach((k, v) {
+        if (v > (out[k] ?? 0)) out[k] = v;
+      });
+      return out;
+    }
+
+    Map<String, double> maxPerKeyD(
+      Map<String, double> a,
+      Map<String, double> b,
+    ) {
+      final out = Map<String, double>.from(a);
+      b.forEach((k, v) {
+        if (v > (out[k] ?? 0)) out[k] = v;
+      });
+      return out;
+    }
+
+    final otherIsNewer = other.lastActivityDate.isAfter(lastActivityDate);
+
+    // Recent scores are a rolling window, not a record: take whichever side
+    // has more history rather than concatenating into duplicates.
+    final scores = other.recentScores.length > recentScores.length
+        ? other.recentScores
+        : recentScores;
+
+    final words = {...learnedWordIds, ...other.learnedWordIds};
+
+    return LearningProgress(
+      profileId: profileId,
+      learnedWordIds: words,
+      // Derived from the union rather than from either stored count, so a row
+      // whose counter drifted from its own id set cannot under-report.
+      wordsLearned: maxOf(
+        words.length,
+        maxOf(wordsLearned, other.wordsLearned),
+      ),
+      totalStars: maxOf(totalStars, other.totalStars),
+      spentStars: maxOf(spentStars, other.spentStars),
+      streakDays: otherIsNewer ? other.streakDays : streakDays,
+      bestStreakDays: maxOf(effectiveBestStreak, other.effectiveBestStreak),
+      lastActivityDate: otherIsNewer ? other.lastActivityDate : lastActivityDate,
+      gamesPlayed: maxOf(effectiveGamesPlayed, other.effectiveGamesPlayed),
+      playedGameTypes: {
+        ...effectivePlayedGameTypes,
+        ...other.effectivePlayedGameTypes,
+      },
+      categoryProgress: maxPerKeyD(categoryProgress, other.categoryProgress),
+      recentScores: scores,
+      completedStoryIds: {...completedStoryIds, ...other.completedStoryIds},
+      storyBestStars: maxPerKey(storyBestStars, other.storyBestStars),
+      gameBestStars: maxPerKey(
+        effectiveGameBestStars,
+        other.effectiveGameBestStars,
+      ),
+      signedWordKeys: {...signedWordKeys, ...other.signedWordKeys},
+      canSignKeys: {...canSignKeys, ...other.canSignKeys},
+      everConfirmedSignKeys: {
+        ...everConfirmedSignKeys,
+        ...other.everConfirmedSignKeys,
+      },
+    );
+  }
+
   LearningProgress copyWith({
     int? wordsLearned,
     int? streakDays,
@@ -491,6 +633,7 @@ class LearningProgress {
     Set<String>? learnedWordIds,
     Set<String>? completedStoryIds,
     Map<String, int>? storyBestStars,
+    Map<String, int>? gameBestStars,
     Set<String>? signedWordKeys,
     Set<String>? canSignKeys,
     Set<String>? everConfirmedSignKeys,
@@ -510,6 +653,7 @@ class LearningProgress {
       learnedWordIds: learnedWordIds ?? this.learnedWordIds,
       completedStoryIds: completedStoryIds ?? this.completedStoryIds,
       storyBestStars: storyBestStars ?? this.storyBestStars,
+      gameBestStars: gameBestStars ?? this.gameBestStars,
       signedWordKeys: signedWordKeys ?? this.signedWordKeys,
       canSignKeys: canSignKeys ?? this.canSignKeys,
       everConfirmedSignKeys:
@@ -535,6 +679,27 @@ class GameScore {
     required this.date,
     this.durationSeconds,
   });
+
+  /// The 0–3 performance rating for a round of [score] out of [total]
+  /// (≥90 % → 3, ≥70 % → 2, ≥50 % → 1).
+  ///
+  /// The canonical definition of the thresholds every game's star formula
+  /// uses. Deliberately separate from [starsEarned], which is the *currency*
+  /// awarded and can legitimately be 0 for a flawless round — the star
+  /// economy is switchable per experiment config, and Word Hunt's focus mode
+  /// only pays out once a day per word. A personal best has to be scored off
+  /// how the learner played, not off what the wallet happened to allow.
+  static int ratingFor(int score, int total) {
+    if (total <= 0) return 0;
+    final pct = score / total;
+    if (pct >= 0.9) return 3;
+    if (pct >= 0.7) return 2;
+    if (pct >= 0.5) return 1;
+    return 0;
+  }
+
+  /// This score's 0–3 performance rating. See [ratingFor].
+  int get rating => ratingFor(score, total);
 
   Map<String, dynamic> toJson() => {
     'gameType': gameType.index,

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../core/services/cloud_sync_exceptions.dart';
+import '../../core/utils/error_handler.dart';
 import '../../core/services/firebase_service.dart';
 import '../local/hive_service.dart';
 import '../models/classroom.dart';
@@ -76,11 +77,14 @@ class FirestoreRepository implements DataRepository {
       // Mirrors of the per-profile Hive rows `ProgressNotifier.equipItem`
       // writes. Sent so a learner's purchased look reaches the leaderboard on
       // a classmate's device; Hive stays the source of truth locally.
-      'equipped_avatar_id': profile.equippedAvatarId ??
+      'equipped_avatar_id':
+          profile.equippedAvatarId ??
           HiveService.getEquippedItem(profile.id, ShopItemType.avatar.name),
-      'equipped_border_id': profile.equippedBorderId ??
+      'equipped_border_id':
+          profile.equippedBorderId ??
           HiveService.getEquippedItem(profile.id, ShopItemType.border.name),
-      'equipped_title_id': profile.equippedTitleId ??
+      'equipped_title_id':
+          profile.equippedTitleId ??
           HiveService.getEquippedItem(profile.id, ShopItemType.title.name),
     }, SetOptions(merge: true));
   }
@@ -119,7 +123,52 @@ class FirestoreRepository implements DataRepository {
       batch.delete(d.reference);
     }
 
+    // Assessment module (see AssessmentCloudService): the templates and
+    // assignments this profile authored as an educator, and the results it
+    // submitted as a learner. Without this a deleted profile left orphan docs
+    // that nothing could ever read or clean up.
+    final authored = await _db
+        .collection('assessments')
+        .where('created_by_profile_id', isEqualTo: profileId)
+        .get();
+    for (final d in authored.docs) {
+      batch.delete(d.reference);
+    }
+    final assigned = await _db
+        .collection('assessment_assignments')
+        .where('assignedBy', isEqualTo: profileId)
+        .get();
+    for (final d in assigned.docs) {
+      batch.delete(d.reference);
+    }
+    final results = await _db
+        .collection('assessment_results')
+        .where('profileId', isEqualTo: profileId)
+        .get();
+    for (final d in results.docs) {
+      batch.delete(d.reference);
+    }
+
     await batch.commit();
+
+    // Other educators' assignments that named this profile keep existing, but
+    // must stop naming it — otherwise every one of their tracking views shows
+    // a row that is permanently "Unknown · Pending". Not batched with the
+    // above: the rules pin these writes to the *assigning* educator, so they
+    // are attempted separately and a refusal must not roll back the delete.
+    try {
+      final naming = await _db
+          .collection('assessment_assignments')
+          .where('studentIds', arrayContains: profileId)
+          .get();
+      for (final d in naming.docs) {
+        await d.reference.update({
+          'studentIds': FieldValue.arrayRemove([profileId]),
+        });
+      }
+    } catch (e, stack) {
+      ErrorHandler.report(e, stack, 'FirestoreRepository.deleteProfile');
+    }
 
     // Subcollections need their own per-doc deletes.
     final achievements = await _db
@@ -313,6 +362,7 @@ class FirestoreRepository implements DataRepository {
     final wordsRaw = r['learned_word_ids'] as List<dynamic>? ?? [];
     final storyIdsRaw = r['completed_story_ids'] as List<dynamic>? ?? [];
     final storyStarsRaw = r['story_best_stars'] as Map<String, dynamic>? ?? {};
+    final gameStarsRaw = r['game_best_stars'] as Map<String, dynamic>? ?? {};
     final signedRaw = r['fsl_signed_words'] as List<dynamic>? ?? [];
     final canSignRaw = r['fsl_can_sign'] as List<dynamic>? ?? [];
     final confirmedRaw = r['fsl_ever_confirmed'] as List<dynamic>? ?? [];
@@ -340,6 +390,9 @@ class FirestoreRepository implements DataRepository {
       playedGameTypes: gameTypesFromNames(r['played_game_types']),
       completedStoryIds: Set<String>.from(storyIdsRaw.map((e) => e.toString())),
       storyBestStars: storyStarsRaw.map(
+        (k, v) => MapEntry(k, (v as num).toInt()),
+      ),
+      gameBestStars: gameStarsRaw.map(
         (k, v) => MapEntry(k, (v as num).toInt()),
       ),
       // Absent on documents written before sign-language engagement was
@@ -381,6 +434,9 @@ class FirestoreRepository implements DataRepository {
       'played_game_types': gameTypeNames(p.effectivePlayedGameTypes),
       'completed_story_ids': p.completedStoryIds.toList(),
       'story_best_stars': p.storyBestStars,
+      // Per-game personal bests, healed before travelling for the same reason
+      // as the lifetime records above: a cloud pull must never reset a best.
+      'game_best_stars': p.effectiveGameBestStars,
       'owner_uid': _uid,
     }, SetOptions(merge: true));
   }
@@ -1016,6 +1072,24 @@ class FirestoreRepository implements DataRepository {
   /// current device's uid) so the caller can persist it locally without
   /// a second round trip. Throws on any rule rejection — the calling
   /// screen should surface that as "couldn't restore on this device".
+  ///
+  /// **This MOVES the profile; it does not share it.** Every write rule in
+  /// `firestore.rules` goes through `ownsProfile(profileId)`, which reads the
+  /// `owner_uid` this method overwrites — so the device the profile was
+  /// restored *away from* loses cloud write access for it from this point on.
+  /// Reads stay open to any signed-in user, which is why the old device keeps
+  /// looking healthy: its writes land in Hive and are refused by Firestore.
+  ///
+  /// One profile has exactly one owner, deliberately. Two devices editing one
+  /// teacher at once is a **future feature** and would need a real membership
+  /// model (an `editors` list on the profile, or per-device sub-documents) —
+  /// not a wider `owner_uid` check. Do not attempt to build it on top of
+  /// recovery codes.
+  ///
+  /// Confirmed on two physical devices 2026-08-22. Callers that report a write
+  /// outcome must distinguish this refusal from being offline: see
+  /// `CloudSyncOutcome.notOwner`, which exists because "not sent yet" is a
+  /// promise that is never kept once ownership has moved.
   Future<UserProfile> claimProfileWithRecoveryCode({
     required String code,
     required String profileId,

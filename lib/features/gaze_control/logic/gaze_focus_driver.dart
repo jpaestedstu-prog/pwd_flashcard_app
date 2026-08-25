@@ -33,9 +33,26 @@ abstract final class GazeFocusDriver {
   static bool move(TraversalDirection direction) {
     final node = focused;
     if (node == null) return false;
-    if (!node.focusInDirection(direction)) return false;
-    _revealFocused();
-    return true;
+    // Geometry first: for a D-pad, "the control below this one" is what the
+    // learner means.
+    if (node.focusInDirection(direction)) {
+      _revealFocused();
+      return true;
+    }
+    // Geometry can legitimately fail while there is still somewhere to go.
+    // Directional traversal will not cross a scroll boundary into a pinned
+    // footer, so on the game category picker a learner reached the last
+    // category and then simply stopped — the "Start" button underneath was
+    // unreachable and the screen was a dead end. Reading order has no such
+    // blind spot, so fall back to it rather than stranding them.
+    final forward =
+        direction == TraversalDirection.down ||
+        direction == TraversalDirection.right;
+    if (forward ? node.nextFocus() : node.previousFocus()) {
+      _revealFocused();
+      return true;
+    }
+    return false;
   }
 
   /// Scrolls the newly focused control into view.

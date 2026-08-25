@@ -33,14 +33,15 @@ class EducatorHomeScreen extends ConsumerWidget {
 
     // Use Firestore-backed roster for educator views so cross-device joined
     // students appear consistently in Home/Students/Analytics/Reports.
-    final fallback = ref.watch(allProfilesWithProgressProvider);
+    //
+    // Read through [educatorLearnerRosterProvider] rather than falling back to
+    // every local profile: this screen used to roll its own
+    // `roster ?? allProfilesWithProgress`, so offline it counted another
+    // family's children and reported 12 enrolled against 7 online.
     final rosterAsync = isEducator
         ? ref.watch(educatorRosterProvider(profile.id))
         : null;
-    final allData = rosterAsync?.valueOrNull ?? fallback;
-    final students = allData
-        .where((d) => d.$1.role.isEnrollableLearner && !d.$1.isGuestPlayer)
-        .toList();
+    final students = ref.watch(educatorLearnerRosterProvider);
     final showRosterLoading =
         rosterAsync != null &&
         rosterAsync.isLoading &&
@@ -509,6 +510,8 @@ class _QuickActions extends ConsumerWidget {
         const SizedBox(height: 24),
         const ProSectionHeader(title: 'More'),
         const SizedBox(height: 12),
+        _GroupLabel(text: 'Content', color: hc.textSecondary),
+        const SizedBox(height: 8),
         ProActionGrid(
           compact: true,
           tiles: [
@@ -533,6 +536,47 @@ class _QuickActions extends ConsumerWidget {
               label: 'Teacher Notes',
               accent: AppColors.sectionCommunication,
               onTap: () => context.push('/parent-teacher-notes'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        // Same group as the teacher's, pointed at the parent's own surfaces.
+        // A Parent had no route into the assessment module at all: no tile
+        // here, and the hub itself only opened its educator sections for
+        // `role == teacher`. Both roles enrol learners and both should be able
+        // to set them work — see `UserRoleX.isEnrollableLearner`.
+        _GroupLabel(text: 'Assessments & Progress', color: hc.textSecondary),
+        const SizedBox(height: 8),
+        ProActionGrid(
+          compact: true,
+          tiles: [
+            ProActionTile(
+              compact: true,
+              icon: Icons.quiz_rounded,
+              label: 'Assessments',
+              accent: AppColors.sectionAssessment,
+              onTap: () => context.push('/assessment'),
+            ),
+            ProActionTile(
+              compact: true,
+              icon: Icons.assignment_turned_in_rounded,
+              label: 'Assign Tasks',
+              accent: AppColors.success,
+              onTap: () => context.push('/assessment/assign'),
+            ),
+            ProActionTile(
+              compact: true,
+              icon: Icons.track_changes_rounded,
+              label: 'Track Progress',
+              accent: AppColors.info,
+              onTap: () => context.push('/assessment/tracking'),
+            ),
+            ProActionTile(
+              compact: true,
+              icon: Icons.family_restroom_rounded,
+              label: 'Manage Groups',
+              accent: AppColors.sectionCommunication,
+              onTap: () => context.push('/home-group-manage'),
             ),
           ],
         ),

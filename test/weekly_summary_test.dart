@@ -156,9 +156,17 @@ void main() {
       });
     }
 
+    // Both sides are asked about the *same* instant. They used to be compared
+    // with only one of them pinned, so this passed until real-now drifted more
+    // than a week past the fixture and the SessionTracker side quietly went to
+    // zero — a failure that had nothing to do with the behaviour under test.
     expect(
       WeeklySummary.forProfile(profileId, now: now).minutes,
-      SessionTracker.totalStudyMinutes(profileId, days: WeeklySummary.days),
+      SessionTracker.totalStudyMinutes(
+        profileId,
+        days: WeeklySummary.days,
+        now: now,
+      ),
     );
   });
 

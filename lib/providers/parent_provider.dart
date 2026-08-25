@@ -4,6 +4,7 @@ import '../data/models/models.dart';
 import '../core/constants/avatar_data.dart';
 import '../data/local/hive_service.dart';
 import '../data/local/seed_data.dart';
+import '../features/mood_tracker/models/mood_summary.dart';
 import '../features/progress/models/category_mastery.dart';
 import '../core/services/session_tracker.dart';
 import '../core/services/streak_service.dart';
@@ -55,6 +56,14 @@ class ChildSummary {
   final int signsWatched;
   final int wordHuntStreak;
 
+  /// The learner's wellbeing over the last 7 days, as a pattern only.
+  ///
+  /// Mood lived exclusively in the learner's own screens and the research
+  /// CSV, so the people best placed to respond to a run of hard days could
+  /// not see one. Never carries the learner's written notes — see
+  /// [MoodSummary].
+  final MoodSummary moodSummary;
+
   // Recent activity
   final List<GameScore> recentScores;
   final DateTime lastActivityDate;
@@ -78,6 +87,7 @@ class ChildSummary {
     required this.categoryCoverage,
     required this.wordHuntFinds,
     required this.signsWatched,
+    this.moodSummary = MoodSummary.empty,
     required this.wordHuntStreak,
     required this.recentScores,
     required this.lastActivityDate,
@@ -233,6 +243,9 @@ ParentDashboardSnapshot _buildSnapshot(
           // see real-world hunting alongside in-app play.
           wordHuntFinds: ObjectScanDiscoveryService.discoveryCount(profile.id),
           signsWatched: HiveService.fslUniqueWordsViewed(profile.id),
+          moodSummary: MoodSummary.fromEntries(
+            HiveService.getMoodEntries(profile.id),
+          ),
           wordHuntStreak: ObjectScanDiscoveryService.safeHuntStreak(profile.id),
           recentScores: progress.recentScores,
           lastActivityDate: progress.lastActivityDate,

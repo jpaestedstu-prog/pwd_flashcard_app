@@ -3213,6 +3213,1307 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Play some games to see your\ndifficulty adaptation history!'**
   String get chartDifficultyEmpty;
+
+  /// No description provided for @gameTipDifficulty.
+  ///
+  /// In en, this message translates to:
+  /// **'💡 Tip: Try different difficulty levels to challenge yourself!'**
+  String get gameTipDifficulty;
+
+  /// No description provided for @gameTipDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'🔥 Playing games daily builds stronger memory!'**
+  String get gameTipDaily;
+
+  /// No description provided for @gameTipReview.
+  ///
+  /// In en, this message translates to:
+  /// **'🌟 Review words you missed to learn faster!'**
+  String get gameTipReview;
+
+  /// No description provided for @gameTipStartEasy.
+  ///
+  /// In en, this message translates to:
+  /// **'🎯 Start with Easy mode, then level up when ready!'**
+  String get gameTipStartEasy;
+
+  /// No description provided for @gameTipVariety.
+  ///
+  /// In en, this message translates to:
+  /// **'🧩 Each game teaches in a different way — try them all!'**
+  String get gameTipVariety;
+
+  /// No description provided for @gameTipTimed.
+  ///
+  /// In en, this message translates to:
+  /// **'⏱️ Timed mode is great for building speed!'**
+  String get gameTipTimed;
+
+  /// No description provided for @playTogether.
+  ///
+  /// In en, this message translates to:
+  /// **'Play Together'**
+  String get playTogether;
+
+  /// No description provided for @playTogetherSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Race a friend — just for fun!'**
+  String get playTogetherSubtitle;
+
+  /// No description provided for @playTogetherSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Play Together. Race a friend online or on this device, just for fun.'**
+  String get playTogetherSemantics;
+
+  /// No description provided for @gamesPickedForYou.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} games picked for you'**
+  String gamesPickedForYou(int count);
+
+  /// No description provided for @badgeNew.
+  ///
+  /// In en, this message translates to:
+  /// **'NEW'**
+  String get badgeNew;
+
+  /// No description provided for @notPlayedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not played yet.'**
+  String get notPlayedYet;
+
+  /// No description provided for @yourBestStars.
+  ///
+  /// In en, this message translates to:
+  /// **'Your best: {best} of 3 stars.'**
+  String yourBestStars(int best);
+
+  /// No description provided for @playGameSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Play {game}. {description}'**
+  String playGameSemantics(String game, String description);
+
+  /// No description provided for @chooseYourDifficulty.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your difficulty'**
+  String get chooseYourDifficulty;
+
+  /// No description provided for @beatTheClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Beat the Clock ⏱️'**
+  String get beatTheClock;
+
+  /// No description provided for @beatTheClockSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'60 seconds to finish!'**
+  String get beatTheClockSubtitle;
+
+  /// No description provided for @lastPlayed.
+  ///
+  /// In en, this message translates to:
+  /// **'Last played'**
+  String get lastPlayed;
+
+  /// No description provided for @startWithAllCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Start with All Categories'**
+  String get startWithAllCategories;
+
+  /// No description provided for @startWithOneCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Start with 1 Category'**
+  String get startWithOneCategory;
+
+  /// No description provided for @startWithCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Start with {count} Categories'**
+  String startWithCategories(int count);
+
+  /// No description provided for @comingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get comingSoon;
+
+  /// No description provided for @gameReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{game} Review'**
+  String gameReviewTitle(String game);
+
+  /// No description provided for @reviewCorrectCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} correct'**
+  String reviewCorrectCount(int count);
+
+  /// No description provided for @reviewWrongCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} wrong'**
+  String reviewWrongCount(int count);
+
+  /// No description provided for @yourAnswerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your answer: '**
+  String get yourAnswerLabel;
+
+  /// No description provided for @paused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get paused;
+
+  /// No description provided for @resumeGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get resumeGame;
+
+  /// No description provided for @iNeedABreak.
+  ///
+  /// In en, this message translates to:
+  /// **'I Need a Break'**
+  String get iNeedABreak;
+
+  /// No description provided for @restartGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get restartGame;
+
+  /// No description provided for @restartGameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart this game?'**
+  String get restartGameTitle;
+
+  /// No description provided for @restartGameBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current progress in this round will be lost.'**
+  String get restartGameBody;
+
+  /// No description provided for @quitToGames.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit to Games'**
+  String get quitToGames;
+
+  /// No description provided for @pauseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get pauseLabel;
+
+  /// No description provided for @resultAmazing.
+  ///
+  /// In en, this message translates to:
+  /// **'Amazing! 🌟'**
+  String get resultAmazing;
+
+  /// No description provided for @resultAmazingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re a superstar! Try a harder level next!'**
+  String get resultAmazingHint;
+
+  /// No description provided for @resultGreat.
+  ///
+  /// In en, this message translates to:
+  /// **'Great Job! 🎉'**
+  String get resultGreat;
+
+  /// No description provided for @resultGreatHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re doing wonderfully! Keep it up!'**
+  String get resultGreatHint;
+
+  /// No description provided for @resultGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Good Try! 👍'**
+  String get resultGood;
+
+  /// No description provided for @resultGoodHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re learning! Review the words you missed.'**
+  String get resultGoodHint;
+
+  /// No description provided for @resultKeepPracticing.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep Practicing! 💪'**
+  String get resultKeepPracticing;
+
+  /// No description provided for @resultKeepPracticingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Every try makes you stronger! Try again!'**
+  String get resultKeepPracticingHint;
+
+  /// No description provided for @fslPracticeHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Filipino Sign Language Practice'**
+  String get fslPracticeHeading;
+
+  /// No description provided for @fslSignToWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign → Word'**
+  String get fslSignToWord;
+
+  /// No description provided for @fslSignToWordSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch a sign language video, then pick the correct word from choices.'**
+  String get fslSignToWordSubtitle;
+
+  /// No description provided for @fslWordToSign.
+  ///
+  /// In en, this message translates to:
+  /// **'Word → Sign'**
+  String get fslWordToSign;
+
+  /// No description provided for @fslWordToSignSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'See a word, then pick which video shows the correct sign.'**
+  String get fslWordToSignSubtitle;
+
+  /// No description provided for @fslSignIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign It!'**
+  String get fslSignIt;
+
+  /// No description provided for @fslSignItSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch a sign, copy it in the camera, then check yourself.'**
+  String get fslSignItSubtitle;
+
+  /// No description provided for @fslSignItSubtitleGaze.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch a sign, copy it in the camera, then check yourself. Uses your hands — head control pauses here.'**
+  String get fslSignItSubtitleGaze;
+
+  /// No description provided for @fslVideosComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'FSL videos are still being added. Try the FSL Dictionary in the meantime.'**
+  String get fslVideosComingSoon;
+
+  /// No description provided for @resumeBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'PAUSED'**
+  String get resumeBadge;
+
+  /// No description provided for @resumeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue where you left off?'**
+  String get resumeTitle;
+
+  /// No description provided for @resumeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You stopped at round {round} of {total}.'**
+  String resumeBody(int round, int total);
+
+  /// No description provided for @resumeContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get resumeContinue;
+
+  /// No description provided for @resumeStartOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Over'**
+  String get resumeStartOver;
+
+  /// No description provided for @resumeRoundProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Round {round} of {total}'**
+  String resumeRoundProgress(int round, int total);
+
+  /// No description provided for @notEnoughWords.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough words'**
+  String get notEnoughWords;
+
+  /// No description provided for @notEnoughWordsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick more categories to play {game}.'**
+  String notEnoughWordsBody(String game);
+
+  /// No description provided for @backToGames.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Games'**
+  String get backToGames;
+
+  /// No description provided for @fslPracticeIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch sign language videos and test your knowledge.\nChoose a practice mode below!'**
+  String get fslPracticeIntro;
+
+  /// No description provided for @starsEarnedChip.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} ⭐ earned'**
+  String starsEarnedChip(int count);
+
+  /// No description provided for @gameResultsSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Game results: {score} out of {total}, rating {rating} out of 3 stars, {stars} stars earned'**
+  String gameResultsSemantics(int score, int total, int rating, int stars);
+
+  /// No description provided for @jigsawPuzzle.
+  ///
+  /// In en, this message translates to:
+  /// **'Jigsaw Puzzle'**
+  String get jigsawPuzzle;
+
+  /// No description provided for @pictureWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture-Word'**
+  String get pictureWord;
+
+  /// No description provided for @yesOrNo.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes or No'**
+  String get yesOrNo;
+
+  /// No description provided for @oddOneOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Odd One Out'**
+  String get oddOneOut;
+
+  /// No description provided for @firstLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'First Letter'**
+  String get firstLetter;
+
+  /// No description provided for @gameDescWordMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Match the picture to the correct word!'**
+  String get gameDescWordMatch;
+
+  /// No description provided for @gameDescSpellingBee.
+  ///
+  /// In en, this message translates to:
+  /// **'Unscramble the letters to spell the word!'**
+  String get gameDescSpellingBee;
+
+  /// No description provided for @gameDescMemoryMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Find matching pairs of cards!'**
+  String get gameDescMemoryMatch;
+
+  /// No description provided for @gameDescDragAndDrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag each word to its matching picture!'**
+  String get gameDescDragAndDrop;
+
+  /// No description provided for @gameDescFlashcardQuiz.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe right if you know it, left to learn!'**
+  String get gameDescFlashcardQuiz;
+
+  /// No description provided for @gameDescPronunciation.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen and pick the correct word!'**
+  String get gameDescPronunciation;
+
+  /// No description provided for @gameDescSentenceBuilder.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in the missing word in the sentence!'**
+  String get gameDescSentenceBuilder;
+
+  /// No description provided for @gameDescStoryQuiz.
+  ///
+  /// In en, this message translates to:
+  /// **'Read a story and answer questions!'**
+  String get gameDescStoryQuiz;
+
+  /// No description provided for @gameDescTracing.
+  ///
+  /// In en, this message translates to:
+  /// **'Trace the letters of each word!'**
+  String get gameDescTracing;
+
+  /// No description provided for @gameDescFslPractice.
+  ///
+  /// In en, this message translates to:
+  /// **'Learn Filipino Sign Language!'**
+  String get gameDescFslPractice;
+
+  /// No description provided for @gameDescJigsawPuzzle.
+  ///
+  /// In en, this message translates to:
+  /// **'Assemble the picture puzzle!'**
+  String get gameDescJigsawPuzzle;
+
+  /// No description provided for @gameDescPictureWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Match pictures to words by listening!'**
+  String get gameDescPictureWord;
+
+  /// No description provided for @gameDescYesOrNo.
+  ///
+  /// In en, this message translates to:
+  /// **'Is this the right word? Tap Yes or No!'**
+  String get gameDescYesOrNo;
+
+  /// No description provided for @gameDescOddOneOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the word that does not belong!'**
+  String get gameDescOddOneOut;
+
+  /// No description provided for @gameDescFirstLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the letter the word starts with!'**
+  String get gameDescFirstLetter;
+
+  /// No description provided for @difficultyDescEasy.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer questions, more hints — great for beginners!'**
+  String get difficultyDescEasy;
+
+  /// No description provided for @difficultyDescMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced challenge — the standard experience'**
+  String get difficultyDescMedium;
+
+  /// No description provided for @difficultyDescHard.
+  ///
+  /// In en, this message translates to:
+  /// **'More questions, fewer hints — test your skills!'**
+  String get difficultyDescHard;
+
+  /// No description provided for @suggestStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re just getting started! We\'ll begin with easy questions.'**
+  String get suggestStarting;
+
+  /// No description provided for @suggestScopeGame.
+  ///
+  /// In en, this message translates to:
+  /// **'In {game}, your recent accuracy is {percent}%.'**
+  String suggestScopeGame(String game, int percent);
+
+  /// No description provided for @suggestScopeRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Across your recent games, your accuracy is {percent}%.'**
+  String suggestScopeRecent(int percent);
+
+  /// No description provided for @suggestScopeLifetime.
+  ///
+  /// In en, this message translates to:
+  /// **'Your accuracy is {percent}%.'**
+  String suggestScopeLifetime(int percent);
+
+  /// No description provided for @suggestTierEasy.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s practice with easier questions to build confidence!'**
+  String get suggestTierEasy;
+
+  /// No description provided for @suggestTierMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'A balanced challenge to keep you growing!'**
+  String get suggestTierMedium;
+
+  /// No description provided for @suggestTierHard.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re doing great — time for a real challenge!'**
+  String get suggestTierHard;
+
+  /// No description provided for @gameRoundHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'{game}  •  {current}/{total}'**
+  String gameRoundHeader(String game, int current, int total);
+
+  /// No description provided for @findPictureFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Find the picture for:'**
+  String get findPictureFor;
+
+  /// No description provided for @whichWordMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Which word matches?'**
+  String get whichWordMatches;
+
+  /// No description provided for @whichDoesNotBelong.
+  ///
+  /// In en, this message translates to:
+  /// **'Which one does not belong?'**
+  String get whichDoesNotBelong;
+
+  /// No description provided for @startsWithWhichLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'starts with which letter?'**
+  String get startsWithWhichLetter;
+
+  /// No description provided for @isThisPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Is this…'**
+  String get isThisPrompt;
+
+  /// No description provided for @hearIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Hear it'**
+  String get hearIt;
+
+  /// No description provided for @heardTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Heard: \"{spoken}\" — try again!'**
+  String heardTryAgain(String spoken);
+
+  /// No description provided for @cameraWordsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'📷 You\'ve found {count} words with your camera!'**
+  String cameraWordsFound(int count);
+
+  /// No description provided for @oddOneOutHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} are {category}'**
+  String oddOneOutHint(int count, String category);
+
+  /// No description provided for @allPiecesPlaced.
+  ///
+  /// In en, this message translates to:
+  /// **'All pieces placed! 🎉'**
+  String get allPiecesPlaced;
+
+  /// No description provided for @jigsawHowTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a piece, then tap a grid slot'**
+  String get jigsawHowTo;
+
+  /// No description provided for @movesUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Moves: {count}'**
+  String movesUsed(int count);
+
+  /// No description provided for @knownCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} known'**
+  String knownCount(int count);
+
+  /// No description provided for @stillLearningCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} still learning'**
+  String stillLearningCount(int count);
+
+  /// No description provided for @answerChoiceSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer choice: {answer}'**
+  String answerChoiceSemantics(String answer);
+
+  /// No description provided for @answerSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer: {answer}'**
+  String answerSemantics(String answer);
+
+  /// No description provided for @correctAnswerSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **', correct answer'**
+  String get correctAnswerSuffix;
+
+  /// No description provided for @wrongAnswerSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **', wrong answer'**
+  String get wrongAnswerSuffix;
+
+  /// No description provided for @questionEnglishFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Question: What is the English word for {word}?'**
+  String questionEnglishFor(String word);
+
+  /// No description provided for @findPictureForSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Find the picture for: {word}'**
+  String findPictureForSemantics(String word);
+
+  /// No description provided for @pictureOfSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture of {word}'**
+  String pictureOfSemantics(String word);
+
+  /// No description provided for @whichWordMatchesSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Which word matches this picture? {word}'**
+  String whichWordMatchesSemantics(String word);
+
+  /// No description provided for @firstLetterQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Question: which letter does the word {word} start with?'**
+  String firstLetterQuestion(String word);
+
+  /// No description provided for @yesNoQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Question: is this picture of a {pictureWord} the word {english}, {filipino}? Answer Yes or No.'**
+  String yesNoQuestion(String pictureWord, String english, String filipino);
+
+  /// No description provided for @flashcardSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Flashcard: {english}, {filipino}, category {category}. Swipe right for I Know, left for Still Learning'**
+  String flashcardSemantics(String english, String filipino, String category);
+
+  /// No description provided for @flashcardProgressSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Card {current} of {total}, {known} known, {learning} still learning'**
+  String flashcardProgressSemantics(
+    int current,
+    int total,
+    int known,
+    int learning,
+  );
+
+  /// No description provided for @draggableWordSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Draggable word: {word}, drag to matching Filipino word'**
+  String draggableWordSemantics(String word);
+
+  /// No description provided for @dropTargetMatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Matched: {filipino} is {english}'**
+  String dropTargetMatched(String filipino, String english);
+
+  /// No description provided for @dropTargetEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop target: {filipino}, not yet matched'**
+  String dropTargetEmpty(String filipino);
+
+  /// No description provided for @slotFilled.
+  ///
+  /// In en, this message translates to:
+  /// **'Slot {position}: {letter}, tap to remove'**
+  String slotFilled(int position, String letter);
+
+  /// No description provided for @slotEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Slot {position}: empty'**
+  String slotEmpty(int position);
+
+  /// No description provided for @letterAlreadyUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Letter {letter}, already used'**
+  String letterAlreadyUsed(String letter);
+
+  /// No description provided for @letterTapToPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Letter {letter}, tap to place'**
+  String letterTapToPlace(String letter);
+
+  /// No description provided for @playSoundEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'Play sound: tap to hear the English word'**
+  String get playSoundEnglish;
+
+  /// No description provided for @playSoundFilipino.
+  ///
+  /// In en, this message translates to:
+  /// **'Play sound: tap to hear the Filipino word'**
+  String get playSoundFilipino;
+
+  /// No description provided for @roundScoreSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Round {current} of {total}, score {score}'**
+  String roundScoreSemantics(int current, int total, int score);
+
+  /// No description provided for @spelledSoFar.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer: {letters}'**
+  String spelledSoFar(String letters);
+
+  /// No description provided for @wordComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'word complete'**
+  String get wordComplete;
+
+  /// No description provided for @oddOneOutQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Question: which word does not belong? The words are {words}.'**
+  String oddOneOutQuestion(String words);
+
+  /// No description provided for @oddOneOutHintSpoken.
+  ///
+  /// In en, this message translates to:
+  /// **' {count} of them are {category}.'**
+  String oddOneOutHintSpoken(int count, String category);
+
+  /// No description provided for @fslWatchAndChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch the sign language video and choose the correct word'**
+  String get fslWatchAndChoose;
+
+  /// No description provided for @fslWhatWordIsThisSign.
+  ///
+  /// In en, this message translates to:
+  /// **'What word is this sign?'**
+  String get fslWhatWordIsThisSign;
+
+  /// No description provided for @fslWhichSignMeans.
+  ///
+  /// In en, this message translates to:
+  /// **'Which sign means…'**
+  String get fslWhichSignMeans;
+
+  /// No description provided for @videoChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Video choice {index}'**
+  String videoChoice(int index);
+
+  /// No description provided for @dropTargetHolding.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop target: {filipino}, currently has {word} (wrong)'**
+  String dropTargetHolding(String filipino, String word);
+
+  /// No description provided for @dropTargetEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop target: {filipino}, empty, drop English match here'**
+  String dropTargetEmptyHint(String filipino);
+
+  /// No description provided for @memoryCardMatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Matched card: {word}'**
+  String memoryCardMatched(String word);
+
+  /// No description provided for @memoryCardShowing.
+  ///
+  /// In en, this message translates to:
+  /// **'Card showing: {word}'**
+  String memoryCardShowing(String word);
+
+  /// No description provided for @memoryCardFaceDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Face-down card, tap to flip'**
+  String get memoryCardFaceDown;
+
+  /// No description provided for @breakButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Break'**
+  String get breakButton;
+
+  /// No description provided for @iNeedABreakTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'I need a break'**
+  String get iNeedABreakTooltip;
+
+  /// No description provided for @replayVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay'**
+  String get replayVideo;
+
+  /// No description provided for @showMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Me'**
+  String get showMe;
+
+  /// No description provided for @answerYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get answerYes;
+
+  /// No description provided for @answerNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get answerNo;
+
+  /// No description provided for @jigsawPuzzleProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Puzzle {current} of {total}'**
+  String jigsawPuzzleProgress(int current, int total);
+
+  /// No description provided for @jigsawCompleteFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the puzzle for: {word}'**
+  String jigsawCompleteFor(String word);
+
+  /// No description provided for @jigsawPieceSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Puzzle piece row {row}, column {column}, tap to place'**
+  String jigsawPieceSemantics(int row, int column);
+
+  /// No description provided for @memoryProgressSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Matched {matched} of {total} pairs in {moves} moves'**
+  String memoryProgressSemantics(int matched, int total, int moves);
+
+  /// No description provided for @jigsawPiecePlaced.
+  ///
+  /// In en, this message translates to:
+  /// **'Puzzle piece row {row}, column {column}, placed correctly'**
+  String jigsawPiecePlaced(int row, int column);
+
+  /// No description provided for @gazePrev.
+  ///
+  /// In en, this message translates to:
+  /// **'Prev'**
+  String get gazePrev;
+
+  /// No description provided for @gazeNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get gazeNext;
+
+  /// No description provided for @gazeChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose'**
+  String get gazeChoose;
+
+  /// No description provided for @gazeFlip.
+  ///
+  /// In en, this message translates to:
+  /// **'Flip'**
+  String get gazeFlip;
+
+  /// No description provided for @gazePlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Place'**
+  String get gazePlace;
+
+  /// No description provided for @gazeUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get gazeUndo;
+
+  /// No description provided for @showMeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Me — {word}'**
+  String showMeTitle(String word);
+
+  /// No description provided for @collabLearnTogether.
+  ///
+  /// In en, this message translates to:
+  /// **'Learn Together!'**
+  String get collabLearnTogether;
+
+  /// No description provided for @collabTeamTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re one team — you score together, not against each other.'**
+  String get collabTeamTagline;
+
+  /// No description provided for @collabPlayer2NameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Player 2\'s Name:'**
+  String get collabPlayer2NameLabel;
+
+  /// No description provided for @collabPlayer2NameSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Player 2\'s name'**
+  String get collabPlayer2NameSemantics;
+
+  /// No description provided for @collabPlayer2NameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter name...'**
+  String get collabPlayer2NameHint;
+
+  /// No description provided for @collabChooseActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an Activity'**
+  String get collabChooseActivity;
+
+  /// No description provided for @collabEnterPlayer2Name.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Player 2\'s name'**
+  String get collabEnterPlayer2Name;
+
+  /// No description provided for @collabNoWords.
+  ///
+  /// In en, this message translates to:
+  /// **'No words available right now'**
+  String get collabNoWords;
+
+  /// No description provided for @collabHearAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Hear it again'**
+  String get collabHearAgain;
+
+  /// No description provided for @collabWordRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Word Relay'**
+  String get collabWordRelay;
+
+  /// No description provided for @collabPictureGuess.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture Guess'**
+  String get collabPictureGuess;
+
+  /// No description provided for @collabSignChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Challenge'**
+  String get collabSignChallenge;
+
+  /// No description provided for @collabStoryBuilder.
+  ///
+  /// In en, this message translates to:
+  /// **'Story Builder'**
+  String get collabStoryBuilder;
+
+  /// No description provided for @collabWordRelayDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Take turns spelling words letter by letter'**
+  String get collabWordRelayDesc;
+
+  /// No description provided for @collabPictureGuessDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'One player describes, the other guesses the picture'**
+  String get collabPictureGuessDesc;
+
+  /// No description provided for @collabSignChallengeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign the word, then guess your partner\'s sign'**
+  String get collabSignChallengeDesc;
+
+  /// No description provided for @collabStoryBuilderDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Build a story together, one sentence at a time'**
+  String get collabStoryBuilderDesc;
+
+  /// No description provided for @collabTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team'**
+  String get collabTeam;
+
+  /// No description provided for @collabPromptDescribe.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, describe the word for {partner}'**
+  String collabPromptDescribe(String name, String partner);
+
+  /// No description provided for @collabPromptNextLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, what\'s the next letter?'**
+  String collabPromptNextLetter(String name);
+
+  /// No description provided for @collabPromptAddSentence.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, add the next sentence'**
+  String collabPromptAddSentence(String name);
+
+  /// No description provided for @collabPromptGuess.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, guess the word'**
+  String collabPromptGuess(String name);
+
+  /// No description provided for @collabAnswerWas.
+  ///
+  /// In en, this message translates to:
+  /// **'The answer was {word}'**
+  String collabAnswerWas(String word);
+
+  /// No description provided for @collabHintClue.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a clue...'**
+  String get collabHintClue;
+
+  /// No description provided for @collabHintLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'One letter...'**
+  String get collabHintLetter;
+
+  /// No description provided for @collabHintSentence.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the next sentence...'**
+  String get collabHintSentence;
+
+  /// No description provided for @collabHintGuess.
+  ///
+  /// In en, this message translates to:
+  /// **'Guess the word...'**
+  String get collabHintGuess;
+
+  /// No description provided for @collabWordToSpell.
+  ///
+  /// In en, this message translates to:
+  /// **'Word to spell:'**
+  String get collabWordToSpell;
+
+  /// No description provided for @collabWordToDescribe.
+  ///
+  /// In en, this message translates to:
+  /// **'Word to describe:'**
+  String get collabWordToDescribe;
+
+  /// No description provided for @collabSignToShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign to show:'**
+  String get collabSignToShow;
+
+  /// No description provided for @collabWhatIsTheWord.
+  ///
+  /// In en, this message translates to:
+  /// **'What is the word?'**
+  String get collabWhatIsTheWord;
+
+  /// No description provided for @collabClueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Clue:'**
+  String get collabClueLabel;
+
+  /// No description provided for @collabBuildStoryTogether.
+  ///
+  /// In en, this message translates to:
+  /// **'Build the story together!'**
+  String get collabBuildStoryTogether;
+
+  /// No description provided for @collabStartTheStory.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the story!'**
+  String get collabStartTheStory;
+
+  /// No description provided for @collabWatchTheSign.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch the sign'**
+  String get collabWatchTheSign;
+
+  /// No description provided for @collabPhraseBig.
+  ///
+  /// In en, this message translates to:
+  /// **'The {word} is big.'**
+  String collabPhraseBig(String word);
+
+  /// No description provided for @collabPhraseISee.
+  ///
+  /// In en, this message translates to:
+  /// **'I can see a {word}.'**
+  String collabPhraseISee(String word);
+
+  /// No description provided for @collabPhraseHappy.
+  ///
+  /// In en, this message translates to:
+  /// **'The {word} is happy.'**
+  String collabPhraseHappy(String word);
+
+  /// No description provided for @collabPhraseWeLike.
+  ///
+  /// In en, this message translates to:
+  /// **'We like the {word}.'**
+  String collabPhraseWeLike(String word);
+
+  /// No description provided for @collabGreatTeamwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Great teamwork!'**
+  String get collabGreatTeamwork;
+
+  /// No description provided for @collabPointsTogether.
+  ///
+  /// In en, this message translates to:
+  /// **'{score} of {total} points together'**
+  String collabPointsTogether(int score, int total);
+
+  /// No description provided for @collabSubmitAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get collabSubmitAnswer;
+
+  /// No description provided for @collabSetUpForYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up for you: {list}.'**
+  String collabSetUpForYou(String list);
+
+  /// No description provided for @collabAdaptTapToAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'tap to answer'**
+  String get collabAdaptTapToAnswer;
+
+  /// No description provided for @collabAdaptReadAloud.
+  ///
+  /// In en, this message translates to:
+  /// **'read aloud'**
+  String get collabAdaptReadAloud;
+
+  /// No description provided for @collabAdaptBiggerButtons.
+  ///
+  /// In en, this message translates to:
+  /// **'bigger buttons'**
+  String get collabAdaptBiggerButtons;
+
+  /// No description provided for @collabAdaptShorter.
+  ///
+  /// In en, this message translates to:
+  /// **'shorter session'**
+  String get collabAdaptShorter;
+
+  /// No description provided for @collabLeaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave this activity?'**
+  String get collabLeaveTitle;
+
+  /// No description provided for @collabLeaveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your place is saved — you can carry on together later.'**
+  String get collabLeaveBody;
+
+  /// No description provided for @collabLeaveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get collabLeaveConfirm;
+
+  /// No description provided for @collabKeepPlaying.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep playing'**
+  String get collabKeepPlaying;
+
+  /// No description provided for @collabClueCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category: {category}'**
+  String collabClueCategory(String category);
+
+  /// No description provided for @collabClueFirstLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'It starts with {letter}.'**
+  String collabClueFirstLetter(String letter);
+
+  /// No description provided for @collabClueLength.
+  ///
+  /// In en, this message translates to:
+  /// **'It has {count} letters.'**
+  String collabClueLength(int count);
+
+  /// No description provided for @collabPassSpoken.
+  ///
+  /// In en, this message translates to:
+  /// **'Or show it — pass to {name}'**
+  String collabPassSpoken(String name);
 }
 
 class _AppLocalizationsDelegate

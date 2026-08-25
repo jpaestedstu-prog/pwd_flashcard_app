@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,12 +6,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../data/models/enums.dart';
-import '../../../data/models/models.dart';
 
 import '../../../providers/app_providers.dart';
 import '../models/assessment_models.dart';
 import '../models/custom_quiz_models.dart';
 import '../providers/quiz_builder_provider.dart';
+import '../services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
 
 class QuizBuilderScreen extends ConsumerStatefulWidget {
@@ -345,6 +344,23 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
     final title = _titleController.text.trim();
     if (title.isEmpty || _selectedCardIds.length < 3) return;
 
+    // The title is how a teacher finds this again in Assign Tasks, so two
+    // quizzes may not share one. Refused rather than silently renamed: quietly
+    // changing what somebody typed is worse in a tool where the name is the
+    // handle. Easy to hit by accident because saving resets the field back to
+    // "My Quiz" — which is exactly how a duplicate got made during testing.
+    final clash = ref
+        .read(quizBuilderProvider)
+        .any((q) => q.title.toLowerCase() == title.toLowerCase());
+    if (clash) {
+      AppSnackBar.warning(
+        context,
+        message: 'You already have a quiz called "$title". Give this one a '
+            'different name.',
+      );
+      return;
+    }
+
     final profile = ref.read(profileProvider);
     final quiz = CustomQuiz(
       id: 'quiz_${DateTime.now().millisecondsSinceEpoch}',
@@ -370,113 +386,21 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
 
   void _startQuiz(CustomQuiz quiz) {
     final allCards = ref.read(allFlashcardsProvider);
-    final quizCards = allCards
-        .where((c) => quiz.flashcardIds.contains(c.id))
-        .toList();
+    // Keeps the quiz's own id so a learner's practice history stays grouped
+    // under it. Assigning takes the same path but mints a fresh id — see
+    // [AssessmentService.materialiseQuiz].
+    final assessment = AssessmentService.materialiseQuiz(
+      quiz,
+      allCards,
+      id: quiz.id,
+    );
 
-    if (quizCards.isEmpty) {
+    if (assessment.questions.isEmpty) {
       AppSnackBar.warning(context, message: 'No valid cards found for this quiz');
       return;
     }
 
-    // Build an Assessment from the quiz and navigate
-    final random = Random();
-    final questions = quizCards.map((card) {
-      final format = quiz.questionFormats[
-          random.nextInt(quiz.questionFormats.length)];
-      return _buildQuestion(card, format, allCards);
-    }).toList();
-
-    final assessment = Assessment(
-      id: quiz.id,
-      title: quiz.title,
-      type: AssessmentType.custom,
-      questions: questions,
-      difficulty: quiz.difficulty,
-      timeLimitMinutes: quiz.timeLimitMinutes,
-      createdBy: quiz.createdBy,
-      createdAt: quiz.createdAt,
-    );
-
     context.push('/assessment/take/${quiz.id}', extra: assessment);
-  }
-
-  AssessmentQuestion _buildQuestion(
-    Flashcard card,
-    QuestionFormat format,
-    List<Flashcard> allCards,
-  ) {
-    final random = Random();
-    switch (format) {
-      case QuestionFormat.multipleChoice:
-        final others = allCards
-            .where((c) => c.id != card.id)
-            .toList()
-          ..shuffle(random);
-        final wrongChoices =
-            others.take(3).map((c) => c.wordFilipino).toList();
-        final choices = [card.wordFilipino, ...wrongChoices]
-          ..shuffle(random);
-        return AssessmentQuestion(
-          id: 'q_${card.id}',
-          questionText:
-              'What is the Filipino word for "${card.wordEnglish}"?',
-          correctAnswer: card.wordFilipino,
-          choices: choices,
-          category: card.category,
-        );
-
-      case QuestionFormat.fillInBlank:
-        return AssessmentQuestion(
-          id: 'q_${card.id}',
-          questionText:
-              'Fill in the blank: The Filipino translation of '
-              '"${card.wordEnglish}" is _____.',
-          correctAnswer: card.wordFilipino,
-          choices: [],
-          format: QuestionFormat.fillInBlank,
-          category: card.category,
-        );
-
-      case QuestionFormat.trueFalse:
-        final isTrue = random.nextBool();
-        final displayWord = isTrue
-            ? card.wordFilipino
-            : (allCards
-                    .where((c) => c.id != card.id)
-                    .toList()
-                  ..shuffle(random))
-                .first
-                .wordFilipino;
-        return AssessmentQuestion(
-          id: 'q_${card.id}',
-          questionText:
-              'True or False: "${card.wordEnglish}" is "$displayWord" in Filipino.',
-          correctAnswer: isTrue ? 'True' : 'False',
-          choices: ['True', 'False'],
-          format: QuestionFormat.trueFalse,
-          category: card.category,
-        );
-
-      case QuestionFormat.matchPairs:
-        // Falls back to multiple choice for matching
-        final others = allCards
-            .where((c) => c.id != card.id)
-            .toList()
-          ..shuffle(random);
-        final wrongChoices =
-            others.take(3).map((c) => c.wordFilipino).toList();
-        final choices = [card.wordFilipino, ...wrongChoices]
-          ..shuffle(random);
-        return AssessmentQuestion(
-          id: 'q_${card.id}',
-          questionText:
-              'Match: "${card.wordEnglish}" → ?',
-          correctAnswer: card.wordFilipino,
-          choices: choices,
-          category: card.category,
-        );
-    }
   }
 
   Future<void> _confirmDeleteQuiz(CustomQuiz quiz) async {

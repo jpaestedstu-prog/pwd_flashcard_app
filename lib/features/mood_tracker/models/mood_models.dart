@@ -29,6 +29,14 @@ extension MoodTypeX on MoodType {
         MoodType.frustrated => 'Frustrated',
       };
 
+  /// The label in the learner's language.
+  ///
+  /// Semantics labels used to be built from [label] unconditionally, so a
+  /// Filipino learner using a screen reader heard the whole mood grid in
+  /// English. Everything user-facing goes through here now.
+  String labelOf({required bool isFilipino}) =>
+      isFilipino ? labelFilipino : label;
+
   String get emoji => switch (this) {
         MoodType.happy => '😊',
         MoodType.excited => '🤩',

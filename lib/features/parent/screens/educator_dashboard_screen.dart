@@ -13,6 +13,8 @@ import '../../../providers/active_time_provider.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/child_time_limit_provider.dart';
 import '../../../providers/parent_provider.dart';
+import '../../mood_tracker/models/mood_models.dart';
+import '../../mood_tracker/models/mood_summary.dart';
 import '../../notifications/services/alert_service.dart';
 import '../widgets/child_detail_sheet.dart';
 import '../widgets/parent_recommendation_card.dart';
@@ -700,6 +702,14 @@ class _ChildCard extends ConsumerWidget {
                 ],
               ),
             ),
+            // ── Wellbeing ──
+            // Only when the learner has actually checked in. An empty row
+            // here would read as "no feelings", which is not what silence
+            // means.
+            if (child.moodSummary.hasData) ...[
+              const SizedBox(height: 10),
+              _MoodRow(summary: child.moodSummary, hc: hc),
+            ],
             const SizedBox(height: 12),
             // Weekly trend bar
             Row(
@@ -861,6 +871,83 @@ class _ChildCard extends ConsumerWidget {
     // No per-card entrance animation: learner cards live in a lazy sliver and
     // are rebuilt on every scroll-back, so a staggered `.animate()` replays
     // from opacity 0 each time and cards blink out mid-scroll.
+  }
+}
+
+/// The learner's last week of wellbeing, on the roster card.
+///
+/// A pattern, never the entries: [MoodSummary] deliberately carries no notes,
+/// so nothing a learner wrote privately reaches a caregiver's screen.
+class _MoodRow extends ConsumerWidget {
+  final MoodSummary summary;
+  final HCColor hc;
+
+  const _MoodRow({required this.summary, required this.hc});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isFilipino = ref.watch(settingsProvider).locale == 'fil';
+    final attention = summary.needsAttention;
+    final accent =
+        attention ? AppColors.warning : summary.dominantMood?.darkColor;
+    final label = summary.labelOf(isFilipino: isFilipino);
+    final countLabel = isFilipino
+        ? '${summary.entryCount} check-in'
+        : '${summary.entryCount} check-in${summary.entryCount == 1 ? '' : 's'}';
+
+    return Semantics(
+      label: isFilipino
+          ? 'Kalagayan nitong nakaraang linggo. $label, $countLabel.'
+          '${attention ? ' Maaaring kailangan ng suporta.' : ''}'
+          : 'Wellbeing this week. $label, $countLabel.'
+              '${attention ? ' May need support.' : ''}',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: (accent ?? hc.border).withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: (accent ?? hc.border).withValues(alpha: 0.35),
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(
+              summary.dominantMood?.emoji ?? '🙂',
+              style: const TextStyle(fontSize: 18),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '$label · $countLabel',
+                style: AppTypography.labelSmall.copyWith(
+                  color: hc.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (attention) ...[
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.favorite_rounded,
+                size: 14,
+                color: AppColors.warning,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                isFilipino ? 'Tingnan' : 'Check in',
+                style: AppTypography.labelSmall.copyWith(
+                  color: AppColors.warning,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 

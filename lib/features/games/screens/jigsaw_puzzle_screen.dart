@@ -24,21 +24,28 @@ import '../../../data/models/achievements.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
+import '../game_resume_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../l10n/app_localizations.dart';
 
 class JigsawPuzzleScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
   final List<FlashcardCategory> categories;
   final bool timedMode;
 
+  /// Pick up the unfinished run the learner left behind rather than dealing a
+  /// fresh one. Set by the Games hub after asking.
+  final bool resume;
+
   const JigsawPuzzleScreen({
     super.key,
     this.difficulty = GameDifficulty.medium,
     this.categories = const [],
     this.timedMode = false,
+    this.resume = false,
   });
 
   @override
@@ -46,7 +53,53 @@ class JigsawPuzzleScreen extends ConsumerStatefulWidget {
 }
 
 class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
-    with TimedGameMixin, GamePauseMixin {
+    with TimedGameMixin, GamePauseMixin, GameResumeMixin {
+  // ─── Resume wiring ───────────────────────────────
+  @override
+  GameType get resumeGameType => GameType.jigsawPuzzle;
+  @override
+  GameDifficulty get resumeDifficulty => widget.difficulty;
+  @override
+  List<FlashcardCategory> get resumeCategories => widget.categories;
+  @override
+  bool get resumeTimedMode => widget.timedMode;
+  @override
+  String? get resumeProfileId => ref.read(profileProvider)?.id;
+  @override
+  List<String> get resumeDeckIds => _puzzleCards.map((c) => c.id).toList();
+  @override
+  int get resumeIndex => _currentPuzzle;
+  @override
+  int get resumeScore => _score;
+  @override
+  bool get resumeFinished => _showResult;
+
+  /// Re-deal the run the learner walked away from. This game's deck is a plain
+  /// card list, so restoring is just reordering it to the saved ids and
+  /// jumping the index. A deck that no longer lines up (a card dropped from
+  /// the seed data) falls back to the fresh deal.
+  void _restoreSaved() {
+    final snapshot = readResumePoint();
+    if (snapshot == null) return;
+    // Look the saved ids up in the whole pool, not in the deck that was
+    // just dealt — the fresh deal is a different random hand, so a lookup
+    // against it would miss every card and always fall back.
+    final byId = {for (final c in SeedData.allFlashcards) c.id: c};
+    final deck = snapshot.cardIds
+        .map((id) => byId[id])
+        .whereType<Flashcard>()
+        .toList();
+    if (deck.length != snapshot.cardIds.length) return;
+    setState(() {
+      _puzzleCards = deck;
+      _currentPuzzle = snapshot.roundIndex;
+      _score = snapshot.score;
+      // The piece layout is cut per puzzle, so it has to be rebuilt for
+      // the round we are jumping to.
+      _initPuzzle();
+    });
+  }
+
   late List<Flashcard> _allCards;
   late List<Flashcard> _puzzleCards;
   int _currentPuzzle = 0;
@@ -104,6 +157,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
       random: _random,
     );
     _initPuzzle();
+    if (widget.resume) _restoreSaved();
     startTimerIfNeeded(widget.timedMode);
     initPause();
   }
@@ -118,7 +172,10 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
   @override
   Future<void> savePartialProgress() async {
     if (_puzzleCards.isEmpty) return;
-    _saveProgress();
+    _saveProgress(completed: false);
+    // Quitting is the moment worth remembering: the hub can offer to
+    // bring the learner straight back to this round.
+    saveResumePoint();
   }
 
   @override
@@ -133,6 +190,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
       type: celebType,
     );
     ref.read(hapticServiceProvider).gameComplete();
+    clearResumePoint();
     setState(() => _showResult = true);
   }
 
@@ -228,6 +286,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
         type: celebType,
       );
       ref.read(hapticServiceProvider).gameComplete();
+      clearResumePoint();
       setState(() => _showResult = true);
     }
   }
@@ -241,7 +300,10 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
     return 0;
   }
 
-  void _saveProgress() {
+  /// [completed] is false only on the "Quit to Games" path — an abandoned run
+  /// still counts toward stats but is not fed to the adaptive engine as if
+  /// every unplayed round were a miss.
+  void _saveProgress({bool completed = true}) {
     final categories = _puzzleCards.map((c) => c.category).toSet().toList();
     // Per-word results — feeds both wordsLearned and spaced repetition.
     final srResults = <String, bool>{};
@@ -258,6 +320,8 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
           correctWordIds: srResults.correctWordIds,
+          durationSeconds: elapsedSeconds,
+          playedDifficulty: completed ? widget.difficulty : null,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
@@ -298,6 +362,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
   }
 
   Widget _buildResultScreen(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final celebration = ref.read(celebrationServiceProvider);
     final celebType = _starsEarned >= 3
         ? CelebrationType.perfectScore
@@ -321,7 +386,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
-                    gameTitle: 'Jigsaw Puzzle',
+                    gameTitle: GameType.jigsawPuzzle.labelOf(l10n),
                   ),
                 ),
               ),
@@ -338,6 +403,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
   }
 
   Widget _buildGameScreen(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final card = _puzzleCards[_currentPuzzle];
 
     return PopScope(
@@ -353,16 +419,20 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
               AppBar(
                 leading: IconButton(
                   icon: const Icon(Icons.close_rounded),
-                  tooltip: 'Close',
+                  tooltip: l10n.close,
                   onPressed: pauseGame,
                 ),
                 title: Text(
-                  'Jigsaw Puzzle  •  ${_currentPuzzle + 1}/$_totalPuzzles',
+                  l10n.gameRoundHeader(
+                    GameType.jigsawPuzzle.labelOf(l10n),
+                    _currentPuzzle + 1,
+                    _totalPuzzles,
+                  ),
                 ),
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.pause_circle_outline_rounded),
-                    tooltip: 'Pause',
+                    tooltip: l10n.pauseLabel,
                     onPressed: pauseGame,
                   ),
                   if (isTimedMode)
@@ -414,7 +484,10 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
                 children: [
                   // ─── Progress bar ─────────────────────
                   Semantics(
-                    label: 'Puzzle ${_currentPuzzle + 1} of $_totalPuzzles',
+                    label: l10n.jigsawPuzzleProgress(
+                      _currentPuzzle + 1,
+                      _totalPuzzles,
+                    ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
@@ -433,73 +506,76 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
 
                   // ─── Word hint ────────────────────────
                   Semantics(
-                    label:
-                        'Complete the puzzle for: ${card.wordEnglish}, ${card.wordFilipino}',
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: card.category.color.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: card.category.color.withValues(alpha: 0.3),
+                        label: l10n.jigsawCompleteFor(
+                          '${card.wordEnglish}, ${card.wordFilipino}',
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FlashcardImage(card: card, size: 28),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: card.category.color.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: card.category.color.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                card.wordEnglish,
-                                style: AppTypography.titleMedium.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: card.category.darkColor,
-                                ),
+                              FlashcardImage(card: card, size: 28),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    card.wordEnglish,
+                                    style: AppTypography.titleMedium.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: card.category.darkColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    card.wordFilipino,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: HCColor.of(context).textSecondary,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                card.wordFilipino,
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: HCColor.of(context).textSecondary,
+                              const SizedBox(width: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: HCColor.of(
+                                    context,
+                                  ).surface.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  l10n.movesUsed(_movesUsed),
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: HCColor.of(context).textSecondary,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(width: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: HCColor.of(
-                                context,
-                              ).surface.withValues(alpha: 0.7),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'Moves: $_movesUsed',
-                              style: AppTypography.labelSmall.copyWith(
-                                color: HCColor.of(context).textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ).animate(key: ValueKey(_currentPuzzle)).fadeIn(duration: 300.ms),
+                        ),
+                      )
+                      .animate(key: ValueKey(_currentPuzzle))
+                      .fadeIn(duration: 300.ms),
                   const SizedBox(height: 16),
 
                   // ─── Puzzle Grid (target) ─────────────
                   Expanded(flex: 5, child: _buildPuzzleGrid(card)),
                   const SizedBox(height: 12),
                   Text(
-                    'Tap a piece, then tap a grid slot',
+                    l10n.jigsawHowTo,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.labelSmall.copyWith(
@@ -667,6 +743,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
   }
 
   Widget _buildPieceTray(Flashcard card) {
+    final l10n = AppLocalizations.of(context)!;
     final unplacedIndices = <int>[];
     for (int i = 0; i < _shuffledPieceOrder.length; i++) {
       if (!_placedPieces[_shuffledPieceOrder[i]]) {
@@ -677,7 +754,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
     if (unplacedIndices.isEmpty) {
       return Center(
         child: Text(
-          'All pieces placed! 🎉',
+          l10n.allPiecesPlaced,
           style: AppTypography.titleMedium.copyWith(
             color: AppColors.success,
             fontWeight: FontWeight.w700,

@@ -83,11 +83,31 @@ mixin GamePauseMixin<T extends StatefulWidget> on TimedGameMixin<T> {
   @protected
   Future<void> savePartialProgress() async {}
 
+  /// Override to remember *where* the learner is when the app is sent to the
+  /// background, so the run can be offered back to them later. Default: no-op.
+  ///
+  /// Distinct from [savePartialProgress]: this must not record a game result.
+  /// Pressing Home is not finishing a game, and a young learner is far more
+  /// likely to leave that way than to find "Quit to Games" in the pause menu —
+  /// so the resume point has to survive it, while the score does not get
+  /// written twice.
+  @protected
+  void onBackgrounded() {}
+
   void _onAppLifecycle(AppLifecycleState state) {
-    // Auto-pause whenever the app loses foreground. We don't auto-save on
-    // background — only an explicit "Quit to Hub" tap records a partial run.
+    // Auto-pause whenever the app loses foreground. We still don't auto-save
+    // *progress* on background — only an explicit "Quit to Hub" tap records a
+    // partial run — but we do remember the round, via [onBackgrounded].
     if (state != AppLifecycleState.resumed) {
       pauseGame();
+    }
+    // `inactive` fires for transient interruptions (a permission sheet, the
+    // notification shade), which the learner comes straight back from. Only
+    // the states that mean "really gone" are worth a write.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      onBackgrounded();
     }
   }
 }

@@ -11,7 +11,10 @@ import 'package:pwdpwdpwd/features/home/screens/educator_home_screen.dart';
 import 'package:pwdpwdpwd/features/home/screens/player_home_screen.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/screens/mood_check_in_screen.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/screens/mood_history_screen.dart';
+import 'package:pwdpwdpwd/features/mood_tracker/screens/mood_insights_screen.dart';
+import 'package:pwdpwdpwd/features/notebook/screens/note_editor_screen.dart';
 import 'package:pwdpwdpwd/features/notebook/screens/notebook_screen.dart';
+import 'package:pwdpwdpwd/features/stickers/screens/sticker_album_screen.dart';
 import 'package:pwdpwdpwd/features/object_scan/screens/word_hunt_collection_screen.dart';
 import 'package:pwdpwdpwd/features/parent/screens/parent_dashboard_screen.dart';
 import 'package:pwdpwdpwd/features/parent/screens/parental_controls_screen.dart';
@@ -101,6 +104,11 @@ void main() {
     'NotebookScreen': () => const NotebookScreen(),
     'MoodCheckInScreen': () => const MoodCheckInScreen(),
     'MoodHistoryScreen': () => const MoodHistoryScreen(),
+    // Never in the matrix before: the research dashboard, the album's
+    // tabbed grid, and the note editor are all learner-reachable.
+    'MoodInsightsScreen': () => const MoodInsightsScreen(),
+    'StickerAlbumScreen': () => const StickerAlbumScreen(),
+    'NoteEditorScreen': () => const NoteEditorScreen(),
     'WeeklyReportScreen': () => const WeeklyReportScreen(),
     // Word Hunt's collection: a long checklist of picture tiles, the shape
     // most likely to burst a row at a big font scale.

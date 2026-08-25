@@ -52,7 +52,11 @@ class DifficultyHistoryChart extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.trending_up_rounded, color: AppColors.info, size: 22),
+              const Icon(
+                Icons.trending_up_rounded,
+                color: AppColors.info,
+                size: 22,
+              ),
               const SizedBox(width: 8),
               Text(
                 l10n.chartDifficultyHistory,
@@ -65,9 +69,7 @@ class DifficultyHistoryChart extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             l10n.chartDifficultySubtitle,
-            style: AppTypography.bodySmall.copyWith(
-              color: hc.textSecondary,
-            ),
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 16),
 
@@ -76,7 +78,11 @@ class DifficultyHistoryChart extends StatelessWidget {
             children: [
               _legendDot(context, AppColors.success, l10n.chartDifficultyHigh),
               const SizedBox(width: 16),
-              _legendDot(context, AppColors.warning, l10n.chartDifficultyMedium),
+              _legendDot(
+                context,
+                AppColors.warning,
+                l10n.chartDifficultyMedium,
+              ),
               const SizedBox(width: 16),
               _legendDot(context, AppColors.error, l10n.chartDifficultyLow),
             ],
@@ -113,15 +119,23 @@ class DifficultyHistoryChart extends StatelessWidget {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: (recentScores.length / 5).ceilToDouble().clamp(1, 5),
+                      interval: (recentScores.length / 5).ceilToDouble().clamp(
+                        1,
+                        5,
+                      ),
                       getTitlesWidget: (value, meta) {
                         final idx = value.toInt();
-                        if (idx < 0 || idx >= recentScores.length) return const SizedBox.shrink();
+                        if (idx < 0 || idx >= recentScores.length) {
+                          return const SizedBox.shrink();
+                        }
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             '#${idx + 1}',
-                            style: TextStyle(fontSize: 9, color: hc.textSecondary),
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: hc.textSecondary,
+                            ),
                           ),
                         );
                       },
@@ -147,8 +161,8 @@ class DifficultyHistoryChart extends StatelessWidget {
                         final color = accuracy >= 0.8
                             ? AppColors.success
                             : accuracy >= 0.5
-                                ? AppColors.warning
-                                : AppColors.error;
+                            ? AppColors.warning
+                            : AppColors.error;
                         return FlDotCirclePainter(
                           radius: 4,
                           color: color,
@@ -182,7 +196,7 @@ class DifficultyHistoryChart extends StatelessWidget {
                         final point = tooltipData[spot.spotIndex];
                         if (point == null) return null;
                         return LineTooltipItem(
-                          '${point.gameType.label}\n'
+                          '${point.gameType.labelOf(l10n)}\n'
                           '${(point.accuracy * 100).toStringAsFixed(0)}% • ⭐${point.starsEarned}',
                           const TextStyle(
                             color: Colors.white,
@@ -209,13 +223,16 @@ class DifficultyHistoryChart extends StatelessWidget {
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 10, color: HCColor.of(context).textSecondary)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: HCColor.of(context).textSecondary,
+          ),
+        ),
       ],
     );
   }
@@ -233,7 +250,11 @@ class DifficultyHistoryChart extends StatelessWidget {
       child: Center(
         child: Column(
           children: [
-            const Icon(Icons.trending_up_rounded, size: 40, color: AppColors.textHint),
+            const Icon(
+              Icons.trending_up_rounded,
+              size: 40,
+              color: AppColors.textHint,
+            ),
             const SizedBox(height: 8),
             Text(
               l10n.chartDifficultyEmpty,

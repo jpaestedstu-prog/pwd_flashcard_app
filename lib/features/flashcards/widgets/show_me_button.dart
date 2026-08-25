@@ -7,6 +7,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/models.dart';
 import 'media_sheet_layout.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// "Show Me" — opens a short looping clip of the vocabulary word in motion.
 /// Visual demonstrations are far clearer than written text, especially for
@@ -62,7 +63,7 @@ class ShowMeButton extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Show Me',
+                  AppLocalizations.of(context)!.showMe,
                   style: AppTypography.labelLarge.copyWith(
                     color: AppColors.secondaryDark,
                     fontWeight: FontWeight.w700,
@@ -154,7 +155,7 @@ class _ShowMeSheetState extends State<_ShowMeSheet> {
   Widget build(BuildContext context) {
     return MediaSheetLayout(
       icon: Icons.smart_display_rounded,
-      title: 'Show Me — ${widget.card.wordEnglish}',
+      title: AppLocalizations.of(context)!.showMeTitle(widget.card.wordEnglish),
       caption: widget.card.definition ?? widget.card.exampleSentence,
       mediaBuilder: (_) => _buildMedia(context),
     );

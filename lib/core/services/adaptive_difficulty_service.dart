@@ -285,7 +285,45 @@ class AdaptiveDifficultyService {
 
   /// Game-aware version of [getSuggestionReason]: explains the suggestion
   /// using the student's recent rounds of [gameType] when available.
+  ///
+  /// English-only, and kept for the research export. The **UI** wants
+  /// [explainSuggestionForGame], which returns the same reasoning as data so
+  /// the sentence can be assembled in the learner's language.
   static String getSuggestionReasonForGame({
+    required String profileId,
+    required GameType gameType,
+  }) {
+    final e = explainSuggestionForGame(
+      profileId: profileId,
+      gameType: gameType,
+    );
+    final scope = switch (e.scope) {
+      SuggestionScope.none => null,
+      SuggestionScope.thisGame =>
+        'In ${gameType.label}, your recent accuracy is ${e.accuracyPercent}%',
+      SuggestionScope.recentGames =>
+        'Across your recent games, your accuracy is ${e.accuracyPercent}%',
+      SuggestionScope.lifetime => 'Your accuracy is ${e.accuracyPercent}%',
+    };
+    if (scope == null) {
+      return "You're just getting started! We'll begin with easy questions.";
+    }
+    final tail = switch (e.tier) {
+      GameDifficulty.easy =>
+        'Let\'s practice with easier questions to build confidence!',
+      GameDifficulty.medium => 'A balanced challenge to keep you growing!',
+      GameDifficulty.hard => 'You\'re doing great — time for a real challenge!',
+    };
+    return '$scope. $tail';
+  }
+
+  /// Why the "Auto" card suggests what it suggests, **as data**.
+  ///
+  /// The sentence used to be built here by string concatenation, which meant
+  /// a Filipino learner read an English explanation of their own accuracy.
+  /// Returning the parts lets the widget compose them with `AppLocalizations`
+  /// while this file keeps owning the *reasoning*.
+  static DifficultyExplanation explainSuggestionForGame({
     required String profileId,
     required GameType gameType,
   }) {
@@ -298,25 +336,41 @@ class AdaptiveDifficultyService {
         ? gameWindow
         : history.take(10).toList();
 
-    if (window.isEmpty) {
-      // No game history yet — fall back to lifetime word stats.
-      return getSuggestionReason(profileId: profileId);
+    if (window.isNotEmpty) {
+      final avg =
+          window.map((e) => e.accuracy).reduce((a, b) => a + b) / window.length;
+      return DifficultyExplanation(
+        scope: gameWindow.isNotEmpty
+            ? SuggestionScope.thisGame
+            : SuggestionScope.recentGames,
+        accuracyPercent: (avg * 100).round(),
+        tier: _tierFor(avg),
+      );
     }
 
-    final avg =
-        window.map((e) => e.accuracy).reduce((a, b) => a + b) / window.length;
-    final pct = (avg * 100).round();
-    final scope = gameWindow.isNotEmpty
-        ? 'In ${gameType.label}, your recent accuracy is $pct%'
-        : 'Across your recent games, your accuracy is $pct%';
+    // No game history yet — fall back to lifetime word stats.
+    final summary = SpacedRepetitionService.getSummary(profileId);
+    if (summary.totalAttempted == 0) {
+      return const DifficultyExplanation(
+        scope: SuggestionScope.none,
+        accuracyPercent: 0,
+        tier: GameDifficulty.easy,
+      );
+    }
+    final accuracy = summary.totalCorrect / summary.totalAttempted;
+    return DifficultyExplanation(
+      scope: SuggestionScope.lifetime,
+      accuracyPercent: (accuracy * 100).round(),
+      tier: _tierFor(accuracy),
+    );
+  }
 
-    if (avg < 0.4) {
-      return '$scope. Let\'s practice with easier questions to build confidence!';
-    }
-    if (avg <= 0.7) {
-      return '$scope. A balanced challenge to keep you growing!';
-    }
-    return '$scope. You\'re doing great — time for a real challenge!';
+  /// The three thresholds the explanation's closing line is chosen by. Same
+  /// cut-points as [_difficultyFromWindow]'s smooth rule.
+  static GameDifficulty _tierFor(double accuracy) {
+    if (accuracy < 0.4) return GameDifficulty.easy;
+    if (accuracy <= 0.7) return GameDifficulty.medium;
+    return GameDifficulty.hard;
   }
 
   /// Return the full difficulty history for a student (most recent first).
@@ -522,6 +576,42 @@ class AdaptiveDifficultyService {
 
 /// Tracks which direction a student's performance is trending.
 enum DifficultyTrend { improving, stable, declining }
+
+/// Which evidence the "Auto" suggestion was drawn from, worst-informed last.
+enum SuggestionScope {
+  /// No history at all — the learner is brand new.
+  none,
+
+  /// Recent rounds of this exact game.
+  thisGame,
+
+  /// Recent rounds across all games.
+  recentGames,
+
+  /// Lifetime per-word accuracy from spaced repetition.
+  lifetime,
+}
+
+/// The reasoning behind an "Auto" difficulty suggestion, as data rather than
+/// as an English sentence — see
+/// [AdaptiveDifficultyService.explainSuggestionForGame].
+class DifficultyExplanation {
+  final SuggestionScope scope;
+
+  /// 0–100. Meaningless when [scope] is [SuggestionScope.none].
+  final int accuracyPercent;
+
+  /// Which encouragement the accuracy earns. Note this is the *tone* of the
+  /// closing line, not necessarily the level the engine settles on — streaks
+  /// can move that faster than the average does.
+  final GameDifficulty tier;
+
+  const DifficultyExplanation({
+    required this.scope,
+    required this.accuracyPercent,
+    required this.tier,
+  });
+}
 
 /// A single recorded game outcome for difficulty tracking.
 class DifficultyHistoryEntry {

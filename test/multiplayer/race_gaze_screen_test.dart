@@ -10,6 +10,7 @@ import 'package:pwdpwdpwd/features/gaze_control/models/gaze_settings.dart';
 import 'package:pwdpwdpwd/features/gaze_control/providers/gaze_settings_provider.dart';
 import 'package:pwdpwdpwd/features/gaze_control/widgets/gaze_scope.dart';
 import 'package:pwdpwdpwd/features/multiplayer/models/multiplayer_models.dart';
+import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 import 'package:pwdpwdpwd/features/multiplayer/screens/local_race_screen.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 
@@ -83,6 +84,9 @@ void main() {
       ],
       child: const MaterialApp(
         debugShowCheckedModeBanner: false,
+        // The race's pause overlay reads its copy from AppLocalizations.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: LocalRaceScreen(mode: MpGameMode.quizRace),
       ),
     ));

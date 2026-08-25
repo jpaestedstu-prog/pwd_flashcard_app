@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'jigsaw_piece_clipper.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// A single draggable jigsaw piece that displays a clipped portion
 /// of the source image (or emoji fallback).
@@ -36,6 +37,7 @@ class JigsawPieceWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // Each piece is laid out at its CORE size (pieceWidth × pieceHeight); the
     // jigsaw tabs are drawn by the clipper and overflow outside that box. The
     // OverflowBox lets the full-size source image render unconstrained (a plain
@@ -71,7 +73,7 @@ class JigsawPieceWidget extends StatelessWidget {
 
     if (isPlaced) {
       return Semantics(
-        label: 'Puzzle piece row ${row + 1}, column ${col + 1}, placed correctly',
+        label: l10n.jigsawPiecePlaced(row + 1, col + 1),
         child: piece.animate().scale(
           begin: const Offset(1.05, 1.05),
           end: const Offset(1.0, 1.0),
@@ -82,7 +84,7 @@ class JigsawPieceWidget extends StatelessWidget {
 
     // Unplaced pieces get a subtle shadow and are tappable
     return Semantics(
-      label: 'Puzzle piece row ${row + 1}, column ${col + 1}, tap to place',
+      label: l10n.jigsawPieceSemantics(row + 1, col + 1),
       button: true,
       child: GestureDetector(
         onTap: onTap,

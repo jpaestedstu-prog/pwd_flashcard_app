@@ -7,6 +7,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../widgets/tap_quiz_game.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Yes or No
 ///
@@ -21,6 +22,7 @@ class YesOrNoScreen extends TapQuizScreen {
     super.difficulty,
     super.categories,
     super.timedMode,
+    super.resume,
   });
 
   @override
@@ -30,9 +32,6 @@ class YesOrNoScreen extends TapQuizScreen {
 class _YesOrNoScreenState extends TapQuizState<YesOrNoScreen> {
   @override
   GameType get gameType => GameType.yesOrNo;
-
-  @override
-  String get gameTitle => 'Yes or No';
 
   @override
   int get choiceColumns => 2;
@@ -69,14 +68,16 @@ class _YesOrNoScreenState extends TapQuizState<YesOrNoScreen> {
     final shown = decoy ?? card;
     return TapQuizRound(
       card: card,
-      choices: const [
+      // `labelOf` rather than `label`: rounds are built in initState, which
+      // is too early to look up AppLocalizations.
+      choices: [
         TapChoice(
-          label: 'Yes',
+          labelOf: (l10n) => l10n.answerYes,
           icon: Icons.check_circle_rounded,
           tint: AppColors.successLight,
         ),
         TapChoice(
-          label: 'No',
+          labelOf: (l10n) => l10n.answerNo,
           icon: Icons.cancel_rounded,
           tint: AppColors.errorLight,
         ),
@@ -89,13 +90,16 @@ class _YesOrNoScreenState extends TapQuizState<YesOrNoScreen> {
   Flashcard _shown(TapQuizRound round) => round.payload as Flashcard;
 
   @override
-  String promptSemantics(TapQuizRound round) =>
-      'Question: is this picture of a ${round.card.wordEnglish} '
-      'the word ${_shown(round).wordEnglish}, '
-      '${_shown(round).wordFilipino}? Answer Yes or No.';
+  String promptSemantics(AppLocalizations l10n, TapQuizRound round) =>
+      l10n.yesNoQuestion(
+        round.card.wordEnglish,
+        _shown(round).wordEnglish,
+        _shown(round).wordFilipino,
+      );
 
   @override
   Widget buildPrompt(BuildContext context, TapQuizRound round) {
+    final l10n = AppLocalizations.of(context)!;
     final hc = HCColor.of(context);
     final shown = _shown(round);
     return promptPanel(
@@ -110,7 +114,7 @@ class _YesOrNoScreenState extends TapQuizState<YesOrNoScreen> {
           FlashcardImage(card: round.card, size: 96),
           const SizedBox(height: 16),
           Text(
-            'Is this…',
+            l10n.isThisPrompt,
             style: AppTypography.titleMedium.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 8),

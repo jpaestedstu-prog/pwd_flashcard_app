@@ -27,6 +27,7 @@ import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
+import '../game_resume_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
@@ -37,11 +38,17 @@ class WordMatchScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
   final List<FlashcardCategory> categories;
   final bool timedMode;
+
+  /// Pick up the unfinished run the learner left behind rather than dealing a
+  /// fresh one. Set by the Games hub after asking.
+  final bool resume;
+
   const WordMatchScreen({
     super.key,
     this.difficulty = GameDifficulty.medium,
     this.categories = const [],
     this.timedMode = false,
+    this.resume = false,
   });
 
   @override
@@ -49,7 +56,34 @@ class WordMatchScreen extends ConsumerStatefulWidget {
 }
 
 class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
-    with TimedGameMixin, GamePauseMixin {
+    with TimedGameMixin, GamePauseMixin, GameResumeMixin {
+  // ─── Resume wiring ───────────────────────────────
+  @override
+  GameType get resumeGameType => GameType.wordMatch;
+  @override
+  GameDifficulty get resumeDifficulty => widget.difficulty;
+  @override
+  List<FlashcardCategory> get resumeCategories => widget.categories;
+  @override
+  bool get resumeTimedMode => widget.timedMode;
+  @override
+  String? get resumeProfileId => ref.read(profileProvider)?.id;
+  @override
+  List<String> get resumeDeckIds =>
+      _rounds.map((r) => r.correctCard.id).toList();
+  @override
+  int get resumeIndex => _currentRound;
+  @override
+  int get resumeScore => _score;
+  @override
+  Map<String, bool> get resumeResults => {
+    for (var i = 0; i < _currentRound && i < _rounds.length; i++)
+      _rounds[i].correctCard.id:
+          _reviewItems.length > i && _reviewItems[i].isCorrect,
+  };
+  @override
+  bool get resumeFinished => _showResult;
+
   late List<Flashcard> _allCards;
   late List<_WordMatchRound> _rounds;
   int _currentRound = 0;
@@ -86,8 +120,59 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
     }
     _allCards = source..shuffle();
     _generateRounds();
+    if (widget.resume) _restoreSaved();
     startTimerIfNeeded(widget.timedMode);
     initPause();
+  }
+
+  /// Re-deal the run the learner walked away from. The snapshot holds the deck
+  /// and how far in they got, not the rendered rounds — choices are drawn
+  /// fresh. Any mismatch falls back to the fresh deal rather than resuming
+  /// into a half-broken state.
+  void _restoreSaved() {
+    final snapshot = readResumePoint();
+    if (snapshot == null) return;
+
+    final byId = {for (final c in SeedData.allFlashcards) c.id: c};
+    final deck = snapshot.cardIds
+        .map((id) => byId[id])
+        .whereType<Flashcard>()
+        .toList();
+    if (deck.length != snapshot.cardIds.length) return;
+
+    final rebuilt = <_WordMatchRound>[];
+    for (final correct in deck) {
+      final others = _allCards.where((c) => c.id != correct.id).toList()
+        ..shuffle(_random);
+      final choices = [correct, ...others.take(_numChoices - 1)]
+        ..shuffle(_random);
+      rebuilt.add(
+        _WordMatchRound(
+          correctCard: correct,
+          choices: choices,
+          correctIndex: choices.indexOf(correct),
+        ),
+      );
+    }
+
+    setState(() {
+      _rounds = rebuilt;
+      _currentRound = snapshot.roundIndex;
+      _score = snapshot.score;
+      // Per-word verdicts survive for the review sheet; the exact wrong answer
+      // tapped before the break does not, and is not worth persisting.
+      _reviewItems.clear();
+      for (final card in deck.take(snapshot.roundIndex)) {
+        _reviewItems.add(
+          GameReviewItem(
+            wordEnglish: card.wordEnglish,
+            wordFilipino: card.wordFilipino,
+            category: card.category,
+            isCorrect: snapshot.cardResults[card.id] ?? false,
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -100,11 +185,15 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
   @override
   Future<void> savePartialProgress() async {
     if (_rounds.isEmpty) return;
-    _saveProgress();
+    _saveProgress(completed: false);
+    // Quitting is the moment worth remembering: the hub can offer to bring
+    // the learner straight back to this round.
+    saveResumePoint();
   }
 
   @override
   void onTimeUp() {
+    clearResumePoint();
     _saveProgress();
     final celebType = _starsEarned >= 3
         ? CelebrationType.perfectScore
@@ -160,11 +249,12 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
   }
 
   List<GazeAction> _gazeActions() {
+    final l10n = AppLocalizations.of(context)!;
     final canMove = !_answered && !isPaused;
     return [
       GazeAction(
         zone: GazeZone.left,
-        label: 'Prev',
+        label: l10n.gazePrev,
         icon: Icons.chevron_left_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -172,7 +262,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
       ),
       GazeAction(
         zone: GazeZone.right,
-        label: 'Next',
+        label: l10n.gazeNext,
         icon: Icons.chevron_right_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -180,7 +270,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
       ),
       GazeAction(
         zone: GazeZone.down,
-        label: 'Choose',
+        label: l10n.gazeChoose,
         icon: Icons.check_circle_rounded,
         color: AppColors.success,
         enabled: canMove,
@@ -232,6 +322,8 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
           _answered = false;
         });
       } else {
+        // The run is over, so there is nothing left to come back to.
+        clearResumePoint();
         _saveProgress();
         final celebType = _starsEarned >= 3
             ? CelebrationType.perfectScore
@@ -248,6 +340,8 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
   }
 
   void _restart() {
+    // "Play Again" deals a new run, which supersedes whatever was saved.
+    clearResumePoint();
     setState(() {
       _currentRound = 0;
       _score = 0;
@@ -270,7 +364,12 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
     return 0;
   }
 
-  void _saveProgress() {
+  /// [completed] is false only for the "Quit to Games" path, where the run
+  /// ended early. The score still counts toward stats exactly as before, but
+  /// the adaptive engine is not fed an accuracy that scores every unplayed
+  /// round as a miss — that would read as a struggling learner and push the
+  /// suggested difficulty down for quitting rather than for missing.
+  void _saveProgress({bool completed = true}) {
     final categories = _rounds
         .map((r) => r.correctCard.category)
         .toSet()
@@ -293,6 +392,8 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
           correctWordIds: srResults.correctWordIds,
+          durationSeconds: elapsedSeconds,
+          playedDifficulty: completed ? widget.difficulty : null,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
@@ -308,6 +409,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hc = HCColor.of(context);
     if (_showResult) {
       final celebration = ref.read(celebrationServiceProvider);
@@ -332,7 +434,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                     onReview: () => showGameReview(
                       context,
                       items: _reviewItems,
-                      gameTitle: 'Word Match',
+                      gameTitle: GameType.wordMatch.labelOf(l10n),
                     ),
                   ),
                 ),
@@ -370,16 +472,20 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                 AppBar(
                   leading: IconButton(
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Close',
+                    tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
                   title: Text(
-                    'Word Match  •  ${_currentRound + 1}/${_rounds.length}',
+                    l10n.gameRoundHeader(
+                      GameType.wordMatch.labelOf(l10n),
+                      _currentRound + 1,
+                      _rounds.length,
+                    ),
                   ),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
-                      tooltip: 'Pause',
+                      tooltip: l10n.pauseLabel,
                       onPressed: pauseGame,
                     ),
                     if (isTimedMode)
@@ -431,7 +537,10 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                   children: [
                     // ─── Progress bar ─────────────────────
                     Semantics(
-                      label: 'Round ${_currentRound + 1} of ${_rounds.length}',
+                      label: l10n.resumeRoundProgress(
+                        _currentRound + 1,
+                        _rounds.length,
+                      ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
@@ -453,8 +562,9 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                       flex: 3,
                       child:
                           Semantics(
-                                label:
-                                    'Question: What is the English word for ${round.correctCard.wordFilipino}?',
+                                label: l10n.questionEnglishFor(
+                                  round.correctCard.wordFilipino,
+                                ),
                                 child: Container(
                                   width: double.infinity,
                                   decoration: BoxDecoration(
@@ -571,9 +681,9 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                           Widget card = Semantics(
                             button: true,
                             label:
-                                'Answer choice: ${choice.wordEnglish}'
-                                '${showCorrect ? ', correct answer' : ''}'
-                                '${showWrong ? ', wrong answer' : ''}',
+                                '${l10n.answerChoiceSemantics(choice.wordEnglish)}'
+                                '${showCorrect ? l10n.correctAnswerSuffix : ''}'
+                                '${showWrong ? l10n.wrongAnswerSuffix : ''}',
                             child: GestureDetector(
                               onTap: () => _selectAnswer(index),
                               child: AnimatedContainer(

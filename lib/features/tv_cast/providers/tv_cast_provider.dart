@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show Color;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/sound_service.dart';
@@ -1158,20 +1159,64 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     if (profile == null) return;
 
     final rosterAsync = ref.read(educatorRosterProvider(profile.id));
+    final allLocal = ref.read(allProfilesWithProgressProvider);
+    // Offline, scope to what local enrolment can prove instead of every
+    // learner on the device — a cast leaderboard must not put another
+    // family's children on the TV. See [localEducatorRoster].
     final List<(UserProfile, LearningProgress)> roster =
-        rosterAsync.valueOrNull ?? ref.read(allProfilesWithProgressProvider);
+        rosterAsync.valueOrNull ??
+        localEducatorRoster(profile.id, allLocal) ??
+        allLocal;
 
+    final views = buildProgressViews(roster);
+    final rows = views.ranked;
+    final summary = views.summary;
+
+    final rowsUnchanged =
+        rows.length == state.progress.length &&
+        List.generate(
+          rows.length,
+          (i) => rows[i] == state.progress[i],
+        ).every((b) => b);
+    if (rowsUnchanged && summary == state.classSummary) return;
+
+    state = state.copyWith(
+      progress: rows,
+      classSummary: summary,
+      revision: state.revision + 1,
+    );
+  }
+
+  /// The two things the TV shows, computed from a roster: the ranked top ten
+  /// and the whole-class summary.
+  ///
+  /// Pure and static so it can be tested without a cast session, a Firestore
+  /// roster or a live TV — none of which a test can conjure, which is why the
+  /// filtering below went unnoticed for so long.
+  ///
+  /// [now] decides who counts as active today; it defaults to the real clock
+  /// but a caller can pin it rather than racing a 24-hour boundary.
+  @visibleForTesting
+  static ({List<TvCastProgressRow> ranked, TvCastClassSummary summary})
+  buildProgressViews(
+    List<(UserProfile, LearningProgress)> roster, {
+    DateTime? now,
+  }) {
+    // `isEnrollableLearner`, not `== UserRole.student`: a Parent casting their
+    // home group has `child`-role members, and filtering on `student` left
+    // their TV showing an empty leaderboard. Same invariant every other
+    // educator roster consumer follows — see `UserRoleX.isEnrollableLearner`.
     final students = roster
-        .where((d) => d.$1.role == UserRole.student && !d.$1.isGuestPlayer)
+        .where((d) => d.$1.role.isEnrollableLearner && !d.$1.isGuestPlayer)
         .toList();
 
     // ─ Ranked view: top 10 by stars.
     final byStars = [...students]
       ..sort((a, b) => b.$2.totalStars.compareTo(a.$2.totalStars));
-    final rows = <TvCastProgressRow>[];
+    final ranked = <TvCastProgressRow>[];
     for (var i = 0; i < byStars.length && i < 10; i++) {
       final (p, prog) = byStars[i];
-      rows.add(
+      ranked.add(
         TvCastProgressRow(
           rank: i + 1,
           name: p.name,
@@ -1187,7 +1232,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       ..sort((a, b) => a.$1.name.toLowerCase().compareTo(
             b.$1.name.toLowerCase(),
           ));
-    final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+    final cutoff = (now ?? DateTime.now()).subtract(const Duration(hours: 24));
     var wordsTotal = 0;
     var starsTotal = 0;
     var activeToday = 0;
@@ -1212,27 +1257,17 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         );
       }
     }
-    final summary = TvCastClassSummary(
-      learnerCount: students.length,
-      wordsTotal: wordsTotal,
-      starsTotal: starsTotal,
-      activeToday: activeToday,
-      bestStreak: bestStreak,
-      rows: classRows,
-    );
 
-    final rowsUnchanged =
-        rows.length == state.progress.length &&
-        List.generate(
-          rows.length,
-          (i) => rows[i] == state.progress[i],
-        ).every((b) => b);
-    if (rowsUnchanged && summary == state.classSummary) return;
-
-    state = state.copyWith(
-      progress: rows,
-      classSummary: summary,
-      revision: state.revision + 1,
+    return (
+      ranked: ranked,
+      summary: TvCastClassSummary(
+        learnerCount: students.length,
+        wordsTotal: wordsTotal,
+        starsTotal: starsTotal,
+        activeToday: activeToday,
+        bestStreak: bestStreak,
+        rows: classRows,
+      ),
     );
   }
 

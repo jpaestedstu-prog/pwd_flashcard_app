@@ -33,9 +33,20 @@ mixin GazeRouteGuard<T extends StatefulWidget> on State<T> {
   /// Gate every input path on this at event time.
   bool get gazeCovered {
     if (!mounted) return true;
+    if (extraCovered) return true;
     final route = ModalRoute.of(context);
     return route != null && !route.isCurrent;
   }
+
+  /// An additional "something is on top of me" signal, for scopes whose own
+  /// [ModalRoute] cannot answer the question.
+  ///
+  /// The navigation shell needs this: it wraps go_router's `ShellRoute`
+  /// builder, so it sits *above* the shell's inner navigator and its nearest
+  /// route stays `isCurrent` even while a sheet pushed from a hub screen covers
+  /// everything. Per-screen scopes are pushed as ordinary routes and their
+  /// `ModalRoute` is already correct, so they leave this alone.
+  bool get extraCovered => false;
 
   /// Cached counterpart of [gazeCovered] for `build` — see the class doc.
   bool get gazeCoveredForUi => _coveredForUi;

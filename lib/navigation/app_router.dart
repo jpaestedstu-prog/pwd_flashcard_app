@@ -83,12 +83,14 @@ import '../features/assessment/screens/assessment_builder_screen.dart';
 import '../features/assessment/screens/assessment_assign_screen.dart';
 import '../features/assessment/screens/assignment_tracking_screen.dart';
 import '../features/assessment/models/assessment_models.dart';
+import '../features/assessment/services/assessment_service.dart';
 import '../features/showcase/screens/showcase_screen.dart';
 import '../features/showcase/screens/showcase_detail_screen.dart';
 import '../features/showcase/screens/showcase_share_screen.dart';
 import '../features/showcase/screens/learning_gain_screen.dart';
 import '../features/showcase/models/showcase_models.dart';
 import '../features/recommendations/screens/recommendations_screen.dart';
+import '../features/mood_tracker/models/mood_context.dart';
 import '../features/mood_tracker/screens/mood_check_in_screen.dart';
 import '../features/mood_tracker/screens/mood_history_screen.dart';
 import '../features/mood_tracker/screens/mood_insights_screen.dart';
@@ -99,6 +101,7 @@ import '../features/guided_practice/screens/guided_practice_screen.dart';
 import '../features/ai_tutor/screens/ai_tutor_screen.dart';
 import '../features/messaging/screens/messaging_screen.dart';
 import '../features/object_scan/screens/object_scan_screen.dart';
+import '../features/gaze_control/widgets/shell_modal_observer.dart';
 import '../features/object_scan/screens/word_hunt_collection_screen.dart';
 import '../features/gaze_control/screens/gaze_control_screen.dart';
 import '../features/gaze_control/screens/gaze_settings_screen.dart';
@@ -490,6 +493,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const ProfileSwitcherScreen(),
         ),
       ),
+      // Manage Profiles (every profile on this device, incl. educators).
+      // Separate from /student-profiles so the classroom-roster behaviour of
+      // that route is left alone.
+      GoRoute(
+        path: '/manage-profiles',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const StudentProfileListScreen(deviceScope: true),
+        ),
+      ),
       // Student Profile List (view all student profiles)
       GoRoute(
         path: '/student-profiles',
@@ -640,6 +653,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       // Main Shell with Bottom Nav
       ShellRoute(
+        // Lets the shell's D-pad notice a sheet or dialog opened from a hub
+        // screen. Those push onto *this* navigator, which `ModalRoute.of` from
+        // the shell builder can never see — see [ShellModalObserver].
+        observers: [shellModalObserver],
         builder: (context, state, child) =>
             BottomNavShell(state: state, child: child),
         routes: [
@@ -755,6 +772,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       difficulty: _parseDifficulty(state),
                       categories: _parseCategories(state),
                       timedMode: _parseTimedMode(state),
+                      resume: _parseResume(state),
                     ),
                   ),
                 ),
@@ -769,6 +787,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       difficulty: _parseDifficulty(state),
                       categories: _parseCategories(state),
                       timedMode: _parseTimedMode(state),
+                      resume: _parseResume(state),
                       focusWordId: _parseFocusWord(state),
                     ),
                   ),
@@ -812,6 +831,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       difficulty: _parseDifficulty(state),
                       categories: _parseCategories(state),
                       timedMode: _parseTimedMode(state),
+                      resume: _parseResume(state),
                     ),
                   ),
                 ),
@@ -826,6 +846,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       difficulty: _parseDifficulty(state),
                       categories: _parseCategories(state),
                       timedMode: _parseTimedMode(state),
+                      resume: _parseResume(state),
                       focusWordId: _parseFocusWord(state),
                     ),
                   ),
@@ -841,6 +862,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       difficulty: _parseDifficulty(state),
                       categories: _parseCategories(state),
                       timedMode: _parseTimedMode(state),
+                      resume: _parseResume(state),
                     ),
                   ),
                 ),
@@ -855,6 +877,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       difficulty: _parseDifficulty(state),
                       categories: _parseCategories(state),
                       timedMode: _parseTimedMode(state),
+                      resume: _parseResume(state),
                     ),
                   ),
                 ),
@@ -869,6 +892,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       difficulty: _parseDifficulty(state),
                       categories: _parseCategories(state),
                       timedMode: _parseTimedMode(state),
+                      resume: _parseResume(state),
                     ),
                   ),
                 ),
@@ -883,6 +907,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       difficulty: _parseDifficulty(state),
                       categories: _parseCategories(state),
                       timedMode: _parseTimedMode(state),
+                      resume: _parseResume(state),
                     ),
                   ),
                 ),
@@ -897,6 +922,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       difficulty: _parseDifficulty(state),
                       categories: _parseCategories(state),
                       timedMode: _parseTimedMode(state),
+                      resume: _parseResume(state),
                     ),
                   ),
                 ),
@@ -911,6 +937,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       difficulty: _parseDifficulty(state),
                       categories: _parseCategories(state),
                       timedMode: _parseTimedMode(state),
+                      resume: _parseResume(state),
                     ),
                   ),
                 ),
@@ -925,6 +952,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       difficulty: _parseDifficulty(state),
                       categories: _parseCategories(state),
                       timedMode: _parseTimedMode(state),
+                      resume: _parseResume(state),
                     ),
                   ),
                 ),
@@ -948,6 +976,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       child: _slow(
                         FslSignToWordScreen(
                           categories: _parseCategories(state),
+                          difficulty: _parseDifficulty(state),
                         ),
                       ),
                     ),
@@ -960,6 +989,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       child: _slow(
                         FslWordToSignScreen(
                           categories: _parseCategories(state),
+                          difficulty: _parseDifficulty(state),
                         ),
                       ),
                     ),
@@ -1274,7 +1304,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const FslDictionaryScreen(),
         ),
       ),
-      // Communication Board (AAC)
+      // Talk Board (AAC). Surfaced as the "Talk Board" tile on the Student /
+      // Player-with-Progress home and the Child home.
       GoRoute(
         path: '/communication-board',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
@@ -1282,7 +1313,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const CommunicationBoardScreen(),
         ),
       ),
-      // Communication Board Template Builder
+      // Talk Board's board builder — the learner's own tab, edited.
+      //
+      // Reached from Talk Board's app bar, which calls `requireAdult()` before
+      // pushing: the builder can empty a non-verbal learner's vocabulary in
+      // two taps, so a learner must not walk into it by accident.
+      //
+      // **The gate lives on that entry point, not on this route.** That is
+      // sound only for as long as this route is unreachable except through it.
+      // If a deep link, a notification tap, a shortcut or an educator-side
+      // "edit this learner's board" flow is ever pointed here, move the check
+      // to the route as well — `requireAdult()` is reusable, but a `redirect`
+      // cannot show a dialog, so the shape would be a small gate widget
+      // wrapping [BoardTemplateBuilderScreen] that asks on its first frame and
+      // pops when refused.
       GoRoute(
         path: '/communication-board/builder',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
@@ -1376,10 +1420,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const AssessmentHubScreen(),
         ),
       ),
+      // Both assessment-taking routes accept a pre-built [Assessment] via
+      // `extra` and fall back to resolving/generating one from the path when
+      // it is absent. Without that fallback the `extra == null` branch was a
+      // silent trap: every caller that had only an id — a deep link, the
+      // learner's assigned-work tiles, the educator's own custom-assessment
+      // tiles, all thirteen Category Mastery cards — pushed a second copy of
+      // the hub instead of a quiz, and looked to the user like a dead tap.
       GoRoute(
         path: '/assessment/take/:id',
         pageBuilder: (context, state) {
-          final assessment = state.extra as Assessment?;
+          final assessment =
+              state.extra as Assessment? ??
+              AssessmentService.findAssessmentById(
+                state.pathParameters['id'] ?? '',
+              );
           return AppPageTransitions.slideUp(
             key: state.pageKey,
             child: assessment == null
@@ -1431,7 +1486,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/assessment/category/:categoryIndex',
         pageBuilder: (context, state) {
-          final assessment = state.extra as Assessment?;
+          final index = int.tryParse(
+            state.pathParameters['categoryIndex'] ?? '',
+          );
+          final assessment =
+              state.extra as Assessment? ??
+              (index != null &&
+                      index >= 0 &&
+                      index < FlashcardCategory.values.length
+                  ? AssessmentService.generateCategoryMastery(
+                      profileId: ref.read(profileProvider)?.id ?? '',
+                      category: FlashcardCategory.values[index],
+                    )
+                  : null);
           return AppPageTransitions.slideUp(
             key: state.pageKey,
             child: assessment == null
@@ -1486,9 +1553,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       // ─── Mood Tracker ──────────────────────────────
       GoRoute(
         path: '/mood-check-in',
+        // `?ctx=` names the moment (e.g. `break_time`) so the entry is
+        // filed under the right bucket in Mood Insights. Unknown or absent
+        // values read as `general`, so a plain `/mood-check-in` is unchanged.
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
-          child: const MoodCheckInScreen(),
+          child: MoodCheckInScreen(
+            moodContext:
+                MoodContextX.fromKey(state.uri.queryParameters['ctx']),
+          ),
         ),
       ),
       GoRoute(
@@ -1611,10 +1684,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/notebook/editor',
         pageBuilder: (context, state) {
-          final note = state.extra as NoteEntry?;
+          // `is` checks, not a cast: the editor is reachable both as an edit
+          // (a NoteEntry) and as a pre-filled new note started from a
+          // flashcard (a NoteDraft). Casting would throw on the second, and a
+          // silently-null extra would render a blank editor where the learner
+          // expected the word they tapped.
+          final extra = state.extra;
           return AppPageTransitions.slideUp(
             key: state.pageKey,
-            child: NoteEditorScreen(existingNote: note),
+            child: NoteEditorScreen(
+              existingNote: extra is NoteEntry ? extra : null,
+              draft: extra is NoteDraft ? extra : null,
+            ),
           );
         },
       ),
@@ -1885,6 +1966,13 @@ List<FlashcardCategory> _parseCategories(GoRouterState state) {
 /// Parses timed mode from the query parameter.
 bool _parseTimedMode(GoRouterState state) {
   return state.uri.queryParameters['timed'] == 'true';
+}
+
+/// Whether this launch should pick up the learner's unfinished run.
+/// Only the Games hub sets it, and only after asking — see
+/// `GameSessionService`. Games that cannot resume simply ignore it.
+bool _parseResume(GoRouterState state) {
+  return state.uri.queryParameters['resume'] == 'true';
 }
 
 /// Parses the Word Hunt focus word from the `word` query parameter.

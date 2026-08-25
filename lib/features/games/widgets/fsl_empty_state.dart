@@ -6,6 +6,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Friendly empty state shown when an FSL game can't run with the user's
 /// chosen categories — usually because that category doesn't have enough
@@ -30,6 +31,7 @@ class FslEmptyStateScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hc = HCColor.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final availability = ref.watch(fslAvailabilityProvider);
 
     final readyCategories = availability.maybeWhen(
@@ -45,7 +47,7 @@ class FslEmptyStateScaffold extends ConsumerWidget {
         AppBar(
           leading: IconButton(
             icon: const Icon(Icons.close_rounded),
-            tooltip: 'Close',
+            tooltip: l10n.close,
             onPressed: onClose,
           ),
           title: Text(title),
@@ -124,7 +126,7 @@ class FslEmptyStateScaffold extends ConsumerWidget {
                             Icon(cat.icon, size: 16, color: cat.darkColor),
                             const SizedBox(width: 6),
                             Text(
-                              cat.label,
+                              cat.labelOf(l10n),
                               style: AppTypography.labelMedium.copyWith(
                                 color: cat.darkColor,
                                 fontWeight: FontWeight.w700,

@@ -109,7 +109,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
   @override
   Future<void> savePartialProgress() async {
     if (_cards.isEmpty) return;
-    _saveProgress();
+    _saveProgress(completed: false);
   }
 
   @override
@@ -211,11 +211,12 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
   }
 
   List<GazeAction> _gazeActions() {
+    final l10n = AppLocalizations.of(context)!;
     final canMove = !_isChecking && !isPaused;
     return [
       GazeAction(
         zone: GazeZone.left,
-        label: 'Prev',
+        label: l10n.gazePrev,
         icon: Icons.chevron_left_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -223,7 +224,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
       ),
       GazeAction(
         zone: GazeZone.right,
-        label: 'Next',
+        label: l10n.gazeNext,
         icon: Icons.chevron_right_rounded,
         color: AppColors.secondary,
         enabled: canMove,
@@ -231,7 +232,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
       ),
       GazeAction(
         zone: GazeZone.down,
-        label: 'Flip',
+        label: l10n.gazeFlip,
         icon: Icons.flip_rounded,
         color: AppColors.success,
         enabled: canMove,
@@ -310,24 +311,36 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
     }
   }
 
-  void _saveProgress() {
+  /// [completed] is false only on the "Quit to Games" path — an abandoned run
+  /// still counts toward stats but is not fed to the adaptive engine as if
+  /// every unplayed round were a miss.
+  void _saveProgress({bool completed = true}) {
     final categories = _sourceCards.map((c) => c.category).toSet().toList();
-    // Per-word results (all correct in memory match) — feeds both
-    // wordsLearned and spaced repetition.
+    // Only the pairs actually turned over count. This used to mark every card
+    // correct and score the board as `_pairs / _pairs` whatever happened,
+    // which is right for a finished board (you cannot finish without matching
+    // them all) but made quitting after two flips record a flawless game —
+    // and, once personal bests existed, a permanent 3-star badge for it.
+    final matchedIds = _cards
+        .where((c) => c.isMatched)
+        .map((c) => c.pairId)
+        .toSet();
     final srResults = <String, bool>{};
     for (final c in _sourceCards) {
-      srResults[c.id] = true;
+      if (matchedIds.contains(c.id)) srResults[c.id] = true;
     }
 
     ref
         .read(progressProvider.notifier)
         .recordGameResult(
           gameType: GameType.memoryMatch,
-          score: _pairs,
+          score: _matchedPairs,
           total: _pairs,
           starsEarned: _starsEarned,
           categoriesPlayed: categories,
           correctWordIds: srResults.correctWordIds,
+          durationSeconds: elapsedSeconds,
+          playedDifficulty: completed ? widget.difficulty : null,
         );
     _newAchievements = ref.read(progressProvider.notifier).checkAchievements();
 
@@ -369,6 +382,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hc = HCColor.of(context);
     if (_showResult) {
       return Stack(
@@ -386,7 +400,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                   onReview: () => showGameReview(
                     context,
                     items: _reviewItems,
-                    gameTitle: 'Memory Match',
+                    gameTitle: GameType.memoryMatch.labelOf(l10n),
                   ),
                 ),
               ),
@@ -422,14 +436,14 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                 AppBar(
                   leading: IconButton(
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Close',
+                    tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
                   title: Text(AppLocalizations.of(context)!.memoryMatch),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
-                      tooltip: 'Pause',
+                      tooltip: l10n.pauseLabel,
                       onPressed: pauseGame,
                     ),
                     if (isTimedMode)
@@ -453,7 +467,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '$_moves moves',
+                              l10n.moves(_moves),
                               style: AppTypography.labelMedium.copyWith(
                                 color: hc.textSecondary,
                               ),
@@ -495,13 +509,16 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Semantics(
                         liveRegion: true,
-                        label:
-                            'Matched $_matchedPairs of $_pairs pairs in $_moves moves, $_elapsedSeconds seconds elapsed',
+                        label: l10n.memoryProgressSemantics(
+                          _matchedPairs,
+                          _pairs,
+                          _moves,
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              'Matched: $_matchedPairs / $_pairs',
+                              l10n.matched(_matchedPairs, _pairs),
                               style: AppTypography.titleMedium.copyWith(
                                 color: AppColors.primary,
                               ),
@@ -599,13 +616,14 @@ class _MemoryCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final content = Semantics(
       button: true,
       label: card.isMatched
-          ? 'Matched card: ${card.displayText}'
+          ? l10n.memoryCardMatched(card.displayText)
           : card.isFlipped
-          ? 'Card showing: ${card.displayText}'
-          : 'Face-down card, tap to flip',
+          ? l10n.memoryCardShowing(card.displayText)
+          : l10n.memoryCardFaceDown,
       child: GestureDetector(
         onTap: onTap,
         child: TweenAnimationBuilder<double>(
