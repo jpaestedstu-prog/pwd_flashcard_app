@@ -1,0 +1,327 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
+
+import '../../../data/models/enums.dart';
+import '../models/routine_catalog.dart';
+import '../models/routine_models.dart';
+import 'routine_service.dart';
+
+/// One reminder the OS should raise: a step, on a weekday, at a wall time.
+///
+/// Split out from the plugin call so the whole scheduling *policy* — which
+/// steps remind, on which days, at what time, how many survive the cap — is
+/// pure and testable without a notification plugin or a device clock.
+class RoutineReminder {
+  final String routineId;
+  final String stepId;
+
+  /// Title and body as the learner will read them.
+  final String title;
+  final String body;
+
+  final int hour;
+  final int minute;
+
+  /// ISO weekday (1 = Monday … 7 = Sunday), or null for "every day", which
+  /// schedules as a single daily repeat rather than seven weekly ones.
+  final int? isoWeekday;
+
+  const RoutineReminder({
+    required this.routineId,
+    required this.stepId,
+    required this.title,
+    required this.body,
+    required this.hour,
+    required this.minute,
+    this.isoWeekday,
+  });
+
+  bool get isDaily => isoWeekday == null;
+
+  int get minutesOfDay => hour * 60 + minute;
+
+  /// Stable id so re-scheduling on every stream emission is idempotent.
+  ///
+  /// Based at 1,000,000: `AlarmScheduler` occupies roughly [1000, 525287]
+  /// (`1000 + hash16 * 8 + weekday`), and two schedulers quietly cancelling
+  /// each other's notifications would be a miserable bug to find.
+  int get notificationId {
+    final h = ('$routineId:$stepId').hashCode & 0xFFFF;
+    return 1000000 + (h * 8) + (isoWeekday ?? 0);
+  }
+}
+
+/// Turns a learner's routines into OS notifications.
+///
+/// A visual schedule nobody is nudged toward is a schedule that gets
+/// forgotten — this is the piece that makes a routine act on the day rather
+/// than wait to be opened.
+///
+/// Mirrors `AlarmScheduler`, with two deliberate differences:
+///
+///  * **An every-day routine schedules one daily repeat per step**, not seven
+///    weekly ones. A twelve-step daily routine would otherwise be 84 pending
+///    notifications on its own and blow past iOS's 64-slot ceiling; this way
+///    it is twelve.
+///  * **Two channels, picked from the learner's accessibility category.** A
+///    Deaf learner gets the silent-but-vibrating channel: a sound they cannot
+///    hear is a notification only for the room, and the vibration is the part
+///    that reaches them.
+class RoutineReminderScheduler {
+  RoutineReminderScheduler._();
+
+  static final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
+
+  static const _channelId = 'routine_reminder';
+  static const _channelName = 'Routine Reminders';
+  static const _channelDesc =
+      'Reminders for the steps of a daily routine set by a parent or teacher.';
+
+  /// Silent variant for learners who cannot hear the tone. Separate channel
+  /// because Android fixes sound and vibration at channel creation — the same
+  /// channel cannot be quiet for one learner and audible for another.
+  static const _silentChannelId = 'routine_reminder_silent';
+  static const _silentChannelName = 'Routine Reminders (vibrate only)';
+
+  /// Hard cap on pending routine notifications. iOS allows 64 across the whole
+  /// app and `AlarmScheduler` is already using some, so routines take a little
+  /// under half and drop the rest — the earliest steps of the day survive,
+  /// because a morning routine is the one that needs the nudge.
+  static const int maxPending = 24;
+
+  /// Tapped-notification hook, wired in `main.dart` to open `/routine`.
+  static void Function(String routineId, String stepId)? onReminderTapped;
+
+  static StreamSubscription<List<Routine>>? _sub;
+  static final Set<int> _activeIds = {};
+  static bool _pluginInitialised = false;
+
+  /// Builds the reminder set for [routines] — pure, no plugin, no clock.
+  ///
+  /// Ordered by time of day and capped at [maxPending] so the cap is
+  /// deterministic and the earliest steps win.
+  static List<RoutineReminder> plan(
+    List<Routine> routines, {
+    required bool filipino,
+    int cap = maxPending,
+  }) {
+    final out = <RoutineReminder>[];
+    for (final routine in routines) {
+      for (final step in routine.remindableSteps) {
+        final at = _remindAt(step);
+        final title = RoutineCatalog.titleFor(step, filipino: filipino);
+        final body = _bodyFor(step, filipino: filipino);
+        if (routine.isEveryDay) {
+          out.add(RoutineReminder(
+            routineId: routine.id,
+            stepId: step.id,
+            title: title,
+            body: body,
+            hour: at.$1,
+            minute: at.$2,
+          ));
+        } else {
+          for (final day in (routine.daysOfWeek.toList()..sort())) {
+            out.add(RoutineReminder(
+              routineId: routine.id,
+              stepId: step.id,
+              title: title,
+              body: body,
+              hour: at.$1,
+              minute: at.$2,
+              isoWeekday: day,
+            ));
+          }
+        }
+      }
+    }
+    out.sort((a, b) => a.minutesOfDay.compareTo(b.minutesOfDay));
+    return out.length <= cap ? out : out.sublist(0, cap);
+  }
+
+  /// The wall time a step's reminder fires at, honouring
+  /// [RoutineStep.remindMinutesBefore] and wrapping backwards over midnight
+  /// rather than landing on a negative hour.
+  static (int, int) _remindAt(RoutineStep step) {
+    final total = step.minutesOfDay! - step.remindMinutesBefore;
+    final wrapped = ((total % 1440) + 1440) % 1440;
+    return (wrapped ~/ 60, wrapped % 60);
+  }
+
+  static String _bodyFor(RoutineStep step, {required bool filipino}) {
+    final early = step.remindMinutesBefore;
+    if (early > 0) {
+      return filipino
+          ? 'Sa loob ng $early minuto. I-tap para makita.'
+          : 'In $early minutes. Tap to see what to do.';
+    }
+    // The educator's own note beats a generic line — it is more specific and
+    // it is what the learner has been read before.
+    final note = RoutineCatalog.noteFor(step, filipino: filipino);
+    if (note.isNotEmpty) return note;
+    return filipino ? 'Oras na. I-tap para makita.' : 'Tap to see what to do.';
+  }
+
+  /// Start scheduling for [profileId]. Safe to call repeatedly; each call
+  /// replaces the previous subscription and cancels the previous schedule so
+  /// a profile switch cannot leak another learner's reminders.
+  static Future<void> init(
+    String profileId, {
+    required DisabilityType accessibility,
+    required bool filipino,
+  }) async {
+    await _initPlugin();
+    await _sub?.cancel();
+    await cancelAll();
+
+    _sub = const RoutineService().watchForChild(profileId).listen(
+      (routines) {
+        unawaited(
+          rescheduleAll(
+            routines,
+            accessibility: accessibility,
+            filipino: filipino,
+          ).catchError((Object e) {
+            // Unawaited plugin failures (permission denied, no timezone DB)
+            // would otherwise surface through runZonedGuarded and light the
+            // global "Something went wrong" snackbar on whatever screen the
+            // learner happens to be on.
+            if (kDebugMode) {
+              debugPrint('RoutineReminderScheduler reschedule failed: $e');
+            }
+          }),
+        );
+      },
+      onError: (Object e) {
+        if (kDebugMode) {
+          debugPrint('RoutineReminderScheduler stream error: $e');
+        }
+      },
+    );
+  }
+
+  /// Stop listening and clear every pending routine reminder.
+  static Future<void> shutdown() async {
+    await _sub?.cancel();
+    _sub = null;
+    await cancelAll();
+  }
+
+  static Future<void> rescheduleAll(
+    List<Routine> routines, {
+    required DisabilityType accessibility,
+    required bool filipino,
+  }) async {
+    await cancelAll();
+    final reminders = plan(routines, filipino: filipino);
+    for (final r in reminders) {
+      await _scheduleOne(r, accessibility: accessibility);
+    }
+    if (kDebugMode) {
+      debugPrint(
+        'RoutineReminderScheduler: ${reminders.length} pending reminders',
+      );
+    }
+  }
+
+  static Future<void> cancelAll() async {
+    for (final id in _activeIds.toList()) {
+      try {
+        await _plugin.cancel(id);
+      } catch (_) {}
+    }
+    _activeIds.clear();
+  }
+
+  // ── private ──
+
+  static Future<void> _initPlugin() async {
+    if (_pluginInitialised) return;
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosInit = DarwinInitializationSettings();
+    await _plugin.initialize(
+      const InitializationSettings(android: androidInit, iOS: iosInit),
+      onDidReceiveNotificationResponse: _onTap,
+    );
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await android?.requestNotificationsPermission();
+    _pluginInitialised = true;
+  }
+
+  static void _onTap(NotificationResponse response) {
+    final payload = response.payload;
+    if (payload == null || !payload.startsWith('routine:')) return;
+    final parts = payload.substring('routine:'.length).split('|');
+    if (parts.length != 2) return;
+    onReminderTapped?.call(parts[0], parts[1]);
+  }
+
+  /// True when the learner cannot hear the notification tone, so the channel
+  /// should vibrate silently instead.
+  static bool usesSilentChannel(DisabilityType type) =>
+      type == DisabilityType.hearing;
+
+  static Future<void> _scheduleOne(
+    RoutineReminder r, {
+    required DisabilityType accessibility,
+  }) async {
+    final silent = usesSilentChannel(accessibility);
+    final androidDetails = AndroidNotificationDetails(
+      silent ? _silentChannelId : _channelId,
+      silent ? _silentChannelName : _channelName,
+      channelDescription: _channelDesc,
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+      playSound: !silent,
+    );
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: !silent,
+    );
+    final details =
+        NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+    await _plugin.zonedSchedule(
+      r.notificationId,
+      r.title,
+      r.body,
+      _nextOccurrence(hour: r.hour, minute: r.minute, isoWeekday: r.isoWeekday),
+      details,
+      payload: 'routine:${r.routineId}|${r.stepId}',
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents:
+          r.isDaily ? DateTimeComponents.time : DateTimeComponents.dayOfWeekAndTime,
+    );
+    _activeIds.add(r.notificationId);
+  }
+
+  /// The next local occurrence of the given time. The repeat component
+  /// handles everything after it; this only needs a valid future start.
+  static tz.TZDateTime _nextOccurrence({
+    required int hour,
+    required int minute,
+    int? isoWeekday,
+  }) {
+    final now = tz.TZDateTime.now(tz.local);
+    var candidate =
+        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    if (isoWeekday != null) {
+      while (candidate.weekday != isoWeekday) {
+        candidate = candidate.add(const Duration(days: 1));
+      }
+      if (!candidate.isAfter(now)) {
+        candidate = candidate.add(const Duration(days: 7));
+      }
+    } else if (!candidate.isAfter(now)) {
+      candidate = candidate.add(const Duration(days: 1));
+    }
+    return candidate;
+  }
+}

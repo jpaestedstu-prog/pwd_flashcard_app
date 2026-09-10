@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
@@ -7,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
+import '../services/routine_media_store.dart';
 
 /// Everything about showing a routine step's media — and about showing its
 /// *absence* well, which is most of the work.
@@ -265,7 +268,17 @@ class RoutineImage extends StatelessWidget {
           filipino: filipino,
         );
 
-    final image = isAssetMedia(trimmed)
+    final image = RoutineMediaStore.isDeviceFile(trimmed)
+        ? Image.file(
+            File(RoutineMediaStore.pathOf(trimmed)),
+            height: height,
+            fit: BoxFit.cover,
+            // A picked file can vanish — the educator moved it, or Android
+            // reclaimed the copy. Falling back to the placeholder keeps the
+            // step visual rather than showing a broken box.
+            errorBuilder: (_, _, _) => failed(),
+          )
+        : isAssetMedia(trimmed)
         ? Image.asset(
             assetPathOf(trimmed),
             height: height,
@@ -341,10 +354,12 @@ class _RoutineAudioButtonState extends State<RoutineAudioButton> {
     try {
       final u = widget.url.trim();
       await player.play(
-        isAssetMedia(u)
-            // AssetSource is rooted at `assets/`, so the prefix has to go.
-            ? AssetSource(assetPathOf(u).replaceFirst('assets/', ''))
-            : UrlSource(u),
+        RoutineMediaStore.isDeviceFile(u)
+            ? DeviceFileSource(RoutineMediaStore.pathOf(u))
+            : isAssetMedia(u)
+                // AssetSource is rooted at `assets/`, so the prefix has to go.
+                ? AssetSource(assetPathOf(u).replaceFirst('assets/', ''))
+                : UrlSource(u),
       );
     } on Object {
       // Audio is an alternative channel, never the only one — a cue that will
@@ -434,7 +449,10 @@ class _RoutineVideoSheetState extends State<_RoutineVideoSheet> {
     final raw = widget.url.trim();
     VideoPlayerController? controller;
     try {
-      if (isAssetMedia(raw)) {
+      if (RoutineMediaStore.isDeviceFile(raw)) {
+        controller =
+            VideoPlayerController.file(File(RoutineMediaStore.pathOf(raw)));
+      } else if (isAssetMedia(raw)) {
         controller = VideoPlayerController.asset(assetPathOf(raw));
       } else {
         // Reuse the FSL resolver: it downloads once and replays from disk

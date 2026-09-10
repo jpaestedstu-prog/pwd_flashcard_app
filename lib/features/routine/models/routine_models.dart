@@ -105,6 +105,15 @@ class RoutineStep {
   /// "use the catalog's sign cues for [activity]".
   final String signWord;
 
+  /// How many minutes before [hour]:[minute] to send the reminder.
+  ///
+  /// Zero means "at the time itself". Only meaningful on a scheduled step —
+  /// there is nothing to be early for on a step that is merely sequenced.
+  /// Five minutes is often the useful setting: a transition warning lands
+  /// better than an instruction that arrives the moment the thing is due,
+  /// especially for a learner who needs time to switch activity.
+  final int remindMinutesBefore;
+
   /// A disabled step stays in the routine (and keeps its history) but is not
   /// shown to the learner today.
   final bool enabled;
@@ -125,6 +134,7 @@ class RoutineStep {
     this.videoUrl = '',
     this.audioUrl = '',
     this.signWord = '',
+    this.remindMinutesBefore = 0,
     this.enabled = true,
   });
 
@@ -169,6 +179,7 @@ class RoutineStep {
     String? videoUrl,
     String? audioUrl,
     String? signWord,
+    int? remindMinutesBefore,
     bool? enabled,
   }) {
     return RoutineStep(
@@ -187,6 +198,7 @@ class RoutineStep {
       videoUrl: videoUrl ?? this.videoUrl,
       audioUrl: audioUrl ?? this.audioUrl,
       signWord: signWord ?? this.signWord,
+      remindMinutesBefore: remindMinutesBefore ?? this.remindMinutesBefore,
       enabled: enabled ?? this.enabled,
     );
   }
@@ -216,6 +228,7 @@ class RoutineStep {
         'video_url': videoUrl,
         'audio_url': audioUrl,
         'sign_word': signWord,
+        'remind_minutes_before': remindMinutesBefore,
         'enabled': enabled,
       };
 
@@ -246,6 +259,10 @@ class RoutineStep {
       videoUrl: (json['video_url'] as String?) ?? '',
       audioUrl: (json['audio_url'] as String?) ?? '',
       signWord: (json['sign_word'] as String?) ?? '',
+      // Clamped rather than trusted: a reminder an hour early is a different
+      // activity, not an early warning.
+      remindMinutesBefore:
+          (json['remind_minutes_before'] as int?)?.clamp(0, 60) ?? 0,
       enabled: (json['enabled'] as bool?) ?? true,
     );
   }
@@ -280,6 +297,13 @@ class Routine {
 
   final bool enabled;
 
+  /// Whether the learner's device raises a notification for each scheduled
+  /// step. Off by default is the wrong default for a schedule nobody is
+  /// nudged toward, so this starts **on** — but it is a per-routine switch
+  /// because a bedtime routine and a classroom routine want different
+  /// answers, and an adult sitting beside the learner does not need either.
+  final bool remindersEnabled;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -293,6 +317,7 @@ class Routine {
     this.daysOfWeek = const <int>{},
     this.steps = const <RoutineStep>[],
     this.enabled = true,
+    this.remindersEnabled = true,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -321,6 +346,15 @@ class Routine {
   /// Every step including disabled ones, in the order the editor shows them.
   List<RoutineStep> get editorSteps => List.unmodifiable(steps);
 
+  /// The steps this routine will raise a reminder for.
+  ///
+  /// Empty unless the routine is enabled *and* reminding; an unscheduled step
+  /// never reminds, because there is no time to fire at.
+  List<RoutineStep> get remindableSteps {
+    if (!enabled || !remindersEnabled) return const [];
+    return orderedSteps.where((s) => s.isScheduled).toList();
+  }
+
   int get stepCount => steps.where((s) => s.enabled).length;
 
   Routine copyWith({
@@ -333,6 +367,7 @@ class Routine {
     Set<int>? daysOfWeek,
     List<RoutineStep>? steps,
     bool? enabled,
+    bool? remindersEnabled,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -346,6 +381,7 @@ class Routine {
       daysOfWeek: daysOfWeek ?? this.daysOfWeek,
       steps: steps ?? this.steps,
       enabled: enabled ?? this.enabled,
+      remindersEnabled: remindersEnabled ?? this.remindersEnabled,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -363,6 +399,7 @@ class Routine {
         'days_of_week': daysOfWeek.toList()..sort(),
         'steps': steps.map((s) => s.toJson()).toList(),
         'enabled': enabled,
+        'reminders_enabled': remindersEnabled,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -398,6 +435,9 @@ class Routine {
       daysOfWeek: days,
       steps: steps,
       enabled: (json['enabled'] as bool?) ?? true,
+      // Absent on routines written before reminders existed; those should
+      // start reminding rather than stay silent forever.
+      remindersEnabled: (json['reminders_enabled'] as bool?) ?? true,
       createdAt: _parseDate(json['created_at']),
       updatedAt: _parseDate(json['updated_at']),
     );

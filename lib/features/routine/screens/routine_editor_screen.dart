@@ -18,6 +18,7 @@ import '../widgets/routine_ownership_banner.dart';
 import '../widgets/routine_step_card.dart';
 import '../widgets/routine_sync_feedback.dart';
 import 'routine_builder_screen.dart';
+import 'routine_history_screen.dart';
 import 'routine_screen.dart';
 
 /// The educator's routine manager for one learner.
@@ -83,6 +84,19 @@ class RoutineEditorScreen extends ConsumerWidget {
             ),
           ),
           actions: [
+            IconButton(
+              tooltip: l ? 'Kasaysayan' : 'History',
+              icon: Icon(Icons.insights_rounded, color: hc.textSecondary),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => RoutineHistoryScreen(
+                    childProfileId: childProfileId,
+                    childDisplayName: childDisplayName,
+                    learnerNoun: learnerNoun,
+                  ),
+                ),
+              ),
+            ),
             IconButton(
               tooltip: l
                   ? 'Tingnan ang nakikita ng bata'

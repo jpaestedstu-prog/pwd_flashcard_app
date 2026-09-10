@@ -216,6 +216,19 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                         onChanged: (d) =>
                             _mutate(_draft.copyWith(daysOfWeek: d)),
                       ),
+                      const SizedBox(height: 8),
+                      ProSwitchTile(
+                        icon: Icons.notifications_active_rounded,
+                        label: l ? 'Mga paalala' : 'Reminders',
+                        caption: l
+                            ? 'Magpapadala ng abiso sa device ng bata sa oras '
+                                'ng bawat hakbang na may nakatakdang oras.'
+                            : 'Notify the learner on their own device at each '
+                                'step that has a set time.',
+                        value: _draft.remindersEnabled,
+                        onChanged: (v) =>
+                            _mutate(_draft.copyWith(remindersEnabled: v)),
+                      ),
                     ],
                   ),
                 ),

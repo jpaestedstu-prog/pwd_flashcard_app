@@ -15,6 +15,7 @@ import 'core/security/username_migration.dart';
 import 'core/services/action_clip_service.dart';
 import 'core/services/active_time_tracker.dart';
 import 'core/services/alarm_scheduler.dart';
+import 'features/routine/services/routine_reminder_scheduler.dart';
 import 'core/services/flashcard_photo_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/analytics_service.dart';
@@ -304,10 +305,38 @@ class FlashLearnApp extends ConsumerWidget {
               ErrorHandler.report(e, s, 'AlarmScheduler:silent');
             }),
           );
+
+          // Routine reminders. A visual schedule nobody is nudged toward is a
+          // schedule that gets forgotten, so the learner's own device raises
+          // one notification per scheduled step.
+          RoutineReminderScheduler.onReminderTapped = (routineId, stepId) {
+            final ctx = rootNavigatorKey.currentContext;
+            if (ctx == null) return;
+            try {
+              // Straight to the learner's own day — the notification carries
+              // the step id, but `/routine` has no path parameter on purpose
+              // (a learner must never reach another learner's day), and the
+              // day screen already highlights the next incomplete step.
+              GoRouter.of(ctx).go('/routine');
+            } catch (e, s) {
+              ErrorHandler.report(e, s, 'OnRoutineReminder:silent');
+            }
+          };
+          unawaited(
+            RoutineReminderScheduler.init(
+              next.id,
+              accessibility: next.disabilityType,
+              filipino: ref.read(settingsProvider).locale == 'fil',
+            ).catchError((e, s) {
+              ErrorHandler.report(e, s, 'RoutineReminderScheduler:silent');
+            }),
+          );
         } else {
           AlarmScheduler.onAlarmFired = null;
           ActiveTimeTracker.stopActive();
           AlarmScheduler.shutdown();
+          RoutineReminderScheduler.onReminderTapped = null;
+          RoutineReminderScheduler.shutdown();
         }
       } catch (e, s) {
         ErrorHandler.report(e, s, 'applyLifecycle:silent');

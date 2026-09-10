@@ -368,6 +368,18 @@ void main() {
         tester,
         const RoutineStep(id: 's', activity: RoutineActivity.brushingTeeth),
       );
+      // The FSL section sits at the bottom of a long sheet — below the media
+      // slots and the reminder controls — so it has to be scrolled into view
+      // before `find.text` can see it.
+      // `.first` is the sheet's own vertical list — `.last` is the
+      // horizontal preview strip nested inside it, which scrolls sideways
+      // and will never bring this into view.
+      await tester.dragUntilVisible(
+        find.text('Built-in signs: Teeth · Water'),
+        find.byType(ListView).first,
+        const Offset(0, -200),
+      );
+      await _settle(tester, const Duration(milliseconds: 300));
       expect(find.text('Built-in signs: Teeth · Water'), findsOneWidget);
       await _unmount(tester);
     });

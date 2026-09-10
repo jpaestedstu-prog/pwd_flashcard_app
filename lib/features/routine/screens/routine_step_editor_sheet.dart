@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
+import '../services/routine_media_store.dart';
 import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
 import '../widgets/routine_step_card.dart';
@@ -100,17 +101,17 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
   /// The step as currently typed. Text controllers are read here rather than
   /// written back on every keystroke, so typing does not rebuild the sheet.
   RoutineStep _collect() => _draft.copyWith(
-        title: _title.text.trim(),
-        titleFilipino: _titleFil.text.trim(),
-        emoji: _emoji.text.trim(),
-        note: _note.text.trim(),
-        noteFilipino: _noteFil.text.trim(),
-        photoUrl: _photo.text.trim(),
-        gifUrl: _gif.text.trim(),
-        videoUrl: _video.text.trim(),
-        audioUrl: _audio.text.trim(),
-        signWord: _sign.text.trim(),
-      );
+    title: _title.text.trim(),
+    titleFilipino: _titleFil.text.trim(),
+    emoji: _emoji.text.trim(),
+    note: _note.text.trim(),
+    noteFilipino: _noteFil.text.trim(),
+    photoUrl: _photo.text.trim(),
+    gifUrl: _gif.text.trim(),
+    videoUrl: _video.text.trim(),
+    audioUrl: _audio.text.trim(),
+    signWord: _sign.text.trim(),
+  );
 
   Future<void> _pickTime() async {
     final now = TimeOfDay.now();
@@ -202,7 +203,9 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                     decoration: InputDecoration(
                       labelText: l ? 'Pangalan (English)' : 'Title',
                       hintText: isCustom
-                          ? (l ? 'hal. Pagdidilig ng halaman' : 'e.g. Water the plants')
+                          ? (l
+                                ? 'hal. Pagdidilig ng halaman'
+                                : 'e.g. Water the plants')
                           : info.label,
                       border: const OutlineInputBorder(),
                     ),
@@ -212,8 +215,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                     controller: _titleFil,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      labelText:
-                          l ? 'Pangalan sa Filipino' : 'Filipino title',
+                      labelText: l ? 'Pangalan sa Filipino' : 'Filipino title',
                       hintText: info.labelFilipino,
                       border: const OutlineInputBorder(),
                     ),
@@ -262,11 +264,12 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                   Text(
                     l
                         ? 'Walang oras = sunod-sunod lang, walang orasan. Mas '
-                            'madali ito para sa ilang bata.'
+                              'madali ito para sa ilang bata.'
                         : 'No time means the step is sequenced, not clocked — '
-                            'often easier for a learner who does not read a clock.',
-                    style: AppTypography.labelSmall
-                        .copyWith(color: hc.textSecondary),
+                              'often easier for a learner who does not read a clock.',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -278,10 +281,11 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                           _draft.durationMinutes == 0
                               ? (l ? 'Walang timer' : 'No timer')
                               : (l
-                                  ? 'Timer: ${_draft.durationMinutes} minuto'
-                                  : 'Timer: ${_draft.durationMinutes} min'),
-                          style: AppTypography.bodyMedium
-                              .copyWith(color: hc.textPrimary),
+                                    ? 'Timer: ${_draft.durationMinutes} minuto'
+                                    : 'Timer: ${_draft.durationMinutes} min'),
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: hc.textPrimary,
+                          ),
                         ),
                       ),
                     ],
@@ -294,8 +298,61 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                         ? (l ? 'wala' : 'off')
                         : '${_draft.durationMinutes}',
                     onChanged: (v) => setState(
-                      () => _draft =
-                          _draft.copyWith(durationMinutes: v.round()),
+                      () =>
+                          _draft = _draft.copyWith(durationMinutes: v.round()),
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.notifications_active_rounded,
+                        size: 18,
+                        color: hc.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _draft.remindMinutesBefore == 0
+                              ? (l
+                                    ? 'Paalala sa mismong oras'
+                                    : 'Remind at the time')
+                              : (l
+                                    ? 'Paalala ${_draft.remindMinutesBefore} '
+                                          'minuto bago'
+                                    : 'Remind ${_draft.remindMinutesBefore} min '
+                                          'before'),
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: hc.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: _draft.remindMinutesBefore.toDouble().clamp(0, 30),
+                    max: 30,
+                    divisions: 6,
+                    label: _draft.remindMinutesBefore == 0
+                        ? (l ? 'sa oras' : 'on time')
+                        : '${_draft.remindMinutesBefore}',
+                    onChanged: (v) => setState(
+                      () => _draft = _draft.copyWith(
+                        remindMinutesBefore: v.round(),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    l
+                        ? 'Ang maagang babala ay mas madaling sundan kaysa sa '
+                              'paalalang dumarating mismo sa oras.'
+                        : 'A few minutes of warning lands better than an '
+                              'instruction arriving the moment it is due — '
+                              'especially for a learner who needs time to switch '
+                              'activity.',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: hc.textSecondary,
                     ),
                   ),
 
@@ -328,67 +385,70 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
 
                   // ── Accessibility media ──
                   _SectionLabel(
-                    l ? 'Larawan, GIF, Bidyo at Tunog' : 'Photo, GIF, video & sound',
+                    l
+                        ? 'Larawan, GIF, Bidyo at Tunog'
+                        : 'Photo, GIF, video & sound',
                   ),
                   Text(
                     l
                         ? 'Opsyonal ang lahat. Kapag walang nakalagay, may '
-                            'malinis na placeholder na nakikita ang bata — hindi '
-                            'sirang larawan. Puwedeng palitan anumang oras.'
+                              'malinis na placeholder na nakikita ang bata — hindi '
+                              'sirang larawan. Puwedeng palitan anumang oras.'
                         : 'All optional. When a slot is empty the learner sees a '
-                            'clean placeholder, never a broken image — and any '
-                            'slot can be filled in later.',
-                    style: AppTypography.bodySmall
-                        .copyWith(color: hc.textSecondary),
+                              'clean placeholder, never a broken image — and any '
+                              'slot can be filled in later.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  _MediaField(
-                    controller: _photo,
-                    kind: RoutineMediaKind.photo,
-                    filipino: l,
-                    onChanged: () => setState(() {}),
-                  ),
-                  _MediaField(
-                    controller: _gif,
-                    kind: RoutineMediaKind.gif,
-                    filipino: l,
-                    onChanged: () => setState(() {}),
-                  ),
-                  _MediaField(
-                    controller: _video,
-                    kind: RoutineMediaKind.video,
-                    filipino: l,
-                    onChanged: () => setState(() {}),
-                  ),
-                  _MediaField(
-                    controller: _audio,
-                    kind: RoutineMediaKind.audio,
-                    filipino: l,
-                    onChanged: () => setState(() {}),
-                  ),
+                  for (final slot in const [
+                    (RoutineMediaKind.photo, 'photo'),
+                    (RoutineMediaKind.gif, 'gif'),
+                    (RoutineMediaKind.video, 'video'),
+                    (RoutineMediaKind.audio, 'audio'),
+                  ])
+                    _MediaField(
+                      controller: switch (slot.$1) {
+                        RoutineMediaKind.photo => _photo,
+                        RoutineMediaKind.gif => _gif,
+                        RoutineMediaKind.video => _video,
+                        RoutineMediaKind.audio => _audio,
+                      },
+                      kind: slot.$1,
+                      filipino: l,
+                      stepId: _draft.id,
+                      onChanged: () => setState(() {}),
+                    ),
 
                   const SizedBox(height: 8),
                   _PreviewStrip(step: _collect(), filipino: l),
 
                   // ── FSL ──
-                  _SectionLabel(l ? 'Filipino Sign Language' : 'Filipino Sign Language'),
+                  _SectionLabel(
+                    l ? 'Filipino Sign Language' : 'Filipino Sign Language',
+                  ),
                   if (!isCustom && info.signCues.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Row(
                         children: [
-                          const Icon(Icons.sign_language_rounded,
-                              size: 18, color: AppColors.secondaryDark),
+                          const Icon(
+                            Icons.sign_language_rounded,
+                            size: 18,
+                            color: AppColors.secondaryDark,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               l
                                   ? 'Nakahandang senyas: '
-                                      '${info.signCues.map((c) => c.word).join(' · ')}'
+                                        '${info.signCues.map((c) => c.word).join(' · ')}'
                                   : 'Built-in signs: '
-                                      '${info.signCues.map((c) => c.word).join(' · ')}',
-                              style: AppTypography.bodySmall
-                                  .copyWith(color: hc.textSecondary),
+                                        '${info.signCues.map((c) => c.word).join(' · ')}',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: hc.textSecondary,
+                              ),
                             ),
                           ),
                         ],
@@ -444,50 +504,132 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _MediaField extends StatelessWidget {
+class _MediaField extends StatefulWidget {
   final TextEditingController controller;
   final RoutineMediaKind kind;
   final bool filipino;
   final VoidCallback onChanged;
+
+  /// Needed to name the copied file, so re-picking replaces rather than
+  /// accumulates.
+  final String stepId;
 
   const _MediaField({
     required this.controller,
     required this.kind,
     required this.filipino,
     required this.onChanged,
+    required this.stepId,
   });
 
   @override
+  State<_MediaField> createState() => _MediaFieldState();
+}
+
+class _MediaFieldState extends State<_MediaField> {
+  bool _picking = false;
+
+  TextEditingController get controller => widget.controller;
+  RoutineMediaKind get kind => widget.kind;
+  bool get filipino => widget.filipino;
+
+  Future<void> _pick() async {
+    if (_picking) return;
+    setState(() => _picking = true);
+    try {
+      final slot = await const RoutineMediaStore().pickAndAdopt(
+        stepId: widget.stepId,
+        kind: kind,
+      );
+      if (!mounted || slot == null) return;
+      // Replacing a device file removes the old copy; a URL belongs to
+      // whoever hosts it and is only forgotten, never deleted.
+      final previous = controller.text.trim();
+      if (RoutineMediaStore.isDeviceFile(previous) && previous != slot) {
+        await const RoutineMediaStore().discard(previous);
+      }
+      controller.text = slot;
+      widget.onChanged();
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
     final style = RoutineMediaStyle.of(kind);
-    final filled = controller.text.trim().isNotEmpty;
+    final value = controller.text.trim();
+    final filled = value.isNotEmpty;
+    final onDevice = RoutineMediaStore.isDeviceFile(value);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.url,
-        onChanged: (_) => onChanged(),
-        decoration: InputDecoration(
-          prefixIcon: Icon(style.icon, color: style.color),
-          labelText: style.labelOf(filipino: filipino),
-          hintText: filipino
-              ? 'https://… o assets/…'
-              : 'https://… or assets/…',
-          helperText: filled
-              ? null
-              : style.emptyHintOf(filipino: filipino),
-          suffixIcon: filled
-              ? IconButton(
-                  tooltip: filipino ? 'Alisin' : 'Clear',
-                  icon: const Icon(Icons.close_rounded),
-                  onPressed: () {
-                    controller.clear();
-                    onChanged();
-                  },
-                )
-              : null,
-          border: const OutlineInputBorder(),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: controller,
+            keyboardType: TextInputType.url,
+            onChanged: (_) => widget.onChanged(),
+            decoration: InputDecoration(
+              prefixIcon: Icon(style.icon, color: style.color),
+              labelText: style.labelOf(filipino: filipino),
+              hintText: filipino
+                  ? 'https://… o assets/…'
+                  : 'https://… or assets/…',
+              helperText: filled ? null : style.emptyHintOf(filipino: filipino),
+              suffixIcon: filled
+                  ? IconButton(
+                      tooltip: filipino ? 'Alisin' : 'Clear',
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () async {
+                        if (onDevice) {
+                          await const RoutineMediaStore().discard(value);
+                        }
+                        controller.clear();
+                        widget.onChanged();
+                      },
+                    )
+                  : null,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: _picking ? null : _pick,
+                icon: _picking
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.phone_android_rounded, size: 18),
+                label: Text(
+                  filipino ? 'Kumuha sa device' : 'Choose from device',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  onDevice
+                      ? (filipino
+                            ? 'Nasa tablet na ito lang. Hindi ito makikita ng '
+                                  'bata sa ibang device.'
+                            : 'On this tablet only — a learner using a different '
+                                  'device will not see it.')
+                      : (filipino
+                            ? 'Ang link ay umaabot sa lahat ng device.'
+                            : 'A link reaches every device.'),
+                  style: AppTypography.labelSmall.copyWith(
+                    color: onDevice ? AppColors.warning : hc.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -540,18 +682,20 @@ class _PreviewStrip extends StatelessWidget {
                         kind: kind,
                         stepEmoji: RoutineCatalog.emojiFor(step),
                         filipino: filipino,
-                        semanticLabel:
-                            RoutineCatalog.titleFor(step, filipino: filipino),
+                        semanticLabel: RoutineCatalog.titleFor(
+                          step,
+                          filipino: filipino,
+                        ),
                         height: routinePreviewTileHeight(scale),
                       )
                     : step.hasMedia(kind)
-                        ? _VideoChip(filipino: filipino)
-                        : RoutineMediaPlaceholder(
-                            kind: kind,
-                            stepEmoji: RoutineCatalog.emojiFor(step),
-                            filipino: filipino,
-                            compact: true,
-                          ),
+                    ? _VideoChip(filipino: filipino)
+                    : RoutineMediaPlaceholder(
+                        kind: kind,
+                        stepEmoji: RoutineCatalog.emojiFor(step),
+                        filipino: filipino,
+                        compact: true,
+                      ),
               );
             },
           ),
@@ -571,10 +715,7 @@ class _VideoChip extends StatelessWidget {
     return Container(
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          hc.primary.withValues(alpha: 0.12),
-          hc.surface,
-        ),
+        color: Color.alphaBlend(hc.primary.withValues(alpha: 0.12), hc.surface),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: hc.primary.withValues(alpha: 0.4)),
       ),
@@ -634,17 +775,17 @@ class _SignStatus extends StatelessWidget {
           child: Text(
             ok
                 ? (filipino
-                    ? 'May senyas na mapapanood ang bata sa hakbang na ito.'
-                    : 'The learner will be able to watch a sign for this step.')
+                      ? 'May senyas na mapapanood ang bata sa hakbang na ito.'
+                      : 'The learner will be able to watch a sign for this step.')
                 : hasOverride
-                    ? (filipino
-                        ? 'Walang FSL na clip para sa salitang iyan. Subukan '
+                ? (filipino
+                      ? 'Walang FSL na clip para sa salitang iyan. Subukan '
                             'ang isang salita mula sa FSL Dictionary.'
-                        : 'No FSL clip for that word. Try a word from the FSL '
+                      : 'No FSL clip for that word. Try a word from the FSL '
                             'Dictionary.')
-                    : (filipino
-                        ? 'Wala pang FSL clip para sa gawaing ito.'
-                        : 'No FSL clip is available for this activity yet.'),
+                : (filipino
+                      ? 'Wala pang FSL clip para sa gawaing ito.'
+                      : 'No FSL clip is available for this activity yet.'),
             style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
           ),
         ),
