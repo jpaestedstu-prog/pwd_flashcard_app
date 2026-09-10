@@ -11,6 +11,7 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../providers/app_providers.dart';
 import '../models/survey_models.dart';
 import '../services/survey_service.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Full SUS (System Usability Scale) survey screen.
 ///
@@ -143,14 +144,19 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    isFilipino
-                        ? '$answeredCount / 10 na tanong ang nasagot'
-                        : '$answeredCount / 10 questions answered',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                  // Flexible, or the counter and the percentage together are
+                  // wider than a phone at 2x and the row overflows by ~77 px.
+                  Flexible(
+                    child: Text(
+                      isFilipino
+                          ? '$answeredCount / 10 na tanong ang nasagot'
+                          : '$answeredCount / 10 questions answered',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     '${(answeredCount * 10)}%',
                     style: AppTypography.labelMedium.copyWith(
@@ -329,7 +335,12 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text(
+                          // Five Likert labels share the row, so each gets
+                          // a fifth of it and "Stron / gly", "Disag / ree" and
+                          // "Neutr / al" all split. This is the survey the
+                          // thesis measures usability with; a respondent has to
+                          // be able to read what they are choosing.
+                          FitText(
                             scaleLabels[i],
                             style: AppTypography.labelSmall.copyWith(
                               color: isSelected
@@ -338,8 +349,6 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
                               fontSize: 9,
                             ),
                             textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),

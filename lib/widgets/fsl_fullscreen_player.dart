@@ -8,6 +8,7 @@ import '../core/services/fsl_assets_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/constants/app_constants.dart';
+import '../core/utils/reduced_motion.dart';
 
 /// Opens the FSL fullscreen video player as a fullscreen dialog.
 ///
@@ -485,10 +486,8 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
       child: Row(
         children: [
           // Close button
-          Semantics(
-            button: true,
-            label: 'Close fullscreen video',
-            child: IconButton(
+          IconButton(
+              tooltip: 'Close fullscreen video',
               onPressed: _close,
               icon: const Icon(Icons.close_rounded),
               color: Colors.white,
@@ -498,13 +497,10 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                 minimumSize: const Size(48, 48),
               ),
             ),
-          ),
           const Spacer(),
           // Captions toggle
-          Semantics(
-            button: true,
-            label: _showSubtitles ? 'Hide captions' : 'Show captions',
-            child: IconButton(
+          IconButton(
+              tooltip: _showSubtitles ? 'Hide captions' : 'Show captions',
               onPressed: () {
                 HapticFeedback.selectionClick();
                 setState(() => _showSubtitles = !_showSubtitles);
@@ -522,13 +518,10 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                 minimumSize: const Size(48, 48),
               ),
             ),
-          ),
           const SizedBox(width: 4),
           // Speed / settings
-          Semantics(
-            button: true,
-            label: 'Playback speed settings',
-            child: IconButton(
+          IconButton(
+              tooltip: 'Playback speed settings',
               onPressed: () {
                 setState(() => _showSpeedPanel = !_showSpeedPanel);
                 _startHideControlsTimer();
@@ -541,7 +534,6 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                 minimumSize: const Size(48, 48),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -553,6 +545,9 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
     if (!_initialized) return const SizedBox.shrink();
 
     final isPlaying = _controller.value.isPlaying;
+    // Null while playing (the icon is a static pause) and null under reduced
+    // motion, which is what stops the idle pulse.
+    final pulse = isPlaying ? null : motionLoop(context, reverse: true);
     return GestureDetector(
       onTap: _togglePlayPause,
       child: Semantics(
@@ -577,12 +572,14 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
         )
             .animate(
               target: isPlaying ? 0 : 1,
-              onPlay: (controller) {
-                if (!isPlaying) controller.repeat(reverse: true);
-              },
-              onComplete: (controller) {
-                if (!isPlaying) controller.repeat(reverse: true);
-              },
+              key: motionKey(context),
+              // Decided during build, not inside the callbacks: reading the
+              // scope registers an inherited-widget dependency, which is only
+              // legal while building. It is handed to both hooks because this
+              // Animate sets `target`, and flutter_animate skips `onPlay`
+              // entirely when it does — `onComplete` is what actually fires.
+              onPlay: pulse,
+              onComplete: pulse,
             )
             .scale(
               begin: const Offset(1, 1),
@@ -673,10 +670,8 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
           Row(
             children: [
               // Replay
-              Semantics(
-                button: true,
-                label: 'Replay from beginning',
-                child: IconButton(
+              IconButton(
+                  tooltip: 'Replay from beginning',
                   onPressed: _replay,
                   icon: const Icon(Icons.replay_rounded),
                   color: Colors.white,
@@ -686,12 +681,9 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                     minHeight: 40,
                   ),
                 ),
-              ),
               // Play/pause (small, redundant — convenient in bottom bar)
-              Semantics(
-                button: true,
-                label: _controller.value.isPlaying ? 'Pause' : 'Play',
-                child: IconButton(
+              IconButton(
+                  tooltip: _controller.value.isPlaying ? 'Pause' : 'Play',
                   onPressed: _togglePlayPause,
                   icon: Icon(
                     _controller.value.isPlaying
@@ -705,7 +697,6 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                     minHeight: 40,
                   ),
                 ),
-              ),
               const SizedBox(width: 4),
               // Current time
               Text(

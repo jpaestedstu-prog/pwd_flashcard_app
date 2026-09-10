@@ -6,6 +6,7 @@ import 'package:pwdpwdpwd/core/theme/app_colors.dart';
 import 'package:pwdpwdpwd/core/theme/app_theme.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
+import 'package:pwdpwdpwd/data/models/shop_data.dart';
 import 'package:pwdpwdpwd/features/gamification/screens/gamification_dashboard_screen.dart';
 import 'package:pwdpwdpwd/features/gaze_control/widgets/gaze_dpad_scope.dart';
 import 'package:pwdpwdpwd/features/home/screens/child_home_screen.dart';
@@ -66,9 +67,37 @@ LearningProgress _sample() => LearningProgress(
       ],
     );
 
-List<Override> _overrides({UserRole role = UserRole.student}) => [
+/// Progress with shop items in the equipped slots, without a Hive round-trip.
+class _DressedProgress extends _FakeProgress {
+  _DressedProgress(super.initial, this._equipped);
+  final Map<ShopItemType, String> _equipped;
+
+  @override
+  String? getEquippedItemId(ShopItemType type) => _equipped[type];
+}
+
+/// Pins the app language, which is what item names (catalogue data, not ARB)
+/// are resolved against.
+class _StubSettings extends SettingsNotifier {
+  _StubSettings(this.locale);
+  final String locale;
+
+  @override
+  AppSettings build() => AppSettings(locale: locale);
+}
+
+List<Override> _overrides({
+  UserRole role = UserRole.student,
+  String locale = 'en',
+  Map<ShopItemType, String> equipped = const {},
+}) => [
       profileProvider.overrideWith(() => _StubProfile(role)),
-      progressProvider.overrideWith(() => _FakeProgress(_sample())),
+      progressProvider.overrideWith(
+        () => equipped.isEmpty
+            ? _FakeProgress(_sample())
+            : _DressedProgress(_sample(), equipped),
+      ),
+      settingsProvider.overrideWith(() => _StubSettings(locale)),
     ];
 
 Future<void> _pump(
@@ -76,6 +105,8 @@ Future<void> _pump(
   Widget home, {
   ThemeData? theme,
   UserRole role = UserRole.student,
+  String locale = 'en',
+  Map<ShopItemType, String> equipped = const {},
   Size size = const Size(800, 1280),
   double textScale = 1.0,
 }) async {
@@ -85,10 +116,10 @@ Future<void> _pump(
 
   await tester.pumpWidget(
     ProviderScope(
-      overrides: _overrides(role: role),
+      overrides: _overrides(role: role, locale: locale, equipped: equipped),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        locale: const Locale('en'),
+        locale: Locale(locale),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         theme: theme ?? AppTheme.light,
@@ -124,7 +155,7 @@ void main() {
       'custom_cards',
       'sessions',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
   });
 
@@ -134,6 +165,39 @@ void main() {
   });
 
   group('content', () {
+    testWidgets('an equipped Title is worn in the learner own language',
+        (tester) async {
+      await _pump(
+        tester,
+        const GamificationDashboardScreen(),
+        locale: 'fil',
+        equipped: const {ShopItemType.title: 'title_word_wizard'},
+      );
+
+      // Titles are catalogue data rather than ARB entries, so this card was
+      // reading `.name` and showing English to a learner who had bought
+      // "Salamangkero ng Salita" with Filipino stars.
+      expect(find.text('Salamangkero ng Salita'), findsOneWidget);
+      expect(find.text('Word Wizard'), findsNothing);
+
+      await _unmount(tester);
+    });
+
+    testWidgets('a Title id in the wrong slot is not worn at all',
+        (tester) async {
+      await _pump(
+        tester,
+        const GamificationDashboardScreen(),
+        // Reachable: equipped rows sync between a learner's devices.
+        equipped: const {ShopItemType.title: 'avatar_alien'},
+      );
+
+      expect(find.text('Alien'), findsNothing,
+          reason: 'an avatar in the title row must not become a title');
+
+      await _unmount(tester);
+    });
+
     testWidgets('leads with the level and its next goal', (tester) async {
       await _pump(tester, const GamificationDashboardScreen());
 

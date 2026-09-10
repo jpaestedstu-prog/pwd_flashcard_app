@@ -248,7 +248,7 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
     final result = resolveDpadVoiceCommand(text, _grid());
     if (kDebugMode) {
       debugPrint(
-        'VoiceCmd dpad "$text" → ${result.intent} (${result.row},${result.col})',
+        'VoiceCmd dpad “$text” → ${result.intent} (${result.row},${result.col})',
       );
     }
     switch (result.intent) {

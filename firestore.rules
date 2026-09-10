@@ -476,6 +476,39 @@ service cloud.firestore {
         && ownsProfile(resource.data.setter_profile_id);
     }
 
+    // ─── Daily routines ────────────────────────────────
+    // Many docs per learner, authored by an educator. Same write
+    // semantics as child_alarms — the writer must own the profile
+    // named by setter_profile_id — because a routine is an adult's
+    // instruction to a child and a learner must not be able to
+    // rewrite their own bedtime.
+    match /routines/{routineId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.setter_profile_id);
+      allow delete: if signedIn()
+        && ownsProfile(resource.data.setter_profile_id);
+    }
+
+    // ─── Routine completion, one doc per learner per day ──
+    // Keyed `<profileId>_<yyyy-mm-dd>`.
+    //
+    // Unlike the routine itself, this IS the learner's own record —
+    // the child ticking a step off is the whole point — so the write
+    // check is ownership of the *learner's* profile, taken from the
+    // doc's profile_id rather than from the key, and an educator
+    // writes it only for a learner whose profile they own (which is
+    // what makes "start today over" work from the educator side).
+    match /routine_logs/{logId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.profile_id);
+      allow delete: if signedIn()
+        && ownsProfile(resource.data.profile_id);
+    }
+
     // ─── Per-child unlock overrides ────────────────────
     // One doc per child, keyed by childProfileId. Granted by an
     // educator (parent or teacher) to lift the lock screen for a

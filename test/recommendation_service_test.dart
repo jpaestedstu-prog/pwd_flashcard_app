@@ -9,7 +9,7 @@ import 'package:pwdpwdpwd/features/recommendations/models/recommendation_models.
 Future<void> _initHive() async {
   Hive.init('./build/test_cache/recommendation');
   if (!Hive.isBoxOpen('progress')) {
-    await Hive.openBox('progress');
+    await Hive.openBox('progress', compactionStrategy: (_, _) => false);
   }
 }
 

@@ -30,6 +30,7 @@ import '../../break_time/break_time.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/utils/seeded_random.dart';
 
 class JigsawPuzzleScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -108,7 +109,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
   bool _showResult = false;
   List<Achievement> _newAchievements = [];
   final List<GameReviewItem> _reviewItems = [];
-  final _random = Random();
+  final _random = contentRandom();
 
   // Puzzle state for current card
   late List<int> _shuffledPieceOrder; // indices into flattened grid

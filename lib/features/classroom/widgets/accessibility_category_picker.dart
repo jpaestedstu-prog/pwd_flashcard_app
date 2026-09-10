@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Shows a modal that lets a teacher / parent change the accessibility
 /// category for an existing class or home group.
@@ -37,7 +38,7 @@ class AccessibilityCategoryChip extends StatelessWidget {
         border: Border.all(color: type.color.withValues(alpha: 0.4)),
       ),
       child: Text(
-        '${type.emoji} ${type.label}',
+        '${type.emoji} ${type.labelOf(AppLocalizations.of(context))}',
         style: AppTypography.labelMedium.copyWith(
           color: type.color,
           fontWeight: FontWeight.w600,
@@ -155,7 +156,7 @@ class AccessibilityCategoryPicker extends StatelessWidget {
           children: [
             for (final type in DisabilityType.values)
               ChoiceChip(
-                label: Text('${type.emoji}  ${type.label}'),
+                label: Text('${type.emoji}  ${type.labelOf(AppLocalizations.of(context))}'),
                 selected: selected == type,
                 onSelected:
                     enabled ? (_) => onChanged(type) : null,
@@ -176,7 +177,7 @@ class AccessibilityCategoryPicker extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          selected.description,
+          selected.descriptionOf(AppLocalizations.of(context)),
           style: AppTypography.bodySmall.copyWith(
             color: Colors.grey.shade700,
             fontStyle: FontStyle.italic,

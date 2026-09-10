@@ -31,7 +31,7 @@ void main() {
     // profile and its gaze config, which decide whether voice control arms.
     // HiveService.init opens all three in the real app.
     for (final name in const ['progress', 'profiles', 'settings']) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
   });
 
@@ -151,4 +151,68 @@ void main() {
       ),
     );
   });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The four frames above render under Flutter's default theme, which is not a
+  // theme any learner scans in. The dyslexia theme adds a 1.6 line height and
+  // 0.6 letter spacing on top of its own font sizes; high contrast overrides
+  // the text theme and outlines every card. Narrow portrait at 1.5x/2.0x,
+  // where a theme's metrics bite first.
+  final scanFrames = <String, Widget Function()>{
+    'scan screen (no-camera fallback)': () => ObjectScanScreen(
+          camerasLoader: () async => const <CameraDescription>[],
+          labelerFactory: _FakeLabeler.new,
+        ),
+    'discovered word sheet': () => Scaffold(
+          body: SingleChildScrollView(
+            child: DiscoveredWordSheet(
+              card: SeedData.allFlashcards.firstWhere((c) => c.id == 'cr18'),
+              isNewDiscovery: true,
+              starAwarded: true,
+              autoSpeak: false,
+            ),
+          ),
+        ),
+    'results panel fully decorated': () {
+      final table = SeedData.allFlashcards.firstWhere((c) => c.id == 'cr13');
+      final cup = SeedData.allFlashcards.firstWhere((c) => c.id == 'f14');
+      return Scaffold(
+        body: SingleChildScrollView(
+          child: PhotoResultsPanel(
+            matches: [
+              WordMatch(card: table, sourceLabel: 'Desk', confidence: 0.9),
+              WordMatch(card: cup, sourceLabel: 'Mug', confidence: 0.8),
+            ],
+            searching: false,
+            newWordIds: {table.id, cup.id},
+            targetsHit: [table, cup],
+            onWordTap: (_) {},
+            onRetake: () {},
+          ),
+        ),
+      );
+    },
+    'empty results panel with hunt targets': () => Scaffold(
+          body: SingleChildScrollView(
+            child: PhotoResultsPanel(
+              matches: const [],
+              searching: false,
+              targets: [
+                for (final id in const ['cr13', 'f14', 'a01'])
+                  SeedData.allFlashcards.firstWhere((c) => c.id == id),
+              ],
+              onWordTap: (_) {},
+              onRetake: () {},
+            ),
+          ),
+        ),
+  };
+
+  for (final entry in scanFrames.entries) {
+    testWidgets('${entry.key} survives the accessibility themes',
+        (tester) async {
+      await expectScreenSurvivesThemes(tester, entry.value);
+    });
+  }
 }

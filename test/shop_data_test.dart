@@ -111,4 +111,36 @@ void main() {
       expect(untranslated.localizedDescription(true), 'A test item');
     });
   });
+
+  group('findOfType', () {
+    test('resolves an id that really is that type', () {
+      final title = ShopData.findOfType('title_word_wizard', ShopItemType.title);
+      expect(title, isNotNull);
+      expect(title!.name, 'Word Wizard');
+      expect(title.localizedName(true), 'Salamangkero ng Salita',
+          reason: 'a title is worn in front of other people, so it has to be '
+              'worn in the language the learner reads');
+    });
+
+    test('refuses an id sitting in the wrong slot', () {
+      // Equipped rows sync between devices, so an avatar id can land in the
+      // title row. Rendering it would label the learner "Alien".
+      expect(ShopData.findOfType('avatar_alien', ShopItemType.title), isNull);
+      expect(ShopData.findOfType('sound_nature', ShopItemType.avatar), isNull);
+      expect(ShopData.findOfType('theme_ocean', ShopItemType.border), isNull);
+    });
+
+    test('null and unknown ids resolve to nothing, not to a throw', () {
+      expect(ShopData.findOfType(null, ShopItemType.title), isNull);
+      expect(ShopData.findOfType('nope', ShopItemType.title), isNull);
+    });
+
+    test('every title has a Filipino name to fall back from', () {
+      for (final item in ShopData.byType(ShopItemType.title)) {
+        expect(item.nameFilipino, isNotEmpty,
+            reason: '${item.id} would show English to a Filipino learner');
+      }
+    });
+  });
+
 }

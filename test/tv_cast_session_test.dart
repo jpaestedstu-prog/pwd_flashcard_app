@@ -20,6 +20,45 @@ void main() {
       }
     });
 
+    // Casting needs a LAN address to hand the TV. With Wi-Fi off there is
+    // none, and the attempt used to return silently — the teacher tapped
+    // "Start Casting" and nothing happened, with nothing on screen to say why.
+    group('start failure reason', () {
+      test('defaults to null — no failure to report', () {
+        expect(const TvCastSession().startError, isNull);
+      });
+
+      test('copyWith carries a reason', () {
+        final s = const TvCastSession().copyWith(startError: 'no wifi');
+        expect(s.startError, 'no wifi');
+      });
+
+      test('a later copyWith keeps the reason until it is cleared', () {
+        final s = const TvCastSession()
+            .copyWith(startError: 'no wifi')
+            .copyWith(slideIndex: 3);
+        expect(s.startError, 'no wifi',
+            reason: 'an unrelated update should not swallow the reason');
+      });
+
+      test('clearStartError wipes it, which a successful start needs', () {
+        // `startError: null` cannot express this — the ?? fallback would keep
+        // the old value — so a successful start would inherit a stale warning.
+        final s = const TvCastSession()
+            .copyWith(startError: 'no wifi')
+            .copyWith(clearStartError: true);
+        expect(s.startError, isNull);
+      });
+
+      test('it never reaches the TV payload', () {
+        // It is phone-side UI state; the TV has no use for it and the JSON
+        // contract should not grow a field app.js does not read.
+        final json =
+            const TvCastSession().copyWith(startError: 'no wifi').toApiJson();
+        expect(json.containsKey('startError'), isFalse);
+      });
+    });
+
     test('copyWith updates the theme and bumps nothing else', () {
       const base = TvCastSession(mode: CastMode.fslVideo, slideIndex: 3);
       final next = base.copyWith(castTheme: CastTheme.highContrast);
@@ -78,6 +117,47 @@ void main() {
     test('copyWith without fullscreenOnTv preserves the current value', () {
       const base = TvCastSession(fullscreenOnTv: false);
       expect(base.copyWith(slideIndex: 1).fullscreenOnTv, isFalse);
+    });
+  });
+
+  group('TvCastSession big picture ("fullscreen picture & video")', () {
+    test('defaults to off; toApiJson emits bigPicture:false', () {
+      const session = TvCastSession();
+      expect(session.bigPictureOnTv, isFalse);
+      expect(session.toApiJson()['bigPicture'], isFalse);
+    });
+
+    test('flows through toApiJson when turned on', () {
+      final json = const TvCastSession(bigPictureOnTv: true).toApiJson();
+      expect(json['bigPicture'], isTrue);
+    });
+
+    test('is independent of the browser-chrome fullscreen flag', () {
+      // The two switches are neighbours in the UI and easy to conflate. They
+      // are separate wire keys with separate defaults: the browser fills the
+      // screen by default, the picture does not.
+      final json = const TvCastSession(
+        fullscreenOnTv: false,
+        bigPictureOnTv: true,
+      ).toApiJson();
+      expect(json['fullscreen'], isFalse);
+      expect(json['bigPicture'], isTrue);
+    });
+
+    test('copyWith toggles it without disturbing the content', () {
+      const base = TvCastSession(mode: CastMode.story, storyPageIndex: 2);
+      final on = base.copyWith(bigPictureOnTv: true);
+      expect(on.bigPictureOnTv, isTrue);
+      expect(on.mode, CastMode.story);
+      expect(on.storyPageIndex, 2);
+      final off = on.copyWith(bigPictureOnTv: false);
+      expect(off.bigPictureOnTv, isFalse);
+      expect(off.storyPageIndex, 2);
+    });
+
+    test('copyWith without bigPictureOnTv preserves the current value', () {
+      const base = TvCastSession(bigPictureOnTv: true);
+      expect(base.copyWith(slideIndex: 1).bigPictureOnTv, isTrue);
     });
   });
 

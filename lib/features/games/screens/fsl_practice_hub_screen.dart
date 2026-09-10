@@ -16,6 +16,9 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/game_widgets.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Hub screen for FSL (Filipino Sign Language) Practice.
 ///
@@ -34,7 +37,31 @@ class FslPracticeHubScreen extends ConsumerWidget {
     // Control. Say so on the card rather than letting a hands-free learner
     // discover it by getting stuck.
     final gazeOn = ref.watch(gazeSettingsProvider.select((s) => s.enabled));
-    return Scaffold(
+    // The gate to all three FSL modes. Adopted for the same reason as the two
+    // game-setup sheets: a picker that cannot be operated by controller makes
+    // everything behind it unreachable, however well those screens themselves
+    // behave.
+    return GamepadScreenRegistrar(
+      title: l10n.fslPractice,
+      narration: [l10n.fslPracticeHeading, l10n.fslPracticeIntro],
+      items: [
+        GamepadItem(
+          label: l10n.fslSignToWord,
+          detail: l10n.fslSignToWordSubtitle,
+          onActivate: () => _launchMode(context, ref, 'sign-to-word'),
+        ),
+        GamepadItem(
+          label: l10n.fslWordToSign,
+          detail: l10n.fslWordToSignSubtitle,
+          onActivate: () => _launchMode(context, ref, 'word-to-sign'),
+        ),
+        GamepadItem(
+          label: l10n.fslSignIt,
+          detail: l10n.fslSignItSubtitle,
+          onActivate: () => _launchMode(context, ref, 'sign-it', minVideos: 1),
+        ),
+      ],
+      child: Scaffold(
       appBar: fullscreenBar(
         ref,
         AppBar(
@@ -172,6 +199,7 @@ class FslPracticeHubScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -356,13 +384,14 @@ class _FslModeCardState extends State<_FslModeCard> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Text(
+                      // The mode's explanation, in a card that shares its
+                      // row with an icon: it split the first word, "Watc / h".
+                      FitText(
                         widget.subtitle,
+                        maxLines: 3,
                         style: AppTypography.bodySmall.copyWith(
                           color: Colors.white.withValues(alpha: 0.85),
                         ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

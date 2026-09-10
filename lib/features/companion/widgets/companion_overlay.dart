@@ -17,6 +17,8 @@ import '../../ai_tutor/widgets/tutor_chat.dart';
 import '../../ai_tutor/widgets/tutor_persona.dart';
 import '../controllers/companion_controller.dart';
 import '../models/companion_presentation.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 
 /// Mounts the floating AI Companion above the whole app. Placed in the
 /// `MaterialApp.builder` (below the lock / eviction gates) so the companion
@@ -51,6 +53,14 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
   /// Custom dragged position of the launcher (playful profiles only); null =
   /// docked at the default bottom-right anchor.
   Offset? _dragPos;
+
+  @override
+  void dispose() {
+    // The launcher's controller item outlives this widget otherwise, leaving
+    // an "Open the tutor" entry that opens nothing.
+    gamepadScreen.clearFloating(owner: _floatingToken);
+    super.dispose();
+  }
 
   /// The floating buddy only appears over the core learner surfaces — never the
   /// profile switcher, onboarding, or a full-screen tutor / settings page.
@@ -87,7 +97,20 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
       builder: (context, _) {
         final loc =
             router.routerDelegate.currentConfiguration.last.matchedLocation;
-        if (!_shellRoots.any(loc.startsWith)) return const SizedBox.shrink();
+        if (!_shellRoots.any(loc.startsWith)) {
+          // Off the hubs the launcher is not drawn, so it must not linger in
+          // the controller's item list either.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            gamepadScreen.clearFloating(owner: _floatingToken);
+          });
+          return const SizedBox.shrink();
+        }
+        // Offer the launcher to the controller while it is the thing on
+        // screen. It floats above the hub rather than belonging to it, so it
+        // is published as a *floating* item and lands at the end of the hub's
+        // own list — otherwise a learner who cannot see it has no way to open
+        // the tutor at all.
+        _publishLauncher(context, open: isOpen);
         return Stack(
           children: [
             if (isOpen) _Scrim(onTap: () => _controller.close()),
@@ -103,6 +126,34 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
 
   CompanionController get _controller =>
       ref.read(companionControllerProvider.notifier);
+
+  /// Stable identity for this overlay's floating publication.
+  final Object _floatingToken = Object();
+
+  /// Publishes (or withdraws) the "open the tutor" control.
+  ///
+  /// Deferred to a post-frame callback because it notifies listeners, and this
+  /// runs inside `build`.
+  void _publishLauncher(BuildContext context, {required bool open}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (open) {
+        // While the panel is up it publishes its own items; a launcher
+        // floating on top of them would just be a second way to close it.
+        gamepadScreen.clearFloating(owner: _floatingToken);
+        return;
+      }
+      gamepadScreen.publishFloating(
+        [
+          // Named as the *thing*, not the action: the host already prefixes
+          // "Opening …", so "Open the tutor" read back as
+          // "Opening Open the tutor".
+          GamepadItem(label: 'AI Tutor', onActivate: _controller.open),
+        ],
+        owner: _floatingToken,
+      );
+    });
+  }
 
   Widget _positionedLauncher(
       BuildContext context, CompanionPresentation presentation) {
@@ -147,10 +198,17 @@ class _Scrim extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Excluded from semantics on purpose. Tap-to-dismiss is a *pointer*
+    // affordance; exposing it would put a screen-sized unnamed clickable over
+    // the whole app -- and naming it would recreate exactly the full-screen
+    // labelled node the launcher was just fixed to stop producing. The panel's
+    // own Close button is the accessible way out, and it is already labelled.
     return Positioned.fill(
-      child: GestureDetector(
-        onTap: onTap,
-        child: ColoredBox(color: Colors.black.withValues(alpha: 0.18)),
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: onTap,
+          child: ColoredBox(color: Colors.black.withValues(alpha: 0.18)),
+        ),
       ),
     );
   }
@@ -185,7 +243,15 @@ class _CompanionLauncher extends ConsumerWidget {
         ? TutorAvatar(persona: persona, state: avatar, size: size)
         : _StillAvatar(emoji: persona.emoji, size: size);
 
-    return Semantics(
+    // `container: true` is load-bearing. Without it this annotation does not
+    // get a node of its own -- it lands on the nearest enclosing semantics
+    // node, which for an overlay mounted in `MaterialApp.builder` is the
+    // screen-sized root. The launcher then reported bounds of the entire
+    // display with the whole app nested *inside* it, so anything that targets
+    // a node by its centre (gaze, the gamepad reader, test automation) aimed
+    // at the middle of the screen instead of the button in the corner.
+    final button = Semantics(
+      container: true,
       button: true,
       label: isFilipino
           ? 'Buksan ang AI Buddy'
@@ -232,6 +298,13 @@ class _CompanionLauncher extends ConsumerWidget {
         ),
       ),
     );
+
+    // The launcher lives in `MaterialApp.builder`, above every Material in
+    // the app, so its emoji had no `DefaultTextStyle` to inherit and picked
+    // up Flutter's fallback -- which paints a yellow underline. The buddy
+    // has been wearing a bright yellow bar across its face on every learner
+    // screen. The panel already wraps itself this way; the launcher never did.
+    return Material(type: MaterialType.transparency, child: button);
   }
 }
 
@@ -376,7 +449,47 @@ class _CompanionPanelState extends State<_CompanionPanel> {
     final announce =
         presentation.announce && !presentation.speakReplies ? lastTutor : '';
 
-    return Material(
+    // The tutor panel floats in its own overlay above everything, so it has no
+    // route of its own and directional traversal found only unnamed icon
+    // buttons in it. Published explicitly, a learner on a controller can hear
+    // the tutor's reply and answer it — including by voice, which is the only
+    // input here they can actually give.
+    return GamepadScreenRegistrar(
+      title: isFilipino ? 'Tutor' : 'Tutor',
+      narration: [
+        if (lastTutor.isNotEmpty) lastTutor,
+      ],
+      items: [
+        if (presentation.speakReplies && state.messages.isNotEmpty)
+          GamepadItem(
+            label: isFilipino ? 'Basahin muli' : 'Read that again',
+            onActivate: () =>
+                controller.speakMessage(state.messages.last.content),
+          ),
+        GamepadItem(
+          label: state.isListening
+              ? (isFilipino ? 'Itigil ang pakikinig' : 'Stop listening')
+              : (isFilipino ? 'Magtanong gamit ang boses' : 'Ask by voice'),
+          onActivate: controller.toggleVoiceInput,
+        ),
+        for (final quick in _quickChipActions(isFilipino))
+          GamepadItem(
+            label: quick.$2,
+            onActivate: () => controller.sendQuick(quick.$1),
+          ),
+        GamepadItem(
+          label: isFilipino ? 'Buksan nang buo' : 'Open full screen',
+          onActivate: () {
+            controller.close();
+            ref.read(routerProvider).push('/ai-tutor');
+          },
+        ),
+        GamepadItem(
+          label: isFilipino ? 'Isara' : 'Close tutor',
+          onActivate: controller.close,
+        ),
+      ],
+      child: Material(
       type: MaterialType.transparency,
       child: Container(
         decoration: BoxDecoration(
@@ -460,8 +573,21 @@ class _CompanionPanelState extends State<_CompanionPanel> {
           ],
         ),
       ),
+      ),
     );
   }
+
+  /// The quick-reply chips, as (action id, label) pairs.
+  ///
+  /// Shared with [_QuickChips] so the controller can never offer a chip the
+  /// panel does not show, or miss one it does.
+  static List<(String, String, String)> _quickChipActions(bool isFilipino) => [
+        ('lesson', isFilipino ? 'Aralin' : 'Lesson', '🎯'),
+        ('quiz', 'Quiz', '❓'),
+        ('progress', isFilipino ? 'Pag-unlad' : 'Progress', '📊'),
+        ('hint', isFilipino ? 'Pahiwatig' : 'Hint', '💡'),
+        ('favorites', isFilipino ? 'Paborito' : 'Favorites', '💖'),
+      ];
 
   /// Plays the sign for [cardId].
   ///
@@ -544,20 +670,38 @@ class _Header extends StatelessWidget {
       ),
       child: Row(
         children: [
-          TutorAvatar(
-            persona: persona,
-            state: isTyping ? TutorAvatarState.thinking : avatar,
-            size: 30,
-          ),
-          const SizedBox(width: 8),
+          // Avatar + title read as one header node, spanning both. Wrapped in
+          // a *container* for the same reason as the launcher: an annotation
+          // without its own node drifts up to the screen-sized root of this
+          // overlay, and the panel's name lands on a node the size of the
+          // whole display.
           Expanded(
-            child: Text(
-              persona.title(isFilipino),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: hc.textPrimary,
+            child: Semantics(
+              container: true,
+              header: true,
+              label: persona.title(isFilipino),
+              child: ExcludeSemantics(
+                child: Row(
+                  children: [
+                    TutorAvatar(
+                      persona: persona,
+                      state: isTyping ? TutorAvatarState.thinking : avatar,
+                      size: 30,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        persona.title(isFilipino),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: hc.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -586,32 +730,23 @@ class _QuickChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Built from the same list the controller publishes, so the chips a
+    // sighted learner taps and the items a controller learner hears can never
+    // disagree about what the tutor offers.
+    final chips = _CompanionPanelState._quickChipActions(isFilipino);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(10, 2, 10, 6),
       child: Row(
         children: [
-          TutorQuickChip(
-              label: isFilipino ? 'Aralin' : 'Lesson',
-              emoji: '🎯',
-              onTap: () => onTap('lesson')),
-          const SizedBox(width: 6),
-          TutorQuickChip(label: 'Quiz', emoji: '❓', onTap: () => onTap('quiz')),
-          const SizedBox(width: 6),
-          TutorQuickChip(
-              label: isFilipino ? 'Pag-unlad' : 'Progress',
-              emoji: '📊',
-              onTap: () => onTap('progress')),
-          const SizedBox(width: 6),
-          TutorQuickChip(
-              label: isFilipino ? 'Pahiwatig' : 'Hint',
-              emoji: '💡',
-              onTap: () => onTap('hint')),
-          const SizedBox(width: 6),
-          TutorQuickChip(
-              label: isFilipino ? 'Paborito' : 'Favorites',
-              emoji: '💖',
-              onTap: () => onTap('favorites')),
+          for (var i = 0; i < chips.length; i++) ...[
+            if (i > 0) const SizedBox(width: 6),
+            TutorQuickChip(
+              label: chips[i].$2,
+              emoji: chips[i].$3,
+              onTap: () => onTap(chips[i].$1),
+            ),
+          ],
         ],
       ),
     );
@@ -679,7 +814,17 @@ class _InputRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
+            // `container: true` is load-bearing, exactly as on the launcher.
+            // This field sits in an overlay mounted above the app's Navigator,
+            // and an annotation with no node of its own drifts up to the
+            // screen-sized root there: without the container the question field
+            // reported bounds of the entire display. The container costs a
+            // second EditText node over the same bounds, but both carry the
+            // hint Android reads out, so neither is an unnamed control -- a far
+            // better trade than one screen-sized unnamed field.
             child: Semantics(
+              container: true,
+              textField: true,
               label: isFilipino ? 'I-type ang tanong' : 'Type your question',
               child: TextField(
                 controller: controller,
@@ -704,16 +849,14 @@ class _InputRow extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 ),
               ),
-            ),
+              ),
           ),
           if (presentation.voiceInput) ...[
             const SizedBox(width: 6),
-            Semantics(
-              button: true,
-              label: isListening
-                  ? (isFilipino ? 'Itigil ang mic' : 'Stop microphone')
-                  : (isFilipino ? 'Magsalita' : 'Speak'),
-              child: IconButton.filledTonal(
+            IconButton.filledTonal(
+                tooltip: isListening
+                    ? (isFilipino ? 'Itigil ang mic' : 'Stop microphone')
+                    : (isFilipino ? 'Magsalita' : 'Speak'),
                 onPressed: onMic,
                 icon: Icon(isListening ? Icons.stop_rounded : Icons.mic_rounded),
                 style: IconButton.styleFrom(
@@ -722,13 +865,10 @@ class _InputRow extends StatelessWidget {
                       : AppColors.secondary.withValues(alpha: 0.16),
                 ),
               ),
-            ),
           ],
           const SizedBox(width: 6),
-          Semantics(
-            button: true,
-            label: isFilipino ? 'Ipadala' : 'Send',
-            child: IconButton.filled(
+          IconButton.filled(
+              tooltip: isFilipino ? 'Ipadala' : 'Send',
               onPressed: onSend,
               icon: const Icon(Icons.send_rounded),
               style: IconButton.styleFrom(
@@ -736,7 +876,6 @@ class _InputRow extends StatelessWidget {
                 foregroundColor: Colors.white,
               ),
             ),
-          ),
         ],
       ),
     );

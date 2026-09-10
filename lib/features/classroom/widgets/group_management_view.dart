@@ -625,6 +625,10 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                 accent: hc.primary,
                 memberNoun: _delegate.memberNoun,
                 groupNoun: _delegate.groupNoun,
+                // The group's audience, forwarded so the Routine editor can
+                // suggest templates and preview the learner's own view without
+                // a second lookup.
+                accessibility: _group.accessibility,
                 selected: _selected.contains(m.profileId),
                 selectionMode: _selectionMode,
                 onLongPress: () => _toggle(m.profileId),
@@ -671,7 +675,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
   Future<void> _shareCode() async {
     try {
       await Share.share(
-        'Join "${_group.name}" on FlashLearn PWD with code ${_group.code}. '
+        'Join “${_group.name}” on FlashLearn PWD with code ${_group.code}. '
         '${_delegate.shareBlurb}',
         subject: 'FlashLearn PWD join code',
       );
@@ -928,6 +932,12 @@ class _MemberRow extends StatelessWidget {
   final Color accent;
   final String memberNoun;
   final String groupNoun;
+
+  /// Accessibility audience of the group this member is in. Passed through to
+  /// the Routine editor, which shapes its template suggestions and its
+  /// learner preview around it.
+  final DisabilityType accessibility;
+
   final bool selected;
   final bool selectionMode;
   final VoidCallback onLongPress;
@@ -942,6 +952,7 @@ class _MemberRow extends StatelessWidget {
     required this.accent,
     required this.memberNoun,
     required this.groupNoun,
+    required this.accessibility,
     required this.selected,
     required this.selectionMode,
     required this.onLongPress,
@@ -1018,6 +1029,13 @@ class _MemberRow extends StatelessWidget {
                     GoRouter.of(context).push(
                       '/child-alarms/${member.profileId}?name=$encodedName',
                     );
+                  case 'routine':
+                    GoRouter.of(context).push(
+                      '/routine-manage/${member.profileId}'
+                      '?name=$encodedName'
+                      '&noun=${Uri.encodeQueryComponent(memberNoun)}'
+                      '&access=${accessibility.index}',
+                    );
                   case 'unlock':
                     onUnlock();
                   case 'remove':
@@ -1030,6 +1048,10 @@ class _MemberRow extends StatelessWidget {
                 _menuItem('notes', Icons.sticky_note_2_rounded, 'Notes'),
                 _menuItem('time_limits', Icons.timer_rounded, 'Time limits'),
                 _menuItem('alarms', Icons.alarm_rounded, 'Alarms'),
+                // Daily routine — the visual schedule this learner follows.
+                // Sits beside Alarms because the two are the same kind of
+                // thing to an educator: what happens, and when.
+                _menuItem('routine', Icons.event_note_rounded, 'Routine'),
                 _menuItem('unlock', Icons.lock_open_rounded, 'Unlock screen'),
                 _menuItem(
                   'remove',

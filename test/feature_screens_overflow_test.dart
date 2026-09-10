@@ -27,8 +27,10 @@ import 'package:pwdpwdpwd/features/reports/screens/weekly_report_screen.dart';
 import 'package:pwdpwdpwd/features/settings/screens/settings_screen.dart';
 import 'package:pwdpwdpwd/features/teacher_analytics/screens/teacher_dashboard_screen.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
+import 'package:pwdpwdpwd/providers/parent_provider.dart';
 
 import 'support/screen_matrix.dart';
+import 'support/device_matrix.dart';
 
 /// Overflow matrix for the high-traffic non-game feature screens (progress &
 /// analytics, settings, goals, notebook, mood, weekly report, parent surfaces).
@@ -57,6 +59,67 @@ List<Override> _asRole(UserRole role, {bool guest = false}) => [
       profileProvider.overrideWith(() => _StubProfileNotifier(role, guest: guest))
     ];
 
+/// One roster learner, with a full week of study minutes.
+///
+/// The minutes matter: the "This Week" bar chart only draws its per-day value
+/// labels for days with minutes, and it was exactly those labels that used to
+/// burst the chart's box.
+ChildSummary _rosterChild(String name, List<int> minutes) {
+  final now = DateTime.now();
+  final daily = <String, int>{};
+  for (int i = 0; i < 7; i++) {
+    final date = now.subtract(Duration(days: 6 - i));
+    daily['${date.year}-${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}'] = minutes[i];
+  }
+  return ChildSummary(
+    profileId: 'child-$name',
+    name: name,
+    avatarEmoji: '🐼',
+    avatarIndex: 0,
+    disabilityType: DisabilityType.hearing,
+    wordsLearned: 128,
+    totalStars: 340,
+    streakDays: 12,
+    gamesPlayed: 46,
+    averageAccuracy: 0.72,
+    studyMinutesThisWeek: minutes.fold(0, (a, b) => a + b),
+    studyMinutesLastWeek: 95,
+    totalSessions: 31,
+    dailyStudyMinutes: daily,
+    categoryProgress: const {'Animals': 0.8, 'Food': 0.45},
+    categoryCoverage: const {'Animals': 0.6, 'Food': 0.3},
+    wordHuntFinds: 7,
+    signsWatched: 22,
+    wordHuntStreak: 3,
+    recentScores: const [],
+    lastActivityDate: now,
+  );
+}
+
+/// A role stub plus a **populated** dashboard snapshot.
+///
+/// Without this the educator dashboards resolve to an empty roster and render
+/// only their empty state, so the whole body — roster stats, recommendations,
+/// learner cards and the "This Week" chart — never reached the matrix at all.
+/// That is how a bar chart that overflowed its box by 7 px at the *default*
+/// font scale shipped past a green suite. Names are the long end of the real
+/// roster, because a starved name column is the other way this body breaks.
+List<Override> _asEducatorWithRoster(UserRole role) => [
+      ..._asRole(role),
+      parentDashboardProvider.overrideWithValue(
+        ParentDashboardSnapshot(
+          timestamp: DateTime.now(),
+          children: [
+            _rosterChild('Ana', const [12, 45, 0, 8, 30, 5, 22]),
+            _rosterChild(
+                'Cognitive/Learning Student', const [3, 0, 60, 15, 0, 9, 40]),
+            _rosterChild('Bien', const [0, 0, 0, 0, 0, 0, 7]),
+          ],
+        ),
+      ),
+    ];
+
 void main() {
   setUpAll(() async {
     Hive.init('./build/test_cache/feature_screens');
@@ -69,8 +132,15 @@ void main() {
       'goals',
       'notebook',
       'mood_entries',
+      // A populated educator dashboard reads the alert bell, the per-learner
+      // time limits and the active-time log; without these boxes the roster
+      // pass fails on "Box not found" rather than on a layout.
+      'alerts',
+      'active_time_logs',
+      'child_time_limits',
+      'child_alarms',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
     // SettingsScreen renders the Cloud Sync tile (SyncStatusWidget), which reads
     // the sync-queue box. The real app opens it in HiveService.init(); mirror
@@ -90,7 +160,7 @@ void main() {
   });
 
   // ─── Student-facing screens ──────────────────────────────────────
-  for (final entry in <String, Widget Function()>{
+  final studentScreens = <String, Widget Function()>{
     'ProgressScreen': () => const ProgressScreen(),
     'DetailedAnalyticsScreen': () => const DetailedAnalyticsScreen(),
     // Learner-reachable since the Progress tab grew a "Learning Insights"
@@ -113,7 +183,9 @@ void main() {
     // Word Hunt's collection: a long checklist of picture tiles, the shape
     // most likely to burst a row at a big font scale.
     'WordHuntCollectionScreen': () => const WordHuntCollectionScreen(),
-  }.entries) {
+  };
+
+  for (final entry in studentScreens.entries) {
     testWidgets('${entry.key} survives the device matrix', (tester) async {
       await expectScreenNoOverflowAcrossDevices(
         tester,
@@ -144,6 +216,25 @@ void main() {
       overrides: _asRole(UserRole.teacher),
     );
   });
+
+  // …and again with learners on the roster. The two passes above render the
+  // empty state and nothing else, which is the entire dashboard an educator
+  // never sees. See [_asEducatorWithRoster].
+  for (final (label, build, role) in <(String, Widget Function(), UserRole)>[
+    ('ParentDashboardScreen', () => const ParentDashboardScreen(),
+        UserRole.parent),
+    ('TeacherDashboardScreen', () => const TeacherDashboardScreen(),
+        UserRole.teacher),
+  ]) {
+    testWidgets('$label (populated roster) survives the device matrix',
+        (tester) async {
+      await expectScreenNoOverflowAcrossDevices(
+        tester,
+        build,
+        overrides: _asEducatorWithRoster(role),
+      );
+    });
+  }
 
   testWidgets('ParentalControlsScreen survives the device matrix',
       (tester) async {
@@ -208,4 +299,93 @@ void main() {
       overrides: _asRole(UserRole.child),
     );
   });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // Everything above renders under Flutter's default theme, which is not a
+  // theme any learner ever sees. The dyslexia theme adds a 1.6 line height and
+  // 0.6 letter spacing on top of its own font sizes, so every line is wider
+  // *and* taller than the pass above measured; high contrast overrides the
+  // text theme and outlines every card. Both are what a learner actually turns
+  // on, and both had no screen coverage at all until now.
+  //
+  // Narrow portrait only, at 1.5x/2.0x: a theme cannot change glyph widths in
+  // a widget test, only the metrics, so it fails first where the column is
+  // narrowest and the type largest.
+  // The role-specific screens, which sit outside `studentScreens` above and so
+  // were the last ones the theme pass did not reach. Educator dashboards and
+  // the trimmed Teacher/Parent Settings are dense two-column layouts, and the
+  // Child and guest Player homes are the kid-sized tile grids — all of them
+  // the shapes that a 1.6 line height pushes hardest.
+  final roleScreens = <String, ({Widget Function() build, List<Override> ov})>{
+    'ParentDashboardScreen': (
+      build: () => const ParentDashboardScreen(),
+      ov: _asEducatorWithRoster(UserRole.parent),
+    ),
+    'TeacherDashboardScreen': (
+      build: () => const TeacherDashboardScreen(),
+      ov: _asEducatorWithRoster(UserRole.teacher),
+    ),
+    'ParentalControlsScreen': (
+      build: () => const ParentalControlsScreen(),
+      ov: _asRole(UserRole.parent),
+    ),
+    'SettingsScreen (teacher)': (
+      build: () => const SettingsScreen(),
+      ov: _asRole(UserRole.teacher),
+    ),
+    'SettingsScreen (parent)': (
+      build: () => const SettingsScreen(),
+      ov: _asRole(UserRole.parent),
+    ),
+    'EducatorHomeScreen (teacher)': (
+      build: () => const EducatorHomeScreen(),
+      ov: _asRole(UserRole.teacher),
+    ),
+    'EducatorHomeScreen (parent)': (
+      build: () => const EducatorHomeScreen(),
+      ov: _asRole(UserRole.parent),
+    ),
+    'PlayerHomeScreen (guest)': (
+      build: () => const PlayerHomeScreen(),
+      ov: _asRole(UserRole.player, guest: true),
+    ),
+    'ChildHomeScreen': (
+      build: () => const ChildHomeScreen(),
+      ov: _asRole(UserRole.child),
+    ),
+  };
+
+  for (final theme in kLayoutThemes.entries) {
+    for (final entry in roleScreens.entries) {
+      testWidgets('${entry.key} survives the ${theme.key} theme',
+          (tester) async {
+        await expectScreenNoOverflowAcrossDevices(
+          tester,
+          entry.value.build,
+          theme: theme.value(),
+          themeLabel: theme.key,
+          devices: kNarrowPortrait,
+          textScales: kLargeTextScales,
+          overrides: entry.value.ov,
+        );
+      });
+    }
+  }
+
+  for (final theme in kLayoutThemes.entries) {
+    for (final entry in studentScreens.entries) {
+      testWidgets('${entry.key} survives the ${theme.key} theme',
+          (tester) async {
+        await expectScreenNoOverflowAcrossDevices(
+          tester,
+          entry.value,
+          theme: theme.value(),
+          devices: kNarrowPortrait,
+          textScales: kLargeTextScales,
+          overrides: _asRole(UserRole.student),
+        );
+      });
+    }
+  }
 }

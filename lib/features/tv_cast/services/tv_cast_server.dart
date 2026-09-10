@@ -195,6 +195,31 @@ class TvCastServer {
       '/app.js',
       _serveStaticAsset('assets/tv_cast/app.js', 'application/javascript'),
     );
+    // The app's own typefaces, so the TV reads in Nunito (and Lexend under the
+    // dyslexia template) rather than whatever sans-serif the TV happens to
+    // ship. Served from the phone because a classroom TV is often on Wi-Fi with
+    // no route to the internet — a webfont CDN would simply fail there and
+    // silently fall back.
+    //
+    // The stylesheet references these with a *relative* url(), which the
+    // browser resolves against the stylesheet's own address — already
+    // `/c/<token>/style.css` — so they land inside the session gate without
+    // any of the base-path rewriting the HTML needs.
+    //
+    // A year of caching: a font file for a fixed weight never changes, and the
+    // TV re-fetches the page on every cast.
+    for (final font in const <String, String>{
+      'nunito-regular': 'google_fonts/Nunito-Regular.ttf',
+      'nunito-bold': 'google_fonts/Nunito-Bold.ttf',
+      'lexend-regular': 'google_fonts/Lexend-Regular.ttf',
+      'lexend-bold': 'google_fonts/Lexend-Bold.ttf',
+    }.entries) {
+      r.get(
+        '/fonts/${font.key}.ttf',
+        _serveStaticAsset(font.value, 'font/ttf', cacheSeconds: 31536000),
+      );
+    }
+
     r.get('/idle.html', _serveIdle);
 
     r.get('/api/state', _serveState);
@@ -252,7 +277,11 @@ class TvCastServer {
         );
   }
 
-  Handler _serveStaticAsset(String assetPath, String contentType) {
+  Handler _serveStaticAsset(
+    String assetPath,
+    String contentType, {
+    int cacheSeconds = 300,
+  }) {
     return (Request _) async {
       final bytes = await TvCastAssetBridge.loadAssetBytes(assetPath);
       if (bytes == null) return Response.notFound('asset not found');
@@ -260,7 +289,7 @@ class TvCastServer {
         bytes,
         headers: {
           HttpHeaders.contentTypeHeader: contentType,
-          HttpHeaders.cacheControlHeader: 'public, max-age=300',
+          HttpHeaders.cacheControlHeader: 'public, max-age=$cacheSeconds',
         },
       );
     };

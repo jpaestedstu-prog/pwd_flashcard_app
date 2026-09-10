@@ -10,6 +10,8 @@ import '../../../widgets/flashcard_image.dart';
 import '../models/tutor_media_policy.dart';
 import '../models/tutor_models.dart';
 import 'tutor_persona.dart';
+import '../../../core/widgets/fit_text.dart';
+import '../../../core/utils/reduced_motion.dart';
 
 /// Presentational chat widgets for the AI Tutor. Kept public + provider-free so
 /// they can be rendered directly in the cross-device overflow matrix
@@ -532,10 +534,15 @@ class _InterestChip extends StatelessWidget {
             children: [
               Text(category.emoji, style: const TextStyle(fontSize: 14)),
               const SizedBox(width: 4),
-              Text(
-                label,
-                style:
-                    AppTypography.labelMedium.copyWith(color: hc.textPrimary),
+              // A topic chip in a wrapped row: the category name grows with
+              // the font while the chip does not.
+              Flexible(
+                child: FitText(
+                  label,
+                  maxLines: 1,
+                  style:
+                      AppTypography.labelMedium.copyWith(color: hc.textPrimary),
+                ),
               ),
             ],
           ),
@@ -605,7 +612,7 @@ class _Dot extends StatelessWidget {
         shape: BoxShape.circle,
       ),
     )
-        .animate(onPlay: (c) => c.repeat())
+        .animate(key: motionKey(context), onPlay: motionLoop(context))
         .fadeIn(duration: 400.ms, delay: delay.ms)
         .then()
         .fadeOut(duration: 400.ms);

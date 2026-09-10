@@ -157,7 +157,7 @@ void main() {
         }
       }
       Hive.init(storeDir);
-      if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress');
+      if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress', compactionStrategy: (_, _) => false);
     });
 
     tearDownAll(() async => Hive.deleteFromDisk());

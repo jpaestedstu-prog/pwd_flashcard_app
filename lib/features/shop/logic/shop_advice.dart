@@ -34,6 +34,9 @@ enum ShopAdvice {
 
   /// A celebration effect that Reduced Motion will play gently.
   effectPlaysGently,
+
+  /// A sound pack the learner's own Sound Effects toggle will silence.
+  soundPackNeedsSound,
 }
 
 /// The advice for [item] given [settings], or [ShopAdvice.none].
@@ -50,10 +53,18 @@ ShopAdvice adviceFor(ShopItem item, AppSettings settings) {
           ? ShopAdvice.effectPlaysGently
           : ShopAdvice.none;
 
+    case ShopItemType.soundPack:
+      // The exact shape of the theme rule: a pack is the one shelf whose
+      // whole value is audible, and Sound Effects off means it plays nothing
+      // at all. Same principle — say so before the stars are spent, and never
+      // hide the item, because the toggle is one tap away in Settings.
+      return settings.soundEffects
+          ? ShopAdvice.none
+          : ShopAdvice.soundPackNeedsSound;
+
     case ShopItemType.avatar:
     case ShopItemType.border:
     case ShopItemType.title:
-    case ShopItemType.soundPack:
       return ShopAdvice.none;
   }
 }

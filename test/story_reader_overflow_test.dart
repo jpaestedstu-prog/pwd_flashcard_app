@@ -26,7 +26,7 @@ void main() {
       'custom_cards',
       'sessions',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
   });
 
@@ -47,6 +47,21 @@ void main() {
 
   testWidgets('StoryReaderScreen survives the device matrix', (tester) async {
     await expectScreenNoOverflowAcrossDevices(
+      tester,
+      () => const StoryReaderScreen(storyId: 's_a01'),
+    );
+  });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The pass above renders under Flutter's default theme, which is not a theme
+  // any learner sees. The dyslexia theme adds a 1.6 line height and 0.6 letter
+  // spacing on top of its own font sizes; high contrast overrides the text
+  // theme and outlines every card. Narrow portrait at 1.5x/2.0x, where a
+  // theme's metrics bite first.
+  testWidgets('StoryReaderScreen survives the accessibility themes',
+      (tester) async {
+    await expectScreenSurvivesThemes(
       tester,
       () => const StoryReaderScreen(storyId: 's_a01'),
     );

@@ -25,7 +25,7 @@ void main() {
   // The lesson-plan path reads spaced-repetition data from the `progress` box.
   setUpAll(() async {
     Hive.init('./build/test_cache/tutor_reading_level');
-    if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress');
+    if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress', compactionStrategy: (_, _) => false);
   });
 
   group('who gets the plain-language register', () {

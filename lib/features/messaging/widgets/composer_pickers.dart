@@ -23,6 +23,10 @@ Future<String?> showMessageStickerPicker(
 }) {
   return showModalBottomSheet<String>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     showDragHandle: true,
     builder: (context) {
       final hc = HCColor.of(context);
@@ -107,6 +111,10 @@ Future<String?> showMessageSignPicker(
   if (!context.mounted) return null;
   return showModalBottomSheet<String>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (context) {

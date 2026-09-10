@@ -156,6 +156,17 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
     if (_showReal) _resolveReal();
   }
 
+  /// The picture's subject, terminated exactly once.
+  ///
+  /// In Stories this is a whole sentence, which already ends in a full stop —
+  /// appending another produced "…rolling happily in the mud.. Tap to see…".
+  /// Flashcards pass a bare word and still need the stop added.
+  String get _subject {
+    final s = widget.semanticLabel.trimRight();
+    if (s.isEmpty) return '';
+    return RegExp(r'[.!?:]$').hasMatch(s) ? s : '$s.';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -166,10 +177,10 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
             button: true,
             image: true,
             label: _showReal
-                ? 'Real-life picture of ${widget.semanticLabel}. '
-                      'Tap to see the cartoon picture.'
-                : 'Cartoon picture of ${widget.semanticLabel}. '
-                      'Tap to see the real picture.',
+                ? 'Real-life picture of $_subject'
+                      ' Tap to see the cartoon picture.'
+                : 'Cartoon picture of $_subject'
+                      ' Tap to see the real picture.',
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _toggle,

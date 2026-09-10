@@ -12,6 +12,7 @@ import '../providers/assessment_provider.dart';
 import '../services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Full analytics dashboard showing assessment history, score trends,
 /// pre/post comparisons, and category breakdowns over time.
@@ -50,7 +51,7 @@ class AssessmentResultsScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          FitText(
                             'Assessment Analytics',
                             style: AppTypography.headlineLarge.copyWith(
                               color: hc.textPrimary,
@@ -72,7 +73,9 @@ class AssessmentResultsScreen extends ConsumerWidget {
 
             if (results.isEmpty)
               SliverFillRemaining(
-                child: Center(
+                // Scrollable: the emoji is a fixed 64 pt and the copy grows
+                // with the font, so this centred column ran off the bottom.
+                child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [

@@ -39,7 +39,7 @@ void main() {
     test('scaffolds with topic, first letter and length', () {
       final content = TutorEngine.hintForWord(_card).content;
       expect(content, contains('Animals'));
-      expect(content, contains('"P"'));
+      expect(content, contains('“P”'));
       expect(content, contains('4 letters'));
     });
 
@@ -57,7 +57,7 @@ void main() {
     test('omits the sentence when there is none', () {
       final content = TutorEngine.hintForWord(_noExample).content;
       expect(content, isNot(contains('___')));
-      expect(content, contains('"L"'));
+      expect(content, contains('“L”'));
       expect(content, contains('8 letters'));
     });
 

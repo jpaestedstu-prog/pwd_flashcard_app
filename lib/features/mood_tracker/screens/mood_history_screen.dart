@@ -302,8 +302,8 @@ class MoodHistoryScreen extends ConsumerWidget {
         title: Text(isFilipino ? 'Burahin ang entry?' : 'Delete this entry?'),
         content: Text(
           isFilipino
-              ? 'Tatanggalin ang "$label" sa iyong mood history.'
-              : 'This removes "$label" from your mood history.',
+              ? 'Tatanggalin ang “$label” sa iyong mood history.'
+              : 'This removes “$label” from your mood history.',
         ),
         actions: [
           TextButton(

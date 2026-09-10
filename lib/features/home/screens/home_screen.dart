@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -33,12 +34,15 @@ import '../../assessment/providers/assessment_provider.dart';
 import '../../assessment/widgets/learner_assignment_sync.dart';
 import '../../assessment/widgets/pending_assignments_banner.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
-import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../../providers/tile_grid_active_provider.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../../messaging/providers/messaging_providers.dart';
 import '../../object_scan/word_hunt_entry.dart';
 import '../../stickers/widgets/sticker_sweep.dart';
 import '../widgets/home_tile.dart';
+import '../../progress/models/category_mastery.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -106,6 +110,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
     final progress = ref.watch(progressProvider);
+    // Per-category coverage, shared with the Progress rows,
+    // the certificates and the exports.
+    final mastery = ref.watch(categoryMasteryProvider);
     final padding = context.pagePadding;
     final hc = HCColor.of(context);
 
@@ -122,7 +129,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // (a pure pass-through) otherwise, so touch / the gaze-off layout are
     // unchanged.
     final gazeHomeOn = ref.watch(
-      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+      tileGridActiveProvider,
     );
     final gazeGrid = GazeTileGridBuilder(active: gazeHomeOn);
 
@@ -212,15 +219,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                 ))
                                   (
-                                    tile: Semantics(
-                                      button: true,
-                                      label: 'Open star shop',
-                                      child: IconButton(
-                                        onPressed: () => context.push('/shop'),
-                                        icon: const Icon(Icons.store_rounded),
-                                        iconSize: 28,
-                                        color: hc.textSecondary,
-                                      ),
+                                    // Labelled through `tooltip`, not a
+                                    // wrapping `Semantics`. IconButton already
+                                    // publishes its own node, so wrapping it
+                                    // produced a second node of identical
+                                    // bounds with no label -- an "unnamed
+                                    // item" a reader could land on instead of
+                                    // the real one.
+                                    tile: IconButton(
+                                      tooltip: 'Open star shop',
+                                      onPressed: () => context.push('/shop'),
+                                      icon: const Icon(Icons.store_rounded),
+                                      iconSize: 28,
+                                      color: hc.textSecondary,
                                     ).animate().fadeIn(delay: 190.ms),
                                     cell: GazeTileCell(
                                       label: 'Star Shop',
@@ -229,18 +240,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                 (
                                   tile:
-                                      Semantics(
-                                            button: true,
-                                            label: 'Open settings',
-                                            child: IconButton(
-                                              onPressed: () =>
-                                                  context.push('/settings'),
-                                              icon: const Icon(
-                                                Icons.settings_rounded,
-                                              ),
-                                              iconSize: 28,
-                                              color: hc.textSecondary,
+                                      IconButton(
+                                            tooltip: 'Open settings',
+                                            onPressed: () =>
+                                                context.push('/settings'),
+                                            icon: const Icon(
+                                              Icons.settings_rounded,
                                             ),
+                                            iconSize: 28,
+                                            color: hc.textSecondary,
                                           )
                                           .animate()
                                           .fadeIn(delay: 200.ms)
@@ -610,11 +618,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                               wordCount: SeedData.getByCategory(
                                                 category,
                                               ).length,
+                                              // Coverage, matching the Cards
+                                              // tab and the Progress rows —
+                                              // all three read the same number
+                                              // now.
                                               progress:
-                                                  progress
-                                                      .categoryProgress[category
-                                                      .label] ??
-                                                  0,
+                                                  mastery[category]?.coverage ??
+                                                  0.0,
                                               onTap: () => context.push(
                                                 '/flashcards/viewer/${category.index}',
                                               ),
@@ -636,7 +646,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
 
-                    const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                    // Tall enough that the last tile can scroll clear of the
+                    // floating AI Tutor launcher, which otherwise sits on top
+                    // of the bottom-right tile once the list is scrolled to
+                    // the end.
+                    const SliverToBoxAdapter(child: SizedBox(height: 132)),
                   ],
                 ),
               ),
@@ -1138,6 +1152,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 badgeCount: unseenStickers,
                 onTap: () => context.push('/sticker-album'),
               ),
+            // The learner's own daily routine, set by their teacher or
+            // parent. First in the section rather than last: on a school
+            // morning it is the tile they open, and on most days it is the
+            // only one here with something waiting in it.
+            tile(
+              emoji: '🗓️',
+              label: 'My Day',
+              gradient: const [
+                AppColors.bannerRoutineStart,
+                AppColors.bannerRoutineEnd,
+              ],
+              onTap: () => context.push('/routine'),
+            ),
             tile(
               emoji: '📓',
               label: 'My Notebook',
@@ -1294,7 +1321,27 @@ class _DailyLoginRewardDialog extends StatelessWidget {
     );
     final currentDayIndex = ((streakDay - 1) % 7);
 
-    return AlertDialog(
+    // This dialog greets a learner the moment they sign in, and it has exactly
+    // one control. Left unadopted the controller found nothing focusable in it
+    // and reported "no items to choose" — so the first thing a blind learner
+    // met each day was a screen that appeared to be broken and blocked
+    // everything behind it.
+    return GamepadScreenRegistrar(
+      title: 'Daily Reward',
+      narration: [
+        // Not "Daily Reward!" again — that is already the title, and the
+        // reader would say the name twice.
+        'Day $streakDay.',
+        'You earned $starsEarned stars.',
+        'Come back tomorrow for more!',
+      ],
+      items: [
+        GamepadItem(
+          label: 'Collect',
+          onActivate: () => Navigator.pop(context),
+        ),
+      ],
+      child: AlertDialog(
       scrollable: true,
       title: Row(
         children: [
@@ -1410,6 +1457,7 @@ class _DailyLoginRewardDialog extends StatelessWidget {
           child: const Text('Collect! 🌟'),
         ),
       ],
+      ),
     );
   }
 }
@@ -1573,14 +1621,26 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
           // Word display with emoji
           Row(
             children: [
-              FlashcardPicture(card: _card, extent: 46),
+              FlashcardPicture(
+                card: _card,
+                extent: 46,
+                // "What is this in Filipino?" — the picture must not say.
+                revealsAnswer: false,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    // The word being taught, at display size in a column the
+                    // picture has already taken 58 px from. At 1.3x font on a
+                    // 360 dp phone "Grandmother" broke as "Grandmoth / er" —
+                    // a vocabulary word split down the middle on the card
+                    // asking the learner to translate it. FitText steps the
+                    // size down until the word fits one line instead.
+                    FitText(
                       _card.wordEnglish,
+                      maxLines: 1,
                       style: AppTypography.displaySmall.copyWith(
                         color: onGrad,
                         fontWeight: FontWeight.w900,

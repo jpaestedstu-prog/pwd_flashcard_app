@@ -23,6 +23,10 @@ Future<List<String>?> showFlashcardLinkPicker(
 }) {
   return showModalBottomSheet<List<String>>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => _FlashcardLinkPicker(

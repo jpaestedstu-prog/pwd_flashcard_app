@@ -539,7 +539,7 @@ void main() {
         'classrooms',
         'classroom_members',
       ]) {
-        if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+        if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
       }
     });
 

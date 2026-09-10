@@ -11,6 +11,8 @@ import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../../core/utils/accessible_sizing.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// A 3-step accessibility setup wizard shown after profile creation.
 ///
@@ -227,7 +229,10 @@ class _AccessibilitySetupScreenState
         children: [
           const SizedBox(height: 12),
 
-          Text(
+          // A display-size heading: "Accessibility" alone is wider than a
+          // phone at 2x, and it split as "Accessibilit / y" on the very first
+          // screen a learner is shown.
+          FitText(
             AppLocalizations.of(context)!.accessibilitySetup,
             style: AppTypography.displaySmall.copyWith(
               color: AppColors.primaryDark,
@@ -270,7 +275,7 @@ class _AccessibilitySetupScreenState
           // Continue button
           SizedBox(
             width: double.infinity,
-            height: 56,
+            height: scaledControlHeight(context, 56),
             child: ElevatedButton.icon(
               onPressed: _selectedType != null ? _nextStep : null,
               icon: const Icon(Icons.arrow_forward_rounded),
@@ -321,7 +326,7 @@ class _AccessibilitySetupScreenState
           Text(
             type == DisabilityType.none
                 ? 'No special settings needed!\nYou\'re all set with the defaults.'
-                : 'We\'ll apply these settings for ${type.label}:',
+                : 'We\'ll apply these settings for ${type.labelOf(AppLocalizations.of(context))}:',
             textAlign: TextAlign.center,
             style: AppTypography.bodyLarge.copyWith(
               color: HCColor.of(context).textSecondary,
@@ -347,7 +352,7 @@ class _AccessibilitySetupScreenState
                     Text(type.emoji, style: const TextStyle(fontSize: 24)),
                     const SizedBox(width: 12),
                     Text(
-                      type.label,
+                      type.labelOf(AppLocalizations.of(context)),
                       style: AppTypography.titleMedium.copyWith(
                         color: type.color,
                         fontWeight: FontWeight.w700,
@@ -483,7 +488,7 @@ class _AccessibilitySetupScreenState
           // Continue button
           SizedBox(
             width: double.infinity,
-            height: 56,
+            height: scaledControlHeight(context, 56),
             child: ElevatedButton.icon(
               onPressed: _nextStep,
               icon: const Icon(Icons.arrow_forward_rounded),
@@ -566,7 +571,8 @@ class _AccessibilitySetupScreenState
 
             if (type != DisabilityType.none) ...[
               Text(
-                'Your app has been optimized for\n${type.label.toLowerCase()}.',
+                'Your app has been optimized for\n'
+            '${type.labelOf(AppLocalizations.of(context)).toLowerCase()}.',
                 textAlign: TextAlign.center,
                 style: AppTypography.bodyLarge.copyWith(
                   color: HCColor.of(context).textSecondary,
@@ -617,7 +623,7 @@ class _AccessibilitySetupScreenState
             // Let's Go button
             SizedBox(
                   width: double.infinity,
-                  height: 60,
+                  height: scaledControlHeight(context, 60),
                   child: ElevatedButton.icon(
                     onPressed: _applyAndContinue,
                     icon: Icon(
@@ -676,7 +682,9 @@ class _DisabilityCard extends StatelessWidget {
       button: true,
       selected: isSelected,
       label:
-          '${type.label}: ${type.description}${isSelected ? ", selected" : ""}',
+          '${type.labelOf(AppLocalizations.of(context))}: '
+        '${type.descriptionOf(AppLocalizations.of(context))}'
+        '${isSelected ? ", selected" : ""}',
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
@@ -731,7 +739,7 @@ class _DisabilityCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      type.label,
+                      type.labelOf(AppLocalizations.of(context)),
                       style: AppTypography.titleSmall.copyWith(
                         color: isSelected
                             ? Colors.white
@@ -741,7 +749,7 @@ class _DisabilityCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      type.description,
+                      type.descriptionOf(AppLocalizations.of(context)),
                       style: AppTypography.bodySmall.copyWith(
                         color: isSelected
                             ? Colors.white.withValues(alpha: 0.85)

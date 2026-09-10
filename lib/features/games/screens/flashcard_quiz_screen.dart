@@ -27,9 +27,12 @@ import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../core/widgets/fit_text.dart';
 
 class FlashcardQuizScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -201,6 +204,20 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
   /// hit that doesn't compete with the end-of-game confetti.
   int _knowStreak = 0;
 
+  /// Reads the card that has just come up.
+  ///
+  /// This game has no right answer to confirm — the learner is judging
+  /// themselves — so the useful announcement is simply the next word, which is
+  /// otherwise only on the card.
+  void _announceCard() {
+    if (!mounted || _currentIndex >= _cards.length) return;
+    final card = _cards[_currentIndex];
+    gamepadScreen.announce(
+      '${_currentIndex + 1} of ${_cards.length}. '
+      '${card.wordEnglish}. ${card.wordFilipino}.',
+    );
+  }
+
   void _handleSwipe(bool isKnow) {
     final sound = ref.read(soundServiceProvider);
     final haptic = ref.read(hapticServiceProvider);
@@ -236,6 +253,9 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
       _dragRotation = 0;
       if (_currentIndex < _cards.length - 1) {
         _currentIndex++;
+        // Deferred out of setState: announcing reads the *new* index, which is
+        // only correct once this rebuild has settled.
+        WidgetsBinding.instance.addPostFrameCallback((_) => _announceCard());
       } else {
         _saveProgress();
         AccessibleCelebrationOverlay.show(
@@ -357,7 +377,28 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
 
     final card = _cards[_currentIndex];
 
-    return GazeScope(
+    // A swipe game, which is the one gesture a controller cannot make — so the
+    // two swipe directions are published as ordinary items and answered with
+    // R1. The card itself is the content, and it is read out: a learner
+    // deciding whether they know a word has to be told the word.
+    return GamepadScreenRegistrar(
+      title: GameType.flashcardQuiz.labelOf(l10n),
+      narration: [
+        '${_currentIndex + 1} of ${_cards.length}.',
+        card.wordEnglish,
+        card.wordFilipino,
+      ],
+      items: [
+        GamepadItem(
+          label: l10n.iKnowThisSwipe,
+          onActivate: () => _handleSwipe(true),
+        ),
+        GamepadItem(
+          label: l10n.stillLearningSwipe,
+          onActivate: () => _handleSwipe(false),
+        ),
+      ],
+      child: GazeScope(
       actions: _gazeActions(context),
       child: PopScope(
         canPop: false,
@@ -526,6 +567,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
               ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -706,8 +748,12 @@ class _QuizCard extends StatelessWidget {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
+                            // The word being taught, so it must never be
+                            // split: this showed "Kutsar / a" on the answer
+                            // face of the card.
+                            FitText(
                               card.wordEnglish,
+                              maxLines: 1,
                               textAlign: TextAlign.center,
                               style: AppTypography.headlineMedium.copyWith(
                                 fontWeight: FontWeight.w800,
@@ -715,8 +761,9 @@ class _QuizCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 6),
-                            Text(
+                            FitText(
                               card.wordFilipino,
+                              maxLines: 1,
                               textAlign: TextAlign.center,
                               style: AppTypography.titleLarge.copyWith(
                                 color: cat.color,
@@ -725,11 +772,19 @@ class _QuizCard extends StatelessWidget {
                             ),
                             if (card.exampleSentence != null) ...[
                               const SizedBox(height: 12),
-                              Text(
-                                '"${card.exampleSentence}"',
+                              // FitText rather than Text: a single long word in
+                              // the sentence is wider than this column at 2.0x
+                              // and Flutter breaks *inside* it — "Wednesd / ay"
+                              // — on the screen teaching that very word. It
+                              // still wraps across two lines between words; the
+                              // size only steps down far enough that no word
+                              // splits (FitText already caps at two lines). Safe here
+                              // because the Filipino word
+                              // just above already uses FitText, so this parent
+                              // tolerates a LayoutBuilder.
+                              FitText(
+                                '“${card.exampleSentence}”',
                                 textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
                                 style: AppTypography.bodySmall.copyWith(
                                   color: HCColor.of(context).textSecondary,
                                   fontStyle: FontStyle.italic,

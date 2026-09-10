@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +25,7 @@ import '../services/object_scan_discovery_service.dart';
 import '../widgets/discovered_word_sheet.dart';
 import '../widgets/hunt_target_strip.dart';
 import '../widgets/photo_results_panel.dart';
+import '../../../core/utils/seeded_random.dart';
 
 enum _ScanStatus { initializing, ready, noCamera, permissionDenied, failed }
 
@@ -152,7 +152,7 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     final pool = [
       for (final card in LabelWordMapper.huntableCards)
         if (!discovered.contains(card.id) && !keptIds.contains(card.id)) card,
-    ]..shuffle(Random());
+    ]..shuffle(contentRandom());
     _discovered = discovered;
     _targets = [...kept, ...pool.take(_targetCount - kept.length)];
   }
@@ -447,6 +447,10 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     }
     await showModalBottomSheet<void>(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => DiscoveredWordSheet(

@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import 'tilt_3d.dart';
+import '../core/utils/reduced_motion.dart';
 
 /// A visually rich empty state with animated illustration, decorative
 /// background elements, and an optional action button.
@@ -56,8 +57,16 @@ class RichEmptyState extends StatelessWidget {
     final emojiSize = compact ? 48.0 : 64.0;
     final ringSize = compact ? 96.0 : 130.0;
 
-    return Center(
-      child: Padding(
+    // Centred while it fits, scrollable when it does not.
+    //
+    // The illustration ring is a fixed 150 px and the copy grows with the
+    // font, so on a short viewport at a large text scale this column was
+    // taller than the space it had and ran off the bottom -- by 354 px on
+    // the Learning Gain screen. Three screens shared this one widget, so
+    // they shared this one bug.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final content = Padding(
         padding: EdgeInsets.all(compact ? 20 : 40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -83,7 +92,7 @@ class RichEmptyState extends StatelessWidget {
                     filled: true,
                   ),
                   // Floating dots
-                  ..._buildDots(accent, ringSize),
+                  ..._buildDots(context, accent, ringSize),
                   // Emoji — gentle 3D sway (replaces the flat bob, and
                   // honours the reduced-motion setting).
                   Float3D(
@@ -161,7 +170,19 @@ class RichEmptyState extends StatelessWidget {
             ],
           ],
         ),
-      ),
+        );
+
+        // An unbounded height means an ancestor already scrolls; nesting a
+        // second scroll view inside it would break that one.
+        if (!constraints.hasBoundedHeight) return Center(child: content);
+
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(child: content),
+          ),
+        );
+      },
     );
   }
 
@@ -173,10 +194,19 @@ class RichEmptyState extends StatelessWidget {
   /// keep looping forever regardless. That left the decorative ring pulsing
   /// on every empty state in the app for exactly the learners who asked it to
   /// stop, and kept the screen from ever reaching an idle frame.
-  static bool get _reducedMotion => Animate.defaultDuration == Duration.zero;
+  ///
+  /// Read through [ReducedMotionScope] rather than off the global directly, so
+  /// that flipping the setting rebuilds this widget instead of leaving the
+  /// stale answer baked into a tree nothing else will touch. The scope falls
+  /// back to that same global when absent, so the meaning is unchanged.
 
   /// Generates small decorative dots positioned around the ring.
-  List<Widget> _buildDots(Color accent, double ringSize) {
+  List<Widget> _buildDots(
+    BuildContext context,
+    Color accent,
+    double ringSize,
+  ) {
+    final reducedMotion = ReducedMotionScope.of(context);
     final rng = math.Random(emoji.hashCode);
     return List.generate(5, (i) {
       final angle = (i * 72.0 + rng.nextDouble() * 30) * math.pi / 180;
@@ -195,7 +225,7 @@ class RichEmptyState extends StatelessWidget {
           ),
         )
             .animate(
-              onPlay: _reducedMotion ? null : (c) => c.repeat(reverse: true),
+              onPlay: reducedMotion ? null : (c) => c.repeat(reverse: true),
             )
             .fadeIn(duration: 300.ms, delay: (300 + i * 100).ms)
             .scale(
@@ -204,7 +234,7 @@ class RichEmptyState extends StatelessWidget {
               // without the repeat, the scale must END where the dot should
               // rest, or it would freeze half-drawn.
               end: const Offset(1.0, 1.0),
-              duration: _reducedMotion ? Duration.zero : (1800 + i * 200).ms,
+              duration: reducedMotion ? Duration.zero : (1800 + i * 200).ms,
               curve: Curves.easeInOut,
             ),
       );

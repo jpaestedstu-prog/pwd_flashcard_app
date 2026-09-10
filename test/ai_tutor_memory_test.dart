@@ -13,7 +13,7 @@ import 'package:pwdpwdpwd/features/ai_tutor/services/tutor_memory_service.dart';
 Future<void> _initHive() async {
   Hive.init('./build/test_cache/ai_tutor');
   if (!Hive.isBoxOpen('progress')) {
-    await Hive.openBox('progress');
+    await Hive.openBox('progress', compactionStrategy: (_, _) => false);
   }
 }
 

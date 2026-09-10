@@ -12,6 +12,10 @@ import '../providers/fsl_offline_packs.dart';
 Future<void> showFslOfflinePacksSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (context) => const FslOfflinePacksSheet(),
@@ -186,7 +190,7 @@ class _FslOfflinePacksSheetState extends ConsumerState<FslOfflinePacksSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Saving "${state.label}"… ${state.done} of ${state.total}',
+              'Saving “${state.label}”… ${state.done} of ${state.total}',
               style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
             ),
             const SizedBox(height: 8),
@@ -274,7 +278,7 @@ class _CategoryRow extends ConsumerWidget {
                   nothingToOffer
                       ? 'No signs recorded yet'
                       : busyHere
-                      ? 'Saving "${state.label}"… ${state.done} of ${state.total}'
+                      ? 'Saving “${state.label}”… ${state.done} of ${state.total}'
                       : '${coverage.ready} of ${coverage.downloadable} saved'
                             '${coverage.bytes > 0 ? ' · ${formatPackBytes(coverage.bytes)}' : ''}',
                   style: AppTypography.labelSmall.copyWith(

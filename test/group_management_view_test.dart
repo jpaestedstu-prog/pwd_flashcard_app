@@ -227,7 +227,7 @@ void main() {
       'sessions',
       'error_logs',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
     await SyncQueueStorage.init();
   });
@@ -310,6 +310,10 @@ void main() {
         'Notes',
         'Time limits',
         'Alarms',
+        // The learner's daily routine. Listed here rather than only on one
+        // screen so the parity guarantee covers it: both audiences reach a
+        // learner's routine from the same menu.
+        'Routine',
         'Unlock screen',
       ]) {
         expect(find.text(label), findsOneWidget, reason: 'missing "$label"');
@@ -408,6 +412,34 @@ void main() {
     final label = isParent ? 'home groups' : 'classes';
     testWidgets('populated $label survive the device matrix', (tester) async {
       await expectScreenNoOverflowAcrossDevices(
+        tester,
+        () => GroupManagementView(
+          delegate: _FakeDelegate(
+            isParent: isParent,
+            groups: [
+              _group(),
+              _group(id: 'g2', name: 'A very long second group name indeed'),
+            ],
+            members: _members(),
+          ),
+        ),
+        overrides: _asRole(isParent ? UserRole.parent : UserRole.teacher),
+      );
+    });
+  }
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The pass above renders under Flutter's default theme, which is not a theme
+  // any learner sees. The dyslexia theme adds a 1.6 line height and 0.6 letter
+  // spacing on top of its own font sizes; high contrast overrides the text
+  // theme and outlines every card. Narrow portrait at 1.5x/2.0x, where a
+  // theme's metrics bite first.
+  for (final isParent in const [true, false]) {
+    final label = isParent ? 'home groups' : 'classes';
+    testWidgets('populated $label survive the accessibility themes',
+        (tester) async {
+      await expectScreenSurvivesThemes(
         tester,
         () => GroupManagementView(
           delegate: _FakeDelegate(

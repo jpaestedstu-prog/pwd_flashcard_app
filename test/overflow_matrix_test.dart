@@ -40,8 +40,8 @@ void main() {
     // Settings are per-profile, so settingsProvider also resolves the active
     // profile from the 'profiles' box.
     Hive.init('./build/test_cache/overflow_matrix');
-    if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings');
-    if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles');
+    if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings', compactionStrategy: (_, _) => false);
+    if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles', compactionStrategy: (_, _) => false);
   });
 
   tearDownAll(() async => Hive.deleteFromDisk());

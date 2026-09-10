@@ -38,8 +38,19 @@ class AppColors {
 
   // ─── Text ───────────────────────────────────────────
   static const Color textPrimary = Color(0xFF37474F); // Dark blue-grey
-  static const Color textSecondary = Color(0xFF78909C);
-  static const Color textHint = Color(0xFFBDBDBD);
+  /// Blue Grey 600, not 400.
+  ///
+  /// At Blue Grey 400 this was 3.15:1 on the cream background and 3.35:1 on
+  /// white — below the 4.5:1 WCAG AA asks for body text, on the token that
+  /// paints every subtitle and caption in the app (706 usages). For an app
+  /// built for low-vision learners that is a defect, not a style choice. One
+  /// step down the same ramp gives 5.08:1 and 5.40:1 and keeps the hue.
+  static const Color textSecondary = Color(0xFF546E7A);
+  /// Chosen to clear AA (4.73:1 on cream, 5.02:1 on white) while staying a
+  /// shade lighter than [textSecondary] so the hierarchy still reads. The old
+  /// 0xFFBDBDBD was 1.77:1 — invisible to the learners this app is for, and
+  /// used on real form labels rather than only disabled controls.
+  static const Color textHint = Color(0xFF6F6F6F);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
   static const Color textOnDark = Color(0xFFFFFFFF);
 
@@ -111,6 +122,11 @@ class AppColors {
   static const Color bannerGoalsEnd = Color(0xFFFFA726);
   static const Color bannerSmartReviewStart = Color(0xFF7C4DFF);
   static const Color bannerSmartReviewEnd = Color(0xFF448AFF);
+  // Daily Routine — a warm, settled teal-green. Deliberately calm rather than
+  // vivid: the tile leads to a schedule a learner returns to several times a
+  // day, and it sits next to the Mood and Notebook tiles in the same section.
+  static const Color bannerRoutineStart = Color(0xFF4DB6AC);
+  static const Color bannerRoutineEnd = Color(0xFF00897B);
 
   // ─── Category Colors (unique pastel for each) ──────
   static const Color categoryAnimals = Color(0xFFFFCC80); // Peach orange
@@ -405,9 +421,15 @@ class HCColor {
     ThemeKind.light => AppColors.textSecondary,
   };
   Color get textHint => switch (_kind) {
-    ThemeKind.highContrast => const Color(0xFF757575),
+    // Lightened from 0xFF757575, which was 3.62:1 on the high-contrast
+    // surface — below AA on the very theme a low-vision learner turns on to
+    // get *more* contrast. Now 4.83:1, still clearly below the secondary text
+    // above it so the hierarchy holds.
+    ThemeKind.highContrast => const Color(0xFF8A8A8A),
     ThemeKind.dark => const Color(0xFF8888A0),
-    ThemeKind.dyslexia => const Color(0xFF8A8271),
+    // Darkened from 0xFF8A8271, which was 3.36:1 on the dyslexia background.
+    // Still warm, to sit with the rest of that palette, and now 4.78:1.
+    ThemeKind.dyslexia => const Color(0xFF70695E),
     ThemeKind.light => AppColors.textHint,
   };
   Color get textOnPrimary =>

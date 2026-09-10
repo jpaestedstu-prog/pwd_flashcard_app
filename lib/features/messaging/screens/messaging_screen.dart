@@ -720,25 +720,19 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
           child: Row(
             children: [
               if (composer.allowsSigns)
-                Semantics(
-                  button: true,
-                  label: isFilipino ? 'Magpadala ng senyas' : 'Send a sign',
-                  child: IconButton(
+                IconButton(
+                    tooltip: isFilipino ? 'Magpadala ng senyas' : 'Send a sign',
                     onPressed: () => _openSignPicker(isFilipino),
                     icon: const Icon(Icons.sign_language_rounded),
                     color: AppColors.primary,
                   ),
-                ),
               if (composer.allowsStickers)
-                Semantics(
-                  button: true,
-                  label: isFilipino ? 'Magpadala ng sticker' : 'Send a sticker',
-                  child: IconButton(
+                IconButton(
+                    tooltip: isFilipino ? 'Magpadala ng sticker' : 'Send a sticker',
                     onPressed: () => _openStickerPicker(isFilipino),
                     icon: const Icon(Icons.emoji_emotions_rounded),
                     color: AppColors.primary,
                   ),
-                ),
               if (composer.allowsText)
                 Expanded(
                   child: Semantics(

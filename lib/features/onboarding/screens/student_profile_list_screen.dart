@@ -90,7 +90,7 @@ class _StudentProfileListScreenState
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Profile?'),
         content: Text(
-          'Are you sure you want to delete "${student.name}"? '
+          'Are you sure you want to delete “${student.name}”? '
           'This will permanently remove all progress data for this student.'
           '${student.role.isEducator ? ' Any classes they own will no longer '
               'have a teacher managing them.' : ''}',

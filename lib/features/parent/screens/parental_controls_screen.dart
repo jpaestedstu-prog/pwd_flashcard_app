@@ -8,6 +8,7 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../data/models/enums.dart';
 import '../models/parental_controls.dart';
 import '../services/parental_controls_service.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Educator / parent screen for configuring parental controls.
 ///
@@ -133,9 +134,23 @@ class _ParentalControlsScreenState
 
           SwitchListTile.adaptive(
             title: const Text('Enable Time Limit'),
-            subtitle: Text(_controls.timeLimitEnabled
-                ? '${_controls.dailyTimeLimitMinutes} minutes per day'
-                : 'No time restriction'),
+            subtitle: Builder(
+              builder: (context) {
+                final text = _controls.timeLimitEnabled
+                    ? '${_controls.dailyTimeLimitMinutes} minutes per day'
+                    : 'No time restriction';
+                // A ListTile subtitle shares its row with the switch, so the
+                // column is narrow: "restr / iction" at a large scale.
+                return Text(
+                  text,
+                  style: fittedStyle(
+                    context,
+                    text,
+                    Theme.of(context).textTheme.bodyMedium,
+                  ),
+                );
+              },
+            ),
             secondary: Icon(Icons.hourglass_empty_rounded,
                 color: hc.textSecondary),
             value: _controls.timeLimitEnabled,

@@ -25,6 +25,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../core/widgets/fit_text.dart';
 
 class DragDropScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -527,18 +528,26 @@ class _DropTargetRow extends StatelessWidget {
                     card: target.card,
                     extent: 26,
                     borderRadius: 13,
+                    // The target shows its Filipino word and the learner drags
+                    // the English one onto it; a picture that names both pairs
+                    // them up for free.
+                    revealsAnswer: false,
                   ),
                 ),
                 const SizedBox(width: 12),
 
                 // Filipino word
                 Expanded(
-                  child: Text(
+                  // The vocabulary word itself, so it must never be split down
+                  // the middle: this row rendered "Kuman / ta" and "Matulo / g"
+                  // on a narrow screen, on the game built to teach those words.
+                  child: FitText(
                     target.filipino,
                     style: AppTypography.titleMedium.copyWith(
                       color: HCColor.of(context).textPrimary,
                       fontWeight: FontWeight.w700,
                     ),
+                    maxLines: 1,
                   ),
                 ),
 

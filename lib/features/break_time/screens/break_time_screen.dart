@@ -12,6 +12,7 @@ import '../../../providers/app_providers.dart';
 import '../models/break_time_models.dart';
 import '../widgets/breathing_break.dart';
 import '../widgets/bubble_pop_break.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Full-screen "I Need a Break" experience.
 ///
@@ -425,11 +426,23 @@ class _ActivityChooserCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Activity names sit in a fixed card and were splitting
+                      // as "Breath / e" and "Bubbl / es". `fittedStyle`, not
+                      // `FitText`: these cards sit inside an `IntrinsicHeight`,
+                      // where a LayoutBuilder cannot report intrinsics and the
+                      // layout asserts.
                       Text(
                         activity.label,
-                        style: AppTypography.titleLarge.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: hc.textPrimary,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: fittedStyle(
+                          context,
+                          activity.label,
+                          AppTypography.titleLarge.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: hc.textPrimary,
+                          ),
+                          longWord: 6,
                         ),
                       ),
                       const SizedBox(height: 4),

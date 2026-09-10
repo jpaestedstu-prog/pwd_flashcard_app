@@ -225,7 +225,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'Reduced Motion is on, so this effect will play gently.';
 
   @override
+  String get soundPackNeedsSound =>
+      'Sound Effects are off, so this pack won\'t be heard until you turn them on.';
+
+  @override
   String get recommendedForYou => 'Recommended for you';
+
+  @override
+  String get seeIt => 'See it';
+
+  @override
+  String get hearIt => 'Hear it';
+
+  @override
+  String previewOf(String name) {
+    return 'Preview of $name';
+  }
+
+  @override
+  String starsToGo(int count) {
+    return '$count more stars to go';
+  }
+
+  @override
+  String get keepEarning => 'Keep earning';
 
   @override
   String get goodToKnow => 'Good to know';
@@ -669,7 +692,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String deleteConfirm(String name) {
-    return 'Are you sure you want to delete \"$name\"? This cannot be undone.';
+    return 'Are you sure you want to delete “$name”? This cannot be undone.';
   }
 
   @override
@@ -707,7 +730,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String noFslVideo(String word) {
-    return 'No FSL video available yet for \"$word\".';
+    return 'No FSL video available yet for “$word”.';
   }
 
   @override
@@ -1423,7 +1446,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get wordHuntSayTakePhoto => 'Say \"take a photo\"';
+  String get wordHuntSayTakePhoto => 'Say “take a photo”';
 
   @override
   String wordHuntFoundTarget(String words) {
@@ -1843,6 +1866,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'You\'re a superstar! Try a harder level next!';
 
   @override
+  String get resultAmazingHintNoLevels =>
+      'You\'re a superstar! You read every question right!';
+
+  @override
   String get resultGreat => 'Great Job! 🎉';
 
   @override
@@ -2065,11 +2092,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get isThisPrompt => 'Is this…';
 
   @override
-  String get hearIt => 'Hear it';
-
-  @override
   String heardTryAgain(String spoken) {
-    return 'Heard: \"$spoken\" — try again!';
+    return 'Heard: “$spoken” — try again!';
   }
 
   @override
@@ -2532,4 +2556,433 @@ class AppLocalizationsEn extends AppLocalizations {
   String collabPassSpoken(String name) {
     return 'Or show it — pass to $name';
   }
+
+  @override
+  String get settingOn => 'On';
+
+  @override
+  String get settingOff => 'Off';
+
+  @override
+  String get settingHighContrastDesc => 'Bolder colors & thicker borders';
+
+  @override
+  String get settingDarkModeDesc => 'Easier on the eyes in low light';
+
+  @override
+  String get settingDyslexiaDesc =>
+      'Cream background, Lexend font, wider letter spacing';
+
+  @override
+  String get settingReducedMotionDesc => 'Minimize animations';
+
+  @override
+  String get settingVoiceNavOnDesc => 'Announces screens & buttons aloud';
+
+  @override
+  String get settingVoiceNavOffDesc => 'Enable for visually impaired users';
+
+  @override
+  String get settingAdaptiveOnDesc =>
+      'Auto-suggests difficulty based on progress';
+
+  @override
+  String get settingAdaptiveOffDesc => 'Manual difficulty selection only';
+
+  @override
+  String get settingGazeControlDesc =>
+      'Hands-free: move your head or blink to select';
+
+  @override
+  String get settingGamepadDesc =>
+      'Navigate by Bluetooth gamepad, with spoken feedback';
+
+  @override
+  String get settingFullscreenOnDesc =>
+      'Nav bar hidden, app bars collapsed — until you turn it off';
+
+  @override
+  String get settingFullscreenOffDesc =>
+      'Hide the nav bar and app bars for class or TV display';
+
+  @override
+  String get settingSlowMotionOnDesc =>
+      'Games & flashcards animate at half speed';
+
+  @override
+  String get settingSlowMotionOffDesc =>
+      'Slow gameplay & flashcard animations down';
+
+  @override
+  String get settingLearningAssistOnDesc =>
+      'Shows “why” hints and a 50/50 helper in quizzes';
+
+  @override
+  String get settingLearningAssistOffDesc =>
+      'Plain quizzes — no hints or explanations';
+
+  @override
+  String get settingTtsDesc => 'Hear words spoken aloud';
+
+  @override
+  String get settingSoundEffectsDesc => 'Game sounds & feedback';
+
+  @override
+  String get settingSttOnDesc => 'Voice input enabled in games';
+
+  @override
+  String get settingSttOffDesc => 'Tap to enable voice input for games';
+
+  @override
+  String get settingCompanionOnDesc =>
+      'Floating buddy — tap it any time for help';
+
+  @override
+  String get settingCompanionOffDesc => 'Turn on your floating learning buddy';
+
+  @override
+  String get settingVocabReviewDesc => 'Reminds you to review weak words';
+
+  @override
+  String get settingBackupRestoreDesc => 'Save or restore all app data';
+
+  @override
+  String get settingRecoveryCodeDesc => 'Restore this profile on a new device';
+
+  @override
+  String get settingCloudAccountDesc =>
+      'Sign in with email to restore on any device';
+
+  @override
+  String get settingClassroomModeDesc => 'Monitor all students in real time';
+
+  @override
+  String get settingAccessibilitySetupDesc =>
+      'Restart the accessibility wizard';
+
+  @override
+  String get settingManageProfilesDesc =>
+      'Delete profiles saved on this device';
+
+  @override
+  String get settingChildControlsDesc =>
+      'Set time limits & content restrictions';
+
+  @override
+  String get settingReplayTutorialsDesc =>
+      'Show tutorial guides again on all screens';
+
+  @override
+  String get settingPurposeDesc =>
+      'Interactive vocabulary building app for PWD students using flashcards, games, and Filipino Sign Language.';
+
+  @override
+  String get settingResearchDataOnDesc =>
+      'Sending anonymous crash & usage data to the research team';
+
+  @override
+  String get settingResearchDataOffDesc => 'Off — no data leaves this device';
+
+  @override
+  String settingDailyMissionDesc(int count) {
+    return '$count words per day';
+  }
+
+  @override
+  String get settingGazeControlTitle => 'Gaze Control (Preview)';
+
+  @override
+  String get settingGamepadTitle => 'Game Controller';
+
+  @override
+  String get settingSectionPresentation => 'Presentation';
+
+  @override
+  String get settingSectionLearningModes => 'Learning Modes';
+
+  @override
+  String get settingSlowMotionTitle => 'Slow-Motion Mode';
+
+  @override
+  String get settingLearningAssistTitle => 'Learning Assist';
+
+  @override
+  String get settingDailyMissionTitle => 'Daily Mission Size';
+
+  @override
+  String get settingCompanionTitle => 'AI Companion';
+
+  @override
+  String get settingVocabReviewTitle => 'Vocab Review Reminder';
+
+  @override
+  String get settingSectionData => 'Data';
+
+  @override
+  String get settingBackupRestoreTitle => 'Backup & Restore';
+
+  @override
+  String get settingRecoveryCodeTitle => 'Cloud Recovery Code';
+
+  @override
+  String get settingCloudAccountTitle => 'Backup & Link Account';
+
+  @override
+  String get settingAccessibilitySetupTitle => 'Re-run Accessibility Setup';
+
+  @override
+  String get settingManageProfilesTitle => 'Manage Profiles';
+
+  @override
+  String get settingChildControlsTitle => 'Parental Controls';
+
+  @override
+  String get settingReplayTutorialsTitle => 'Replay Tutorials';
+
+  @override
+  String get settingPurposeTitle => 'Purpose';
+
+  @override
+  String get settingResearchDataTitle => 'Help improve the app';
+
+  @override
+  String get fontSizeSmall => 'Small';
+
+  @override
+  String get fontSizeNormal => 'Normal';
+
+  @override
+  String get fontSizeLarge => 'Large';
+
+  @override
+  String get fontSizeExtraLarge => 'Extra Large';
+
+  @override
+  String get speechSpeedVerySlow => 'Very Slow';
+
+  @override
+  String get speechSpeedSlow => 'Slow';
+
+  @override
+  String get speechSpeedNormal => 'Normal';
+
+  @override
+  String get speechSpeedFast => 'Fast';
+
+  @override
+  String speechSpeedSpoken(String label, int step, int stops) {
+    return '$label, $step of $stops';
+  }
+
+  @override
+  String setFontSizeTo(String size) {
+    return 'Set font size to $size';
+  }
+
+  @override
+  String get changeLabel => 'Change';
+
+  @override
+  String get changePinTitle => 'Change PIN';
+
+  @override
+  String get setProfilePinTitle => 'Set Profile PIN';
+
+  @override
+  String get pinPrompt => 'Choose a 4-digit PIN to protect your profile.';
+
+  @override
+  String get disabilityVisual => 'Visual Impairment';
+
+  @override
+  String get disabilityHearing => 'Hearing Impairment';
+
+  @override
+  String get disabilityMotor => 'Motor Impairment';
+
+  @override
+  String get disabilityCognitive => 'Cognitive/Learning';
+
+  @override
+  String get disabilityMultiple => 'Multiple Disabilities';
+
+  @override
+  String get disabilityNone => 'No Accessibility Needs';
+
+  @override
+  String get disabilityCognitiveFull => 'Cognitive/Learning Disability';
+
+  @override
+  String get disabilityVisualDesc =>
+      'Difficulty seeing, low vision, or color blindness';
+
+  @override
+  String get disabilityHearingDesc => 'Difficulty hearing or deaf';
+
+  @override
+  String get disabilityMotorDesc =>
+      'Difficulty with fine motor skills or touch';
+
+  @override
+  String get disabilityCognitiveDesc =>
+      'Dyslexia, ADHD, or learning difficulties';
+
+  @override
+  String get disabilityMultipleDesc => 'Combination of accessibility needs';
+
+  @override
+  String get disabilityNoneDesc => 'Standard settings, no special adjustments';
+
+  @override
+  String get roleNameStudent => 'Student';
+
+  @override
+  String get roleNameTeacher => 'Teacher';
+
+  @override
+  String get roleNameParent => 'Parent';
+
+  @override
+  String get roleNameChild => 'Child';
+
+  @override
+  String get roleNamePlayer => 'Player';
+
+  @override
+  String dashboardTitleForPerson(String name) {
+    return '$name Dashboard';
+  }
+
+  @override
+  String dashboardTitleForRole(String role) {
+    return '$role Dashboard';
+  }
+
+  @override
+  String eduWelcome(String name) {
+    return 'Welcome, $name!';
+  }
+
+  @override
+  String get eduSubtitleParent => 'Monitor your children\'s learning';
+
+  @override
+  String get eduSubtitleTeacher => 'Manage your class progress';
+
+  @override
+  String get eduQuickActions => 'Quick Actions';
+
+  @override
+  String get eduMore => 'More';
+
+  @override
+  String get eduContent => 'Content';
+
+  @override
+  String get eduAssessmentsProgress => 'Assessments & Progress';
+
+  @override
+  String get eduResearch => 'Research';
+
+  @override
+  String get eduNeedsHelp => 'Needs Help';
+
+  @override
+  String get eduInactive7d => 'Inactive 7d+';
+
+  @override
+  String get eduActiveToday => 'Active Today';
+
+  @override
+  String get eduReports => 'Reports';
+
+  @override
+  String get eduWeeklySummary => 'Weekly summary';
+
+  @override
+  String get eduParentalControlsTile => 'Parental Controls';
+
+  @override
+  String get eduLimitsSafety => 'Limits & safety';
+
+  @override
+  String get eduCards => 'Cards';
+
+  @override
+  String get eduBrowseDecks => 'Browse decks';
+
+  @override
+  String get eduShareCode => 'Share Code';
+
+  @override
+  String get eduInviteChild => 'Invite your child';
+
+  @override
+  String get eduInviteStudents => 'Invite students';
+
+  @override
+  String get eduTvCast => 'TV Cast';
+
+  @override
+  String get eduMessages => 'Messages';
+
+  @override
+  String get eduTeacherNotes => 'Teacher Notes';
+
+  @override
+  String get eduParentNotes => 'Parent Notes';
+
+  @override
+  String get eduAssessments => 'Assessments';
+
+  @override
+  String get eduAssignTasks => 'Assign Tasks';
+
+  @override
+  String get eduTrackProgress => 'Track Progress';
+
+  @override
+  String get eduManageGroups => 'Manage Groups';
+
+  @override
+  String get eduManageClasses => 'Manage Classes';
+
+  @override
+  String get eduRosterProgress => 'Roster & progress';
+
+  @override
+  String get eduAnalytics => 'Analytics';
+
+  @override
+  String get eduClassInsights => 'Class insights';
+
+  @override
+  String get eduClassroomTile => 'Classroom';
+
+  @override
+  String get eduLiveSession => 'Live session';
+
+  @override
+  String get eduWorksheets => 'Worksheets';
+
+  @override
+  String get eduExperimentSetup => 'Experiment Setup';
+
+  @override
+  String get eduSusSurvey => 'SUS Survey';
+
+  @override
+  String get eduResearchExport => 'Research Export';
+
+  @override
+  String get eduDashboardCtaSub =>
+      'Detailed insights, alerts, and recommendations';
+
+  @override
+  String get eduNoChildrenDesc =>
+      'Create a home group, then share the code with your child to join.';
+
+  @override
+  String get eduNoStudentsDesc =>
+      'Create a class, then share the code with your students to join.';
 }

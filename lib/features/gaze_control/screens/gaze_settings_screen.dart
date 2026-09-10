@@ -85,9 +85,9 @@ class GazeSettingsScreen extends ConsumerWidget {
             secondary: const Icon(Icons.mic_rounded),
             title: const Text('Voice commands'),
             subtitle: const Text(
-                'Say "left", "right", "up", "down" to move the highlight, '
+                'Say “left”, “right”, “up”, “down” to move the highlight, '
                 '"select" to open it — or a button\'s name ("next", "flip", '
-                '"games"), "scroll down", "go back".'),
+                '“games”), “scroll down”, “go back”.'),
             onChanged: notifier.setVoiceCommands,
           ),
 
@@ -124,7 +124,7 @@ class GazeSettingsScreen extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.visibility_off_rounded),
             title: const Text('Blink to confirm'),
-            subtitle: const Text('A long, deliberate blink acts as "select"'),
+            subtitle: const Text('A long, deliberate blink acts as “select”'),
             onChanged: notifier.setBlinkEnabled,
           ),
 
@@ -240,7 +240,7 @@ class _NavScopeHint extends StatelessWidget {
       padding: EdgeInsets.only(bottom: 8),
       child: Text(
         'Choose how far the hands-free D-pad reaches. Either way it stays off '
-        'until "Enable Gaze Control" is on, and touch always works.',
+        'until “Enable Gaze Control” is on, and touch always works.',
         style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
       ),
     );
@@ -343,8 +343,8 @@ class _CalibrationHint extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.only(bottom: 8),
       child: Text(
-        'These fix a device where the directions feel reversed. Tap "Try it '
-        'now" above, and if a movement picks the wrong side, toggle the '
+        'These fix a device where the directions feel reversed. Tap “Try it '
+        'now” above, and if a movement picks the wrong side, toggle the '
         'matching switch.',
         style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
       ),

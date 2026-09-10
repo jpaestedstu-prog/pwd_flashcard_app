@@ -16,6 +16,7 @@ import '../../../providers/child_time_limit_provider.dart';
 import '../../../providers/lock_announcement_provider.dart';
 import '../../../providers/managed_child_profile_provider.dart';
 import '../services/child_time_limit_service.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Per-child editor for [ChildTimeLimit].
 ///
@@ -309,9 +310,9 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Text(
-                    'When a limit is reached, the child sees a "Time’s up" '
+                    'When a limit is reached, the child sees a “Time’s up” '
                     'lock screen that requires your PIN to dismiss. They keep '
-                    'all progress, and a "Switch account" button lets someone '
+                    'all progress, and a “Switch account” button lets someone '
                     'else use the device without unlocking this profile.',
                     style: AppTypography.bodySmall,
                   ),
@@ -403,7 +404,7 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
       SnackBar(
         content: Text(
           'Applied the recommended settings for '
-          '${type.profileTypeLabel}. Tap Save to confirm.',
+          '${type.profileTypeLabelOf(AppLocalizations.of(context))}. Tap Save to confirm.',
         ),
       ),
     );
@@ -538,7 +539,7 @@ class _AccessibilityProfileCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    type!.profileTypeLabel,
+                    type!.profileTypeLabelOf(AppLocalizations.of(context)),
                     style: AppTypography.titleSmall,
                   ),
                 ),
@@ -610,7 +611,7 @@ class _PreferredNameField extends StatelessWidget {
         helperMaxLines: 3,
         helperText: derivedHonorific.isEmpty
             ? 'Leave blank to use the default.'
-            : 'Leave blank to use "$derivedHonorific", taken from the '
+            : 'Leave blank to use “$derivedHonorific”, taken from the '
                   'avatar on your profile.',
       ),
     );

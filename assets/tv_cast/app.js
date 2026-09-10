@@ -1226,6 +1226,12 @@
     if (state.reducedMotion) cls += ' reduce-motion';
     cls += ' text-' + (state.textSize || 'normal');
     cls += ' lang-' + (state.lang || 'both');
+    // "Fullscreen picture & video": the photo / GIF / sign clip fills the stage
+    // instead of sitting inside the card frame. Deliberately a body class and
+    // nothing else — the whole effect is CSS, so flipping it restyles what is
+    // already on screen instead of rebuilding it, and a playing sign clip keeps
+    // playing. Off for payloads that predate the toggle.
+    if (state.bigPicture) cls += ' big-picture';
     if (document.body.className !== cls) {
       document.body.className = cls;
     }

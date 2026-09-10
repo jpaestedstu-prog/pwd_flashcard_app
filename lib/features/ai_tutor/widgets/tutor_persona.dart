@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/enums.dart';
+import '../../../core/utils/reduced_motion.dart';
 
 /// Animation state for the tutor avatar.
 enum TutorAvatarState { idle, thinking, celebrate }
@@ -123,7 +124,7 @@ class TutorAvatar extends StatelessWidget {
     switch (state) {
       case TutorAvatarState.idle:
         return box
-            .animate(onPlay: (c) => c.repeat(reverse: true))
+            .animate(key: motionKey(context), onPlay: motionLoop(context, reverse: true))
             .scale(
               duration: 1800.ms,
               begin: const Offset(1, 1),
@@ -132,11 +133,13 @@ class TutorAvatar extends StatelessWidget {
             );
       case TutorAvatarState.thinking:
         return box
-            .animate(onPlay: (c) => c.repeat(reverse: true))
+            .animate(key: motionKey(context), onPlay: motionLoop(context, reverse: true))
             .moveY(duration: 500.ms, begin: 0, end: -4, curve: Curves.easeInOut);
       case TutorAvatarState.celebrate:
         return box
-            .animate(onPlay: (c) => c.repeat(reverse: true, period: 600.ms))
+            .animate(
+              key: motionKey(context), onPlay: motionLoop(context, reverse: true, period: 600.ms),
+            )
             .scale(
               duration: 300.ms,
               begin: const Offset(1, 1),

@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/data/local/seed_data.dart';
+import 'package:pwdpwdpwd/data/models/achievements.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/progress/models/category_mastery.dart';
@@ -142,5 +144,106 @@ void main() {
 
     expect(mastery[category]!.wordsLearned, 1);
     expect(mastery[FlashcardCategory.foodAndDrinks]!.wordsLearned, 1);
+  });
+
+  // ─── The surfaces that were still reading accuracy ──────────────────────
+  //
+  // Coverage had a type since 2026-08-15 and the certificates, exports and
+  // parent dashboard used it — but the Progress rows, the Cards deck grid, the
+  // Home tiles and every category achievement still multiplied the accuracy
+  // average by the deck size. On the tablet that showed a "6 / 177 words"
+  // header above rows summing to 28, and a deck with one card opened reading
+  // "51 percent complete".
+
+  group('per-category counts reconcile with the headline', () {
+    test('they sum to the number of distinct words learned', () {
+      final animals = SeedData.getByCategory(FlashcardCategory.animals);
+      final food = SeedData.getByCategory(FlashcardCategory.foodAndDrinks);
+      final learned = <String>{
+        ...animals.take(3).map((c) => c.id),
+        ...food.take(2).map((c) => c.id),
+      };
+
+      final mastery =
+          CategoryMastery.forProgress(progressWith(learned: learned),
+              SeedData.allFlashcards);
+      final summed = mastery.values
+          .map((m) => m.wordsLearned)
+          .fold<int>(0, (a, b) => a + b);
+
+      expect(summed, learned.length,
+          reason: 'the section total must equal the header it sits under');
+    });
+  });
+
+  group('category achievements measure coverage, not accuracy', () {
+    LearningProgress seedProgress({
+      Set<String> learned = const {},
+      Map<String, double> accuracy = const {},
+    }) =>
+        progressWith(learned: learned, accuracy: accuracy);
+
+    test('a perfect accuracy average on a few words does not unlock one', () {
+      final animals = SeedData.getByCategory(FlashcardCategory.animals);
+      final p = seedProgress(
+        learned: animals.take(2).map((c) => c.id).toSet(),
+        accuracy: {FlashcardCategory.animals.label: 1.0},
+      );
+      expect(Achievements.allAnimals.checkUnlocked(p), isFalse,
+          reason: 'two of twelve animals is not "all animal vocabulary"');
+    });
+
+    test('covering the category unlocks it', () {
+      final animals = SeedData.getByCategory(FlashcardCategory.animals);
+      final p = seedProgress(learned: animals.map((c) => c.id).toSet());
+      expect(Achievements.allAnimals.checkUnlocked(p), isTrue);
+    });
+
+    test('the bar is the app-wide mastery threshold, not a second opinion', () {
+      final animals = SeedData.getByCategory(FlashcardCategory.animals);
+      final justOver =
+          (animals.length * CategoryMastery.masteryThreshold).ceil();
+      final p = seedProgress(
+        learned: animals.take(justOver).map((c) => c.id).toSet(),
+      );
+      expect(Achievements.allAnimals.checkUnlocked(p), isTrue);
+
+      final justUnder = seedProgress(
+        learned: animals.take(justOver - 1).map((c) => c.id).toSet(),
+      );
+      expect(Achievements.allAnimals.checkUnlocked(justUnder), isFalse);
+    });
+
+    test('Category Champ needs every category, not a good average', () {
+      final almost = seedProgress(
+        learned: SeedData.getByCategory(FlashcardCategory.animals)
+            .map((c) => c.id)
+            .toSet(),
+        accuracy: {for (final c in FlashcardCategory.values) c.label: 1.0},
+      );
+      expect(Achievements.categoryChampion.checkUnlocked(almost), isFalse);
+
+      final everything = seedProgress(
+        learned: SeedData.allFlashcards.map((c) => c.id).toSet(),
+      );
+      expect(Achievements.categoryChampion.checkUnlocked(everything), isTrue);
+    });
+    test('a badge that fires below full coverage must not promise "all"', () {
+      final badges = Achievements.all
+          .where((a) => a.id.startsWith('all_') || a.id == 'category_champion')
+          .toList();
+      expect(badges, hasLength(13));
+
+      if (CategoryMastery.masteryThreshold >= 1.0) return;
+      for (final a in badges) {
+        expect(
+          a.description.toLowerCase(),
+          isNot(contains('all ')),
+          reason: '${a.id} unlocks at '
+              '${CategoryMastery.masteryThreshold} coverage, so its text '
+              'cannot claim the learner met every word',
+        );
+      }
+    });
   });
 }

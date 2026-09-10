@@ -20,7 +20,7 @@ import '../../../providers/experiment_provider.dart';
 import '../../../widgets/xp_level_bar.dart';
 import '../../../features/experiment/models/experiment_models.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
-import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../../providers/tile_grid_active_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../models/progress_presentation.dart';
 import '../models/weekly_summary.dart';
@@ -30,6 +30,7 @@ import '../theme/progress_theme_picker.dart';
 import '../widgets/shared/progress_section_header.dart';
 import '../widgets/shared/category_progress_row.dart';
 import '../widgets/shared/progress_stat_grid.dart';
+import '../models/category_mastery.dart';
 
 class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
@@ -40,6 +41,8 @@ class ProgressScreen extends ConsumerWidget {
     final profile = ref.watch(profileProvider);
     final progress = ref.watch(progressProvider);
     final allCards = ref.watch(allFlashcardsProvider);
+    // Per-category coverage over seed + custom cards.
+    final mastery = ref.watch(categoryMasteryProvider);
 
     // How much of this page this learner is shown, and in what order. See
     // [ProgressPresentation] for why each category gets what it gets.
@@ -117,7 +120,7 @@ class ProgressScreen extends ConsumerWidget {
     // and shows a focus ring. A pure pass-through otherwise, so touch / the
     // gaze-off layout are unchanged.
     final gazeOn = ref.watch(
-      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+      tileGridActiveProvider,
     );
     final gazeGrid = GazeTileGridBuilder(active: gazeOn);
     // Wraps a single full-width action button as its own gaze row (the buttons
@@ -620,11 +623,14 @@ class ProgressScreen extends ConsumerWidget {
                   ...FlashcardCategory.values.asMap().entries.map((entry) {
                     final i = entry.key;
                     final cat = entry.value;
-                    final catCards = allCards
-                        .where((c) => c.category == cat)
-                        .toList();
-                    final catPct = progress.categoryProgress[cat.label] ?? 0.0;
-                    final catMastered = (catPct * catCards.length).round();
+                    // Coverage, not the accuracy average — the same
+                    // [CategoryMastery] the certificates, the exports and the
+                    // parent dashboard already use. These rows used to
+                    // multiply the accuracy average by the deck size, which
+                    // claimed "6 of 12 words mastered" from a single correct
+                    // answer and made the section sum to far more than the
+                    // header's own word total.
+                    final catMastery = mastery[cat]!;
 
                     return Padding(
                           padding: const EdgeInsets.only(bottom: 14),
@@ -632,9 +638,9 @@ class ProgressScreen extends ConsumerWidget {
                             icon: cat.icon,
                             label: cat.label,
                             color: cat.color,
-                            mastered: catMastered,
-                            total: catCards.length,
-                            percent: catPct,
+                            mastered: catMastery.wordsLearned,
+                            total: catMastery.totalWords,
+                            percent: catMastery.coverage,
                             surface: cardSurface,
                           ),
                         )

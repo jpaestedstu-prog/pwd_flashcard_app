@@ -470,11 +470,11 @@ class CompanionController extends Notifier<CompanionState> {
       role: TutorMessageRole.tutor,
       content: correct
           ? (_isFilipino
-              ? '✅ Tama! Ang sagot ay "$answer". Napakagaling! 🎉'
-              : '✅ Correct! The answer is "$answer". Well done! 🎉')
+              ? '✅ Tama! Ang sagot ay “$answer”. Napakagaling! 🎉'
+              : '✅ Correct! The answer is “$answer”. Well done! 🎉')
           : (_isFilipino
-              ? '❌ Hindi tama. Ang tamang sagot ay "${action.correctAnswer}". Subukan muli sa susunod! 💪'
-              : '❌ Not quite. The correct answer is "${action.correctAnswer}". Try again next time! 💪'),
+              ? '❌ Hindi tama. Ang tamang sagot ay “${action.correctAnswer}”. Subukan muli sa susunod! 💪'
+              : '❌ Not quite. The correct answer is “${action.correctAnswer}”. Try again next time! 💪'),
       timestamp: DateTime.now(),
     );
     state = state.copyWith(

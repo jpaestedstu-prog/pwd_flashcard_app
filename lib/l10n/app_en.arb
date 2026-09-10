@@ -90,7 +90,27 @@
   "themeOverriddenByContrast": "High Contrast is on, so this theme won't change your colours until you turn it off.",
   "themeOverriddenByDyslexia": "Dyslexia-friendly mode is on, so this theme won't change your colours until you turn it off.",
   "effectPlaysGently": "Reduced Motion is on, so this effect will play gently.",
+  "soundPackNeedsSound": "Sound Effects are off, so this pack won't be heard until you turn them on.",
   "recommendedForYou": "Recommended for you",
+  "seeIt": "See it",
+  "hearIt": "Hear it",
+  "previewOf": "Preview of {name}",
+  "@previewOf": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "starsToGo": "{count} more stars to go",
+  "@starsToGo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keepEarning": "Keep earning",
   "goodToKnow": "Good to know",
   "itemNotReady": "{name} is not ready yet.",
   "@itemNotReady": {
@@ -336,7 +356,7 @@
     }
   },
   "deleteFlashcard": "Delete Flashcard?",
-  "deleteConfirm": "Are you sure you want to delete \"{name}\"? This cannot be undone.",
+  "deleteConfirm": "Are you sure you want to delete “{name}”? This cannot be undone.",
   "@deleteConfirm": {
     "placeholders": {
       "name": {
@@ -355,7 +375,7 @@
   "fsl": "FSL",
   "flip": "Flip",
   "filipinoSignLanguage": "Filipino Sign Language",
-  "noFslVideo": "No FSL video available yet for \"{word}\".",
+  "noFslVideo": "No FSL video available yet for “{word}”.",
   "@noFslVideo": {
     "placeholders": {
       "word": {
@@ -723,7 +743,7 @@
       }
     }
   },
-  "wordHuntSayTakePhoto": "Say \"take a photo\"",
+  "wordHuntSayTakePhoto": "Say “take a photo”",
   "wordHuntFoundTarget": "Found it! {words} was on your list.",
   "@wordHuntFoundTarget": {
     "placeholders": {
@@ -997,6 +1017,7 @@
   "pauseLabel": "Pause",
   "resultAmazing": "Amazing! 🌟",
   "resultAmazingHint": "You're a superstar! Try a harder level next!",
+  "resultAmazingHintNoLevels": "You're a superstar! You read every question right!",
   "resultGreat": "Great Job! 🎉",
   "resultGreatHint": "You're doing wonderfully! Keep it up!",
   "resultGood": "Good Try! 👍",
@@ -1147,8 +1168,7 @@
   "whichDoesNotBelong": "Which one does not belong?",
   "startsWithWhichLetter": "starts with which letter?",
   "isThisPrompt": "Is this…",
-  "hearIt": "Hear it",
-  "heardTryAgain": "Heard: \"{spoken}\" — try again!",
+  "heardTryAgain": "Heard: “{spoken}” — try again!",
   "@heardTryAgain": {
     "placeholders": {
       "spoken": {
@@ -1697,5 +1717,190 @@
         "type": "String"
       }
     }
-  }
+  },
+  "settingOn": "On",
+  "@settingOn": {
+    "description": "Spoken state of a settings switch that is turned on"
+  },
+  "settingOff": "Off",
+  "@settingOff": {
+    "description": "Spoken state of a settings switch that is turned off"
+  },
+  "settingHighContrastDesc": "Bolder colors & thicker borders",
+  "settingDarkModeDesc": "Easier on the eyes in low light",
+  "settingDyslexiaDesc": "Cream background, Lexend font, wider letter spacing",
+  "settingReducedMotionDesc": "Minimize animations",
+  "settingVoiceNavOnDesc": "Announces screens & buttons aloud",
+  "settingVoiceNavOffDesc": "Enable for visually impaired users",
+  "settingAdaptiveOnDesc": "Auto-suggests difficulty based on progress",
+  "settingAdaptiveOffDesc": "Manual difficulty selection only",
+  "settingGazeControlDesc": "Hands-free: move your head or blink to select",
+  "settingGamepadDesc": "Navigate by Bluetooth gamepad, with spoken feedback",
+  "settingFullscreenOnDesc": "Nav bar hidden, app bars collapsed — until you turn it off",
+  "settingFullscreenOffDesc": "Hide the nav bar and app bars for class or TV display",
+  "settingSlowMotionOnDesc": "Games & flashcards animate at half speed",
+  "settingSlowMotionOffDesc": "Slow gameplay & flashcard animations down",
+  "settingLearningAssistOnDesc": "Shows “why” hints and a 50/50 helper in quizzes",
+  "settingLearningAssistOffDesc": "Plain quizzes — no hints or explanations",
+  "settingTtsDesc": "Hear words spoken aloud",
+  "settingSoundEffectsDesc": "Game sounds & feedback",
+  "settingSttOnDesc": "Voice input enabled in games",
+  "settingSttOffDesc": "Tap to enable voice input for games",
+  "settingCompanionOnDesc": "Floating buddy — tap it any time for help",
+  "settingCompanionOffDesc": "Turn on your floating learning buddy",
+  "settingVocabReviewDesc": "Reminds you to review weak words",
+  "settingBackupRestoreDesc": "Save or restore all app data",
+  "settingRecoveryCodeDesc": "Restore this profile on a new device",
+  "settingCloudAccountDesc": "Sign in with email to restore on any device",
+  "settingClassroomModeDesc": "Monitor all students in real time",
+  "settingAccessibilitySetupDesc": "Restart the accessibility wizard",
+  "settingManageProfilesDesc": "Delete profiles saved on this device",
+  "settingChildControlsDesc": "Set time limits & content restrictions",
+  "settingReplayTutorialsDesc": "Show tutorial guides again on all screens",
+  "settingPurposeDesc": "Interactive vocabulary building app for PWD students using flashcards, games, and Filipino Sign Language.",
+  "settingResearchDataOnDesc": "Sending anonymous crash & usage data to the research team",
+  "settingResearchDataOffDesc": "Off — no data leaves this device",
+  "settingDailyMissionDesc": "{count} words per day",
+  "@settingDailyMissionDesc": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingGazeControlTitle": "Gaze Control (Preview)",
+  "settingGamepadTitle": "Game Controller",
+  "settingSectionPresentation": "Presentation",
+  "settingSectionLearningModes": "Learning Modes",
+  "settingSlowMotionTitle": "Slow-Motion Mode",
+  "settingLearningAssistTitle": "Learning Assist",
+  "settingDailyMissionTitle": "Daily Mission Size",
+  "settingCompanionTitle": "AI Companion",
+  "settingVocabReviewTitle": "Vocab Review Reminder",
+  "settingSectionData": "Data",
+  "settingBackupRestoreTitle": "Backup & Restore",
+  "settingRecoveryCodeTitle": "Cloud Recovery Code",
+  "settingCloudAccountTitle": "Backup & Link Account",
+  "settingAccessibilitySetupTitle": "Re-run Accessibility Setup",
+  "settingManageProfilesTitle": "Manage Profiles",
+  "settingChildControlsTitle": "Parental Controls",
+  "settingReplayTutorialsTitle": "Replay Tutorials",
+  "settingPurposeTitle": "Purpose",
+  "settingResearchDataTitle": "Help improve the app",
+  "fontSizeSmall": "Small",
+  "fontSizeNormal": "Normal",
+  "fontSizeLarge": "Large",
+  "fontSizeExtraLarge": "Extra Large",
+  "speechSpeedVerySlow": "Very Slow",
+  "speechSpeedSlow": "Slow",
+  "speechSpeedNormal": "Normal",
+  "speechSpeedFast": "Fast",
+  "speechSpeedSpoken": "{label}, {step} of {stops}",
+  "@speechSpeedSpoken": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "step": {
+        "type": "int"
+      },
+      "stops": {
+        "type": "int"
+      }
+    }
+  },
+  "setFontSizeTo": "Set font size to {size}",
+  "@setFontSizeTo": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "changeLabel": "Change",
+  "changePinTitle": "Change PIN",
+  "setProfilePinTitle": "Set Profile PIN",
+  "pinPrompt": "Choose a 4-digit PIN to protect your profile.",
+  "disabilityVisual": "Visual Impairment",
+  "disabilityHearing": "Hearing Impairment",
+  "disabilityMotor": "Motor Impairment",
+  "disabilityCognitive": "Cognitive/Learning",
+  "disabilityMultiple": "Multiple Disabilities",
+  "disabilityNone": "No Accessibility Needs",
+  "disabilityCognitiveFull": "Cognitive/Learning Disability",
+  "disabilityVisualDesc": "Difficulty seeing, low vision, or color blindness",
+  "disabilityHearingDesc": "Difficulty hearing or deaf",
+  "disabilityMotorDesc": "Difficulty with fine motor skills or touch",
+  "disabilityCognitiveDesc": "Dyslexia, ADHD, or learning difficulties",
+  "disabilityMultipleDesc": "Combination of accessibility needs",
+  "disabilityNoneDesc": "Standard settings, no special adjustments",
+  "roleNameStudent": "Student",
+  "roleNameTeacher": "Teacher",
+  "roleNameParent": "Parent",
+  "roleNameChild": "Child",
+  "roleNamePlayer": "Player",
+  "dashboardTitleForPerson": "{name} Dashboard",
+  "@dashboardTitleForPerson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardTitleForRole": "{role} Dashboard",
+  "@dashboardTitleForRole": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "eduWelcome": "Welcome, {name}!",
+  "@eduWelcome": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eduSubtitleParent": "Monitor your children's learning",
+  "eduSubtitleTeacher": "Manage your class progress",
+  "eduQuickActions": "Quick Actions",
+  "eduMore": "More",
+  "eduContent": "Content",
+  "eduAssessmentsProgress": "Assessments & Progress",
+  "eduResearch": "Research",
+  "eduNeedsHelp": "Needs Help",
+  "eduInactive7d": "Inactive 7d+",
+  "eduActiveToday": "Active Today",
+  "eduReports": "Reports",
+  "eduWeeklySummary": "Weekly summary",
+  "eduParentalControlsTile": "Parental Controls",
+  "eduLimitsSafety": "Limits & safety",
+  "eduCards": "Cards",
+  "eduBrowseDecks": "Browse decks",
+  "eduShareCode": "Share Code",
+  "eduInviteChild": "Invite your child",
+  "eduInviteStudents": "Invite students",
+  "eduTvCast": "TV Cast",
+  "eduMessages": "Messages",
+  "eduTeacherNotes": "Teacher Notes",
+  "eduParentNotes": "Parent Notes",
+  "eduAssessments": "Assessments",
+  "eduAssignTasks": "Assign Tasks",
+  "eduTrackProgress": "Track Progress",
+  "eduManageGroups": "Manage Groups",
+  "eduManageClasses": "Manage Classes",
+  "eduRosterProgress": "Roster & progress",
+  "eduAnalytics": "Analytics",
+  "eduClassInsights": "Class insights",
+  "eduClassroomTile": "Classroom",
+  "eduLiveSession": "Live session",
+  "eduWorksheets": "Worksheets",
+  "eduExperimentSetup": "Experiment Setup",
+  "eduSusSurvey": "SUS Survey",
+  "eduResearchExport": "Research Export",
+  "eduDashboardCtaSub": "Detailed insights, alerts, and recommendations",
+  "eduNoChildrenDesc": "Create a home group, then share the code with your child to join.",
+  "eduNoStudentsDesc": "Create a class, then share the code with your students to join."
 }

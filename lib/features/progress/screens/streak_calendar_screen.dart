@@ -10,6 +10,7 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/enhanced_streak_display.dart';
 import '../../../widgets/app_back_button.dart';
 import '../widgets/calendar_widget.dart';
+import '../../../core/widgets/reflow_row.dart';
 
 class StreakCalendarScreen extends ConsumerWidget {
   const StreakCalendarScreen({super.key});
@@ -89,7 +90,8 @@ class StreakCalendarScreen extends ConsumerWidget {
             const SizedBox(height: 20),
 
             // ─── Stats Row ────────────────────────
-            Row(
+            ReflowRow(
+              labels: const ['Best Streak', 'This Month', 'Total Active'],
               children: [
                 _MiniStat(
                   label: 'Best Streak',
@@ -97,14 +99,12 @@ class StreakCalendarScreen extends ConsumerWidget {
                   icon: Icons.emoji_events_rounded,
                   color: AppColors.warning,
                 ),
-                const SizedBox(width: 12),
                 _MiniStat(
                   label: 'This Month',
                   value: '$thisMonthActive days',
                   icon: Icons.calendar_month_rounded,
                   color: AppColors.secondary,
                 ),
-                const SizedBox(width: 12),
                 _MiniStat(
                   label: 'Total Active',
                   value: '${allActivityDates.length}',
@@ -195,8 +195,7 @@ class _MiniStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return Expanded(
-      child: Semantics(
+    return Semantics(
         label: '$label: $value',
         child: Container(
           padding: const EdgeInsets.all(12),
@@ -225,8 +224,7 @@ class _MiniStat extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
+              ),
     );
   }
 }

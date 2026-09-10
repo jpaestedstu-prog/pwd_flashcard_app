@@ -59,10 +59,47 @@ void main() {
     }, _RealHttpOverrides());
   }
 
+  /// Like [get], but keeps the body as bytes.
+  ///
+  /// The text helper runs the response through `utf8.decoder`, which throws on
+  /// a font file — the bytes are not UTF-8 and were never meant to be.
+  Future<({int status, int length, String? contentType})> getBytes(
+    int port,
+    String path,
+  ) {
+    return HttpOverrides.runWithHttpOverrides(() async {
+      final client = HttpClient();
+      try {
+        final req = await client.getUrl(Uri.parse('http://127.0.0.1:$port$path'));
+        final resp = await req.close();
+        var length = 0;
+        await for (final chunk in resp) {
+          length += chunk.length;
+        }
+        return (
+          status: resp.statusCode,
+          length: length,
+          contentType: resp.headers.value('content-type'),
+        );
+      } finally {
+        client.close(force: true);
+      }
+    }, _RealHttpOverrides());
+  }
+
   /// Boots a server for [session] and returns it plus its bound port. The
   /// caller reaches content through `s.basePath` — every route is behind the
   /// per-cast session code.
+  ///
+  /// Stops the previous one first. `TvCastServer` binds with `shared: true`, so
+  /// a second server does NOT fall through to the next port — it binds the same
+  /// one and the OS hands it a share of the requests. Two live servers therefore
+  /// mint two session codes on one port, and roughly half of every request
+  /// arrives at the server whose code it isn't, which the gate answers with the
+  /// same 404 as a wrong code. It poisons the rest of the file too, so a test
+  /// that boots twice fails tests it never touched.
   Future<(TvCastServer, int)> boot(TvCastSession session) async {
+    await server?.stop();
     final s = TvCastServer(getSession: () => session);
     server = s;
     return (s, await s.start());
@@ -501,6 +538,55 @@ void main() {
       expect(state['textSize'], 'xl');
       expect(state['lang'], 'fil');
     });
+
+    test('fullscreen picture is off by default and reaches the TV when on',
+        () async {
+      // The two "fullscreen" switches are neighbours in the UI but different
+      // things: `fullscreen` drops the browser's chrome and defaults ON,
+      // `bigPicture` drops the cast page's and defaults OFF. Asserting them
+      // together is the point — swapping the two wire keys would still pass
+      // either assertion alone.
+      final off = await fetchState(
+        const TvCastSession(
+          mode: CastMode.flashcards,
+          category: FlashcardCategory.animals,
+          isServerRunning: true,
+        ),
+      );
+      expect(off['bigPicture'], isFalse);
+      expect(off['fullscreen'], isTrue);
+
+      final on = await fetchState(
+        const TvCastSession(
+          mode: CastMode.flashcards,
+          category: FlashcardCategory.animals,
+          isServerRunning: true,
+          bigPictureOnTv: true,
+          fullscreenOnTv: false,
+        ),
+      );
+      expect(on['bigPicture'], isTrue);
+      expect(on['fullscreen'], isFalse);
+    });
+
+    test('fullscreen picture leaves the slide payload untouched', () async {
+      // It is a presentation flag: the TV restyles what it already has. If it
+      // ever started changing which media the server resolves, a sign clip
+      // would reload every time the teacher flipped the switch.
+      final idx = dogIndex();
+      TvCastSession session(bool big) => TvCastSession(
+            mode: CastMode.flashcards,
+            category: FlashcardCategory.animals,
+            slideIndex: idx,
+            isServerRunning: true,
+            bigPictureOnTv: big,
+          );
+
+      final plain = await fetchState(session(false));
+      final big = await fetchState(session(true));
+
+      expect(json.encode(big['slide']), json.encode(plain['slide']));
+    });
   });
 
   group('lesson timer', () {
@@ -695,6 +781,31 @@ void main() {
         final res = await get(port, '${s.basePath}$path');
         expect(res.status, 200, reason: 'expected 200 for ${s.basePath}$path');
       }
+    });
+
+    // The TV renders in the app's own typefaces so the two read as one
+    // product, and it gets them from the phone: a classroom TV is often on
+    // Wi-Fi with no route out, where a webfont CDN would just fail.
+    test('serves the app typefaces, inside the gate', () async {
+      final (s, port) = await boot(roster);
+      for (final font in const [
+        'nunito-regular',
+        'nunito-bold',
+        'lexend-regular',
+        'lexend-bold',
+      ]) {
+        final res = await getBytes(port, '${s.basePath}/fonts/$font.ttf');
+        expect(res.status, 200, reason: 'expected 200 for $font');
+        expect(res.contentType, 'font/ttf', reason: 'wrong type for $font');
+        // A real face, not an empty or truncated body — a 0-byte 200 would
+        // leave the TV silently falling back to its own sans-serif.
+        expect(res.length, greaterThan(10000), reason: '$font looks empty');
+      }
+
+      // Without the code they are as unreachable as everything else — the gate
+      // has no exceptions but /healthz.
+      final bare = await getBytes(port, '/fonts/nunito-regular.ttf');
+      expect(bare.status, 404, reason: 'the font leaked outside the gate');
     });
 
     test('leaks no learner data without the code', () async {

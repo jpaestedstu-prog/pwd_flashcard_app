@@ -28,9 +28,9 @@ Future<UserProfile> _seedHashedProfile({
 void main() {
   setUpAll(() async {
     Hive.init('./build/test_cache/pin_dialog');
-    if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles');
-    if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings');
-    if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress');
+    if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles', compactionStrategy: (_, _) => false);
+    if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings', compactionStrategy: (_, _) => false);
+    if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress', compactionStrategy: (_, _) => false);
   });
 
   setUp(() async {

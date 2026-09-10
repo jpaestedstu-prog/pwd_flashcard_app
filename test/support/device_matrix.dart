@@ -52,6 +52,24 @@ const List<DeviceSize> kTabletMatrix = <DeviceSize>[
   DeviceSize('phone landscape', Size(640, 360), devicePixelRatio: 3.0),
 ];
 
+/// The slice where a *theme's* own text metrics actually bite.
+///
+/// A theme cannot change how wide a glyph is in a widget test — every face
+/// falls back to the test font — but it can and does change `fontSize`,
+/// `letterSpacing` and line `height`, and those apply normally. The dyslexia
+/// theme raises all three. So what a theme pass is really testing is text that
+/// got wider and taller, which fails first in the narrowest column at the
+/// largest scale: these two portrait sizes, rather than the full seven.
+const List<DeviceSize> kNarrowPortrait = <DeviceSize>[
+  DeviceSize('phone portrait', Size(360, 640), devicePixelRatio: 3.0),
+  DeviceSize('7" portrait', Size(600, 960)),
+];
+
+/// The two scales worth pairing with a theme: the app's own Extra Large clamp
+/// (1.5) and the OS maximum it must still survive (2.0). Below those a theme's
+/// extra letter spacing has slack to absorb.
+const List<double> kLargeTextScales = <double>[1.5, 2.0];
+
 /// Accessibility font scales to test. 1.0 = default, 1.3 ≈ the "Large" Font
 /// Size setting, 2.0 = the OS maximum the app should still survive.
 const List<double> kTextScales = <double>[1.0, 1.3, 2.0];

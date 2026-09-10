@@ -512,11 +512,47 @@ abstract class AppLocalizations {
   /// **'Reduced Motion is on, so this effect will play gently.'**
   String get effectPlaysGently;
 
+  /// No description provided for @soundPackNeedsSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound Effects are off, so this pack won\'t be heard until you turn them on.'**
+  String get soundPackNeedsSound;
+
   /// No description provided for @recommendedForYou.
   ///
   /// In en, this message translates to:
   /// **'Recommended for you'**
   String get recommendedForYou;
+
+  /// No description provided for @seeIt.
+  ///
+  /// In en, this message translates to:
+  /// **'See it'**
+  String get seeIt;
+
+  /// No description provided for @hearIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Hear it'**
+  String get hearIt;
+
+  /// No description provided for @previewOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview of {name}'**
+  String previewOf(String name);
+
+  /// No description provided for @starsToGo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more stars to go'**
+  String starsToGo(int count);
+
+  /// No description provided for @keepEarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep earning'**
+  String get keepEarning;
 
   /// No description provided for @goodToKnow.
   ///
@@ -1319,7 +1355,7 @@ abstract class AppLocalizations {
   /// No description provided for @deleteConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Are you sure you want to delete \"{name}\"? This cannot be undone.'**
+  /// **'Are you sure you want to delete “{name}”? This cannot be undone.'**
   String deleteConfirm(String name);
 
   /// No description provided for @delete.
@@ -1391,7 +1427,7 @@ abstract class AppLocalizations {
   /// No description provided for @noFslVideo.
   ///
   /// In en, this message translates to:
-  /// **'No FSL video available yet for \"{word}\".'**
+  /// **'No FSL video available yet for “{word}”.'**
   String noFslVideo(String word);
 
   /// No description provided for @gotIt.
@@ -2693,7 +2729,7 @@ abstract class AppLocalizations {
   /// No description provided for @wordHuntSayTakePhoto.
   ///
   /// In en, this message translates to:
-  /// **'Say \"take a photo\"'**
+  /// **'Say “take a photo”'**
   String get wordHuntSayTakePhoto;
 
   /// No description provided for @wordHuntFoundTarget.
@@ -3430,6 +3466,12 @@ abstract class AppLocalizations {
   /// **'You\'re a superstar! Try a harder level next!'**
   String get resultAmazingHint;
 
+  /// No description provided for @resultAmazingHintNoLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re a superstar! You read every question right!'**
+  String get resultAmazingHintNoLevels;
+
   /// No description provided for @resultGreat.
   ///
   /// In en, this message translates to:
@@ -3808,16 +3850,10 @@ abstract class AppLocalizations {
   /// **'Is this…'**
   String get isThisPrompt;
 
-  /// No description provided for @hearIt.
-  ///
-  /// In en, this message translates to:
-  /// **'Hear it'**
-  String get hearIt;
-
   /// No description provided for @heardTryAgain.
   ///
   /// In en, this message translates to:
-  /// **'Heard: \"{spoken}\" — try again!'**
+  /// **'Heard: “{spoken}” — try again!'**
   String heardTryAgain(String spoken);
 
   /// No description provided for @cameraWordsFound.
@@ -4514,6 +4550,792 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Or show it — pass to {name}'**
   String collabPassSpoken(String name);
+
+  /// Spoken state of a settings switch that is turned on
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get settingOn;
+
+  /// Spoken state of a settings switch that is turned off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get settingOff;
+
+  /// No description provided for @settingHighContrastDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Bolder colors & thicker borders'**
+  String get settingHighContrastDesc;
+
+  /// No description provided for @settingDarkModeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Easier on the eyes in low light'**
+  String get settingDarkModeDesc;
+
+  /// No description provided for @settingDyslexiaDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Cream background, Lexend font, wider letter spacing'**
+  String get settingDyslexiaDesc;
+
+  /// No description provided for @settingReducedMotionDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize animations'**
+  String get settingReducedMotionDesc;
+
+  /// No description provided for @settingVoiceNavOnDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Announces screens & buttons aloud'**
+  String get settingVoiceNavOnDesc;
+
+  /// No description provided for @settingVoiceNavOffDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable for visually impaired users'**
+  String get settingVoiceNavOffDesc;
+
+  /// No description provided for @settingAdaptiveOnDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-suggests difficulty based on progress'**
+  String get settingAdaptiveOnDesc;
+
+  /// No description provided for @settingAdaptiveOffDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual difficulty selection only'**
+  String get settingAdaptiveOffDesc;
+
+  /// No description provided for @settingGazeControlDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hands-free: move your head or blink to select'**
+  String get settingGazeControlDesc;
+
+  /// No description provided for @settingGamepadDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigate by Bluetooth gamepad, with spoken feedback'**
+  String get settingGamepadDesc;
+
+  /// No description provided for @settingFullscreenOnDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Nav bar hidden, app bars collapsed — until you turn it off'**
+  String get settingFullscreenOnDesc;
+
+  /// No description provided for @settingFullscreenOffDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide the nav bar and app bars for class or TV display'**
+  String get settingFullscreenOffDesc;
+
+  /// No description provided for @settingSlowMotionOnDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Games & flashcards animate at half speed'**
+  String get settingSlowMotionOnDesc;
+
+  /// No description provided for @settingSlowMotionOffDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow gameplay & flashcard animations down'**
+  String get settingSlowMotionOffDesc;
+
+  /// No description provided for @settingLearningAssistOnDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows “why” hints and a 50/50 helper in quizzes'**
+  String get settingLearningAssistOnDesc;
+
+  /// No description provided for @settingLearningAssistOffDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Plain quizzes — no hints or explanations'**
+  String get settingLearningAssistOffDesc;
+
+  /// No description provided for @settingTtsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hear words spoken aloud'**
+  String get settingTtsDesc;
+
+  /// No description provided for @settingSoundEffectsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Game sounds & feedback'**
+  String get settingSoundEffectsDesc;
+
+  /// No description provided for @settingSttOnDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input enabled in games'**
+  String get settingSttOnDesc;
+
+  /// No description provided for @settingSttOffDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to enable voice input for games'**
+  String get settingSttOffDesc;
+
+  /// No description provided for @settingCompanionOnDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating buddy — tap it any time for help'**
+  String get settingCompanionOnDesc;
+
+  /// No description provided for @settingCompanionOffDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on your floating learning buddy'**
+  String get settingCompanionOffDesc;
+
+  /// No description provided for @settingVocabReviewDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminds you to review weak words'**
+  String get settingVocabReviewDesc;
+
+  /// No description provided for @settingBackupRestoreDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Save or restore all app data'**
+  String get settingBackupRestoreDesc;
+
+  /// No description provided for @settingRecoveryCodeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore this profile on a new device'**
+  String get settingRecoveryCodeDesc;
+
+  /// No description provided for @settingCloudAccountDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with email to restore on any device'**
+  String get settingCloudAccountDesc;
+
+  /// No description provided for @settingClassroomModeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Monitor all students in real time'**
+  String get settingClassroomModeDesc;
+
+  /// No description provided for @settingAccessibilitySetupDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart the accessibility wizard'**
+  String get settingAccessibilitySetupDesc;
+
+  /// No description provided for @settingManageProfilesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete profiles saved on this device'**
+  String get settingManageProfilesDesc;
+
+  /// No description provided for @settingChildControlsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Set time limits & content restrictions'**
+  String get settingChildControlsDesc;
+
+  /// No description provided for @settingReplayTutorialsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Show tutorial guides again on all screens'**
+  String get settingReplayTutorialsDesc;
+
+  /// No description provided for @settingPurposeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Interactive vocabulary building app for PWD students using flashcards, games, and Filipino Sign Language.'**
+  String get settingPurposeDesc;
+
+  /// No description provided for @settingResearchDataOnDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending anonymous crash & usage data to the research team'**
+  String get settingResearchDataOnDesc;
+
+  /// No description provided for @settingResearchDataOffDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Off — no data leaves this device'**
+  String get settingResearchDataOffDesc;
+
+  /// No description provided for @settingDailyMissionDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} words per day'**
+  String settingDailyMissionDesc(int count);
+
+  /// No description provided for @settingGazeControlTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Gaze Control (Preview)'**
+  String get settingGazeControlTitle;
+
+  /// No description provided for @settingGamepadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Game Controller'**
+  String get settingGamepadTitle;
+
+  /// No description provided for @settingSectionPresentation.
+  ///
+  /// In en, this message translates to:
+  /// **'Presentation'**
+  String get settingSectionPresentation;
+
+  /// No description provided for @settingSectionLearningModes.
+  ///
+  /// In en, this message translates to:
+  /// **'Learning Modes'**
+  String get settingSectionLearningModes;
+
+  /// No description provided for @settingSlowMotionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow-Motion Mode'**
+  String get settingSlowMotionTitle;
+
+  /// No description provided for @settingLearningAssistTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Learning Assist'**
+  String get settingLearningAssistTitle;
+
+  /// No description provided for @settingDailyMissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Mission Size'**
+  String get settingDailyMissionTitle;
+
+  /// No description provided for @settingCompanionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Companion'**
+  String get settingCompanionTitle;
+
+  /// No description provided for @settingVocabReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Vocab Review Reminder'**
+  String get settingVocabReviewTitle;
+
+  /// No description provided for @settingSectionData.
+  ///
+  /// In en, this message translates to:
+  /// **'Data'**
+  String get settingSectionData;
+
+  /// No description provided for @settingBackupRestoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup & Restore'**
+  String get settingBackupRestoreTitle;
+
+  /// No description provided for @settingRecoveryCodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud Recovery Code'**
+  String get settingRecoveryCodeTitle;
+
+  /// No description provided for @settingCloudAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup & Link Account'**
+  String get settingCloudAccountTitle;
+
+  /// No description provided for @settingAccessibilitySetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-run Accessibility Setup'**
+  String get settingAccessibilitySetupTitle;
+
+  /// No description provided for @settingManageProfilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Profiles'**
+  String get settingManageProfilesTitle;
+
+  /// No description provided for @settingChildControlsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Parental Controls'**
+  String get settingChildControlsTitle;
+
+  /// No description provided for @settingReplayTutorialsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay Tutorials'**
+  String get settingReplayTutorialsTitle;
+
+  /// No description provided for @settingPurposeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Purpose'**
+  String get settingPurposeTitle;
+
+  /// No description provided for @settingResearchDataTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help improve the app'**
+  String get settingResearchDataTitle;
+
+  /// No description provided for @fontSizeSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get fontSizeSmall;
+
+  /// No description provided for @fontSizeNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get fontSizeNormal;
+
+  /// No description provided for @fontSizeLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get fontSizeLarge;
+
+  /// No description provided for @fontSizeExtraLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra Large'**
+  String get fontSizeExtraLarge;
+
+  /// No description provided for @speechSpeedVerySlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Very Slow'**
+  String get speechSpeedVerySlow;
+
+  /// No description provided for @speechSpeedSlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow'**
+  String get speechSpeedSlow;
+
+  /// No description provided for @speechSpeedNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get speechSpeedNormal;
+
+  /// No description provided for @speechSpeedFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast'**
+  String get speechSpeedFast;
+
+  /// No description provided for @speechSpeedSpoken.
+  ///
+  /// In en, this message translates to:
+  /// **'{label}, {step} of {stops}'**
+  String speechSpeedSpoken(String label, int step, int stops);
+
+  /// No description provided for @setFontSizeTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Set font size to {size}'**
+  String setFontSizeTo(String size);
+
+  /// No description provided for @changeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get changeLabel;
+
+  /// No description provided for @changePinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change PIN'**
+  String get changePinTitle;
+
+  /// No description provided for @setProfilePinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Profile PIN'**
+  String get setProfilePinTitle;
+
+  /// No description provided for @pinPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a 4-digit PIN to protect your profile.'**
+  String get pinPrompt;
+
+  /// No description provided for @disabilityVisual.
+  ///
+  /// In en, this message translates to:
+  /// **'Visual Impairment'**
+  String get disabilityVisual;
+
+  /// No description provided for @disabilityHearing.
+  ///
+  /// In en, this message translates to:
+  /// **'Hearing Impairment'**
+  String get disabilityHearing;
+
+  /// No description provided for @disabilityMotor.
+  ///
+  /// In en, this message translates to:
+  /// **'Motor Impairment'**
+  String get disabilityMotor;
+
+  /// No description provided for @disabilityCognitive.
+  ///
+  /// In en, this message translates to:
+  /// **'Cognitive/Learning'**
+  String get disabilityCognitive;
+
+  /// No description provided for @disabilityMultiple.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiple Disabilities'**
+  String get disabilityMultiple;
+
+  /// No description provided for @disabilityNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No Accessibility Needs'**
+  String get disabilityNone;
+
+  /// No description provided for @disabilityCognitiveFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Cognitive/Learning Disability'**
+  String get disabilityCognitiveFull;
+
+  /// No description provided for @disabilityVisualDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Difficulty seeing, low vision, or color blindness'**
+  String get disabilityVisualDesc;
+
+  /// No description provided for @disabilityHearingDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Difficulty hearing or deaf'**
+  String get disabilityHearingDesc;
+
+  /// No description provided for @disabilityMotorDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Difficulty with fine motor skills or touch'**
+  String get disabilityMotorDesc;
+
+  /// No description provided for @disabilityCognitiveDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Dyslexia, ADHD, or learning difficulties'**
+  String get disabilityCognitiveDesc;
+
+  /// No description provided for @disabilityMultipleDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Combination of accessibility needs'**
+  String get disabilityMultipleDesc;
+
+  /// No description provided for @disabilityNoneDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard settings, no special adjustments'**
+  String get disabilityNoneDesc;
+
+  /// No description provided for @roleNameStudent.
+  ///
+  /// In en, this message translates to:
+  /// **'Student'**
+  String get roleNameStudent;
+
+  /// No description provided for @roleNameTeacher.
+  ///
+  /// In en, this message translates to:
+  /// **'Teacher'**
+  String get roleNameTeacher;
+
+  /// No description provided for @roleNameParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent'**
+  String get roleNameParent;
+
+  /// No description provided for @roleNameChild.
+  ///
+  /// In en, this message translates to:
+  /// **'Child'**
+  String get roleNameChild;
+
+  /// No description provided for @roleNamePlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Player'**
+  String get roleNamePlayer;
+
+  /// No description provided for @dashboardTitleForPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} Dashboard'**
+  String dashboardTitleForPerson(String name);
+
+  /// No description provided for @dashboardTitleForRole.
+  ///
+  /// In en, this message translates to:
+  /// **'{role} Dashboard'**
+  String dashboardTitleForRole(String role);
+
+  /// No description provided for @eduWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome, {name}!'**
+  String eduWelcome(String name);
+
+  /// No description provided for @eduSubtitleParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Monitor your children\'s learning'**
+  String get eduSubtitleParent;
+
+  /// No description provided for @eduSubtitleTeacher.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your class progress'**
+  String get eduSubtitleTeacher;
+
+  /// No description provided for @eduQuickActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Actions'**
+  String get eduQuickActions;
+
+  /// No description provided for @eduMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get eduMore;
+
+  /// No description provided for @eduContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Content'**
+  String get eduContent;
+
+  /// No description provided for @eduAssessmentsProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Assessments & Progress'**
+  String get eduAssessmentsProgress;
+
+  /// No description provided for @eduResearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Research'**
+  String get eduResearch;
+
+  /// No description provided for @eduNeedsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs Help'**
+  String get eduNeedsHelp;
+
+  /// No description provided for @eduInactive7d.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive 7d+'**
+  String get eduInactive7d;
+
+  /// No description provided for @eduActiveToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Today'**
+  String get eduActiveToday;
+
+  /// No description provided for @eduReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get eduReports;
+
+  /// No description provided for @eduWeeklySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly summary'**
+  String get eduWeeklySummary;
+
+  /// No description provided for @eduParentalControlsTile.
+  ///
+  /// In en, this message translates to:
+  /// **'Parental Controls'**
+  String get eduParentalControlsTile;
+
+  /// No description provided for @eduLimitsSafety.
+  ///
+  /// In en, this message translates to:
+  /// **'Limits & safety'**
+  String get eduLimitsSafety;
+
+  /// No description provided for @eduCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Cards'**
+  String get eduCards;
+
+  /// No description provided for @eduBrowseDecks.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse decks'**
+  String get eduBrowseDecks;
+
+  /// No description provided for @eduShareCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Share Code'**
+  String get eduShareCode;
+
+  /// No description provided for @eduInviteChild.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite your child'**
+  String get eduInviteChild;
+
+  /// No description provided for @eduInviteStudents.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite students'**
+  String get eduInviteStudents;
+
+  /// No description provided for @eduTvCast.
+  ///
+  /// In en, this message translates to:
+  /// **'TV Cast'**
+  String get eduTvCast;
+
+  /// No description provided for @eduMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get eduMessages;
+
+  /// No description provided for @eduTeacherNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Teacher Notes'**
+  String get eduTeacherNotes;
+
+  /// No description provided for @eduParentNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent Notes'**
+  String get eduParentNotes;
+
+  /// No description provided for @eduAssessments.
+  ///
+  /// In en, this message translates to:
+  /// **'Assessments'**
+  String get eduAssessments;
+
+  /// No description provided for @eduAssignTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign Tasks'**
+  String get eduAssignTasks;
+
+  /// No description provided for @eduTrackProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Track Progress'**
+  String get eduTrackProgress;
+
+  /// No description provided for @eduManageGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Groups'**
+  String get eduManageGroups;
+
+  /// No description provided for @eduManageClasses.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Classes'**
+  String get eduManageClasses;
+
+  /// No description provided for @eduRosterProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Roster & progress'**
+  String get eduRosterProgress;
+
+  /// No description provided for @eduAnalytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Analytics'**
+  String get eduAnalytics;
+
+  /// No description provided for @eduClassInsights.
+  ///
+  /// In en, this message translates to:
+  /// **'Class insights'**
+  String get eduClassInsights;
+
+  /// No description provided for @eduClassroomTile.
+  ///
+  /// In en, this message translates to:
+  /// **'Classroom'**
+  String get eduClassroomTile;
+
+  /// No description provided for @eduLiveSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Live session'**
+  String get eduLiveSession;
+
+  /// No description provided for @eduWorksheets.
+  ///
+  /// In en, this message translates to:
+  /// **'Worksheets'**
+  String get eduWorksheets;
+
+  /// No description provided for @eduExperimentSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Experiment Setup'**
+  String get eduExperimentSetup;
+
+  /// No description provided for @eduSusSurvey.
+  ///
+  /// In en, this message translates to:
+  /// **'SUS Survey'**
+  String get eduSusSurvey;
+
+  /// No description provided for @eduResearchExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Research Export'**
+  String get eduResearchExport;
+
+  /// No description provided for @eduDashboardCtaSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed insights, alerts, and recommendations'**
+  String get eduDashboardCtaSub;
+
+  /// No description provided for @eduNoChildrenDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a home group, then share the code with your child to join.'**
+  String get eduNoChildrenDesc;
+
+  /// No description provided for @eduNoStudentsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a class, then share the code with your students to join.'**
+  String get eduNoStudentsDesc;
 }
 
 class _AppLocalizationsDelegate

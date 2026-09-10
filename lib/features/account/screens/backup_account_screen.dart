@@ -73,8 +73,8 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
   String _friendlyAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'email-already-in-use':
-        return 'That email already has an account. Choose "I already have '
-            'an account" instead.';
+        return 'That email already has an account. Choose “I already have '
+            'an account” instead.';
       case 'weak-password':
         return 'That password is too easy to guess. Use 8+ characters.';
       case 'invalid-email':

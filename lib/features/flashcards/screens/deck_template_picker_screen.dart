@@ -12,6 +12,8 @@ import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../data/deck_template_seed_data.dart';
 import '../models/deck_template.dart';
+import '../../../core/widgets/fit_text.dart';
+import '../../../core/widgets/reflow_row.dart';
 
 /// Browse and clone pre-built flashcard deck templates into a learner's
 /// custom deck. Educator/parent-facing — gated by the calling screen.
@@ -57,6 +59,10 @@ class _DeckTemplatePickerScreenState
   void _previewTemplate(DeckTemplate template) {
     showModalBottomSheet<void>(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
@@ -95,7 +101,7 @@ class _DeckTemplatePickerScreenState
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Tap "Use this deck" to copy these bilingual cards into your custom deck.',
+                      'Tap “Use this deck” to copy these bilingual cards into your custom deck.',
                       style: AppTypography.bodyMedium.copyWith(
                         color: HCColor.of(context).textSecondary,
                       ),
@@ -111,9 +117,16 @@ class _DeckTemplatePickerScreenState
                   crossAxisCount: context.gridColumns,
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
+                  // The floor has to leave room for the tallest theme, not
+                  // just the largest scale. At 2.0x this wants 0.525 and the
+                  // old 0.75 floor clamped it straight back up, undoing the
+                  // scaling and costing the card 117px under the dyslexia
+                  // theme, whose 1.6 line height makes every line taller
+                  // again. 0.45 covers both; the grid scrolls, so a taller
+                  // cell costs nothing but scroll length.
                   childAspectRatio: (1.05 /
                           MediaQuery.textScalerOf(context).scale(1.0))
-                      .clamp(0.75, 1.4),
+                      .clamp(0.45, 1.4),
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final tmpl = templates[index];
@@ -227,33 +240,57 @@ class _TemplateCard extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-              child: Row(
+              // Stacks instead of squeezing. Two icon+label buttons sharing a
+              // card this narrow leave each label about 44px, and "Preview"
+              // needs roughly twice that at 2.0x — no font step can close that
+              // gap, so the row reflows to a column and each button gets the
+              // full width instead. The card scrolls, so the cost is height.
+              child: ReflowRow(
+                labelFontSize: 14,
+                // What the label does *not* get: the 18px icon, its gap, and
+                // the button's own horizontal padding on both sides. Erring
+                // high on purpose — ReflowRow stacks when the estimate says
+                // the label will not fit, and a row that stacks a little too
+                // eagerly costs height on a screen that scrolls, while one
+                // that stacks too late shows a learner "Previe / w".
+                tilePadding: 72,
+                labels: const ['Preview', 'Use deck'],
                 children: [
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: isLoading ? null : onPreview,
-                      icon: const Icon(Icons.visibility_rounded, size: 18),
-                      label: const Text('Preview'),
+                  TextButton.icon(
+                    onPressed: isLoading ? null : onPreview,
+                    icon: const Icon(Icons.visibility_rounded, size: 18),
+                    // A button label measures intrinsics, so the style step
+                    // rather than FitText. It only trims the last few pixels
+                    // now that ReflowRow gives the label a full-width row.
+                    label: Text(
+                      'Preview',
+                      style: fittedStyle(
+                        context,
+                        'Preview',
+                        Theme.of(context).textTheme.labelLarge,
+                        // "Preview" is seven characters and still does not fit
+                        // half a button row at 2x, so the default
+                        // eight-character trigger never fired for it.
+                        longWord: 6,
+                      ),
                     ),
                   ),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: isLoading ? null : onUseDeck,
-                      icon: isLoading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.add_rounded, size: 18),
-                      label: Text(isLoading ? 'Adding…' : 'Use deck'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: template.color,
-                        foregroundColor: Colors.white,
-                      ),
+                  FilledButton.icon(
+                    onPressed: isLoading ? null : onUseDeck,
+                    icon: isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.add_rounded, size: 18),
+                    label: Text(isLoading ? 'Adding…' : 'Use deck'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: template.color,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ],

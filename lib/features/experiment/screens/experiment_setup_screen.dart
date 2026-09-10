@@ -3,7 +3,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
-import 'dart:math';
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
 import '../../../widgets/app_snack_bar.dart';
@@ -12,6 +11,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/local/hive_service.dart';
 import '../models/experiment_models.dart';
 import '../services/experiment_service.dart';
+import '../../../core/utils/seeded_random.dart';
 
 /// Teacher-facing screen to configure experiment mode for students.
 ///
@@ -69,7 +69,7 @@ class _ExperimentSetupScreenState
 
   /// Randomly assigns students 50/50 to treatment and control groups.
   void _randomize5050() {
-    final ids = _configs.keys.toList()..shuffle(Random());
+    final ids = _configs.keys.toList()..shuffle(contentRandom());
     final half = (ids.length / 2).ceil();
     setState(() {
       for (var i = 0; i < ids.length; i++) {

@@ -246,7 +246,14 @@ class FirebaseService {
   /// Whether the currently signed-in user has been upgraded from anonymous
   /// to a permanent (email-linked) account. Used by the settings UI to
   /// show "Linked to email@…" vs "Backup & Link Account".
+  /// Guarded on [isConfigured] for the same reason as [currentUid]: reaching
+  /// for `FirebaseAuth.instance` before [init] has run throws `[core/no-app]`.
+  /// This one was not, and the Backup & Link screen reads it as the first thing
+  /// it builds — so when init fails (bad config, or the offline first run that
+  /// [lastInitError] and [retryInit] exist to recover from) that screen threw
+  /// instead of showing its perfectly good "not linked yet" state.
   static bool get hasLinkedAccount {
+    if (!_initialised) return false;
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
     if (user.isAnonymous) return false;

@@ -8,6 +8,7 @@ import '../core/utils/responsive_utils.dart';
 import '../core/services/xp_level_service.dart';
 import 'tilt_3d.dart';
 import 'animated_gradient_background.dart';
+import '../core/utils/reduced_motion.dart';
 
 /// A full-screen celebration overlay that displays when the user levels up.
 ///
@@ -126,10 +127,11 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
 
   void _start() {
     _entranceController.forward();
+    // The two endless loops are started from build instead, so that flipping
+    // Reduced Motion stops them mid-celebration. Confetti is a one-shot burst
+    // and stays here — it is over before it could be toggled.
     if (!widget.reducedMotion) {
       _confettiController.play();
-      _pulseController.repeat(reverse: true);
-      _glowController.repeat(reverse: true);
     }
 
     // Auto-dismiss
@@ -166,6 +168,12 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
 
   @override
   Widget build(BuildContext context) {
+    // `widget.reducedMotion` is passed down by the shell, and the scope covers
+    // the case where it is not — either way this is re-evaluated every build.
+    final reduced = widget.reducedMotion || ReducedMotionScope.of(context);
+    _pulseController.syncMotionLoop(reduced, reverse: true);
+    _glowController.syncMotionLoop(reduced, reverse: true);
+
     final lvl = widget.newLevel;
     final color = _levelColor;
 
@@ -203,7 +211,16 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
 
               // Main content
               SafeArea(
-                child: Center(
+                // Centred while it fits, scrollable when it does not. The
+                // celebration stacks an animation, a badge and several lines of
+                // copy, which is taller than a phone once the font grows --
+                // but it should still sit in the middle on a roomy screen.
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints:
+                          BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Center(
                   child: AnimatedBuilder(
                     animation: _entranceController,
                     builder: (context, _) {
@@ -269,8 +286,18 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
                                 tilt: 0.12,
                                 bob: 0,
                                 child: Container(
-                                  width: context.responsiveSize(140),
-                                  height: context.responsiveSize(140),
+                                  // The badge is a circle holding an emoji and
+                                  // "Lv. N", both of which scale with the font
+                                  // while a fixed 140 did not -- so the text
+                                  // ran 52 px out of the bottom of it.
+                                  width: context.responsiveSize(140) *
+                                      MediaQuery.textScalerOf(context)
+                                          .scale(1.0)
+                                          .clamp(1.0, 1.5),
+                                  height: context.responsiveSize(140) *
+                                      MediaQuery.textScalerOf(context)
+                                          .scale(1.0)
+                                          .clamp(1.0, 1.5),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     gradient: LinearGradient(
@@ -370,6 +397,9 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
                         ],
                       );
                     },
+                  ),
+                      ),
+                    ),
                   ),
                 ),
               ),

@@ -59,7 +59,7 @@ void main() {
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('smiley_test');
       Hive.init(tempDir.path);
-      await Hive.openBox('progress');
+      await Hive.openBox('progress', compactionStrategy: (_, _) => false);
     });
 
     tearDown(() async {

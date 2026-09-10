@@ -6,6 +6,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../models/showcase_models.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Detail view for a single showcase portfolio item
 class ShowcaseDetailScreen extends ConsumerWidget {
@@ -23,7 +24,11 @@ class ShowcaseDetailScreen extends ConsumerWidget {
         slivers: [
           // ─── Gradient Header ─────────────────
           SliverAppBar(
-            expandedHeight: 220,
+            // The header holds a fixed 64 pt emoji plus a pill whose text does
+            // scale, so a fixed 220 was 45 px short at 2x. Grow the header with
+            // the font, clamped so it never eats the whole screen.
+            expandedHeight: 220 *
+                MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.5),
             pinned: true,
             leading: const AppBackButton(
               fallbackRoute: '/progress',
@@ -321,18 +326,27 @@ class _DetailRow extends StatelessWidget {
             child: Icon(icon, size: 16, color: color),
           ),
           const SizedBox(width: 12),
-          Text(
-            label,
-            style: AppTypography.bodySmall.copyWith(
-              color: hc.textSecondary,
+          // No `Spacer` between them. A Spacer is a flex child too, so with
+          // one on each side of it the two labels were competing for a third
+          // of the row each and split their words. The value expands and
+          // end-aligns instead, which pushes the pair apart just the same.
+          Flexible(
+            child: FitText(
+              label,
+              style: AppTypography.bodySmall.copyWith(
+                color: hc.textSecondary,
+              ),
             ),
           ),
-          const Spacer(),
-          Text(
-            value,
-            style: AppTypography.bodyMedium.copyWith(
-              color: hc.textPrimary,
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: 12),
+          Expanded(
+            child: FitText(
+              value,
+              textAlign: TextAlign.end,
+              style: AppTypography.bodyMedium.copyWith(
+                color: hc.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

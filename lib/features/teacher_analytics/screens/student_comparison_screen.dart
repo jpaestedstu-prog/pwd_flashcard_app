@@ -9,6 +9,8 @@ import '../../../core/constants/avatar_data.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/parent_provider.dart';
+import '../../parent/models/educator_audience.dart';
 import '../models/teacher_analytics_models.dart';
 import '../../../widgets/app_back_button.dart';
 
@@ -49,6 +51,8 @@ class _StudentComparisonScreenState
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
+    final audience = ref.watch(educatorAudienceProvider);
+    final isFilipino = ref.watch(settingsProvider).locale == 'fil';
     ref.watch(progressProvider); // rebuild on data change
 
     return Scaffold(
@@ -56,7 +60,7 @@ class _StudentComparisonScreenState
       appBar: AppBar(
         leading: const AppBackButton(),
         title: Text(
-          'Compare Students',
+          audience.compareTitle(filipino: isFilipino),
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -65,7 +69,7 @@ class _StudentComparisonScreenState
       body: _allStudents.isEmpty
           ? Center(
               child: Text(
-                'No students available',
+                audience.analyticsEmptyTitle(filipino: isFilipino),
                 style: AppTypography.bodyMedium
                     .copyWith(color: hc.textSecondary),
               ),
@@ -78,6 +82,8 @@ class _StudentComparisonScreenState
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                     child: _StudentSelector(
                       allStudents: _allStudents,
+                      audience: audience,
+                      isFilipino: isFilipino,
                       selectedIds: _selectedIds,
                       onToggle: _toggleStudent,
                       hc: hc,
@@ -168,12 +174,16 @@ class _StudentComparisonScreenState
 
 class _StudentSelector extends StatelessWidget {
   final List<StudentAnalytics> allStudents;
+  final EducatorAudience audience;
+  final bool isFilipino;
   final Set<String> selectedIds;
   final ValueChanged<String> onToggle;
   final HCColor hc;
 
   const _StudentSelector({
     required this.allStudents,
+    required this.audience,
+    required this.isFilipino,
     required this.selectedIds,
     required this.onToggle,
     required this.hc,
@@ -213,13 +223,15 @@ class _StudentSelector extends StatelessWidget {
                 child: Icon(Icons.people_rounded, color: hc.primary, size: 18),
               ),
               const SizedBox(width: 8),
-              Text(
-                'Select Students',
+              Flexible(child: Text(
+                audience.selectLearnersTitle(filipino: isFilipino),
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
                 ),
-              ),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
               const SizedBox(width: 8),
               Container(
                 padding:
@@ -293,8 +305,11 @@ class _StudentSelector extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(avatar.emoji,
-                          style: const TextStyle(fontSize: 16)),
+                      Flexible(child: Text(avatar.emoji,
+                          style: const TextStyle(fontSize: 16),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
                       const SizedBox(width: 6),
                       Text(
                         student.name,
@@ -443,13 +458,15 @@ class _MetricRow extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: hc.textSecondary),
             const SizedBox(width: 6),
-            Text(
+            Flexible(child: Text(
               metric,
               style: AppTypography.labelSmall.copyWith(
                 fontWeight: FontWeight.w600,
                 color: hc.textPrimary,
               ),
-            ),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
           ],
         ),
         const SizedBox(height: 6),
@@ -791,13 +808,15 @@ class _LegendDot extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        Text(
+        Flexible(child: Text(
           label,
           style: AppTypography.labelSmall.copyWith(
             color: HCColor.of(context).textSecondary,
             fontSize: 10,
           ),
-        ),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
       ],
     );
   }

@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
 import '../models/object_scan_models.dart';
 import 'hunt_target_strip.dart';
+import '../../../core/utils/accessible_sizing.dart';
 
 /// Bottom panel shown over a captured photo: the vocabulary words found in
 /// it as large tap targets, or a friendly "nothing found" message, plus a
@@ -103,7 +104,7 @@ class PhotoResultsPanel extends StatelessWidget {
               label: l10n.wordHuntRetake,
               child: SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: scaledControlHeight(context, 56),
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.bannerWordHuntStart,

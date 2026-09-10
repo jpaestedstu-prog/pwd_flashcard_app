@@ -28,6 +28,8 @@ import '../widgets/fsl_empty_state.dart';
 import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
@@ -36,6 +38,7 @@ import '../../break_time/break_time.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/utils/seeded_random.dart';
 
 /// FSL Sign → Word game.
 ///
@@ -70,7 +73,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
   bool _loading = true;
   List<Achievement> _newAchievements = [];
   final List<GameReviewItem> _reviewItems = [];
-  final _random = Random();
+  final _random = contentRandom();
 
   VideoPlayerController? _videoController;
   bool _videoReady = false;
@@ -295,6 +298,25 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
     ];
   }
 
+  /// Restarts the sign clip. Shared by the on-screen button and the
+  /// controller item, so the two can never drift apart.
+  void _replayVideo() {
+    _videoController?.seekTo(Duration.zero);
+    _videoController?.play();
+  }
+
+  /// Says whether the answer was right, naming the word when it was not.
+  void _announceResult(int index) {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final round = _rounds[_currentRound];
+    final correct = index == round.correctIndex;
+    final answer = round.choices[round.correctIndex].wordEnglish;
+    gamepadScreen.announce(
+      correct ? l10n.correct : '${l10n.tryAgain}. $answer.',
+    );
+  }
+
   void _selectAnswer(int index) {
     if (_answered) return;
     final sound = ref.read(soundServiceProvider);
@@ -335,6 +357,8 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
       // Signs stat and the sign achievements do not lag a view behind.
       ref.read(progressProvider.notifier).refreshSignsWatched();
     }
+
+    _announceResult(index);
 
     Future.delayed(const Duration(milliseconds: 1400), () {
       if (!mounted) return;
@@ -492,7 +516,24 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
     final showCursor =
         ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
-    return GazeScope(
+    // The prompt is a *video of a sign*, so this round cannot be solved by ear
+    // — it is a Deaf learner's game. What the controller adds is reach: the
+    // word choices become steppable items and the replay becomes a first-class
+    // control, which matters for a low-vision learner who needs to watch the
+    // clip several times and would otherwise have to find a small text button.
+    return GamepadScreenRegistrar(
+      title: l10n.fslSignToWord,
+      active: !_answered && !isPaused,
+      narration: [l10n.fslWhatWordIsThisSign],
+      items: [
+        GamepadItem(label: l10n.replayVideo, onActivate: _replayVideo),
+        for (var i = 0; i < round.choices.length; i++)
+          GamepadItem(
+            label: round.choices[i].wordEnglish,
+            onActivate: () => _selectAnswer(i),
+          ),
+      ],
+      child: GazeScope(
       actions: _gazeActions(),
       onBlink: _selectCursor,
       child: PopScope(
@@ -748,10 +789,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: TextButton.icon(
-                                  onPressed: () {
-                                    _videoController?.seekTo(Duration.zero);
-                                    _videoController?.play();
-                                  },
+                                  onPressed: _replayVideo,
                                   icon: const Icon(
                                     Icons.replay_rounded,
                                     size: 18,
@@ -902,10 +940,20 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                                 );
                           }
 
-                          return card
-                              .animate(key: ValueKey('$_currentRound-$index'))
-                              .fadeIn(duration: 300.ms, delay: (index * 80).ms)
-                              .slideY(begin: 0.1, end: 0);
+                          // +1: the published item list puts "replay" first,
+                          // so choice N is item N+1.
+                          return GamepadFocusable(
+                            index: index + 1,
+                            child: card
+                                .animate(
+                                  key: ValueKey('$_currentRound-$index'),
+                                )
+                                .fadeIn(
+                                  duration: 300.ms,
+                                  delay: (index * 80).ms,
+                                )
+                                .slideY(begin: 0.1, end: 0),
+                          );
                         },
                       ),
                     ),
@@ -929,6 +977,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
               ),
           ],
         ),
+      ),
       ),
     );
   }

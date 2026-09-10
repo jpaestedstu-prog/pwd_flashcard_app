@@ -111,7 +111,13 @@ class _YesOrNoScreenState extends TapQuizState<YesOrNoScreen> {
       Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FlashcardImage(card: round.card, size: 96),
+          FlashcardImage(
+            card: round.card,
+            size: 96,
+            // The prompt asks whether this picture is the word below it, so a
+            // picture that names itself answers the question outright.
+            revealsAnswer: false,
+          ),
           const SizedBox(height: 16),
           Text(
             l10n.isThisPrompt,

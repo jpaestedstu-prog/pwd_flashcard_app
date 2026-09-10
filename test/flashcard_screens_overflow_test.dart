@@ -29,7 +29,7 @@ void main() {
       'custom_cards',
       'sessions',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
   });
 
@@ -87,8 +87,17 @@ void main() {
       DeviceSize('phone landscape', Size(640, 360), devicePixelRatio: 3.0),
       DeviceSize('7" landscape', Size(960, 600)),
     ];
-    for (final device in punishing) {
-      for (final scale in <double>[1.0, 2.0]) {
+    // Null first = the default theme this test always covered; then the two
+    // accessibility templates, because the card *back* carries the example
+    // sentence and is the densest face — exactly what a 1.6 line height
+    // stretches. It is hand-rolled rather than using the screen matrix (it has
+    // to tap to flip), so the theme dimension is added by hand too.
+    final themes = <String, ThemeData?>{'default': null}
+      ..addAll({for (final e in kLayoutThemes.entries) e.key: e.value()});
+
+    for (final t in themes.entries) {
+      for (final device in punishing) {
+        for (final scale in <double>[1.0, 2.0]) {
         tester.view.physicalSize = device.size * device.devicePixelRatio;
         tester.view.devicePixelRatio = device.devicePixelRatio;
         addTearDown(tester.view.resetPhysicalSize);
@@ -98,6 +107,7 @@ void main() {
           ProviderScope(
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
+              theme: t.value,
               locale: const Locale('en'),
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
@@ -128,11 +138,47 @@ void main() {
         expect(
           firstError,
           isNull,
-          reason: 'Card back overflow at $device, textScale ${scale}x:'
-              '\n$firstError',
+          reason: 'Card back overflow under ${t.key} at $device, '
+              'textScale ${scale}x:\n$firstError',
         );
       }
     }
+      }
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The flashcard screens are the app's core surface, and until now every one
+  // of them was only rendered under Flutter's default theme. The dyslexia
+  // theme is the one a learner with a reading difficulty turns on to read
+  // these very cards, and it adds a 1.6 line height and 0.6 letter spacing on
+  // top of its own font sizes. Narrow portrait at 1.5x/2.0x, where a theme's
+  // metrics bite first.
+  final cardScreens = <String, Widget Function()>{
+    'DeckListScreen': () => const DeckListScreen(),
+    'HardWordsScreen': () => const HardWordsScreen(),
+    'FlashcardViewerScreen': () => const FlashcardViewerScreen(
+          category: FlashcardCategory.familyAndGreetings,
+        ),
+    'CreateFlashcardScreen': () => const CreateFlashcardScreen(),
+    'EnhancedCreateFlashcardScreen': () =>
+        const EnhancedCreateFlashcardScreen(),
+    'DeckTemplatePickerScreen': () => const DeckTemplatePickerScreen(),
+  };
+
+  for (final theme in kLayoutThemes.entries) {
+    for (final entry in cardScreens.entries) {
+      testWidgets('${entry.key} survives the ${theme.key} theme',
+          (tester) async {
+        await expectScreenNoOverflowAcrossDevices(
+          tester,
+          entry.value,
+          theme: theme.value(),
+          devices: kNarrowPortrait,
+          textScales: kLargeTextScales,
+        );
+      });
+    }
+  }
 }

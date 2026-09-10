@@ -46,6 +46,10 @@ class AnimatedScoreReveal extends StatefulWidget {
   final VoidCallback onExit;
   final VoidCallback? onReview;
 
+  /// Whether this activity has difficulty levels to move up to.
+  /// False for story quizzes, which have none.
+  final bool hasLevels;
+
   const AnimatedScoreReveal({
     super.key,
     required this.score,
@@ -56,6 +60,7 @@ class AnimatedScoreReveal extends StatefulWidget {
     required this.onPlayAgain,
     required this.onExit,
     this.onReview,
+    this.hasLevels = true,
   });
 
   @override
@@ -235,7 +240,7 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            tier.hint(l10n),
+                            tier.hint(l10n, hasLevels: widget.hasLevels),
                             style: AppTypography.bodySmall.copyWith(
                               color: hc.textSecondary,
                               fontStyle: FontStyle.italic,
@@ -448,8 +453,12 @@ class _ScoreTier {
     _ScoreTierId.practice => l10n.resultKeepPracticing,
   };
 
-  String hint(AppLocalizations l10n) => switch (id) {
-    _ScoreTierId.amazing => l10n.resultAmazingHint,
+  /// [hasLevels] is false for activities with no difficulty setting — a story
+  /// quiz has none, so telling a perfect reader to "try a harder level next"
+  /// pointed at a control that does not exist.
+  String hint(AppLocalizations l10n, {bool hasLevels = true}) => switch (id) {
+    _ScoreTierId.amazing =>
+      hasLevels ? l10n.resultAmazingHint : l10n.resultAmazingHintNoLevels,
     _ScoreTierId.great => l10n.resultGreatHint,
     _ScoreTierId.good => l10n.resultGoodHint,
     _ScoreTierId.practice => l10n.resultKeepPracticingHint,

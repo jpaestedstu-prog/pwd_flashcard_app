@@ -106,7 +106,7 @@ void main() {
       'custom_cards',
       'sessions',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
     // Warm the FSL availability snapshot in a real-async context so the
     // static cache serves the widget tests (which run inside FakeAsync)

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/connectivity_state.dart';
+import '../core/utils/reduced_motion.dart';
 
 /// Compact connectivity status indicator for app bars and headers.
 ///
@@ -48,14 +49,12 @@ class _ConnectivityIndicatorState extends State<ConnectivityIndicator>
 
   void _onChanged(List<ConnectivityResult> results) {
     final offline = isOfflineForDisplay(results);
+    // The pulse is started and stopped in build now, from `_isOffline` and
+    // the live setting together — this only has to record the state. Doing it
+    // here meant the loop could not react to Reduced Motion being toggled
+    // while the device stayed offline.
     if (offline != _isOffline) {
       setState(() => _isOffline = offline);
-      if (offline) {
-        _pulseController.repeat(reverse: true);
-      } else {
-        _pulseController.stop();
-        _pulseController.value = 0;
-      }
     }
   }
 
@@ -68,6 +67,13 @@ class _ConnectivityIndicatorState extends State<ConnectivityIndicator>
 
   @override
   Widget build(BuildContext context) {
+    // Offline is the only state that pulses; `restAt: 0` keeps the old
+    // behaviour of settling the icon back to rest when it stops.
+    _pulseController.syncMotionLoop(
+      ReducedMotionScope.of(context) || !_isOffline,
+      reverse: true,
+      restAt: 0,
+    );
     if (!_isOffline && !widget.showWhenOnline) {
       return const SizedBox.shrink();
     }

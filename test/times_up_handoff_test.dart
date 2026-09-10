@@ -1157,7 +1157,7 @@ void main() {
         find.textContaining('Please return your device to Mommy'),
         findsOneWidget,
       );
-      expect(find.textContaining('Leave blank to use "Mommy"'),
+      expect(find.textContaining('Leave blank to use “Mommy”'),
           findsOneWidget);
     });
 

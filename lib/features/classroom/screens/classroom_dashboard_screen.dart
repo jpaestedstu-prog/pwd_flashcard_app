@@ -9,6 +9,7 @@ import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/classroom_provider.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Real-time classroom monitoring screen for teachers.
 ///
@@ -100,14 +101,25 @@ class _ClassroomDashboardScreenState
                         const Icon(Icons.people_rounded,
                             color: AppColors.primary, size: 22),
                         const SizedBox(width: 8),
-                        Text(AppLocalizations.of(context)!.students,
+                        Flexible(child: Text(AppLocalizations.of(context)!.students,
                             style: AppTypography.titleSmall
-                                .copyWith(fontWeight: FontWeight.w700)),
-                        const Spacer(),
-                        Text(
-                          '${snapshot.activeStudents} ${AppLocalizations.of(context)!.active} / ${snapshot.totalStudents} ${AppLocalizations.of(context)!.total}',
-                          style: AppTypography.labelSmall
-                              .copyWith(color: HCColor.of(context).textSecondary),
+                                .copyWith(fontWeight: FontWeight.w700),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
+                        const SizedBox(width: 8),
+                        // Flexible with the title above it, or the count and
+                        // the class name together burst the row: "Student / s".
+                        Flexible(
+                          child: FitText(
+                            '${snapshot.activeStudents} '
+                            '${AppLocalizations.of(context)!.students}',
+                            maxLines: 1,
+                            textAlign: TextAlign.end,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: HCColor.of(context).textSecondary,
+                            ),
+                          ),
                         ),
                       ],
                     ).animate().fadeIn(duration: 300.ms),
@@ -230,10 +242,13 @@ class _StatTile extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 24),
           const SizedBox(height: 6),
-          Text(value,
+          // Stat captions in a shared row: "Accurac / y", "Word / s".
+          FitText(value,
+              maxLines: 1,
               style: AppTypography.titleMedium
                   .copyWith(fontWeight: FontWeight.w800)),
-          Text(label,
+          FitText(label,
+              maxLines: 1,
               style: AppTypography.labelSmall
                   .copyWith(color: HCColor.of(context).textSecondary)),
         ],
@@ -346,8 +361,11 @@ class _StudentCard extends StatelessWidget {
                   const Icon(Icons.star_rounded,
                       size: 16, color: AppColors.warning),
                   const SizedBox(width: 2),
-                  Text('${student.starsEarned}',
-                      style: AppTypography.labelMedium),
+                  Flexible(child: Text('${student.starsEarned}',
+                      style: AppTypography.labelMedium,
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
                 ],
               ),
               const SizedBox(height: 4),
@@ -356,7 +374,10 @@ class _StudentCard extends StatelessWidget {
                 children: [
                   const Icon(Icons.percent_rounded, size: 14, color: AppColors.info),
                   const SizedBox(width: 2),
-                  Text('$accuracy%', style: AppTypography.labelMedium),
+                  Flexible(child: Text('$accuracy%', style: AppTypography.labelMedium,
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
                 ],
               ),
             ],

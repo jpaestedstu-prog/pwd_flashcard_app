@@ -136,8 +136,16 @@ class LearningPathProgress {
       completedAt: json['completedAt'] != null
           ? DateTime.parse(json['completedAt'] as String)
           : null,
-      bestScores: (json['bestScores'] as Map<String, dynamic>?)?.map(
-            (k, v) => MapEntry(int.parse(k), (v as num).toDouble()),
+      // `as Map`, not `as Map<String, dynamic>`.
+      //
+      // Hive hands back nested maps as `Map<dynamic, dynamic>`, and
+      // `HiveService.getAllLearningPathProgress` only converts the *top* level.
+      // So this cast held for a freshly-built progress object and threw for one
+      // read back from disk: a learner who scored on a path step and then
+      // restarted the app crashed on the learning-path provider, taking every
+      // screen that watches it down with it.
+      bestScores: (json['bestScores'] as Map?)?.map(
+            (k, v) => MapEntry(int.parse('$k'), (v as num).toDouble()),
           ) ??
           {},
     );

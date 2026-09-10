@@ -18,8 +18,59 @@ import '../../../widgets/shared_widgets.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/depth_3d.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
-import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../../providers/tile_grid_active_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
+
+/// Height of one game card, sized by the text scale alone.
+///
+/// Holds a two-line title and a three-line description at any scale. Tying this
+/// to width via `childAspectRatio` is what made the descriptions ellipse: the
+/// cell got *shorter* as the grid got wider, and shorter still once the text
+/// grew.
+double _gameCardHeight(BuildContext context) =>
+    60 + 92 * MediaQuery.textScalerOf(context).scale(1.0);
+
+/// Width of one grid cell, before the card's own padding.
+double _gameCellWidth(BuildContext context, int columns) {
+  final gutters = context.pagePadding * 2 + 16 * (columns - 1);
+  return (context.screenWidth - gutters) / columns;
+}
+
+/// Roughly how wide the longest word in [label] renders.
+///
+/// An estimate on purpose. `TextPainter` looks like the exact answer and is
+/// not: the title uses a Google font that is not resolved at measure time, so
+/// the painter returns fallback metrics, reports a fit, and the real Nunito
+/// breaks anyway. 0.58 em per character is a safe average for this face.
+double _longestWordWidth(String label, double fontSize, double scale) {
+  final longest = label
+      .split(RegExp(r'\s+'))
+      .fold<int>(0, (max, w) => w.length > max ? w.length : max);
+  return longest * 0.58 * fontSize * scale;
+}
+
+/// The card's fixed furniture either side of the text column.
+const double _cardPadding = 40; // 20 each side
+const double _playButton = 56; // button + its gap
+const double _cardIcon = 80; // 64 px badge + 16 px gap
+
+/// Columns for the game grid, dropped to one when even an icon-less cell would
+/// be too narrow for the longest title word to fit on a line.
+///
+/// Guessing from character counts alone does not survive the matrix. Flutter
+/// breaks *inside* a word whenever the word alone is wider than the line, and
+/// the cell does not widen with the font, so past a point the two-column grid
+/// is simply the wrong layout for the text. Reflowing to one column is the
+/// accessible answer rather than shrinking words a low-vision learner asked to
+/// be bigger.
+int _gameGridColumns(BuildContext context) {
+  final base = context.gridColumns;
+  if (base < 2) return base;
+  final scale = MediaQuery.textScalerOf(context).scale(1.0);
+  final text = _gameCellWidth(context, base) - _cardPadding - _playButton;
+  // "Pronunciation" is the longest title in the catalogue.
+  return text >= _longestWordWidth('Pronunciation', 14, scale) ? base : 1;
+}
 
 class GameHubScreen extends ConsumerWidget {
   const GameHubScreen({super.key});
@@ -54,7 +105,7 @@ class GameHubScreen extends ConsumerWidget {
     // card registers with the shell's gaze D-pad and shows a focus ring. A pure
     // pass-through otherwise, so touch / the gaze-off layout are unchanged.
     final gazeOn = ref.watch(
-      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+      tileGridActiveProvider,
     );
     final gazeGrid = GazeTileGridBuilder(active: gazeOn);
 
@@ -167,21 +218,21 @@ class GameHubScreen extends ConsumerWidget {
                       padding: EdgeInsets.all(padding),
                       sliver: SliverGrid(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: context.gridColumns,
+                          crossAxisCount: _gameGridColumns(context),
                           mainAxisSpacing: 16,
                           crossAxisSpacing: 16,
-                          childAspectRatio:
-                              ((context.isLargeTablet
-                                          ? 1.8
-                                          : (context.isTablet ? 2.0 : 2.5)) /
-                                      MediaQuery.textScalerOf(
-                                        context,
-                                      ).scale(1.0))
-                                  .clamp(1.1, 2.5),
+                          // `mainAxisExtent`, not `childAspectRatio`, for the
+                          // reason `hubTileHeight` gives: a ratio ties height to
+                          // width, so the one-column reflow above would have
+                          // made every card twice as tall. A height that tracks
+                          // only the text scale is also what lets the card hold
+                          // its whole description instead of ellipsing it to
+                          // "Find matching p…" — which it did even at 1.0x.
+                          mainAxisExtent: _gameCardHeight(context),
                         ),
                         delegate: SliverChildListDelegate(
                           gazeGrid.section(
-                            columns: context.gridColumns,
+                            columns: _gameGridColumns(context),
                             entries: [
                               for (final game in games)
                                 (
@@ -524,7 +575,7 @@ class _CategoryHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final count = GameCatalog.forCategory(type).length;
-    final label = type.profileTypeLabel;
+    final label = type.profileTypeLabelOf(AppLocalizations.of(context)!);
     return Semantics(
       header: true,
       label:
@@ -608,6 +659,71 @@ class _GameCard extends StatefulWidget {
 }
 
 class _GameCardState extends State<_GameCard> {
+
+  /// Title size for [label], stepped down when one of its words is long.
+  ///
+  /// The title column is narrow — it sits between the game icon and the play
+  /// coin — so a single word wider than that column makes Flutter wrap *inside
+  /// the word*. In Filipino that produced "Pagsasana / y sa FSL" and
+  /// "Pagtutugm / a ng Salita", which is poor for any learner and worse for one
+  /// with a reading disability. English titles are short enough that this never
+  /// triggers, so the cards look exactly as before in that locale.
+  ///
+  /// Keyed on the longest *word*, not the total length: a long two-word title
+  /// wraps cleanly between the words and needs no help.
+  /// Steps the title down as the learner's text grows.
+  ///
+  /// Keyed on the longest *word*: a long two-word title wraps cleanly between
+  /// the words and needs no help, but a single long word breaks *inside
+  /// itself* once its glyphs no longer fit the column on one line.
+  ///
+  /// Measuring the word with a `TextPainter` looks like the exact answer and is
+  /// not: the title uses a Google font that is not resolved at measure time, so
+  /// the painter reports fallback metrics, says it fits, and the real Nunito
+  /// then breaks anyway.
+  TextStyle _titleStyle(BuildContext context, String label) {
+    final longestWord = label
+        .split(RegExp(r'\s+'))
+        .fold<int>(0, (max, w) => w.length > max ? w.length : max);
+    final scale = MediaQuery.textScalerOf(context).scale(1.0);
+    if (scale >= 1.3 && longestWord >= 12) return AppTypography.titleSmall;
+    return longestWord >= 9
+        ? AppTypography.titleMedium
+        : AppTypography.titleLarge;
+  }
+
+  /// Whether the card should drop its decorative icon to widen the text column.
+  ///
+  /// `Badge3D` is a fixed 64 px that never grows with the font, so at the
+  /// Visual Impairment preset's 1.4x it plus its gap take ~80 of the ~220 px of
+  /// card content width and leave the title about 84 px -- not enough for
+  /// "Pronunciation" at any readable size, which is why it kept splitting
+  /// mid-word. The icon carries no information the card does not already give:
+  /// the accessibility label names the game and each game keeps its own colour.
+  /// Trading it for a readable title is the right way round at that scale.
+  /// Whether this card drops its decorative icon to widen the text column.
+  ///
+  /// The icon is the first thing to go, because it carries nothing the card
+  /// does not already say: the accessibility label names the game and each game
+  /// keeps its own colour. A two-column cell on a 600 dp tablet is 272 px, and
+  /// the 64 px badge plus the play button leave the text about 96 — which split
+  /// "Memo / ry" and cut every description to a fragment, at the *default* font
+  /// size. Narrow cells lose the icon outright; a single-column card keeps it
+  /// unless this particular title still would not fit.
+  bool _dropIcon(BuildContext context) {
+    final columns = _gameGridColumns(context);
+    if (columns > 1) return true;
+    final scale = MediaQuery.textScalerOf(context).scale(1.0);
+    final label = widget.game.labelOf(AppLocalizations.of(context)!);
+    final text = _gameCellWidth(context, columns) -
+        _cardPadding -
+        _playButton -
+        _cardIcon;
+    return _longestWordWidth(label, _titleStyle(context, label).fontSize ?? 16,
+            scale) >
+        text;
+  }
+
   /// Spoken tail on the card's label, so the badges are not sighted-only.
   ///
   /// Mirrors what the badges show rather than concatenating both records: an
@@ -654,14 +770,16 @@ class _GameCardState extends State<_GameCard> {
           child: Row(
             children: [
               // Game icon — raised 3D coin
-              Badge3D(
-                size: 64,
-                icon: widget.game.icon,
-                iconSize: 36,
-                circle: false,
-                borderRadius: 20,
-              ),
-              const SizedBox(width: 16),
+              if (!_dropIcon(context)) ...[
+                Badge3D(
+                  size: 64,
+                  icon: widget.game.icon,
+                  iconSize: 36,
+                  circle: false,
+                  borderRadius: 20,
+                ),
+                const SizedBox(width: 16),
+              ],
               // Game info
               Expanded(
                 child: Column(
@@ -671,7 +789,10 @@ class _GameCardState extends State<_GameCard> {
                   children: [
                     Text(
                       widget.game.labelOf(l10n),
-                      style: AppTypography.titleLarge.copyWith(
+                      style: _titleStyle(
+                        context,
+                        widget.game.labelOf(l10n),
+                      ).copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
                       ),
@@ -685,7 +806,15 @@ class _GameCardState extends State<_GameCard> {
                         style: AppTypography.bodySmall.copyWith(
                           color: Colors.white.withValues(alpha: 0.85),
                         ),
-                        maxLines: 2,
+                        // The grid divides its aspect ratio by the text scale,
+                        // so a large-text card is proportionally taller and has
+                        // room for another line. Without this the descriptions
+                        // ellipsed to "Listen and pick the cor..." for exactly
+                        // the learners who most need to read them.
+                        maxLines:
+                            MediaQuery.textScalerOf(context).scale(1.0) >= 1.3
+                                ? 3
+                                : 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

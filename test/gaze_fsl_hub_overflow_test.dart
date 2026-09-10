@@ -35,7 +35,7 @@ void main() {
   setUpAll(() async {
     Hive.init('./build/test_cache/fsl_hub_overflow');
     for (final name in const <String>['profiles', 'settings', 'progress']) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
   });
 
@@ -61,6 +61,31 @@ void main() {
       tester,
       FslPracticeHubScreen.new,
       devices: _portraitOnly,
+      overrides: [gazeSettingsProvider.overrideWith(_GazeOn.new)],
+    );
+  });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The pass above renders under Flutter's default theme, which is not a theme
+  // any learner sees. The dyslexia theme adds a 1.6 line height and 0.6 letter
+  // spacing on top of its own font sizes; high contrast overrides the text
+  // theme and outlines every card. Narrow portrait at 1.5x/2.0x, where a
+  // theme's metrics bite first.
+  testWidgets('FslPracticeHubScreen survives the accessibility themes '
+      '(gaze off)', (tester) async {
+    await expectScreenSurvivesThemes(
+      tester,
+      FslPracticeHubScreen.new,
+      overrides: [gazeSettingsProvider.overrideWith(_GazeOff.new)],
+    );
+  });
+
+  testWidgets('FslPracticeHubScreen survives the accessibility themes '
+      '(gaze on)', (tester) async {
+    await expectScreenSurvivesThemes(
+      tester,
+      FslPracticeHubScreen.new,
       overrides: [gazeSettingsProvider.overrideWith(_GazeOn.new)],
     );
   });

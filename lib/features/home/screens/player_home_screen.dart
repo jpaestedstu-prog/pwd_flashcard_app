@@ -11,8 +11,9 @@ import '../../../widgets/accessibility_quick_sheet.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
-import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../../providers/tile_grid_active_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Minimal home for the Player (guest) role.
 ///
@@ -36,7 +37,7 @@ class PlayerHomeScreen extends ConsumerWidget {
     // in a stretched Column, so each tile keeps full width via SizedBox — the
     // loose focus-ring Stack would otherwise shrink it to intrinsic width.
     final gazeOn = ref.watch(
-      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+      tileGridActiveProvider,
     );
     final gazeGrid = GazeTileGridBuilder(active: gazeOn);
     Widget gazeButton(String label, VoidCallback onTap, Widget button) =>
@@ -177,7 +178,21 @@ class PlayerHomeScreen extends ConsumerWidget {
                                     child: OutlinedButton(
                                       onPressed: () =>
                                           context.push('/join-class'),
-                                      child: const Text('Join class'),
+                                      child: Text(
+                                        'Join class',
+                                        style: fittedStyle(
+                                          context,
+                                          'Join class',
+                                          Theme.of(context)
+                                              .textTheme
+                                              .labelLarge,
+                                          // Half a phone row at 2.0x leaves
+                                          // these five-letter words too little
+                                          // space, so the default eight-char
+                                          // trigger never fired: "clas / s".
+                                          longWord: 5,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                   cell: GazeTileCell(
@@ -192,7 +207,21 @@ class PlayerHomeScreen extends ConsumerWidget {
                                     child: OutlinedButton(
                                       onPressed: () =>
                                           context.push('/join-home-group'),
-                                      child: const Text('Join group'),
+                                      child: Text(
+                                        'Join group',
+                                        style: fittedStyle(
+                                          context,
+                                          'Join group',
+                                          Theme.of(context)
+                                              .textTheme
+                                              .labelLarge,
+                                          // Half a phone row at 2.0x leaves
+                                          // these five-letter words too little
+                                          // space, so the default eight-char
+                                          // trigger never fired: "clas / s".
+                                          longWord: 5,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                   cell: GazeTileCell(

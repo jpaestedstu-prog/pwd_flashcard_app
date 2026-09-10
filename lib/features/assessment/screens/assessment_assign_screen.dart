@@ -580,32 +580,50 @@ class _EmptyAssessments extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('📋', style: TextStyle(fontSize: 64)),
-          const SizedBox(height: 16),
-          Text(
-            'No assessments yet',
-            style: AppTypography.titleMedium.copyWith(color: hc.textSecondary),
+    // Centred while it fits, scrollable when it does not — the same shape
+    // RichEmptyState uses. A fixed 64px emoji plus copy that grows with the
+    // font ran 45px off the bottom of a 360x640 phone under the dyslexia
+    // theme at 2.0x, where the 1.6 line height makes every line taller.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final content = Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('📋', style: TextStyle(fontSize: 64)),
+            const SizedBox(height: 16),
+            Text(
+              'No assessments yet',
+              style:
+                  AppTypography.titleMedium.copyWith(color: hc.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Build one in the Assessment Builder, or make a Quiz — both can '
+              'be assigned.',
+              style:
+                  AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () => context.push('/assessment/builder'),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Create Assessment'),
+            ),
+          ],
+        );
+
+        // An unbounded height means an enclosing scroll view already owns the
+        // scrolling; nesting a second one inside it would break that one.
+        if (!constraints.hasBoundedHeight) return Center(child: content);
+
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(child: content),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Build one in the Assessment Builder, or make a Quiz — both can '
-            'be assigned.',
-            style:
-                AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: () => context.push('/assessment/builder'),
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Create Assessment'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

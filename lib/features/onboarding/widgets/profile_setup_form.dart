@@ -209,15 +209,25 @@ class ProfileSetupForm extends StatelessWidget {
           ),
         ),
         AppSpacing.gapMd,
-        SwitchListTile(
-          value: enablePin,
-          onChanged: onTogglePin,
-          title: Text(l10n.enablePinLock, style: AppTypography.bodyLarge),
-          secondary: Icon(
-            enablePin ? Icons.lock_rounded : Icons.lock_open_rounded,
-            color: enablePin ? accent : AppColors.textHint,
+        // Its own Material, per Flutter's own advice for this case. A ListTile
+        // paints its background and ink splash onto the nearest Material
+        // ancestor, and here a decorated container sits in between — so the
+        // splash landed underneath it and the row gave no tap feedback at all.
+        // The framework only flags this once the container actually has a
+        // background colour, which is why the high-contrast theme surfaced it.
+        // Transparent, so nothing about the row's appearance changes.
+        Material(
+          type: MaterialType.transparency,
+          child: SwitchListTile(
+            value: enablePin,
+            onChanged: onTogglePin,
+            title: Text(l10n.enablePinLock, style: AppTypography.bodyLarge),
+            secondary: Icon(
+              enablePin ? Icons.lock_rounded : Icons.lock_open_rounded,
+              color: enablePin ? accent : AppColors.textHint,
+            ),
+            contentPadding: EdgeInsets.zero,
           ),
-          contentPadding: EdgeInsets.zero,
         ),
         if (enablePin) ...[
           AppSpacing.gapMd,

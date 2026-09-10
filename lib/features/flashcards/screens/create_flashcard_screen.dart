@@ -11,6 +11,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/utils/accessible_sizing.dart';
 
 class CreateFlashcardScreen extends ConsumerStatefulWidget {
   final Flashcard? editCard;
@@ -193,7 +194,7 @@ class _CreateFlashcardScreenState
               // Save button
               SizedBox(
                 width: double.infinity,
-                height: 60,
+                height: scaledControlHeight(context, 60),
                 child: ElevatedButton.icon(
                   onPressed: _isSaving ? null : _save,
                   icon: _isSaving

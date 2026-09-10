@@ -15,6 +15,7 @@ import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/utils/accessible_sizing.dart';
 
 /// Enhanced flashcard creator with image attachment and voice recording.
 ///
@@ -343,7 +344,7 @@ class _EnhancedCreateFlashcardScreenState
               // ─── Save Button ──────────────────────
               SizedBox(
                 width: double.infinity,
-                height: 58,
+                height: scaledControlHeight(context, 58),
                 child: ElevatedButton.icon(
                   onPressed: _isSaving ? null : _save,
                   icon: _isSaving

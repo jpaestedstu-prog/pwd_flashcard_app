@@ -16,8 +16,9 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/depth_3d.dart';
 import '../../../widgets/tilt_3d.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
-import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../../providers/tile_grid_active_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
+import '../../progress/models/category_mastery.dart';
 
 class DeckListScreen extends ConsumerWidget {
   const DeckListScreen({super.key});
@@ -25,7 +26,9 @@ class DeckListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider);
-    final progress = ref.watch(progressProvider);
+    // Per-category coverage, shared with the Progress rows,
+    // the certificates and the exports.
+    final mastery = ref.watch(categoryMasteryProvider);
     final padding = context.pagePadding;
     final isTeacherOrParent =
         profile?.role == UserRole.teacher || profile?.role == UserRole.parent;
@@ -34,7 +37,7 @@ class DeckListScreen extends ConsumerWidget {
     // card registers with the shell's gaze D-pad and shows a focus ring. A pure
     // pass-through otherwise, so touch / the gaze-off layout are unchanged.
     final gazeOn = ref.watch(
-      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+      tileGridActiveProvider,
     );
     final gazeGrid = GazeTileGridBuilder(active: gazeOn);
 
@@ -165,12 +168,14 @@ class DeckListScreen extends ConsumerWidget {
                                         cardCount: SeedData.getByCategory(
                                           category,
                                         ).length,
+                                        // "N% complete" means how much of the
+                                        // deck has been learned, so it reads
+                                        // coverage. It used to read the
+                                        // accuracy average, which called a
+                                        // deck half finished after one correct
+                                        // answer in it.
                                         progress:
-                                            progress.categoryProgress[category
-                                                .label] ??
-                                            progress.categoryProgress[category
-                                                .name] ??
-                                            0.0,
+                                            mastery[category]?.coverage ?? 0.0,
                                         onTap: () => context.push(
                                           '/flashcards/viewer/${category.index}',
                                         ),

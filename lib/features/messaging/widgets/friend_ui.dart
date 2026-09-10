@@ -53,6 +53,10 @@ Future<void> showFriendRequestsSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: true,
     builder: (ctx) => FriendRequestsSheet(
       myProfileId: myProfileId,
@@ -75,6 +79,10 @@ Future<void> showPeerActionsSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: true,
     builder: (ctx) => PeerActionsSheet(
       me: me,
@@ -313,6 +321,10 @@ Future<void> showBlockedPeopleSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: true,
     builder: (ctx) => BlockedPeopleSheet(me: me, isFilipino: isFilipino),
   );

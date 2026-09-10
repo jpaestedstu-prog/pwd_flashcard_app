@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/utils/reduced_motion.dart';
 
 /// State of a single node on a [WindingTrail].
 ///
@@ -197,7 +198,7 @@ class _TrailNodeView extends StatelessWidget {
 
     if (isCurrent) {
       circle = circle
-          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .animate(key: motionKey(context), onPlay: motionLoop(context, reverse: true))
           .scale(
             duration: 900.ms,
             begin: const Offset(1, 1),

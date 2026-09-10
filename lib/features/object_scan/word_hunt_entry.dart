@@ -30,8 +30,8 @@ Future<void> openWordHunt(BuildContext context, WidgetRef ref) async {
       voiceAvailable: gaze.voiceCommands,
       reason: reason,
       voiceHint:
-          'You can say "take a photo" to shoot, a word\'s name to open '
-          'it, and "go back" to leave.',
+          'You can say “take a photo” to shoot, a word\'s name to open '
+          'it, and “go back” to leave.',
     );
     if (!proceed || !context.mounted) return;
   }

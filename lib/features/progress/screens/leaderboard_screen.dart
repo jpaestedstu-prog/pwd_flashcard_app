@@ -17,6 +17,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../../data/models/shop_data.dart';
+import '../../../core/utils/reduced_motion.dart';
 
 /// Membership-scoped leaderboard.
 ///
@@ -512,7 +513,10 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                           fontSize:
                               context.responsiveSize(i == 1 ? 30 : 24))),
                 )
-                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .animate(
+                      key: motionKey(context),
+                      onPlay: motionLoop(context, reverse: true),
+                    )
                     .scale(
                       begin: const Offset(1, 1),
                       end: const Offset(1.12, 1.12),
@@ -695,11 +699,14 @@ class _ChipSelector<T> extends StatelessWidget {
 
 /// The display name of an entry's equipped Title, or null when they have none
 /// (or own one that has since been withdrawn from sale).
-String? _titleFor(LeaderboardEntry entry) {
-  final id = entry.equippedTitleId;
-  if (id == null) return null;
-  return ShopData.findById(id)?.name;
-}
+///
+/// Checks the type as well as the id, the way [CosmeticAvatar] does: these ids
+/// arrive from another device's Hive rows, so an id in the title slot that
+/// names an avatar is reachable — and without the guard the board would label
+/// somebody "Alien".
+String? _titleFor(LeaderboardEntry entry, bool isFilipino) =>
+    ShopData.findOfType(entry.equippedTitleId, ShopItemType.title)
+        ?.localizedName(isFilipino);
 
 class _LeaderboardTile extends StatelessWidget {
   final int rank;
@@ -852,7 +859,13 @@ class _LeaderboardTile extends StatelessWidget {
                           // An equipped Title was previously visible on one
                           // screen the learner rarely opens. A title is a
                           // thing you wear in front of other people.
-                          if (_titleFor(entry) case final title?)
+                          if (_titleFor(
+                            entry,
+                            Localizations.localeOf(context)
+                                    .languageCode ==
+                                'fil',
+                          )
+                              case final title?)
                             Text(
                               title,
                               style: AppTypography.labelSmall.copyWith(

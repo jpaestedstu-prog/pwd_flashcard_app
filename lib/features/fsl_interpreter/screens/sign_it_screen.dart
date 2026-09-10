@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +26,9 @@ import '../../gaze_control/providers/gaze_camera_owners.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/voice_control_mixin.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
+import '../../../core/utils/seeded_random.dart';
 
 /// Lifecycle of the front camera used for the practice mirror.
 enum _CamStatus { initializing, ready, noCamera, permissionDenied, failed }
@@ -80,7 +82,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     with WidgetsBindingObserver, VoiceControlMixin {
   static const int _maxRounds = 10;
 
-  final _random = Random();
+  final _random = contentRandom();
   List<Flashcard> _cards = const [];
   int _currentRound = 0;
   int _gotItCount = 0;
@@ -428,6 +430,12 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
         _videoReady = false;
       });
       _prepareVideo();
+      // The next word is the whole instruction, and nothing else announces it.
+      final next = _cards[_currentRound];
+      gamepadScreen.announce(
+        'Round ${_currentRound + 1} of $_rounds. '
+        'Sign this word: ${next.wordEnglish}, ${next.wordFilipino}.',
+      );
     } else {
       _saveProgress();
       AccessibleCelebrationOverlay.show(
@@ -569,7 +577,30 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
 
     final card = _cards[_currentRound];
 
-    return Scaffold(
+    // Watch a sign, copy it into the camera, judge yourself. Every one of those
+    // steps was a bare icon button before — a learner on a controller reached
+    // them as "Unnamed item" and had no way to tell recording from replaying.
+    // The word to sign is the narration, because it is the whole instruction.
+    return GamepadScreenRegistrar(
+      title: 'Sign It!',
+      narration: [
+        'Round ${_currentRound + 1} of $_rounds.',
+        'Sign this word: ${card.wordEnglish}, ${card.wordFilipino}.',
+      ],
+      items: [
+        GamepadItem(label: 'Watch the sign again', onActivate: _replay),
+        if (_recording)
+          GamepadItem(label: 'Stop recording', onActivate: _stopRecording)
+        else
+          GamepadItem(
+            label: 'Record myself signing',
+            enabled: _camStatus == _CamStatus.ready,
+            onActivate: _startRecording,
+          ),
+        GamepadItem(label: 'I got it', onActivate: () => _confirm(true)),
+        GamepadItem(label: 'Not yet', onActivate: () => _confirm(false)),
+      ],
+      child: Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
@@ -697,6 +728,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
             ],
           ),
         ),
+      ),
       ),
     );
   }

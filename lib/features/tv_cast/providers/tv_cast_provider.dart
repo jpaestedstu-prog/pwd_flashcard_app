@@ -237,7 +237,16 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
 
     final ip = await TvCastIpDiscovery.findLocalIp();
     if (ip == null) {
-      state = state.copyWith(clearListenUrl: true, isServerRunning: false);
+      // No LAN address to hand the TV — with Wi-Fi off the device has only
+      // 127.0.0.1. This genuinely cannot work, so the honest thing is to say
+      // so: it used to return silently and the button looked broken.
+      state = state.copyWith(
+        clearListenUrl: true,
+        isServerRunning: false,
+        startError:
+            'This tablet is not on Wi-Fi. The TV and the tablet have to be on '
+            'the same Wi-Fi network to cast — connect to Wi-Fi and try again.',
+      );
       return;
     }
 
@@ -256,13 +265,24 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     // theme too. They can still switch it from the cast screen.
     final settings = ref.read(settingsProvider);
     final highContrast = settings.highContrastMode;
+    // Dyslexia-friendly mode carries to the TV too. A learner who needs Lexend
+    // and looser spacing needs it most on the shared screen the lesson is read
+    // from — losing the accommodation the moment the teacher casts defeats it.
+    // High contrast wins when both are on: it is the stronger accommodation
+    // and the app's own theme cascade resolves them the same way.
+    final dyslexia = settings.dyslexiaMode;
 
     state = state.copyWith(
       isServerRunning: true,
       listenUrl: url,
       port: port,
       castCode: _server!.sessionToken,
-      castTheme: highContrast ? CastTheme.highContrast : CastTheme.dark,
+      clearStartError: true,
+      castTheme: highContrast
+          ? CastTheme.highContrast
+          : dyslexia
+          ? CastTheme.dyslexia
+          : CastTheme.dark,
       // Mirror the accessibility setting so the TV can drop animations.
       reducedMotion: settings.reducedMotion,
       revision: state.revision + 1,
@@ -318,7 +338,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   /// One-line status for the ongoing notification, so a teacher glancing at
   /// the shade sees what the class is looking at without opening the app.
   String _keepAliveDetail() {
-    if (state.isAway) return 'Showing "the teacher is out" — tap to resume.';
+    if (state.isAway) return 'Showing “the teacher is out” — tap to resume.';
     final viewers = state.connectedViewers;
     final who = viewers == 0
         ? 'No TV connected yet'
@@ -625,6 +645,25 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     if (state.fullscreenOnTv == enabled) return;
     state = state.copyWith(
       fullscreenOnTv: enabled,
+      revision: state.revision + 1,
+    );
+  }
+
+  /// Turns "fill the screen with the picture" on or off for connected TVs.
+  ///
+  /// The counterpart of [setFullscreenOnTv]: that one drops the *browser's*
+  /// chrome, this one drops the *cast page's* — the card frame, category badge
+  /// and example sentence go, and the photo / GIF / FSL clip grows to fill the
+  /// stage so it is legible from the back of a classroom. The word (and, in a
+  /// story, the sentence) stay on screen.
+  ///
+  /// Bumps the revision so TVs pick it up on their next poll (~1.5s). The TV
+  /// applies it as a body class, so the change restyles what is already
+  /// rendered: toggling it mid-clip does not restart the video.
+  void setBigPictureOnTv(bool enabled) {
+    if (state.bigPictureOnTv == enabled) return;
+    state = state.copyWith(
+      bigPictureOnTv: enabled,
       revision: state.revision + 1,
     );
   }

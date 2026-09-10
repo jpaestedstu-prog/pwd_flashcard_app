@@ -88,7 +88,7 @@ class _ClassroomDelegate extends GroupManagementDelegate {
 
   @override
   String get shareBlurb =>
-      'Open the app, tap "Join a class", and enter the code.';
+      'Open the app, tap “Join a class”, and enter the code.';
 
   @override
   AsyncValue<List<ManagedGroup>> watchGroups(WidgetRef ref) {

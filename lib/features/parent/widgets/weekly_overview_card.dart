@@ -9,6 +9,17 @@ import '../../../providers/parent_provider.dart';
 ///
 /// Shared by the parent and teacher dashboards, so the per-learner noun in
 /// the "Avg/…" chip is a parameter rather than hard-coded to "child".
+///
+/// ### Why nothing here has a fixed height
+/// The mini bar chart used to live in a hard-coded `SizedBox(height: 100)`
+/// while the column inside it stacked a value label, a 60 px bar, a day label
+/// and — on today — a dot. That is 107 px at the *default* font, so the
+/// "This Week" section of both dashboards shipped a permanent "BOTTOM
+/// OVERFLOWED BY 7 PIXELS" stripe, growing to ~98 px at the 2.0x
+/// accessibility scale. The chart is now laid out as two intrinsically-sized
+/// rows — the bars, bottom aligned on a shared baseline, and the day labels
+/// beneath them — so its height follows its own text metrics at any font
+/// scale and cannot be exceeded.
 class WeeklyOverviewCard extends StatelessWidget {
   final List<ChildSummary> children;
   final HCColor hc;
@@ -23,6 +34,10 @@ class WeeklyOverviewCard extends StatelessWidget {
     required this.hc,
     this.learnerNoun = 'child',
   });
+
+  /// Tallest a bar can draw. Bars are graphics, not text, so this stays fixed
+  /// while the labels around it grow with the font scale.
+  static const double _barMaxHeight = 60;
 
   @override
   Widget build(BuildContext context) {
@@ -61,139 +76,173 @@ class WeeklyOverviewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Summary header — enhanced with icon
-          Row(
+          // Summary header — the chart's caption beside its icon, then the two
+          // summary chips.
+          //
+          // A Wrap rather than a Row with a Spacer: at a large font the chips
+          // and the caption together are wider than a phone, and a Row pushes
+          // the caption off the right edge instead of moving it to a second
+          // line.
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.bar_chart_rounded,
-                    size: 18, color: AppColors.primary),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.bar_chart_rounded,
+                        size: 18, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      'Study minutes',
+                      style: AppTypography.labelSmall
+                          .copyWith(color: hc.textSecondary),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
               _WeekStatChip(
                 label: 'Total',
                 value: '${totalThisWeek}m',
                 color: AppColors.primary,
               ),
-              const SizedBox(width: 8),
               _WeekStatChip(
                 label: 'Avg/$learnerNoun',
                 value: '${avgPerChild}m',
                 color: AppColors.secondary,
               ),
-              const Spacer(),
-              Text(
-                'Study minutes',
-                style: AppTypography.labelSmall
-                    .copyWith(color: hc.textSecondary),
-              ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Mini bar chart
-          SizedBox(
-            height: 100,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(7, (i) {
-                final date = now.subtract(Duration(days: 6 - i));
-                final key =
-                    '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-                final minutes = dailyTotals[key] ?? 0;
-                final ratio = minutes / maxMinutes;
-                final isToday = i == 6;
+          // ─── Mini bar chart ─────────────────────────
+          // The bars sit in their own row, bottom aligned so they share a
+          // baseline however tall each value label grows; the day labels sit
+          // in a second row beneath. Both rows size themselves to their
+          // content, so no font scale can overflow them.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: List.generate(7, (i) {
+              final date = now.subtract(Duration(days: 6 - i));
+              final key =
+                  '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+              final minutes = dailyTotals[key] ?? 0;
+              final ratio = minutes / maxMinutes;
+              final isToday = i == 6;
 
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (minutes > 0)
-                          Text(
-                            '${minutes}m',
-                            style: AppTypography.labelSmall.copyWith(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: isToday
-                                  ? AppColors.primary
-                                  : hc.textSecondary,
-                            ),
-                          ),
-                        const SizedBox(height: 4),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 500),
-                          curve: Curves.easeOutCubic,
-                          height: (ratio * 60).clamp(4.0, 60.0),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: isToday
-                                  ? [
-                                      AppColors.primary,
-                                      AppColors.primary.withValues(alpha: 0.7),
-                                    ]
-                                  : [
-                                      AppColors.primary
-                                          .withValues(alpha: 0.4),
-                                      AppColors.primary
-                                          .withValues(alpha: 0.2),
-                                    ],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: isToday
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.primary
-                                          .withValues(alpha: 0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                        )
-                            .animate()
-                            .scaleY(
-                              begin: 0,
-                              end: 1,
-                              alignment: Alignment.bottomCenter,
-                              duration: 400.ms,
-                              delay: (200 + i * 60).ms,
-                              curve: Curves.easeOutCubic,
-                            ),
-                        const SizedBox(height: 6),
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (minutes > 0)
                         Text(
-                          dayLabels[i],
+                          '${minutes}m',
+                          textAlign: TextAlign.center,
                           style: AppTypography.labelSmall.copyWith(
-                            fontWeight:
-                                isToday ? FontWeight.w800 : FontWeight.w500,
-                            color:
-                                isToday ? AppColors.primary : hc.textSecondary,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: isToday
+                                ? AppColors.primary
+                                : hc.textSecondary,
                           ),
                         ),
-                        if (isToday)
-                          Container(
-                            margin: const EdgeInsets.only(top: 2),
-                            width: 4,
-                            height: 4,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
+                      const SizedBox(height: 4),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeOutCubic,
+                        height:
+                            (ratio * _barMaxHeight).clamp(4.0, _barMaxHeight),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: isToday
+                                ? [
+                                    AppColors.primary,
+                                    AppColors.primary.withValues(alpha: 0.7),
+                                  ]
+                                : [
+                                    AppColors.primary
+                                        .withValues(alpha: 0.4),
+                                    AppColors.primary
+                                        .withValues(alpha: 0.2),
+                                  ],
                           ),
-                      ],
-                    ),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: isToday
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                      )
+                          .animate()
+                          .scaleY(
+                            begin: 0,
+                            end: 1,
+                            alignment: Alignment.bottomCenter,
+                            duration: 400.ms,
+                            delay: (200 + i * 60).ms,
+                            curve: Curves.easeOutCubic,
+                          ),
+                    ],
                   ),
-                );
-              }),
-            ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: List.generate(7, (i) {
+              final isToday = i == 6;
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        dayLabels[i],
+                        textAlign: TextAlign.center,
+                        style: AppTypography.labelSmall.copyWith(
+                          fontWeight:
+                              isToday ? FontWeight.w800 : FontWeight.w500,
+                          color:
+                              isToday ? AppColors.primary : hc.textSecondary,
+                        ),
+                      ),
+                      if (isToday)
+                        Container(
+                          margin: const EdgeInsets.only(top: 2),
+                          width: 4,
+                          height: 4,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }),
           ),
 
           const SizedBox(height: 14),
@@ -206,58 +255,16 @@ class WeeklyOverviewCard extends StatelessWidget {
               final idx = entry.key;
               final child = entry.value;
               return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Text(child.avatarEmoji,
-                          style: const TextStyle(fontSize: 18)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          child.name,
-                          style: AppTypography.labelMedium.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${child.studyMinutesThisWeek}m',
-                          style: AppTypography.labelMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        width: 60,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: LinearProgressIndicator(
-                            value: totalThisWeek > 0
-                                ? child.studyMinutesThisWeek / totalThisWeek
-                                : 0,
-                            backgroundColor: hc.border.withValues(alpha: 0.3),
-                            valueColor: AlwaysStoppedAnimation(
-                                AppColors.primary.withValues(alpha: 0.6)),
-                            minHeight: 4,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-                    .animate()
-                    .fadeIn(duration: 250.ms, delay: (400 + idx * 60).ms)
-                    .slideX(begin: 0.02, end: 0);
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _ChildMinutesRow(
+                  child: child,
+                  hc: hc,
+                  totalThisWeek: totalThisWeek,
+                ),
+              )
+                  .animate()
+                  .fadeIn(duration: 250.ms, delay: (400 + idx * 60).ms)
+                  .slideX(begin: 0.02, end: 0);
             }),
           ],
         ],
@@ -268,6 +275,103 @@ class WeeklyOverviewCard extends StatelessWidget {
   String _shortDay(int weekday) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return days[(weekday - 1) % 7];
+  }
+}
+
+/// One learner's share of the week: name, minutes, and a share-of-total bar.
+///
+/// The minutes pill and the 60 px share bar are fixed-width, so on a single
+/// line they leave the name whatever is left over — a few pixels at a large
+/// font, which broke a roster name into one letter per line. Past the app's
+/// Large step the row becomes two lines instead, giving the name the full
+/// width.
+class _ChildMinutesRow extends StatelessWidget {
+  const _ChildMinutesRow({
+    required this.child,
+    required this.hc,
+    required this.totalThisWeek,
+  });
+
+  final ChildSummary child;
+  final HCColor hc;
+  final int totalThisWeek;
+
+  @override
+  Widget build(BuildContext context) {
+    final stacked = MediaQuery.textScalerOf(context).scale(1.0) > 1.3;
+
+    final name = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(child.avatarEmoji, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            child.name,
+            style: AppTypography.labelMedium.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+
+    final stats = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '${child.studyMinutesThisWeek}m',
+            style: AppTypography.labelMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 60,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: totalThisWeek > 0
+                  ? child.studyMinutesThisWeek / totalThisWeek
+                  : 0,
+              backgroundColor: hc.border.withValues(alpha: 0.3),
+              valueColor: AlwaysStoppedAnimation(
+                  AppColors.primary.withValues(alpha: 0.6)),
+              minHeight: 4,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (stacked) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          name,
+          const SizedBox(height: 4),
+          stats,
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: name),
+        const SizedBox(width: 8),
+        stats,
+      ],
+    );
   }
 }
 
@@ -299,10 +403,12 @@ class _WeekStatChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: HCColor.of(context).textSecondary,
+          Flexible(
+            child: Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                color: HCColor.of(context).textSecondary,
+              ),
             ),
           ),
           const SizedBox(width: 4),

@@ -113,6 +113,46 @@ extension DisabilityTypeX on DisabilityType {
     _ => label,
   };
 
+  /// Localized name, for every surface a learner or their educator reads.
+  ///
+  /// Takes a **nullable** [l10n] and falls back to the English constant —
+  /// unlike `GameTypeX.labelOf`, which is only ever called from screens that
+  /// already have the delegate. These labels appear inside semantics strings on
+  /// screens that build without one in widget tests, and a `!` there would turn
+  /// a missing delegate into a crash rather than an English word.
+  ///
+  /// [label] stays as the English constant because the CSV and PDF exports
+  /// print it: those are research artefacts that must read the same whoever
+  /// generated them, so they are deliberately *not* localized.
+  String labelOf(AppLocalizations? l10n) => l10n == null ? label : switch (this) {
+    DisabilityType.visual => l10n.disabilityVisual,
+    DisabilityType.hearing => l10n.disabilityHearing,
+    DisabilityType.motor => l10n.disabilityMotor,
+    DisabilityType.cognitive => l10n.disabilityCognitive,
+    DisabilityType.multiple => l10n.disabilityMultiple,
+    DisabilityType.none => l10n.disabilityNone,
+  };
+
+  /// Localized [profileTypeLabel] — as [labelOf] except the cognitive entry
+  /// spells out "Disability", so "Mag-aaral - Kapansanan sa Pag-iisip/
+  /// Pagkatuto" reads as one phrase.
+  String profileTypeLabelOf(AppLocalizations? l10n) =>
+      l10n == null ? profileTypeLabel : switch (this) {
+    DisabilityType.cognitive => l10n.disabilityCognitiveFull,
+    _ => labelOf(l10n),
+  };
+
+  /// Localized [description].
+  String descriptionOf(AppLocalizations? l10n) =>
+      l10n == null ? description : switch (this) {
+    DisabilityType.visual => l10n.disabilityVisualDesc,
+    DisabilityType.hearing => l10n.disabilityHearingDesc,
+    DisabilityType.motor => l10n.disabilityMotorDesc,
+    DisabilityType.cognitive => l10n.disabilityCognitiveDesc,
+    DisabilityType.multiple => l10n.disabilityMultipleDesc,
+    DisabilityType.none => l10n.disabilityNoneDesc,
+  };
+
   String get description => switch (this) {
     DisabilityType.visual =>
       'Difficulty seeing, low vision, or color blindness',
@@ -158,6 +198,17 @@ extension UserRoleX on UserRole {
     UserRole.parent => 'Parent',
     UserRole.child => 'Child',
     UserRole.player => 'Player',
+  };
+
+  /// Localized role name, for every surface a person reads.
+  ///
+  /// [label] stays English for the CSV and PDF exports — see [DisabilityTypeX.labelOf].
+  String labelOf(AppLocalizations? l10n) => l10n == null ? label : switch (this) {
+    UserRole.student => l10n.roleNameStudent,
+    UserRole.teacher => l10n.roleNameTeacher,
+    UserRole.parent => l10n.roleNameParent,
+    UserRole.child => l10n.roleNameChild,
+    UserRole.player => l10n.roleNamePlayer,
   };
 
   IconData get icon => switch (this) {

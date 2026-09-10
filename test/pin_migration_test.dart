@@ -5,15 +5,15 @@ import 'package:pwdpwdpwd/core/security/pin_migration.dart';
 
 Future<void> _initHive(String path) async {
   Hive.init(path);
-  if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings');
-  if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles');
+  if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings', compactionStrategy: (_, _) => false);
+  if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles', compactionStrategy: (_, _) => false);
 }
 
 Future<void> _resetHive() async {
   await Hive.deleteBoxFromDisk('settings');
   await Hive.deleteBoxFromDisk('profiles');
-  await Hive.openBox('settings');
-  await Hive.openBox('profiles');
+  await Hive.openBox('settings', compactionStrategy: (_, _) => false);
+  await Hive.openBox('profiles', compactionStrategy: (_, _) => false);
 }
 
 Map<String, dynamic> _legacyProfile({

@@ -1,3 +1,4 @@
+import '../../l10n/app_localizations.dart';
 import 'enums.dart';
 
 /// A single flashcard with English/Filipino word pair
@@ -232,6 +233,15 @@ class UserProfile {
       (role == UserRole.student || role == UserRole.child)
       ? '${role.label} - ${disabilityType.profileTypeLabel}'
       : role.label;
+
+  /// Localized [profileTypeLabel], for the screens that show it to a person.
+  ///
+  /// The English getter above is kept for the CSV and PDF exports, which must
+  /// read the same whoever generated them.
+  String profileTypeLabelOf(AppLocalizations? l10n) =>
+      (role == UserRole.student || role == UserRole.child)
+      ? '${role.labelOf(l10n)} - ${disabilityType.profileTypeLabelOf(l10n)}'
+      : role.labelOf(l10n);
 
   /// Whether this profile requires a PIN to switch to. Covers both migrated
   /// (pinHash) and pre-migration (legacy plaintext pin) profiles so unlock

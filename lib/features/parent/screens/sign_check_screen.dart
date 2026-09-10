@@ -15,6 +15,7 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/app_action_bar.dart';
 import '../../../widgets/fsl_loading_overlay.dart';
 import '../../../widgets/fsl_video_sheet.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Where an educator checks a learner's "I can sign this" claims.
 ///
@@ -173,8 +174,8 @@ class _SignCheckScreenState extends ConsumerState<SignCheckScreen> {
                     Text(
                       claimed.isEmpty
                           ? '${widget.learnerName} has not marked any signs yet. '
-                                'Claims appear here after they use "I can sign '
-                                'this" in the dictionary or finish a Sign It round.'
+                                'Claims appear here after they use “I can sign '
+                                'this” in the dictionary or finish a Sign It round.'
                           : 'Watch the reference clip, ask ${widget.learnerName} '
                                 'to sign it, then record what you saw. Confirming '
                                 'is what earns them the sign.',
@@ -354,12 +355,26 @@ class _ClaimRow extends StatelessWidget {
                           backgroundColor: hc.warning,
                         ),
                         icon: const Icon(Icons.replay_rounded),
-                        label: const Text('Needs practice'),
+                        label: Text(
+                          'Needs practice',
+                          style: fittedStyle(
+                            context,
+                            'Needs practice',
+                            Theme.of(context).textTheme.labelLarge,
+                          ),
+                        ),
                       )
                     : OutlinedButton.icon(
                         onPressed: onNeedsPractice,
                         icon: const Icon(Icons.replay_rounded),
-                        label: const Text('Needs practice'),
+                        label: Text(
+                          'Needs practice',
+                          style: fittedStyle(
+                            context,
+                            'Needs practice',
+                            Theme.of(context).textTheme.labelLarge,
+                          ),
+                        ),
                       ),
                 verdict == SignVerification.confirmed
                     ? FilledButton.icon(

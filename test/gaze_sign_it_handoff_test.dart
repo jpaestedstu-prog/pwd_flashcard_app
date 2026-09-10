@@ -79,7 +79,7 @@ void main() {
 
   testWidgets('with voice on it names the escape hatch', (tester) async {
     await showNotice(tester, voiceAvailable: true);
-    expect(find.textContaining('say "go back"'), findsOneWidget);
+    expect(find.textContaining('say “go back”'), findsOneWidget);
     expect(find.textContaining('Voice commands in Settings'), findsNothing);
   });
 

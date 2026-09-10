@@ -9,7 +9,9 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../core/widgets/pro_surface.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/parent_provider.dart';
 import '../../notifications/services/alert_service.dart';
+import '../../parent/models/educator_audience.dart';
 import '../models/teacher_analytics_models.dart';
 
 class TeacherAnalyticsScreen extends ConsumerWidget {
@@ -51,6 +53,7 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
       orElse: () => ClassAnalytics.fromStudents(const []),
     );
     final loading = rosterAsync.isLoading;
+    final audience = ref.watch(educatorAudienceProvider);
     final settings = ref.watch(settingsProvider);
     final isFilipino = settings.locale == 'fil';
     final padding = context.pagePadding;
@@ -58,7 +61,7 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? 'Analytics ng Klase' : 'Class Analytics'),
+        title: Text(audience.analyticsTitle(filipino: isFilipino)),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -66,7 +69,7 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
           if (analytics.totalStudents >= 2)
             IconButton(
               icon: const Icon(Icons.compare_arrows_rounded),
-              tooltip: isFilipino ? 'Ihambing' : 'Compare Students',
+              tooltip: audience.compareTooltip(filipino: isFilipino),
               onPressed: () => context.push('/student-comparison'),
             ),
           Stack(
@@ -101,35 +104,29 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
         child: loading
             ? const Center(child: CircularProgressIndicator())
             : analytics.totalStudents == 0
-            ? Center(
+            ? SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text('📊', style: TextStyle(fontSize: 64)),
                     const SizedBox(height: 16),
                     Text(
-                      isFilipino
-                          ? 'Walang mga estudyante'
-                          : 'No students yet',
+                      audience.analyticsEmptyTitle(filipino: isFilipino),
                       style: AppTypography.titleMedium
                           .copyWith(color: hc.textSecondary),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      isFilipino
-                          ? 'Magbahagi ng class code para sumali ang mga estudyante. Lalabas dito ang analytics kapag aktibo na sila.'
-                          : 'Share your class code so students can join. Analytics will appear here once they\'re active.',
+                      audience.analyticsEmptyBody(filipino: isFilipino),
                       style: AppTypography.bodyMedium
                           .copyWith(color: hc.textSecondary),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
                     FilledButton.icon(
-                      onPressed: () => context.push('/classroom-manage'),
+                      onPressed: () => context.push(audience.manageRoute),
                       icon: const Icon(Icons.qr_code_2_rounded),
-                      label: Text(isFilipino
-                          ? 'Ibahagi ang Class Code'
-                          : 'Share Class Code'),
+                      label: Text(audience.shareCodeLabel(filipino: isFilipino)),
                     ),
                   ],
                 ),
@@ -143,6 +140,7 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
                       child: _OverviewCards(
                         analytics: analytics,
                         isFilipino: isFilipino,
+                        audience: audience,
                       ).animate().fadeIn(duration: 400.ms),
                     ),
                   ),
@@ -156,6 +154,7 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
                         child: _NeedHelpAlert(
                           students: analytics.studentsNeedingHelp,
                           isFilipino: isFilipino,
+                          audience: audience,
                         )
                             .animate()
                             .fadeIn(duration: 400.ms, delay: 100.ms),
@@ -185,9 +184,7 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
                       padding:
                           EdgeInsets.fromLTRB(padding, 20, padding, 8),
                       child: Text(
-                        isFilipino
-                            ? 'Performance ng mga Estudyante'
-                            : 'Student Performance',
+                        audience.performanceTitle(filipino: isFilipino),
                         style: AppTypography.titleSmall.copyWith(
                           fontWeight: FontWeight.w700,
                           color: hc.textPrimary,
@@ -227,8 +224,13 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
 class _OverviewCards extends StatelessWidget {
   final ClassAnalytics analytics;
   final bool isFilipino;
+  final EducatorAudience audience;
 
-  const _OverviewCards({required this.analytics, required this.isFilipino});
+  const _OverviewCards({
+    required this.analytics,
+    required this.isFilipino,
+    required this.audience,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -239,7 +241,7 @@ class _OverviewCards extends StatelessWidget {
       tiles: [
         ProStatTile(
           icon: Icons.people_rounded,
-          label: isFilipino ? 'Estudyante' : 'Students',
+          label: audience.learnersStatLabel(filipino: isFilipino),
           value: '${analytics.totalStudents}',
           caption: '${analytics.activeStudents} ${isFilipino ? 'aktibo' : 'active'}',
           accent: AppColors.primary,
@@ -271,8 +273,13 @@ class _OverviewCards extends StatelessWidget {
 class _NeedHelpAlert extends StatelessWidget {
   final List<StudentAnalytics> students;
   final bool isFilipino;
+  final EducatorAudience audience;
 
-  const _NeedHelpAlert({required this.students, required this.isFilipino});
+  const _NeedHelpAlert({
+    required this.students,
+    required this.isFilipino,
+    required this.audience,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -295,9 +302,7 @@ class _NeedHelpAlert extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isFilipino
-                      ? 'Nangangailangan ng Tulong'
-                      : 'Students Needing Help',
+                  audience.needHelpTitle(filipino: isFilipino),
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.error,
@@ -473,7 +478,10 @@ class _StudentRow extends StatelessWidget {
             : student.averageAccuracy >= 0.5
                 ? AppColors.warning
                 : AppColors.error;
-    final isTopThree = rank <= 3;
+    // A medal is an award, not a row number. On a roster where nobody has
+    // played yet, `rank <= 3` alone handed out gold, silver and bronze for
+    // three identical zeroes.
+    final isTopThree = rank <= 3 && student.hasGradedActivity;
 
     return GestureDetector(
       onTap: () => context.push(

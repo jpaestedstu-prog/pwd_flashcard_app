@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,6 +34,7 @@ import '../../gaze_control/widgets/gaze_scope.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/utils/seeded_random.dart';
 
 /// Picture-Word Association Game
 ///
@@ -136,7 +136,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
   bool _showResult = false;
   List<Achievement> _newAchievements = [];
   final List<GameReviewItem> _reviewItems = [];
-  final _random = Random();
+  final _random = contentRandom();
 
   int get _totalRounds => switch (widget.difficulty) {
     GameDifficulty.easy => 6,
@@ -746,6 +746,9 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                                 FlashcardImage(
                                   card: round.correctCard,
                                   size: 112,
+                                  // "Which word matches?" — this picture is
+                                  // the question.
+                                  revealsAnswer: false,
                                 ),
                                 const SizedBox(height: 12),
                                 Text(

@@ -15,6 +15,8 @@ import '../../../features/progress/theme/progress_layout_provider.dart';
 import '../../../features/progress/theme/progress_theme_picker.dart';
 import '../../../features/progress/widgets/shared/progress_section_header.dart';
 import '../../../features/progress/widgets/shared/progress_stat_grid.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Shows full profile information and learning progress for a student.
 ///
@@ -782,7 +784,7 @@ class _ProfileDetailsSection extends StatelessWidget {
           _DetailRow(
             icon: Icons.person_rounded,
             label: 'Role',
-            value: profile.role.label,
+            value: profile.role.labelOf(AppLocalizations.of(context)),
             accent: accent,
           ),
           if (profile.birthDate != null) ...[
@@ -808,7 +810,7 @@ class _ProfileDetailsSection extends StatelessWidget {
             _DetailRow(
               icon: profile.disabilityType.icon,
               label: 'Accessibility',
-              value: profile.disabilityType.label,
+              value: profile.disabilityType.labelOf(AppLocalizations.of(context)),
               accent: accent,
             ),
           ],
@@ -868,11 +870,9 @@ class _DetailRow extends StatelessWidget {
           // Expanded + end-aligned so a long value ellipsizes instead of
           // overflowing the row at large font scales (e.g. long section names).
           Expanded(
-            child: Text(
+            child: FitText(
               value,
               textAlign: TextAlign.end,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               style: AppTypography.bodyMedium.copyWith(
                 fontWeight: FontWeight.w600,
               ),

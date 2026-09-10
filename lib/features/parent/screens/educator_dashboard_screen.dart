@@ -16,6 +16,9 @@ import '../../../providers/parent_provider.dart';
 import '../../mood_tracker/models/mood_models.dart';
 import '../../mood_tracker/models/mood_summary.dart';
 import '../../notifications/services/alert_service.dart';
+import '../../routine/widgets/educator_routine_section.dart';
+import '../models/educator_audience.dart';
+import '../services/educator_recommendations.dart';
 import '../widgets/child_detail_sheet.dart';
 import '../widgets/parent_recommendation_card.dart';
 import '../widgets/weekly_overview_card.dart';
@@ -23,64 +26,14 @@ import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/rich_empty_states.dart';
+import '../../../l10n/app_localizations.dart';
 
-/// Which educator is looking at the dashboard.
-///
-/// The data pipeline is identical for both — [parentDashboardProvider] is a
-/// projection over the active profile's roster, and a teacher owns a roster
-/// exactly the way a parent does. Only the wording, the icons and the
-/// "manage" shortcut change, and they all live here.
-enum EducatorAudience {
-  parent,
-  teacher;
-
-  bool get isParent => this == EducatorAudience.parent;
-
-  String get dashboardTitle =>
-      isParent ? 'Parent Dashboard' : 'Teacher Dashboard';
-
-  String get overviewTitle => isParent ? 'Family Overview' : 'Class Overview';
-
-  String get rosterTitle => isParent ? 'Your Children' : 'Your Students';
-
-  String get learnerNoun => isParent ? 'child' : 'student';
-
-  String get learnerNounPlural => isParent ? 'children' : 'students';
-
-  IconData get rosterIcon =>
-      isParent ? Icons.child_care_rounded : Icons.groups_rounded;
-
-  IconData get overviewIcon =>
-      isParent ? Icons.family_restroom_rounded : Icons.school_rounded;
-
-  String get manageTooltip =>
-      isParent ? 'Manage Home Groups' : 'Manage Classes';
-
-  String get manageRoute =>
-      isParent ? '/home-group-manage' : '/classroom-manage';
-
-  String get emptyEmoji => isParent ? '👨‍👩‍👧' : '🏫';
-
-  String get emptyTitle =>
-      isParent ? 'No children yet' : 'No students yet';
-
-  String get emptyDescription => isParent
-      ? 'Create a home group, then share the code with your child\'s device '
-            'to start tracking progress.'
-      : 'Create a class, then share the join code with your students to start '
-            'tracking progress.';
-
-  String get emptyActionLabel =>
-      isParent ? 'Share Home Group Code' : 'Share Class Code';
-
-  /// Notes are written by the *other* educator, so the label flips.
-  String get notesTooltip => isParent ? 'Teacher notes' : 'Parent notes';
-
-  /// Teachers get the calm academic backdrop, parents the warm home one —
-  /// matching how the two educator home screens already read.
-  GradientPreset get gradientPreset =>
-      isParent ? GradientPreset.home : GradientPreset.assessment;
-}
+export '../models/educator_audience.dart' show EducatorAudience;
+export '../services/educator_recommendations.dart'
+    show
+        EducatorRecommendationKind,
+        ParentRecommendation,
+        generateEducatorRecommendations;
 
 /// Educator dashboard — overview of every learner on the active profile's
 /// roster.
@@ -116,7 +69,10 @@ class _EducatorDashboardScreenState
   bool _hasUnreadAlerts() {
     try {
       return AlertService.getAlerts().where((a) => !a.isRead).isNotEmpty;
-    } on Exception catch (e) {
+    } on Object catch (e) {
+      // `Object`, not `Exception`: a closed or missing box throws `HiveError`,
+      // which extends Error — the narrower catch let a bell badge take the
+      // whole dashboard down.
       debugPrint('educator dashboard: alert read failed: $e');
       return false;
     }
@@ -126,6 +82,7 @@ class _EducatorDashboardScreenState
   Widget build(BuildContext context) {
     final snapshot = ref.watch(parentDashboardProvider);
     final hc = HCColor.of(context);
+    final l = ref.watch(settingsProvider).locale == 'fil';
 
     return AnimatedGradientBackground(
       intensity: 0.25,
@@ -137,7 +94,7 @@ class _EducatorDashboardScreenState
         elevation: 0,
         leading: const AppBackButton(),
         title: Text(
-          _audience.dashboardTitle,
+          _audience.dashboardTitleOf(filipino: l),
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -151,7 +108,7 @@ class _EducatorDashboardScreenState
               IconButton(
                 icon: Icon(Icons.notifications_rounded,
                     color: hc.textSecondary),
-                tooltip: 'Alert Settings',
+                tooltip: l ? 'Mga Setting ng Alerto' : 'Alert Settings',
                 onPressed: () => context.push('/alert-settings'),
               ),
               if (_hasUnreadAlerts())
@@ -172,12 +129,12 @@ class _EducatorDashboardScreenState
           ),
           IconButton(
             icon: Icon(_audience.overviewIcon, color: hc.textSecondary),
-            tooltip: _audience.manageTooltip,
+            tooltip: _audience.manageTooltipOf(filipino: l),
             onPressed: () => context.push(_audience.manageRoute),
           ),
           IconButton(
             icon: Icon(Icons.refresh_rounded, color: hc.textSecondary),
-            tooltip: 'Refresh',
+            tooltip: l ? 'I-refresh' : 'Refresh',
             onPressed: _refresh,
           ),
         ],
@@ -189,7 +146,7 @@ class _EducatorDashboardScreenState
               builder: (context, constraints) => SingleChildScrollView(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: _EmptyState(audience: _audience),
+                  child: _EmptyState(audience: _audience, filipino: l),
                 ),
               ),
             )
@@ -199,7 +156,11 @@ class _EducatorDashboardScreenState
               },
               child: Builder(builder: (context) {
                 final recommendations =
-                    generateEducatorRecommendations(snapshot.children);
+                    generateEducatorRecommendations(
+                          snapshot.children,
+                          audience: _audience,
+                          filipino: l,
+                        );
                 return CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
@@ -211,6 +172,52 @@ class _EducatorDashboardScreenState
                         snapshot: snapshot,
                         hc: hc,
                         audience: _audience,
+                        filipino: l,
+                      ),
+                    ),
+                  ),
+
+                  // ─── Recommendations ──────────────────
+                  // Second, not last. On a six-learner roster the old order
+                  // buried "Check in with Ana — 4 difficult check-ins this
+                  // week" below six cards and a bar chart: the one thing that
+                  // needed acting on today was the one thing an educator had
+                  // to scroll to find.
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lightbulb_rounded,
+                              color: AppColors.warning, size: 22),
+                          const SizedBox(width: 8),
+                          Text(
+                            l ? 'Mga Rekomendasyon' : 'Recommendations',
+                            style: AppTypography.titleSmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: hc.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ).animate().fadeIn(duration: 300.ms, delay: 100.ms),
+                    ),
+                  ),
+
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: ParentRecommendationCard(
+                              recommendation: recommendations[index],
+                              hc: hc,
+                              index: index,
+                            ),
+                          );
+                        },
+                        childCount: recommendations.length,
                       ),
                     ),
                   ),
@@ -228,7 +235,7 @@ class _EducatorDashboardScreenState
                           // "N active / M total" counter off the row.
                           Expanded(
                             child: Text(
-                              _audience.rosterTitle,
+                              _audience.rosterTitleOf(filipino: l),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: AppTypography.titleSmall.copyWith(
@@ -239,13 +246,15 @@ class _EducatorDashboardScreenState
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '${snapshot.activeChildren} active / ${snapshot.totalChildren} total',
+                            l
+                                ? '${snapshot.activeChildren} aktibo / ${snapshot.totalChildren} lahat'
+                                : '${snapshot.activeChildren} active / ${snapshot.totalChildren} total',
                             style: AppTypography.labelSmall.copyWith(
                               color: hc.textSecondary,
                             ),
                           ),
                         ],
-                      ).animate().fadeIn(duration: 300.ms),
+                      ).animate().fadeIn(duration: 300.ms, delay: 200.ms),
                     ),
                   ),
 
@@ -260,12 +269,38 @@ class _EducatorDashboardScreenState
                             child: child,
                             hc: hc,
                             audience: _audience,
+                            filipino: l,
                             onTap: () => _showChildDetail(context, child),
                             index: index,
                           );
                         },
                         childCount: snapshot.children.length,
                       ),
+                    ),
+                  ),
+
+                  // ─── Today's Routines ─────────────────
+                  // Above the weekly chart: a routine is about *today*, and
+                  // an educator checking whether a child got through their
+                  // morning should not have to scroll past a week of history
+                  // to find out.
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      child: EducatorRoutineSection(
+                        learners: [
+                          for (final c in snapshot.children)
+                            EducatorRoutineLearner(
+                              profileId: c.profileId,
+                              name: c.name,
+                              avatarEmoji: c.avatarEmoji,
+                              accessibility: c.disabilityType,
+                            ),
+                        ],
+                        learnerNounPlural: _audience.learnerNounPlural,
+                        learnerNoun: _audience.learnerNoun,
+                        filipino: l,
+                      ).animate().fadeIn(duration: 400.ms, delay: 220.ms),
                     ),
                   ),
 
@@ -279,7 +314,7 @@ class _EducatorDashboardScreenState
                               color: hc.primary, size: 20),
                           const SizedBox(width: 8),
                           Text(
-                            'This Week',
+                            l ? 'Ngayong Linggo' : 'This Week',
                             style: AppTypography.titleSmall.copyWith(
                               fontWeight: FontWeight.w700,
                               color: hc.textPrimary,
@@ -301,45 +336,6 @@ class _EducatorDashboardScreenState
                     ),
                   ),
 
-                  // ─── Recommendations ──────────────────
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.lightbulb_rounded,
-                              color: AppColors.warning, size: 22),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Recommendations',
-                            style: AppTypography.titleSmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: hc.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ).animate().fadeIn(duration: 300.ms, delay: 300.ms),
-                    ),
-                  ),
-
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: ParentRecommendationCard(
-                              recommendation: recommendations[index],
-                              hc: hc,
-                              index: index,
-                            ),
-                          );
-                        },
-                        childCount: recommendations.length,
-                      ),
-                    ),
-                  ),
 
                   // ─── Last Updated ─────────────────────
                   SliverToBoxAdapter(
@@ -347,7 +343,9 @@ class _EducatorDashboardScreenState
                       padding: const EdgeInsets.only(bottom: 32),
                       child: Center(
                         child: Text(
-                          'Last updated: ${_formatTime(snapshot.timestamp)}',
+                          l
+                              ? 'Huling update: ${_formatTime(snapshot.timestamp)}'
+                              : 'Last updated: ${_formatTime(snapshot.timestamp)}',
                           style: AppTypography.labelSmall.copyWith(
                             color: hc.textHint,
                           ),
@@ -366,10 +364,15 @@ class _EducatorDashboardScreenState
   void _showChildDetail(BuildContext context, ChildSummary child) {
     showModalBottomSheet(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ChildDetailSheet(
         child: child,
+        learnerNoun: _audience.learnerNoun,
         onViewFullDashboard: () async {
           // Find the full UserProfile for this learner. Try Firestore-backed
           // roster first (cross-device), fall back to local Hive.
@@ -414,11 +417,13 @@ class _RosterStatsCard extends StatelessWidget {
   final ParentDashboardSnapshot snapshot;
   final HCColor hc;
   final EducatorAudience audience;
+  final bool filipino;
 
   const _RosterStatsCard({
     required this.snapshot,
     required this.hc,
     required this.audience,
+    required this.filipino,
   });
 
   @override
@@ -426,33 +431,34 @@ class _RosterStatsCard extends StatelessWidget {
     // Professional dashboard kit: a structured overview panel with an
     // overflow-safe stat grid, instead of the playful gradient card.
     return ProPanel(
-      title: audience.overviewTitle,
-      subtitle:
-          '${snapshot.activeChildren} of ${snapshot.totalChildren} ${audience.learnerNounPlural} active',
+      title: audience.overviewTitleOf(filipino: filipino),
+      subtitle: filipino
+          ? '${snapshot.activeChildren} sa ${snapshot.totalChildren} ${audience.learnerNounOf(filipino: true)} ang aktibo'
+          : '${snapshot.activeChildren} of ${snapshot.totalChildren} ${audience.learnerNounPlural} active',
       trailing: Icon(audience.overviewIcon, color: hc.primary),
       child: ProStatGrid(
         tiles: [
           ProStatTile(
             icon: Icons.school_rounded,
-            label: 'Words',
+            label: filipino ? 'Mga Salita' : 'Words',
             value: '${snapshot.totalWordsLearned}',
             accent: AppColors.primary,
           ),
           ProStatTile(
             icon: Icons.star_rounded,
-            label: 'Stars',
+            label: filipino ? 'Mga Bituin' : 'Stars',
             value: '${snapshot.totalStarsEarned}',
             accent: AppColors.warning,
           ),
           ProStatTile(
             icon: Icons.timer_rounded,
-            label: 'Minutes',
+            label: filipino ? 'Minuto' : 'Minutes',
             value: '${snapshot.totalStudyMinutes}',
             accent: AppColors.success,
           ),
           ProStatTile(
             icon: Icons.sports_esports_rounded,
-            label: 'Games',
+            label: filipino ? 'Mga Laro' : 'Games',
             value: '${snapshot.totalGamesPlayed}',
             accent: AppColors.info,
           ),
@@ -468,6 +474,7 @@ class _ChildCard extends ConsumerWidget {
   final ChildSummary child;
   final HCColor hc;
   final EducatorAudience audience;
+  final bool filipino;
   final VoidCallback onTap;
   final int index;
 
@@ -475,6 +482,7 @@ class _ChildCard extends ConsumerWidget {
     required this.child,
     required this.hc,
     required this.audience,
+    required this.filipino,
     required this.onTap,
     this.index = 0,
   });
@@ -591,7 +599,7 @@ class _ChildCard extends ConsumerWidget {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Active',
+                                    filipino ? 'Aktibo' : 'Active',
                                     style: AppTypography.labelSmall.copyWith(
                                       color: AppColors.success,
                                       fontSize: 9,
@@ -619,10 +627,20 @@ class _ChildCard extends ConsumerWidget {
                               Icon(child.disabilityType.icon,
                                   size: 12, color: hc.textSecondary),
                               const SizedBox(width: 4),
-                              Text(
-                                child.disabilityType.label,
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: hc.textSecondary,
+                              // Flexible: this tag shares the name column with
+                              // the learner's name and the streak badge, and
+                              // "Hearing Impairment" is already wider than the
+                              // column on a phone at the Large font step —
+                              // unflexed it burst the chip by 45–152 px.
+                              Flexible(
+                                child: Text(
+                                  child.disabilityType
+                                      .labelOf(AppLocalizations.of(context)),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: hc.textSecondary,
+                                  ),
                                 ),
                               ),
                             ],
@@ -678,25 +696,25 @@ class _ChildCard extends ConsumerWidget {
                   _MiniStat(
                     icon: Icons.school_rounded,
                     value: '${child.wordsLearned}',
-                    label: 'Words',
+                    label: filipino ? 'Salita' : 'Words',
                     color: AppColors.primary,
                   ),
                   _MiniStat(
                     icon: Icons.star_rounded,
                     value: '${child.totalStars}',
-                    label: 'Stars',
+                    label: filipino ? 'Bituin' : 'Stars',
                     color: AppColors.warning,
                   ),
                   _MiniStat(
                     icon: Icons.percent_rounded,
                     value: '$accuracy%',
-                    label: 'Accuracy',
+                    label: filipino ? 'Katumpakan' : 'Accuracy',
                     color: AppColors.info,
                   ),
                   _MiniStat(
                     icon: Icons.timer_rounded,
                     value: '${child.studyMinutesThisWeek}m',
-                    label: 'This Week',
+                    label: filipino ? 'Linggong Ito' : 'This Week',
                     color: AppColors.success,
                   ),
                 ],
@@ -820,7 +838,7 @@ class _ChildCard extends ConsumerWidget {
                 IconButton(
                   icon: const Icon(Icons.timer_outlined,
                       size: 20, color: AppColors.primary),
-                  tooltip: 'Time limits',
+                  tooltip: filipino ? 'Limitasyon sa oras' : 'Time limits',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () => context.push(
@@ -831,7 +849,7 @@ class _ChildCard extends ConsumerWidget {
                 IconButton(
                   icon: const Icon(Icons.alarm_rounded,
                       size: 20, color: AppColors.primary),
-                  tooltip: 'Alarms',
+                  tooltip: filipino ? 'Mga alarma' : 'Alarms',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () => context.push(
@@ -842,7 +860,7 @@ class _ChildCard extends ConsumerWidget {
                 IconButton(
                   icon: const Icon(Icons.timeline_rounded,
                       size: 20, color: AppColors.primary),
-                  tooltip: 'View Timeline',
+                  tooltip: filipino ? 'Tingnan ang timeline' : 'View Timeline',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () => context.push(
@@ -853,7 +871,7 @@ class _ChildCard extends ConsumerWidget {
                 IconButton(
                   icon: const Icon(Icons.sticky_note_2_rounded,
                       size: 20, color: AppColors.primary),
-                  tooltip: audience.notesTooltip,
+                  tooltip: audience.notesTooltipOf(filipino: filipino),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () => context.push(
@@ -1008,146 +1026,19 @@ class _MiniStat extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   final EducatorAudience audience;
+  final bool filipino;
 
-  const _EmptyState({required this.audience});
+  const _EmptyState({required this.audience, required this.filipino});
 
   @override
   Widget build(BuildContext context) {
     return RichEmptyState(
       emoji: audience.emptyEmoji,
-      title: audience.emptyTitle,
-      description: audience.emptyDescription,
-      actionLabel: audience.emptyActionLabel,
+      title: audience.analyticsEmptyTitle(filipino: filipino),
+      description: audience.emptyDescriptionOf(filipino: filipino),
+      actionLabel: audience.shareCodeLabel(filipino: filipino),
       actionIcon: audience.overviewIcon,
       onAction: () => context.push(audience.manageRoute),
     );
   }
-}
-
-// ─── Recommendations Generator ───────────────────────
-
-/// Recommendation data class.
-class ParentRecommendation {
-  final String title;
-  final String description;
-  final IconData icon;
-  final Color color;
-  final String childName;
-
-  const ParentRecommendation({
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.color,
-    required this.childName,
-  });
-}
-
-/// Build the recommendation feed from a roster snapshot.
-///
-/// Deliberately worded per-learner ("Encourage Ana to practice"), so the copy
-/// reads correctly whether the reader is a parent or a teacher.
-List<ParentRecommendation> generateEducatorRecommendations(
-    List<ChildSummary> children) {
-  final recs = <ParentRecommendation>[];
-
-  for (final child in children) {
-    // Low activity warning
-    if (!child.isRecentlyActive &&
-        DateTime.now().difference(child.lastActivityDate).inDays > 2) {
-      recs.add(ParentRecommendation(
-        title: 'Encourage ${child.name} to practice',
-        description:
-            '${child.name} hasn\'t studied in ${DateTime.now().difference(child.lastActivityDate).inDays} days. '
-            'A quick 5-minute session can help maintain their progress!',
-        icon: Icons.notifications_active_rounded,
-        color: AppColors.warning,
-        childName: child.name,
-      ));
-    }
-
-    // Low accuracy suggestion
-    if (child.averageAccuracy > 0 && child.averageAccuracy < 0.5) {
-      recs.add(ParentRecommendation(
-        title: '${child.name} may need easier activities',
-        description:
-            'With ${(child.averageAccuracy * 100).round()}% accuracy, '
-            '${child.name} might benefit from reviewing flashcards before playing games.',
-        icon: Icons.lightbulb_outline_rounded,
-        color: AppColors.info,
-        childName: child.name,
-      ));
-    }
-
-    // Unexplored categories
-    final unexplored = child.unexploredCategories;
-    if (unexplored.isNotEmpty && unexplored.length <= 6) {
-      recs.add(ParentRecommendation(
-        title: 'New categories for ${child.name}',
-        description:
-            '${child.name} hasn\'t explored ${unexplored.take(3).join(', ')} yet. '
-            'Try introducing a new topic to keep learning fresh!',
-        icon: Icons.explore_rounded,
-        color: AppColors.secondary,
-        childName: child.name,
-      ));
-    }
-
-    // Great streak celebration
-    if (child.streakDays >= 5) {
-      recs.add(ParentRecommendation(
-        title: '${child.name} is on a roll! 🎉',
-        description:
-            '${child.streakDays}-day streak! Celebrate and encourage ${child.name} '
-            'to keep up the amazing consistency.',
-        icon: Icons.emoji_events_rounded,
-        color: AppColors.success,
-        childName: child.name,
-      ));
-    }
-
-    // Study time declining
-    if (child.weekOverWeekChange < -30) {
-      recs.add(ParentRecommendation(
-        title: '${child.name}\'s study time dropped',
-        description:
-            'Study time decreased by ${child.weekOverWeekChange.abs().round()}% compared to last week. '
-            'Consider setting a daily learning reminder together.',
-        icon: Icons.trending_down_rounded,
-        color: AppColors.error,
-        childName: child.name,
-      ));
-    }
-
-    // High mastery celebration
-    if (child.masteredCategories >= 3) {
-      recs.add(ParentRecommendation(
-        title: '${child.name} mastered ${child.masteredCategories} categories!',
-        description:
-            'Outstanding progress! ${child.name} has achieved 80%+ mastery in '
-            '${child.masteredCategories} vocabulary categories.',
-        icon: Icons.workspace_premium_rounded,
-        color: AppColors.primary,
-        childName: child.name,
-      ));
-    }
-  }
-
-  // Cap at 6 recommendations to avoid overwhelming
-  if (recs.length > 6) recs.length = 6;
-
-  // If no specific recommendations, give a general one
-  if (recs.isEmpty) {
-    recs.add(const ParentRecommendation(
-      title: 'Keep up the great work!',
-      description:
-          'Everyone on your roster is learning at a healthy pace. '
-          'Encourage them to explore new categories and try different games.',
-      icon: Icons.thumb_up_rounded,
-      color: AppColors.success,
-      childName: '',
-    ));
-  }
-
-  return recs;
 }

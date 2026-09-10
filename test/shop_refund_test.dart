@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart' show Color;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -21,6 +22,10 @@ import 'support/shop_test_doubles.dart';
 /// box.put` below it until the per-test timeout. See
 /// `test/support/shop_test_doubles.dart`.
 const String _kStoreDir = './build/test_cache/shop_refund';
+
+/// The set these tests pretend has been pulled from sale. Real catalogue ids,
+/// so the refund can look their cost up the way it does in production.
+const Set<String> _pulled = {'sound_chiptune', 'sound_space'};
 
 void main() {
   setUpAll(() async {
@@ -73,25 +78,38 @@ void main() {
   }
 
   group('Withdrawn items', () {
-    test('sound packs are the withdrawn set, and nothing else is', () {
-      expect(ShopData.withdrawnIds, {
-        'sound_chiptune',
-        'sound_nature',
-        'sound_space',
-      });
-      for (final type in ShopData.sellableTypes) {
-        for (final item in ShopData.sellableByType(type)) {
-          expect(item.available, isTrue);
-        }
+    test('nothing is withdrawn: every shelf is sellable again', () {
+      expect(ShopData.withdrawnIds, isEmpty,
+          reason: 'the Sound Packs have their audio (see sound_pack_test); '
+              'if something is withdrawn again, name it here');
+      for (final item in ShopData.allItems) {
+        expect(item.available, isTrue, reason: '${item.id} is not on sale');
       }
     });
 
-    test('a category with nothing on sale is not a sellable category', () {
-      expect(ShopData.sellableTypes, isNot(contains(ShopItemType.soundPack)));
-      expect(ShopData.sellableTypes, contains(ShopItemType.celebration));
-      expect(ShopData.byType(ShopItemType.soundPack), hasLength(3),
-          reason: 'withdrawn items stay in the catalogue so owners can be '
-              'refunded by id and re-enabling is a one-word change');
+    test('every category has a shelf, sound packs included', () {
+      expect(ShopData.sellableTypes, ShopItemType.values);
+      expect(ShopData.sellableByType(ShopItemType.soundPack), hasLength(3));
+    });
+
+    test('a withdrawn item would still leave its category, and itself, hidden',
+        () {
+      // The filtering itself, checked without waiting for a real withdrawal:
+      // `sellableByType` and `sellableTypes` both read `available`, which is
+      // what makes withdrawing a one-word change.
+      const pulled = ShopItem(
+        id: 'test_withdrawn',
+        name: 'Withdrawn',
+        description: 'Not ready',
+        cost: 10,
+        type: ShopItemType.soundPack,
+        emoji: 'x',
+        color: Color(0xFF000000),
+        available: false,
+      );
+      expect(pulled.available, isFalse);
+      expect(ShopData.allItems.where((i) => !i.available), isEmpty,
+          reason: 'nothing in the shipped catalogue is withdrawn today');
     });
   });
 
@@ -105,7 +123,7 @@ void main() {
       final container = containerWith(totalStars: 100, spentStars: 20);
       final notifier = container.read(progressProvider.notifier);
 
-      expect(notifier.refundWithdrawnPurchases(), 20);
+      expect(notifier.refundWithdrawnPurchases(withdrawnIds: _pulled), 20);
       expect(container.read(progressProvider).starBalance, 100);
       expect(notifier.hasPurchased('sound_chiptune'), isFalse);
       expect(
@@ -121,7 +139,9 @@ void main() {
           .put('purchases_$kShopProfileId', ['sound_chiptune']);
 
       final container = containerWith(totalStars: 100, spentStars: 20);
-      container.read(progressProvider.notifier).refundWithdrawnPurchases();
+      container
+          .read(progressProvider.notifier)
+          .refundWithdrawnPurchases(withdrawnIds: _pulled);
 
       // totalStars drives XP and levels, so refunding through it would hand
       // out free progress and could de-level a learner on the way back.
@@ -139,7 +159,7 @@ void main() {
       final container = containerWith(totalStars: 100, spentStars: 65);
       final notifier = container.read(progressProvider.notifier);
 
-      expect(notifier.refundWithdrawnPurchases(), 50); // 20 + 30
+      expect(notifier.refundWithdrawnPurchases(withdrawnIds: _pulled), 50);
       expect(notifier.hasPurchased('avatar_unicorn'), isTrue,
           reason: 'items still on sale are untouched');
       expect(notifier.hasPurchased('sound_space'), isFalse);
@@ -151,7 +171,9 @@ void main() {
 
       final container = containerWith(totalStars: 100, spentStars: 15);
       expect(
-        container.read(progressProvider.notifier).refundWithdrawnPurchases(),
+        container
+            .read(progressProvider.notifier)
+            .refundWithdrawnPurchases(withdrawnIds: _pulled),
         0,
       );
       expect(container.read(progressProvider).starBalance, 85);
@@ -160,7 +182,9 @@ void main() {
     test('is a no-op for a learner who owns nothing at all', () {
       final container = containerWith(totalStars: 40, spentStars: 0);
       expect(
-        container.read(progressProvider.notifier).refundWithdrawnPurchases(),
+        container
+            .read(progressProvider.notifier)
+            .refundWithdrawnPurchases(withdrawnIds: _pulled),
         0,
       );
       expect(container.read(progressProvider).starBalance, 40);
@@ -173,8 +197,8 @@ void main() {
       final container = containerWith(totalStars: 100, spentStars: 20);
       final notifier = container.read(progressProvider.notifier);
 
-      expect(notifier.refundWithdrawnPurchases(), 20);
-      expect(notifier.refundWithdrawnPurchases(), 0,
+      expect(notifier.refundWithdrawnPurchases(withdrawnIds: _pulled), 20);
+      expect(notifier.refundWithdrawnPurchases(withdrawnIds: _pulled), 0,
           reason: 'the shop calls this on every visit');
       expect(container.read(progressProvider).starBalance, 100);
     });

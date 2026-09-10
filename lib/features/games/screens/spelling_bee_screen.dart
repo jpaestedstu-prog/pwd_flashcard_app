@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +27,9 @@ import '../../../widgets/accessibility_visual_feedback.dart';
 import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gamepad/logic/gamepad_speech.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
@@ -37,6 +39,7 @@ import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../core/utils/seeded_random.dart';
 
 class SpellingBeeScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -125,7 +128,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
   List<Achievement> _newAchievements = [];
   final List<GameReviewItem> _reviewItems = [];
   int _hintsUsed = 0;
-  final _random = Random();
+  final _random = contentRandom();
   bool _isListening = false;
   String _voiceHint = '';
 
@@ -314,6 +317,49 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
         onSelect: _selectCursor,
       ),
     ];
+  }
+
+  /// Places a letter from the controller and reads back the spelling so far.
+  ///
+  /// Placing a letter changes only the slots, which a learner driving by ear
+  /// cannot see — so without this the game would accept the letter in silence
+  /// and they would lose track of the word after two moves.
+  void _placeLetterFromGamepad(int letterIndex) {
+    if (letterIndex < 0 || letterIndex >= _scrambledLetters.length) return;
+    if (_letterUsed[letterIndex] || _wordComplete) return;
+    _placeLetter(letterIndex);
+    _announceSpelling();
+  }
+
+  /// Removes the last placed letter from the controller.
+  void _undoFromGamepad() {
+    final lastFilled = _answerSlots.lastIndexWhere((slot) => slot != null);
+    if (lastFilled < 0) return;
+    _removeLetterAtSlot(lastFilled);
+    _announceSpelling();
+  }
+
+  /// The word spelled so far, or a plain "nothing yet" when the slots are
+  /// still empty.
+  String _spellingLine() {
+    final l10n = AppLocalizations.of(context)!;
+    final soFar = _answerSlots.where((s) => s != null).join();
+    if (soFar.isEmpty) {
+      return GamepadPhrases(
+        ref.read(settingsProvider).locale,
+      ).spellingEmpty;
+    }
+    return l10n.spelledSoFar(soFar);
+  }
+
+  /// Reads the word so far.
+  ///
+  /// Deliberately does **not** repeat the letter just placed: the host already
+  /// announces the item it activated, so naming it again produced
+  /// "B. B. Answer: B" — three sayings of one letter.
+  void _announceSpelling() {
+    if (!mounted) return;
+    gamepadScreen.announce(_spellingLine());
   }
 
   void _placeLetter(int letterIndex) {
@@ -642,7 +688,33 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
         ref.watch(gazeSettingsProvider.select((s) => s.enabled)) &&
         !_wordComplete;
 
-    return GazeScope(
+    // Letter tiles, published at **stable indices**: a letter already used is
+    // disabled rather than removed, so the numbering a learner is memorising
+    // never shifts under them — the same rule Memory Match follows for its
+    // cards. The word being spelled is read from the slots, so they always
+    // know how far they have got.
+    return GamepadScreenRegistrar(
+      title: GameType.spellingBee.labelOf(l10n),
+      active: !_wordComplete && !isPaused,
+      narration: [
+        card.wordFilipino,
+        l10n.spellTheWord,
+        _spellingLine(),
+      ],
+      items: [
+        for (var i = 0; i < _scrambledLetters.length; i++)
+          GamepadItem(
+            label: _scrambledLetters[i],
+            enabled: !_letterUsed[i],
+            onActivate: () => _placeLetterFromGamepad(i),
+          ),
+        GamepadItem(
+          label: l10n.gazeUndo,
+          enabled: _answerSlots.any((s) => s != null),
+          onActivate: _undoFromGamepad,
+        ),
+      ],
+      child: GazeScope(
       actions: _gazeActions(),
       onBlink: _selectCursor,
       child: PopScope(
@@ -743,7 +815,12 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                             ),
                             child: Column(
                               children: [
-                                FlashcardPicture(card: card, extent: 56),
+                                FlashcardPicture(
+                                  card: card,
+                                  extent: 56,
+                                  // The word being spelled is the answer.
+                                  revealsAnswer: false,
+                                ),
                                 const SizedBox(height: 8),
                                 Text(
                                   card.wordFilipino,
@@ -988,6 +1065,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
               ),
           ],
         ),
+      ),
       ),
     );
   }

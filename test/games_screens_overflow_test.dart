@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
@@ -54,7 +55,7 @@ void main() {
       'custom_cards',
       'sessions',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
   });
 
@@ -165,4 +166,43 @@ void main() {
       () => const FirstLetterScreen(difficulty: _hard),
     );
   });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The gameplay screens above are all rendered under Flutter's default theme,
+  // which is not a theme any learner plays in. These are also the tightest
+  // layouts in the app — a prompt, a timer row and an answer grid, all on one
+  // non-scrolling frame — so they have the least slack to absorb the dyslexia
+  // theme's 1.6 line height and 0.6 letter spacing. Narrow portrait at
+  // 1.5x/2.0x, where a theme's metrics bite first.
+  final gameScreens = <String, Widget Function()>{
+    'DragDropScreen': () => const DragDropScreen(difficulty: _hard),
+    'FirstLetterScreen': () => const FirstLetterScreen(difficulty: _hard),
+    'FlashcardQuizScreen': () => const FlashcardQuizScreen(difficulty: _hard),
+    'JigsawPuzzleScreen': () => const JigsawPuzzleScreen(difficulty: _hard),
+    'MemoryMatchScreen': () => const MemoryMatchScreen(difficulty: _hard),
+    'OddOneOutScreen': () => const OddOneOutScreen(difficulty: _hard),
+    'PictureWordScreen': () => const PictureWordScreen(difficulty: _hard),
+    'PronunciationScreen': () => const PronunciationScreen(difficulty: _hard),
+    'SentenceBuilderScreen': () => const SentenceBuilderScreen(difficulty: _hard),
+    'SpellingBeeScreen': () => const SpellingBeeScreen(difficulty: _hard),
+    'TracingScreen': () => const TracingScreen(difficulty: _hard),
+    'WordMatchScreen': () => const WordMatchScreen(difficulty: _hard),
+    'YesOrNoScreen': () => const YesOrNoScreen(difficulty: _hard),
+  };
+
+  for (final theme in kLayoutThemes.entries) {
+    for (final entry in gameScreens.entries) {
+      testWidgets('${entry.key} survives the ${theme.key} theme',
+          (tester) async {
+        await expectScreenNoOverflowAcrossDevices(
+          tester,
+          entry.value,
+          theme: theme.value(),
+          devices: kNarrowPortrait,
+          textScales: kLargeTextScales,
+        );
+      });
+    }
+  }
 }

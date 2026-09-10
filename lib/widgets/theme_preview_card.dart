@@ -3,6 +3,8 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../data/models/shop_data.dart';
 import '../l10n/app_localizations.dart';
+import '../core/widgets/fit_text.dart';
+import 'shop_badge.dart';
 
 /// A visual theme preview card for the shop's Themes tab.
 ///
@@ -16,25 +18,45 @@ class ThemePreviewCard extends StatefulWidget {
   /// site that has not been localised yet degrades to readable text.
   final bool isFilipino;
 
-  /// Whether the learner's own settings will override this theme, in which
-  /// case the card carries a quiet marker and the buy dialog spells it out.
-  final bool hasAdvice;
+  /// What the learner's own settings mean for this theme, already worded —
+  /// null when there is nothing to say.
+  ///
+  /// Carried as the sentence rather than as a bool so the screen reader gets
+  /// it too. The card used to draw an info marker a sighted learner could
+  /// hover and say nothing at all out loud, which left the learners most
+  /// likely to have High Contrast on as the ones least likely to be told it
+  /// overrides what they are about to buy.
+  final String? adviceLine;
 
   final bool owned;
-  final bool canAfford;
+
+  /// How many stars short of this theme the learner is, 0 once they can pay.
+  final int starsShort;
   final bool isEquipped;
   final VoidCallback onTap;
+
+  bool get canAfford => starsShort <= 0;
 
   const ThemePreviewCard({
     super.key,
     required this.item,
     this.isFilipino = false,
-    this.hasAdvice = false,
+    this.adviceLine,
     required this.owned,
-    required this.canAfford,
+    required this.starsShort,
     required this.isEquipped,
     required this.onTap,
   });
+
+  /// The theme's signature colours, most distinctive first.
+  ///
+  /// Public so the Star Shop's buy dialog can show what a theme is *made of*
+  /// without rebuilding this whole card inside a dialog. The palettes live
+  /// here because this is the widget that draws them.
+  static List<Color> swatchesFor(String id) {
+    final p = _ThemePreviewCardState._paletteFor(id);
+    return [p.primary, p.secondary, p.accent, p.primaryLight];
+  }
 
   @override
   State<ThemePreviewCard> createState() => _ThemePreviewCardState();
@@ -103,12 +125,37 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
     final palette = _paletteFor(widget.item.id);
     final l10n = AppLocalizations.of(context)!;
 
+    final price = '${widget.item.cost} ${l10n.stars}';
+    final status = widget.isEquipped
+        ? l10n.equipped
+        : widget.owned
+            ? l10n.tapToEquip
+            : widget.canAfford
+                ? price
+                : '$price, ${l10n.starsToGo(widget.starsShort)}';
+
     return Semantics(
       button: true,
       label: '${widget.item.localizedName(widget.isFilipino)}, '
-          '${widget.item.localizedDescription(widget.isFilipino)}, '
-          '${widget.isEquipped ? l10n.equipped : widget.owned ? l10n.tapToEquip : "${widget.item.cost} ${l10n.stars}"}',
-      child: GestureDetector(
+          '${widget.item.localizedDescription(widget.isFilipino)}, $status'
+          '${widget.adviceLine == null ? "" : ". ${widget.adviceLine}"}',
+      // A bare GestureDetector is invisible to Flutter's focus traversal, which
+      // is how gaze and a D-pad reach controls on a route that publishes no
+      // gaze grid — the Star Shop included. Every other shelf is built from
+      // InkWells and was reachable; Themes was the one tab a hands-free
+      // learner could open and then do nothing on. Same fix as the game
+      // pickers: FocusableActionDetector supplies the focus node and the
+      // ActivateIntent handling, and changes nothing visually.
+      child: FocusableActionDetector(
+        actions: <Type, Action<Intent>>{
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) {
+              widget.onTap();
+              return null;
+            },
+          ),
+        },
+        child: GestureDetector(
         onTap: widget.onTap,
         onTapDown: _onTapDown,
         onTapUp: _onTapUp,
@@ -141,12 +188,15 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
                   child: Stack(
                     children: [
                       Positioned.fill(child: _MiniAppPreview(palette: palette)),
-                      if (widget.hasAdvice)
-                        const Positioned(
+                      if (widget.adviceLine case final advice?)
+                        Positioned(
                           top: 6,
                           right: 6,
-                          child: Icon(Icons.info_outline_rounded,
-                              size: 18, color: AppColors.info),
+                          child: Tooltip(
+                            message: advice,
+                            child: const Icon(Icons.info_outline_rounded,
+                                size: 18, color: AppColors.info),
+                          ),
                         ),
                     ],
                   ),
@@ -179,7 +229,9 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
                                   style: const TextStyle(fontSize: 18)),
                               const SizedBox(width: 6),
                               Flexible(
-                                child: Text(
+                                // Item names split as "Flamin / go" beside the
+                                // emoji at a large text scale.
+                                child: FitText(
                                   widget.item.localizedName(widget.isFilipino),
                                   style: AppTypography.titleSmall.copyWith(
                                     fontWeight: FontWeight.w700,
@@ -189,8 +241,6 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
                                             ? AppColors.success
                                             : AppColors.textPrimary,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -199,21 +249,15 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
 
                         const SizedBox(height: 6),
 
-                        // Status / Price badge
+                        // Status / Price badge. The same pill the item
+                        // shelves wear, tinted to the theme being previewed.
                         if (widget.isEquipped)
-                          _StatusChip(
-                            icon: Icons.check_circle_rounded,
-                            label: l10n.equipped,
-                            color: palette.primary,
-                          )
+                          ShopBadge.equipped(context, color: palette.primary)
                         else if (widget.owned)
-                          _StatusChip(
-                            icon: Icons.touch_app_rounded,
-                            label: l10n.tapToEquip,
-                            color: AppColors.success,
-                          )
+                          ShopBadge.owned(context)
                         else
-                          _PriceChip(
+                          ShopBadge.price(
+                            context,
                             cost: widget.item.cost,
                             canAfford: widget.canAfford,
                           ),
@@ -225,6 +269,7 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -431,82 +476,6 @@ class _Swatch extends StatelessWidget {
   }
 }
 
-// ─── Status & Price Chips ─────────────────────────────
-
-class _StatusChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _StatusChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PriceChip extends StatelessWidget {
-  final int cost;
-  final bool canAfford;
-
-  const _PriceChip({required this.cost, required this.canAfford});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: canAfford
-            ? AppColors.warning.withValues(alpha: 0.2)
-            : AppColors.border.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.star_rounded,
-            size: 14,
-            color: canAfford ? AppColors.warning : AppColors.textHint,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            '$cost',
-            style: AppTypography.labelSmall.copyWith(
-              color: canAfford ? AppColors.warning : AppColors.textHint,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─── Theme Palette Data ───────────────────────────────
 
@@ -529,3 +498,4 @@ class _ThemePalette {
     required this.card,
   });
 }
+

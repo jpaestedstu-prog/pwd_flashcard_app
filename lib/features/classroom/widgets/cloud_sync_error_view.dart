@@ -52,7 +52,7 @@ import '../../../providers/app_providers.dart';
       title: 'Profile locked to another device',
       body:
           'This profile was created on a different device (or before the '
-          'app was reinstalled). Tap "Reset for this device" to claim it '
+          'app was reinstalled). Tap “Reset for this device” to claim it '
           'for this anonymous sign-in, or sign in on the original device.',
       underlying: 'profile=${e.profileId}',
       profileId: e.profileId,

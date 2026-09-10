@@ -1,11 +1,12 @@
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/pro_surface.dart';
 import '../../../data/models/classroom.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/home_group.dart';
@@ -17,6 +18,7 @@ import '../../live_session/models/live_session_models.dart';
 import '../../live_session/providers/live_activity_set_provider.dart';
 import '../models/tv_cast_session.dart';
 import '../providers/tv_cast_provider.dart';
+import '../../../core/utils/seeded_random.dart';
 
 /// Host-side control panel for the interactive "Live Activity" cast mode.
 /// Lets a Teacher/Parent start a live session, configure star-scoring rules,
@@ -37,6 +39,32 @@ class TvCastLivePanel extends ConsumerWidget {
   }
 }
 
+// ─── Shared button shapes ──────────────────────────────
+//
+// Same rectangle as the cast screen's action buttons (12px corners, 14px
+// vertical rhythm) so the Live Activity panel reads as part of that screen
+// rather than a component that wandered in.
+
+final ButtonStyle _liveFilledButtonStyle = FilledButton.styleFrom(
+  padding: const EdgeInsets.symmetric(
+    horizontal: AppSpacing.sm,
+    vertical: 14,
+  ),
+  shape: RoundedRectangleBorder(borderRadius: ProSurface.borderRadius),
+);
+
+/// Takes its accent from [HCColor] rather than [AppColors] so the outline
+/// follows the high-contrast and dark schemes, like the panels around it.
+ButtonStyle _liveOutlinedButtonStyle(HCColor hc) => OutlinedButton.styleFrom(
+  foregroundColor: hc.primary,
+  side: BorderSide(color: hc.primary.withValues(alpha: 0.4)),
+  padding: const EdgeInsets.symmetric(
+    horizontal: AppSpacing.sm,
+    vertical: 14,
+  ),
+  shape: RoundedRectangleBorder(borderRadius: ProSurface.borderRadius),
+);
+
 // ─── Needs-cloud notice ────────────────────────────────
 
 class _NeedsCloudNotice extends StatelessWidget {
@@ -48,13 +76,13 @@ class _NeedsCloudNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.06),
+        color: hc.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: hc.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.cloud_off_rounded, color: AppColors.primary),
+          Icon(Icons.cloud_off_rounded, color: hc.primary),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -301,6 +329,10 @@ class _RunningPanelState extends ConsumerState<_RunningPanel> {
   Future<void> _buildAndPush() async {
     final activity = await showModalBottomSheet<LiveActivity>(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => const _ActivityBuilderSheet(),
@@ -397,11 +429,11 @@ class _ScoringEditor extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     return Material(
-      color: hc.surface,
+      color: hc.cardBackground,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
+        borderRadius: ProSurface.borderRadius,
+        side: BorderSide(color: hc.border),
       ),
       child: ExpansionTile(
         leading: const Icon(Icons.star_rounded, color: Color(0xFFFFB300)),
@@ -540,7 +572,7 @@ class _CurrentQuestionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: hc.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+        border: Border.all(color: hc.primary.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
@@ -548,7 +580,7 @@ class _CurrentQuestionCard extends StatelessWidget {
             activity == null
                 ? Icons.hourglass_empty_rounded
                 : Icons.quiz_rounded,
-            color: AppColors.primary,
+            color: hc.primary,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -700,19 +732,33 @@ class _PushArea extends ConsumerWidget {
             onStop: onStopSet,
           )
         else ...[
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          // Equal cells, not a Wrap: "Build & push question" is three times
+          // the width of "New quiz", so the pair used to sit as one long
+          // button and one stub — and at a large font the second dropped to
+          // its own line, leaving a half-empty row.
+          ProButtonRow(
+            minCellWidth: 160,
+            maxPerRow: 2,
             children: [
               FilledButton.icon(
+                style: _liveFilledButtonStyle,
                 onPressed: onBuildAndPush,
                 icon: const Icon(Icons.add_rounded),
-                label: const Text('Build & push question'),
+                label: const Text(
+                  'Build & push question',
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                ),
               ),
               OutlinedButton.icon(
+                style: _liveOutlinedButtonStyle(hc),
                 onPressed: () => _newQuiz(context, ref),
                 icon: const Icon(Icons.playlist_add_rounded),
-                label: const Text('New quiz'),
+                label: const Text(
+                  'New quiz',
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                ),
               ),
             ],
           ),
@@ -762,6 +808,10 @@ class _PushArea extends ConsumerWidget {
     final profile = ref.read(profileProvider);
     final set = await showModalBottomSheet<LiveActivitySet>(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => _SetBuilderSheet(createdBy: profile?.id ?? 'default'),
@@ -791,37 +841,45 @@ class _RunningSetControls extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.06),
+        color: hc.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: hc.primary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Running "${set.title}" — question ${index + 1} of $total',
+            'Running “${set.title}” — question ${index + 1} of $total',
             style: AppTypography.bodyMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: hc.textPrimary,
             ),
           ),
           const SizedBox(height: 10),
-          Row(
+          // Three equal cells — the same shape as the cast screen's
+          // prev/pause/next remote. As a raw Row with a Spacer this overflowed
+          // once the labels grew with the Font Size setting.
+          ProButtonRow(
+            minCellWidth: 96,
             children: [
               OutlinedButton.icon(
+                style: _liveOutlinedButtonStyle(hc),
                 onPressed: index > 0 ? () => onPush(index - 1) : null,
                 icon: const Icon(Icons.skip_previous_rounded),
-                label: const Text('Prev'),
+                label: const Text('Prev', maxLines: 1),
               ),
-              const SizedBox(width: 8),
               FilledButton.icon(
-                onPressed:
-                    index < total - 1 ? () => onPush(index + 1) : null,
+                style: _liveFilledButtonStyle,
+                onPressed: index < total - 1 ? () => onPush(index + 1) : null,
                 icon: const Icon(Icons.skip_next_rounded),
-                label: const Text('Next'),
+                label: const Text('Next', maxLines: 1),
               ),
-              const Spacer(),
-              TextButton(onPressed: onStop, child: const Text('Stop')),
+              OutlinedButton.icon(
+                style: _liveOutlinedButtonStyle(hc),
+                onPressed: onStop,
+                icon: const Icon(Icons.stop_rounded),
+                label: const Text('Stop', maxLines: 1),
+              ),
             ],
           ),
         ],
@@ -844,14 +902,14 @@ class _ScoreboardCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: hc.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+        border: Border.all(color: hc.primary.withValues(alpha: 0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.leaderboard_rounded, color: AppColors.primary),
+              Icon(Icons.leaderboard_rounded, color: hc.primary),
               const SizedBox(width: 8),
               Text(
                 'Live scoreboard',
@@ -1018,14 +1076,14 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
         return ChoiceChip(
           selected: selected,
           avatar: Icon(t.$3,
-              size: 18, color: selected ? Colors.white : AppColors.primary),
+              size: 18, color: selected ? Colors.white : hc.primary),
           label: Text(t.$2),
           labelStyle: AppTypography.labelMedium.copyWith(
-            color: selected ? Colors.white : AppColors.primary,
+            color: selected ? Colors.white : hc.primary,
             fontWeight: FontWeight.w700,
           ),
-          selectedColor: AppColors.primary,
-          backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+          selectedColor: hc.primary,
+          backgroundColor: hc.primary.withValues(alpha: 0.08),
           onSelected: (_) => setState(() => _type = t.$1),
         );
       }).toList(),
@@ -1123,7 +1181,7 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
             contentPadding: EdgeInsets.zero,
             value: _fslSelfReport,
             onChanged: (v) => setState(() => _fslSelfReport = v),
-            title: Text('Self-check (learner taps "I got it")',
+            title: Text('Self-check (learner taps “I got it”)',
                 style: AppTypography.bodyMedium.copyWith(color: hc.textPrimary)),
             subtitle: Text(
               _fslSelfReport
@@ -1223,14 +1281,14 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
         .map((f) => f.wordEnglish)
         .toSet()
         .toList()
-      ..shuffle(Random());
+      ..shuffle(contentRandom());
     final sameCat = all
         .where((f) => f.category == card.category && f.wordEnglish != correct)
         .map((f) => f.wordEnglish)
         .toList()
-      ..shuffle(Random());
+      ..shuffle(contentRandom());
     final distractors = <String>{...sameCat, ...pool}.take(3).toList();
-    final options = [correct, ...distractors]..shuffle(Random());
+    final options = [correct, ...distractors]..shuffle(contentRandom());
     return (options, options.indexOf(correct));
   }
 }
@@ -1337,6 +1395,10 @@ class _SetBuilderSheetState extends State<_SetBuilderSheet> {
   Future<void> _addQuestion() async {
     final activity = await showModalBottomSheet<LiveActivity>(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => const _ActivityBuilderSheet(),
@@ -1444,11 +1506,11 @@ class _CardPickerState extends ConsumerState<_CardPicker> {
                   selected: selected,
                   label: Text(card.wordEnglish),
                   labelStyle: AppTypography.labelMedium.copyWith(
-                    color: selected ? Colors.white : AppColors.primary,
+                    color: selected ? Colors.white : hc.primary,
                     fontWeight: FontWeight.w700,
                   ),
-                  selectedColor: AppColors.primary,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+                  selectedColor: hc.primary,
+                  backgroundColor: hc.primary.withValues(alpha: 0.08),
                   onSelected: (_) => widget.onPick(card),
                 );
               },

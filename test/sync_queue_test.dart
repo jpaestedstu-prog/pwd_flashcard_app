@@ -8,7 +8,7 @@ Future<void> _initHive() async {
   // Use a temp directory for Hive in tests
   Hive.init('./build/test_cache/sync_queue');
   if (!Hive.isBoxOpen('sync_queue')) {
-    await Hive.openBox('sync_queue');
+    await Hive.openBox('sync_queue', compactionStrategy: (_, _) => false);
   }
 }
 

@@ -16,6 +16,7 @@ import '../widgets/charts/study_time_chart.dart';
 import '../widgets/charts/activity_heatmap.dart';
 import '../../../widgets/app_back_button.dart';
 import '../models/category_mastery.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Full-page analytics dashboard with interactive fl_chart visuals.
 class DetailedAnalyticsScreen extends ConsumerWidget {
@@ -239,8 +240,11 @@ class _MiniStat extends StatelessWidget {
                 color: color,
               ),
             ),
-            Text(
+            // The caption naming the number above it, in a third of a row:
+            // it was splitting "Minut / es" and "Sessio / ns".
+            FitText(
               label,
+              maxLines: 1,
               style: AppTypography.labelSmall.copyWith(
                 fontSize: 9,
                 color: HCColor.of(context).textSecondary,

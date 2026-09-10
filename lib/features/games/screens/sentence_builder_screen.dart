@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +21,8 @@ import '../../../widgets/flashcard_image.dart';
 import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
@@ -31,6 +32,7 @@ import '../../break_time/break_time.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/utils/seeded_random.dart';
 
 class SentenceBuilderScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -112,7 +114,7 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
   List<String> _choices = [];
   List<Achievement> _newAchievements = [];
   final List<GameReviewItem> _reviewItems = [];
-  final _random = Random();
+  final _random = contentRandom();
 
   /// Difficulty-based config
   int get _totalWords => switch (widget.difficulty) {
@@ -285,10 +287,31 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
     ];
   }
 
+  /// Says whether the answer was right, naming the missing word when it was
+  /// not — the point is learning the word, not being scored on it.
+  void _announceResult(bool correct, String answer) {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    gamepadScreen.announce(
+      correct ? l10n.correct : '${l10n.tryAgain}. $answer.',
+    );
+  }
+
+  /// Reads the new sentence as it appears, so a round never starts in silence.
+  void _announceRound() {
+    if (!mounted) return;
+    if (_currentIndex >= _cards.length) return;
+    final sentence = _buildSentenceWithBlank(_cards[_currentIndex]);
+    gamepadScreen.announce(
+      'Sentence: ${sentence.replaceAll('______', 'blank')}',
+    );
+  }
+
   void _onChoiceTapped(String choice) {
     if (_answered) return;
     final card = _cards[_currentIndex];
     final isCorrect = choice.toLowerCase() == card.wordEnglish.toLowerCase();
+    _announceResult(isCorrect, card.wordEnglish);
     final sound = ref.read(soundServiceProvider);
 
     setState(() {
@@ -315,7 +338,10 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
     );
 
     // Auto-advance after a delay
-    Future.delayed(const Duration(milliseconds: 1800), _nextWord);
+    Future.delayed(const Duration(milliseconds: 1800), () {
+      _nextWord();
+      _announceRound();
+    });
   }
 
   void _nextWord() {
@@ -435,7 +461,24 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
     final showCursor =
         ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
-    return GazeScope(
+    // The sentence is the question here, and a blank in the middle of it is
+    // exactly the sort of thing a learner driving by ear cannot see — so the
+    // narration spells the gap out as the word "blank", the same wording the
+    // screen already gives a screen reader.
+    return GamepadScreenRegistrar(
+      title: GameType.sentenceBuilder.labelOf(l10n),
+      active: !_answered && !isPaused,
+      narration: [
+        'Sentence: ${sentenceWithBlank.replaceAll('______', 'blank')}',
+      ],
+      items: [
+        for (final choice in _choices)
+          GamepadItem(
+            label: choice,
+            onActivate: () => _onChoiceTapped(choice),
+          ),
+      ],
+      child: GazeScope(
       actions: _gazeActions(),
       onBlink: _selectCursor,
       child: PopScope(
@@ -542,7 +585,13 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
                                   ),
                                   child: Column(
                                     children: [
-                                      FlashcardPicture(card: card, extent: 56),
+                                      FlashcardPicture(
+                                        card: card,
+                                        extent: 56,
+                                        // The word that fills the blank is
+                                        // this card's word.
+                                        revealsAnswer: false,
+                                      ),
                                       const SizedBox(height: 8),
                                       Text(
                                         card.wordFilipino,
@@ -766,6 +815,7 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
               ),
           ],
         ),
+      ),
       ),
     );
   }

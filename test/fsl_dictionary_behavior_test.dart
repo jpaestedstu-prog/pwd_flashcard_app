@@ -58,7 +58,7 @@ void main() {
       'custom_cards',
       'sessions',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
   });
 
@@ -117,7 +117,7 @@ void main() {
     }
 
     expect(
-      find.text('No FSL video available yet for "Run".'),
+      find.text('No FSL video available yet for “Run”.'),
       findsOneWidget,
       reason: 'the persistent sheet every other FSL surface shows',
     );
@@ -178,7 +178,7 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
-    expect(find.text('No FSL video available yet for "Run".'), findsOneWidget);
+    expect(find.text('No FSL video available yet for “Run”.'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
   });

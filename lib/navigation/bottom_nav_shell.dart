@@ -10,9 +10,11 @@ import '../providers/app_providers.dart';
 import '../providers/fullscreen_provider.dart';
 import '../providers/level_up_provider.dart';
 import '../providers/experiment_provider.dart';
+import '../features/parent/models/educator_audience.dart';
 import '../features/experiment/models/experiment_models.dart';
 import '../features/gaze_control/controllers/gaze_controller.dart'
     show GazeStatus;
+import '../features/gamepad/providers/gamepad_sections.dart';
 import '../features/gaze_control/widgets/nav_gaze_scope.dart';
 import '../widgets/level_up_celebration_screen.dart';
 
@@ -43,6 +45,27 @@ bool _isImmersiveRoute(String location) {
 /// Bottom navigation shell that wraps the main tab screens.
 /// Automatically hides (with animation) when navigating to game,
 /// flashcard-viewer, or FSL-practice screens.
+/// The educator bottom-nav destinations, in tab order.
+///
+/// Public because any surface that links to one of these must `go()` rather
+/// than `push()`. Pushing a location that is already a live shell branch trips
+/// Navigator's `!keyReservation.contains(key)` assertion, and the user sees the
+/// global "Something went wrong" snackbar instead of navigating — which is
+/// exactly what the dashboard's "See analytics" recommendation did.
+const educatorTabPaths = <String>[
+  '/home',
+  '/multi-dashboard',
+  '/teacher-analytics',
+  '/weekly-reports',
+];
+
+/// Whether [location] addresses one of [educatorTabPaths].
+///
+/// Compares the path only, so a query string ("?name=Ana") does not hide a
+/// tab route from the check.
+bool isEducatorTabRoute(String location) =>
+    educatorTabPaths.contains(location.split('?').first);
+
 class BottomNavShell extends ConsumerStatefulWidget {
   final GoRouterState state;
   final Widget child;
@@ -61,6 +84,12 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
 
   /// The level that triggered the celebration overlay, or null if hidden.
   PlayerLevel? _celebratingLevel;
+
+  /// Stable identity for this shell's tenure as the publisher of
+  /// [gamepadSections], so an outgoing shell disposing *after* an incoming
+  /// one has published (which happens on a role switch) cannot wipe the newer
+  /// tab set — the same ownership guard [gazeHomeGrid] uses.
+  final Object _sectionsToken = Object();
 
   /// Tracks per-tab bounce animations triggered on tap.
   final Map<int, AnimationController> _bounceControllers = {};
@@ -172,6 +201,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
 
   @override
   void dispose() {
+    gamepadSections.clear(owner: _sectionsToken);
     _animController.dispose();
     for (final c in _bounceControllers.values) {
       c.dispose();
@@ -200,12 +230,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
   // ─── Educator tabs: Home, Students, Analytics, Reports
   // Settings is reached from the top-right gear on the educator home (matching
   // the Student/Child surfaces), so it is intentionally not a nav tab.
-  static const _educatorPaths = [
-    '/home',
-    '/multi-dashboard',
-    '/teacher-analytics',
-    '/weekly-reports',
-  ];
+  static const _educatorPaths = educatorTabPaths;
 
   List<String> get _activePaths {
     if (_isEducator) return _educatorPaths;
@@ -267,6 +292,9 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
     // the visible screen publishes (the guest home's buttons, the Games / Cards
     // hub tiles) plus the global scroll / go-back commands.
     if (_isPlayer && _isGuestPlayer) {
+      // A guest has no tab bar, so there are no sections to offer. The
+      // gamepad still drives the home screen's buttons via the published grid.
+      _publishSections(const [], 0);
       return NavGazeScope(
         currentIndex: 0,
         itemCount: 0,
@@ -286,6 +314,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       );
     }
     final items = _isEducator ? _educatorNavItems() : _studentNavItems();
+    _publishSections([for (final item in items) item.label], currentIndex);
 
     // Hands-free bottom-nav: look ◀ ▶ to move the highlight, blink to open the
     // tab. Inert unless Gaze Control is enabled; runs the single camera only
@@ -427,18 +456,31 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
   }
 
   List<_NavItem> _educatorNavItems() {
-    return const [
-      _NavItem(
+    // "Students" is a teacher's word. A parent's roster is their children, and
+    // the tab is the first thing they read on every educator screen.
+    final audience = _role == UserRole.parent
+        ? EducatorAudience.parent
+        : EducatorAudience.teacher;
+    // `watch`, not `read`: this runs during build, and with `read` the tab
+    // labels kept the language they were first built with — switching the
+    // app to Filipino left "Children" sitting in the nav bar.
+    final filipino = ref.watch(settingsProvider).locale == 'fil';
+    final rosterLabel = audience.learnerNounPluralCapOf(
+      filipino: filipino,
+    );
+    return [
+      const _NavItem(
         icon: Icons.home_outlined,
         selectedIcon: Icons.home_rounded,
+        // "Home" is what the app's own Filipino UI calls this screen.
         label: 'Home',
       ),
       _NavItem(
         icon: Icons.people_outlined,
         selectedIcon: Icons.people_rounded,
-        label: 'Students',
+        label: rosterLabel,
       ),
-      _NavItem(
+      const _NavItem(
         icon: Icons.analytics_outlined,
         selectedIcon: Icons.analytics_rounded,
         label: 'Analytics',
@@ -446,9 +488,36 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       _NavItem(
         icon: Icons.assessment_outlined,
         selectedIcon: Icons.assessment_rounded,
-        label: 'Reports',
+        label: filipino ? 'Mga Ulat' : 'Reports',
       ),
     ];
+  }
+
+  /// Tells the Bluetooth-gamepad host what the top-level sections are and how
+  /// to switch between them.
+  ///
+  /// Deferred to a post-frame callback for the same reason [GazeHomeRegistrar]
+  /// defers its publish: [gamepadSections] is a [ChangeNotifier], and notifying
+  /// listeners while the tree is still building would mark the host dirty
+  /// mid-build. Republished every frame so the [context] captured by the
+  /// callback is never stale; the bridge itself de-dupes by content.
+  void _publishSections(List<String> labels, int currentIndex) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (labels.isEmpty) {
+        gamepadSections.clear(owner: _sectionsToken);
+        return;
+      }
+      gamepadSections.publish(
+        labels: labels,
+        currentIndex: currentIndex,
+        onSelect: (index) {
+          if (!mounted) return;
+          _onTap(context, index);
+        },
+        owner: _sectionsToken,
+      );
+    });
   }
 
   void _onTap(BuildContext context, int index) {

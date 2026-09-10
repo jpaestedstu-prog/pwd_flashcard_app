@@ -7,6 +7,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/accessibility_visual_feedback.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Full voice-guided navigation mode with a step-by-step guided tour
 /// and auto-reading of screen elements.
@@ -161,11 +162,14 @@ class _VoiceGuidedModeScreenState
                   children: [
                     Icon(Icons.speed_rounded, color: hc.primary, size: 22),
                     const SizedBox(width: 8),
-                    Text(
-                      'Voice Speed',
-                      style: AppTypography.labelMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: hc.textPrimary,
+                    Flexible(
+                      child: FitText(
+                        'Voice Speed',
+                        maxLines: 1,
+                        style: AppTypography.labelMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: hc.textPrimary,
+                        ),
                       ),
                     ),
                     const Spacer(),
@@ -560,18 +564,22 @@ class _VoiceToggleCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                // This card shares its row with a Switch, so the text
+                // column is narrow: "Na / vigation" and "announc / ements".
+                FitText(
                   'Voice Navigation',
+                  maxLines: 1,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hc.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
+                FitText(
                   isEnabled
                       ? 'Active — Screen changes and buttons are announced'
                       : 'Tap the switch to enable voice announcements',
+                  maxLines: 3,
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),
@@ -626,11 +634,15 @@ class _LanguageOption extends StatelessWidget {
             children: [
               Text(emoji, style: const TextStyle(fontSize: 22)),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: AppTypography.labelMedium.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? color : HCColor.of(context).textSecondary,
+              Flexible(
+                child: FitText(
+                  label,
+                  maxLines: 1,
+                  style: AppTypography.labelMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color:
+                        isSelected ? color : HCColor.of(context).textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -753,7 +765,7 @@ class _QuickAnnounceChip extends StatelessWidget {
     return ActionChip(
       label: Text(label),
       onPressed: () {
-        final info = VoiceNavigationService.describeRoute(route);
+        final info = voiceNav.describeRouteForViewer(route);
         voiceNav.announceScreen(info.name, description: info.description);
       },
       backgroundColor: HCColor.of(context).surfaceLight,

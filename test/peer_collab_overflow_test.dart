@@ -247,7 +247,7 @@ void main() {
       // cards, so the rounds cannot be built without this box.
       'custom_cards',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
   });
 
@@ -355,11 +355,29 @@ void main() {
           }
 
           // And a full session finishes on taps alone.
+          //
+          // The budget has to cover the WORST case, not the typical one. This
+          // loop always taps choice 0, and Word Relay shuffles its letter
+          // choices with an unseeded `Random`, so whether that tap is the
+          // wanted letter is luck. The session still always advances —
+          // `mercyAfterWrongAttempts` (2) gives the letter away on the second
+          // miss — so the real ceiling is:
+          //
+          //     rounds (5) × longest seed word (13) × 2 attempts = 130 taps
+          //
+          // The old budget of 60 sat *below* that ceiling and only just above
+          // the ~52-tap average, so an unlucky shuffle exhausted it and failed
+          // the run. Measured at roughly 1 run in 10 before this change.
           var taps = 0;
-          while (find.text('Great teamwork!').evaluate().isEmpty && taps < 60) {
+          while (find.text('Great teamwork!').evaluate().isEmpty && taps < 200) {
             if (!await _tapAChoice(tester)) break;
             taps++;
           }
+          // Let the finish card settle, as the completion-card test above does:
+          // the choices disappear a frame before it arrives, so asserting
+          // straight after the last tap can race it.
+          await tester.pump(const Duration(seconds: 1));
+
           expect(find.text('Great teamwork!'), findsOneWidget,
               reason: '$type could not finish ${activity.label} by tapping');
           _expectNoOverflow(
@@ -677,5 +695,21 @@ void main() {
       _longPlayer2,
     );
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The pass above renders under Flutter's default theme, which is not a theme
+  // any learner sees. The dyslexia theme adds a 1.6 line height and 0.6 letter
+  // spacing on top of its own font sizes; high contrast overrides the text
+  // theme and outlines every card. Narrow portrait at 1.5x/2.0x, where a
+  // theme's metrics bite first.
+  testWidgets('PeerCollaborationScreen survives the accessibility themes',
+      (tester) async {
+    await expectScreenSurvivesThemes(
+      tester,
+      () => const PeerCollaborationScreen(),
+      overrides: _profile(),
+    );
   });
 }

@@ -54,6 +54,11 @@ function mkEl(id) {
           ? els[m[1]]
           : Object.assign(mkEl(m[1]), { _synthetic: true });
         els[m[1]].innerHTML = '';
+        // Parsed nodes are children of whatever they were parsed into. app.js
+        // guards its deferred image paints on `parentNode` ("is this element
+        // still on screen?"), so leaving it null made every picture silently
+        // never paint in this harness.
+        els[m[1]].parentNode = el;
       }
     },
   });
@@ -102,6 +107,21 @@ global.window = {
 };
 global.SpeechSynthesisUtterance = function (t) { this.text = t; };
 global.window.SpeechSynthesisUtterance = global.SpeechSynthesisUtterance;
+
+// Pictures, GIFs and story illustrations are preloaded through `new Image()`
+// and only painted onto the card once they resolve, so without this the whole
+// photo path throws and the checks silently never reach it. Firing onload the
+// moment a src is assigned is the useful stub: the paint actually runs, so a
+// check can assert the picture reached the face it was meant to.
+global.Image = function () {
+  const self = this;
+  self.onload = null;
+  self.onerror = null;
+  Object.defineProperty(self, 'src', {
+    get() { return self._src; },
+    set(v) { self._src = v; if (self.onload) self.onload(); },
+  });
+};
 
 let lastUrl = null;
 global.XMLHttpRequest = function () {
@@ -354,6 +374,72 @@ check('text size and language become body classes', () => {
   assert.ok(cls.indexOf('text-xl') >= 0, 'missing text size class: ' + cls);
   assert.ok(cls.indexOf('lang-fil') >= 0, 'missing language class: ' + cls);
   assert.ok(cls.indexOf('theme-') >= 0, 'theme class was clobbered: ' + cls);
+});
+
+check('the dyslexia template reaches the body as a theme class', () => {
+  // The accessibility templates are the ones that must not silently no-op:
+  // a learner who reads in dyslexia mode on their phone should get the same
+  // page on the class TV. app.js builds the class from state.theme, so this
+  // guards the whole path from /api/state to the CSS block.
+  push({ mode: 'flashcards', ttsOnTv: false, theme: 'dyslexia',
+         slide: { index: 0, total: 1, wordEn: 'Dog', wordFil: 'Aso', emoji: '🐕', catLabel: 'Animals' } });
+  const cls = global.document.body.className || '';
+  assert.ok(cls.indexOf('theme-dyslexia') >= 0,
+    'dyslexia template did not reach the body: ' + cls);
+});
+
+const BIG_SLIDE = {
+  index: 0, total: 3, wordEn: 'Dog', wordFil: 'Aso', emoji: '🐕',
+  catLabel: 'Animals', catColor: '#dbeafe', catColorDark: '#1565c0',
+  photo: { available: true, url: '/api/image/0/dog' },
+};
+
+check('"fullscreen picture" reaches the body as a class', () => {
+  push({ mode: 'flashcards', ttsOnTv: false, bigPicture: true, slide: BIG_SLIDE });
+  const cls = global.document.body.className || '';
+  assert.ok(cls.indexOf('big-picture') >= 0, 'flag did not reach the body: ' + cls);
+  // applyTheme is the single owner of body.className, so the danger is not that
+  // the class is missing but that adding it wipes a neighbour.
+  assert.ok(cls.indexOf('theme-') >= 0, 'theme class was clobbered: ' + cls);
+  assert.ok(cls.indexOf('text-') >= 0, 'text size class was clobbered: ' + cls);
+  assert.ok(cls.indexOf('lang-') >= 0, 'language class was clobbered: ' + cls);
+  // The picture is the whole point of the mode, so check one actually landed
+  // on the card face the CSS then blows up to fill the screen.
+  assert.ok(
+    (els['fcard-photo-back'].style.backgroundImage || '').indexOf('/api/image/0/dog') >= 0,
+    'the photo never reached the card face: ' + els['fcard-photo-back'].style.backgroundImage);
+});
+
+check('turning it off removes the class again', () => {
+  push({ mode: 'flashcards', ttsOnTv: false, bigPicture: false, slide: BIG_SLIDE });
+  const cls = global.document.body.className || '';
+  assert.ok(cls.indexOf('big-picture') < 0, 'class stuck on: ' + cls);
+});
+
+check('a payload that predates the toggle is not big', () => {
+  push({ mode: 'flashcards', ttsOnTv: false, slide: BIG_SLIDE });
+  const cls = global.document.body.className || '';
+  assert.ok(cls.indexOf('big-picture') < 0, 'defaulted on: ' + cls);
+});
+
+check('the flashcard markup is unchanged - the effect is purely CSS', () => {
+  // If big picture ever starts rewriting the stage instead of restyling it,
+  // this is the check that says so - and the next one explains why that matters.
+  const plain = push({ mode: 'flashcards', ttsOnTv: false, slide: BIG_SLIDE });
+  const bigHtml = push({ mode: 'flashcards', ttsOnTv: false, bigPicture: true, slide: BIG_SLIDE });
+  assert.strictEqual(bigHtml, plain, 'big picture rewrote the card markup');
+});
+
+check('toggling it mid-clip does not restart the sign video', () => {
+  // The reason it is a body class and not a render mode: a teacher hitting the
+  // switch while a sign plays must not send the clip back to frame one.
+  const SIGN = { index: 0, total: 1, wordEn: 'Dog', wordFil: 'Aso', emoji: '🐕' };
+  const VID = { available: true, url: '/api/video/0/dog' };
+  const before = push({ mode: 'fslVideo', ttsOnTv: false, slide: SIGN, video: VID });
+  const after = push({ mode: 'fslVideo', ttsOnTv: false, bigPicture: true, slide: SIGN, video: VID });
+  assert.strictEqual(after, before, 'the stage was rebuilt under the playing clip');
+  assert.ok(global.document.body.className.indexOf('big-picture') >= 0,
+    'the class did not apply on the same-clip poll');
 });
 
 check('language filter also silences the other language', () => {

@@ -285,11 +285,16 @@ class ShopData {
     ),
 
     // ─── Sound Packs ────────────────────────────────
-    // Withdrawn from sale: `assets/sounds/` holds one set of effects and no
-    // per-pack variants, so equipping any of these changed nothing an ear
-    // could detect. They stay in the catalogue (rather than being deleted) so
-    // owners can be refunded by id and so adding the audio is a one-word
-    // change here — set `available: true` once the files exist.
+    // Back on sale. These were withdrawn because `assets/sounds/` held one set
+    // of effects and no per-pack variants, so equipping any of them changed
+    // nothing an ear could detect. Each now has its own folder of all eight
+    // effects (`assets/sounds/<folder>/`, synthesised by
+    // `tool/generate_sounds.dart`) and `SoundPack` routes playback through it.
+    //
+    // Keep `SoundPack`'s ids and this list in step: an item on sale whose
+    // files are missing plays nothing at all, which is worse than the standard
+    // effect it replaced. `test/sound_pack_assets_test.dart` fails the build
+    // if that ever drifts.
     ShopItem(
       id: 'sound_chiptune',
       name: 'Chiptune Pack',
@@ -300,7 +305,6 @@ class ShopData {
       type: ShopItemType.soundPack,
       emoji: '🎮',
       color: Color(0xFF80DEEA),
-      available: false,
     ),
     ShopItem(
       id: 'sound_nature',
@@ -312,7 +316,6 @@ class ShopData {
       type: ShopItemType.soundPack,
       emoji: '🌿',
       color: Color(0xFFC5E1A5),
-      available: false,
     ),
     ShopItem(
       id: 'sound_space',
@@ -324,7 +327,6 @@ class ShopData {
       type: ShopItemType.soundPack,
       emoji: '🚀',
       color: Color(0xFFB39DDB),
-      available: false,
     ),
 
     // ─── Celebration Animations ─────────────────────
@@ -382,6 +384,20 @@ class ShopData {
   /// Ids of items no longer on sale. Anyone holding one gets refunded.
   static Set<String> get withdrawnIds =>
       allItems.where((item) => !item.available).map((item) => item.id).toSet();
+
+  /// The item with [id], but only if it really is a [type].
+  ///
+  /// Equipped ids travel between a learner's devices and arrive here from
+  /// another device's Hive rows, so an id sitting in the wrong slot is
+  /// reachable in normal use — a stale `sound_nature` in the avatar row once
+  /// drew a leaf as somebody's face, and one in the title row would label
+  /// them "Alien" on the leaderboard. Every surface that renders an equipped
+  /// id goes through this rather than repeating the check.
+  static ShopItem? findOfType(String? id, ShopItemType type) {
+    if (id == null) return null;
+    final item = findById(id);
+    return item != null && item.type == type ? item : null;
+  }
 
   static ShopItem? findById(String id) {
     try {

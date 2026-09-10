@@ -5,7 +5,7 @@ import 'package:pwdpwdpwd/features/object_scan/services/object_scan_discovery_se
 void main() {
   setUpAll(() async {
     Hive.init('./build/test_cache/object_scan_discovery');
-    if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress');
+    if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress', compactionStrategy: (_, _) => false);
   });
 
   tearDownAll(() async => Hive.deleteFromDisk());

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
+import '../core/utils/reduced_motion.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  1. Animated Focus Ring — for high-contrast mode
@@ -74,7 +75,7 @@ class _PulsingFocusBorderState extends State<_PulsingFocusBorder>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
+    );
   }
 
   @override
@@ -85,6 +86,10 @@ class _PulsingFocusBorderState extends State<_PulsingFocusBorder>
 
   @override
   Widget build(BuildContext context) {
+    _controller.syncMotionLoop(
+      ReducedMotionScope.of(context),
+      reverse: true,
+    );
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -152,31 +157,9 @@ class _MicrophoneWaveformState extends State<MicrophoneWaveform>
       duration: const Duration(milliseconds: 1500),
     );
 
-    if (widget.isListening) _startAnimations();
   }
 
   @override
-  void didUpdateWidget(MicrophoneWaveform oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isListening && !oldWidget.isListening) {
-      _startAnimations();
-    } else if (!widget.isListening && oldWidget.isListening) {
-      _stopAnimations();
-    }
-  }
-
-  void _startAnimations() {
-    _pulseController.repeat(reverse: true);
-    _ringController.repeat();
-  }
-
-  void _stopAnimations() {
-    _pulseController.stop();
-    _pulseController.value = 0;
-    _ringController.stop();
-    _ringController.value = 0;
-  }
-
   @override
   void dispose() {
     _pulseController.dispose();
@@ -186,6 +169,14 @@ class _MicrophoneWaveformState extends State<MicrophoneWaveform>
 
   @override
   Widget build(BuildContext context) {
+    // Listening *and* motion allowed. This used to live in initState and
+    // didUpdateWidget, which could see `isListening` change but never the
+    // setting; driving both from build means either one takes effect at once.
+    // `restAt: 0` keeps the old rest position when it stops.
+    final stop = ReducedMotionScope.of(context) || !widget.isListening;
+    _pulseController.syncMotionLoop(stop, reverse: true, restAt: 0);
+    _ringController.syncMotionLoop(stop, restAt: 0);
+
     final color = widget.color ?? Theme.of(context).colorScheme.primary;
 
     return SizedBox(
@@ -499,19 +490,9 @@ class _AudioPlayingIndicatorState extends State<AudioPlayingIndicator>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    if (widget.isPlaying) _controller.repeat();
   }
 
   @override
-  void didUpdateWidget(AudioPlayingIndicator old) {
-    super.didUpdateWidget(old);
-    if (widget.isPlaying && !old.isPlaying) {
-      _controller.repeat();
-    } else if (!widget.isPlaying && old.isPlaying) {
-      _controller.stop();
-    }
-  }
-
   @override
   void dispose() {
     _controller.dispose();
@@ -520,6 +501,10 @@ class _AudioPlayingIndicatorState extends State<AudioPlayingIndicator>
 
   @override
   Widget build(BuildContext context) {
+    _controller.syncMotionLoop(
+      ReducedMotionScope.of(context) || !widget.isPlaying,
+    );
+
     final color = widget.color ?? Theme.of(context).colorScheme.primary;
 
     if (!widget.isPlaying) {

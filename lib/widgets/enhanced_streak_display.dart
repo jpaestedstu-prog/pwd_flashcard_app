@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
+import '../core/utils/reduced_motion.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  Enhanced Streak Display
@@ -348,7 +349,7 @@ class _PulsingFlameState extends State<_PulsingFlame>
     _controller = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: durationMs),
-    )..repeat(reverse: true);
+    );
   }
 
   @override
@@ -359,6 +360,10 @@ class _PulsingFlameState extends State<_PulsingFlame>
 
   @override
   Widget build(BuildContext context) {
+    _controller.syncMotionLoop(
+      ReducedMotionScope.of(context),
+      reverse: true,
+    );
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -402,7 +407,7 @@ class _EmberParticlesState extends State<_EmberParticles>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
-    )..repeat();
+    );
 
     final count = widget.tier.minDays >= 14 ? 8 : 5;
     _embers = List.generate(count, (_) => _Ember(
@@ -421,6 +426,7 @@ class _EmberParticlesState extends State<_EmberParticles>
 
   @override
   Widget build(BuildContext context) {
+    _controller.syncMotionLoop(ReducedMotionScope.of(context));
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
@@ -514,7 +520,7 @@ class _AnimatedStreakIconState extends State<AnimatedStreakIcon>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
+    );
   }
 
   @override
@@ -525,6 +531,12 @@ class _AnimatedStreakIconState extends State<AnimatedStreakIcon>
 
   @override
   Widget build(BuildContext context) {
+    // Before the zero-streak early return, which swaps in a static icon but
+    // leaves this state alive.
+    _controller.syncMotionLoop(
+      ReducedMotionScope.of(context) || widget.streakDays == 0,
+      reverse: true,
+    );
     if (widget.streakDays == 0) {
       return Icon(
         Icons.local_fire_department_rounded,

@@ -13,6 +13,7 @@ import '../models/custom_quiz_models.dart';
 import '../providers/quiz_builder_provider.dart';
 import '../services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/widgets/fit_text.dart';
 
 class QuizBuilderScreen extends ConsumerStatefulWidget {
   const QuizBuilderScreen({super.key});
@@ -98,7 +99,21 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
               segments: GameDifficulty.values
                   .map((d) => ButtonSegment(
                         value: d,
-                        label: Text(d.label),
+                        // Three labels share the control and it cannot wrap,
+                        // so at a large text scale it ran 90 px off the right.
+                        // `fittedStyle`, not `FitText`: a SegmentedButton
+                        // measures its segments' intrinsic widths.
+                        label: Text(
+                          d.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: fittedStyle(
+                            context,
+                            d.label,
+                            Theme.of(context).textTheme.labelLarge,
+                            longWord: 4,
+                          ),
+                        ),
                       ))
                   .toList(),
               selected: {_difficulty},
@@ -199,17 +214,31 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
             // Select/deselect all
             Row(
               children: [
-                TextButton(
-                  onPressed: () => setState(() =>
-                      _selectedCardIds
-                          .addAll(filteredCards.map((c) => c.id))),
-                  child: const Text('Select All'),
+                // Two rigid text buttons side by side: "Select All" and
+                // "Deselect All" together are wider than the row at 2x.
+                Flexible(
+                  child: TextButton(
+                    onPressed: () => setState(() =>
+                        _selectedCardIds
+                            .addAll(filteredCards.map((c) => c.id))),
+                    child: const Text(
+                      'Select All',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
-                TextButton(
-                  onPressed: () => setState(() =>
-                      _selectedCardIds.removeWhere(
-                          (id) => filteredCards.any((c) => c.id == id))),
-                  child: const Text('Deselect All'),
+                Flexible(
+                  child: TextButton(
+                    onPressed: () => setState(() =>
+                        _selectedCardIds.removeWhere(
+                            (id) => filteredCards.any((c) => c.id == id))),
+                    child: const Text(
+                      'Deselect All',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -231,15 +260,18 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                       }
                     });
                   },
-                  title: Text(
+                  // The vocabulary pair being picked: it split
+                  // "Grandmothe / r" and "Transportatio / n".
+                  title: FitText(
                     '${card.wordEnglish} / ${card.wordFilipino}',
                     style: AppTypography.bodyMedium.copyWith(
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
                       color: hc.textPrimary,
                     ),
                   ),
-                  subtitle: Text(
+                  subtitle: FitText(
                     card.category.label,
+                    maxLines: 1,
                     style: AppTypography.labelSmall.copyWith(
                       color: card.category.color,
                     ),
@@ -289,7 +321,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     leading: const Text('📝', style: TextStyle(fontSize: 24)),
-                    title: Text(
+                    title: FitText(
                       quiz.title,
                       style: AppTypography.titleSmall.copyWith(
                         fontWeight: FontWeight.w600,
@@ -355,7 +387,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
     if (clash) {
       AppSnackBar.warning(
         context,
-        message: 'You already have a quiz called "$title". Give this one a '
+        message: 'You already have a quiz called “$title”. Give this one a '
             'different name.',
       );
       return;
@@ -375,7 +407,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
 
     ref.read(quizBuilderProvider.notifier).addQuiz(quiz);
 
-    AppSnackBar.success(context, message: 'Quiz "$title" saved!');
+    AppSnackBar.success(context, message: 'Quiz “$title” saved!');
 
     // Reset selection
     setState(() {
@@ -408,7 +440,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Quiz?'),
-        content: Text('Delete "${quiz.title}"?'),
+        content: Text('Delete “${quiz.title}”?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_providers.dart';
+import '../core/utils/reduced_motion.dart';
 
 /// Floating particle overlay — renders soft, drifting shapes (circles, stars,
 /// sparkles) that float upward across the screen.
@@ -73,7 +74,7 @@ class _FloatingParticlesState extends ConsumerState<FloatingParticles>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 1),
-    )..repeat();
+    );
   }
 
   @override
@@ -127,6 +128,10 @@ class _FloatingParticlesState extends ConsumerState<FloatingParticles>
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    // Before the early return: returning SizedBox.shrink() removes the
+    // particles from the tree but leaves this state — and its ticker —
+    // alive, so without this the controller kept running unseen.
+    _controller.syncMotionLoop(settings.reducedMotion);
     if (settings.reducedMotion) {
       return const SizedBox.shrink();
     }

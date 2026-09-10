@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/pro_surface.dart';
 import '../../../widgets/app_snack_bar.dart';
 
 /// Renders the cast URL as a QR code, with a copy-to-clipboard chip and
@@ -28,16 +29,12 @@ class TvCastQrCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: hc.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: hc.cardBackground,
+        // The pro kit's 12px corners and hairline border, with no drop shadow:
+        // structure on the educator surfaces comes from the border, not from
+        // elevation, and this card sets the tone for the whole screen.
+        borderRadius: ProSurface.borderRadius,
+        border: Border.all(color: hc.border),
       ),
       child: Column(
         children: [
@@ -79,7 +76,7 @@ class TvCastQrCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Material(
-            color: AppColors.primary.withValues(alpha: 0.08),
+            color: hc.primary.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
@@ -96,20 +93,27 @@ class TvCastQrCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SelectableText(
-                      url,
-                      style: AppTypography.titleMedium.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
+                    // Flexible, so a long address wraps instead of running off
+                    // the right edge. It used to clip: on the 686dp tablet the
+                    // app ships on, a real cast URL
+                    // (http://192.168.31.165:8088/c/TMMG9) overflowed the row by
+                    // 32px and lost its last characters — and this URL is the
+                    // one thing on the screen a teacher has to copy by hand into
+                    // the TV's browser, so a clipped one makes the cast
+                    // unreachable. Narrow phones lost more.
+                    Flexible(
+                      child: SelectableText(
+                        url,
+                        textAlign: TextAlign.center,
+                        style: AppTypography.titleMedium.copyWith(
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: hc.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Icon(
-                      Icons.copy_rounded,
-                      size: 18,
-                      color: AppColors.primary,
-                    ),
+                    Icon(Icons.copy_rounded, size: 18, color: hc.primary),
                   ],
                 ),
               ),
@@ -152,16 +156,16 @@ class _CodeCallout extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.10),
+              color: hc.primary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.25),
+                color: hc.primary.withValues(alpha: 0.25),
               ),
             ),
             child: Text(
               code,
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.primary,
+                color: hc.primary,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 6,
                 fontFeatures: const [FontFeature.tabularFigures()],

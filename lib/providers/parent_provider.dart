@@ -5,6 +5,7 @@ import '../core/constants/avatar_data.dart';
 import '../data/local/hive_service.dart';
 import '../data/local/seed_data.dart';
 import '../features/mood_tracker/models/mood_summary.dart';
+import '../features/parent/models/educator_audience.dart';
 import '../features/progress/models/category_mastery.dart';
 import '../core/services/session_tracker.dart';
 import '../core/services/streak_service.dart';
@@ -277,4 +278,25 @@ final parentDashboardProvider = Provider<ParentDashboardSnapshot>((ref) {
   final rosterAsync = ref.watch(educatorRosterProvider(active.id));
   final profilesWithProgress = rosterAsync.valueOrNull ?? const [];
   return _buildSnapshot(profilesWithProgress);
+});
+
+// ─── Educator Audience ─────────────────────────────────
+
+/// Which educator wording every shared educator surface should use.
+///
+/// Teacher and Parent run the same screens over the same roster pipeline, so
+/// the only thing that differs is the copy, the icons and the "manage"
+/// shortcut — all of which live on [EducatorAudience]. Screens read this
+/// rather than hard-coding "Students", which is what let the Parent role end
+/// up looking at "Class Analytics" and a "Share Class Code" button that went
+/// to the classroom manager.
+///
+/// Non-parent profiles resolve to [EducatorAudience.teacher]: it is the
+/// neutral-institutional wording these screens have always used, and a
+/// learner can only reach them through an educator's "view as student".
+final educatorAudienceProvider = Provider<EducatorAudience>((ref) {
+  final role = ref.watch(profileProvider)?.role;
+  return role == UserRole.parent
+      ? EducatorAudience.parent
+      : EducatorAudience.teacher;
 });

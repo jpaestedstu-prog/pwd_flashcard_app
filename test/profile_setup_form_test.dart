@@ -122,9 +122,9 @@ void main() {
   group('Welcome carousel gate (HiveService)', () {
     setUpAll(() async {
       Hive.init('./build/test_cache/welcome_gate');
-      if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings');
-      if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress');
-      if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles');
+      if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings', compactionStrategy: (_, _) => false);
+      if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress', compactionStrategy: (_, _) => false);
+      if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles', compactionStrategy: (_, _) => false);
     });
 
     setUp(() async {

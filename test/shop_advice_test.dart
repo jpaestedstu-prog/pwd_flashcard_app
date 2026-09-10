@@ -73,6 +73,30 @@ void main() {
             reason: '${type.name} is unaffected by these settings');
       }
     });
+
+    test('warns when Sound Effects off will silence a pack', () {
+      const settings = AppSettings(soundEffects: false);
+      expect(
+        adviceFor(_item(ShopItemType.soundPack), settings),
+        ShopAdvice.soundPackNeedsSound,
+        reason: 'a sound pack is the one shelf whose whole value is audible',
+      );
+    });
+
+    test('stays quiet about packs when sound is on', () {
+      // Sound Effects default to on, which is the ordinary case.
+      const settings = AppSettings();
+      expect(adviceFor(_item(ShopItemType.soundPack), settings),
+          ShopAdvice.none);
+    });
+
+    test('the pack warning tracks the toggle, not the disability', () {
+      // Same rule as the theme advice: what matters is the setting as it is
+      // right now, which the learner can flip in Settings at any moment.
+      const deafWithSoundOn = AppSettings(highContrastMode: true);
+      expect(adviceFor(_item(ShopItemType.soundPack), deafWithSoundOn),
+          ShopAdvice.none);
+    });
   });
 
   group('every accessibility preset gets honest advice', () {
@@ -90,6 +114,17 @@ void main() {
           reason: overridden
               ? '${type.name} overrides shop themes and must say so'
               : '${type.name} does not override themes, so stay quiet',
+        );
+
+        // The Hearing preset switches Sound Effects off, so a Deaf learner is
+        // the one who most needs telling that a Sound Pack plays nothing.
+        final packAdvice = adviceFor(_item(ShopItemType.soundPack), settings);
+        expect(
+          packAdvice != ShopAdvice.none,
+          !settings.soundEffects,
+          reason: settings.soundEffects
+              ? '${type.name} can hear packs, so stay quiet'
+              : '${type.name} has sound off and must be told before buying',
         );
       });
     }

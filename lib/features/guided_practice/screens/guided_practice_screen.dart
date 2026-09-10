@@ -13,6 +13,7 @@ import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
 import '../models/guided_practice_models.dart';
 import '../services/guided_practice_service.dart';
+import '../../../core/utils/accessible_sizing.dart';
 
 class GuidedPracticeScreen extends ConsumerStatefulWidget {
   final FlashcardCategory category;
@@ -172,7 +173,18 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
         backgroundColor: Colors.transparent,
       ),
       body: SafeArea(
-        child: Padding(
+        // Scrollable while keeping the `Expanded` step area.
+        //
+        // The progress bar, step caption and controls are fixed height and the
+        // practice card takes the rest, which works on a normal screen and not
+        // at 2x: the fixed parts alone are taller than a phone, so the column
+        // ran 164 px off the bottom. `IntrinsicHeight` lets the Expanded keep
+        // its meaning inside a scroll view.
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Padding(
           padding: EdgeInsets.all(padding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -234,14 +246,16 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
               const SizedBox(height: 24),
 
               // Step content
-              Expanded(
-                child: _buildStepContent(step, isFilipino, hc),
-              ),
+              // Not `Expanded`: inside a scroll view the height is unbounded,
+              // so the step content sizes to its own height instead. The
+              // ConstrainedBox above still fills the viewport when there is
+              // room, so a short step is not left floating at the top.
+              _buildStepContent(step, isFilipino, hc),
 
               // Action button
               const SizedBox(height: 16),
               SizedBox(
-                height: 56,
+                height: scaledControlHeight(context, 56),
                 child: ElevatedButton(
                   onPressed: _showResult ? _nextStep : _checkAnswer,
                   style: ElevatedButton.styleFrom(
@@ -271,6 +285,9 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+            ),
           ),
         ),
       ),
@@ -685,7 +702,7 @@ class _CompletionScreen extends StatelessWidget {
               const SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: scaledControlHeight(context, 52),
                 child: ElevatedButton.icon(
                   onPressed: onRestart,
                   icon: const Icon(Icons.refresh_rounded, color: AppColors.textOnPrimary),

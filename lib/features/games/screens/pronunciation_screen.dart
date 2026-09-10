@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +26,9 @@ import '../../../widgets/accessibility_visual_feedback.dart';
 import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gamepad/logic/gamepad_speech.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
@@ -36,6 +38,8 @@ import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../core/widgets/fit_text.dart';
+import '../../../core/utils/seeded_random.dart';
 
 /// Pronunciation Practice — an audio-first game.
 ///
@@ -140,7 +144,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
   String _voiceHint = '';
   List<Achievement> _newAchievements = [];
   final List<GameReviewItem> _reviewItems = [];
-  final _random = Random();
+  final _random = contentRandom();
 
   /// Resolved focus card when [PronunciationScreen.focusWordId] matches a
   /// seed word; null runs the normal multi-round game.
@@ -344,6 +348,18 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
     ];
   }
 
+  /// Says whether the answer was right, naming the word when it was not.
+  void _announceResult(int index) {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final round = _rounds[_currentRound];
+    final correct = index == round.correctIndex;
+    final answer = round.choices[round.correctIndex].wordEnglish;
+    gamepadScreen.announce(
+      correct ? l10n.correct : '${l10n.tryAgain}. $answer.',
+    );
+  }
+
   void _selectAnswer(int index) {
     if (_answered) return;
     final round = _rounds[_currentRound];
@@ -376,7 +392,13 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
     }
 
     // Auto-advance after delay
-    Future.delayed(const Duration(milliseconds: 1400), _nextRound);
+    _announceResult(index);
+    Future.delayed(const Duration(milliseconds: 1400), () {
+      _nextRound();
+      // The next word is spoken by [_speakCurrentWord] as the round opens, so
+      // there is nothing to add here — announcing over it would collide with
+      // the very sound the learner has to identify.
+    });
   }
 
   /// Speech-to-text: student speaks the answer instead of tapping.
@@ -565,7 +587,32 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
     final showCursor =
         ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
-    return GazeScope(
+    // The prompt here is a *sound*, not text — the word is spoken, and the
+    // learner picks which one they heard. So "hear it again" is published as a
+    // first-class item rather than being reachable only by touching the
+    // speaker button: without it a learner who missed the word has no way to
+    // ask for it a second time.
+    return GamepadScreenRegistrar(
+      title: GameType.pronunciation.labelOf(l10n),
+      active: !_answered && !isPaused,
+      narration: [l10n.listenAndPick],
+      items: [
+        // Named for what it *does*, not for the screen's instruction. Labelled
+        // "Listen & Pick" it read back as a duplicate of the prompt and told
+        // the learner nothing about what pressing it would achieve.
+        GamepadItem(
+          label: GamepadPhrases(
+            ref.read(settingsProvider).locale,
+          ).hearWordAgain,
+          onActivate: _speakCurrentWord,
+        ),
+        for (var i = 0; i < round.choices.length; i++)
+          GamepadItem(
+            label: round.choices[i].wordEnglish,
+            onActivate: () => _selectAnswer(i),
+          ),
+      ],
+      child: GazeScope(
       actions: _gazeActions(),
       onBlink: _selectCursor,
       child: PopScope(
@@ -938,7 +985,9 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 8,
                                       ),
-                                      child: Text(
+                                      // The answer word itself, in a fixed
+                                      // grid cell: it split "Maglaka / d".
+                                      child: FitText(
                                         choiceText,
                                         style: AppTypography.titleSmall
                                             .copyWith(
@@ -946,8 +995,6 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                               fontWeight: FontWeight.w700,
                                             ),
                                         textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
@@ -981,10 +1028,20 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                 );
                           }
 
-                          return card
-                              .animate(key: ValueKey('$_currentRound-$index'))
-                              .fadeIn(duration: 300.ms, delay: (index * 80).ms)
-                              .slideY(begin: 0.1, end: 0);
+                          // +1: the published item list puts "listen again"
+                          // first, so choice N is item N+1.
+                          return GamepadFocusable(
+                            index: index + 1,
+                            child: card
+                                .animate(
+                                  key: ValueKey('$_currentRound-$index'),
+                                )
+                                .fadeIn(
+                                  duration: 300.ms,
+                                  delay: (index * 80).ms,
+                                )
+                                .slideY(begin: 0.1, end: 0),
+                          );
                         },
                       ),
                     ),
@@ -1007,6 +1064,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
               ),
           ],
         ),
+      ),
       ),
     );
   }

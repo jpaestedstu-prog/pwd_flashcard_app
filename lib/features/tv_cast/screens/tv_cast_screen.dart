@@ -10,8 +10,10 @@ import '../../../core/services/action_clip_service.dart';
 import '../../../core/services/flashcard_photo_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/pro_surface.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../data/local/seed_stories.dart';
@@ -28,6 +30,15 @@ import '../services/tv_cast_prewarm.dart';
 import '../widgets/tv_cast_live_panel.dart';
 import '../widgets/tv_cast_qr_card.dart';
 import '../widgets/tv_cast_remote_controls.dart';
+
+/// Vertical gap above a section header, and between a header and its content.
+///
+/// The screen used to space its sections with hand-written 6 / 8 / 10 / 12 /
+/// 16 / 20s that no longer agreed with each other, which is what made a page of
+/// perfectly good controls read as a pile. These two constants are the whole
+/// rhythm, and they match the educator Home's.
+const double _sectionGap = AppSpacing.xl;
+const double _headerGap = AppSpacing.sm + AppSpacing.xs;
 
 /// Educator-facing TV Cast control screen. Starts an in-app HTTP server,
 /// shows a QR + URL, and exposes the remote controls that drive what
@@ -118,7 +129,10 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
     messenger.clearMaterialBanners();
     messenger.showMaterialBanner(
       MaterialBanner(
-        leading: const Icon(Icons.wifi_off_rounded, color: AppColors.primary),
+        leading: Icon(
+          Icons.wifi_off_rounded,
+          color: HCColor.of(context).primary,
+        ),
         content: Text(message, style: AppTypography.bodyMedium),
         actions: [
           if (showRestart)
@@ -231,7 +245,6 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(tvCastSessionProvider);
-    final hc = HCColor.of(context);
     final padding = context.pagePadding;
     // Gates the on-demand audio replay (phone-side) for Flashcards / Stories.
     final ttsEnabled = ref.watch(settingsProvider.select((s) => s.ttsEnabled));
@@ -246,12 +259,12 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
             IconButton(
               tooltip: state.isAway
                   ? 'Teacher is back (resume cast)'
-                  : 'Show "Teacher is out" on TV',
+                  : 'Show “Teacher is out” on TV',
               icon: Icon(
                 state.isAway
                     ? Icons.coffee_rounded
                     : Icons.directions_walk_rounded,
-                color: state.isAway ? AppColors.primary : null,
+                color: state.isAway ? HCColor.of(context).primary : null,
               ),
               onPressed: () => ref
                   .read(tvCastSessionProvider.notifier)
@@ -272,7 +285,11 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (!state.isServerRunning) ...[
-                _StartCard(starting: _starting, onStart: _start),
+                _StartCard(
+                  starting: _starting,
+                  onStart: _start,
+                  error: state.startError,
+                ),
                 // Only while idle: mid-cast the educator needs the controls,
                 // not a look back at last week.
                 const _CastHistory(),
@@ -282,29 +299,31 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                     url: state.listenUrl!,
                     code: state.castCode,
                   ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 _ViewerCount(count: state.connectedViewers),
                 if (state.isAway) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   const _AwayNotice(),
                 ],
-                const SizedBox(height: 20),
-                Text(
+                // Every block below follows the educator Home's rhythm: an
+                // uppercase section header, one fixed gap, then a grid or a
+                // panel of equal-sized blocks — never a loose Wrap. The two
+                // gap constants are what keep that rhythm from drifting the
+                // way the hand-written 6/8/10/12/16/20s here had.
+                const SizedBox(height: _sectionGap),
+                const _SectionLabel(
                   'What to cast',
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: hc.textPrimary,
-                  ),
+                  subtitle: 'The TV switches the moment you tap.',
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: _headerGap),
                 _ModePicker(state: state),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 _ModeConfig(state: state),
                 if (state.mode != CastMode.idle &&
                     state.mode != CastMode.live) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: _sectionGap),
                   const _SectionLabel('Now showing on TV'),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: _headerGap),
                   _CastPreview(state: state),
                 ],
                 // Per-cast pacing toggle for the auto-advanceable modes. Lets
@@ -313,22 +332,27 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                 if (state.mode == CastMode.flashcards ||
                     state.mode == CastMode.fslVideo ||
                     state.mode == CastMode.story) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: _sectionGap),
                   const _SectionLabel('Pacing'),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: _headerGap),
                   _AutoAdvanceControl(state: state),
                   // Flashcards can also reveal a real photo by tapping the card
                   // on the TV. This toggles that tap-to-flip on/off.
                   if (state.mode == CastMode.flashcards) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     _TapOnlyControl(state: state),
                   ],
                 ],
-                const SizedBox(height: 20),
                 // The Live Activity panel has its own push controls; the
                 // prev/pause/next remote only applies to the slide modes.
                 if (state.mode != CastMode.idle &&
-                    state.mode != CastMode.live)
+                    state.mode != CastMode.live) ...[
+                  const SizedBox(height: _sectionGap),
+                  const _SectionLabel(
+                    'Playback',
+                    subtitle: 'Step the lesson from here.',
+                  ),
+                  const SizedBox(height: _headerGap),
                   TvCastRemoteControls(
                     isPaused: state.isPaused,
                     onPrev: () =>
@@ -338,6 +362,7 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                     onNext: () =>
                         ref.read(tvCastSessionProvider.notifier).next(),
                   ),
+                ],
                 // On-demand audio replay for the current word / page, in either
                 // language — plays from this phone so the educator can model
                 // pronunciation without advancing the slide. (The TV narrates
@@ -345,17 +370,15 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                 if ((state.mode == CastMode.flashcards ||
                         state.mode == CastMode.story) &&
                     ttsEnabled) ...[
-                  const SizedBox(height: 20),
-                  const _SectionLabel('Replay audio'),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Hear the current ${state.mode == CastMode.story ? 'page' : 'word'} '
-                    'again on this phone.',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: hc.textSecondary,
-                    ),
+                  const SizedBox(height: _sectionGap),
+                  _SectionLabel(
+                    'Replay audio',
+                    subtitle:
+                        'Hear the current '
+                        '${state.mode == CastMode.story ? 'page' : 'word'} '
+                        'again on this phone.',
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: _headerGap),
                   LanguageReplayBar(
                     onEnglish: () => ref
                         .read(tvCastSessionProvider.notifier)
@@ -365,31 +388,39 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                         .replayCurrentWord(filipino: true),
                   ),
                 ],
-                const SizedBox(height: 20),
-                const _SectionLabel('TV display style'),
-                const SizedBox(height: 10),
+                const SizedBox(height: _sectionGap),
+                const _SectionLabel(
+                  'TV display style',
+                  subtitle: 'How the lesson looks on the big screen.',
+                ),
+                const SizedBox(height: _headerGap),
                 _TemplateGallery(current: state.castTheme),
-                const SizedBox(height: 20),
+                const SizedBox(height: _sectionGap),
                 const _SectionLabel('Lesson timer'),
-                const SizedBox(height: 8),
+                const SizedBox(height: _headerGap),
                 _TimerControl(state: state),
-                const SizedBox(height: 20),
+                const SizedBox(height: _sectionGap),
                 const _SectionLabel('Readability on TV'),
-                const SizedBox(height: 8),
+                const SizedBox(height: _headerGap),
                 _ReadabilityControls(state: state),
-                const SizedBox(height: 16),
-                const _SectionLabel('Show on TV'),
-                const SizedBox(height: 8),
+                const SizedBox(height: _sectionGap),
+                const _SectionLabel(
+                  'Show on TV',
+                  subtitle: 'Optional name shown in the corner of the TV.',
+                ),
+                const SizedBox(height: _headerGap),
                 _CastTitleField(state: state),
-                const SizedBox(height: 20),
+                const SizedBox(height: _sectionGap),
                 const _SectionLabel('Audio'),
-                const SizedBox(height: 6),
+                const SizedBox(height: _headerGap),
                 _AudioControls(state: state),
-                const SizedBox(height: 20),
+                const SizedBox(height: _sectionGap),
                 const _SectionLabel('Fullscreen'),
-                const SizedBox(height: 8),
+                const SizedBox(height: _headerGap),
                 _FullscreenControl(state: state),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.sm),
+                _BigPictureControl(state: state),
+                const SizedBox(height: _sectionGap),
                 const _SectionLabel('TV remote'),
                 const SizedBox(height: 8),
                 _TvRemoteControl(state: state),
@@ -404,45 +435,87 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
   }
 }
 
+// ─── Shared button shapes ──────────────────────────────
+//
+// Every action button on this screen is the same rectangle: the pro kit's 12px
+// corners and a 14px vertical rhythm, so "Flip to photo", "Show Me", "Watch in
+// FSL" and "Prepare Animals" line up as one column of blocks instead of four
+// buttons of three different heights and two different radii.
+
+ButtonStyle _castFilledButtonStyle({Color? background}) =>
+    FilledButton.styleFrom(
+      backgroundColor: background,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 14,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: ProSurface.borderRadius),
+    );
+
+/// Takes the accent from [HCColor] rather than [AppColors] so the outline
+/// follows the high-contrast and dark schemes, like every panel and tile
+/// around it. Identical under the default light theme.
+ButtonStyle _castOutlinedButtonStyle(HCColor hc) => OutlinedButton.styleFrom(
+  foregroundColor: hc.primary,
+  side: BorderSide(color: hc.primary.withValues(alpha: 0.4)),
+  padding: const EdgeInsets.symmetric(
+    horizontal: AppSpacing.md,
+    vertical: 14,
+  ),
+  shape: RoundedRectangleBorder(borderRadius: ProSurface.borderRadius),
+);
+
 // ─── Start card ────────────────────────────────────────
 
 class _StartCard extends StatelessWidget {
   final bool starting;
   final VoidCallback onStart;
 
-  const _StartCard({required this.starting, required this.onStart});
+  /// Why the last attempt did not start, or null. Shown under the button.
+  final String? error;
+
+  const _StartCard({
+    required this.starting,
+    required this.onStart,
+    this.error,
+  });
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: AppSpacing.paddingXl,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.primary.withValues(alpha: 0.10),
-            AppColors.primary.withValues(alpha: 0.02),
+            Color.alphaBlend(
+              hc.primary.withValues(alpha: 0.12),
+              hc.cardBackground,
+            ),
+            Color.alphaBlend(
+              hc.primary.withValues(alpha: 0.04),
+              hc.cardBackground,
+            ),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+        borderRadius: ProSurface.borderRadius,
+        border: Border.all(color: hc.primary.withValues(alpha: 0.30)),
       ),
       child: Column(
         children: [
+          // A rounded square, not a circle: the same icon badge every tile on
+          // this screen and on the educator Home carries.
           Container(
             width: 72,
             height: 72,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.14),
-              shape: BoxShape.circle,
+              color: hc.primary.withValues(alpha: 0.16),
+              borderRadius: ProSurface.borderRadius,
             ),
-            child: const Icon(
-              Icons.tv_rounded,
-              size: 36,
-              color: AppColors.primary,
-            ),
+            child: Icon(Icons.tv_rounded, size: 36, color: hc.primary),
           ),
           const SizedBox(height: 16),
           Text(
@@ -462,7 +535,7 @@ class _StartCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.lg),
           FilledButton.icon(
             onPressed: starting ? null : onStart,
             icon: starting
@@ -477,10 +550,50 @@ class _StartCard extends StatelessWidget {
                 : const Icon(Icons.play_arrow_rounded),
             label: Text(starting ? 'Starting…' : 'Start Casting'),
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl,
+                vertical: 14,
+              ),
               textStyle: AppTypography.titleMedium,
+              shape: RoundedRectangleBorder(
+                borderRadius: ProSurface.borderRadius,
+              ),
             ),
           ),
+          // Why nothing happened. Casting needs a shared network, so with
+          // Wi-Fi off the attempt cannot succeed — saying that is the whole
+          // point of this block; the button used to fail silently.
+          if (error != null) ...[
+            const SizedBox(height: 16),
+            Semantics(
+              liveRegion: true,
+              child: Container(
+                padding: AppSpacing.paddingMd,
+                decoration: BoxDecoration(
+                  color: hc.warning.withValues(alpha: 0.12),
+                  borderRadius: ProSurface.borderRadius,
+                  border: Border.all(
+                    color: hc.warning.withValues(alpha: 0.45),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.wifi_off_rounded, size: 20, color: hc.warning),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        error!,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: hc.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -517,11 +630,17 @@ class _ViewerCount extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(
-          count == 0
-              ? 'Waiting for TV to connect…'
-              : '$count viewer${count == 1 ? '' : 's'} connected',
-          style: AppTypography.labelMedium.copyWith(color: color),
+        // Flexible so the line wraps instead of running off the edge: at a 2.0x
+        // font on a 360dp screen "Waiting for TV to connect…" overflowed the row
+        // by 97px, and that line is how the teacher knows whether the TV found
+        // the cast at all.
+        Flexible(
+          child: Text(
+            count == 0
+                ? 'Waiting for TV to connect…'
+                : '$count viewer${count == 1 ? '' : 's'} connected',
+            style: AppTypography.labelMedium.copyWith(color: color),
+          ),
         ),
       ],
     );
@@ -539,19 +658,22 @@ class _AwayNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: AppSpacing.paddingMd,
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+        color: Color.alphaBlend(
+          hc.primary.withValues(alpha: 0.10),
+          hc.cardBackground,
+        ),
+        borderRadius: ProSurface.borderRadius,
+        border: Border.all(color: hc.primary.withValues(alpha: 0.45)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.coffee_rounded, color: AppColors.primary),
-          const SizedBox(width: 10),
+          Icon(Icons.coffee_rounded, size: 20, color: hc.primary),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              'The TV is showing "The teacher is out". Tap the walk icon to '
+              'The TV is showing “The teacher is out”. Tap the walk icon to '
               'resume casting.',
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),
@@ -562,8 +684,15 @@ class _AwayNotice extends StatelessWidget {
   }
 }
 
-// ─── Mode picker (segmented buttons) ───────────────────
+// ─── Mode picker (tile grid) ───────────────────────────
 
+/// What the TV shows, as the same big two-column tile grid the educator Home
+/// uses for Quick Actions — icon badge, bold label, one-line caption.
+///
+/// Was a `Wrap` of pill chips of five different widths across two ragged rows.
+/// This is the screen's primary decision and the thing a teacher hits fastest
+/// mid-lesson, so it gets the Home's largest tap targets and its predictable
+/// grid, and each option now says what it does rather than only naming itself.
 class _ModePicker extends ConsumerWidget {
   final TvCastSession state;
   const _ModePicker({required this.state});
@@ -571,39 +700,55 @@ class _ModePicker extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(tvCastSessionProvider.notifier);
-    final modes = [
-      (CastMode.flashcards, Icons.style_rounded, 'Flashcards'),
-      (CastMode.fslVideo, Icons.sign_language_rounded, 'FSL'),
-      (CastMode.story, Icons.menu_book_rounded, 'Stories'),
-      (CastMode.live, Icons.quiz_rounded, 'Live Activity'),
-      (CastMode.progress, Icons.leaderboard_rounded, 'Progress'),
+    final modes = <(CastMode, IconData, String, String, Color)>[
+      (
+        CastMode.flashcards,
+        Icons.style_rounded,
+        'Flashcards',
+        'Word, picture & photo',
+        AppColors.sectionLearning,
+      ),
+      (
+        CastMode.fslVideo,
+        Icons.sign_language_rounded,
+        'FSL',
+        'Sign-language clips',
+        AppColors.sectionCommunication,
+      ),
+      (
+        CastMode.story,
+        Icons.menu_book_rounded,
+        'Stories',
+        'Read page by page',
+        AppColors.info,
+      ),
+      (
+        CastMode.live,
+        Icons.quiz_rounded,
+        'Live Activity',
+        'Quiz the whole room',
+        AppColors.sectionAssessment,
+      ),
+      (
+        CastMode.progress,
+        Icons.leaderboard_rounded,
+        'Progress',
+        'Class wins & stars',
+        AppColors.success,
+      ),
     ];
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: modes.map((m) {
-        final selected = state.mode == m.$1;
-        return ChoiceChip(
-          selected: selected,
-          avatar: Icon(
-            m.$2,
-            size: 18,
-            color: selected ? Colors.white : AppColors.primary,
+    return ProActionGrid(
+      tiles: [
+        for (final m in modes)
+          ProActionTile(
+            icon: m.$2,
+            label: m.$3,
+            caption: m.$4,
+            accent: m.$5,
+            selected: state.mode == m.$1,
+            onTap: () => notifier.setMode(m.$1),
           ),
-          label: Text(m.$3),
-          labelStyle: AppTypography.labelMedium.copyWith(
-            color: selected ? Colors.white : AppColors.primary,
-            fontWeight: FontWeight.w700,
-          ),
-          selectedColor: AppColors.primary,
-          backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.25)),
-          ),
-          onSelected: (_) => notifier.setMode(m.$1),
-        );
-      }).toList(),
+      ],
     );
   }
 }
@@ -624,6 +769,10 @@ class _ModeConfig extends ConsumerWidget {
       case CastMode.fslVideo:
         final dropdown = DropdownButtonFormField<FlashcardCategory>(
           initialValue: state.category,
+          // Without this the button sizes to the selected item's natural width
+          // and the longest category name overflowed it — 59px at a 1.3x font on
+          // a 600dp tablet, so the card count was cut off the end.
+          isExpanded: true,
           decoration: InputDecoration(
             labelText: 'Category',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -651,7 +800,7 @@ class _ModeConfig extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               dropdown,
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               _FslWordPicker(state: state),
               _PrewarmControl(
                 targetKey: 'cat:${cat.index}',
@@ -747,13 +896,8 @@ class _ModeConfig extends ConsumerWidget {
         return TvCastLivePanel(state: state);
 
       case CastMode.idle:
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: hc.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: hc.textSecondary.withValues(alpha: 0.2)),
-          ),
+        return ProPanel(
+          padding: AppSpacing.paddingMd,
           child: Text(
             'Pick what to cast above. The TV will switch instantly.',
             style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
@@ -781,79 +925,74 @@ class _ReadabilityControls extends ConsumerWidget {
     final hc = HCColor.of(context);
     final notifier = ref.read(tvCastSessionProvider.notifier);
 
-    return Material(
-      color: hc.surface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _MiniLabel(
-              icon: Icons.format_size_rounded,
-              text: 'Text size on TV',
-              hc: hc,
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: CastTextSize.values
-                  .map(
-                    (s) => _PrefChip(
-                      label: s.label,
-                      selected: state.castTextSize == s,
-                      onTap: () => notifier.setCastTextSize(s),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Makes the word, story line, sign caption and answer choices '
-              'bigger — for learners reading from the back, or with low vision.',
-              style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
-            ),
-            const SizedBox(height: 16),
-            _MiniLabel(
-              icon: Icons.translate_rounded,
-              text: 'Language on TV',
-              hc: hc,
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: CastLanguage.values
-                  .map(
-                    (l) => _PrefChip(
-                      label: l.label,
-                      selected: state.castLanguage == l,
-                      onTap: () => notifier.setCastLanguage(l),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              state.castLanguage == CastLanguage.both
-                  ? 'The TV shows and speaks both languages.'
-                  : 'The TV shows and speaks ${state.castLanguage.label} only '
-                        '— the other language is hidden, not removed, so you '
-                        'can switch back mid-lesson.',
-              style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
-            ),
-          ],
-        ),
+    return ProPanel(
+      padding: AppSpacing.paddingMd,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _MiniLabel(
+            icon: Icons.format_size_rounded,
+            text: 'Text size on TV',
+            hc: hc,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          // Equal-width cells rather than a Wrap: "Normal / Large / Extra
+          // large" are three very different lengths, and as chips they made a
+          // ragged line that read as three unrelated buttons instead of one
+          // three-way choice.
+          ProButtonRow(
+            minCellWidth: 104,
+            children: [
+              for (final s in CastTextSize.values)
+                _PrefChip(
+                  label: s.label,
+                  selected: state.castTextSize == s,
+                  onTap: () => notifier.setCastTextSize(s),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Makes the word, story line, sign caption and answer choices '
+            'bigger — for learners reading from the back, or with low vision.',
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _MiniLabel(
+            icon: Icons.translate_rounded,
+            text: 'Language on TV',
+            hc: hc,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ProButtonRow(
+            minCellWidth: 104,
+            children: [
+              for (final l in CastLanguage.values)
+                _PrefChip(
+                  label: l.label,
+                  selected: state.castLanguage == l,
+                  onTap: () => notifier.setCastLanguage(l),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            state.castLanguage == CastLanguage.both
+                ? 'The TV shows and speaks both languages.'
+                : 'The TV shows and speaks ${state.castLanguage.label} only '
+                      '— the other language is hidden, not removed, so you '
+                      'can switch back mid-lesson.',
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+          ),
+        ],
       ),
     );
   }
 }
 
+/// A group label *inside* a panel — the uppercase, letter-spaced style the
+/// educator Home uses for "Content" / "Assessments & Progress", with a small
+/// leading icon. Sits a level below [_SectionLabel] in the hierarchy.
 class _MiniLabel extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -864,13 +1003,20 @@ class _MiniLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: AppTypography.titleSmall.copyWith(
-            fontWeight: FontWeight.w700,
-            color: hc.textPrimary,
+        Icon(icon, size: 16, color: hc.primary),
+        const SizedBox(width: AppSpacing.sm),
+        // Expanded + ellipsis: "Text size on TV" at a 2.0x font is wider than a
+        // 360dp phone's panel once the icon and padding are taken out.
+        Expanded(
+          child: Text(
+            text.toUpperCase(),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.labelSmall.copyWith(
+              color: hc.textSecondary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
           ),
         ),
       ],
@@ -878,7 +1024,12 @@ class _MiniLabel extends StatelessWidget {
   }
 }
 
-/// Compact selected/unselected chip shared by the readability pickers.
+/// One segment of a two- or three-way preference row.
+///
+/// A rectangle rather than a pill, with the pro kit's 12px corners and
+/// hairline border, so it sits in a [ProButtonRow] cell and lines up with the
+/// tile grids above it. Stretches to its cell — the label centres and wraps
+/// inside, so "Extra large" at a 2.0x font stays in its own column.
 class _PrefChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -892,20 +1043,51 @@ class _PrefChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChoiceChip(
+    final hc = HCColor.of(context);
+    return Semantics(
+      button: true,
       selected: selected,
-      label: Text(label),
-      labelStyle: AppTypography.labelMedium.copyWith(
-        color: selected ? Colors.white : AppColors.primary,
-        fontWeight: FontWeight.w700,
+      label: label,
+      excludeSemantics: true,
+      child: Material(
+        color: selected
+            ? hc.primary
+            : Color.alphaBlend(
+                hc.primary.withValues(alpha: 0.06),
+                hc.cardBackground,
+              ),
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: ProSurface.borderRadius,
+          side: BorderSide(
+            color: selected
+                ? hc.primary
+                : hc.primary.withValues(alpha: 0.25),
+            width: selected ? 2 : ProSurface.borderWidth,
+          ),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: 12,
+            ),
+            child: Center(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.labelMedium.copyWith(
+                  color: selected ? Colors.white : hc.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
-      selectedColor: AppColors.primary,
-      backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.25)),
-      ),
-      onSelected: (_) => onTap(),
     );
   }
 }
@@ -942,15 +1124,15 @@ class _PrewarmControl extends ConsumerWidget {
     final finished = isThisTarget && prewarm.status == PrewarmStatus.done;
 
     return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(top: AppSpacing.md),
+      padding: AppSpacing.paddingMd,
       decoration: BoxDecoration(
-        color: hc.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: hc.cardBackground,
+        borderRadius: ProSurface.borderRadius,
         border: Border.all(
           color: finished
-              ? const Color(0xFF2E7D32).withValues(alpha: 0.35)
-              : AppColors.primary.withValues(alpha: 0.15),
+              ? const Color(0xFF2E7D32).withValues(alpha: 0.55)
+              : hc.border,
         ),
       ),
       child: Column(
@@ -962,9 +1144,10 @@ class _PrewarmControl extends ConsumerWidget {
                 finished
                     ? Icons.cloud_done_rounded
                     : Icons.cloud_download_rounded,
-                color: finished ? const Color(0xFF2E7D32) : AppColors.primary,
+                size: 20,
+                color: finished ? const Color(0xFF2E7D32) : hc.primary,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   finished ? 'Ready to cast offline' : 'Prepare for casting',
@@ -995,19 +1178,21 @@ class _PrewarmControl extends ConsumerWidget {
               child: LinearProgressIndicator(
                 value: prewarm.fraction,
                 minHeight: 8,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                backgroundColor: hc.primary.withValues(alpha: 0.12),
               ),
             ),
           ],
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
           if (running)
             OutlinedButton.icon(
+              style: _castOutlinedButtonStyle(hc),
               onPressed: notifier.cancel,
               icon: const Icon(Icons.close_rounded, size: 18),
               label: const Text('Stop downloading'),
             )
           else
             FilledButton.icon(
+              style: _castFilledButtonStyle(),
               onPressed: prewarm.isRunning ? null : onStart,
               icon: Icon(
                 finished ? Icons.refresh_rounded : Icons.download_rounded,
@@ -1047,70 +1232,36 @@ class _ProgressViewPicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hc = HCColor.of(context);
     final notifier = ref.read(tvCastSessionProvider.notifier);
+
+    IconData iconFor(CastProgressView v) => v == CastProgressView.classWins
+        ? Icons.groups_rounded
+        : Icons.leaderboard_rounded;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: CastProgressView.values.map((v) {
-            final selected = state.castProgressView == v;
-            return ChoiceChip(
-              selected: selected,
-              avatar: Icon(
-                v == CastProgressView.classWins
-                    ? Icons.groups_rounded
-                    : Icons.leaderboard_rounded,
-                size: 18,
-                color: selected ? Colors.white : AppColors.primary,
+        ProActionGrid(
+          tiles: [
+            for (final v in CastProgressView.values)
+              ProActionTile(
+                icon: iconFor(v),
+                label: v.label,
+                caption: v.description,
+                accent: v == CastProgressView.classWins
+                    ? AppColors.success
+                    : AppColors.warning,
+                selected: state.castProgressView == v,
+                onTap: () => notifier.setCastProgressView(v),
               ),
-              label: Text(v.label),
-              labelStyle: AppTypography.labelMedium.copyWith(
-                color: selected ? Colors.white : AppColors.primary,
-                fontWeight: FontWeight.w700,
-              ),
-              selectedColor: AppColors.primary,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color: AppColors.primary.withValues(alpha: 0.25),
-                ),
-              ),
-              onSelected: (_) => notifier.setCastProgressView(v),
-            );
-          }).toList(),
+          ],
         ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                state.castProgressView == CastProgressView.classWins
-                    ? Icons.groups_rounded
-                    : Icons.leaderboard_rounded,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '${state.castProgressView.description} '
-                  'Updates by itself as your class works.',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: hc.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
+        const SizedBox(height: AppSpacing.sm),
+        _PickerNote(
+          icon: iconFor(state.castProgressView),
+          text:
+              '${state.castProgressView.description} '
+              'Updates by itself as your class works.',
         ),
       ],
     );
@@ -1133,7 +1284,6 @@ class _FullscreenControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hc = HCColor.of(context);
     final notifier = ref.read(tvCastSessionProvider.notifier);
 
     final subtitle = state.fullscreenOnTv
@@ -1142,29 +1292,72 @@ class _FullscreenControl extends ConsumerWidget {
               'some TVs, press OK on the remote once to finish filling the screen.'
         : 'The TV keeps the browser bars. Turn on to fill the whole screen.';
 
-    return Material(
-      color: hc.surface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
-      ),
-      child: SwitchListTile(
-        value: state.fullscreenOnTv,
-        onChanged: notifier.setFullscreenOnTv,
-        secondary: const Icon(Icons.fullscreen_rounded),
-        title: Text(
-          'Fullscreen on TV',
-          style: AppTypography.titleSmall.copyWith(
-            fontWeight: FontWeight.w700,
-            color: hc.textPrimary,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
-        ),
-      ),
+    return ProSwitchTile(
+      icon: Icons.fullscreen_rounded,
+      label: 'Fullscreen on TV',
+      caption: subtitle,
+      value: state.fullscreenOnTv,
+      onChanged: notifier.setFullscreenOnTv,
+    );
+  }
+}
+
+// ─── Fullscreen picture & video ─────────────────────────
+
+/// Fills the TV with the current picture / GIF / FSL sign clip instead of
+/// showing it inside the flashcard (or story) frame.
+///
+/// The companion to [_FullscreenControl]: that one removes the *browser's*
+/// chrome, this one removes the *cast page's*. The category badge, accent strip
+/// and example sentence come off and the media grows to roughly 2.5x the width
+/// it has in the card, fitted rather than cropped so nothing runs off the
+/// edges. The word (and, in a story, the sentence) stay on screen — the point is
+/// a bigger picture, not a wordless one.
+///
+/// Off by default, because it deliberately hides detail some lessons rely on.
+/// The switch is disabled in the two modes it cannot help — a live activity and
+/// the progress board are text, and blowing up their media would push the answer
+/// options off the screen.
+class _BigPictureControl extends ConsumerWidget {
+  final TvCastSession state;
+  const _BigPictureControl({required this.state});
+
+  /// Whether the current cast mode actually shows a picture / clip.
+  bool get _appliesToMode =>
+      state.mode == CastMode.flashcards ||
+      state.mode == CastMode.fslVideo ||
+      state.mode == CastMode.story;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(tvCastSessionProvider.notifier);
+    final applies = _appliesToMode;
+
+    final String subtitle;
+    if (!applies) {
+      subtitle =
+          'Works with Flashcards, FSL Videos and Stories. Pick one of those to '
+          'use it — a live activity needs its answer choices on screen.';
+    } else if (state.bigPictureOnTv) {
+      subtitle =
+          'The picture, GIF or sign video fills the TV. The whole picture stays '
+          'in view (never cropped) and the word stays underneath; the category '
+          'badge and example sentence are hidden to make room.';
+    } else {
+      subtitle =
+          'The picture sits inside the card. Turn on to fill the TV with it — '
+          'easier to see from the back of the room, or for a learner with low '
+          'vision.';
+    }
+
+    return ProSwitchTile(
+      icon: Icons.zoom_out_map_rounded,
+      label: 'Fullscreen picture & video',
+      caption: subtitle,
+      value: state.bigPictureOnTv,
+      // Null greys the whole row out (title included) — the caption above then
+      // explains which modes it works in.
+      onChanged: applies ? notifier.setBigPictureOnTv : null,
     );
   }
 }
@@ -1195,29 +1388,27 @@ class _CastHistory extends ConsumerWidget {
     final shown = history.take(5).toList();
 
     return Padding(
-      padding: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.only(top: _sectionGap),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const _SectionLabel('Recent casts'),
-              const Spacer(),
-              TextButton(
-                onPressed: () => _confirmClear(context, ref, profile.id),
-                child: const Text('Clear'),
-              ),
-            ],
+          // The header's own trailing slot, so "Clear" sits on the header
+          // baseline like "View All" does on the educator Home — a Row with a
+          // Spacer put it a few pixels off and let a long title shove it out.
+          ProSectionHeader(
+            title: 'Recent casts',
+            trailing: TextButton(
+              onPressed: () => _confirmClear(context, ref, profile.id),
+              child: const Text('Clear'),
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: _headerGap),
           Material(
-            color: hc.surface,
+            color: hc.cardBackground,
             clipBehavior: Clip.antiAlias,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: AppColors.primary.withValues(alpha: 0.15),
-              ),
+              borderRadius: ProSurface.borderRadius,
+              side: BorderSide(color: hc.border),
             ),
             child: Column(
               children: [
@@ -1225,9 +1416,9 @@ class _CastHistory extends ConsumerWidget {
                   if (i > 0)
                     Divider(
                       height: 1,
-                      indent: 16,
-                      endIndent: 16,
-                      color: hc.textSecondary.withValues(alpha: 0.15),
+                      indent: AppSpacing.md,
+                      endIndent: AppSpacing.md,
+                      color: hc.border,
                     ),
                   _CastHistoryRow(summary: shown[i]),
                 ],
@@ -1336,7 +1527,7 @@ class _CastHistoryRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.history_rounded, size: 18, color: AppColors.primary),
+          Icon(Icons.history_rounded, size: 18, color: hc.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1439,7 +1630,7 @@ class _SessionSummaryDialog extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(icon, size: 18, color: AppColors.primary),
+                  Icon(icon, size: 18, color: hc.primary),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -1518,116 +1709,120 @@ class _TimerControlState extends ConsumerState<_TimerControl> {
     final paused = widget.state.timerPausedSecondsLeft != null;
     final finished = widget.state.isTimerFinished;
 
-    return Material(
-      color: hc.surface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _MiniLabel(
-              icon: Icons.timer_outlined,
-              text: 'Lesson timer',
-              hc: hc,
+    // The four presets, as equal-width cells on one line (two lines on a
+    // narrow phone). They were a Wrap, so "1 min" and "10 min" drew different
+    // widths and the row read as four unrelated buttons rather than one scale.
+    final presetRow = ProButtonRow(
+      minCellWidth: 96,
+      children: [
+        for (final p in _presets)
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: hc.primary,
+              side: BorderSide(
+                color: hc.primary.withValues(alpha: 0.4),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 12,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: ProSurface.borderRadius,
+              ),
             ),
-            const SizedBox(height: 8),
-            if (left == null) ...[
-              Text(
-                'Show a countdown in the corner of the TV — for transitions, '
-                'quiet reading, or "five more minutes". The lesson keeps '
-                'playing underneath it.',
-                style: AppTypography.bodySmall.copyWith(
-                  color: hc.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _presets
-                    .map(
-                      (p) => OutlinedButton(
-                        onPressed: () => notifier.startTimer(
-                          Duration(minutes: p.minutes),
-                        ),
-                        child: Text(p.label),
+            onPressed: () =>
+                notifier.startTimer(Duration(minutes: p.minutes)),
+            child: Text(
+              p.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+      ],
+    );
+
+    return ProPanel(
+      padding: AppSpacing.paddingMd,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // No inner label here: the "Lesson timer" section header sits
+          // directly above this panel, and printing it twice is what the
+          // uppercase headers were meant to remove.
+          if (left == null) ...[
+            Text(
+              'Show a countdown in the corner of the TV — for transitions, '
+              'quiet reading, or “five more minutes”. The lesson keeps '
+              'playing underneath it.',
+              style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            presetRow,
+          ] else ...[
+            Row(
+              children: [
+                // Flexible + FittedBox: at a 2.0x font "Time's up" plus the
+                // two icon buttons is wider than a 360dp panel.
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      finished ? "Time's up" : _clock(left),
+                      maxLines: 1,
+                      style: AppTypography.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: finished
+                            ? const Color(0xFFC62828)
+                            : hc.textPrimary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
-                    )
-                    .toList(),
-              ),
-            ] else ...[
-              Row(
-                children: [
-                  Text(
-                    finished ? "Time's up" : _clock(left),
-                    style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: finished
-                          ? const Color(0xFFC62828)
-                          : hc.textPrimary,
-                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
-                  if (paused && !finished) ...[
-                    const SizedBox(width: 10),
-                    Text(
+                ),
+                if (paused && !finished) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  Flexible(
+                    child: Text(
                       'paused',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                       ),
                     ),
-                  ],
-                  const Spacer(),
-                  if (!finished)
-                    IconButton(
-                      onPressed: paused
-                          ? notifier.resumeTimer
-                          : notifier.pauseTimer,
-                      icon: Icon(
-                        paused
-                            ? Icons.play_arrow_rounded
-                            : Icons.pause_rounded,
-                      ),
-                    ),
-                  IconButton(
-                    onPressed: notifier.clearTimer,
-                    icon: const Icon(Icons.close_rounded),
                   ),
                 ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                finished
-                    ? 'The TV is showing "Time\'s up!". Clear it, or start '
-                          'another.'
-                    : 'Showing on the TV, over the lesson.',
-                style: AppTypography.bodySmall.copyWith(
-                  color: hc.textSecondary,
+                const Spacer(),
+                if (!finished)
+                  IconButton(
+                    tooltip: paused ? 'Resume timer' : 'Pause timer',
+                    onPressed: paused
+                        ? notifier.resumeTimer
+                        : notifier.pauseTimer,
+                    icon: Icon(
+                      paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                    ),
+                  ),
+                IconButton(
+                  tooltip: 'Clear timer',
+                  onPressed: notifier.clearTimer,
+                  icon: const Icon(Icons.close_rounded),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _presets
-                    .map(
-                      (p) => OutlinedButton(
-                        onPressed: () => notifier.startTimer(
-                          Duration(minutes: p.minutes),
-                        ),
-                        child: Text(p.label),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              finished
+                  ? 'The TV is showing "Time\'s up!". Clear it, or start '
+                        'another.'
+                  : 'Showing on the TV, over the lesson.',
+              style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            presetRow,
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1644,39 +1839,21 @@ class _TvRemoteControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hc = HCColor.of(context);
     final notifier = ref.read(tvCastSessionProvider.notifier);
 
-    return Material(
-      color: hc.surface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
-      ),
-      child: SwitchListTile(
-        value: state.tvRemoteEnabled,
-        onChanged: notifier.setTvRemoteEnabled,
-        secondary: const Icon(Icons.settings_remote_rounded),
-        title: Text(
-          'Control from the TV remote',
-          style: AppTypography.titleSmall.copyWith(
-            fontWeight: FontWeight.w700,
-            color: hc.textPrimary,
-          ),
-        ),
-        subtitle: Text(
-          state.tvRemoteEnabled
-              ? 'Press ◀ or ▶ on the TV remote to move between cards, signs or '
-                    'story pages, and play/pause to hold. Handy when you\'re at '
-                    'the board and the tablet is on your desk. (OK still just '
-                    'turns on the TV\'s sound.)'
-              : 'The TV remote can\'t change the lesson. Turn on if you want to '
-                    'step through from the board — or leave off for a screen '
-                    'left unattended.',
-          style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
-        ),
-      ),
+    return ProSwitchTile(
+      icon: Icons.settings_remote_rounded,
+      label: 'Control from the TV remote',
+      value: state.tvRemoteEnabled,
+      onChanged: notifier.setTvRemoteEnabled,
+      caption: state.tvRemoteEnabled
+          ? 'Press ◀ or ▶ on the TV remote to move between cards, signs or '
+                'story pages, and play/pause to hold. Handy when you\'re at '
+                'the board and the tablet is on your desk. (OK still just '
+                'turns on the TV\'s sound.)'
+          : 'The TV remote can\'t change the lesson. Turn on if you want to '
+                'step through from the board — or leave off for a screen '
+                'left unattended.',
     );
   }
 }
@@ -1689,58 +1866,85 @@ class _TroubleshootPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return ExpansionTile(
-      title: Text(
-        'Troubleshooting',
-        style: AppTypography.titleSmall.copyWith(
-          fontWeight: FontWeight.w700,
-          color: hc.textPrimary,
-        ),
+    // Boxed in the pro kit's hairline card so the last block on the screen has
+    // the same edge as everything above it — an unboxed ExpansionTile floated
+    // on the background and read as an afterthought.
+    return Material(
+      color: hc.cardBackground,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: ProSurface.borderRadius,
+        side: BorderSide(color: hc.border),
       ),
-      leading: const Icon(Icons.help_outline_rounded),
-      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      children: const [
-        _Tip(text: 'Both phone and TV must be on the SAME Wi-Fi network.'),
-        _Tip(
-          text:
-              'If you\'re on a school or guest Wi-Fi, "AP isolation" may '
-              'block phone-to-TV traffic. Try a regular home network.',
+      child: ExpansionTile(
+        // "Troubleshooting" is one 15-character word, and an ExpansionTile
+        // title sits between a leading icon and the expand arrow — the
+        // narrowest kind of text box in the app. At a 2.0x font on a 360dp
+        // screen it wrapped INSIDE the word ("Troubleshoot / ing"), which is
+        // the one thing a learner or educator reading at 2.0x cannot afford.
+        // Shorter, and plainer English for this audience besides. See the
+        // game-card titles for the same shape.
+        title: Text(
+          'Having trouble?',
+          style: AppTypography.titleSmall.copyWith(
+            fontWeight: FontWeight.w700,
+            color: hc.textPrimary,
+          ),
         ),
-        _Tip(text: 'Samsung TV: open the "Internet" app, type the URL.'),
-        _Tip(text: 'LG TV: open "Web Browser" from the home dashboard.'),
-        _Tip(text: 'Fire TV: install Silk Browser (free), then open URL.'),
-        _Tip(
-          text:
-              'Chromecast with Google TV: open Chrome from the apps list, '
-              'type the URL.',
+        // The tile paints its own divider lines, which would double up with
+        // the card's border now that it's boxed.
+        shape: const Border(),
+        collapsedShape: const Border(),
+        leading: const Icon(Icons.help_outline_rounded),
+        childrenPadding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          0,
+          AppSpacing.md,
+          AppSpacing.md,
         ),
-        _Tip(
-          text: 'Apple TV: AirPlay-mirror a laptop browser showing the URL.',
-        ),
-        _Tip(
-          text:
-              'Not filling the whole TV? Make sure "Fullscreen on TV" is on '
-              'above. On some TVs (e.g. Chromecast / Google TV) press OK on the '
-              'remote once to finish filling the screen.',
-        ),
-        _Tip(
-          text:
-              'You can leave this screen — the cast keeps running. A "Casting '
-              'to TV" bar stays at the bottom of the app so you can pause or '
-              'skip from anywhere, and tapping it brings you back here.',
-        ),
-        _Tip(
-          text:
-              'Only TVs that open your exact cast link (it ends in your cast '
-              'code) can see the lesson. Starting a new cast makes a new code '
-              'and retires the old link.',
-        ),
-        _Tip(
-          text:
-              'Too quiet? The app already speaks at maximum — raise the TV\'s '
-              'volume (or the phone\'s, if sound plays from the phone).',
-        ),
-      ],
+        children: const [
+          _Tip(text: 'Both phone and TV must be on the SAME Wi-Fi network.'),
+          _Tip(
+            text:
+                'If you\'re on a school or guest Wi-Fi, "AP isolation" may '
+                'block phone-to-TV traffic. Try a regular home network.',
+          ),
+          _Tip(text: 'Samsung TV: open the “Internet” app, type the URL.'),
+          _Tip(text: 'LG TV: open “Web Browser” from the home dashboard.'),
+          _Tip(text: 'Fire TV: install Silk Browser (free), then open URL.'),
+          _Tip(
+            text:
+                'Chromecast with Google TV: open Chrome from the apps list, '
+                'type the URL.',
+          ),
+          _Tip(
+            text: 'Apple TV: AirPlay-mirror a laptop browser showing the URL.',
+          ),
+          _Tip(
+            text:
+                'Not filling the whole TV? Make sure “Fullscreen on TV” is on '
+                'above. On some TVs (e.g. Chromecast / Google TV) press OK on the '
+                'remote once to finish filling the screen.',
+          ),
+          _Tip(
+            text:
+                'You can leave this screen — the cast keeps running. A “Casting '
+                'to TV” bar stays at the bottom of the app so you can pause or '
+                'skip from anywhere, and tapping it brings you back here.',
+          ),
+          _Tip(
+            text:
+                'Only TVs that open your exact cast link (it ends in your cast '
+                'code) can see the lesson. Starting a new cast makes a new code '
+                'and retires the old link.',
+          ),
+          _Tip(
+            text:
+                'Too quiet? The app already speaks at maximum — raise the TV\'s '
+                'volume (or the phone\'s, if sound plays from the phone).',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1777,20 +1981,18 @@ class _Tip extends StatelessWidget {
 
 // ─── Section label ─────────────────────────────────────
 
+/// The screen's one section heading, matching the educator Home's
+/// [ProSectionHeader] (uppercase, letter-spaced, optional one-line subtitle)
+/// rather than the playful sentence-case titles of the learner surfaces — this
+/// is a teacher/parent screen and should read as part of that dashboard.
 class _SectionLabel extends StatelessWidget {
   final String text;
-  const _SectionLabel(this.text);
+  final String? subtitle;
+  const _SectionLabel(this.text, {this.subtitle});
 
   @override
   Widget build(BuildContext context) {
-    final hc = HCColor.of(context);
-    return Text(
-      text,
-      style: AppTypography.titleMedium.copyWith(
-        fontWeight: FontWeight.w700,
-        color: hc.textPrimary,
-      ),
-    );
+    return ProSectionHeader(title: text, subtitle: subtitle);
   }
 }
 
@@ -1805,6 +2007,7 @@ const Map<CastTheme, (IconData, Color)> _templateStyle = {
   CastTheme.calm: (Icons.spa_rounded, Color(0xFF80CBC4)),
   CastTheme.seasonal: (Icons.ac_unit_rounded, Color(0xFF8E24AA)),
   CastTheme.highContrast: (Icons.contrast_rounded, Color(0xFF000000)),
+  CastTheme.dyslexia: (Icons.menu_book_rounded, Color(0xFFFAF0D7)),
 };
 
 class _TemplateGallery extends ConsumerWidget {
@@ -1815,7 +2018,7 @@ class _TemplateGallery extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(tvCastSessionProvider.notifier);
     // Surface classroom first (the recommended lit-room default), then the
-    // rest, with high-contrast last as the accessibility option.
+    // rest, with the two accessibility templates last as a pair.
     const order = [
       CastTheme.classroom,
       CastTheme.dark,
@@ -1824,107 +2027,100 @@ class _TemplateGallery extends ConsumerWidget {
       CastTheme.calm,
       CastTheme.seasonal,
       CastTheme.highContrast,
+      CastTheme.dyslexia,
     ];
+    // Eight full-width stacked rows used to run past two screen-heights on
+    // their own. As the Home's compact "More" grid they fit in three rows and
+    // stay comparable side by side, which is how you actually choose a look.
+    //
+    // `caption` is still passed on these compact tiles: it is hidden visually
+    // (that's what compact means) but [ProActionTile] still speaks it, so a
+    // screen-reader user keeps the full "Crisp and neutral — maximum
+    // readability" description that the old stacked rows showed. Sighted users
+    // get it for the current choice in the note below the grid.
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final t in order)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _TemplateCard(
-              theme: t,
-              selected: current == t,
-              onTap: () => notifier.setCastTheme(t),
-            ),
-          ),
+        ProActionGrid(
+          compact: true,
+          tiles: [
+            for (final t in order)
+              ProActionTile(
+                compact: true,
+                icon: _templateStyle[t]?.$1 ?? Icons.tv_rounded,
+                label: t.label,
+                caption: t.description,
+                accent: _templateSwatchFor(context, t),
+                selected: current == t,
+                onTap: () => notifier.setCastTheme(t),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _PickerNote(
+          icon: _templateStyle[current]?.$1 ?? Icons.tv_rounded,
+          text: '${current.label} — ${current.description}',
+        ),
       ],
     );
   }
 }
 
-class _TemplateCard extends StatelessWidget {
-  final CastTheme theme;
-  final bool selected;
-  final VoidCallback onTap;
-  const _TemplateCard({
-    required this.theme,
-    required this.selected,
-    required this.onTap,
-  });
+/// A one-line explanation of the option currently chosen in a picker above it.
+///
+/// Shared by the display-style and progress-view grids so the compact tiles can
+/// stay short without losing the sentence that tells a teacher what they just
+/// picked. Marked as a live region: the text is the only feedback for a change
+/// made two taps up the screen.
+class _PickerNote extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _PickerNote({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    final (icon, swatch) = _templateStyle[theme] ?? (Icons.tv_rounded, AppColors.primary);
     return Semantics(
-      button: true,
-      selected: selected,
-      label: '${theme.label} display style. ${theme.description}',
-      child: Material(
-        color: selected
-            ? AppColors.primary.withValues(alpha: 0.10)
-            : hc.surface,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: selected
-                    ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.15),
-                width: selected ? 2 : 1,
+      liveRegion: true,
+      child: ProPanel(
+        padding: AppSpacing.paddingMd,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: hc.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                text,
+                style: AppTypography.bodySmall.copyWith(
+                  color: hc.textSecondary,
+                ),
               ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: swatch,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  child: Icon(icon, size: 20, color: Colors.white),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        theme.label,
-                        style: AppTypography.titleSmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: hc.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        theme.description,
-                        style: AppTypography.bodySmall
-                            .copyWith(color: hc.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  selected
-                      ? Icons.check_circle_rounded
-                      : Icons.radio_button_unchecked_rounded,
-                  color: selected ? AppColors.primary : hc.textSecondary,
-                ),
-              ],
-            ),
-          ),
+          ],
         ),
       ),
     );
   }
+}
+
+/// The swatch colour for a template's tile accent.
+///
+/// The raw swatches are what the *TV* looks like, so two of them (Light's near
+/// white, High contrast's black) have no contrast against one or other app
+/// theme's card. Those two fall back to a readable neutral, since the tile's
+/// job is to be legible on the tablet — the description is what promises the
+/// look on the TV.
+Color _templateSwatchFor(BuildContext context, CastTheme theme) {
+  final hc = HCColor.of(context);
+  final swatch = _templateStyle[theme]?.$2 ?? hc.primary;
+  return switch (theme) {
+    CastTheme.light || CastTheme.dyslexia => hc.isDark ? swatch : hc.primary,
+    CastTheme.dark || CastTheme.highContrast => hc.isDark
+        ? hc.textSecondary
+        : swatch,
+    _ => swatch,
+  };
 }
 
 // ─── "Show on TV" branding field ───────────────────────
@@ -2009,7 +2205,6 @@ class _AutoAdvanceControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hc = HCColor.of(context);
     final notifier = ref.read(tvCastSessionProvider.notifier);
 
     final noun = switch (state.mode) {
@@ -2018,34 +2213,15 @@ class _AutoAdvanceControl extends ConsumerWidget {
       _ => 'card',
     };
     final subtitle = state.autoAdvanceEnabled
-        ? 'Moves to the next $noun automatically every few seconds.'
+        ? 'Moves to the next $noun on its own every few seconds.'
         : 'Stays on each $noun until you tap Next.';
 
-    // A Material surface (not a coloured Container) so the SwitchListTile can
-    // paint its ink/background — matches the Audio controls card below.
-    return Material(
-      color: hc.surface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
-      ),
-      child: SwitchListTile(
-        value: state.autoAdvanceEnabled,
-        onChanged: notifier.setAutoAdvanceEnabled,
-        secondary: const Icon(Icons.slideshow_rounded),
-        title: Text(
-          'Auto-advance',
-          style: AppTypography.titleSmall.copyWith(
-            fontWeight: FontWeight.w700,
-            color: hc.textPrimary,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
-        ),
-      ),
+    return ProSwitchTile(
+      icon: Icons.slideshow_rounded,
+      label: 'Auto-advance',
+      caption: subtitle,
+      value: state.autoAdvanceEnabled,
+      onChanged: notifier.setAutoAdvanceEnabled,
     );
   }
 }
@@ -2062,7 +2238,6 @@ class _TapOnlyControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hc = HCColor.of(context);
     final notifier = ref.read(tvCastSessionProvider.notifier);
 
     final subtitle = state.flipTapOnly
@@ -2070,29 +2245,12 @@ class _TapOnlyControl extends ConsumerWidget {
               '(and flip back). Works on any TV.'
         : 'The TV shows the emoji only — the photo is hidden.';
 
-    return Material(
-      color: hc.surface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
-      ),
-      child: SwitchListTile(
-        value: state.flipTapOnly,
-        onChanged: notifier.setFlipTapOnly,
-        secondary: const Icon(Icons.touch_app_rounded),
-        title: Text(
-          'Tap Only',
-          style: AppTypography.titleSmall.copyWith(
-            fontWeight: FontWeight.w700,
-            color: hc.textPrimary,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
-        ),
-      ),
+    return ProSwitchTile(
+      icon: Icons.touch_app_rounded,
+      label: 'Tap Only',
+      caption: subtitle,
+      value: state.flipTapOnly,
+      onChanged: notifier.setFlipTapOnly,
     );
   }
 }
@@ -2123,7 +2281,7 @@ class _FlipControl extends ConsumerWidget {
     final flipped = state.cardFlipped;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.only(top: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2131,17 +2289,13 @@ class _FlipControl extends ConsumerWidget {
             onPressed: notifier.flipCard,
             icon: const Icon(Icons.flip_rounded),
             label: Text(flipped ? 'Show emoji' : 'Flip to photo'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
+            style: _castOutlinedButtonStyle(hc),
           ),
           const SizedBox(height: 6),
           Text(
             flipped
                 ? 'The TV is showing the real photo. Tap to flip back to the emoji.'
-                : 'Flip "${card.wordEnglish}" on the TV to its real photo.',
+                : 'Flip “${card.wordEnglish}” on the TV to its real photo.',
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             textAlign: TextAlign.center,
           ),
@@ -2175,7 +2329,7 @@ class _ShowMeControl extends ConsumerWidget {
     final active = state.showMeActive;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.only(top: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2187,18 +2341,17 @@ class _ShowMeControl extends ConsumerWidget {
                   : Icons.play_circle_fill_rounded,
             ),
             label: Text(active ? 'Hide clip' : 'Show Me'),
-            style: FilledButton.styleFrom(
-              backgroundColor: active
+            style: _castFilledButtonStyle(
+              background: active
                   ? AppColors.secondaryDark
                   : AppColors.secondary,
-              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),
           const SizedBox(height: 6),
           Text(
             active
                 ? 'Playing the clip on the TV. Tap to go back to the card.'
-                : 'Play a short clip of "${card.wordEnglish}" in motion on the TV.',
+                : 'Play a short clip of “${card.wordEnglish}” in motion on the TV.',
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             textAlign: TextAlign.center,
           ),
@@ -2239,7 +2392,7 @@ class _StoryImageFlipControl extends ConsumerWidget {
     final showingReal = state.storyImageFlipped;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.only(top: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2247,11 +2400,7 @@ class _StoryImageFlipControl extends ConsumerWidget {
             onPressed: notifier.flipStoryImage,
             icon: const Icon(Icons.flip_rounded),
             label: const Text('Tap to Flip Animation (Cartoon ↔ Picture)'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
+            style: _castOutlinedButtonStyle(hc),
           ),
           const SizedBox(height: 6),
           Text(
@@ -2297,7 +2446,7 @@ class _StoryFslControl extends ConsumerWidget {
     final active = state.storyFslActive;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.only(top: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2309,11 +2458,10 @@ class _StoryFslControl extends ConsumerWidget {
                   : Icons.sign_language_rounded,
             ),
             label: Text(active ? 'Hide FSL' : 'Watch in FSL'),
-            style: FilledButton.styleFrom(
-              backgroundColor: active
+            style: _castFilledButtonStyle(
+              background: active
                   ? AppColors.secondaryDark
                   : AppColors.secondary,
-              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),
           const SizedBox(height: 6),
@@ -2392,10 +2540,14 @@ class _StoryFslReadyStatusState extends State<_StoryFslReadyStatus> {
               color: Color(0xFF4CAF50),
             ),
             const SizedBox(width: 6),
-            Text(
-              'Ready to play',
-              style: AppTypography.labelSmall.copyWith(
-                color: const Color(0xFF4CAF50),
+            // Flexible for the same reason as its flashcard twin below: the
+            // row overflowed a narrow phone at a 2.0x font.
+            Flexible(
+              child: Text(
+                'Ready to play',
+                style: AppTypography.labelSmall.copyWith(
+                  color: const Color(0xFF4CAF50),
+                ),
               ),
             ),
           ],
@@ -2412,9 +2564,13 @@ class _StoryFslReadyStatusState extends State<_StoryFslReadyStatus> {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
           const SizedBox(width: 6),
-          Text(
-            'Preparing video…',
-            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+          Flexible(
+            child: Text(
+              'Preparing video…',
+              style: AppTypography.labelSmall.copyWith(
+                color: hc.textSecondary,
+              ),
+            ),
           ),
         ],
       ),
@@ -2448,50 +2604,45 @@ class _AudioControls extends ConsumerWidget {
           : 'Turn on Text-to-Speech in Settings to hear this.';
     }
 
-    // Use a Material (not a decorated Container) as the surface so the
-    // SwitchListTiles paint their background/ink on it — a Container's opaque
-    // colour would otherwise hide those effects (Flutter asserts on this).
-    return Material(
-      color: hc.surface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
-      ),
+    // One bordered panel holding both switches and the output picker, so the
+    // whole of "Audio" reads as a single block on the educator surface rather
+    // than three cards of three different shapes. `standalone: false` on the
+    // switches suppresses their own borders inside it.
+    return ProPanel(
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
-          SwitchListTile(
+          ProSwitchTile(
+            standalone: false,
+            icon: Icons.record_voice_over_rounded,
+            label: 'Speak words & narrate',
+            caption: narrateSubtitle,
             value: state.castAudioEnabled,
             onChanged: notifier.setCastAudioEnabled,
-            secondary: const Icon(Icons.record_voice_over_rounded),
-            title: Text(
-              'Speak words & narrate',
-              style: AppTypography.titleSmall.copyWith(
-                fontWeight: FontWeight.w700,
-                color: hc.textPrimary,
-              ),
-            ),
-            subtitle: Text(
-              narrateSubtitle,
-              style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
-            ),
           ),
           if (state.castAudioEnabled)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                AppSpacing.md,
+              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Play sound on',
-                    style: AppTypography.labelMedium.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: hc.textSecondary,
-                    ),
+                  _MiniLabel(
+                    icon: Icons.speaker_rounded,
+                    text: 'Play sound on',
+                    hc: hc,
                   ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
+                  const SizedBox(height: AppSpacing.sm),
+                  // Two equal cells: "TV" and "This phone" are wildly different
+                  // lengths, so as chips the pair looked like a small button
+                  // beside a big one rather than one either/or choice.
+                  ProButtonRow(
+                    minCellWidth: 120,
+                    maxPerRow: 2,
                     children: [
                       _AudioTargetChip(
                         label: 'TV',
@@ -2553,23 +2704,17 @@ class _AudioControls extends ConsumerWidget {
                 ],
               ),
             ),
-          Divider(height: 1, color: hc.textSecondary.withValues(alpha: 0.15)),
-          SwitchListTile(
+          Divider(height: 1, color: hc.border),
+          ProSwitchTile(
+            standalone: false,
+            icon: Icons.volume_up_rounded,
+            label: 'Play TV video sound',
+            caption:
+                'Off by default so signs stay muted (Deaf-friendly). Turn on '
+                'for signs that include a spoken voiceover. May not work on '
+                'older TVs.',
             value: state.tvVideoSoundEnabled,
             onChanged: notifier.setTvVideoSound,
-            secondary: const Icon(Icons.volume_up_rounded),
-            title: Text(
-              'Play TV video sound',
-              style: AppTypography.titleSmall.copyWith(
-                fontWeight: FontWeight.w700,
-                color: hc.textPrimary,
-              ),
-            ),
-            subtitle: Text(
-              'Off by default so signs stay muted (Deaf-friendly). Turn on for '
-              'signs that include a spoken voiceover. May not work on older TVs.',
-              style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
-            ),
           ),
         ],
       ),
@@ -2642,7 +2787,8 @@ class _TvAudioStatusLine extends StatelessWidget {
   }
 }
 
-/// A single TV-vs-phone choice chip for the audio-output selector.
+/// A single TV-vs-phone segment for the audio-output selector — the same
+/// rectangle as [_PrefChip], with a leading icon.
 class _AudioTargetChip extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -2658,25 +2804,62 @@ class _AudioTargetChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChoiceChip(
+    final hc = HCColor.of(context);
+    final fg = selected ? Colors.white : hc.primary;
+    return Semantics(
+      button: true,
       selected: selected,
-      avatar: Icon(
-        icon,
-        size: 18,
-        color: selected ? Colors.white : AppColors.primary,
+      label: label,
+      excludeSemantics: true,
+      child: Material(
+        color: selected
+            ? hc.primary
+            : Color.alphaBlend(
+                hc.primary.withValues(alpha: 0.06),
+                hc.cardBackground,
+              ),
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: ProSurface.borderRadius,
+          side: BorderSide(
+            color: selected
+                ? hc.primary
+                : hc.primary.withValues(alpha: 0.25),
+            width: selected ? 2 : ProSurface.borderWidth,
+          ),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: 12,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: fg),
+                const SizedBox(width: AppSpacing.sm),
+                // Flexible, not Expanded: the icon + label stay centred as a
+                // pair, and "This phone" still wraps inside its own cell at a
+                // 2.0x font instead of running under the icon.
+                Flexible(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelMedium.copyWith(
+                      color: fg,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
-      label: Text(label),
-      labelStyle: AppTypography.labelMedium.copyWith(
-        color: selected ? Colors.white : AppColors.primary,
-        fontWeight: FontWeight.w700,
-      ),
-      selectedColor: AppColors.primary,
-      backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.25)),
-      ),
-      onSelected: (_) => onTap(),
     );
   }
 }
@@ -2726,13 +2909,8 @@ class _FslWordPicker extends ConsumerWidget {
     }
 
     if (entries.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: hc.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: hc.textSecondary.withValues(alpha: 0.2)),
-        ),
+      return ProPanel(
+        padding: AppSpacing.paddingMd,
         child: Text(
           'No FSL videos in this category yet.',
           style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
@@ -2762,16 +2940,23 @@ class _FslWordPicker extends ConsumerWidget {
                 avatar: _FslCachedDot(card: card),
                 label: Text(card.wordEnglish),
                 labelStyle: AppTypography.labelMedium.copyWith(
-                  color: selected ? Colors.white : AppColors.primary,
+                  color: selected ? Colors.white : hc.primary,
                   fontWeight: FontWeight.w700,
                 ),
                 backgroundColor: selected
-                    ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.08),
+                    ? hc.primary
+                    : hc.primary.withValues(alpha: 0.08),
+                // Squared off to match the rest of the screen. This strip
+                // stays a horizontal scroller rather than a grid: a category
+                // can carry a dozen signs, and a grid of them would push the
+                // controls below off the screen.
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: ProSurface.borderRadius,
                   side: BorderSide(
-                    color: AppColors.primary.withValues(alpha: 0.25),
+                    color: selected
+                        ? hc.primary
+                        : hc.primary.withValues(alpha: 0.25),
+                    width: selected ? 2 : ProSurface.borderWidth,
                   ),
                 ),
                 onPressed: () => notifier.jumpToSlide(cardIndex),
@@ -2800,7 +2985,9 @@ class _FslCachedDot extends StatelessWidget {
         return Icon(
           cached ? Icons.check_circle_rounded : Icons.cloud_download_rounded,
           size: 16,
-          color: cached ? const Color(0xFF4CAF50) : AppColors.primary,
+          color: cached
+              ? const Color(0xFF4CAF50)
+              : HCColor.of(context).primary,
         );
       },
     );
@@ -2819,13 +3006,8 @@ class _CastPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: hc.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-      ),
+    return ProPanel(
+      padding: AppSpacing.paddingMd,
       child: _buildContent(context, hc),
     );
   }
@@ -2910,7 +3092,7 @@ class _CastPreview extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     finished
-                        ? 'Finished — the TV is showing "The End". '
+                        ? 'Finished — the TV is showing “The End”. '
                               'Back re-reads the last page.'
                         : 'Page ${page + 1} / $total',
                     style: AppTypography.labelSmall.copyWith(
@@ -2926,11 +3108,7 @@ class _CastPreview extends StatelessWidget {
       case CastMode.progress:
         return Row(
           children: [
-            const Icon(
-              Icons.leaderboard_rounded,
-              color: AppColors.primary,
-              size: 32,
-            ),
+            Icon(Icons.leaderboard_rounded, color: hc.primary, size: 32),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
@@ -2947,7 +3125,7 @@ class _CastPreview extends StatelessWidget {
       case CastMode.live:
         return Row(
           children: [
-            const Icon(Icons.quiz_rounded, color: AppColors.primary, size: 32),
+            Icon(Icons.quiz_rounded, color: hc.primary, size: 32),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
@@ -3034,10 +3212,15 @@ class _FslReadyStatusState extends State<_FslReadyStatus> {
             color: Color(0xFF4CAF50),
           ),
           const SizedBox(width: 6),
-          Text(
-            'Ready to play',
-            style: AppTypography.labelSmall.copyWith(
-              color: const Color(0xFF4CAF50),
+          // Flexible so the label wraps instead of running off the card: at a
+          // 2.0x font on a 360dp phone this row overflowed by 58px, and it is
+          // how the teacher knows the sign clip is downloaded.
+          Flexible(
+            child: Text(
+              'Ready to play',
+              style: AppTypography.labelSmall.copyWith(
+                color: const Color(0xFF4CAF50),
+              ),
             ),
           ),
         ],
@@ -3052,9 +3235,11 @@ class _FslReadyStatusState extends State<_FslReadyStatus> {
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
         const SizedBox(width: 6),
-        Text(
-          'Preparing video…',
-          style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+        Flexible(
+          child: Text(
+            'Preparing video…',
+            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+          ),
         ),
       ],
     );

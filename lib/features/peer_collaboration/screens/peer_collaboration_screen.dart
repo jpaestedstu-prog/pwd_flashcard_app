@@ -34,6 +34,7 @@ import '../../multiplayer/widgets/race_sign_launcher.dart';
 import '../models/collab_models.dart';
 import '../models/collab_presentation.dart';
 import '../services/collab_session_store.dart';
+import '../../../core/utils/seeded_random.dart';
 
 const _uuid = Uuid();
 
@@ -181,7 +182,7 @@ class _PeerCollaborationScreenState
     final all = ref.read(allFlashcardsProvider);
     if (all.isEmpty) return const [];
 
-    final random = Random();
+    final random = contentRandom();
     final pool = [...all]..shuffle(random);
 
     // Word Relay spells the target out one letter per turn, so a long word is
@@ -203,7 +204,7 @@ class _PeerCollaborationScreenState
     CollabPresentation presentation,
   ) {
     final pool = ref.read(allFlashcardsProvider);
-    final random = Random();
+    final random = contentRandom();
 
     return cards.map((card) {
       // Distractors come from the same pool so the options always look like
@@ -465,7 +466,7 @@ class _PeerCollaborationScreenState
     final expected = session.expectedLetter;
     if (expected == null) return const [];
     const alphabet = 'abcdefghijklmnopqrstuvwxyz';
-    final random = Random();
+    final random = contentRandom();
     final letters = <String>{expected};
     while (letters.length < _p.choiceCount) {
       letters.add(alphabet[random.nextInt(alphabet.length)]);

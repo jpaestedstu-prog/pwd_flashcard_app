@@ -196,7 +196,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Remove from Portfolio?'),
         content: Text(
-            'Remove "${item.title}" from your showcase? You can always add it back later.'),
+            'Remove “${item.title}” from your showcase? You can always add it back later.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -238,7 +238,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
               controller: titleController,
               decoration: InputDecoration(
                 labelText: 'Title',
-                hintText: 'e.g., "My Favorite Game"',
+                hintText: 'e.g., “My Favorite Game”',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),

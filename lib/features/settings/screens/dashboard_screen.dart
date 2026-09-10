@@ -16,6 +16,8 @@ import '../../../core/services/session_tracker.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Dashboard for Parent/Teacher roles — provides an overview of the
 /// student's learning progress, weak areas, and recommendations.
@@ -65,9 +67,13 @@ class DashboardScreen extends ConsumerWidget {
     final isViewingAsStudent = ref
         .read(profileProvider.notifier)
         .isViewingAsStudent;
+    final l10n = AppLocalizations.of(context);
     final viewingLabel = isViewingAsStudent
-        ? '${profile?.name ?? 'Student'} Dashboard'
-        : '${profile?.role.label ?? 'Teacher'} Dashboard';
+        ? (l10n?.dashboardTitleForPerson(profile?.name ?? 'Student') ??
+            '${profile?.name ?? 'Student'} Dashboard')
+        : (l10n?.dashboardTitleForRole(
+                profile?.role.labelOf(l10n) ?? 'Teacher') ??
+            '${profile?.role.label ?? 'Teacher'} Dashboard');
 
     return PopScope(
       canPop: !isViewingAsStudent,
@@ -97,10 +103,8 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
           actions: [
-            Semantics(
-              button: true,
-              label: 'Export data as CSV spreadsheet',
-              child: IconButton(
+            IconButton(
+                tooltip: 'Export data as CSV spreadsheet',
                 onPressed: profile != null
                     ? () {
                         CsvExportService.generateAndShare(
@@ -111,13 +115,9 @@ class DashboardScreen extends ConsumerWidget {
                       }
                     : null,
                 icon: const Icon(Icons.table_chart_rounded),
-                tooltip: 'Export CSV Data',
-              ),
-            ),
-            Semantics(
-              button: true,
-              label: 'Export progress report as PDF',
-              child: IconButton(
+                ),
+            IconButton(
+                tooltip: 'Export progress report as PDF',
                 onPressed: profile != null
                     ? () {
                         ReportGenerator.generateAndShare(
@@ -128,18 +128,12 @@ class DashboardScreen extends ConsumerWidget {
                       }
                     : null,
                 icon: const Icon(Icons.picture_as_pdf_rounded),
-                tooltip: 'Export PDF Report',
-              ),
-            ),
-            Semantics(
-              button: true,
-              label: 'Export research data for thesis analysis',
-              child: IconButton(
+                ),
+            IconButton(
+                tooltip: 'Export research data for thesis analysis',
                 onPressed: () => context.push('/research-export'),
                 icon: const Icon(Icons.science_rounded),
-                tooltip: 'Research Export',
-              ),
-            ),
+                ),
             const SizedBox(width: 4),
           ],
         ),
@@ -479,8 +473,11 @@ class _MetricCard extends StatelessWidget {
                 color: color,
               ),
             ),
-            Text(
+            // Three metric cards share the row, so each label gets a third
+            // of it: "Word / s" and "Badg / es".
+            FitText(
               label,
+              maxLines: 1,
               style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
             ),
           ],
@@ -601,8 +598,11 @@ class _MiniMetric extends StatelessWidget {
                 color: color,
               ),
             ),
-            Text(
+            // Three metric cards share the row, so each label gets a third
+            // of it: "Word / s" and "Badg / es".
+            FitText(
               label,
+              maxLines: 1,
               style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
             ),
           ],
@@ -963,57 +963,73 @@ class _StudyTimeSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 90,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: dailyMinutes.entries.toList().reversed.map((entry) {
-                final fraction = maxDaily > 0
-                    ? (entry.value / maxDaily).clamp(0.0, 1.0)
-                    : 0.0;
-                // Parse day label
-                final parts = entry.key.split('-');
-                final dayLabel = parts.length == 3 ? parts[2] : '';
+          // Bars and day labels in two intrinsically-sized rows rather than
+          // one fixed-height box. A 90 px box held a value label, a 54 px bar
+          // and a day label — under 90 px only at the default font, and over
+          // it from the Large step upward, which is where this screen's
+          // readers actually live. Same shape, and same fix, as the "This
+          // Week" chart on the educator dashboards.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: dailyMinutes.entries.toList().reversed.map((entry) {
+              final fraction = maxDaily > 0
+                  ? (entry.value / maxDaily).clamp(0.0, 1.0)
+                  : 0.0;
 
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (entry.value > 0)
-                          Text(
-                            '${entry.value}',
-                            style: AppTypography.labelSmall.copyWith(
-                              fontSize: 9,
-                              color: hc.textSecondary,
-                            ),
-                          ),
-                        const SizedBox(height: 2),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 400),
-                          height: fraction * 50 + 4,
-                          decoration: BoxDecoration(
-                            color: entry.value > 0
-                                ? AppColors.primary
-                                : AppColors.border,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (entry.value > 0)
                         Text(
-                          dayLabel,
+                          '${entry.value}',
+                          textAlign: TextAlign.center,
                           style: AppTypography.labelSmall.copyWith(
                             fontSize: 9,
                             color: hc.textSecondary,
                           ),
                         ),
-                      ],
+                      const SizedBox(height: 2),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 400),
+                        height: fraction * 50 + 4,
+                        decoration: BoxDecoration(
+                          color: entry.value > 0
+                              ? AppColors.primary
+                              : AppColors.border,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: dailyMinutes.keys.toList().reversed.map((key) {
+              // Parse day label
+              final parts = key.split('-');
+              final dayLabel = parts.length == 3 ? parts[2] : '';
+
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Text(
+                    dayLabel,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.labelSmall.copyWith(
+                      fontSize: 9,
+                      color: hc.textSecondary,
                     ),
                   ),
-                );
-              }).toList(),
-            ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),

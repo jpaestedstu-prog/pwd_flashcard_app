@@ -16,7 +16,7 @@ import '../../assessment/providers/assessment_provider.dart';
 import '../../assessment/widgets/learner_assignment_sync.dart';
 import '../../assessment/widgets/pending_assignments_banner.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
-import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../../providers/tile_grid_active_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../../messaging/providers/messaging_providers.dart';
 import '../../object_scan/word_hunt_entry.dart';
@@ -64,7 +64,7 @@ class ChildHomeScreen extends ConsumerWidget {
     // register with the shell's gaze D-pad and show a focus ring. Pure
     // pass-through otherwise, so the gaze-off layout / touch are unchanged.
     final gazeHomeOn = ref.watch(
-      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+      tileGridActiveProvider,
     );
     final gazeGrid = GazeTileGridBuilder(active: gazeHomeOn);
 
@@ -250,6 +250,25 @@ class ChildHomeScreen extends ConsumerWidget {
                     .first,
               ),
             ),
+
+          // ─── Section: My Day ─────────────────────
+          // First, and on its own: the routine an adult set for this child is
+          // the thing they open on a school morning, and burying it under
+          // Games would mean the child who most needs a visual schedule has
+          // to scroll past four hubs to reach it. The section is declared
+          // here so its gaze row lands in the same place it is drawn.
+          const _ChildSectionHeader(emoji: '🗓️', title: 'My Day'),
+          grid([
+            entry(
+              emoji: '🗓️',
+              label: 'My Day',
+              gradient: const [
+                AppColors.bannerRoutineStart,
+                AppColors.bannerRoutineEnd,
+              ],
+              onTap: () => context.push('/routine'),
+            ),
+          ]),
 
           // ─── Section: Play & Learn (core hub) ────
           // Mirrors the Student home's core tiles: Games, Cards, Stories,

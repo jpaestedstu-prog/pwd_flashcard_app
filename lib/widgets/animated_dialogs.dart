@@ -150,6 +150,10 @@ Future<T?> showAnimatedBottomSheet<T>(
 }) {
   return showModalBottomSheet<T>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: isScrollControlled,
     useSafeArea: useSafeArea,
     backgroundColor: Colors.transparent,

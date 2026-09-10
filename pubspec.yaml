@@ -122,6 +122,12 @@ flutter:
     - assets/images/games/
     - assets/animations/
     - assets/sounds/
+    # Star Shop sound packs. Flutter's directory entries are not
+    # recursive, so each pack folder needs its own line or the pack is
+    # sold but plays nothing.
+    - assets/sounds/chiptune/
+    - assets/sounds/nature/
+    - assets/sounds/space/
     - assets/data/
     # TV-side static web assets (HTML/CSS/JS) served by the
     # in-app shelf server for the TV Cast feature.

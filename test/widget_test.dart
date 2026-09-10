@@ -29,7 +29,7 @@ void main() {
     Hive.init('./build/test_cache/widget_test');
     for (final name in _appBoxes) {
       if (!Hive.isBoxOpen(name)) {
-        await Hive.openBox(name);
+        await Hive.openBox(name, compactionStrategy: (_, _) => false);
       }
     }
   });

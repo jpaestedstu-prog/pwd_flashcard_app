@@ -262,7 +262,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Your disability type changed to "${_selectedDisability.label}". '
+              'Your disability type changed to '
+        '“${_selectedDisability.labelOf(AppLocalizations.of(context))}”. '
               'Would you like to auto-configure accessibility settings?',
               style: AppTypography.bodyMedium,
             ),
@@ -274,10 +275,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       children: [
                         Text(c.emoji, style: const TextStyle(fontSize: 16)),
                         const SizedBox(width: 8),
-                        Text('${c.name}: ',
-                            style: AppTypography.bodySmall
-                                .copyWith(fontWeight: FontWeight.w600)),
-                        Text(c.value, style: AppTypography.bodySmall),
+                        Flexible(
+                          child: Text('${c.name}: ',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.bodySmall
+                                  .copyWith(fontWeight: FontWeight.w600)),
+                        ),
+                        Flexible(
+                          child: Text(c.value,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.bodySmall),
+                        ),
                       ],
                     ),
                   )),
@@ -605,6 +615,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           DropdownButtonFormField<GradeLevel?>(
+            // The selected grade label is wider than the field at a large text
+            // scale; `isExpanded` lets it ellipse instead of overflowing.
+            isExpanded: true,
             initialValue: _selectedGradeLevel,
             decoration: InputDecoration(
               hintText: 'Select grade level',
@@ -681,7 +694,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 children: [
                   Icon(Icons.calendar_today_rounded, color: hc.textSecondary),
                   const SizedBox(width: 12),
-                  Text(
+                  Flexible(child: Text(
                     _selectedBirthDate != null
                         ? '${_selectedBirthDate!.month}/${_selectedBirthDate!.day}/${_selectedBirthDate!.year}'
                           '  (Age: ${_ageFrom(_selectedBirthDate!)})'
@@ -691,7 +704,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           ? hc.textPrimary
                           : hc.textSecondary,
                     ),
-                  ),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
                   const Spacer(),
                   if (_selectedBirthDate != null)
                     GestureDetector(
@@ -815,8 +830,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(cat.emoji,
-                              style: const TextStyle(fontSize: 16)),
+                          Flexible(child: Text(cat.emoji,
+                              style: const TextStyle(fontSize: 16),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
                           const SizedBox(width: 6),
                           Text(cat.label,
                               style: AppTypography.bodySmall.copyWith(
@@ -988,7 +1006,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       Text('Role',
                           style: AppTypography.labelSmall
                               .copyWith(color: hc.textSecondary)),
-                      Text(profile.role.label,
+                      Text(profile.role.labelOf(AppLocalizations.of(context)),
                           style: AppTypography.bodyMedium
                               .copyWith(fontWeight: FontWeight.w600)),
                     ],
@@ -1025,7 +1043,8 @@ class _DisabilityTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Semantics(
-        label: '${type.label}${isSelected ? ', selected' : ''}',
+        label: '${type.labelOf(AppLocalizations.of(context))}'
+            '${isSelected ? ', selected' : ''}',
         button: true,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -1048,10 +1067,10 @@ class _DisabilityTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(type.label,
+                    Text(type.labelOf(AppLocalizations.of(context)),
                         style: AppTypography.bodyMedium
                             .copyWith(fontWeight: FontWeight.w600)),
-                    Text(type.description,
+                    Text(type.descriptionOf(AppLocalizations.of(context)),
                         style: AppTypography.bodySmall
                             .copyWith(color: hc.textSecondary)),
                   ],

@@ -50,6 +50,10 @@ class SettingsScreen extends ConsumerWidget {
     // `double.infinity` on phones so this is a no-op there.
     final maxWidth = context.maxContentWidth;
 
+    // Nullable on purpose: every string below keeps its English
+    // fallback, so a widget test without the delegate still renders.
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
@@ -70,7 +74,7 @@ class SettingsScreen extends ConsumerWidget {
               Semantics(
                 label:
                     'Profile: ${profile?.name ?? 'No profile'}, '
-                    '${profile?.role.label ?? 'unknown role'}. '
+                    '${profile?.role.labelOf(l10n) ?? 'unknown role'}. '
                     'Tap switch to change profile.',
                 child: Container(
                   padding: const EdgeInsets.all(16),
@@ -118,7 +122,7 @@ class SettingsScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 Text(
-                                  profile?.profileTypeLabel ?? '',
+                                  profile?.profileTypeLabelOf(l10n) ?? '',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.bodySmall.copyWith(
@@ -136,11 +140,14 @@ class SettingsScreen extends ConsumerWidget {
                         children: [
                           TextButton(
                             onPressed: () => context.push('/edit-profile'),
-                            child: const Text('Edit'),
+                            child: Text(AppLocalizations.of(context)?.edit ?? 'Edit'),
                           ),
                           TextButton(
                             onPressed: () => context.push('/profile-switcher'),
-                            child: const Text('Switch'),
+                            child: Text(
+                              AppLocalizations.of(context)?.switchProfile ??
+                                  'Switch',
+                            ),
                           ),
                           TextButton(
                             onPressed: () =>
@@ -148,7 +155,7 @@ class SettingsScreen extends ConsumerWidget {
                             child: Text(
                               profile?.hasPinProtection == true
                                   ? '🔒 PIN'
-                                  : '🔓 Set PIN',
+                                  : '🔓 ${AppLocalizations.of(context)?.setPin ?? 'Set PIN'}',
                             ),
                           ),
                         ],
@@ -173,7 +180,15 @@ class SettingsScreen extends ConsumerWidget {
                 title:
                     AppLocalizations.of(context)?.highContrastMode ??
                     'High Contrast Mode',
-                subtitle: 'Bolder colors & thicker borders',
+                subtitle: l10n?.settingHighContrastDesc ??
+                      'Bolder colors & thicker borders',
+                onTap: () => ((v) => settingsNotifier.update(
+                    settings.copyWith(
+                      highContrastMode: v,
+                      darkMode: v ? false : settings.darkMode,
+                    ),
+                  ))(!(settings.highContrastMode)),
+                toggled: settings.highContrastMode,
                 trailing: Switch.adaptive(
                   value: settings.highContrastMode,
                   activeTrackColor: AppColors.primary,
@@ -189,7 +204,15 @@ class SettingsScreen extends ConsumerWidget {
               _SettingsTile(
                 icon: Icons.dark_mode_rounded,
                 title: AppLocalizations.of(context)?.darkMode ?? 'Dark Mode',
-                subtitle: 'Easier on the eyes in low light',
+                subtitle: l10n?.settingDarkModeDesc ??
+                      'Easier on the eyes in low light',
+                onTap: () => ((v) => settingsNotifier.update(
+                    settings.copyWith(
+                      darkMode: v,
+                      highContrastMode: v ? false : settings.highContrastMode,
+                    ),
+                  ))(!(settings.darkMode)),
+                toggled: settings.darkMode,
                 trailing: Switch.adaptive(
                   value: settings.darkMode,
                   activeTrackColor: AppColors.primary,
@@ -211,7 +234,16 @@ class SettingsScreen extends ConsumerWidget {
                 title:
                     AppLocalizations.of(context)?.dyslexiaMode ??
                     'Dyslexia-friendly',
-                subtitle: 'Cream background, Lexend font, wider letter spacing',
+                subtitle: l10n?.settingDyslexiaDesc ??
+                      'Cream background, Lexend font, wider letter spacing',
+                onTap: () => ((v) => settingsNotifier.update(
+                    settings.copyWith(
+                      dyslexiaMode: v,
+                      highContrastMode: v ? false : settings.highContrastMode,
+                      darkMode: v ? false : settings.darkMode,
+                    ),
+                  ))(!(settings.dyslexiaMode)),
+                toggled: settings.dyslexiaMode,
                 trailing: Switch.adaptive(
                   value: settings.dyslexiaMode,
                   activeTrackColor: AppColors.primary,
@@ -228,7 +260,7 @@ class SettingsScreen extends ConsumerWidget {
               _SettingsTile(
                 icon: Icons.text_fields_rounded,
                 title: AppLocalizations.of(context)?.fontSize ?? 'Font Size',
-                subtitle: _fontSizeLabel(settings.fontScale),
+                subtitle: _fontSizeLabel(l10n, settings.fontScale),
                 trailing: SizedBox(
                   width: 150,
                   child: Slider(
@@ -293,7 +325,12 @@ class SettingsScreen extends ConsumerWidget {
                 title:
                     AppLocalizations.of(context)?.reducedMotion ??
                     'Reduced Motion',
-                subtitle: 'Minimize animations',
+                subtitle: l10n?.settingReducedMotionDesc ??
+                      'Minimize animations',
+                onTap: () => ((v) => settingsNotifier.update(
+                    settings.copyWith(reducedMotion: v),
+                  ))(!(settings.reducedMotion)),
+                toggled: settings.reducedMotion,
                 trailing: Switch.adaptive(
                   value: settings.reducedMotion,
                   activeTrackColor: AppColors.primary,
@@ -305,10 +342,16 @@ class SettingsScreen extends ConsumerWidget {
 
               _SettingsTile(
                 icon: Icons.record_voice_over_rounded,
-                title: 'Voice-Guided Navigation',
+                title: l10n?.voiceNavigation ?? 'Voice-Guided Navigation',
                 subtitle: settings.voiceNavigation
-                    ? 'Announces screens & buttons aloud'
-                    : 'Enable for visually impaired users',
+                    ? l10n?.settingVoiceNavOnDesc ??
+                      'Announces screens & buttons aloud'
+                    : l10n?.settingVoiceNavOffDesc ??
+                      'Enable for visually impaired users',
+                onTap: () => ((v) => settingsNotifier.update(
+                    settings.copyWith(voiceNavigation: v),
+                  ))(!(settings.voiceNavigation)),
+                toggled: settings.voiceNavigation,
                 trailing: Switch.adaptive(
                   value: settings.voiceNavigation,
                   activeTrackColor: AppColors.primary,
@@ -318,13 +361,31 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
 
+              // The Voice-Guided Mode screen — its own settings plus a spoken
+              // tour of the app — had no entry point anywhere, so the people it
+              // was built for could not reach it. Shown only once the feature
+              // is on, so it does not clutter the list for everyone else.
+              if (settings.voiceNavigation)
+                _SettingsTile(
+                  icon: Icons.headset_mic_rounded,
+                  title: 'Voice Guide & Tour',
+                  subtitle: 'Hear how each screen works',
+                  onTap: () => context.push('/voice-guided'),
+                ),
+
               if (!isMonitor)
                 _SettingsTile(
                   icon: Icons.auto_awesome_rounded,
-                  title: 'Adaptive Difficulty',
+                  title: l10n?.adaptiveDifficulty ?? 'Adaptive Difficulty',
                   subtitle: settings.adaptiveDifficulty
-                      ? 'Auto-suggests difficulty based on progress'
-                      : 'Manual difficulty selection only',
+                      ? l10n?.settingAdaptiveOnDesc ??
+                      'Auto-suggests difficulty based on progress'
+                      : l10n?.settingAdaptiveOffDesc ??
+                      'Manual difficulty selection only',
+                  onTap: () => ((v) => settingsNotifier.update(
+                      settings.copyWith(adaptiveDifficulty: v),
+                    ))(!(settings.adaptiveDifficulty)),
+                  toggled: settings.adaptiveDifficulty,
                   trailing: Switch.adaptive(
                     value: settings.adaptiveDifficulty,
                     activeTrackColor: AppColors.primary,
@@ -340,12 +401,21 @@ class SettingsScreen extends ConsumerWidget {
               // likely to scroll that far, and nothing about it is a data setting.
               _SettingsTile(
                 icon: Icons.remove_red_eye_rounded,
-                title: 'Gaze Control (Preview)',
-                subtitle: 'Hands-free: move your head or blink to select',
-                trailing: IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-                  onPressed: () => context.push('/gaze-settings'),
-                ),
+                title: l10n?.settingGazeControlTitle ?? 'Gaze Control (Preview)',
+                subtitle: l10n?.settingGazeControlDesc ??
+                      'Hands-free: move your head or blink to select',
+                onTap: () => context.push('/gaze-settings'),
+              ),
+
+              // Bluetooth game controller. Sits next to Gaze Control because
+              // it answers the same question — how does a learner who cannot
+              // use the touchscreen drive the app — with different hardware.
+              _SettingsTile(
+                icon: Icons.sports_esports_rounded,
+                title: l10n?.settingGamepadTitle ?? 'Game Controller',
+                subtitle: l10n?.settingGamepadDesc ??
+                      'Navigate by Bluetooth gamepad, with spoken feedback',
+                onTap: () => context.push('/gamepad-settings'),
               ),
 
               const SizedBox(height: 28),
@@ -358,7 +428,10 @@ class SettingsScreen extends ConsumerWidget {
               // persisted: see [fullscreenModeProvider] for why a presentation
               // mode that survived a restart would be a bug, not a feature.
               if (isMonitor) ...[
-                const _SectionHeader(title: 'Presentation'),
+                _SectionHeader(
+                  title: l10n?.settingSectionPresentation ??
+                      'Presentation',
+                ),
                 const SizedBox(height: 8),
 
                 _SettingsTile(
@@ -367,8 +440,13 @@ class SettingsScreen extends ConsumerWidget {
                       AppLocalizations.of(context)?.fslFullscreen ??
                       'Fullscreen',
                   subtitle: fullscreen
-                      ? 'Nav bar hidden, app bars collapsed — until you turn it off'
-                      : 'Hide the nav bar and app bars for class or TV display',
+                      ? l10n?.settingFullscreenOnDesc ??
+                      'Nav bar hidden, app bars collapsed — until you turn it off'
+                      : l10n?.settingFullscreenOffDesc ??
+                      'Hide the nav bar and app bars for class or TV display',
+                  onTap: () => ((v) =>
+                        ref.read(fullscreenModeProvider.notifier).state = v)(!(fullscreen)),
+                  toggled: fullscreen,
                   trailing: Switch.adaptive(
                     value: fullscreen,
                     activeTrackColor: AppColors.primary,
@@ -383,15 +461,24 @@ class SettingsScreen extends ConsumerWidget {
               // ─── Learning Modes Section ────────
               // Learner-only — hidden for Teacher / Parent monitoring profiles.
               if (!isMonitor) ...[
-                const _SectionHeader(title: 'Learning Modes'),
+                _SectionHeader(
+                  title: l10n?.settingSectionLearningModes ??
+                      'Learning Modes',
+                ),
                 const SizedBox(height: 8),
 
                 _SettingsTile(
                   icon: Icons.slow_motion_video_rounded,
-                  title: 'Slow-Motion Mode',
+                  title: l10n?.settingSlowMotionTitle ?? 'Slow-Motion Mode',
                   subtitle: settings.slowMotionEnabled
-                      ? 'Games & flashcards animate at half speed'
-                      : 'Slow gameplay & flashcard animations down',
+                      ? l10n?.settingSlowMotionOnDesc ??
+                      'Games & flashcards animate at half speed'
+                      : l10n?.settingSlowMotionOffDesc ??
+                      'Slow gameplay & flashcard animations down',
+                  onTap: () => ((v) => settingsNotifier.update(
+                      settings.copyWith(slowMotionEnabled: v),
+                    ))(!(settings.slowMotionEnabled)),
+                  toggled: settings.slowMotionEnabled,
                   trailing: Switch.adaptive(
                     value: settings.slowMotionEnabled,
                     activeTrackColor: AppColors.primary,
@@ -403,10 +490,16 @@ class SettingsScreen extends ConsumerWidget {
 
                 _SettingsTile(
                   icon: Icons.support_rounded,
-                  title: 'Learning Assist',
+                  title: l10n?.settingLearningAssistTitle ?? 'Learning Assist',
                   subtitle: settings.learningAssistEnabled
-                      ? 'Shows "why" hints and a 50/50 helper in quizzes'
-                      : 'Plain quizzes — no hints or explanations',
+                      ? l10n?.settingLearningAssistOnDesc ??
+                      'Shows “why” hints and a 50/50 helper in quizzes'
+                      : l10n?.settingLearningAssistOffDesc ??
+                      'Plain quizzes — no hints or explanations',
+                  onTap: () => ((v) => settingsNotifier.update(
+                      settings.copyWith(learningAssistEnabled: v),
+                    ))(!(settings.learningAssistEnabled)),
+                  toggled: settings.learningAssistEnabled,
                   trailing: Switch.adaptive(
                     value: settings.learningAssistEnabled,
                     activeTrackColor: AppColors.primary,
@@ -418,8 +511,9 @@ class SettingsScreen extends ConsumerWidget {
 
                 _SettingsTile(
                   icon: Icons.flag_rounded,
-                  title: 'Daily Mission Size',
-                  subtitle: '${settings.dailyMissionSize} words per day',
+                  title: l10n?.settingDailyMissionTitle ?? 'Daily Mission Size',
+                  subtitle: l10n?.settingDailyMissionDesc(settings.dailyMissionSize) ??
+                      '${settings.dailyMissionSize} words per day',
                   trailing: SizedBox(
                     width: 150,
                     child: Slider(
@@ -450,7 +544,12 @@ class SettingsScreen extends ConsumerWidget {
                   title:
                       AppLocalizations.of(context)?.textToSpeech ??
                       'Text-to-Speech',
-                  subtitle: 'Hear words spoken aloud',
+                  subtitle: l10n?.settingTtsDesc ??
+                      'Hear words spoken aloud',
+                  onTap: () => ((v) => settingsNotifier.update(
+                      settings.copyWith(ttsEnabled: v),
+                    ))(!(settings.ttsEnabled)),
+                  toggled: settings.ttsEnabled,
                   trailing: Switch.adaptive(
                     value: settings.ttsEnabled,
                     activeTrackColor: AppColors.primary,
@@ -465,14 +564,17 @@ class SettingsScreen extends ConsumerWidget {
                   title:
                       AppLocalizations.of(context)?.speechSpeed ??
                       'Speech Speed',
-                  subtitle: _speedLabel(settings.ttsSpeed),
+                  subtitle: _speedLabel(l10n, settings.ttsSpeed),
+                  // Four bucket names spread over eight stops, so the bucket
+                  // alone cannot tell a learner their press registered.
+                  semanticsValue: _speedSpoken(l10n, settings.ttsSpeed),
                   trailing: SizedBox(
                     width: 150,
                     child: Slider(
                       value: settings.ttsSpeed,
                       min: 0.3,
                       divisions: 7,
-                      label: _speedLabel(settings.ttsSpeed),
+                      label: _speedLabel(l10n, settings.ttsSpeed),
                       onChanged: settings.ttsEnabled
                           ? (v) => settingsNotifier.update(
                               settings.copyWith(ttsSpeed: v),
@@ -487,7 +589,12 @@ class SettingsScreen extends ConsumerWidget {
                   title:
                       AppLocalizations.of(context)?.soundEffects ??
                       'Sound Effects',
-                  subtitle: 'Game sounds & feedback',
+                  subtitle: l10n?.settingSoundEffectsDesc ??
+                      'Game sounds & feedback',
+                  onTap: () => ((v) => settingsNotifier.update(
+                      settings.copyWith(soundEffects: v),
+                    ))(!(settings.soundEffects)),
+                  toggled: settings.soundEffects,
                   trailing: Switch.adaptive(
                     value: settings.soundEffects,
                     activeTrackColor: AppColors.primary,
@@ -499,10 +606,16 @@ class SettingsScreen extends ConsumerWidget {
 
                 _SettingsTile(
                   icon: Icons.mic_rounded,
-                  title: 'Speech-to-Text',
+                  title: l10n?.speechToText ?? 'Speech-to-Text',
                   subtitle: settings.speechToText
-                      ? 'Voice input enabled in games'
-                      : 'Tap to enable voice input for games',
+                      ? l10n?.settingSttOnDesc ??
+                      'Voice input enabled in games'
+                      : l10n?.settingSttOffDesc ??
+                      'Tap to enable voice input for games',
+                  onTap: () => ((v) => settingsNotifier.update(
+                      settings.copyWith(speechToText: v),
+                    ))(!(settings.speechToText)),
+                  toggled: settings.speechToText,
                   trailing: Switch.adaptive(
                     value: settings.speechToText,
                     activeTrackColor: AppColors.primary,
@@ -514,10 +627,16 @@ class SettingsScreen extends ConsumerWidget {
 
                 _SettingsTile(
                   icon: Icons.smart_toy_rounded,
-                  title: 'AI Companion',
+                  title: l10n?.settingCompanionTitle ?? 'AI Companion',
                   subtitle: settings.aiCompanionEnabled
-                      ? 'Floating buddy — tap it any time for help'
-                      : 'Turn on your floating learning buddy',
+                      ? l10n?.settingCompanionOnDesc ??
+                      'Floating buddy — tap it any time for help'
+                      : l10n?.settingCompanionOffDesc ??
+                      'Turn on your floating learning buddy',
+                  onTap: () => ((v) => settingsNotifier.update(
+                      settings.copyWith(aiCompanionEnabled: v),
+                    ))(!(settings.aiCompanionEnabled)),
+                  toggled: settings.aiCompanionEnabled,
                   trailing: Switch.adaptive(
                     value: settings.aiCompanionEnabled,
                     activeTrackColor: AppColors.primary,
@@ -577,6 +696,26 @@ class SettingsScreen extends ConsumerWidget {
                           settings.reminderMinute,
                         )
                       : 'Off',
+                  onTap: () => ((v) async {
+                      if (v) {
+                        final granted =
+                            await NotificationService.requestPermission();
+                        if (!granted) return;
+                        settingsNotifier.update(
+                          settings.copyWith(notificationsEnabled: true),
+                        );
+                        await NotificationService.scheduleDailyReminder(
+                          hour: settings.reminderHour,
+                          minute: settings.reminderMinute,
+                        );
+                      } else {
+                        settingsNotifier.update(
+                          settings.copyWith(notificationsEnabled: false),
+                        );
+                        await NotificationService.cancelDailyReminder();
+                      }
+                    })(!(settings.notificationsEnabled)),
+                  toggled: settings.notificationsEnabled,
                   trailing: Switch.adaptive(
                     value: settings.notificationsEnabled,
                     activeTrackColor: AppColors.primary,
@@ -632,7 +771,7 @@ class SettingsScreen extends ConsumerWidget {
                           );
                         }
                       },
-                      child: const Text('Change'),
+                      child: Text(l10n?.changeLabel ?? 'Change'),
                     ),
                   ),
 
@@ -640,10 +779,27 @@ class SettingsScreen extends ConsumerWidget {
                 if (settings.notificationsEnabled)
                   _SettingsTile(
                     icon: Icons.psychology_rounded,
-                    title: 'Vocab Review Reminder',
-                    subtitle: settings.vocabReviewEnabled
-                        ? 'Reminds you to review weak words'
-                        : 'Off',
+                    title: l10n?.settingVocabReviewTitle ?? 'Vocab Review Reminder',
+                    // Describes the setting, not its state: the switch shows
+                    // that visually and `toggled` speaks it. A subtitle of
+                    // "Off" made the row read "Vocab Review Reminder. Off.
+                    // Off." — every other row in this screen works this way.
+                    subtitle: l10n?.settingVocabReviewDesc ??
+                      'Reminds you to review weak words',
+                    onTap: () => ((v) async {
+                        settingsNotifier.update(
+                          settings.copyWith(vocabReviewEnabled: v),
+                        );
+                        if (profile != null) {
+                          await ReviewReminderService.scheduleIfNeeded(
+                            profileId: profile.id,
+                            enabled: v,
+                            hour: settings.reminderHour,
+                            minute: settings.reminderMinute,
+                          );
+                        }
+                      })(!(settings.vocabReviewEnabled)),
+                    toggled: settings.vocabReviewEnabled,
                     trailing: Switch.adaptive(
                       value: settings.vocabReviewEnabled,
                       activeTrackColor: const Color(0xFF7C4DFF),
@@ -667,7 +823,7 @@ class SettingsScreen extends ConsumerWidget {
               ],
 
               // ─── Backup & Restore Section ──────
-              const _SectionHeader(title: 'Data'),
+              _SectionHeader(title: l10n?.settingSectionData ?? 'Data'),
               const SizedBox(height: 8),
 
               // Cloud Sync
@@ -676,33 +832,27 @@ class SettingsScreen extends ConsumerWidget {
 
               _SettingsTile(
                 icon: Icons.backup_rounded,
-                title: 'Backup & Restore',
-                subtitle: 'Save or restore all app data',
-                trailing: IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-                  onPressed: () => context.push('/backup'),
-                ),
+                title: l10n?.settingBackupRestoreTitle ?? 'Backup & Restore',
+                subtitle: l10n?.settingBackupRestoreDesc ??
+                      'Save or restore all app data',
+                onTap: () => context.push('/backup'),
               ),
 
               _SettingsTile(
                 icon: Icons.vpn_key_rounded,
-                title: 'Cloud Recovery Code',
-                subtitle: 'Restore this profile on a new device',
-                trailing: IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-                  onPressed: () => context.push('/recovery/show'),
-                ),
+                title: l10n?.settingRecoveryCodeTitle ?? 'Cloud Recovery Code',
+                subtitle: l10n?.settingRecoveryCodeDesc ??
+                      'Restore this profile on a new device',
+                onTap: () => context.push('/recovery/show'),
               ),
 
               if (isMonitor)
                 _SettingsTile(
                   icon: Icons.cloud_sync_rounded,
-                  title: 'Backup & Link Account',
-                  subtitle: 'Sign in with email to restore on any device',
-                  trailing: IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-                    onPressed: () => context.push('/backup-account'),
-                  ),
+                  title: l10n?.settingCloudAccountTitle ?? 'Backup & Link Account',
+                  subtitle: l10n?.settingCloudAccountDesc ??
+                      'Sign in with email to restore on any device',
+                  onTap: () => context.push('/backup-account'),
                 ),
 
               // "Classroom Mode" (real-time student monitoring + casting) is a
@@ -711,12 +861,10 @@ class SettingsScreen extends ConsumerWidget {
               if (profile?.isPlayerMode != true)
                 _SettingsTile(
                   icon: Icons.cast_for_education_rounded,
-                  title: 'Classroom Mode',
-                  subtitle: 'Monitor all students in real time',
-                  trailing: IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-                    onPressed: () => context.push('/classroom'),
-                  ),
+                  title: l10n?.classroomMode ?? 'Classroom Mode',
+                  subtitle: l10n?.settingClassroomModeDesc ??
+                      'Monitor all students in real time',
+                  onTap: () => context.push('/classroom'),
                 ),
 
               // Accessibility wizard & gaze input are learner-facing onboarding /
@@ -724,12 +872,11 @@ class SettingsScreen extends ConsumerWidget {
               if (!isMonitor) ...[
                 _SettingsTile(
                   icon: Icons.accessibility_new_rounded,
-                  title: 'Re-run Accessibility Setup',
-                  subtitle: 'Restart the accessibility wizard',
-                  trailing: IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-                    onPressed: () => context.push('/accessibility-setup'),
-                  ),
+                  title: l10n?.settingAccessibilitySetupTitle ??
+                      'Re-run Accessibility Setup',
+                  subtitle: l10n?.settingAccessibilitySetupDesc ??
+                      'Restart the accessibility wizard',
+                  onTap: () => context.push('/accessibility-setup'),
                 ),
               ],
 
@@ -738,23 +885,19 @@ class SettingsScreen extends ConsumerWidget {
               if (isMonitor)
                 _SettingsTile(
                   icon: Icons.manage_accounts_rounded,
-                  title: 'Manage Profiles',
-                  subtitle: 'Delete profiles saved on this device',
-                  trailing: IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-                    onPressed: () => context.push('/manage-profiles'),
-                  ),
+                  title: l10n?.settingManageProfilesTitle ?? 'Manage Profiles',
+                  subtitle: l10n?.settingManageProfilesDesc ??
+                      'Delete profiles saved on this device',
+                  onTap: () => context.push('/manage-profiles'),
                 ),
 
               if (isMonitor)
                 _SettingsTile(
                   icon: Icons.family_restroom_rounded,
-                  title: 'Parental Controls',
-                  subtitle: 'Set time limits & content restrictions',
-                  trailing: IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-                    onPressed: () => context.push('/parental-controls'),
-                  ),
+                  title: l10n?.settingChildControlsTitle ?? 'Parental Controls',
+                  subtitle: l10n?.settingChildControlsDesc ??
+                      'Set time limits & content restrictions',
+                  onTap: () => context.push('/parental-controls'),
                 ),
 
               if (isMonitor) const _TelemetryToggle(),
@@ -763,8 +906,9 @@ class SettingsScreen extends ConsumerWidget {
               if (!isMonitor)
                 _SettingsTile(
                   icon: Icons.replay_rounded,
-                  title: 'Replay Tutorials',
-                  subtitle: 'Show tutorial guides again on all screens',
+                  title: l10n?.settingReplayTutorialsTitle ?? 'Replay Tutorials',
+                  subtitle: l10n?.settingReplayTutorialsDesc ??
+                      'Show tutorial guides again on all screens',
                   trailing: IconButton(
                     icon: const Icon(Icons.refresh_rounded, size: 20),
                     onPressed: () async {
@@ -802,12 +946,13 @@ class SettingsScreen extends ConsumerWidget {
                 trailing: const SizedBox.shrink(),
               ),
 
-              const _SettingsTile(
+              _SettingsTile(
                 icon: Icons.school_rounded,
-                title: 'Purpose',
+                title: l10n?.settingPurposeTitle ?? 'Purpose',
                 subtitle:
-                    'Interactive vocabulary building app for PWD students using flashcards, games, and Filipino Sign Language.',
-                trailing: SizedBox.shrink(),
+                    l10n?.settingPurposeDesc ??
+                      'Interactive vocabulary building app for PWD students using flashcards, games, and Filipino Sign Language.',
+                trailing: const SizedBox.shrink(),
               ),
 
               _SettingsTile(
@@ -818,10 +963,7 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle:
                     AppLocalizations.of(context)?.pwdAwarenessSubtitle ??
                     'Understanding & respecting Persons with Disabilities',
-                trailing: IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-                  onPressed: () => context.push('/pwd-awareness'),
-                ),
+                onTap: () => context.push('/pwd-awareness'),
               ),
 
               const SizedBox(height: 40),
@@ -850,18 +992,31 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  String _fontSizeLabel(double v) {
-    if (v <= 0.85) return 'Small';
-    if (v <= 1.05) return 'Normal';
-    if (v <= 1.25) return 'Large';
-    return 'Extra Large';
+  String _fontSizeLabel(AppLocalizations? l10n, double v) {
+    if (v <= 0.85) return l10n?.fontSizeSmall ?? 'Small';
+    if (v <= 1.05) return l10n?.fontSizeNormal ?? 'Normal';
+    if (v <= 1.25) return l10n?.fontSizeLarge ?? 'Large';
+    return l10n?.fontSizeExtraLarge ?? 'Extra Large';
   }
 
-  String _speedLabel(double v) {
-    if (v <= 0.4) return 'Very Slow';
-    if (v <= 0.6) return 'Slow';
-    if (v <= 0.8) return 'Normal';
-    return 'Fast';
+  String _speedLabel(AppLocalizations? l10n, double v) {
+    if (v <= 0.4) return l10n?.speechSpeedVerySlow ?? 'Very Slow';
+    if (v <= 0.6) return l10n?.speechSpeedSlow ?? 'Slow';
+    if (v <= 0.8) return l10n?.speechSpeedNormal ?? 'Normal';
+    return l10n?.speechSpeedFast ?? 'Fast';
+  }
+
+  /// The speed as it is *spoken*: the bucket name plus the exact stop.
+  ///
+  /// "Slow, 4 of 8" changes on every press, which is what tells a learner
+  /// driving by ear that the control answered them — and it matches the
+  /// "3 of 42" counting the controller uses everywhere else.
+  String _speedSpoken(AppLocalizations? l10n, double v) {
+    const stops = 8; // min 0.3 … max 1.0, divisions 7
+    final step = (((v - 0.3) / 0.1).round() + 1).clamp(1, stops);
+    final label = _speedLabel(l10n, v);
+    return l10n?.speechSpeedSpoken(label, step, stops) ??
+        '$label, $step of $stops';
   }
 
   String _formatTime(int hour, int minute) {
@@ -1012,11 +1167,19 @@ class _SetPinDialogState extends State<_SetPinDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.hasExistingPin ? 'Change PIN' : 'Set Profile PIN'),
+      title: Text(
+        widget.hasExistingPin
+            ? (AppLocalizations.of(context)?.changePinTitle ?? 'Change PIN')
+            : (AppLocalizations.of(context)?.setProfilePinTitle ??
+                'Set Profile PIN'),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Choose a 4-digit PIN to protect your profile.'),
+          Text(
+            AppLocalizations.of(context)?.pinPrompt ??
+                'Choose a 4-digit PIN to protect your profile.',
+          ),
           const SizedBox(height: 16),
           TextField(
             controller: _pinController,
@@ -1064,9 +1227,9 @@ class _SetPinDialogState extends State<_SetPinDialog> {
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(), // cancel
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.of(context)?.cancel ?? 'Cancel'),
         ),
-        FilledButton(onPressed: _submit, child: const Text('Set PIN')),
+        FilledButton(onPressed: _submit, child: Text(AppLocalizations.of(context)?.setPin ?? 'Set PIN')),
       ],
     );
   }
@@ -1124,17 +1287,106 @@ class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final Widget trailing;
+
+  /// The row's own action. When given, the **whole row** is tappable and the
+  /// trailing chevron is drawn automatically.
+  ///
+  /// Previously every row's only target was that chevron — a ~40 px square at
+  /// the far right of a full-width row. That is a poor target for a learner
+  /// with a motor impairment, and for a controller it meant focus landed on a
+  /// bare `IconButton` containing nothing but an icon, so the row announced
+  /// itself as "Unnamed item".
+  final VoidCallback? onTap;
+
+  /// A custom trailing control (a switch, a value chip). Rows that have one
+  /// are not themselves tappable — the control is the thing to operate.
+  final Widget? trailing;
+
+  /// What the *spoken* label should say instead of [subtitle].
+  ///
+  /// Exists for sliders whose visible subtitle is a coarse bucket ("Slow")
+  /// covering several stops. On screen that reads cleanly, because the thumb
+  /// shows the rest; spoken, two presses in a row that both say "Slow" sound
+  /// like the second one did nothing. This carries the exact position instead,
+  /// without cluttering what a sighted learner sees.
+  final String? semanticsValue;
+
+  /// Current state of the row's switch, when it has one.
+  ///
+  /// A sighted learner reads a switch at a glance; spoken, the row said only
+  /// "Sound Effects. Game sounds & feedback" both before and after a press, so
+  /// a learner using the controller had no way to tell what they had just
+  /// turned on or off — the one thing they needed to hear.
+  final bool? toggled;
 
   const _SettingsTile({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.trailing,
-  });
+    this.onTap,
+    this.trailing,
+    this.semanticsValue,
+    this.toggled,
+  }) : assert(
+          onTap != null || trailing != null,
+          'a settings row needs either an action or a control',
+        );
 
   @override
   Widget build(BuildContext context) {
+    // One label for the whole row, so a controller (and a screen reader) says
+    // "Game Controller. Navigate by Bluetooth gamepad…" rather than naming the
+    // icon button it happened to focus.
+    return Semantics(
+      container: true,
+      button: onTap != null,
+      label: _spokenLabel(context),
+      toggled: toggled,
+      excludeSemantics: true,
+      child: _wrapTap(context, _row(context)),
+    );
+  }
+
+  /// What the row says out loud: name, then state, then detail.
+  ///
+  /// State comes second because it is the part that changes — a learner
+  /// stepping down a column of switches hears the names go by, and the word
+  /// right after the name is the answer to "is this one on?".
+  String _spokenLabel(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final detail = semanticsValue ?? subtitle;
+    if (toggled == null) return '$title. $detail';
+    final state =
+        toggled! ? (l10n?.settingOn ?? 'On') : (l10n?.settingOff ?? 'Off');
+    // A subtitle that is *itself* the state would be read twice ("Off. Off").
+    // Call sites are meant to describe the setting and leave the state to
+    // `toggled`; this keeps a slip from reaching the learner's ear.
+    if (detail.trim().toLowerCase() == state.toLowerCase()) {
+      return '$title. $state';
+    }
+    return '$title. $state. $detail';
+  }
+
+  Widget _wrapTap(BuildContext context, Widget child) {
+    if (onTap == null) return child;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        // The label repeated *inside* the tappable area, not only on the
+        // wrapper above it. Focus lands on this InkWell, and a controller
+        // looking for its name searches downwards first — where it would
+        // otherwise hit the title `Text` and stop, announcing "Sound Effects"
+        // with neither the state nor the detail. The outer `Semantics` still
+        // owns what a screen reader reads; this copy is what the controller
+        // finds. `excludeSemantics` above keeps it out of the a11y tree.
+        child: Semantics(label: _spokenLabel(context), child: child),
+      ),
+    );
+  }
+
+  Widget _row(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1180,7 +1432,29 @@ class _SettingsTile extends StatelessWidget {
               ],
             ),
           ),
-          trailing,
+          // When the row itself is the control, the trailing switch must not
+          // *also* take focus. A Switch is focusable by default and wins the
+          // traversal order, so focus landed inside its internals — a subtree
+          // with no text — and the row announced "Unnamed item" even though it
+          // carried a perfectly good label. One focusable per row: the row.
+          if (trailing != null)
+            onTap == null
+                // No row action means the trailing widget *is* the control —
+                // a slider, a dropdown. Focus lands deep inside it, far below
+                // the row's own label, so repeat the label right here where
+                // the focused node can actually find it.
+                ? Semantics(
+                    container: true,
+                    label: _spokenLabel(context),
+                    child: trailing!,
+                  )
+                : ExcludeFocus(child: trailing!)
+          else
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 18,
+              color: HCColor.of(context).textSecondary,
+            ),
         ],
       ),
     );
@@ -1217,12 +1491,23 @@ class _TelemetryToggleState extends State<_TelemetryToggle> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return _SettingsTile(
       icon: Icons.insights_rounded,
-      title: 'Help improve the app',
+      title: l10n?.settingResearchDataTitle ?? 'Help improve the app',
       subtitle: _enabled
-          ? 'Sending anonymous crash & usage data to the research team'
-          : 'Off — no data leaves this device',
+          ? l10n?.settingResearchDataOnDesc ??
+                      'Sending anonymous crash & usage data to the research team'
+          : l10n?.settingResearchDataOffDesc ??
+                      'Off — no data leaves this device',
+      onTap: () => (_set)(!(_enabled)),
+      toggled: _enabled,
+      // The visible subtitle already leads with "Off —"; spoken after the
+      // state word that would stutter ("Off. Off — no data…").
+      semanticsValue: _enabled
+          ? l10n?.settingResearchDataOnDesc ??
+                      'Sending anonymous crash & usage data to the research team'
+          : 'No data leaves this device',
       trailing: Switch.adaptive(
         value: _enabled,
         activeTrackColor: AppColors.primary,
@@ -1253,7 +1538,8 @@ class _SizePresetButton extends StatelessWidget {
         onTap: onTap,
         child: Semantics(
           button: true,
-          label: 'Set font size to $label',
+          label: AppLocalizations.of(context)?.setFontSizeTo(label) ??
+              'Set font size to $label',
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(vertical: 12),

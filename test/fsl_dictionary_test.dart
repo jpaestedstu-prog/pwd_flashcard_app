@@ -30,7 +30,7 @@ void main() {
       'custom_cards',
       'sessions',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
   });
 
@@ -50,6 +50,37 @@ void main() {
       tester,
       // Worst case for the title row and the Replay/Close row: a long English
       // word with a long Filipino gloss under it.
+      () => Scaffold(
+        body: Align(
+          alignment: Alignment.bottomCenter,
+          child: SingleChildScrollView(
+            child: FslVideoSheet(
+              videoSource: _StubSource(),
+              wordEnglish: 'Partly Cloudy',
+              wordFilipino: 'Bahagyang Maulap',
+            ),
+          ),
+        ),
+      ),
+    );
+  });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The pass above renders under Flutter's default theme, which is not a theme
+  // any learner sees. The dyslexia theme adds a 1.6 line height and 0.6 letter
+  // spacing on top of its own font sizes; high contrast overrides the text
+  // theme and outlines every card. Narrow portrait at 1.5x/2.0x, where a
+  // theme's metrics bite first.
+  testWidgets('FslDictionaryScreen survives the accessibility themes',
+      (tester) async {
+    await expectScreenSurvivesThemes(tester, () => const FslDictionaryScreen());
+  });
+
+  testWidgets('the word-video sheet survives the accessibility themes',
+      (tester) async {
+    await expectScreenSurvivesThemes(
+      tester,
       () => Scaffold(
         body: Align(
           alignment: Alignment.bottomCenter,

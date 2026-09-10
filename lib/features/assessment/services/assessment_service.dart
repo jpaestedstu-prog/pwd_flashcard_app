@@ -512,7 +512,7 @@ class AssessmentService {
       case QuestionFormat.multipleChoice:
         return AssessmentQuestion(
           id: 'q_${card.id}',
-          questionText: 'What is the Filipino word for "${card.wordEnglish}"?',
+          questionText: 'What is the Filipino word for “${card.wordEnglish}”?',
           correctAnswer: card.wordFilipino,
           choices: choicesWithDistractors(),
           category: card.category,
@@ -523,7 +523,7 @@ class AssessmentService {
           id: 'q_${card.id}',
           questionText:
               'Fill in the blank: The Filipino translation of '
-              '"${card.wordEnglish}" is _____.',
+              '“${card.wordEnglish}” is _____.',
           correctAnswer: card.wordFilipino,
           choices: const [],
           format: QuestionFormat.fillInBlank,
@@ -542,7 +542,7 @@ class AssessmentService {
         return AssessmentQuestion(
           id: 'q_${card.id}',
           questionText:
-              'True or False: "${card.wordEnglish}" is "$displayWord" in Filipino.',
+              'True or False: “${card.wordEnglish}” is “$displayWord” in Filipino.',
           correctAnswer: isTrue ? 'True' : 'False',
           choices: const ['True', 'False'],
           format: QuestionFormat.trueFalse,
@@ -553,7 +553,7 @@ class AssessmentService {
         // Falls back to multiple choice for matching
         return AssessmentQuestion(
           id: 'q_${card.id}',
-          questionText: 'Match: "${card.wordEnglish}" → ?',
+          questionText: 'Match: “${card.wordEnglish}” → ?',
           correctAnswer: card.wordFilipino,
           choices: choicesWithDistractors(),
           category: card.category,
@@ -611,8 +611,8 @@ class AssessmentService {
     // Randomly decide direction: English→Filipino or Filipino→English
     final englishToFilipino = rng.nextBool();
     final questionText = englishToFilipino
-        ? 'What is the Filipino word for "${card.wordEnglish}"?'
-        : 'What is the English word for "${card.wordFilipino}"?';
+        ? 'What is the Filipino word for “${card.wordEnglish}”?'
+        : 'What is the English word for “${card.wordFilipino}”?';
     final correctAnswer = englishToFilipino ? card.wordFilipino : card.wordEnglish;
 
     // Generate distractors
@@ -655,7 +655,7 @@ class AssessmentService {
     }
 
     final questionText =
-        '"${card.wordEnglish}" in Filipino is "$displayedTranslation"';
+        '“${card.wordEnglish}” in Filipino is “$displayedTranslation”';
     final correctAnswer = isTrue ? 'True' : 'False';
 
     return AssessmentQuestion(
@@ -675,8 +675,8 @@ class AssessmentService {
   ) {
     final askFilipino = rng.nextBool();
     final questionText = askFilipino
-        ? 'Type the Filipino word for "${card.wordEnglish}":'
-        : 'Type the English word for "${card.wordFilipino}":';
+        ? 'Type the Filipino word for “${card.wordEnglish}”:'
+        : 'Type the English word for “${card.wordFilipino}”:';
     final correctAnswer = askFilipino ? card.wordFilipino : card.wordEnglish;
 
     return AssessmentQuestion(

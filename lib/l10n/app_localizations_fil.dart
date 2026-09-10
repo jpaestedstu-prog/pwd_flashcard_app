@@ -42,7 +42,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get profile => 'Profile';
 
   @override
-  String get accessibility => 'Accessibility';
+  String get accessibility => 'Aksesibilidad';
 
   @override
   String get audio => 'Audio';
@@ -54,7 +54,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get highContrastMode => 'Mataas na Contrast';
 
   @override
-  String get darkMode => 'Dark Mode';
+  String get darkMode => 'Madilim na Mode';
 
   @override
   String get fontSize => 'Laki ng Font';
@@ -227,7 +227,30 @@ class AppLocalizationsFil extends AppLocalizations {
       'Naka-on ang Reduced Motion, kaya marahan itong ipapakita.';
 
   @override
+  String get soundPackNeedsSound =>
+      'Naka-off ang Sound Effects, kaya hindi maririnig ang pack na ito hangga’t hindi mo ito bubuksan.';
+
+  @override
   String get recommendedForYou => 'Inirerekomenda para sa iyo';
+
+  @override
+  String get seeIt => 'Tingnan';
+
+  @override
+  String get hearIt => 'Pakinggan';
+
+  @override
+  String previewOf(String name) {
+    return 'Silip sa $name';
+  }
+
+  @override
+  String starsToGo(int count) {
+    return '$count pang bituin ang kailangan';
+  }
+
+  @override
+  String get keepEarning => 'Ipagpatuloy ang pagkolekta';
 
   @override
   String get goodToKnow => 'Dapat mong malaman';
@@ -466,13 +489,13 @@ class AppLocalizationsFil extends AppLocalizations {
   String get saveOrRestoreData => 'I-save o i-restore ang lahat ng data';
 
   @override
-  String get classroomMode => 'Classroom Mode';
+  String get classroomMode => 'Mode ng Silid-Aralan';
 
   @override
   String get monitorStudents => 'I-monitor ang lahat ng mag-aaral sa real time';
 
   @override
-  String get classroomView => 'Classroom View';
+  String get classroomView => 'Silid-Aralan';
 
   @override
   String get refresh => 'I-refresh';
@@ -496,13 +519,13 @@ class AppLocalizationsFil extends AppLocalizations {
   String get lastUpdated => 'Huling na-update';
 
   @override
-  String get voiceNavigation => 'Voice-Guided Navigation';
+  String get voiceNavigation => 'Paggabay sa Pamamagitan ng Boses';
 
   @override
   String get voiceNavigationDesc => 'I-announce ang mga screen nang malakas';
 
   @override
-  String get adaptiveDifficulty => 'Adaptive na Kahirapan';
+  String get adaptiveDifficulty => 'Adaptive na Antas ng Hirap';
 
   @override
   String get adaptiveDifficultyDesc => 'Auto-suggest ng kahirapan sa laro';
@@ -583,7 +606,7 @@ class AppLocalizationsFil extends AppLocalizations {
       'Pumili ng 4-digit na PIN para protektahan ang iyong profile.';
 
   @override
-  String get accessibilitySetup => 'Accessibility Setup';
+  String get accessibilitySetup => 'Pag-setup ng Aksesibilidad';
 
   @override
   String get weWillOptimize =>
@@ -644,10 +667,10 @@ class AppLocalizationsFil extends AppLocalizations {
   String get chooseCategory => 'Pumili ng kategorya para magsimulang matuto!';
 
   @override
-  String get importLabel => 'Import';
+  String get importLabel => 'I-import';
 
   @override
-  String get exportLabel => 'Export';
+  String get exportLabel => 'I-export';
 
   @override
   String importedCards(int count) {
@@ -674,7 +697,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String deleteConfirm(String name) {
-    return 'Sigurado ka bang gusto mong tanggalin si \"$name\"? Hindi na ito maibabalik.';
+    return 'Sigurado ka bang gusto mong tanggalin ang “$name”? Hindi na ito maibabalik.';
   }
 
   @override
@@ -712,7 +735,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String noFslVideo(String word) {
-    return 'Wala pang FSL video para sa \"$word\".';
+    return 'Wala pang FSL video para sa “$word”.';
   }
 
   @override
@@ -927,7 +950,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get days => 'araw';
 
   @override
-  String get leaderboard => 'Leaderboard 🏆';
+  String get leaderboard => 'Talaan ng mga Nangunguna 🏆';
 
   @override
   String get noEntriesYet =>
@@ -1234,14 +1257,14 @@ class AppLocalizationsFil extends AppLocalizations {
       'Para sa paglalaro at pag-aaral tungkol sa PWD awareness.';
 
   @override
-  String get groupClassroom => 'Classroom';
+  String get groupClassroom => 'Silid-Aralan';
 
   @override
   String get groupClassroomDesc =>
       'Learning environment na pinamamahalaan ng guro.';
 
   @override
-  String get groupFamily => 'Family Group';
+  String get groupFamily => 'Pangkat ng Pamilya';
 
   @override
   String get groupFamilyDesc =>
@@ -1294,11 +1317,11 @@ class AppLocalizationsFil extends AppLocalizations {
   String get pwdAwarenessEntry => 'Matuto tungkol sa PWD awareness';
 
   @override
-  String get pwdAwarenessTitle => 'PWD Awareness';
+  String get pwdAwarenessTitle => 'Kamalayan sa PWD';
 
   @override
   String get pwdAwarenessSubtitle =>
-      'Pag-unawa at paggalang sa mga Persons with Disabilities';
+      'Pag-unawa at paggalang sa mga Taong May Kapansanan';
 
   @override
   String youJoined(String name) {
@@ -1439,7 +1462,7 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
-  String get wordHuntSayTakePhoto => 'Sabihin ang \"kuha\"';
+  String get wordHuntSayTakePhoto => 'Sabihin ang “kuha”';
 
   @override
   String wordHuntFoundTarget(String words) {
@@ -1865,6 +1888,10 @@ class AppLocalizationsFil extends AppLocalizations {
       'Superstar ka! Subukan ang mas mahirap na antas!';
 
   @override
+  String get resultAmazingHintNoLevels =>
+      'Superstar ka! Tama ang lahat ng sagot mo!';
+
+  @override
   String get resultGreat => 'Magaling! 🎉';
 
   @override
@@ -2094,11 +2121,8 @@ class AppLocalizationsFil extends AppLocalizations {
   String get isThisPrompt => 'Ito ba ay…';
 
   @override
-  String get hearIt => 'Pakinggan';
-
-  @override
   String heardTryAgain(String spoken) {
-    return 'Narinig: \"$spoken\" — subukan muli!';
+    return 'Narinig: “$spoken” — subukan muli!';
   }
 
   @override
@@ -2563,4 +2587,446 @@ class AppLocalizationsFil extends AppLocalizations {
   String collabPassSpoken(String name) {
     return 'O ipakita — ipasa kay $name';
   }
+
+  @override
+  String get settingOn => 'Naka-on';
+
+  @override
+  String get settingOff => 'Naka-off';
+
+  @override
+  String get settingHighContrastDesc =>
+      'Mas matingkad na kulay at mas makapal na border';
+
+  @override
+  String get settingDarkModeDesc => 'Mas magaan sa mata kapag madilim';
+
+  @override
+  String get settingDyslexiaDesc =>
+      'Kulay-krema na background, Lexend na font, mas maluwag na pagitan ng letra';
+
+  @override
+  String get settingReducedMotionDesc => 'Bawasan ang mga animation';
+
+  @override
+  String get settingVoiceNavOnDesc =>
+      'Binabasa nang malakas ang mga screen at button';
+
+  @override
+  String get settingVoiceNavOffDesc =>
+      'Buksan para sa mga may kapansanan sa paningin';
+
+  @override
+  String get settingAdaptiveOnDesc =>
+      'Awtomatikong nagmumungkahi ng antas batay sa progreso';
+
+  @override
+  String get settingAdaptiveOffDesc => 'Manu-mano lamang ang pagpili ng antas';
+
+  @override
+  String get settingGazeControlDesc =>
+      'Walang-kamay: igalaw ang ulo o kumurap para pumili';
+
+  @override
+  String get settingGamepadDesc =>
+      'Mag-navigate gamit ang Bluetooth gamepad, may binibigkas na gabay';
+
+  @override
+  String get settingFullscreenOnDesc =>
+      'Nakatago ang nav bar at mga app bar — hanggang patayin mo ito';
+
+  @override
+  String get settingFullscreenOffDesc =>
+      'Itago ang nav bar at mga app bar para sa klase o TV display';
+
+  @override
+  String get settingSlowMotionOnDesc =>
+      'Kalahating bilis ang galaw ng mga laro at flashcard';
+
+  @override
+  String get settingSlowMotionOffDesc =>
+      'Pabagalin ang galaw ng laro at mga flashcard';
+
+  @override
+  String get settingLearningAssistOnDesc =>
+      'Nagpapakita ng “bakit” na pahiwatig at 50/50 na tulong sa pagsusulit';
+
+  @override
+  String get settingLearningAssistOffDesc =>
+      'Payak na pagsusulit — walang pahiwatig o paliwanag';
+
+  @override
+  String get settingTtsDesc => 'Pakinggan ang mga salitang binibigkas';
+
+  @override
+  String get settingSoundEffectsDesc => 'Mga tunog at tugon ng laro';
+
+  @override
+  String get settingSttOnDesc => 'Nakabukas ang voice input sa mga laro';
+
+  @override
+  String get settingSttOffDesc =>
+      'Pindutin para buksan ang voice input sa mga laro';
+
+  @override
+  String get settingCompanionOnDesc =>
+      'Lumulutang na katuwang — pindutin anumang oras para sa tulong';
+
+  @override
+  String get settingCompanionOffDesc =>
+      'Buksan ang iyong lumulutang na katuwang sa pag-aaral';
+
+  @override
+  String get settingVocabReviewDesc =>
+      'Nagpapaalala na balikan ang mga mahihirap na salita';
+
+  @override
+  String get settingBackupRestoreDesc =>
+      'I-save o ibalik ang lahat ng datos ng app';
+
+  @override
+  String get settingRecoveryCodeDesc =>
+      'Ibalik ang profile na ito sa bagong device';
+
+  @override
+  String get settingCloudAccountDesc =>
+      'Mag-sign in gamit ang email para maibalik sa kahit anong device';
+
+  @override
+  String get settingClassroomModeDesc =>
+      'Bantayan ang lahat ng mag-aaral nang real-time';
+
+  @override
+  String get settingAccessibilitySetupDesc =>
+      'Ulitin ang wizard ng aksesibilidad';
+
+  @override
+  String get settingManageProfilesDesc =>
+      'Burahin ang mga profile na nakaimbak sa device na ito';
+
+  @override
+  String get settingChildControlsDesc =>
+      'Magtakda ng limitasyon sa oras at nilalaman';
+
+  @override
+  String get settingReplayTutorialsDesc =>
+      'Ipakita muli ang mga gabay sa lahat ng screen';
+
+  @override
+  String get settingPurposeDesc =>
+      'Interaktibong app para sa pagpapalawak ng talasalitaan ng mga mag-aaral na PWD gamit ang mga flashcard, laro, at Filipino Sign Language.';
+
+  @override
+  String get settingResearchDataOnDesc =>
+      'Nagpapadala ng anonymous na datos ng crash at paggamit sa pangkat ng pananaliksik';
+
+  @override
+  String get settingResearchDataOffDesc =>
+      'Naka-off — walang datos na umaalis sa device na ito';
+
+  @override
+  String settingDailyMissionDesc(int count) {
+    return '$count salita bawat araw';
+  }
+
+  @override
+  String get settingGazeControlTitle => 'Gaze Control (Preview)';
+
+  @override
+  String get settingGamepadTitle => 'Game Controller';
+
+  @override
+  String get settingSectionPresentation => 'Presentasyon';
+
+  @override
+  String get settingSectionLearningModes => 'Mga Mode ng Pagkatuto';
+
+  @override
+  String get settingSlowMotionTitle => 'Slow-Motion Mode';
+
+  @override
+  String get settingLearningAssistTitle => 'Tulong sa Pagkatuto';
+
+  @override
+  String get settingDailyMissionTitle => 'Dami ng Araw-araw na Misyon';
+
+  @override
+  String get settingCompanionTitle => 'AI Companion';
+
+  @override
+  String get settingVocabReviewTitle => 'Paalala sa Pagbabalik-aral';
+
+  @override
+  String get settingSectionData => 'Datos';
+
+  @override
+  String get settingBackupRestoreTitle => 'Backup at Restore';
+
+  @override
+  String get settingRecoveryCodeTitle => 'Cloud Recovery Code';
+
+  @override
+  String get settingCloudAccountTitle => 'Backup at Pag-link ng Account';
+
+  @override
+  String get settingAccessibilitySetupTitle =>
+      'Ulitin ang Pag-setup ng Aksesibilidad';
+
+  @override
+  String get settingManageProfilesTitle => 'Pamahalaan ang mga Profile';
+
+  @override
+  String get settingChildControlsTitle => 'Kontrol ng Magulang';
+
+  @override
+  String get settingReplayTutorialsTitle => 'Ulitin ang mga Tutorial';
+
+  @override
+  String get settingPurposeTitle => 'Layunin';
+
+  @override
+  String get settingResearchDataTitle => 'Tumulong na mapabuti ang app';
+
+  @override
+  String get fontSizeSmall => 'Maliit';
+
+  @override
+  String get fontSizeNormal => 'Karaniwan';
+
+  @override
+  String get fontSizeLarge => 'Malaki';
+
+  @override
+  String get fontSizeExtraLarge => 'Napakalaki';
+
+  @override
+  String get speechSpeedVerySlow => 'Napakabagal';
+
+  @override
+  String get speechSpeedSlow => 'Mabagal';
+
+  @override
+  String get speechSpeedNormal => 'Karaniwan';
+
+  @override
+  String get speechSpeedFast => 'Mabilis';
+
+  @override
+  String speechSpeedSpoken(String label, int step, int stops) {
+    return '$label, $step sa $stops';
+  }
+
+  @override
+  String setFontSizeTo(String size) {
+    return 'Itakda ang laki ng font sa $size';
+  }
+
+  @override
+  String get changeLabel => 'Baguhin';
+
+  @override
+  String get changePinTitle => 'Baguhin ang PIN';
+
+  @override
+  String get setProfilePinTitle => 'Itakda ang PIN ng Profile';
+
+  @override
+  String get pinPrompt =>
+      'Pumili ng 4-digit na PIN para protektahan ang iyong profile.';
+
+  @override
+  String get disabilityVisual => 'Kapansanan sa Paningin';
+
+  @override
+  String get disabilityHearing => 'Kapansanan sa Pandinig';
+
+  @override
+  String get disabilityMotor => 'Kapansanan sa Paggalaw';
+
+  @override
+  String get disabilityCognitive => 'Pag-iisip/Pagkatuto';
+
+  @override
+  String get disabilityMultiple => 'Maraming Kapansanan';
+
+  @override
+  String get disabilityNone => 'Walang Espesyal na Pangangailangan';
+
+  @override
+  String get disabilityCognitiveFull => 'Kapansanan sa Pag-iisip/Pagkatuto';
+
+  @override
+  String get disabilityVisualDesc =>
+      'Hirap sa paningin, malabong mata, o color blindness';
+
+  @override
+  String get disabilityHearingDesc => 'Hirap sa pandinig o bingi';
+
+  @override
+  String get disabilityMotorDesc =>
+      'Hirap sa maliliit na galaw ng kamay o sa paghawak';
+
+  @override
+  String get disabilityCognitiveDesc => 'Dyslexia, ADHD, o hirap sa pagkatuto';
+
+  @override
+  String get disabilityMultipleDesc =>
+      'Pinagsamang mga pangangailangan sa aksesibilidad';
+
+  @override
+  String get disabilityNoneDesc =>
+      'Karaniwang setting, walang espesyal na pagbabago';
+
+  @override
+  String get roleNameStudent => 'Mag-aaral';
+
+  @override
+  String get roleNameTeacher => 'Guro';
+
+  @override
+  String get roleNameParent => 'Magulang';
+
+  @override
+  String get roleNameChild => 'Bata';
+
+  @override
+  String get roleNamePlayer => 'Manlalaro';
+
+  @override
+  String dashboardTitleForPerson(String name) {
+    return 'Dashboard ni $name';
+  }
+
+  @override
+  String dashboardTitleForRole(String role) {
+    return 'Dashboard ng $role';
+  }
+
+  @override
+  String eduWelcome(String name) {
+    return 'Kumusta, $name!';
+  }
+
+  @override
+  String get eduSubtitleParent => 'Subaybayan ang pag-aaral ng iyong mga anak';
+
+  @override
+  String get eduSubtitleTeacher => 'Pamahalaan ang progreso ng iyong klase';
+
+  @override
+  String get eduQuickActions => 'Mabilisang Aksyon';
+
+  @override
+  String get eduMore => 'Higit Pa';
+
+  @override
+  String get eduContent => 'Nilalaman';
+
+  @override
+  String get eduAssessmentsProgress => 'Mga Pagsusulit at Progreso';
+
+  @override
+  String get eduResearch => 'Pananaliksik';
+
+  @override
+  String get eduNeedsHelp => 'Kailangan ng Tulong';
+
+  @override
+  String get eduInactive7d => 'Hindi aktibo 7 araw+';
+
+  @override
+  String get eduActiveToday => 'Aktibo Ngayon';
+
+  @override
+  String get eduReports => 'Mga Ulat';
+
+  @override
+  String get eduWeeklySummary => 'Lingguhang buod';
+
+  @override
+  String get eduParentalControlsTile => 'Kontrol ng Magulang';
+
+  @override
+  String get eduLimitsSafety => 'Limitasyon at kaligtasan';
+
+  @override
+  String get eduCards => 'Mga Kard';
+
+  @override
+  String get eduBrowseDecks => 'Tingnan ang mga deck';
+
+  @override
+  String get eduShareCode => 'Ibahagi ang Code';
+
+  @override
+  String get eduInviteChild => 'Imbitahan ang iyong anak';
+
+  @override
+  String get eduInviteStudents => 'Imbitahan ang mga estudyante';
+
+  @override
+  String get eduTvCast => 'TV Cast';
+
+  @override
+  String get eduMessages => 'Mga Mensahe';
+
+  @override
+  String get eduTeacherNotes => 'Tala ng Guro';
+
+  @override
+  String get eduParentNotes => 'Tala ng Magulang';
+
+  @override
+  String get eduAssessments => 'Mga Pagsusulit';
+
+  @override
+  String get eduAssignTasks => 'Magbigay ng Gawain';
+
+  @override
+  String get eduTrackProgress => 'Subaybayan ang Progreso';
+
+  @override
+  String get eduManageGroups => 'Pamahalaan ang mga Grupo';
+
+  @override
+  String get eduManageClasses => 'Pamahalaan ang mga Klase';
+
+  @override
+  String get eduRosterProgress => 'Talaan at progreso';
+
+  @override
+  String get eduAnalytics => 'Analytics';
+
+  @override
+  String get eduClassInsights => 'Pananaw sa klase';
+
+  @override
+  String get eduClassroomTile => 'Silid-aralan';
+
+  @override
+  String get eduLiveSession => 'Live na sesyon';
+
+  @override
+  String get eduWorksheets => 'Mga Worksheet';
+
+  @override
+  String get eduExperimentSetup => 'Setup ng Eksperimento';
+
+  @override
+  String get eduSusSurvey => 'SUS Survey';
+
+  @override
+  String get eduResearchExport => 'Research Export';
+
+  @override
+  String get eduDashboardCtaSub =>
+      'Detalyadong pananaw, alerto, at mga rekomendasyon';
+
+  @override
+  String get eduNoChildrenDesc =>
+      'Gumawa ng home group, pagkatapos ibahagi ang code sa iyong anak para makasali.';
+
+  @override
+  String get eduNoStudentsDesc =>
+      'Gumawa ng klase, pagkatapos ibahagi ang code sa iyong mga estudyante para makasali.';
 }

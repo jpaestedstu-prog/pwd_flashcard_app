@@ -10,6 +10,7 @@ import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
 import '../widgets/charts/activity_heatmap.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Full-screen timeline view for a single student.
 ///
@@ -419,7 +420,9 @@ class _StudyTimeChart30 extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
+                    // FitText: the axis caption sits above a fixed-width
+                    // chart and split as "Minut / es".
+                    FitText(
                       'Minutes per day — last 30 days',
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,

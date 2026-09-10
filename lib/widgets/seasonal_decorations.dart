@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pwdpwdpwd/data/models/seasonal_events.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 import 'package:pwdpwdpwd/providers/seasonal_event_provider.dart';
+import '../core/utils/reduced_motion.dart';
 
 /// Seasonal banner + falling emoji decorations overlay.
 ///
@@ -59,7 +60,7 @@ class _SeasonalDecorationsState extends ConsumerState<SeasonalDecorations>
     _particleController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 20),
-    )..repeat();
+    );
 
     _particleController.addListener(() {
       if (mounted) setState(() {});
@@ -95,10 +96,18 @@ class _SeasonalDecorationsState extends ConsumerState<SeasonalDecorations>
   @override
   Widget build(BuildContext context) {
     final event = ref.watch(seasonalEventProvider);
-    if (event == null) return const SizedBox.shrink();
+    if (event == null) {
+      // Nothing to decorate. Stop the 20s particle loop without reading the
+      // setting: returning SizedBox.shrink() hides the particles but keeps
+      // this state — and its ticker — alive, and there is no need to reach
+      // for settings (and its Hive box) on a path that draws nothing.
+      _particleController.syncMotionLoop(true);
+      return const SizedBox.shrink();
+    }
 
     final reducedMotion =
         ref.watch(settingsProvider.select((s) => s.reducedMotion));
+    _particleController.syncMotionLoop(reducedMotion);
 
     if (reducedMotion && !widget.showBanner) return const SizedBox.shrink();
 

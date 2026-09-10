@@ -1,11 +1,14 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/pro_surface.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../features/assessment/services/assessment_service.dart';
+import '../../../providers/app_providers.dart';
+import '../../../providers/parent_provider.dart';
 
 /// Card that displays the learning gain (pre-test vs post-test) for a child.
 ///
@@ -329,7 +332,7 @@ class _LegendDot extends StatelessWidget {
 
 // ─── No Data Card ────────────────────────────────
 
-class _NoDataCard extends StatelessWidget {
+class _NoDataCard extends ConsumerWidget {
   final HCColor hc;
 
   /// Whether the child has completed at least one pre-test. Drives the
@@ -346,31 +349,54 @@ class _NoDataCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // A teacher opening a student's detail sheet was told to track "your
+    // child's" progress. The sheet is shared by both educator roles, so the
+    // noun has to come from the audience.
+    final filipino = ref.watch(settingsProvider).locale == 'fil';
+    final learnerPossessive = ref
+        .watch(educatorAudienceProvider)
+        .learnerPossessiveOf(filipino: filipino);
+
     final String title;
     final String description;
     final String actionLabel;
 
     if (!hasPreTest && !hasPostTest) {
-      title = "Track your child's progress";
-      description =
-          'Take a short baseline test now, then a follow-up later. '
-          "We'll show how much your child has improved overall and per "
-          'category.';
-      actionLabel = 'Start baseline test';
+      title = filipino
+          ? 'Subaybayan ang progreso ng $learnerPossessive'
+          : 'Track $learnerPossessive’s progress';
+      description = filipino
+          ? 'Kumuha ng maikling baseline test ngayon, at follow-up mamaya. '
+                'Ipapakita namin kung gaano kalaki ang pag-unlad ng '
+                '$learnerPossessive sa kabuuan at bawat kategorya.'
+          : 'Take a short baseline test now, then a follow-up later. '
+                'We’ll show how much $learnerPossessive has improved '
+                'overall and per category.';
+      actionLabel = filipino
+          ? 'Simulan ang baseline test'
+          : 'Start baseline test';
     } else if (hasPreTest && !hasPostTest) {
-      title = 'Baseline complete — keep practicing!';
-      description =
-          'Once your child has had time to learn, take the post-test '
-          'to see their improvement.';
-      actionLabel = 'Take post-test';
+      title = filipino
+          ? 'Tapos na ang baseline — magpatuloy sa pagsasanay!'
+          : 'Baseline complete — keep practicing!';
+      description = filipino
+          ? 'Kapag nakapag-aral na ang $learnerPossessive, kumuha ng post-test '
+                'para makita ang pag-unlad.'
+          : 'Once $learnerPossessive has had time to learn, take the post-test '
+                'to see their improvement.';
+      actionLabel = filipino ? 'Kumuha ng post-test' : 'Take post-test';
     } else {
       // hasPostTest && !hasPreTest — uncommon, but worth a clear nudge.
-      title = 'Add a baseline to compare against';
-      description =
-          'A pre-test snapshot lets us measure how much your child has '
-          'gained since starting.';
-      actionLabel = 'Take pre-test';
+      title = filipino
+          ? 'Magdagdag ng baseline na paghahambingan'
+          : 'Add a baseline to compare against';
+      description = filipino
+          ? 'Ang pre-test ay panimulang sukat kung gaano na kalayo ang narating '
+                'ng $learnerPossessive mula nang magsimula.'
+          : 'A pre-test snapshot lets us measure how much $learnerPossessive '
+                'has gained since starting.';
+      actionLabel = filipino ? 'Kumuha ng pre-test' : 'Take pre-test';
     }
 
     return ProPanel(

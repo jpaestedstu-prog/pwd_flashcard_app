@@ -440,13 +440,15 @@ class _StepTile extends StatelessWidget {
                           Icon(Icons.lock_rounded,
                               size: 14, color: HCColor.of(context).textHint),
                           const SizedBox(width: 4),
-                          Text(
+                          Flexible(child: Text(
                             'Complete the previous step first',
                             style: AppTypography.bodySmall.copyWith(
                               color: HCColor.of(context).textHint,
                               fontSize: 11,
                             ),
-                          ),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
                         ],
                       ),
                     ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -20,16 +21,23 @@ import '../../../features/progress/widgets/charts/category_radar_chart.dart';
 import '../../../features/progress/widgets/charts/study_time_chart.dart';
 import '../../../features/progress/widgets/shared/progress_section_header.dart';
 import 'learning_gain_card.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Bottom sheet showing detailed progress for a single child.
 class ChildDetailSheet extends ConsumerWidget {
   final ChildSummary child;
   final VoidCallback? onViewFullDashboard;
 
+  /// "child" / "student" — the audience's word for this learner, forwarded to
+  /// the routine manager so its copy reads correctly for whichever educator
+  /// opened the sheet.
+  final String learnerNoun;
+
   const ChildDetailSheet({
     super.key,
     required this.child,
     this.onViewFullDashboard,
+    this.learnerNoun = 'learner',
   });
 
   @override
@@ -187,7 +195,7 @@ class ChildDetailSheet extends ConsumerWidget {
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
-                                    child.disabilityType.label,
+                                    child.disabilityType.labelOf(AppLocalizations.of(context)),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: AppTypography.labelSmall.copyWith(
@@ -375,6 +383,31 @@ class ChildDetailSheet extends ConsumerWidget {
                     ),
                   ),
                 ).animate().fadeIn(duration: 400.ms, delay: 500.ms),
+
+              // ─── Daily Routine ────────────────────
+              // Always shown, whether or not a routine exists yet: for a
+              // learner without one this button is how the first routine gets
+              // built, and hiding it would leave the feature undiscoverable
+              // for exactly the learners who most need a visual schedule.
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      GoRouter.of(context).push(
+                        '/routine-manage/${child.profileId}'
+                        '?name=${Uri.encodeQueryComponent(child.name)}'
+                        '&noun=${Uri.encodeQueryComponent(learnerNoun)}'
+                        '&access=${child.disabilityType.index}',
+                      );
+                    },
+                    icon: const Icon(Icons.event_note_rounded),
+                    label: const Text('Daily Routine'),
+                  ),
+                ),
+              ).animate().fadeIn(duration: 400.ms, delay: 520.ms),
 
               // ─── View Full Dashboard Button ───────
               if (onViewFullDashboard != null)

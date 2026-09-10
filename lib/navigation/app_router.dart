@@ -63,6 +63,8 @@ import '../features/communication_board/screens/communication_board_screen.dart'
 import '../features/communication_board/screens/board_template_builder_screen.dart';
 import '../features/daily_challenge/screens/daily_challenge_screen.dart';
 import '../features/parent/screens/child_alarms_screen.dart';
+import '../features/routine/screens/routine_editor_screen.dart';
+import '../features/routine/screens/routine_screen.dart';
 import '../features/parent/screens/child_time_limits_screen.dart';
 import '../features/parent/screens/parent_dashboard_screen.dart';
 import '../features/parent/screens/time_up_lock_screen.dart';
@@ -101,9 +103,12 @@ import '../features/guided_practice/screens/guided_practice_screen.dart';
 import '../features/ai_tutor/screens/ai_tutor_screen.dart';
 import '../features/messaging/screens/messaging_screen.dart';
 import '../features/object_scan/screens/object_scan_screen.dart';
+import '../widgets/voice_navigation_observer.dart';
 import '../features/gaze_control/widgets/shell_modal_observer.dart';
 import '../features/object_scan/screens/word_hunt_collection_screen.dart';
 import '../features/gaze_control/screens/gaze_control_screen.dart';
+import '../features/gamepad/screens/gamepad_practice_screen.dart';
+import '../features/gamepad/screens/gamepad_settings_screen.dart';
 import '../features/gaze_control/screens/gaze_settings_screen.dart';
 import '../features/peer_collaboration/screens/peer_collaboration_screen.dart';
 import '../features/progress/screens/worksheet_screen.dart';
@@ -268,10 +273,19 @@ final engagementTrackerProvider = Provider<EngagementTracker?>((ref) {
 
 final routerProvider = Provider<GoRouter>((ref) {
   final tracker = ref.read(engagementTrackerProvider);
+  // Screen announcements for Voice-Guided Navigation. Two observers over one
+  // announcer: Flutter asserts an observer belongs to a single Navigator, and
+  // screen changes happen on two of them — this root navigator for drill-downs,
+  // and the bottom-nav shell's for tab switches. Sharing the announcer is what
+  // keeps the "already said that" check honest across the pair.
+  //
+  // Inert while the setting is off: the announcer reads that flag before it
+  // touches anything else. See [VoiceRouteAnnouncer.announce].
+  final voiceAnnouncer = VoiceRouteAnnouncer(ref);
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
-    observers: [?tracker],
+    observers: [?tracker, VoiceNavigationObserver(voiceAnnouncer)],
     redirect: (context, state) {
       final profile = ref.read(profileProvider);
       if (profile == null) return null; // not logged in yet
@@ -656,7 +670,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         // Lets the shell's D-pad notice a sheet or dialog opened from a hub
         // screen. Those push onto *this* navigator, which `ModalRoute.of` from
         // the shell builder can never see — see [ShellModalObserver].
-        observers: [shellModalObserver],
+        //
+        // The voice observer is here as well as on the root navigator: tab
+        // switches never reach the root one, and tabs are most of what a
+        // learner navigates.
+        observers: [
+          shellModalObserver,
+          VoiceNavigationObserver(voiceAnnouncer),
+        ],
         builder: (context, state, child) =>
             BottomNavShell(state: state, child: child),
         routes: [
@@ -1197,6 +1218,50 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ),
       ),
+      // ─── Routines ──────────────────────────────────────
+      // The learner's own day. No path parameter: a Student or Child opens
+      // their own routine from the home tile, and the profile comes from the
+      // session — a learner must never be able to reach someone else's day by
+      // editing a URL.
+      GoRoute(
+        path: '/routine',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const RoutineScreen(),
+        ),
+      ),
+      // The educator's routine manager for one learner. Same address shape as
+      // `/child-alarms/:profileId` — path param is the learner's profile id,
+      // `name` pre-fills the title, `noun` carries the audience's word for the
+      // learner ("student" / "child") so the shared screen reads correctly for
+      // whichever educator opened it, and `access` carries the learner's
+      // accessibility category so the template suggestions and the preview
+      // match what the learner will actually see.
+      //
+      // Everything is in the URL rather than in GoRouter `extra`: a routine
+      // deep-linked from a notification, or re-entered after a process death,
+      // must reconstruct itself (see the dead-tap trap in the assessment
+      // assignment flow, which `extra` caused).
+      GoRoute(
+        path: '/routine-manage/:profileId',
+        pageBuilder: (context, state) {
+          final accessRaw = state.uri.queryParameters['access'];
+          final accessIdx = int.tryParse(accessRaw ?? '');
+          return AppPageTransitions.slideRight(
+            key: state.pageKey,
+            child: RoutineEditorScreen(
+              childProfileId: state.pathParameters['profileId']!,
+              childDisplayName: state.uri.queryParameters['name'],
+              learnerNoun: state.uri.queryParameters['noun'] ?? 'learner',
+              accessibility: accessIdx != null &&
+                      accessIdx >= 0 &&
+                      accessIdx < DisabilityType.values.length
+                  ? DisabilityType.values[accessIdx]
+                  : null,
+            ),
+          );
+        },
+      ),
       // Leaderboard
       GoRoute(
         path: '/leaderboard',
@@ -1647,6 +1712,25 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
           child: const GazeControlScreen(),
+        ),
+      ),
+      // ─── Bluetooth game controller ──────────────────
+      // Settings → Accessibility opens this. The controller itself works
+      // app-wide without ever visiting the screen (see GamepadHost); this is
+      // where a teacher tunes it and reads the button guide.
+      GoRoute(
+        path: '/gamepad-settings',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const GamepadSettingsScreen(),
+        ),
+      ),
+      // A safe place to learn the pad: every press is named, nothing moves.
+      GoRoute(
+        path: '/gamepad-practice',
+        pageBuilder: (context, state) => AppPageTransitions.slideUp(
+          key: state.pageKey,
+          child: const GamepadPracticeScreen(),
         ),
       ),
       // ─── Messaging ─────────────────────────────────

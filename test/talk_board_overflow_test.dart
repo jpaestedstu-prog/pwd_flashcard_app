@@ -1,3 +1,5 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -143,4 +145,79 @@ void main() {
       ],
     );
   });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // Everything above renders under Flutter's default theme, which is not a
+  // theme any learner uses this board in. The dyslexia theme adds a 1.6 line
+  // height and 0.6 letter spacing on top of its own font sizes; high contrast
+  // overrides the text theme and outlines every card. Narrow portrait at
+  // 1.5x/2.0x, where a theme's metrics bite first.
+  //
+  // Not repeated for all six disability types: the presentation each type
+  // picks and the theme's text metrics are independent, so one content-heavy
+  // type plus the genuinely different first frames (custom tab, Player, Child,
+  // both builder states) is the coverage that can actually fail on its own.
+  final boardVariants = <String, ({Widget Function() build, List<Override> overrides})>{
+    'Talk Board': (
+      build: () => const CommunicationBoardScreen(),
+      overrides: [
+        ...boardProfileOverrides(disability: DisabilityType.multiple),
+        overrideBoardPhrases(_usedBefore(), now: () => DateTime(2026, 4)),
+      ],
+    ),
+    'Talk Board + a custom tab': (
+      build: () => const CommunicationBoardScreen(),
+      overrides: [
+        ...boardProfileOverrides(disability: DisabilityType.multiple),
+        overrideBoardPhrases(_usedBefore(), now: () => DateTime(2026, 4)),
+        overrideCustomBoard(
+          FakeCustomBoardStore(sampleCustomBoard(name: 'Bahay ni Ana')),
+          now: () => DateTime(2026, 4),
+        ),
+      ],
+    ),
+    'Talk Board (Player)': (
+      build: () => const CommunicationBoardScreen(),
+      overrides: [
+        ...boardProfileOverrides(role: UserRole.player),
+        overrideBoardPhrases(_usedBefore(), now: () => DateTime(2026, 4)),
+      ],
+    ),
+    'Talk Board (Child)': (
+      build: () => const CommunicationBoardScreen(),
+      overrides: [
+        ...boardProfileOverrides(
+          role: UserRole.child,
+          disability: DisabilityType.multiple,
+        ),
+        overrideBoardPhrases(_usedBefore(), now: () => DateTime(2026, 4)),
+      ],
+    ),
+    'BoardTemplateBuilderScreen': (
+      build: () => const BoardTemplateBuilderScreen(),
+      overrides: boardProfileOverrides(role: UserRole.teacher),
+    ),
+    'BoardTemplateBuilderScreen with a loaded board': (
+      build: () => const BoardTemplateBuilderScreen(),
+      overrides: [
+        ...boardProfileOverrides(role: UserRole.teacher),
+        overrideCustomBoard(
+          FakeCustomBoardStore(sampleCustomBoard()),
+          now: () => DateTime(2026, 4),
+        ),
+      ],
+    ),
+  };
+
+  for (final entry in boardVariants.entries) {
+    testWidgets('${entry.key} survives the accessibility themes',
+        (tester) async {
+      await expectScreenSurvivesThemes(
+        tester,
+        entry.value.build,
+        overrides: entry.value.overrides,
+      );
+    });
+  }
 }

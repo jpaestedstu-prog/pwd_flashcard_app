@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_colors.dart';
 import '../providers/app_providers.dart';
 import 'floating_particles.dart';
+import '../core/utils/reduced_motion.dart';
 
 /// A beautiful animated gradient background that slowly morphs and flows.
 ///
@@ -73,7 +74,7 @@ class _AnimatedGradientBackgroundState
     _controller = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: (12000 / widget.speed).round()),
-    )..repeat();
+    );
   }
 
   @override
@@ -86,6 +87,10 @@ class _AnimatedGradientBackgroundState
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final reducedMotion = settings.reducedMotion;
+    // Started here rather than in initState so flipping the setting takes
+    // effect on this frame. The static branch below still paints the
+    // gradient; only the drift stops.
+    _controller.syncMotionLoop(reducedMotion);
 
     // Pick colors from preset or custom
     final colors = widget.customColors ??

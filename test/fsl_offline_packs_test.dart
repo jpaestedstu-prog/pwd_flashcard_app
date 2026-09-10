@@ -217,4 +217,32 @@ void main() {
       expect(find.byTooltip('Remove Numbers downloads'), findsNothing);
     });
   });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The pass above renders under Flutter's default theme, which is not a theme
+  // any learner sees. The dyslexia theme adds a 1.6 line height and 0.6 letter
+  // spacing on top of its own font sizes; high contrast overrides the text
+  // theme and outlines every card. Narrow portrait at 1.5x/2.0x, where a
+  // theme's metrics bite first.
+  testWidgets('the packs sheet survives the accessibility themes while idle',
+      (tester) async {
+    await expectScreenSurvivesThemes(tester, () => _sheetHost(_populated()));
+  });
+
+  testWidgets('the packs sheet survives the accessibility themes mid-download',
+      (tester) async {
+    await expectScreenSurvivesThemes(
+      tester,
+      () => _sheetHost(
+        _populated(
+          status: FslPackStatus.downloading,
+          done: 12,
+          total: 84,
+          label: 'Partly Cloudy',
+          failed: 3,
+        ),
+      ),
+    );
+  });
 }

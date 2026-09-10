@@ -528,6 +528,10 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> {
 
     showModalBottomSheet(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

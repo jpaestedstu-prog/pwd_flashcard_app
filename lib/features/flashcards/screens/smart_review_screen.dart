@@ -8,6 +8,7 @@ import '../../../core/accessibility/haptic_service.dart';
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../core/services/celebration_service.dart';
+import '../../../core/services/session_tracker.dart';
 import '../../../widgets/accessible_celebration_overlay.dart';
 import '../../../data/models/models.dart';
 import '../../../data/models/enums.dart';
@@ -18,6 +19,7 @@ import '../../../widgets/language_replay_bar.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../core/utils/accessible_sizing.dart';
 
 /// Smart Review screen that uses spaced repetition to present
 /// the words the student struggles with most.
@@ -108,6 +110,10 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
       );
       // Reviewing flashcards counts as a learning activity for the streak.
       ref.read(progressProvider.notifier).recordDailyActivity();
+      // …and against the open sitting, so the exports' `cardsReviewed`
+      // column reflects the one flow in the app that reviews a batch of
+      // cards end to end.
+      SessionTracker.active?.recordCardsReviewed(_results.length);
     }
     if (mounted) {
       AccessibleCelebrationOverlay.show(
@@ -262,6 +268,15 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                                       card: card,
                                       size: 76,
                                       borderRadius: 16,
+                                      // Smart Review is *recall*: the Filipino
+                                      // word is hidden behind "Show Answer".
+                                      // The picture names itself
+                                      // "English, Filipino", so before the
+                                      // reveal it was handing a screen-reader
+                                      // learner the answer they were being
+                                      // asked to remember. After the reveal
+                                      // there is nothing left to protect.
+                                      revealsAnswer: _showAnswer,
                                     ),
                                     const SizedBox(height: 16),
 
@@ -370,7 +385,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
             if (!_showAnswer)
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: scaledControlHeight(context, 56),
                 child: FilledButton.icon(
                   onPressed: _revealAnswer,
                   icon: const Icon(Icons.visibility_rounded),
@@ -393,7 +408,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                 children: [
                   Expanded(
                     child: SizedBox(
-                      height: 56,
+                      height: scaledControlHeight(context, 56),
                       child: OutlinedButton.icon(
                         onPressed: _answerDontKnow,
                         icon: const Icon(
@@ -418,7 +433,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: SizedBox(
-                      height: 56,
+                      height: scaledControlHeight(context, 56),
                       child: FilledButton.icon(
                         onPressed: _answerKnow,
                         icon: const Icon(Icons.check_rounded),
@@ -545,7 +560,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
               // Buttons
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: scaledControlHeight(context, 52),
                 child: FilledButton(
                   onPressed: () {
                     setState(() {
@@ -575,7 +590,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: scaledControlHeight(context, 52),
                 child: OutlinedButton(
                   onPressed: () => context.pop(),
                   style: OutlinedButton.styleFrom(

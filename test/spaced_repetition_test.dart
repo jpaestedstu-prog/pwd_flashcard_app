@@ -107,7 +107,7 @@ void main() {
 
     setUpAll(() async {
       Hive.init('./build/test_cache/spaced_repetition');
-      if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress');
+      if (!Hive.isBoxOpen('progress')) await Hive.openBox('progress', compactionStrategy: (_, _) => false);
     });
 
     setUp(() => Hive.box('progress').clear());

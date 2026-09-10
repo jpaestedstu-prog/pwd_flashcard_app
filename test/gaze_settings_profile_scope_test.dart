@@ -43,7 +43,7 @@ ProviderContainer _containerFor(String? profileId) => ProviderContainer(
 Future<void> _initHive() async {
   Hive.init('./build/test_cache/gaze_settings_scope');
   if (!Hive.isBoxOpen('settings')) {
-    await Hive.openBox('settings');
+    await Hive.openBox('settings', compactionStrategy: (_, _) => false);
   }
 }
 

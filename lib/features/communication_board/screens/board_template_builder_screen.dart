@@ -15,6 +15,7 @@ import '../models/custom_board.dart';
 import '../providers/custom_board_provider.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Builds the **active profile's** own Talk Board tab.
 ///
@@ -157,7 +158,7 @@ class _BoardTemplateBuilderScreenState
       _tiles.add(tile);
       _markDirty();
     });
-    AppSnackBar.success(context, message: '"${tile.label}" added to the board');
+    AppSnackBar.success(context, message: '“${tile.label}” added to the board');
   }
 
   Future<void> _editCustomTile(int index) async {
@@ -208,7 +209,7 @@ class _BoardTemplateBuilderScreenState
           // Saving an empty board is a legitimate way to remove the tab, so
           // say what actually happened rather than claiming a save of nothing.
           ? 'Board cleared — the tab is hidden on Talk Board'
-          : '"$name" saved with ${_tiles.length} '
+          : '“$name” saved with ${_tiles.length} '
                 'tile${_tiles.length == 1 ? '' : 's'}',
     );
     context.popOrGo('/communication-board');
@@ -454,9 +455,16 @@ class _BoardTemplateBuilderScreenState
                                         tile.emoji,
                                         style: const TextStyle(fontSize: 18),
                                       ),
+                                      // `fittedStyle`, not `FitText`: a Chip in
+                                      // a Wrap measures intrinsics, where a
+                                      // LayoutBuilder throws.
                                       label: Text(
                                         tile.label,
-                                        style: AppTypography.labelMedium,
+                                        style: fittedStyle(
+                                          context,
+                                          tile.label,
+                                          AppTypography.labelMedium,
+                                        ),
                                       ),
                                       backgroundColor: tile.isCustom
                                           ? AppColors.primary.withValues(
@@ -672,7 +680,10 @@ class _BoardTemplateBuilderScreenState
                                       ),
                                       const SizedBox(height: 6),
                                       Flexible(
-                                        child: Text(
+                                        // The phrase this tile will say, in a
+                                        // fixed-width picker cell -- it was
+                                        // splitting "af / ternoon".
+                                        child: FitText(
                                           tile.label,
                                           style: AppTypography.labelMedium
                                               .copyWith(
@@ -682,8 +693,6 @@ class _BoardTemplateBuilderScreenState
                                                     : hc.textPrimary,
                                               ),
                                           textAlign: TextAlign.center,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       Flexible(

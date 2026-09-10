@@ -9,6 +9,7 @@ import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_card.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// A short, friendly primer on Persons with Disabilities (PWD): what the
 /// term means, the common kinds of disability, how to interact respectfully,
@@ -55,13 +56,13 @@ class PwdAwarenessScreen extends StatelessWidget {
                 index: 0,
                 icon: Icons.diversity_3_rounded,
                 color: AppColors.primary,
-                title: 'What does "PWD" mean?',
+                title: 'What does “PWD” mean?',
                 body:
                     'PWD stands for Persons with Disabilities — people who have '
                     'a long-term physical, sensory, cognitive, or learning '
                     'condition. Disability is a natural part of human '
-                    'diversity. Use person-first language: say "a person with '
-                    'a disability," not "a disabled person." Every learner '
+                    'diversity. Use person-first language: say “a person with '
+                    'a disability,” not “a disabled person.” Every learner '
                     'deserves the same respect and the same chance to learn.',
               ),
 
@@ -188,7 +189,9 @@ class _HeroCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                // The hero shares its row with an icon, so "Awarenes / s"
+                // and "Understandi / ng" split at a large scale.
+                FitText(
                   title,
                   style: AppTypography.titleLarge.copyWith(
                     color: Colors.white,
@@ -196,8 +199,9 @@ class _HeroCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Text(
+                FitText(
                   subtitle,
+                  maxLines: 4,
                   style: AppTypography.bodyMedium.copyWith(
                     color: Colors.white.withValues(alpha: 0.92),
                   ),
@@ -360,14 +364,14 @@ class _TypeRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  type.label,
+                  type.labelOf(AppLocalizations.of(context)),
                   style: AppTypography.labelLarge.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  type.description,
+                  type.descriptionOf(AppLocalizations.of(context)),
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),

@@ -17,6 +17,7 @@ import '../../../data/models/models.dart';
 import '../../../features/gaze_control/providers/gaze_settings_provider.dart';
 import '../../../features/gaze_control/widgets/gaze_dpad_scope.dart';
 import '../../../providers/app_providers.dart';
+import '../../../core/utils/accessible_sizing.dart';
 
 /// Screen shown when multiple profiles exist on the device.
 /// Allows switching between profiles. If a profile has a PIN,
@@ -136,7 +137,10 @@ class _ProfileSwitcherScreenState extends ConsumerState<ProfileSwitcherScreen> {
             children: [
               const SizedBox(height: 40),
               Text(
-                '${AppLocalizations.of(context)!.welcomeBack} 👋',
+                // The wave is part of the localised string ("Welcome Back! 👋"),
+                // so appending another rendered "Welcome Back! 👋 👋". Leaving it
+                // inside the string also lets a translation move or drop it.
+                AppLocalizations.of(context)!.welcomeBack,
                 style: AppTypography.displayMedium.copyWith(color: hc.primary),
               ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.2, end: 0),
               const SizedBox(height: 8),
@@ -180,7 +184,7 @@ class _ProfileSwitcherScreenState extends ConsumerState<ProfileSwitcherScreen> {
                 ),
                 child: SizedBox(
                   width: double.infinity,
-                  height: 56,
+                  height: scaledControlHeight(context, 56),
                   child: OutlinedButton.icon(
                     onPressed: () => context.go('/profile'),
                     icon: const Icon(Icons.person_add_rounded),
@@ -290,7 +294,7 @@ class _ProfileCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    profile.profileTypeLabel,
+                    profile.profileTypeLabelOf(AppLocalizations.of(context)!),
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textSecondary,
                     ),
@@ -569,7 +573,7 @@ class _PinEntryDialogState extends State<_PinEntryDialog> {
                 if (key == '⌫') {
                   return SizedBox(
                     width: 72,
-                    height: 56,
+                    height: scaledControlHeight(context, 56),
                     child: TextButton(
                       onPressed: disabled ? null : _removeDigit,
                       child: Icon(
@@ -581,7 +585,7 @@ class _PinEntryDialogState extends State<_PinEntryDialog> {
                 }
                 return SizedBox(
                   width: 72,
-                  height: 56,
+                  height: scaledControlHeight(context, 56),
                   child: TextButton(
                     onPressed: disabled ? null : () => _addDigit(key),
                     style: TextButton.styleFrom(
@@ -870,7 +874,10 @@ class _EducatorOverrideSheetState extends State<_EducatorOverrideSheet> {
                     .map(
                       (p) => DropdownMenuItem(
                         value: p,
-                        child: Text('${p.name} — ${p.role.label}'),
+                        child: Text(
+                          '${p.name} — '
+                          '${p.role.labelOf(AppLocalizations.of(context)!)}',
+                        ),
                       ),
                     )
                     .toList(),

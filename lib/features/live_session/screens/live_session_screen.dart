@@ -17,6 +17,7 @@ import '../models/live_session_models.dart';
 import '../services/live_scoring.dart';
 import '../services/live_session_service.dart';
 import '../../../widgets/flashcard_image.dart';
+import '../../../core/utils/accessible_sizing.dart';
 
 /// Real-time live session. Learners (Student / Child) get an accessible
 /// receiver that renders the educator's pushed activities, awards stars for
@@ -72,7 +73,7 @@ class _EducatorPointer extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Open TV Cast, start casting, then choose "Live Activity" to '
+              'Open TV Cast, start casting, then choose “Live Activity” to '
               'build questions, set star scoring, and see raised hands and the '
               'scoreboard on the TV.',
               textAlign: TextAlign.center,
@@ -199,7 +200,7 @@ class _LearnerViewState extends ConsumerState<_LearnerView> {
         message: widget.profile.role == UserRole.child
             ? 'Ask your parent for the home-group code, then join from Settings '
                   'to take part in live activities.'
-            : 'You are not in a classroom yet. Tap "Join a class" to take part '
+            : 'You are not in a classroom yet. Tap “Join a class” to take part '
                   'in live activities.',
       );
     }
@@ -836,7 +837,7 @@ class _RaiseHandBar extends StatelessWidget {
               ? 'Lower your hand'
               : 'Raise your hand to ask your teacher for help',
           child: SizedBox(
-            height: 64,
+            height: scaledControlHeight(context, 64),
             child: FilledButton.icon(
               onPressed: onToggle,
               style: FilledButton.styleFrom(

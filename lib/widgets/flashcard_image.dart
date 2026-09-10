@@ -68,6 +68,20 @@ class FlashcardImage extends StatefulWidget {
   /// flashcard viewer's interactive card; off everywhere else.
   final bool outlined;
 
+  /// Whether this picture is allowed to say which card it is.
+  ///
+  /// Every face labels itself `English, Filipino` so a screen-reader
+  /// learner knows what they are looking at. That is right wherever the
+  /// picture is *teaching* — the viewer, Smart Review, the review sheet.
+  ///
+  /// It is wrong wherever the picture **is the question**. In Word Match the
+  /// prompt read "What is the English word for Motorsiklo? — Motorcycle,
+  /// Motorsiklo — What is this word?", handing over the answer before the
+  /// choices were read: the quiz was easier by ear than by eye. Quiz prompts
+  /// pass `false` and get [answerSafeLabel] instead, which names the picture
+  /// without naming the word.
+  final bool revealsAnswer;
+
   const FlashcardImage({
     super.key,
     required this.card,
@@ -79,7 +93,13 @@ class FlashcardImage extends StatefulWidget {
     this.interactive = false,
     this.reducedMotion = false,
     this.outlined = false,
+    this.revealsAnswer = true,
   });
+
+  /// What a picture says when it must not give the answer away. Deliberately
+  /// still a label rather than `ExcludeSemantics`: silence would leave the
+  /// learner unsure whether a picture is there at all.
+  static const String answerSafeLabel = 'Picture clue';
 
   /// The instruction shown in [interactive] mode for the current face. Worded
   /// to match the Stories tap-to-flip pictures so both features read the same.
@@ -119,6 +139,15 @@ class _FlashcardImageState extends State<FlashcardImage> {
 
   /// Both faces present — only then does tapping flip between them.
   bool get _canFlip => _hasCartoonSource && _hasPhotoSource;
+
+  /// What every face announces. One getter rather than the same interpolation
+  /// repeated on each face, so a picture cannot be answer-safe on the emoji
+  /// fallback and answer-revealing once its photograph finishes downloading —
+  /// which is exactly the kind of drift that would make this bug come back
+  /// only on a warm cache.
+  String get _label => widget.revealsAnswer
+      ? '${widget.card.wordEnglish}, ${widget.card.wordFilipino}'
+      : FlashcardImage.answerSafeLabel;
 
   @override
   void initState() {
@@ -208,11 +237,14 @@ class _FlashcardImageState extends State<FlashcardImage> {
         MergeSemantics(
           child: Semantics(
             button: true,
-            label: _showPhoto
-                ? 'Real picture of ${widget.card.wordEnglish}. '
-                      'Tap to see the cartoon picture.'
-                : 'Cartoon picture of ${widget.card.wordEnglish}. '
-                      'Tap to see the real picture.',
+            label: widget.revealsAnswer
+                ? (_showPhoto
+                      ? 'Real picture of ${widget.card.wordEnglish}. '
+                            'Tap to see the cartoon picture.'
+                      : 'Cartoon picture of ${widget.card.wordEnglish}. '
+                            'Tap to see the real picture.')
+                : '${FlashcardImage.answerSafeLabel}. '
+                      '${FlashcardImage.tapHint(showingPhoto: _showPhoto)}',
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _toggle,
@@ -324,7 +356,7 @@ class _FlashcardImageState extends State<FlashcardImage> {
       return RepaintBoundary(
         child: Semantics(
           image: true,
-          label: '${widget.card.wordEnglish}, ${widget.card.wordFilipino}',
+          label: _label,
           child: _maybeFrame(
             ClipRRect(
               borderRadius: clip,
@@ -365,7 +397,7 @@ class _FlashcardImageState extends State<FlashcardImage> {
     return RepaintBoundary(
       child: Semantics(
         image: true,
-        label: '${widget.card.wordEnglish}, ${widget.card.wordFilipino}',
+        label: _label,
         child: _maybeFrame(
           ClipRRect(
             borderRadius: clip,
@@ -431,7 +463,7 @@ class _FlashcardImageState extends State<FlashcardImage> {
 
     return Semantics(
       image: true,
-      label: '${widget.card.wordEnglish}, ${widget.card.wordFilipino}',
+      label: _label,
       // The emoji card gets the same black frame as the photo face.
       child: _maybeFrame(box, BorderRadius.circular(widget.borderRadius)),
     );
@@ -483,11 +515,16 @@ class FlashcardPicture extends StatelessWidget {
 
   final double borderRadius;
 
+  /// See [FlashcardImage.revealsAnswer]. Forwarded so a quiz prompt built from
+  /// the sized helper is as answer-safe as one built from the raw widget.
+  final bool revealsAnswer;
+
   const FlashcardPicture({
     super.key,
     required this.card,
     required this.extent,
     this.borderRadius = 12,
+    this.revealsAnswer = true,
   });
 
   @override
@@ -500,6 +537,7 @@ class FlashcardPicture extends StatelessWidget {
         card: card,
         expand: true,
         borderRadius: borderRadius,
+        revealsAnswer: revealsAnswer,
       ),
     );
   }

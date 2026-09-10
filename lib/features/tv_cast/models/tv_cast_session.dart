@@ -17,6 +17,8 @@ enum CastMode { idle, flashcards, fslVideo, story, progress, live }
 ///   • calm         — muted, low-stimulation, extra spacing (no animation)
 ///   • seasonal     — festive accents from the active [SeasonalEvent]
 ///   • highContrast — accessibility (mirrors the app's high-contrast mode)
+///   • dyslexia     — accessibility (mirrors the app's dyslexia-friendly mode:
+///                    Lexend, cream ground, looser line and letter spacing)
 enum CastTheme {
   dark,
   light,
@@ -25,6 +27,7 @@ enum CastTheme {
   calm,
   seasonal,
   highContrast,
+  dyslexia,
 }
 
 extension CastThemeX on CastTheme {
@@ -37,6 +40,7 @@ extension CastThemeX on CastTheme {
     CastTheme.calm => 'Calm / Focus',
     CastTheme.seasonal => 'Seasonal',
     CastTheme.highContrast => 'High contrast',
+    CastTheme.dyslexia => 'Dyslexia-friendly',
   };
 
   /// One-line description shown under the label in the picker.
@@ -48,6 +52,7 @@ extension CastThemeX on CastTheme {
     CastTheme.calm => 'Soft, low-stimulation, calm pacing (no animation).',
     CastTheme.seasonal => 'Festive accents that follow the season.',
     CastTheme.highContrast => 'Black/white/yellow for low vision.',
+    CastTheme.dyslexia => 'Lexend on cream, with looser spacing.',
   };
 }
 
@@ -499,6 +504,14 @@ class TvCastSession {
   /// disable entrance/transition animations for motion-sensitive viewers.
   final bool reducedMotion;
 
+  /// Why the last `Start Casting` attempt did not begin, or null.
+  ///
+  /// Casting needs a LAN address to hand the TV. With Wi-Fi off the device has
+  /// only 127.0.0.1, so there is nothing to advertise and the attempt cannot
+  /// succeed — it used to return silently and the button simply appeared to do
+  /// nothing. Not persisted: it describes one attempt, not a setting.
+  final String? startError;
+
   /// Whether the TV should fill the whole screen (browser fullscreen, no
   /// address bar / chrome). Default on. Driven from the phone's "Fullscreen on
   /// TV" toggle and sent to the TV as `fullscreen`; the TV-side `app.js` enters
@@ -508,6 +521,24 @@ class TvCastSession {
   /// gesture) fill on the first remote OK / tap. The page always auto-resizes to
   /// the screen regardless of this flag — this only controls the browser chrome.
   final bool fullscreenOnTv;
+
+  /// Whether the TV should show the current picture / GIF / FSL clip at full
+  /// size instead of inside the flashcard (or story) frame. Default off.
+  ///
+  /// Distinct from [fullscreenOnTv], which only removes the *browser's* chrome:
+  /// this removes the *cast page's* chrome. The card's accent strip, category
+  /// badge and example sentence are dropped and the media grows to fill the
+  /// stage, so the picture is roughly 2.5x wider than it is in the card — which
+  /// is what a learner with low vision at the back of the room actually needs.
+  /// The word (and the story sentence) stay on screen; the media is fitted, not
+  /// cropped, so nothing is lost off the edges.
+  ///
+  /// Sent to the TV as `bigPicture`; `app.js` turns it into the `big-picture`
+  /// body class and the whole effect is CSS, so toggling it never rebuilds the
+  /// stage and never restarts a playing sign clip. Deliberately has no effect in
+  /// live-activity or progress mode, where the answer options / roster are the
+  /// content and must stay visible.
+  final bool bigPictureOnTv;
 
   /// Whether the photo-flip feature is enabled for the TV flashcard (the "Tap
   /// Only" control). When true (default) the educator's phone shows a "Flip"
@@ -600,7 +631,9 @@ class TvCastSession {
     this.seasonalEmoji,
     this.seasonalAccent,
     this.reducedMotion = false,
+    this.startError,
     this.fullscreenOnTv = true,
+    this.bigPictureOnTv = false,
     this.flipTapOnly = true,
     this.cardFlipped = false,
     this.showMeActive = false,
@@ -661,7 +694,12 @@ class TvCastSession {
     String? seasonalAccent,
     bool clearSeasonal = false,
     bool? reducedMotion,
+    String? startError,
+    /// Clears [startError] — a successful start has to be able to erase a
+    /// previous failure, which `startError ?? this.startError` cannot express.
+    bool clearStartError = false,
     bool? fullscreenOnTv,
+    bool? bigPictureOnTv,
     bool? flipTapOnly,
     bool? cardFlipped,
     bool? showMeActive,
@@ -726,7 +764,9 @@ class TvCastSession {
       seasonalAccent:
           clearSeasonal ? null : (seasonalAccent ?? this.seasonalAccent),
       reducedMotion: reducedMotion ?? this.reducedMotion,
+      startError: clearStartError ? null : (startError ?? this.startError),
       fullscreenOnTv: fullscreenOnTv ?? this.fullscreenOnTv,
+      bigPictureOnTv: bigPictureOnTv ?? this.bigPictureOnTv,
       flipTapOnly: flipTapOnly ?? this.flipTapOnly,
       cardFlipped: cardFlipped ?? this.cardFlipped,
       showMeActive: showMeActive ?? this.showMeActive,
@@ -791,6 +831,11 @@ class TvCastSession {
       // Whether the TV browser should fill the screen (no chrome). The TV-side
       // app.js enters/exits fullscreen to match; the layout auto-fits either way.
       'fullscreen': fullscreenOnTv,
+      // Whether the picture / GIF / sign clip fills the stage instead of
+      // sitting inside the card frame. The TV applies it as a body class, so
+      // flipping it restyles what is already on screen rather than rebuilding
+      // it — a sign clip keeps playing.
+      'bigPicture': bigPictureOnTv,
       // Photo-flip feature gate (the "Tap Only" control). When false the TV
       // shows the emoji only; there is no auto-flip.
       'tapOnly': flipTapOnly,

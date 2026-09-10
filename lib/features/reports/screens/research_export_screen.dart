@@ -9,6 +9,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../features/assessment/services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/utils/accessible_sizing.dart';
 
 /// Educator-only screen for exporting anonymized, cross-student research
 /// data — designed specifically for thesis analysis and academic reporting.
@@ -231,7 +232,7 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
           // ─── Export Button ─────────────────────
           SizedBox(
             width: double.infinity,
-            height: 56,
+            height: scaledControlHeight(context, 56),
             child: ElevatedButton.icon(
               onPressed: studentCount == 0 || _isExporting
                   ? null

@@ -16,6 +16,8 @@ import '../../../providers/experiment_provider.dart';
 import '../../experiment/models/experiment_models.dart';
 import '../../../widgets/accessible_celebration_overlay.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/widgets/fit_text.dart';
+import '../../../core/widgets/reflow_row.dart';
 
 /// Full-screen Daily Mission — a bite-sized session of 3–5 quiz items
 /// (size configurable via [AppSettings.dailyMissionSize]) with calendar,
@@ -207,7 +209,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
     if (def != null && def.isNotEmpty) return def;
     final ex = card.exampleSentence?.trim();
     if (ex != null && ex.isNotEmpty) return ex;
-    return '"${card.wordEnglish}" is "${card.wordFilipino}" in Filipino.';
+    return '“${card.wordEnglish}” is “${card.wordFilipino}” in Filipino.';
   }
 
   @override
@@ -330,26 +332,37 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
         // Header: badge + progress count
         Row(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.accent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '✨ Daily Mission',
-                style: AppTypography.labelMedium.copyWith(
-                  color: AppColors.accent,
-                  fontWeight: FontWeight.w700,
+            // Both halves flexible: the pill and the counter together are wider
+            // than the row at a large text scale.
+            Flexible(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '✨ Daily Mission',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
             const Spacer(),
-            Text(
-              'Word ${_currentIndex + 1} of ${_missionWords.length}',
-              style: AppTypography.labelSmall.copyWith(
-                color: hc.textSecondary,
-                fontWeight: FontWeight.w700,
+            Flexible(
+              child: Text(
+                'Word ${_currentIndex + 1} of ${_missionWords.length}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.labelSmall.copyWith(
+                  color: hc.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -362,7 +375,12 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
         // Word display
         Row(
           children: [
-            FlashcardPicture(card: _word, extent: 60),
+            FlashcardPicture(
+                        card: _word,
+                        extent: 60,
+                        // Same challenge, full-screen: still a question.
+                        revealsAnswer: false,
+                      ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -371,8 +389,11 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                   Row(
                     children: [
                       Flexible(
-                        child: Text(
+                        // The challenge word, at display size next to a speak
+                        // button: it split as "Glove / s".
+                        child: FitText(
                           _word.wordEnglish,
+                          maxLines: 1,
                           style: AppTypography.displaySmall.copyWith(
                             color: hc.textPrimary,
                             fontWeight: FontWeight.w900,
@@ -415,7 +436,8 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
         Row(
           children: [
             Expanded(
-              child: Text(
+              // Shares its row with the 50/50 helper button.
+              child: FitText(
                 'What is this in Filipino?',
                 style: AppTypography.titleSmall.copyWith(
                   color: hc.textPrimary,
@@ -557,7 +579,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                       Row(
                         children: [
                           Flexible(
-                            child: Text(
+                            child: FitText(
                               'The answer is: ${_word.wordFilipino}',
                               style: AppTypography.bodyMedium.copyWith(
                                 color: hc.textPrimary,
@@ -721,13 +743,13 @@ class _FiftyFiftyButton extends StatelessWidget {
             children: [
               Icon(Icons.filter_2_rounded, size: 16, color: hc.primary),
               const SizedBox(width: 4),
-              Text(
+              Flexible(child: Text(
                 '50 / 50 ($remaining)',
                 style: AppTypography.labelSmall.copyWith(
                   color: hc.primary,
                   fontWeight: FontWeight.w700,
                 ),
-              ),
+              )),
             ],
           ),
         ),
@@ -1028,32 +1050,29 @@ class _ChallengeCalendar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Semantics(
-                button: true,
-                label: 'Previous month',
-                child: IconButton(
+              IconButton(
+                  tooltip: 'Previous month',
                   onPressed: onPreviousMonth,
                   icon: Icon(Icons.chevron_left_rounded, color: hc.textPrimary),
                 ),
-              ),
-              Text(
+              // FitText: made flexible it stopped overflowing but began
+              // splitting the month name ("Septem / ber") instead.
+              Flexible(child: FitText(
                 '${months[month.month]} ${month.year}',
+                maxLines: 1,
                 style: AppTypography.titleMedium.copyWith(
                   color: hc.textPrimary,
                   fontWeight: FontWeight.w700,
                 ),
-              ),
-              Semantics(
-                button: true,
-                label: 'Next month',
-                child: IconButton(
+              )),
+              IconButton(
+                  tooltip: 'Next month',
                   onPressed: onNextMonth,
                   icon: Icon(
                     Icons.chevron_right_rounded,
                     color: hc.textPrimary,
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1181,33 +1200,29 @@ class _StatsRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        // Three across only while the labels fit a third of the row. At a
+        // large text scale they do not, and shrinking them further was still
+        // splitting "Curren / t Streak" -- so stack instead.
+        ReflowRow(
+          labels: const ['Current Streak', 'Days Completed', 'Stars Earned'],
           children: [
-            Expanded(
-              child: _StatCard(
-                emoji: '🔥',
-                value: '$streak',
-                label: 'Current Streak',
-                color: const Color(0xFFFF6B35),
-              ),
+            _StatCard(
+              emoji: '🔥',
+              value: '$streak',
+              label: 'Current Streak',
+              color: const Color(0xFFFF6B35),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                emoji: '📅',
-                value: '$totalCompleted',
-                label: 'Days Completed',
-                color: AppColors.primary,
-              ),
+            _StatCard(
+              emoji: '📅',
+              value: '$totalCompleted',
+              label: 'Days Completed',
+              color: AppColors.primary,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                emoji: '⭐',
-                value: '${totalCompleted * 2}',
-                label: 'Stars Earned',
-                color: AppColors.warning,
-              ),
+            _StatCard(
+              emoji: '⭐',
+              value: '${totalCompleted * 2}',
+              label: 'Stars Earned',
+              color: AppColors.warning,
             ),
           ],
         ),
@@ -1240,11 +1255,14 @@ class _StatsRow extends StatelessWidget {
                   children: [
                     Text(b.emoji, style: const TextStyle(fontSize: 18)),
                     const SizedBox(width: 6),
-                    Text(
-                      b.title,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: hc.textPrimary,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: FitText(
+                        b.title,
+                        maxLines: 1,
+                        style: AppTypography.labelMedium.copyWith(
+                          color: hc.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -1318,7 +1336,8 @@ class _StatCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          Text(
+          // "Days Completed" split as "Comple / ted" in a third of a row.
+          FitText(
             label,
             textAlign: TextAlign.center,
             style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),

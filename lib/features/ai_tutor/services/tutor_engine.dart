@@ -314,13 +314,13 @@ class TutorEngine {
     // Default response
     final defaults = isFilipino
         ? [
-            'Subukan mong tanungin ako tungkol sa isang kategorya, o sabihin "quiz" para sa isang mabilisang pagsusulit! 😊',
-            'Pwede mong sabihin: "practice", "hint", "quiz", "paborito", o tanungin mo ako tungkol sa anumang kategorya! 📖',
-            'Hindi ko masyadong naintindihan. Subukan mo: "Tulong sa Animals" o "Bigyan mo ako ng quiz"! 🤔',
+            'Subukan mong tanungin ako tungkol sa isang kategorya, o sabihin “quiz” para sa isang mabilisang pagsusulit! 😊',
+            'Pwede mong sabihin: “practice”, “hint”, “quiz”, “paborito”, o tanungin mo ako tungkol sa anumang kategorya! 📖',
+            'Hindi ko masyadong naintindihan. Subukan mo: “Tulong sa Animals” o “Bigyan mo ako ng quiz”! 🤔',
           ]
         : [
-            'Try asking me about a category, or say "quiz" for a quick question! 😊',
-            'You can say: "practice", "hint", "quiz", "favorites", or ask about any category! 📖',
+            'Try asking me about a category, or say “quiz” for a quick question! 😊',
+            'You can say: “practice”, “hint”, “quiz”, “favorites”, or ask about any category! 📖',
             'I\'m not sure what you mean. Try: "Help with Animals" or "Give me a quiz"! 🤔',
           ];
 
@@ -352,8 +352,8 @@ class TutorEngine {
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
       content: isFilipino
-          ? '📝 Napansin ko na kailangan mo pa ng kaunting practice sa "$category". Gusto mo bang mag-practice doon?'
-          : '📝 I noticed "$category" needs some practice. Want to work on it? Tap below to start!',
+          ? '📝 Napansin ko na kailangan mo pa ng kaunting practice sa “$category”. Gusto mo bang mag-practice doon?'
+          : '📝 I noticed “$category” needs some practice. Want to work on it? Tap below to start!',
       timestamp: DateTime.now(),
       action: const TutorAction(
         type: TutorActionType.practiceRedirect,
@@ -387,8 +387,8 @@ class TutorEngine {
         id: _uuid.v4(),
         role: TutorMessageRole.tutor,
         content: isFilipino
-            ? 'Handa ka na bang matuto? Sabihin "quiz" o "practice"! 📚'
-            : 'Ready to learn? Say "quiz" or "practice"! 📚',
+            ? 'Handa ka na bang matuto? Sabihin “quiz” o “practice”! 📚'
+            : 'Ready to learn? Say “quiz” or “practice”! 📚',
         timestamp: DateTime.now(),
       );
     }
@@ -459,12 +459,12 @@ class TutorEngine {
     );
     buffer.write(
       isFilipino
-          ? '\nNagsisimula ito sa "${answer[0]}" at may $letters na letra.'
-          : '\nIt starts with "${answer[0]}" and has $letters letters.',
+          ? '\nNagsisimula ito sa “${answer[0]}” at may $letters na letra.'
+          : '\nIt starts with “${answer[0]}” and has $letters letters.',
     );
 
     final masked = _maskWord(card.exampleSentence, card.wordEnglish);
-    if (masked != null) buffer.write('\n\n💬 "$masked"');
+    if (masked != null) buffer.write('\n\n💬 “$masked”');
 
     return TutorMessage(
       id: _uuid.v4(),
@@ -555,12 +555,12 @@ class TutorEngine {
     final buffer = StringBuffer();
     buffer.write(
       isFilipino
-          ? '📖 Balikan natin ito. Ang "${card.wordEnglish}" ay "${card.wordFilipino}" ${card.category.emoji}'
+          ? '📖 Balikan natin ito. Ang “${card.wordEnglish}” ay “${card.wordFilipino}” ${card.category.emoji}'
           : '📖 Let\'s look at it again. "${card.wordEnglish}" is "${card.wordFilipino}" ${card.category.emoji}',
     );
     if (card.exampleSentence != null &&
         card.exampleSentence!.trim().isNotEmpty) {
-      buffer.write('\n\n💬 "${card.exampleSentence!.trim()}"');
+      buffer.write('\n\n💬 “${card.exampleSentence!.trim()}”');
     }
     if (card.definition != null && card.definition!.trim().isNotEmpty) {
       buffer.write('\n\nℹ️ ${card.definition!.trim()}');
@@ -756,8 +756,8 @@ class TutorEngine {
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
       content: isFilipino
-          ? '$head\n\nAno ang Filipino ng "${card.wordEnglish}"?'
-          : '$head\n\nWhat is the Filipino for "${card.wordEnglish}"?',
+          ? '$head\n\nAno ang Filipino ng “${card.wordEnglish}”?'
+          : '$head\n\nWhat is the Filipino for “${card.wordEnglish}”?',
       timestamp: DateTime.now(),
       action: TutorAction(
         type: TutorActionType.quickQuiz,

@@ -27,12 +27,15 @@ import '../../break_time/break_time.dart';
 import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../game_pause_mixin.dart';
 import '../game_resume_mixin.dart';
 import '../timed_game_mixin.dart';
 import 'pause_overlay.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../core/utils/seeded_random.dart';
 
 /// One tappable answer in a [TapQuizRound].
 class TapChoice {
@@ -203,7 +206,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
   List<Achievement> _newAchievements = [];
   final List<GameReviewItem> _reviewItems = [];
   final Map<String, bool> _cardResults = {};
-  final random = Random();
+  final random = contentRandom();
 
   /// Cards in play this session, category-filtered. Available to subclasses
   /// that need a wider pool than the round's own distractors.
@@ -355,6 +358,12 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
       }
     });
 
+    // Tell a learner who cannot see the screen whether they were right, and
+    // what the right answer was. Everyone else reads that from the colour of
+    // the button; without this the controller would accept an answer in
+    // silence and the game would be unplayable by ear.
+    _announceResult(index);
+
     Future.delayed(const Duration(milliseconds: 1200), () {
       if (!mounted) return;
       if (_currentRound < _rounds.length - 1) {
@@ -364,10 +373,32 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
           _cursorIndex = 0;
           _answered = false;
         });
+        _announceRound();
       } else {
         _finish();
       }
     });
+  }
+
+  /// Says whether the answer was right, naming the correct choice when it was
+  /// not — a learner who only hears "wrong" has learned nothing.
+  void _announceResult(int index) {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final round = _rounds[_currentRound];
+    final correct = index == round.correctIndex;
+    final answer = round.choices[round.correctIndex].textIn(l10n);
+    gamepadScreen.announce(
+      correct ? l10n.correct : '${l10n.tryAgain}. $answer.',
+    );
+  }
+
+  /// Reads the new question as it appears, so a round never begins in silence
+  /// while the learner waits to discover what changed.
+  void _announceRound() {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    gamepadScreen.announce(promptSemantics(l10n, _rounds[_currentRound]));
   }
 
   void _finish() {
@@ -593,7 +624,26 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
     final showCursor =
         ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
-    return GazeScope(
+    // Offer the round to the Bluetooth controller: the question as prose, the
+    // answers as items. A learner driving by ear hears the prompt on R2, steps
+    // the choices with ▲ ▼, and answers with R1 — the same three buttons they
+    // use everywhere else in the app.
+    //
+    // Withdrawn while answered, so the 1.2-second feedback pause cannot be
+    // spent re-answering a round that is already scored.
+    return GamepadScreenRegistrar(
+      title: gameTitle(l10n),
+      active: !_answered && !isPaused,
+      narration: [promptSemantics(l10n, round)],
+      items: [
+        for (var i = 0; i < round.choices.length; i++)
+          GamepadItem(
+            label: round.choices[i].textIn(l10n),
+            detail: round.choices[i].sublabel,
+            onActivate: () => _selectAnswer(i),
+          ),
+      ],
+      child: GazeScope(
       actions: _gazeActions(),
       onBlink: _selectCursor,
       child: PopScope(
@@ -731,6 +781,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
               ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -879,10 +930,17 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
           );
     }
 
-    return card
-        .animate(key: ValueKey('$_currentRound-$index'))
-        .fadeIn(duration: 300.ms, delay: (index * 80).ms)
-        .slideY(begin: 0.1, end: 0);
+    // The controller's own ring, so a teacher beside the learner can see which
+    // answer is about to be chosen. Distinct from the gaze cursor's border —
+    // the two inputs can be on different choices, and showing only one would
+    // mislead whoever is watching.
+    return GamepadFocusable(
+      index: index,
+      child: card
+          .animate(key: ValueKey('$_currentRound-$index'))
+          .fadeIn(duration: 300.ms, delay: (index * 80).ms)
+          .slideY(begin: 0.1, end: 0),
+    );
   }
 
   /// Standard bordered prompt panel — matches the question area the other

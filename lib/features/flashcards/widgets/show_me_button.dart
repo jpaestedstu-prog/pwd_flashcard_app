@@ -18,6 +18,10 @@ import '../../../l10n/app_localizations.dart';
 Future<void> showActionClipSheet(BuildContext context, Flashcard card) async {
   await showModalBottomSheet<void>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     backgroundColor: Colors.transparent,
     // Let the sheet grow taller than the default half-screen cap and manage its
     // own height; [MediaSheetLayout] keeps it within 92% of the screen and

@@ -63,7 +63,7 @@ class LeaderboardConfigScreen extends ConsumerWidget {
                   subtitle: Text(
                     config.visible
                         ? 'Members can see the rankings.'
-                        : 'Hidden — members see "not enabled yet".',
+                        : 'Hidden — members see “not enabled yet”.',
                     style: AppTypography.bodySmall
                         .copyWith(color: hc.textSecondary),
                   ),
@@ -182,7 +182,13 @@ class _MemberHideList extends ConsumerWidget {
     final hc = HCColor.of(context);
     // Build a unified (id, name) list from whichever roster applies.
     final List<({String id, String name})> roster;
-    if (scope.kind == LeaderboardScopeKind.classroom) {
+    if (scope.kind == LeaderboardScopeKind.none || scope.id == null) {
+      // A learner in neither a class nor a home group has no roster to hide
+      // anyone from. The `else` branch below force-unwrapped `scope.id`, so
+      // reaching this screen in that state threw a null-check error rather
+      // than showing the empty message a few lines down.
+      roster = const [];
+    } else if (scope.kind == LeaderboardScopeKind.classroom) {
       final members =
           ref.watch(classroomMembersProvider(scope.id!)).valueOrNull ??
               const [];

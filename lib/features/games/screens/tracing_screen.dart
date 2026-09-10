@@ -28,6 +28,7 @@ import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../core/widgets/fit_text.dart';
 
 class TracingScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -515,16 +516,21 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                // The word to trace, and the pair it teaches. On hard mode the
+                // whole word is upper-cased, which is wider still, and it split
+                // as "GR / ANDMOTHER".
+                FitText(
                   l10n.traceWord(_traceText),
+                  maxLines: 1,
                   style: AppTypography.titleLarge.copyWith(
                     fontWeight: FontWeight.bold,
                     color: card.category.darkColor,
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
+                FitText(
                   '${card.wordEnglish} = ${card.wordFilipino}',
+                  maxLines: 1,
                   style: AppTypography.bodyMedium.copyWith(
                     color: HCColor.of(context).textSecondary,
                   ),

@@ -31,6 +31,10 @@ import '../../../l10n/app_localizations.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../gamepad/logic/gamepad_speech.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
+import '../../../core/utils/seeded_random.dart';
 
 class MemoryMatchScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -164,7 +168,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
         ),
       );
     }
-    _cards.shuffle(Random());
+    _cards.shuffle(contentRandom());
     _firstFlippedIndex = null;
     _secondFlippedIndex = null;
     _moves = 0;
@@ -239,6 +243,41 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
         onSelect: _selectCursor,
       ),
     ];
+  }
+
+  GamepadPhrases get _gamepadPhrases {
+    try {
+      return GamepadPhrases(ref.read(settingsProvider).locale);
+    } catch (_) {
+      return const GamepadPhrases('en');
+    }
+  }
+
+  /// Turning a card over from the controller. Says what was revealed — the
+  /// whole game is remembering which word sat at which number, and a silent
+  /// flip gives the learner nothing to remember.
+  void _flipFromGamepad(int index) {
+    if (index < 0 || index >= _cards.length) return;
+    final card = _cards[index];
+    if (card.isMatched || card.isFlipped) return;
+    final wasFirst = _firstFlippedIndex == null;
+    _flipCard(index);
+    gamepadScreen.announce(
+      _gamepadPhrases.memoryRevealed(index + 1, card.displayText),
+    );
+    if (wasFirst) return;
+    // Second card of the pair: the outcome is decided in [_checkMatch] after a
+    // short delay, so report it once that has settled.
+    final first = _firstFlippedIndex;
+    Future.delayed(const Duration(milliseconds: 620), () {
+      if (!mounted || first == null) return;
+      final matched = _cards[index].isMatched;
+      gamepadScreen.announce(
+        matched
+            ? _gamepadPhrases.memoryMatched(card.displayText)
+            : _gamepadPhrases.memoryNoMatch,
+      );
+    });
   }
 
   void _flipCard(int index) {
@@ -420,7 +459,32 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
         ref.watch(gazeSettingsProvider.select((s) => s.enabled)) &&
         !_isChecking;
 
-    return GazeScope(
+    // Offer the board to the Bluetooth controller. Played by ear this is a
+    // game about *positions*, so every card announces its number — that number
+    // is the learner's only handle on the board, and what they will remember
+    // when they come back for its pair. Cards already matched stay in the list
+    // (the numbering must not shift under them) but are marked unavailable.
+    final phrases = _gamepadPhrases;
+    return GamepadScreenRegistrar(
+      title: GameType.memoryMatch.labelOf(l10n),
+      active: !isPaused && !_isChecking,
+      narration: [phrases.memoryProgress(_matchedPairs, _pairs)],
+      items: [
+        for (var i = 0; i < _cards.length; i++)
+          GamepadItem(
+            label: phrases.memoryCard(
+              i + 1,
+              _cards.length,
+              word: (_cards[i].isFlipped || _cards[i].isMatched)
+                  ? _cards[i].displayText
+                  : null,
+              matched: _cards[i].isMatched,
+            ),
+            enabled: !_cards[i].isMatched && !_cards[i].isFlipped,
+            onActivate: () => _flipFromGamepad(i),
+          ),
+      ],
+      child: GazeScope(
       actions: _gazeActions(),
       onBlink: _selectCursor,
       child: PopScope(
@@ -573,6 +637,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
               ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -35,7 +35,7 @@ Future<bool> confirmHandsFreePause(
 
   /// What voice can still do inside, shown when [voiceAvailable]. Defaults to
   /// the bare minimum every such screen offers: a spoken way out.
-  String voiceHint = 'You can still say "go back" to leave at any time.',
+  String voiceHint = 'You can still say “go back” to leave at any time.',
 }) async {
   final confirmed = await showDialog<bool>(
     context: context,
@@ -63,7 +63,7 @@ Future<bool> confirmHandsFreePause(
                 ? voiceHint
                 : 'To leave, use the Back button at the top — or turn on Voice '
                       'commands in Settings → Accessibility → Gaze Control first, '
-                      'so you can say "go back".',
+                      'so you can say “go back”.',
             style: AppTypography.bodyMedium.copyWith(
               fontWeight: FontWeight.w600,
             ),

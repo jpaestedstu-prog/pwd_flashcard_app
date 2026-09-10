@@ -21,6 +21,7 @@ import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Wraps [index] into 0…count-1, handling negatives so a left move from the
 /// first tile lands on the last. Returns 0 for an empty set. Pure + testable.
@@ -1090,11 +1091,12 @@ class _BoardTileWidget extends StatelessWidget {
                       Flexible(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: Text(
+                          // The tile's whole job is to say one phrase. It was
+                          // splitting "af / ternoon" in "Good afternoon" -- on
+                          // the board a non-speaking learner uses to talk.
+                          child: FitText(
                             useFilipino ? tile.labelFil : tile.label,
                             textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                             style: AppTypography.labelSmall.copyWith(
                               color: hc.textPrimary,
                               fontWeight: FontWeight.w600,

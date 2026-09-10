@@ -282,6 +282,12 @@ class _WarningBanner extends StatelessWidget {
                             minWidth: presentation.minTouchTarget,
                             minHeight: presentation.minTouchTarget,
                           ),
+                          // Labelled through `Semantics`, not `tooltip`, and
+                          // this one cannot change: the warning renders in
+                          // `MaterialApp.builder`, above the Navigator, so
+                          // there is no `Overlay` for a Tooltip to mount into
+                          // and one throws on build. The duplicate unlabelled
+                          // node this leaves is the lesser problem.
                           child: Semantics(
                             button: true,
                             label: 'Dismiss',

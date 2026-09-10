@@ -5,6 +5,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../data/models/enums.dart';
 import '../models/showcase_models.dart';
+import '../../../core/utils/reduced_motion.dart';
 
 /// A card displaying a single showcase portfolio item with enhanced visuals:
 /// shimmer shine on header, glow for pinned items, mastery progress bar,
@@ -177,7 +178,8 @@ class ShowcaseCard extends StatelessWidget {
                           ),
                         )
                             .animate(
-                              onPlay: (c) => c.repeat(),
+                              key: motionKey(context),
+                              onPlay: motionLoop(context),
                             )
                             .moveX(
                               begin: -200,

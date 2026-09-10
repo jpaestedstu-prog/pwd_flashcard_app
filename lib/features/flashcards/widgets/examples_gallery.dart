@@ -17,6 +17,10 @@ import 'media_sheet_layout.dart';
 Future<void> showExamplesGallery(BuildContext context, Flashcard card) async {
   await showModalBottomSheet<void>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (_) => _ExamplesGallerySheet(card: card),

@@ -365,7 +365,7 @@ class LockPresentation {
       if (haptics) 'Vibration cue',
       if (announce) 'Screen-reader announcement',
       if (simplifiedWording) 'Short, simple wording',
-      'Large "Switch account" button',
+      'Large “Switch account” button',
     ];
   }
 }

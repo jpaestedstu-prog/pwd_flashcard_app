@@ -95,8 +95,8 @@ void main() {
     // from the Hive-backed settingsProvider. Settings are per-profile, so
     // settingsProvider also resolves the active profile from 'profiles'.
     Hive.init('./build/test_cache/button_centering');
-    if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings');
-    if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles');
+    if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings', compactionStrategy: (_, _) => false);
+    if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles', compactionStrategy: (_, _) => false);
   });
 
   tearDownAll(() async => Hive.deleteFromDisk());

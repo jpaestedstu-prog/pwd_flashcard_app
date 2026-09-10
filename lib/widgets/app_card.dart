@@ -100,6 +100,34 @@ class AppCard extends StatelessWidget {
           )
         : null;
 
+    // What gives a card its edge differs by theme. Light, dark and dyslexia
+    // separate the fill from the ground and lean on the soft shadow. High
+    // contrast can do neither: it paints a #1A1A1A card on a #000000 ground
+    // (1.21:1) and `softShadow` is black-on-black there, compositing to the
+    // ground exactly. An un-bordered card had no boundary at all, in the one
+    // theme built for low vision.
+    //
+    // The theme already answers this everywhere it owns the surface —
+    // `cardTheme`, `dialogTheme` and the button themes all carry a 2px accent
+    // side under high contrast. AppCard builds its own BoxDecoration rather
+    // than going through `Card`, which is how it slipped past the convention;
+    // matching it here (accent reaches us as `hc.primary`, so this follows the
+    // per-disability accent) keeps an AppCard from reading as a different
+    // component than the Material cards beside it.
+    //
+    // The stroke is aligned *outside* deliberately. A `Container` adds
+    // `decoration.padding` to its child, and for a plain border that is the
+    // border's own width — so an inside 2px stroke would quietly take 4px of
+    // width and height from every card in the app, but only under high
+    // contrast, which is the one theme the overflow matrix does not cover.
+    // `strokeAlignOutside` makes `Border.dimensions` zero, so the outline is
+    // painted without moving anything (asserted in theme_contrast_test).
+    final resolvedBorder = borderColor ?? (hc.hc ? hc.primary : null);
+    final resolvedBorderWidth = borderColor != null ? borderWidth : 2.0;
+    final resolvedBorderAlign = borderColor != null
+        ? BorderSide.strokeAlignInside
+        : BorderSide.strokeAlignOutside;
+
     final decoration = BoxDecoration(
       color: resolvedColor,
       gradient: gradient,
@@ -107,8 +135,12 @@ class AppCard extends StatelessWidget {
       boxShadow: depth
           ? Depth3D.shadows(glowTint!)
           : (elevated ? AppColors.softShadow : null),
-      border: borderColor != null
-          ? Border.all(color: borderColor!, width: borderWidth)
+      border: resolvedBorder != null
+          ? Border.all(
+              color: resolvedBorder,
+              width: resolvedBorderWidth,
+              strokeAlign: resolvedBorderAlign,
+            )
           : null,
     );
 

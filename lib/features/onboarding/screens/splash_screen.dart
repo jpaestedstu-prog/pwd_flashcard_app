@@ -8,6 +8,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/utils/reduced_motion.dart';
+import '../../../providers/app_providers.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -47,7 +49,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _particleController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 6000),
-    )..repeat();
+    );
 
     _progressController.forward();
     _scheduleNavigation();
@@ -86,6 +88,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    _particleController.syncMotionLoop(
+      ref.watch(settingsProvider.select((s) => s.reducedMotion)),
+    );
     final l10n = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final stages = [
@@ -159,7 +164,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         )
                         .then()
                         .animate(
-                          onPlay: (c) => c.repeat(reverse: true),
+                          key: motionKey(context),
+                          onPlay: motionLoop(context, reverse: true),
                         )
                         .scale(
                           begin: const Offset(1.0, 1.0),
@@ -301,7 +307,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             shape: BoxShape.circle,
           ),
         )
-            .animate(onPlay: (c) => c.repeat(reverse: true))
+            .animate(key: motionKey(context), onPlay: motionLoop(context, reverse: true))
             .fadeIn(duration: 800.ms, delay: delay.ms)
             .moveY(
               begin: 0,
@@ -331,7 +337,16 @@ class _LetterRevealText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    // Scaled to fit rather than wrapped.
+    //
+    // Each letter is its own `Text` so it can be revealed in turn, which means
+    // the app name is a rigid row that cannot wrap -- at a large text scale it
+    // ran 54 px off the right of the splash screen. Wrapping would break the
+    // name across lines mid-word; scaling keeps it one line and intact, and the
+    // reveal animation is untouched.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(text.length, (i) {
         return Text(
@@ -351,6 +366,7 @@ class _LetterRevealText extends StatelessWidget {
               curve: Curves.easeOutBack,
             );
       }),
+      ),
     );
   }
 }

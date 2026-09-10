@@ -12,10 +12,13 @@ import '../../../data/models/models.dart';
 import '../../../data/models/achievements.dart';
 import '../../../data/models/shop_data.dart';
 import '../../../data/local/hive_service.dart';
+import '../../parent/models/educator_audience.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/parent_provider.dart';
 import '../../../providers/student_list_provider.dart';
 import '../../../widgets/student_filter_bar.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Multi-student dashboard for teachers and parents.
 ///
@@ -27,6 +30,8 @@ class MultiStudentDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final audience = ref.watch(educatorAudienceProvider);
+    final l = ref.watch(settingsProvider).locale == 'fil';
     final filteredStudents = ref.watch(filteredStudentsProvider);
     final filter = ref.watch(studentFilterProvider);
     // Use the same roster source as the filter pipeline so educators see
@@ -36,7 +41,7 @@ class MultiStudentDashboardScreen extends ConsumerWidget {
     final rosterAsync = isEducator
         ? ref.watch(educatorRosterProvider(activeProfile.id))
         : AsyncData(ref.watch(allProfilesWithProgressProvider));
-    final allData = rosterAsync.value ?? const [];
+    final allData = rosterAsync.valueOrNull ?? const [];
     final totalStudents = allData
         .where((d) => d.$1.role.isEnrollableLearner && !d.$1.isGuestPlayer)
         .length;
@@ -46,7 +51,7 @@ class MultiStudentDashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: const AppBackButton(),
         title: Text(
-          'All Students',
+          audience.allLearnersTitleOf(filipino: l),
           style: AppTypography.titleMedium
               .copyWith(fontWeight: FontWeight.w700),
         ),
@@ -81,6 +86,8 @@ class MultiStudentDashboardScreen extends ConsumerWidget {
                 ? _EmptyState(
                     hasFilters: filter.hasActiveFilters,
                     totalStudents: totalStudents,
+                    audience: audience,
+                    filipino: l,
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -119,8 +126,15 @@ class MultiStudentDashboardScreen extends ConsumerWidget {
 class _EmptyState extends StatelessWidget {
   final bool hasFilters;
   final int totalStudents;
+  final EducatorAudience audience;
+  final bool filipino;
 
-  const _EmptyState({required this.hasFilters, required this.totalStudents});
+  const _EmptyState({
+    required this.hasFilters,
+    required this.totalStudents,
+    required this.audience,
+    required this.filipino,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -136,16 +150,20 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             hasFilters
-                ? 'No students match your filters'
-                : 'No student profiles yet',
+                ? (filipino
+                      ? 'Walang ${audience.learnerNounPluralOf(filipino: true)} na tumugma sa filter'
+                      : 'No ${audience.learnerNounPlural} match your filters')
+                : audience.analyticsEmptyTitle(filipino: filipino),
             style: AppTypography.titleMedium
                 .copyWith(color: HCColor.of(context).textSecondary),
           ),
           const SizedBox(height: 8),
           Text(
             hasFilters
-                ? '$totalStudents total students — try adjusting your filters.'
-                : 'Students will appear here once they create\na profile in the app.',
+                ? '$totalStudents total ${audience.learnerNounPlural} — try '
+                      'adjusting your filters.'
+                : '${audience.learnerNounPluralCap} will appear here once '
+                      'they create\na profile in the app.',
             style:
                 AppTypography.bodyMedium.copyWith(color: AppColors.textHint),
             textAlign: TextAlign.center,
@@ -195,7 +213,8 @@ class _StudentCard extends StatelessWidget {
     final subtitleParts = <String>[
       if (profile.gradeLevel != null) profile.gradeLevel!.label,
       if (profile.section != null) profile.section!,
-      if (profile.gradeLevel == null && profile.section == null) profile.role.label,
+      if (profile.gradeLevel == null && profile.section == null)
+        profile.role.labelOf(AppLocalizations.of(context)),
     ];
 
     return Semantics(

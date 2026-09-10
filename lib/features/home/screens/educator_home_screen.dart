@@ -14,12 +14,22 @@ import '../../../widgets/app_card.dart';
 import '../../../widgets/connectivity_indicator.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../providers/student_list_provider.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
+import '../../parent/models/educator_audience.dart';
 import '../../messaging/providers/messaging_providers.dart';
 
 /// Home screen shown to teachers and parents.
 ///
 /// Focuses on student management, analytics, and progress monitoring
 /// instead of the learning/gaming features shown to students.
+/// Localised strings with an English fallback.
+///
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
 class EducatorHomeScreen extends ConsumerWidget {
   const EducatorHomeScreen({super.key});
 
@@ -29,6 +39,10 @@ class EducatorHomeScreen extends ConsumerWidget {
     final padding = context.pagePadding;
     final hc = HCColor.of(context);
     final isParent = profile?.role == UserRole.parent;
+    final audience = isParent
+        ? EducatorAudience.parent
+        : EducatorAudience.teacher;
+    final filipino = ref.watch(settingsProvider).locale == 'fil';
     final isEducator = profile != null && profile.role.isEducator;
 
     // Use Firestore-backed roster for educator views so cross-device joined
@@ -84,7 +98,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                        'Welcome, ${profile?.name ?? 'Educator'}! ${isParent ? '👨‍👩‍👧' : '📚'}',
+                                        '${_t(context).eduWelcome(profile?.name ?? 'Educator')} ${isParent ? '👨‍👩‍👧' : '📚'}',
                                         style: AppTypography.headlineLarge
                                             .copyWith(color: hc.textPrimary),
                                       )
@@ -94,8 +108,8 @@ class EducatorHomeScreen extends ConsumerWidget {
                                   const SizedBox(height: 4),
                                   Text(
                                     isParent
-                                        ? 'Monitor your children\'s learning'
-                                        : 'Manage your class progress',
+                                        ? _t(context).eduSubtitleParent
+                                        : _t(context).eduSubtitleTeacher,
                                     style: AppTypography.bodyMedium.copyWith(
                                       color: hc.textSecondary,
                                     ),
@@ -109,16 +123,13 @@ class EducatorHomeScreen extends ConsumerWidget {
                             const ConnectivityIndicator(),
                             // Settings gear (top-right). Switching profiles now lives
                             // inside Settings, matching the Student/Child surfaces.
-                            Semantics(
-                                  button: true,
-                                  label: 'Open settings',
-                                  child: IconButton(
+                            IconButton(
+                                    tooltip: 'Open settings',
                                     onPressed: () => context.push('/settings'),
                                     icon: const Icon(Icons.settings_rounded),
                                     iconSize: 28,
                                     color: hc.textSecondary,
-                                  ),
-                                )
+                                  )
                                 .animate()
                                 .fadeIn(delay: 200.ms)
                                 .rotate(begin: -0.1, end: 0, duration: 500.ms),
@@ -135,6 +146,10 @@ class EducatorHomeScreen extends ConsumerWidget {
                           vertical: 20,
                         ),
                         child: _OverviewStats(
+                          audience: isParent
+                              ? EducatorAudience.parent
+                              : EducatorAudience.teacher,
+                          filipino: filipino,
                           totalStudents: totalStudents,
                           activeToday: activeToday,
                           avgWords: avgWords,
@@ -158,7 +173,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                       child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: padding),
                         child: Text(
-                          'Quick Actions',
+                          _t(context).eduQuickActions,
                           style: AppTypography.titleMedium.copyWith(
                             fontWeight: FontWeight.w700,
                             color: hc.textPrimary,
@@ -278,7 +293,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                                 child: Row(
                                   children: [
                                     _QuickFilterChip(
-                                      label: 'Needs Help',
+                                      label: _t(context).eduNeedsHelp,
                                       icon: Icons.warning_amber_rounded,
                                       color: AppColors.error,
                                       onTap: () {
@@ -296,7 +311,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                                     ),
                                     const SizedBox(width: 8),
                                     _QuickFilterChip(
-                                      label: 'Inactive 7d+',
+                                      label: _t(context).eduInactive7d,
                                       icon: Icons.schedule_rounded,
                                       color: AppColors.warning,
                                       onTap: () {
@@ -312,7 +327,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                                     ),
                                     const SizedBox(width: 8),
                                     _QuickFilterChip(
-                                      label: 'Active Today',
+                                      label: _t(context).eduActiveToday,
                                       icon: Icons.local_fire_department_rounded,
                                       color: AppColors.success,
                                       onTap: () {
@@ -373,15 +388,15 @@ class EducatorHomeScreen extends ConsumerWidget {
                       SliverToBoxAdapter(
                         child: RichEmptyState(
                           emoji: isParent ? '👨‍👩‍👧' : '📊',
-                          title: isParent
-                              ? 'No children yet'
-                              : 'No students yet',
+                          title: audience.analyticsEmptyTitle(
+                            filipino: filipino,
+                          ),
                           description: isParent
-                              ? 'Create a home group, then share the code with your child to join.'
-                              : 'Create a class, then share the code with your students to join.',
-                          actionLabel: isParent
-                              ? 'Share Home Group Code'
-                              : 'Share Class Code',
+                              ? _t(context).eduNoChildrenDesc
+                              : _t(context).eduNoStudentsDesc,
+                          actionLabel: audience.shareCodeLabel(
+                            filipino: filipino,
+                          ),
                           actionIcon: isParent
                               ? Icons.family_restroom_rounded
                               : Icons.qr_code_2_rounded,
@@ -393,7 +408,11 @@ class EducatorHomeScreen extends ConsumerWidget {
                         ),
                       ),
 
-                    const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                    // Tall enough that the last tile can scroll clear of the
+                    // floating AI Tutor launcher, which otherwise sits on top
+                    // of the bottom-right tile once the list is scrolled to
+                    // the end.
+                    const SliverToBoxAdapter(child: SizedBox(height: 132)),
                   ],
                 ),
         ),
@@ -405,11 +424,15 @@ class EducatorHomeScreen extends ConsumerWidget {
 // ─── Overview Stats Row ────────────────────────────────
 
 class _OverviewStats extends StatelessWidget {
+  final EducatorAudience audience;
+  final bool filipino;
   final int totalStudents;
   final int activeToday;
   final int avgWords;
 
   const _OverviewStats({
+    required this.audience,
+    required this.filipino,
     required this.totalStudents,
     required this.activeToday,
     required this.avgWords,
@@ -424,23 +447,25 @@ class _OverviewStats extends StatelessWidget {
       tiles: [
         ProStatTile(
           icon: Icons.people_rounded,
-          label: 'Students',
+          label: audience.learnerNounPluralCapOf(filipino: filipino),
           value: '$totalStudents',
-          caption: 'enrolled',
+          caption: filipino ? 'nakatala' : 'enrolled',
           accent: AppColors.sectionLearning,
         ),
         ProStatTile(
           icon: Icons.local_fire_department_rounded,
-          label: 'Active Today',
+          label: filipino ? 'Aktibo Ngayon' : 'Active Today',
           value: '$activeToday',
-          caption: 'in last 24h',
+          caption: filipino ? 'nitong 24 oras' : 'in last 24h',
           accent: AppColors.error,
         ),
         ProStatTile(
           icon: Icons.auto_stories_rounded,
-          label: 'Avg Words',
+          label: filipino ? 'Katamtamang Salita' : 'Avg Words',
           value: '$avgWords',
-          caption: 'per student',
+          caption: filipino
+              ? 'bawat ${audience.learnerNounOf(filipino: true)}'
+              : 'per ${audience.learnerNoun}',
           accent: AppColors.sectionCommunication,
         ),
       ],
@@ -469,6 +494,7 @@ class _QuickActions extends ConsumerWidget {
   }
 
   Widget _buildParentChips(BuildContext context, int unreadMessages) {
+    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
     // Primary actions as large, easy-to-tap professional tiles; the rest tuck
     // into a compact "More" grid. (Family View lives in the hero CTA above, so
     // it isn't duplicated here.)
@@ -479,38 +505,38 @@ class _QuickActions extends ConsumerWidget {
           tiles: [
             ProActionTile(
               icon: Icons.assessment_rounded,
-              label: 'Reports',
-              caption: 'Weekly summary',
+              label: t.eduReports,
+              caption: t.eduWeeklySummary,
               accent: AppColors.warning,
               onTap: () => context.push('/weekly-reports'),
             ),
             ProActionTile(
               icon: Icons.shield_rounded,
-              label: 'Parental Controls',
-              caption: 'Limits & safety',
+              label: t.eduParentalControlsTile,
+              caption: t.eduLimitsSafety,
               accent: AppColors.sectionAssessment,
               onTap: () => context.push('/parental-controls'),
             ),
             ProActionTile(
               icon: Icons.style_rounded,
-              label: 'Cards',
-              caption: 'Browse decks',
+              label: t.eduCards,
+              caption: t.eduBrowseDecks,
               accent: AppColors.info,
               onTap: () => context.push('/flashcards'),
             ),
             ProActionTile(
               icon: Icons.qr_code_2_rounded,
-              label: 'Share Code',
-              caption: 'Invite your child',
+              label: t.eduShareCode,
+              caption: t.eduInviteChild,
               accent: AppColors.success,
               onTap: () => context.push('/home-group-manage'),
             ),
           ],
         ),
         const SizedBox(height: 24),
-        const ProSectionHeader(title: 'More'),
+        ProSectionHeader(title: t.eduMore),
         const SizedBox(height: 12),
-        _GroupLabel(text: 'Content', color: hc.textSecondary),
+        _GroupLabel(text: t.eduContent, color: hc.textSecondary),
         const SizedBox(height: 8),
         ProActionGrid(
           compact: true,
@@ -518,14 +544,14 @@ class _QuickActions extends ConsumerWidget {
             ProActionTile(
               compact: true,
               icon: Icons.tv_rounded,
-              label: 'TV Cast',
+              label: t.eduTvCast,
               accent: AppColors.primary,
               onTap: () => context.push('/tv-cast'),
             ),
             ProActionTile(
               compact: true,
               icon: Icons.message_rounded,
-              label: 'Messages',
+              label: t.eduMessages,
               accent: AppColors.sectionSocial,
               onTap: () => context.push('/messages'),
               badgeCount: unreadMessages,
@@ -533,7 +559,7 @@ class _QuickActions extends ConsumerWidget {
             ProActionTile(
               compact: true,
               icon: Icons.sticky_note_2_rounded,
-              label: 'Teacher Notes',
+              label: t.eduTeacherNotes,
               accent: AppColors.sectionCommunication,
               onTap: () => context.push('/parent-teacher-notes'),
             ),
@@ -545,7 +571,7 @@ class _QuickActions extends ConsumerWidget {
         // here, and the hub itself only opened its educator sections for
         // `role == teacher`. Both roles enrol learners and both should be able
         // to set them work — see `UserRoleX.isEnrollableLearner`.
-        _GroupLabel(text: 'Assessments & Progress', color: hc.textSecondary),
+        _GroupLabel(text: t.eduAssessmentsProgress, color: hc.textSecondary),
         const SizedBox(height: 8),
         ProActionGrid(
           compact: true,
@@ -553,28 +579,28 @@ class _QuickActions extends ConsumerWidget {
             ProActionTile(
               compact: true,
               icon: Icons.quiz_rounded,
-              label: 'Assessments',
+              label: t.eduAssessments,
               accent: AppColors.sectionAssessment,
               onTap: () => context.push('/assessment'),
             ),
             ProActionTile(
               compact: true,
               icon: Icons.assignment_turned_in_rounded,
-              label: 'Assign Tasks',
+              label: t.eduAssignTasks,
               accent: AppColors.success,
               onTap: () => context.push('/assessment/assign'),
             ),
             ProActionTile(
               compact: true,
               icon: Icons.track_changes_rounded,
-              label: 'Track Progress',
+              label: t.eduTrackProgress,
               accent: AppColors.info,
               onTap: () => context.push('/assessment/tracking'),
             ),
             ProActionTile(
               compact: true,
               icon: Icons.family_restroom_rounded,
-              label: 'Manage Groups',
+              label: t.eduManageGroups,
               accent: AppColors.sectionCommunication,
               onTap: () => context.push('/home-group-manage'),
             ),
@@ -585,6 +611,9 @@ class _QuickActions extends ConsumerWidget {
   }
 
   Widget _buildTeacherChips(BuildContext context, int unreadMessages) {
+    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
+    const audience = EducatorAudience.teacher;
+    final filipino = t.localeName.startsWith('fil');
     // Six large primary tiles for the daily essentials, then the long tail of
     // actions grouped under a compact "More" section.
     return Column(
@@ -594,52 +623,52 @@ class _QuickActions extends ConsumerWidget {
           tiles: [
             ProActionTile(
               icon: Icons.people_rounded,
-              label: 'All Students',
-              caption: 'Roster & progress',
+              label: audience.allLearnersTitleOf(filipino: filipino),
+              caption: t.eduRosterProgress,
               accent: AppColors.sectionLearning,
               onTap: () => context.push('/multi-dashboard'),
             ),
             ProActionTile(
               icon: Icons.analytics_rounded,
-              label: 'Analytics',
-              caption: 'Class insights',
+              label: t.eduAnalytics,
+              caption: t.eduClassInsights,
               accent: AppColors.sectionCommunication,
               onTap: () => context.push('/teacher-analytics'),
             ),
             ProActionTile(
               icon: Icons.assessment_rounded,
-              label: 'Reports',
-              caption: 'Weekly summary',
+              label: t.eduReports,
+              caption: t.eduWeeklySummary,
               accent: AppColors.warning,
               onTap: () => context.push('/weekly-reports'),
             ),
             ProActionTile(
               icon: Icons.cast_for_education_rounded,
-              label: 'Classroom',
-              caption: 'Live session',
+              label: t.eduClassroomTile,
+              caption: t.eduLiveSession,
               accent: AppColors.accent,
               onTap: () => context.push('/classroom'),
             ),
             ProActionTile(
               icon: Icons.style_rounded,
-              label: 'Cards',
-              caption: 'Browse decks',
+              label: t.eduCards,
+              caption: t.eduBrowseDecks,
               accent: AppColors.info,
               onTap: () => context.push('/flashcards'),
             ),
             ProActionTile(
               icon: Icons.qr_code_2_rounded,
-              label: 'Share Code',
-              caption: 'Invite students',
+              label: t.eduShareCode,
+              caption: t.eduInviteStudents,
               accent: AppColors.success,
               onTap: () => context.push('/classroom-manage'),
             ),
           ],
         ),
         const SizedBox(height: 24),
-        const ProSectionHeader(title: 'More'),
+        ProSectionHeader(title: t.eduMore),
         const SizedBox(height: 12),
-        _GroupLabel(text: 'Content', color: hc.textSecondary),
+        _GroupLabel(text: t.eduContent, color: hc.textSecondary),
         const SizedBox(height: 8),
         ProActionGrid(
           compact: true,
@@ -647,21 +676,21 @@ class _QuickActions extends ConsumerWidget {
             ProActionTile(
               compact: true,
               icon: Icons.tv_rounded,
-              label: 'TV Cast',
+              label: t.eduTvCast,
               accent: AppColors.primary,
               onTap: () => context.push('/tv-cast'),
             ),
             ProActionTile(
               compact: true,
               icon: Icons.print_rounded,
-              label: 'Worksheets',
+              label: t.eduWorksheets,
               accent: AppColors.sectionWellbeing,
               onTap: () => context.push('/worksheets'),
             ),
             ProActionTile(
               compact: true,
               icon: Icons.message_rounded,
-              label: 'Messages',
+              label: t.eduMessages,
               accent: AppColors.sectionSocial,
               onTap: () => context.push('/messages'),
               badgeCount: unreadMessages,
@@ -669,14 +698,14 @@ class _QuickActions extends ConsumerWidget {
             ProActionTile(
               compact: true,
               icon: Icons.sticky_note_2_rounded,
-              label: 'Parent Notes',
+              label: t.eduParentNotes,
               accent: AppColors.sectionCommunication,
               onTap: () => context.push('/parent-teacher-notes'),
             ),
           ],
         ),
         const SizedBox(height: 18),
-        _GroupLabel(text: 'Assessments & Progress', color: hc.textSecondary),
+        _GroupLabel(text: t.eduAssessmentsProgress, color: hc.textSecondary),
         const SizedBox(height: 8),
         ProActionGrid(
           compact: true,
@@ -684,35 +713,35 @@ class _QuickActions extends ConsumerWidget {
             ProActionTile(
               compact: true,
               icon: Icons.quiz_rounded,
-              label: 'Assessments',
+              label: t.eduAssessments,
               accent: AppColors.sectionAssessment,
               onTap: () => context.push('/assessment'),
             ),
             ProActionTile(
               compact: true,
               icon: Icons.assignment_turned_in_rounded,
-              label: 'Assign Tasks',
+              label: t.eduAssignTasks,
               accent: AppColors.success,
               onTap: () => context.push('/assessment/assign'),
             ),
             ProActionTile(
               compact: true,
               icon: Icons.track_changes_rounded,
-              label: 'Track Progress',
+              label: t.eduTrackProgress,
               accent: AppColors.info,
               onTap: () => context.push('/assessment/tracking'),
             ),
             ProActionTile(
               compact: true,
               icon: Icons.qr_code_2_rounded,
-              label: 'Manage Classes',
+              label: t.eduManageClasses,
               accent: AppColors.sectionCommunication,
               onTap: () => context.push('/classroom-manage'),
             ),
           ],
         ),
         const SizedBox(height: 18),
-        _GroupLabel(text: 'Research', color: hc.textSecondary),
+        _GroupLabel(text: t.eduResearch, color: hc.textSecondary),
         const SizedBox(height: 8),
         ProActionGrid(
           compact: true,
@@ -720,21 +749,21 @@ class _QuickActions extends ConsumerWidget {
             ProActionTile(
               compact: true,
               icon: Icons.science_rounded,
-              label: 'Experiment Setup',
+              label: t.eduExperimentSetup,
               accent: AppColors.sectionWellbeing,
               onTap: () => context.push('/experiment-setup'),
             ),
             ProActionTile(
               compact: true,
               icon: Icons.poll_rounded,
-              label: 'SUS Survey',
+              label: t.eduSusSurvey,
               accent: AppColors.sectionCommunication,
               onTap: () => context.push('/survey-results'),
             ),
             ProActionTile(
               compact: true,
               icon: Icons.file_download_rounded,
-              label: 'Research Export',
+              label: t.eduResearchExport,
               accent: AppColors.primaryDark,
               onTap: () => context.push('/research-export'),
             ),
@@ -811,7 +840,12 @@ class _EducatorDashboardCta extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isParent ? 'Parent Dashboard' : 'Teacher Dashboard',
+                  (isParent
+                          ? EducatorAudience.parent
+                          : EducatorAudience.teacher)
+                      .dashboardTitleOf(
+                        filipino: _t(context).localeName.startsWith('fil'),
+                      ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.titleSmall.copyWith(
@@ -821,7 +855,7 @@ class _EducatorDashboardCta extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Detailed insights, alerts, and recommendations',
+                  _t(context).eduDashboardCtaSub,
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),

@@ -9,6 +9,8 @@ import '../../data/models/enums.dart';
 import '../../data/models/models.dart';
 import '../../core/services/adaptive_difficulty_service.dart';
 import '../../core/services/game_session_service.dart';
+import '../features/gamepad/providers/gamepad_screen.dart';
+import '../features/gamepad/widgets/gamepad_screen_registrar.dart';
 import '../l10n/app_localizations.dart';
 import 'animated_dialogs.dart';
 import 'animated_score_reveal.dart';
@@ -121,7 +123,32 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
     final l10n = AppLocalizations.of(context)!;
     final unavailableLabel = widget.unavailableLabel ?? l10n.comingSoon;
 
-    return Container(
+    final startLabel = _allSelected
+        ? l10n.startWithAllCategories
+        : (_selected.length == 1
+              ? l10n.startWithOneCategory
+              : l10n.startWithCategories(_selected.length));
+
+    // This sheet gates *every* game, so it is the single most valuable screen
+    // to make reachable by controller. **Start comes first** in the item list:
+    // a learner who just wants to play should not have to walk fourteen
+    // categories to find the button, and "all categories" is already the
+    // default. It is also the pinned footer that directional traversal cannot
+    // reach from inside the scrolling list above it.
+    return GamepadScreenRegistrar(
+      title: l10n.chooseCategories,
+      narration: [l10n.chooseCategories, l10n.pickVocabulary],
+      items: [
+        GamepadItem(label: startLabel, onActivate: _confirm),
+        GamepadItem(label: l10n.allCategories, onActivate: _toggleAll),
+        for (final cat in FlashcardCategory.values)
+          GamepadItem(
+            label: cat.labelOf(l10n),
+            enabled: _isAvailable(cat),
+            onActivate: () => _toggleCategory(cat),
+          ),
+      ],
+      child: Container(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.8,
       ),
@@ -229,18 +256,7 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  final availability = widget.availableCategories;
-                  // When an availability filter is in effect, "All Categories"
-                  // means "all available categories" — pass the explicit
-                  // subset so callers don't have to filter on their side.
-                  final result = _allSelected
-                      ? (availability == null
-                            ? <FlashcardCategory>[]
-                            : availability.toList())
-                      : _selected.toList();
-                  Navigator.of(context).pop(result);
-                },
+                onPressed: _confirm,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -248,11 +264,7 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
                   ),
                 ),
                 child: Text(
-                  _allSelected
-                      ? l10n.startWithAllCategories
-                      : (_selected.length == 1
-                            ? l10n.startWithOneCategory
-                            : l10n.startWithCategories(_selected.length)),
+                  startLabel,
                   textAlign: TextAlign.center,
                   style: AppTypography.titleMedium.copyWith(
                     color: Colors.white,
@@ -264,7 +276,25 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
           ),
         ],
       ),
+      ),
     );
+  }
+
+  /// Closes the sheet with the chosen categories.
+  ///
+  /// Extracted so the pinned button and the controller both go through one
+  /// path — a second copy of this logic is exactly how the two would drift.
+  void _confirm() {
+    final availability = widget.availableCategories;
+    // When an availability filter is in effect, "All Categories" means "all
+    // available categories" — pass the explicit subset so callers don't have
+    // to filter on their side.
+    final result = _allSelected
+        ? (availability == null
+              ? <FlashcardCategory>[]
+              : availability.toList())
+        : _selected.toList();
+    Navigator.of(context).pop(result);
   }
 }
 
@@ -508,7 +538,28 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
     final sheetBg = hc.surface;
     final l10n = AppLocalizations.of(context)!;
 
-    return Container(
+    // The other gate every game passes through. The timed-mode switch is
+    // offered as an item too, so a learner driving by ear can reach a control
+    // that is otherwise a bare Switch with no reachable label.
+    return GamepadScreenRegistrar(
+      title: widget.game.labelOf(l10n),
+      narration: [widget.game.labelOf(l10n), l10n.chooseYourDifficulty],
+      items: [
+        for (final diff in GameDifficulty.values)
+          GamepadItem(
+            label: diff.labelOf(l10n),
+            onActivate: () => Navigator.of(
+              context,
+            ).pop((difficulty: diff, timedMode: _timedMode)),
+          ),
+        if (widget.showTimedToggle)
+          GamepadItem(
+            label: l10n.beatTheClock,
+            detail: _timedMode ? l10n.beatTheClockSubtitle : null,
+            onActivate: () => setState(() => _timedMode = !_timedMode),
+          ),
+      ],
+      child: Container(
       decoration: BoxDecoration(
         color: sheetBg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -646,6 +697,7 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
             }),
           ],
         ),
+      ),
       ),
     );
   }
@@ -1135,6 +1187,10 @@ class GameResultDialog extends StatelessWidget {
   final VoidCallback onExit;
   final VoidCallback? onReview;
 
+  /// Passed through to the score panel — see
+  /// [AnimatedScoreReveal.hasLevels].
+  final bool hasLevels;
+
   const GameResultDialog({
     super.key,
     required this.score,
@@ -1145,6 +1201,7 @@ class GameResultDialog extends StatelessWidget {
     required this.onPlayAgain,
     required this.onExit,
     this.onReview,
+    this.hasLevels = true,
   });
 
   /// Default 0–3 rating from the share of correct answers (≥90% → 3,
@@ -1164,6 +1221,7 @@ class GameResultDialog extends StatelessWidget {
       onPlayAgain: onPlayAgain,
       onExit: onExit,
       onReview: onReview,
+      hasLevels: hasLevels,
     );
   }
 }

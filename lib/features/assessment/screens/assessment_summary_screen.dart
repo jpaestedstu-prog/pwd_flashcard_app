@@ -9,6 +9,8 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../core/utils/score_utils.dart';
 import '../models/assessment_models.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/fit_text.dart';
+import '../../../core/widgets/reflow_row.dart';
 
 /// Shown immediately after completing an assessment — celebration + summary.
 class AssessmentSummaryScreen extends ConsumerWidget {
@@ -102,8 +104,10 @@ class AssessmentSummaryScreen extends ConsumerWidget {
               const SizedBox(height: 28),
 
               // ─── Stats Row ─────────────────────────────
-              Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              // Three result cards across, stacking when the labels no longer
+              // fit a third of the row.
+              ReflowRow(
+                    labels: const ['Time', 'Correct', 'Wrong'],
                     children: [
                       _StatCard(
                         icon: Icons.timer_rounded,
@@ -178,13 +182,26 @@ class AssessmentSummaryScreen extends ConsumerWidget {
               const SizedBox(height: 32),
 
               // ─── Actions ───────────────────────────────
-              Row(
+              // Two icon buttons side by side do not fit half a phone row at
+              // a large text scale, however small the label gets. Stack them
+              // instead: taller, but both fully readable and fully tappable.
+              ReflowRow(
+                    labels: const ['Back to Hub', 'View Analytics'],
                     children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
+                      OutlinedButton.icon(
                           onPressed: () => context.popOrGo('/assessment'),
                           icon: const Icon(Icons.arrow_back_rounded),
-                          label: const Text('Back to Hub'),
+                          // A button's child Row measures intrinsics, so
+                          // the style step rather than FitText.
+                          label: Text(
+                            'Back to Hub',
+                            style: fittedStyle(
+                              context,
+                              'Back to Hub',
+                              Theme.of(context).textTheme.labelLarge,
+                              longWord: 4,
+                            ),
+                          ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
@@ -192,13 +209,18 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
+                      ElevatedButton.icon(
                           onPressed: () => context.push('/assessment/results'),
                           icon: const Icon(Icons.analytics_rounded),
-                          label: const Text('View Analytics'),
+                          label: Text(
+                            'View Analytics',
+                            style: fittedStyle(
+                              context,
+                              'View Analytics',
+                              Theme.of(context).textTheme.labelLarge,
+                              longWord: 4,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: hc.primary,
                             foregroundColor: Colors.white,
@@ -209,7 +231,6 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                             elevation: 0,
                           ),
                         ),
-                      ),
                     ],
                   )
                   .animate()
@@ -262,15 +283,17 @@ class _StatCard extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 6),
-          Text(
+          FitText(
             value,
+            maxLines: 1,
             style: AppTypography.titleLarge.copyWith(
               color: hc.textPrimary,
               fontWeight: FontWeight.w800,
             ),
           ),
-          Text(
+          FitText(
             label,
+            maxLines: 1,
             style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
           ),
         ],
@@ -315,10 +338,14 @@ class _CategoryScoreBar extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  category,
-                  style: AppTypography.labelMedium.copyWith(
-                    color: hc.textPrimary,
+                Flexible(
+                  child: Text(
+                    category,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelMedium.copyWith(
+                      color: hc.textPrimary,
+                    ),
                   ),
                 ),
                 Text(

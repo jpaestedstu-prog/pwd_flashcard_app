@@ -13,8 +13,8 @@ void main() {
   setUpAll(() async {
     // PauseOverlay reads settingsProvider (Hive-backed, per-profile).
     Hive.init('./build/test_cache/pause_overlay');
-    if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings');
-    if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles');
+    if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings', compactionStrategy: (_, _) => false);
+    if (!Hive.isBoxOpen('profiles')) await Hive.openBox('profiles', compactionStrategy: (_, _) => false);
   });
   tearDownAll(() async => Hive.deleteFromDisk());
 

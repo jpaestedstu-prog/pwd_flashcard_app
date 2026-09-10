@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_colors.dart';
 import '../data/models/enums.dart';
 import '../providers/app_providers.dart';
+import '../core/utils/reduced_motion.dart';
 
 /// The mascot's current emotional expression / action.
 enum MascotMood {
@@ -69,7 +70,7 @@ class _AnimatedMascotBuddyState extends ConsumerState<AnimatedMascotBuddy>
     _floatController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2500),
-    )..repeat(reverse: true);
+    );
 
     // Reaction bounce (triggered per mood change)
     _reactionController = AnimationController(
@@ -120,6 +121,8 @@ class _AnimatedMascotBuddyState extends ConsumerState<AnimatedMascotBuddy>
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    // Before the early return — the hidden mascot's bob kept ticking.
+    _floatController.syncMotionLoop(settings.reducedMotion, reverse: true);
     if (settings.reducedMotion) return const SizedBox.shrink();
 
     // Defer to the floating AI Companion when it's active for this learner, so

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +21,7 @@ import '../models/race_presentation.dart';
 import '../services/multiplayer_service.dart';
 import 'local_race_screen.dart';
 import 'online_race_screen.dart';
+import '../../../core/utils/seeded_random.dart';
 
 /// The "Play Together" lobby. Pick a game, then either invite a friend to play
 /// online or hand the tablet to a second player on the same device. Friends are
@@ -122,7 +122,7 @@ class _MultiplayerLobbyScreenState
     List<MpScrambleItem> scramble,
   })? _buildContent(MpGameMode mode) {
     final pool = ref.read(allFlashcardsProvider);
-    final rng = Random();
+    final rng = contentRandom();
     final isFilipino = ref.read(settingsProvider).locale == 'fil';
     // Match length follows the learner's policy — a shorter match for
     // profiles where sustained attention is the barrier.
@@ -219,6 +219,10 @@ class _MultiplayerLobbyScreenState
 
     final friend = await showModalBottomSheet<_FriendEntry>(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       builder: (ctx) => _FriendPickerSheet(
         friends: _friends,

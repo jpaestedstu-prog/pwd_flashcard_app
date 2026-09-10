@@ -12,6 +12,7 @@ import '../../../widgets/app_snack_bar.dart';
 import '../models/word_of_day_models.dart';
 import '../services/word_of_day_service.dart';
 import '../../../widgets/flashcard_image.dart';
+import '../../../core/widgets/fit_text.dart';
 
 class WordOfDayScreen extends ConsumerStatefulWidget {
   const WordOfDayScreen({super.key});
@@ -92,10 +93,13 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                       color: hc.primary,
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      _formatDate(DateTime.now(), isFilipino),
-                      style: AppTypography.labelMedium.copyWith(
-                        color: hc.primary,
+                    Flexible(
+                      child: FitText(
+                        _formatDate(DateTime.now(), isFilipino),
+                        maxLines: 1,
+                        style: AppTypography.labelMedium.copyWith(
+                          color: hc.primary,
+                        ),
                       ),
                     ),
                   ],
@@ -159,13 +163,15 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                             color: hc.textSecondary,
                           ),
                           const SizedBox(width: 8),
-                          Text(
+                          Flexible(child: Text(
                             isFilipino ? 'Halimbawa' : 'Example',
                             style: AppTypography.labelMedium.copyWith(
                               color: hc.textSecondary,
                               fontWeight: FontWeight.w600,
                             ),
-                          ),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -243,20 +249,26 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _StatTile(
-                      emoji: '📚',
-                      value: '$totalLearned',
-                      label: isFilipino
-                          ? 'Salitang Natutunan'
-                          : 'Words Learned',
-                      color: hc.success,
+                    // Flexible: the labels grow with the font but the row does
+                    // not, so two rigid tiles ran 226 px off the right.
+                    Flexible(
+                      child: _StatTile(
+                        emoji: '📚',
+                        value: '$totalLearned',
+                        label: isFilipino
+                            ? 'Salitang Natutunan'
+                            : 'Words Learned',
+                        color: hc.success,
+                      ),
                     ),
                     Container(width: 1, height: 40, color: hc.border),
-                    _StatTile(
-                      emoji: _word.emoji,
-                      value: _word.category,
-                      label: isFilipino ? 'Kategorya' : 'Category',
-                      color: hc.primary,
+                    Flexible(
+                      child: _StatTile(
+                        emoji: _word.emoji,
+                        value: _word.category,
+                        label: isFilipino ? 'Kategorya' : 'Category',
+                        color: hc.primary,
+                      ),
                     ),
                   ],
                 ),
@@ -296,7 +308,13 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
               extent: 74,
             ),
             const SizedBox(height: 16),
-            Text(
+            // The one word the whole screen exists to teach, so it must not
+            // arrive split down the middle. It is picked by day of year, so
+            // which word lands here changes daily and any of them can be long:
+            // "Grandmother" breaks as "Grandmot / her" on a 360dp phone at the
+            // 2.0x font scale. FitText steps the size down until the word fits
+            // on its line instead.
+            FitText(
               _word.wordEnglish,
               style: AppTypography.headlineLarge.copyWith(
                 color: hc.textPrimary,
@@ -350,7 +368,13 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
               extent: 74,
             ),
             const SizedBox(height: 16),
-            Text(
+            // The one word the whole screen exists to teach, so it must not
+            // arrive split down the middle. It is picked by day of year, so
+            // which word lands here changes daily and any of them can be long:
+            // "Grandmother" breaks as "Grandmot / her" on a 360dp phone at the
+            // 2.0x font scale. FitText steps the size down until the word fits
+            // on its line instead.
+            FitText(
               _word.wordFilipino,
               style: AppTypography.headlineLarge.copyWith(
                 color: hc.textPrimary,
@@ -430,15 +454,18 @@ class _StatTile extends StatelessWidget {
       children: [
         Text(emoji, style: const TextStyle(fontSize: 24)),
         const SizedBox(height: 4),
-        Text(
+        // The value here can be a category name ("Greetings"), not just a
+        // number, so it splits like any other word in a narrow tile.
+        FitText(
           value,
+          maxLines: 1,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.bold,
             color: color,
           ),
           textAlign: TextAlign.center,
         ),
-        Text(
+        FitText(
           label,
           style: AppTypography.labelSmall.copyWith(
             color: HCColor.of(context).textSecondary,

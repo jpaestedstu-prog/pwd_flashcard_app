@@ -28,6 +28,8 @@ import '../widgets/fsl_empty_state.dart';
 import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
@@ -36,6 +38,7 @@ import '../../break_time/break_time.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/utils/seeded_random.dart';
 
 /// FSL Word → Sign game.
 ///
@@ -70,7 +73,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
   bool _loading = true;
   List<Achievement> _newAchievements = [];
   final List<GameReviewItem> _reviewItems = [];
-  final _random = Random();
+  final _random = contentRandom();
 
   /// One controller per choice in the current round
   List<VideoPlayerController> _choiceControllers = [];
@@ -397,6 +400,20 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
     ];
   }
 
+  /// Says whether the answer was right. The correct answer can only be named
+  /// by its position — the choices are video clips, not words.
+  void _announceResult(int index) {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final round = _rounds[_currentRound];
+    final correct = index == round.correctIndex;
+    gamepadScreen.announce(
+      correct
+          ? l10n.correct
+          : '${l10n.tryAgain}. ${l10n.fsl} ${round.correctIndex + 1}.',
+    );
+  }
+
   void _selectAnswer(int index) {
     if (_answered) return;
     final sound = ref.read(soundServiceProvider);
@@ -440,6 +457,8 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
 
     // Start pre-fetching next round's videos immediately while user sees feedback
     _prefetchNextRound();
+
+    _announceResult(index);
 
     Future.delayed(const Duration(milliseconds: 1400), () {
       if (!mounted) return;
@@ -594,7 +613,25 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
     final showCursor =
         ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
-    return GazeScope(
+    // The question is narratable — "which sign means dog?" — but the answers
+    // are video clips, so they are published by **position**, not by word.
+    // Naming each clip after the sign it shows would hand the learner the
+    // answer; numbering keeps the round reachable by controller without
+    // solving it for them.
+    return GamepadScreenRegistrar(
+      title: l10n.fslWordToSign,
+      active: !_answered && !isPaused,
+      narration: [
+        '${l10n.fslWhichSignMeans} ${round.correctCard.wordEnglish}.',
+      ],
+      items: [
+        for (var i = 0; i < round.choices.length; i++)
+          GamepadItem(
+            label: '${l10n.fsl} ${i + 1}',
+            onActivate: () => _selectAnswer(i),
+          ),
+      ],
+      child: GazeScope(
       actions: _gazeActions(),
       onBlink: _selectCursor,
       child: PopScope(
@@ -966,10 +1003,18 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                                 );
                           }
 
-                          return videoTile
-                              .animate(key: ValueKey('$_currentRound-$index'))
-                              .fadeIn(duration: 250.ms, delay: (index * 80).ms)
-                              .slideY(begin: 0.1, end: 0);
+                          return GamepadFocusable(
+                            index: index,
+                            child: videoTile
+                                .animate(
+                                  key: ValueKey('$_currentRound-$index'),
+                                )
+                                .fadeIn(
+                                  duration: 250.ms,
+                                  delay: (index * 80).ms,
+                                )
+                                .slideY(begin: 0.1, end: 0),
+                          );
                         },
                       ),
                     ),
@@ -993,6 +1038,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
               ),
           ],
         ),
+      ),
       ),
     );
   }

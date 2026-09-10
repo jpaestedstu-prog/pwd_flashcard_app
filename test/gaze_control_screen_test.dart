@@ -54,4 +54,22 @@ void main() {
     await tester.pump();
     expect(find.textContaining('front camera'), findsOneWidget);
   });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The pass above renders under Flutter's default theme, which is not a theme
+  // any learner sees. The dyslexia theme adds a 1.6 line height and 0.6 letter
+  // spacing on top of its own font sizes; high contrast overrides the text
+  // theme and outlines every card. Narrow portrait at 1.5x/2.0x, where a
+  // theme's metrics bite first.
+  testWidgets('GazeControlScreen survives the accessibility themes',
+      (tester) async {
+    await expectScreenSurvivesThemes(
+      tester,
+      () => GazeControlScreen(
+        camerasLoader: () async => const <CameraDescription>[],
+        detectorFactory: _FakeDetector.new,
+      ),
+    );
+  });
 }

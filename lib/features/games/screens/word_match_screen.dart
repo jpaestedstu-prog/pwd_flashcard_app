@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +23,8 @@ import '../../../widgets/flashcard_image.dart';
 import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
@@ -33,6 +34,7 @@ import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../core/utils/seeded_random.dart';
 
 class WordMatchScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -94,7 +96,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
   bool _showResult = false;
   List<Achievement> _newAchievements = [];
   final List<GameReviewItem> _reviewItems = [];
-  final _random = Random();
+  final _random = contentRandom();
 
   /// Difficulty-based config
   int get _totalRounds => switch (widget.difficulty) {
@@ -279,6 +281,28 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
     ];
   }
 
+  /// Says whether the answer was right, naming the correct word when it was
+  /// not — hearing only "wrong" teaches nothing.
+  void _announceResult(int index) {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final round = _rounds[_currentRound];
+    final correct = index == round.correctIndex;
+    final answer = round.choices[round.correctIndex].wordEnglish;
+    gamepadScreen.announce(
+      correct ? l10n.correct : '${l10n.tryAgain}. $answer.',
+    );
+  }
+
+  /// Reads the new question as it appears, so the round never starts silently.
+  void _announceRound() {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    gamepadScreen.announce(
+      l10n.questionEnglishFor(_rounds[_currentRound].correctCard.wordFilipino),
+    );
+  }
+
   void _selectAnswer(int index) {
     if (_answered) return;
     final sound = ref.read(soundServiceProvider);
@@ -312,6 +336,8 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
       }
     });
 
+    _announceResult(index);
+
     Future.delayed(const Duration(milliseconds: 1200), () {
       if (!mounted) return;
       if (_currentRound < _rounds.length - 1) {
@@ -321,6 +347,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
           _cursorIndex = 0;
           _answered = false;
         });
+        _announceRound();
       } else {
         // The run is over, so there is nothing left to come back to.
         clearResumePoint();
@@ -456,7 +483,21 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
     final showCursor =
         ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
-    return GazeScope(
+    // The round, offered to the Bluetooth controller: the question as prose,
+    // the four words as items. Withdrawn once answered so the feedback pause
+    // cannot be spent answering again.
+    return GamepadScreenRegistrar(
+      title: GameType.wordMatch.labelOf(l10n),
+      active: !_answered && !isPaused,
+      narration: [l10n.questionEnglishFor(round.correctCard.wordFilipino)],
+      items: [
+        for (var i = 0; i < round.choices.length; i++)
+          GamepadItem(
+            label: round.choices[i].wordEnglish,
+            onActivate: () => _selectAnswer(i),
+          ),
+      ],
+      child: GazeScope(
       actions: _gazeActions(),
       onBlink: _selectCursor,
       child: PopScope(
@@ -590,6 +631,12 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                                             FlashcardImage(
                                               card: round.correctCard,
                                               size: 84,
+                                              // The learner is being asked for
+                                              // this card's English word; a
+                                              // picture that names itself read
+                                              // the answer out before the
+                                              // choices were reached.
+                                              revealsAnswer: false,
                                             ),
                                             const SizedBox(height: 16),
                                             Text(
@@ -753,10 +800,18 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                                 );
                           }
 
-                          return card
-                              .animate(key: ValueKey('$_currentRound-$index'))
-                              .fadeIn(duration: 300.ms, delay: (index * 80).ms)
-                              .slideY(begin: 0.1, end: 0);
+                          return GamepadFocusable(
+                            index: index,
+                            child: card
+                                .animate(
+                                  key: ValueKey('$_currentRound-$index'),
+                                )
+                                .fadeIn(
+                                  duration: 300.ms,
+                                  delay: (index * 80).ms,
+                                )
+                                .slideY(begin: 0.1, end: 0),
+                          );
                         },
                       ),
                     ),
@@ -779,6 +834,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
               ),
           ],
         ),
+      ),
       ),
     );
   }

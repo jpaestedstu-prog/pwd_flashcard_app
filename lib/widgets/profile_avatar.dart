@@ -88,14 +88,11 @@ class CosmeticAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Resolve by id *and* check the type. Withdrawn items stay in the
-    // catalogue so owners can be refunded, and ids arrive here from another
-    // device's Hive rows, so a mismatched id is reachable — without this guard
+    // Resolve by id *and* check the type: ids arrive here from another
+    // device's Hive rows, so a mismatched one is reachable — without the guard
     // a stale `sound_nature` would draw a leaf as somebody's face.
-    final resolved =
-        equippedAvatarId == null ? null : ShopData.findById(equippedAvatarId!);
     final equippedAvatar =
-        resolved?.type == ShopItemType.avatar ? resolved : null;
+        ShopData.findOfType(equippedAvatarId, ShopItemType.avatar);
 
     final String emoji;
     final Color bgColor;

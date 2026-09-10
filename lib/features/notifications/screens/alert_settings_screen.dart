@@ -340,11 +340,20 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: hc.surface,
+    // `Material`, not a decorated `Container`.
+    //
+    // The switches and checkboxes inside this card are `ListTile`s, and a
+    // ListTile paints its background and its tap ripple on the nearest Material
+    // ancestor. A coloured box in between hides both, so every row here
+    // responded to a tap with no visible feedback — which matters most to the
+    // learners least able to tell whether a tap registered. Flutter asserts on
+    // exactly this, and nothing had ever rendered the screen to hear it.
+    return Material(
+      color: hc.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: hc.border),
+        side: BorderSide(color: hc.border),
       ),
       child: child,
     );

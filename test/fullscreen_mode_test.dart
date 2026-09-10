@@ -129,7 +129,7 @@ void main() {
       'custom_cards',
       'sessions',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
     // The Settings screen's Cloud Sync tile reads the sync-queue box.
     await SyncQueueStorage.init();
@@ -486,4 +486,30 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
   });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The pass above renders under Flutter's default theme, which is not a theme
+  // any learner sees. The dyslexia theme adds a 1.6 line height and 0.6 letter
+  // spacing on top of its own font sizes; high contrast overrides the text
+  // theme and outlines every card. Narrow portrait at 1.5x/2.0x, where a
+  // theme's metrics bite first.
+  for (final entry in <String, AppBar Function()>{
+    'one action': _screenBar,
+    "the viewer's three actions": _busyScreenBar,
+  }.entries) {
+    testWidgets('the slim bar with ${entry.key} survives the themes',
+        (tester) async {
+      await expectScreenSurvivesThemes(
+        tester,
+        () => Consumer(
+          builder: (context, ref, _) => Scaffold(
+            appBar: fullscreenBar(ref, entry.value()),
+            body: const SizedBox.shrink(),
+          ),
+        ),
+        overrides: [fullscreenModeProvider.overrideWith((ref) => true)],
+      );
+    });
+  }
 }

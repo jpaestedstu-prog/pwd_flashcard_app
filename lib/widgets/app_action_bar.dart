@@ -68,9 +68,19 @@ class AppActionBar extends StatelessWidget {
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
         // How many equal cells fit at >= minCellWidth, allowing for the gaps.
+        //
+        // The minimum has to grow with the type. A button's label is what
+        // needs the width, and at 1.5x it needs half as much again — against a
+        // fixed 120 the bar kept two buttons on a row that could only really
+        // hold one, and the label broke mid-word ("Nee / ds practice" on the
+        // sign-check screen under the dyslexia theme). Scaling the threshold
+        // instead drops the row to one button per line, which is the accessible
+        // answer: the label keeps its size and gets the space.
+        final minCell = minCellWidth *
+            MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 2.0);
         var perRow = children.length;
         if (maxW.isFinite) {
-          perRow = ((maxW + spacing) / (minCellWidth + spacing)).floor();
+          perRow = ((maxW + spacing) / (minCell + spacing)).floor();
           perRow = perRow.clamp(1, children.length);
         }
 

@@ -12,6 +12,7 @@ import '../../../widgets/shared_widgets.dart';
 import '../models/goal_model.dart';
 import '../services/goal_service.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/utils/accessible_sizing.dart';
 
 class GoalsScreen extends ConsumerStatefulWidget {
   const GoalsScreen({super.key});
@@ -231,6 +232,10 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
   void _showCreateGoalDialog() {
     showModalBottomSheet(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _CreateGoalSheet(
@@ -710,7 +715,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
             // ─── Save Button ───────────────────
             SizedBox(
               width: double.infinity,
-              height: 52,
+              height: scaledControlHeight(context, 52),
               child: ElevatedButton(
                 onPressed: _canSave ? _save : null,
                 style: ElevatedButton.styleFrom(

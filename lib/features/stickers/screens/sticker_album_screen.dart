@@ -12,6 +12,7 @@ import '../../../providers/app_providers.dart';
 import '../models/sticker_models.dart';
 import '../models/sticker_progress.dart';
 import '../widgets/sticker_unlocked_overlay.dart';
+import '../../../core/widgets/fit_text.dart';
 
 class StickerAlbumScreen extends ConsumerStatefulWidget {
   const StickerAlbumScreen({super.key});
@@ -138,8 +139,9 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              FitText(
                                 isFilipino ? 'Koleksyon' : 'Collection',
+                                maxLines: 1,
                                 style: AppTypography.titleSmall.copyWith(
                                   color: AppColors.textOnPrimary,
                                   fontWeight: FontWeight.w800,
@@ -274,6 +276,10 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
 
     showModalBottomSheet(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),

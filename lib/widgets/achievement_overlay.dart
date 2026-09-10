@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/responsive_utils.dart';
 import '../../data/models/achievements.dart';
+import '../core/utils/reduced_motion.dart';
 
 /// A full-screen overlay that announces a newly unlocked achievement
 /// with a glow effect, scale animation, and confetti.
@@ -256,7 +257,7 @@ class _GlowingBadge extends StatelessWidget {
               ),
             ),
           )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .animate(key: motionKey(context), onPlay: motionLoop(context, reverse: true))
               .scale(
                 begin: const Offset(0.92, 0.92),
                 end: const Offset(1.08, 1.08),

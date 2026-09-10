@@ -11,6 +11,7 @@ import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Screen for teachers to create custom assessments manually.
 class AssessmentBuilderScreen extends ConsumerStatefulWidget {
@@ -59,7 +60,9 @@ class _AssessmentBuilderScreenState
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
+                    // A headline sharing its row with a close button and a
+                    // Save button: "Assessmen / t".
+                    child: FitText(
                       'Create Assessment',
                       style: AppTypography.headlineLarge
                           .copyWith(color: hc.textPrimary),
@@ -229,11 +232,16 @@ class _AssessmentBuilderScreenState
       children: [
         Icon(icon, color: AppColors.primary, size: 20),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: AppTypography.titleMedium.copyWith(
-            color: hc.textPrimary,
-            fontWeight: FontWeight.w700,
+        // Flexible, or a long section title beside the icon runs off the row.
+        Flexible(
+          // FitText, not Text: making it flexible stopped the overflow but let
+          // the word wrap inside itself instead ("Crea / te").
+          child: FitText(
+            title,
+            style: AppTypography.titleMedium.copyWith(
+              color: hc.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],
@@ -266,6 +274,10 @@ class _AssessmentBuilderScreenState
   Future<void> _showAddQuestionDialog() async {
     final result = await showModalBottomSheet<AssessmentQuestion>(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => const _QuestionEditorSheet(),
@@ -283,6 +295,10 @@ class _AssessmentBuilderScreenState
   Future<void> _showEditQuestionDialog(int index) async {
     final result = await showModalBottomSheet<AssessmentQuestion>(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => _QuestionEditorSheet(existing: _questions[index]),
@@ -324,7 +340,7 @@ class _AssessmentBuilderScreenState
 
     ref.read(customAssessmentsProvider.notifier).saveAssessment(assessment);
 
-    AppSnackBar.success(context, message: 'Assessment "${assessment.title}" saved!');
+    AppSnackBar.success(context, message: 'Assessment “${assessment.title}” saved!');
 
     context.pop();
   }

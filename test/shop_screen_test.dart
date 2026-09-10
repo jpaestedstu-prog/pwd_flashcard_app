@@ -6,14 +6,23 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:pwdpwdpwd/core/accessibility/sound_pack.dart';
+import 'package:pwdpwdpwd/core/accessibility/sound_service.dart';
 import 'package:pwdpwdpwd/core/services/celebration_style.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/data/models/shop_data.dart';
+import 'package:pwdpwdpwd/features/gaze_control/logic/gaze_focus_driver.dart';
 import 'package:pwdpwdpwd/features/shop/screens/shop_screen.dart';
+import 'package:pwdpwdpwd/features/shop/widgets/shop_item_preview.dart';
+import 'package:pwdpwdpwd/widgets/celebration_confetti.dart';
+import 'package:pwdpwdpwd/widgets/shop_badge.dart';
+import 'package:pwdpwdpwd/widgets/theme_preview_card.dart';
+import 'package:pwdpwdpwd/widgets/profile_avatar.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 
 import 'support/device_matrix.dart';
+import 'support/readability.dart';
 import 'support/shop_test_doubles.dart';
 
 /// First widget-test coverage for the Star Shop.
@@ -47,7 +56,7 @@ class _SpyProgressNotifier extends FakeShopProgressNotifier {
   int refundCalls = 0;
 
   @override
-  int refundWithdrawnPurchases() {
+  int refundWithdrawnPurchases({Set<String>? withdrawnIds}) {
     refundCalls++;
     return refundAmount;
   }
@@ -61,6 +70,7 @@ Future<void> _pumpShop(
   String locale = 'en',
   AppSettings? settings,
   ProgressNotifier Function()? progress,
+  SoundService? sound,
   Size size = const Size(800, 1280),
   double devicePixelRatio = 2.0,
   double textScale = 1.0,
@@ -85,6 +95,7 @@ Future<void> _pumpShop(
                     owned: owned,
                   ),
         ),
+        if (sound != null) soundServiceProvider.overrideWithValue(sound),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -189,6 +200,16 @@ Future<void> _flushEntranceTimers(WidgetTester tester) async {
   await tester.pumpWidget(const SizedBox.shrink());
 }
 
+/// The English tab label for [type], mirroring the shop's own `_labelFor`.
+String _labelOf(ShopItemType type) => switch (type) {
+      ShopItemType.avatar => 'Avatars',
+      ShopItemType.theme => 'Themes',
+      ShopItemType.border => 'Borders',
+      ShopItemType.title => 'Titles',
+      ShopItemType.soundPack => 'Sounds',
+      ShopItemType.celebration => 'Effects',
+    };
+
 void main() {
   setUpAll(() async {
     // Self-healing store: a previous hang can leave a flutter_tester holding
@@ -289,6 +310,95 @@ void main() {
 
       await _flushEntranceTimers(tester);
     });
+
+    // Filipino is where the narrow cell bites: "Salamangkero ng Salita" and
+    // "Temang Paglubog ng Araw" run half as long again as their English names,
+    // and the shelves now fit three or four cards across a tablet instead of
+    // two. Same matrix as above, in the language with the longest words.
+    testWidgets('the Filipino shelves fit their cells too', (tester) async {
+      for (final device in kNarrowPortrait) {
+        for (final scale in kLargeTextScales) {
+          await _pumpShop(
+            tester,
+            totalStars: 30,
+            locale: 'fil',
+            size: device.size,
+            devicePixelRatio: device.devicePixelRatio,
+            textScale: scale,
+          );
+
+          for (final type in ShopData.sellableTypes) {
+            tester.widget<TabBar>(find.byType(TabBar)).controller!.index =
+                ShopData.sellableTypes.indexOf(type);
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 400));
+
+            expect(
+              _overflowingFlexes(tester),
+              isEmpty,
+              reason: 'Overflowing Filipino ${type.name} shelf '
+                  'at $device, textScale ${scale}x',
+            );
+            expect(_firstException(tester), isNull,
+                reason: 'Layout exception on the Filipino ${type.name} shelf '
+                    'at $device, textScale ${scale}x');
+            // Fitting is not the same as being readable: a narrower cell can
+            // break "Salamangkero" in half without overflowing anything.
+            expectReadable(tester,
+                at: 'the Filipino ${type.name} shelf, $device, ${scale}x');
+          }
+        }
+      }
+      await _flushEntranceTimers(tester);
+    });
+
+    // The shipped bug: the corner markers (Recommended / advice) put the card
+    // body inside a `Stack`, and a Stack lays its non-positioned children out
+    // *loosely* and aligns them to its own top start. The padded Column
+    // therefore shrank to the width of its widest word and parked against the
+    // left edge — picture, name and price all hugging one side of a 315 dp
+    // card, vertically centred because the Column still filled the height.
+    // Nothing overflowed, so the matrix above saw nothing wrong.
+    testWidgets('an item card centres its picture, name and price',
+        (tester) async {
+      for (final device in kTabletMatrix) {
+        for (final scale in kTextScales) {
+          await _pumpShop(
+            tester,
+            totalStars: 30,
+            size: device.size,
+            devicePixelRatio: device.devicePixelRatio,
+            textScale: scale,
+          );
+          await _selectTab(tester, ShopItemType.avatar);
+
+          final card = find
+              .ancestor(of: find.text('Unicorn'), matching: find.byType(Card))
+              .first;
+          final cardCentre = tester.getRect(card).center.dx;
+
+          // The three things a learner reads on the card, in order.
+          for (final part in <(String, Finder)>[
+            ('picture', find.text('🦄')),
+            ('name', find.text('Unicorn')),
+            // The pill, not the number inside it: the badge centres itself,
+            // and its label sits to the right of the star icon by design.
+            ('price', find.byType(ShopBadge)),
+          ]) {
+            final piece =
+                find.descendant(of: card, matching: part.$2).first;
+            final centre = tester.getRect(piece).center.dx;
+            expect(
+              (centre - cardCentre).abs(),
+              lessThan(1.0),
+              reason: 'the ${part.$1} sits ${(centre - cardCentre).abs()} px '
+                  'off centre at $device, textScale ${scale}x',
+            );
+          }
+        }
+      }
+      await _flushEntranceTimers(tester);
+    });
   });
 
   group('Star Shop behaviour', () {
@@ -296,24 +406,31 @@ void main() {
         (tester) async {
       await _pumpShop(tester, totalStars: 100);
 
-      for (final label in const ['Avatars', 'Themes', 'Borders', 'Titles', 'Effects']) {
+      for (final label in const [
+        'Avatars',
+        'Themes',
+        'Borders',
+        'Titles',
+        'Sounds',
+        'Effects',
+      ]) {
         expect(find.text(label), findsOneWidget);
       }
 
       await _flushEntranceTimers(tester);
     });
 
-    testWidgets('a withdrawn category is not on the shelf at all',
-        (tester) async {
+    testWidgets('the Sounds shelf is stocked again', (tester) async {
       await _pumpShop(tester, totalStars: 100);
+      await _selectTab(tester, ShopItemType.soundPack);
 
-      // Sound packs have no per-pack audio, so they are not for sale — and an
-      // empty shelf would be as confusing as a broken one.
-      expect(find.text('Sounds'), findsNothing);
-      expect(ShopData.sellableTypes, isNot(contains(ShopItemType.soundPack)));
-      expect(ShopData.sellableByType(ShopItemType.soundPack), isEmpty);
-      for (final item in ShopData.byType(ShopItemType.soundPack)) {
-        expect(find.text(item.name), findsNothing);
+      // This shelf was withdrawn for want of audio: every pack played the same
+      // files, so equipping one changed nothing an ear could detect. It is
+      // back because each pack now has its own folder of effects — the files
+      // themselves are guarded by test/sound_pack_test.dart.
+      expect(ShopData.sellableByType(ShopItemType.soundPack), hasLength(3));
+      for (final item in ShopData.sellableByType(ShopItemType.soundPack)) {
+        expect(find.text(item.name), findsOneWidget);
       }
 
       await _flushEntranceTimers(tester);
@@ -330,16 +447,29 @@ void main() {
       await _flushEntranceTimers(tester);
     });
 
-    testWidgets('an unaffordable item explains itself instead of opening a dialog',
+    testWidgets('an unaffordable item shows what it is and how far off it is',
         (tester) async {
       await _pumpShop(tester, totalStars: 5);
 
       await tester.tap(find.text('Unicorn'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // This used to be a snackbar and nothing else, which meant the items
+      // worth saving for were the only ones a learner could never look at:
+      // the preview lives in this dialog and the dialog only opened once you
+      // could already pay.
+      expect(find.byType(ShopItemPreview), findsOneWidget);
+      expect(find.text('10 more stars to go'), findsOneWidget); // 15 - 5
+      expect(find.text('Buy!'), findsNothing,
+          reason: 'nothing to confirm when the stars are not there');
+
+      await tester.tap(find.text('Keep earning'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byType(AlertDialog), findsNothing);
-      expect(find.textContaining('Not enough stars'), findsOneWidget);
+      expect(find.text('5'), findsOneWidget, reason: 'no stars were spent');
 
       await _flushEntranceTimers(tester);
     });
@@ -365,6 +495,33 @@ void main() {
       expect(find.text('100'), findsOneWidget,
           reason: 'cancelling must not spend stars');
 
+      await _flushEntranceTimers(tester);
+    });
+
+    // Material's default density gave the one button that spends stars a 58 dp
+    // box, barely taller than the Cancel beside it. Learners aiming with a head
+    // pointer, a switch or gaze use this dialog too.
+    testWidgets('the button that spends the stars is big enough to hit',
+        (tester) async {
+      await _pumpShop(tester, totalStars: 100);
+
+      await tester.tap(find.text('Unicorn'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final buy = tester.getSize(find.widgetWithText(FilledButton, 'Buy!'));
+      final cancel = tester.getSize(find.widgetWithText(TextButton, 'Cancel'));
+
+      expect(buy.height, greaterThanOrEqualTo(52.0),
+          reason: 'Buy! is only ${buy.height} dp tall');
+      expect(cancel.height, greaterThanOrEqualTo(52.0),
+          reason: 'Cancel is only ${cancel.height} dp tall');
+      // The confirming action must also read as the bigger of the two.
+      expect(buy.width, greaterThan(cancel.width));
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       await _flushEntranceTimers(tester);
     });
 
@@ -540,10 +697,11 @@ void main() {
 
       await tester.tap(find.text('Unicorn'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.textContaining('Kulang ang mga bituin'), findsOneWidget);
-      expect(find.textContaining('Not enough stars'), findsNothing);
+      expect(find.text('10 pang bituin ang kailangan'), findsOneWidget);
+      expect(find.text('Ipagpatuloy ang pagkolekta'), findsOneWidget);
+      expect(find.textContaining('more stars'), findsNothing);
 
       await _flushEntranceTimers(tester);
     });
@@ -700,4 +858,421 @@ void main() {
       await _flushEntranceTimers(tester);
     });
   });
+
+  group('What you are buying, before you buy it', () {
+    // Every one of these was a purchase made blind: the dialog showed the
+    // item's emoji at 56 px and nothing else, so a rainbow emoji stood in for
+    // a profile frame, a firework emoji for a motion effect, and a gamepad
+    // emoji for a whole set of sounds.
+
+    testWidgets('a border is drawn on the learner own avatar', (tester) async {
+      await _pumpShop(tester, totalStars: 100);
+      await _selectTab(tester, ShopItemType.border);
+
+      await tester.tap(find.text('Rainbow Border'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final preview = tester.widget<CosmeticAvatar>(
+        find.descendant(
+          of: find.byType(ShopItemPreview),
+          matching: find.byType(CosmeticAvatar),
+        ),
+      );
+      expect(preview.equippedBorderId, 'border_rainbow',
+          reason: 'the point of a frame is what it looks like around a face');
+
+      await _flushEntranceTimers(tester);
+    });
+
+    testWidgets('an avatar preview keeps the frame the learner already wears',
+        (tester) async {
+      await _pumpShop(
+        tester,
+        totalStars: 100,
+        progress: () => FakeShopProgressNotifier(
+          totalStars: 100,
+          spentStars: 0,
+          owned: {'border_crown'},
+          equipped: {ShopItemType.border: 'border_crown'},
+        ),
+      );
+
+      await tester.tap(find.text('Dragon'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final preview = tester.widget<CosmeticAvatar>(
+        find.descendant(
+          of: find.byType(ShopItemPreview),
+          matching: find.byType(CosmeticAvatar),
+        ),
+      );
+      expect(preview.equippedAvatarId, 'avatar_dragon');
+      expect(preview.equippedBorderId, 'border_crown',
+          reason: 'a preview of a combination the learner will never see is '
+              'not a preview');
+
+      await _flushEntranceTimers(tester);
+    });
+
+    testWidgets('a title is previewed as the badge it becomes', (tester) async {
+      await _pumpShop(tester, totalStars: 100);
+      await _selectTab(tester, ShopItemType.title);
+
+      await tester.tap(find.text('Word Wizard'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(
+        find.descendant(
+          of: find.byType(ShopItemPreview),
+          matching: find.text('Word Wizard'),
+        ),
+        findsOneWidget,
+      );
+
+      await _flushEntranceTimers(tester);
+    });
+
+    testWidgets('an effect plays its own confetti, not the equipped one',
+        (tester) async {
+      await _pumpShop(tester, totalStars: 100);
+      await _selectTab(tester, ShopItemType.celebration);
+
+      await tester.tap(find.text('Snowfall'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final confetti = tester.widget<CelebrationConfetti>(
+        find.descendant(
+          of: find.byType(ShopItemPreview),
+          matching: find.byType(CelebrationConfetti),
+        ),
+      );
+      expect(confetti.style?.id, 'snowfall',
+          reason: 'the preview must show the effect being sold, not whatever '
+              'the learner has equipped today');
+
+      await tester.tap(find.text('See it'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(_firstException(tester), isNull);
+
+      await _flushEntranceTimers(tester);
+    });
+
+    testWidgets('reduced motion previews the calmed effect, not the burst',
+        (tester) async {
+      await _pumpShop(
+        tester,
+        totalStars: 100,
+        settings: const AppSettings(reducedMotion: true),
+      );
+      await _selectTab(tester, ShopItemType.celebration);
+
+      await tester.tap(find.text('Fireworks'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final confetti = tester.widget<CelebrationConfetti>(
+        find.descendant(
+          of: find.byType(ShopItemPreview),
+          matching: find.byType(CelebrationConfetti),
+        ),
+      );
+      expect(confetti.style?.id, 'fireworks-calm',
+          reason: 'previewing a burst this learner will never be shown would '
+              'be a lie the stars are spent on');
+
+      await _flushEntranceTimers(tester);
+    });
+
+    testWidgets('a sound pack can be heard before it is bought',
+        (tester) async {
+      final sound = RecordingSoundService();
+      await _pumpShop(tester, totalStars: 100, sound: sound);
+      await _selectTab(tester, ShopItemType.soundPack);
+
+      await tester.tap(find.text('Nature Pack'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Hear it'));
+      await tester.pump();
+      // Two effects a beat apart: one sound is not enough to tell one pack
+      // from another.
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(sound.played, [
+        (SoundEffect.correct, SoundPack.nature),
+        (SoundEffect.starEarned, SoundPack.nature),
+      ], reason: 'the preview must play the pack on the shelf, not the one '
+          'the learner already owns');
+
+      await _flushEntranceTimers(tester);
+    });
+
+    testWidgets('with Sound Effects off, the pack says so and stays silent',
+        (tester) async {
+      final sound = RecordingSoundService(enabled: false);
+      await _pumpShop(
+        tester,
+        totalStars: 100,
+        sound: sound,
+        // The Hearing preset switches Sound Effects off, so this is the state
+        // a Deaf learner opens the shop in.
+        settings: const AppSettings(soundEffects: false),
+      );
+      await _selectTab(tester, ShopItemType.soundPack);
+
+      await tester.tap(find.text('Chiptune Pack'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.textContaining('Sound Effects are off'), findsOneWidget,
+          reason: 'the same courtesy High Contrast gets about themes');
+
+      final button = tester.widget<OutlinedButton>(
+        find.ancestor(
+          of: find.text('Hear it'),
+          matching: find.byType(OutlinedButton),
+        ),
+      );
+      expect(button.onPressed, isNull,
+          reason: 'a button that plays nothing must look like one');
+      expect(sound.played, isEmpty);
+
+      await _flushEntranceTimers(tester);
+    });
+  });
+
+
+  group('Hands free, every shelf can be reached', () {
+    // Gaze and the Bluetooth D-pad fall back to Flutter's focus traversal on
+    // any route that publishes no gaze grid, and the Star Shop is one. A card
+    // with no focus node is therefore not merely awkward for a learner who
+    // cannot touch the screen — it does not exist.
+
+    /// Whether traversal has landed inside a card of type [T].
+    bool focusedInside<T extends Widget>() =>
+        FocusManager.instance.primaryFocus?.context
+            ?.findAncestorWidgetOfExactType<T>() !=
+        null;
+
+    /// Steps traversal until [done], or gives up — bounded so a genuinely
+    /// unreachable card fails the test instead of hanging it.
+    Future<bool> traverseUntil(
+      WidgetTester tester,
+      bool Function() done, {
+      int maxSteps = 40,
+    }) async {
+      if (!GazeFocusDriver.moveFirst()) return false;
+      await tester.pump();
+      for (var i = 0; i < maxSteps; i++) {
+        if (done()) return true;
+        if (!GazeFocusDriver.move(TraversalDirection.down)) return done();
+        await tester.pump();
+      }
+      return done();
+    }
+
+    testWidgets('a theme card takes focus and equips on activate',
+        (tester) async {
+      await _pumpShop(tester, totalStars: 100, owned: {'theme_ocean'});
+      await _selectTab(tester, ShopItemType.theme);
+
+      // Themes were the one shelf built from a bare GestureDetector, so this
+      // walk used to run its full budget without ever landing on a card.
+      final reached =
+          await traverseUntil(tester, focusedInside<ThemePreviewCard>);
+      expect(reached, isTrue,
+          reason: 'focus traversal never reached a theme card, so gaze and '
+              'the D-pad cannot either');
+
+      expect(GazeFocusDriver.activate(), isTrue);
+      await tester.pump();
+      expect(find.text('Equipped'), findsOneWidget,
+          reason: 'reaching a card is only half of it — it has to fire');
+
+      await _flushEntranceTimers(tester);
+    });
+
+    testWidgets('the item shelves stay reachable too', (tester) async {
+      await _pumpShop(tester, totalStars: 100, owned: {'avatar_unicorn'});
+
+      final reached = await traverseUntil(tester, () => focusedInside<Card>());
+      expect(reached, isTrue);
+
+      expect(GazeFocusDriver.activate(), isTrue);
+      await tester.pump();
+      expect(find.text('Equipped'), findsOneWidget);
+
+      await _flushEntranceTimers(tester);
+    });
+  });
+
+
+  testWidgets('the item dialog survives the worst case on every shelf',
+      (tester) async {
+    // The dialog grew a preview, and for an item the learner cannot afford a
+    // shortfall line under the price as well. AlertDialog does not scroll its
+    // content by default, so every one of those additions is a chance to
+    // overflow at the accessible font sizes — which is exactly where the
+    // learners this shop is built for read it.
+    await _pumpShop(
+      tester,
+      totalStars: 0,
+      size: const Size(360, 640),
+      devicePixelRatio: 3.0,
+      textScale: 2.0,
+      // Every advice line switched on at once: each adds a paragraph to the
+      // dialog, and this is the tallest the content ever gets.
+      settings: const AppSettings(
+        highContrastMode: true,
+        reducedMotion: true,
+        soundEffects: false,
+      ),
+    );
+
+    for (final type in ShopData.sellableTypes) {
+      await _selectTab(tester, type);
+      final item = ShopData.sellableByType(type).first;
+
+      await tester.tap(find.text(item.name).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(AlertDialog), findsOneWidget,
+          reason: '${item.id} did not open its dialog');
+
+      expect(_overflowingFlexes(tester), isEmpty,
+          reason: 'the ${type.name} dialog overflows at 2.0x on a 360x640 '
+              'phone');
+      expect(_firstException(tester), isNull);
+
+      await tester.tap(find.text('Keep earning'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    await _flushEntranceTimers(tester);
+  });
+
+
+  testWidgets('buying an effect fires the effect you just bought',
+      (tester) async {
+    await _pumpShop(tester, totalStars: 100);
+    await _selectTab(tester, ShopItemType.celebration);
+
+    // The shop's own burst reads the *equipped* style, and buying does not
+    // equip — so the one moment the app had to show a learner what 25 stars
+    // bought them showed the standard confetti instead.
+    final before = tester.widget<CelebrationConfetti>(
+      find.descendant(
+        of: find.byType(Align),
+        matching: find.byType(CelebrationConfetti),
+      ),
+    );
+    expect(before.style, isNull);
+
+    await tester.tap(find.text('Rainbow Burst'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('Buy!'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final after = tester.widget<CelebrationConfetti>(
+      find.descendant(
+        of: find.byType(Align),
+        matching: find.byType(CelebrationConfetti),
+      ),
+    );
+    expect(after.style?.id, 'rainbow');
+
+    await _flushEntranceTimers(tester);
+  });
+
+
+  group('The tab strip fits the bar it is in', () {
+    /// Every tab label's painted rect.
+    List<Rect> tabRects(WidgetTester tester) => [
+          for (final type in ShopData.sellableTypes)
+            tester.getRect(find.text(_labelOf(type)).first),
+        ];
+
+    testWidgets('no shelf is sliced off the edge on a tablet', (tester) async {
+      // The Honor's 1200x1920 at dpr 1.75 — the device the regression was
+      // found on, where a sixth shelf pushed "Effects" half off the screen.
+      await _pumpShop(
+        tester,
+        totalStars: 100,
+        size: const Size(686, 1097),
+        devicePixelRatio: 1.75,
+      );
+
+      for (final rect in tabRects(tester)) {
+        expect(rect.left, greaterThanOrEqualTo(-0.5),
+            reason: 'a tab starts off the left edge');
+        expect(rect.right, lessThanOrEqualTo(686.5),
+            reason: 'a tab runs past the right edge — this is what sliced '
+                '"Effects" in half once the Sounds shelf made six');
+      }
+
+      await _flushEntranceTimers(tester);
+    });
+
+    testWidgets('the six shelves share the bar evenly and sit centred',
+        (tester) async {
+      await _pumpShop(tester, totalStars: 100, size: const Size(686, 1097));
+
+      final bar = tester.widget<TabBar>(find.byType(TabBar));
+      expect(bar.isScrollable, isFalse,
+          reason: 'they fit, so they should fill the bar rather than scroll');
+      expect(bar.tabAlignment, TabAlignment.fill);
+
+      // Each tab's icon-plus-label sits centred in its own equal share of the
+      // bar. Measured against the share rather than against the label edges:
+      // the icon comes first, so a label's own rect always sits right of its
+      // tab's centre by half an icon — that is the layout working, not a
+      // misalignment.
+      final shelves = ShopData.sellableTypes;
+      final share = 686 / shelves.length;
+      for (var i = 0; i < shelves.length; i++) {
+        final content = tester.getRect(
+          find
+              .ancestor(
+                of: find.text(_labelOf(shelves[i])),
+                matching: find.byType(Row),
+              )
+              .first,
+        );
+        expect((content.center.dx - (i + 0.5) * share).abs(), lessThan(1.0),
+            reason: '${_labelOf(shelves[i])} is not centred in its tab');
+      }
+
+      await _flushEntranceTimers(tester);
+    });
+
+    testWidgets('a font too big to fit scrolls instead of squeezing',
+        (tester) async {
+      await _pumpShop(
+        tester,
+        totalStars: 100,
+        size: const Size(360, 640),
+        devicePixelRatio: 3.0,
+        textScale: 2.0,
+      );
+
+      final bar = tester.widget<TabBar>(find.byType(TabBar));
+      expect(bar.isScrollable, isTrue,
+          reason: 'six shelves cannot fit 360 dp at 2.0x, and shrinking the '
+              'text a learner enlarged is the wrong way to make them');
+      expect(bar.tabAlignment, TabAlignment.start);
+      expect(_firstException(tester), isNull);
+
+      await _flushEntranceTimers(tester);
+    });
+  });
+
 }

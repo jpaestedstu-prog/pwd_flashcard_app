@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -16,6 +15,9 @@ import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../widgets/pause_overlay.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/fit_text.dart';
+import '../../../core/utils/reduced_motion.dart';
+import '../../../core/utils/seeded_random.dart';
 
 /// Turn-based multiplayer vocabulary quiz for two players on the same device.
 ///
@@ -72,7 +74,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
-    )..repeat(reverse: true);
+    );
     initPause();
   }
 
@@ -147,6 +149,10 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
 
   @override
   Widget build(BuildContext context) {
+    _pulseController.syncMotionLoop(
+      ref.watch(settingsProvider.select((s) => s.reducedMotion)),
+      reverse: true,
+    );
     return PopScope(
       canPop: !_isMidGame,
       onPopInvokedWithResult: (didPop, _) {
@@ -202,10 +208,13 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                   onPressed: () => context.pop(),
                 ),
                 const Spacer(),
-                Text(
-                  'Multiplayer Quiz',
-                  style: AppTypography.titleLarge.copyWith(
-                    fontWeight: FontWeight.w800,
+                Flexible(
+                  child: FitText(
+                    'Multiplayer Quiz',
+                    maxLines: 1,
+                    style: AppTypography.titleLarge.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
                 const Spacer(),
@@ -219,11 +228,15 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
             Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _PlayerSetupCard(
-                      controller: _player1Controller,
-                      playerNum: 1,
-                      color: AppColors.info,
-                      emoji: '🔵',
+                    // Flexible: two setup cards plus the VS badge are wider
+                    // than a phone once the names inside them grow.
+                    Flexible(
+                      child: _PlayerSetupCard(
+                        controller: _player1Controller,
+                        playerNum: 1,
+                        color: AppColors.info,
+                        emoji: '🔵',
+                      ),
                     ),
                     const SizedBox(width: 24),
                     Text(
@@ -234,11 +247,13 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                       ),
                     ),
                     const SizedBox(width: 24),
-                    _PlayerSetupCard(
-                      controller: _player2Controller,
-                      playerNum: 2,
-                      color: AppColors.error,
-                      emoji: '🔴',
+                    Flexible(
+                      child: _PlayerSetupCard(
+                        controller: _player2Controller,
+                        playerNum: 2,
+                        color: AppColors.error,
+                        emoji: '🔴',
+                      ),
                     ),
                   ],
                 )
@@ -269,9 +284,13 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [3, 5, 7, 10].map((count) {
                       final isSelected = _roundsPerPlayer == count;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: ChoiceChip(
+                      // Flexible: four chips plus their padding are wider
+                      // than a phone row once the labels scale up.
+                      return Flexible(
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 4),
+                          child: ChoiceChip(
                           label: Text('$count'),
                           selected: isSelected,
                           onSelected: (_) =>
@@ -282,6 +301,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                                 ? Colors.white
                                 : HCColor.of(context).textPrimary,
                             fontWeight: FontWeight.w700,
+                          ),
                           ),
                         ),
                       );
@@ -340,7 +360,10 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(emoji, style: const TextStyle(fontSize: 64))
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .animate(
+                    key: motionKey(context, 'turn-emoji'),
+                    onPlay: motionLoop(context, reverse: true),
+                  )
                   .scale(
                     begin: const Offset(1, 1),
                     end: const Offset(1.2, 1.2),
@@ -379,7 +402,10 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                       ),
                     ),
                   )
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .animate(
+                    key: motionKey(context, 'turn-hint'),
+                    onPlay: motionLoop(context, reverse: true),
+                  )
                   .fadeIn()
                   .then()
                   .fade(begin: 1, end: 0.5, duration: 800.ms),
@@ -593,13 +619,15 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
+                Flexible(child: Text(
                   '🔵 ${_player1Controller.text}: $_player1Score',
                   style: AppTypography.labelMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.info,
                   ),
-                ),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
                 Text(
                   '🔴 ${_player2Controller.text}: $_player2Score',
                   style: AppTypography.labelMedium.copyWith(
@@ -795,7 +823,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
       return;
     }
 
-    final rng = Random();
+    final rng = contentRandom();
     pool.shuffle(rng);
 
     _questions = [];
@@ -1150,12 +1178,14 @@ class _PlayerResultCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
+          Flexible(child: Text(
             '$emoji $label',
             style: AppTypography.bodySmall.copyWith(
               color: HCColor.of(context).textSecondary,
             ),
-          ),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+)),
           Text(
             value,
             style: AppTypography.labelMedium.copyWith(

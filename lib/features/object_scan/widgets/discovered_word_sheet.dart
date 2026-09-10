@@ -11,6 +11,7 @@ import '../../../data/models/models.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/fsl_fullscreen_player.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Bottom sheet shown when a Word Hunt detection is tapped: the word in
 /// English + Filipino with its meaning, plus one-tap bridges into the
@@ -122,8 +123,12 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
               ],
               const SizedBox(height: 8),
               FlashcardPicture(card: card, extent: 74),
-              Text(
+              // The word the learner just discovered, at 32 pt in a sheet that
+              // does not widen with the font: it split as "Tele / vision" and
+              // "Telepo / no" -- the reward for finding it, cut in half.
+              FitText(
                 card.wordEnglish,
+                maxLines: 1,
                 style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -131,8 +136,9 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              Text(
+              FitText(
                 card.wordFilipino,
+                maxLines: 1,
                 style: const TextStyle(
                   fontSize: 22,
                   color: AppColors.textSecondary,

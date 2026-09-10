@@ -98,6 +98,26 @@ Widget _dashboard(List<ChildSummary> children) {
   );
 }
 
+/// Pump the dashboard on a tablet-sized viewport.
+///
+/// These tests assert on what is *rendered* rather than scrolling to it, and
+/// the dashboard is a long scroller — the default 800x600 test window cuts the
+/// learner cards off below the recommendation feed. A tall view keeps the
+/// whole page in the tree, which is the point of reading it this way.
+Future<void> _pumpDashboard(
+  WidgetTester tester,
+  List<ChildSummary> children,
+) async {
+  tester.view.physicalSize = const Size(1200, 3200);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+  await tester.pumpWidget(_dashboard(children));
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
 /// Every rendered string in the tree, so a privacy claim can be checked
 /// against what is on screen rather than against intentions.
 List<String> _visibleText(WidgetTester tester) => tester
@@ -121,7 +141,7 @@ void main() {
       'custom_cards',
       'notebook',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
     Animate.defaultDuration = Duration.zero;
   });
@@ -142,8 +162,7 @@ void main() {
       now: DateTime(2026, 8, 25, 12),
     );
 
-    await tester.pumpWidget(_dashboard([_child(name: 'Ana', mood: mood)]));
-    await tester.pump(const Duration(milliseconds: 100));
+    await _pumpDashboard(tester, [_child(name: 'Ana', mood: mood)]);
 
     final text = _visibleText(tester).join(' | ');
     expect(text, contains('Mostly Happy'));
@@ -152,10 +171,9 @@ void main() {
 
   testWidgets('a learner with no check-ins shows no wellbeing line',
       (tester) async {
-    await tester.pumpWidget(
-      _dashboard([_child(name: 'Ben', mood: MoodSummary.empty)]),
-    );
-    await tester.pump(const Duration(milliseconds: 100));
+    await _pumpDashboard(tester, [
+      _child(name: 'Ben', mood: MoodSummary.empty),
+    ]);
 
     final text = _visibleText(tester).join(' | ');
     // Silence is not the same as "no feelings" — the row is absent rather
@@ -176,8 +194,7 @@ void main() {
     );
     expect(mood.needsAttention, isTrue);
 
-    await tester.pumpWidget(_dashboard([_child(name: 'Cara', mood: mood)]));
-    await tester.pump(const Duration(milliseconds: 100));
+    await _pumpDashboard(tester, [_child(name: 'Cara', mood: mood)]);
 
     final text = _visibleText(tester).join(' | ');
     expect(text, contains('Check in'));
@@ -198,8 +215,9 @@ void main() {
       now: DateTime(2026, 8, 25, 12),
     );
 
-    await tester.pumpWidget(_dashboard([_child(name: 'Dee', mood: mood)]));
-    await tester.pump(const Duration(milliseconds: 100));
+    // Tall viewport on purpose: the more of the page that is built, the more
+    // surface this assertion actually covers.
+    await _pumpDashboard(tester, [_child(name: 'Dee', mood: mood)]);
 
     for (final line in _visibleText(tester)) {
       expect(line, isNot(contains('lunch')), reason: 'leaked note: "$line"');

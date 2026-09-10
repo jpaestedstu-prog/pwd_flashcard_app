@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../core/utils/reduced_motion.dart';
 
 /// An enhanced tutorial step that can optionally spotlight a real widget.
 class CoachStep {
@@ -63,7 +64,7 @@ class _CoachMarkOverlayState extends State<CoachMarkOverlay>
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
+    );
     _updateTarget();
   }
 
@@ -109,6 +110,10 @@ class _CoachMarkOverlayState extends State<CoachMarkOverlay>
 
   @override
   Widget build(BuildContext context) {
+    _pulseController.syncMotionLoop(
+      ReducedMotionScope.of(context),
+      reverse: true,
+    );
     final step = widget.steps[_currentStep];
     final isLast = _currentStep == widget.steps.length - 1;
     final screenSize = MediaQuery.of(context).size;

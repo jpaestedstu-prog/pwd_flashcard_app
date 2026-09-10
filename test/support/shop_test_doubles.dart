@@ -1,3 +1,5 @@
+import 'package:pwdpwdpwd/core/accessibility/sound_pack.dart';
+import 'package:pwdpwdpwd/core/accessibility/sound_service.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/data/models/shop_data.dart';
@@ -121,8 +123,8 @@ class FakeShopProgressNotifier extends StubProgressNotifier {
   String? getEquippedItemId(ShopItemType type) => _equipped[type];
 
   @override
-  int refundWithdrawnPurchases() {
-    final toRefund = _owned.intersection(ShopData.withdrawnIds);
+  int refundWithdrawnPurchases({Set<String>? withdrawnIds}) {
+    final toRefund = _owned.intersection(withdrawnIds ?? ShopData.withdrawnIds);
     var refunded = 0;
     for (final id in toRefund) {
       final item = ShopData.findById(id);
@@ -137,4 +139,24 @@ class FakeShopProgressNotifier extends StubProgressNotifier {
     );
     return refunded;
   }
+}
+
+/// Records what the shop asked to play instead of touching an [AudioPlayer].
+///
+/// The preview's whole job is to play a pack the learner does not own yet, so
+/// what matters is *which pack* was asked for — and a widget test must not
+/// reach the audio plugin to find out.
+class RecordingSoundService extends SoundService {
+  RecordingSoundService({super.enabled = true});
+
+  final List<(SoundEffect, SoundPack?)> played = [];
+
+  @override
+  Future<void> play(SoundEffect effect, {SoundPack? pack}) async {
+    if (!isEnabled) return;
+    played.add((effect, pack));
+  }
+
+  @override
+  Future<void> dispose() async {}
 }

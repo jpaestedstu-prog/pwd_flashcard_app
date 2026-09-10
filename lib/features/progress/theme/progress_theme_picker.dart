@@ -23,6 +23,10 @@ Future<void> showProgressCustomizeSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: true,
     backgroundColor: HCColor.of(context).surface,
     shape: const RoundedRectangleBorder(

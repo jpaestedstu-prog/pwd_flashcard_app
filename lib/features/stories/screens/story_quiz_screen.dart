@@ -25,6 +25,8 @@ import '../widgets/story_fsl_button.dart';
 import '../widgets/story_image_flip.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 
 /// Reading-comprehension quiz — 3 multiple-choice questions per story.
 class StoryQuizScreen extends ConsumerStatefulWidget {
@@ -101,6 +103,11 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
       ref.read(soundServiceProvider).playWrong();
       ref.read(hapticServiceProvider).error();
     }
+
+    // Name the right answer when they missed it — the point of a comprehension
+    // quiz is learning the answer, not being scored on it.
+    final answer = _question!.optionsEn[_question!.correctIndex];
+    gamepadScreen.announce(correct ? 'Correct!' : 'Not quite. $answer.');
   }
 
   void _next() {
@@ -113,6 +120,13 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
         _selectedIndex = null;
         _answered = false;
       });
+      final next = _question;
+      if (next != null) {
+        gamepadScreen.announce(
+          'Question ${_currentQ + 1} of ${_story!.questions.length}. '
+          '${next.questionEn}',
+        );
+      }
     }
   }
 
@@ -183,6 +197,10 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                   score: _correctCount,
                   total: _story!.questions.length,
                   starsEarned: _starsEarned,
+                  // A story quiz has no difficulty setting, so the default
+                  // "try a harder level next" pointed at a control that does
+                  // not exist here.
+                  hasLevels: false,
                   onPlayAgain: () {
                     setState(() {
                       _currentQ = 0;
@@ -219,7 +237,30 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
     final reducedMotion = settings.reducedMotion;
     final question = _question!;
 
-    return Scaffold(
+    // The question, offered to the Bluetooth controller. Once answered the
+    // choices are withdrawn and replaced by the single way forward, so a
+    // learner driving by ear is never left guessing what happens next.
+    return GamepadScreenRegistrar(
+      title: 'Quiz: ${_story!.titleEn}',
+      narration: [
+        'Question ${_currentQ + 1} of ${_story!.questions.length}.',
+        question.questionEn,
+      ],
+      items: _answered
+          ? [
+              GamepadItem(
+                label: _isLastQuestion ? 'See my score' : 'Next question',
+                onActivate: _next,
+              ),
+            ]
+          : [
+              for (var i = 0; i < question.optionsEn.length; i++)
+                GamepadItem(
+                  label: question.optionsEn[i],
+                  onActivate: () => _selectAnswer(i),
+                ),
+            ],
+      child: Scaffold(
       appBar: fullscreenBar(
         ref,
         AppBar(
@@ -671,6 +712,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

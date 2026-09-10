@@ -17,6 +17,10 @@ import '../providers/app_providers.dart';
 Future<void> showAccessibilityQuickSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: true,
     showDragHandle: true,
     builder: (context) => const _AccessibilityQuickSheet(),
@@ -34,17 +38,13 @@ class AccessibilityQuickButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Accessibility options',
-      child: IconButton(
+    return IconButton(
+        tooltip: 'Accessibility options',
         onPressed: () => showAccessibilityQuickSheet(context),
         icon: const Icon(Icons.accessibility_new_rounded),
         iconSize: iconSize,
-        tooltip: 'Accessibility',
         color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
-      ),
-    );
+      );
   }
 }
 

@@ -20,6 +20,7 @@ class CelebrationConfetti extends ConsumerWidget {
     required this.controller,
     this.accentColor,
     this.blastDirection,
+    this.style,
   });
 
   final ConfettiController controller;
@@ -32,29 +33,36 @@ class CelebrationConfetti extends ConsumerWidget {
   /// direction. For call sites whose geometry is the point.
   final double? blastDirection;
 
+  /// Uses this style instead of the equipped one.
+  ///
+  /// For the Star Shop's preview: an effect costs 25–35 stars and, until this
+  /// existed, the only way to find out what one looked like was to buy it.
+  final CelebrationStyle? style;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final style = ref.watch(celebrationStyleProvider);
+    final CelebrationStyle resolved =
+        style ?? ref.watch(celebrationStyleProvider);
     final directional =
-        blastDirection != null || style.blastDirection != null;
+        blastDirection != null || resolved.blastDirection != null;
 
     return ConfettiWidget(
       // Keyed on the style: ConfettiWidget reads colours, gravity and forces
       // into its particle system once, in initState, and ignores later property
       // changes. Without this the learner equips Snowfall, the widget updates,
       // and the confetti keeps bursting in the old palette.
-      key: ValueKey<String>('celebration-confetti-${style.id}'),
+      key: ValueKey<String>('celebration-confetti-${resolved.id}'),
       confettiController: controller,
       blastDirectionality: directional
           ? BlastDirectionality.directional
-          : style.directionality,
-      blastDirection: blastDirection ?? style.blastDirection ?? 0,
-      gravity: style.gravity,
-      numberOfParticles: style.numberOfParticles,
-      minBlastForce: style.minBlastForce,
-      maxBlastForce: style.maxBlastForce,
-      emissionFrequency: style.emissionFrequency,
-      colors: style.colorsLedBy(accentColor),
+          : resolved.directionality,
+      blastDirection: blastDirection ?? resolved.blastDirection ?? 0,
+      gravity: resolved.gravity,
+      numberOfParticles: resolved.numberOfParticles,
+      minBlastForce: resolved.minBlastForce,
+      maxBlastForce: resolved.maxBlastForce,
+      emissionFrequency: resolved.emissionFrequency,
+      colors: resolved.colorsLedBy(accentColor),
     );
   }
 }

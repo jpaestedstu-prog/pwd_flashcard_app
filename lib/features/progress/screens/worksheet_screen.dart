@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// Screen that lets users pick a worksheet type, category and difficulty,
 /// then generates a printable/shareable PDF worksheet.
@@ -322,8 +323,10 @@ class _DifficultyButton extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Text(
+              // Three difficulties share the row: "Mediu / m" split.
+              FitText(
                 difficulty.labelOf(AppLocalizations.of(context)!),
+                maxLines: 1,
                 style: AppTypography.bodyMedium.copyWith(
                   fontWeight: FontWeight.w600,
                   color: isSelected ? hc.primary : hc.textPrimary,

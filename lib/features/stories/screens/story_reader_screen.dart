@@ -19,6 +19,8 @@ import '../../../widgets/square_action_button.dart';
 import '../widgets/story_fsl_button.dart';
 import '../widgets/story_image_flip.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 
 /// Paginated story reader with TTS and vocabulary highlights.
 class StoryReaderScreen extends ConsumerStatefulWidget {
@@ -88,6 +90,7 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
       _forward = true; // turn the page forward
       _currentSentence++;
     });
+    _announcePage();
     if (_isLastSentence) _markStoryRead();
   }
 
@@ -97,6 +100,21 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
       _forward = false; // turn the page backward
       _currentSentence--;
     });
+    _announcePage();
+  }
+
+  /// Reads the new page to a controller learner as it turns.
+  ///
+  /// Turning a page and hearing nothing is the story equivalent of a silent
+  /// button: the learner has no way to tell whether anything happened, and no
+  /// way to reach the words.
+  void _announcePage() {
+    final story = _story;
+    if (story == null) return;
+    gamepadScreen.announce(
+      'Page ${_currentSentence + 1} of ${story.sentencesEn.length}. '
+      '${story.sentencesEn[_currentSentence]}',
+    );
   }
 
   void _goToQuiz() {
@@ -161,7 +179,40 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
       settingsProvider.select((s) => s.reducedMotion),
     );
 
-    return Scaffold(
+    // The story, offered to the Bluetooth controller.
+    //
+    // This is the clearest case for the narration half of the bridge: the
+    // page *is* prose, and a learner who cannot see it has no way to reach the
+    // sentence by stepping through buttons. R2 reads the page; the items are
+    // only the ways to leave it.
+    return GamepadScreenRegistrar(
+      title: _story!.titleEn,
+      narration: [
+        'Page ${_currentSentence + 1} of ${_story!.sentencesEn.length}.',
+        sentenceEn,
+      ],
+      items: [
+        if (_currentSentence > 0)
+          GamepadItem(
+            label: 'Previous page',
+            onActivate: _prevSentence,
+          ),
+        if (!_isLastSentence)
+          GamepadItem(label: 'Next page', onActivate: _nextSentence),
+        GamepadItem(
+          label: 'Read this page aloud',
+          detail: sentenceEn,
+          onActivate: () => _speakLang(sentenceEn, filipino: false),
+        ),
+        GamepadItem(
+          label: 'Read in Filipino',
+          detail: sentenceFil,
+          onActivate: () => _speakLang(sentenceFil, filipino: true),
+        ),
+        if (_isLastSentence)
+          GamepadItem(label: 'Go to the quiz', onActivate: _goToQuiz),
+      ],
+      child: Scaffold(
       appBar: fullscreenBar(
         ref,
         AppBar(
@@ -210,9 +261,11 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
                               // Storybook page-dot indicator. Horizontally
                               // scrollable so any sentence count stays on one
                               // row and can never overflow.
-                              Semantics(
-                                label:
-                                    'Page ${_currentSentence + 1} of ${_story!.sentencesEn.length}',
+                              // Excluded, not labelled: the visible caption
+                              // directly below says the same sentence, so a
+                              // label here made every page turn read "Page 1
+                              // of 5. Page 1 of 5."
+                              ExcludeSemantics(
                                 child: SizedBox(
                                   height: 8,
                                   child: SingleChildScrollView(
@@ -448,6 +501,7 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

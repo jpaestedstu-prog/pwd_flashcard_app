@@ -53,6 +53,13 @@ class _BreathingBreakState extends State<BreathingBreak>
   @override
   void initState() {
     super.initState();
+    // Deliberately NOT `repeatUnlessReduced`, unlike the app's other endless
+    // loops. Here the animation is the exercise: the circle's expand/hold/
+    // contract is what the learner paces their breathing against, so stopping
+    // it under Reduced Motion would not calm the screen down, it would remove
+    // the feature and leave a still circle with nothing to follow. The motion
+    // is also slow (10s a cycle) and perfectly predictable, which is the kind
+    // least likely to trouble a motion-sensitive learner.
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 10),

@@ -103,11 +103,11 @@ class RecommendationService {
           titleFilipino: 'Magsanay sa Mahirap na Salita',
           description:
               '${weakWords.length} words need extra practice. '
-              '"${worst.$1.wordEnglish}" is your trickiest '
+              '“${worst.$1.wordEnglish}” is your trickiest '
               '(${(worst.$2.accuracy * 100).round()}% accuracy).',
           descriptionFilipino:
               '${weakWords.length} salita ang kailangan ng dagdag na '
-              'pagsasanay. "${worst.$1.wordFilipino}" ang pinakamahirap '
+              'pagsasanay. “${worst.$1.wordFilipino}” ang pinakamahirap '
               '(${(worst.$2.accuracy * 100).round()}% accuracy).',
           emoji: '📝',
           route: '/smart-review',

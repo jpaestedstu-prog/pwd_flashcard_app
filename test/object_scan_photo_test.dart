@@ -124,4 +124,33 @@ void main() {
       ),
     );
   });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // The pass above renders under Flutter's default theme, which is not a theme
+  // any learner sees. The dyslexia theme adds a 1.6 line height and 0.6 letter
+  // spacing on top of its own font sizes; high contrast overrides the text
+  // theme and outlines every card. Narrow portrait at 1.5x/2.0x, where a
+  // theme's metrics bite first.
+  testWidgets('results panel survives the accessibility themes',
+      (tester) async {
+    await expectScreenSurvivesThemes(
+      tester,
+      () => Scaffold(
+        body: SingleChildScrollView(
+          reverse: true,
+          child: PhotoResultsPanel(
+            matches: [
+              _match('Television', 0.92),
+              _match('Grandmother', 0.81),
+              _match('Butterfly', 0.74),
+            ],
+            searching: false,
+            onWordTap: (_) {},
+            onRetake: () {},
+          ),
+        ),
+      ),
+    );
+  });
 }

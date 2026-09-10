@@ -87,6 +87,10 @@ class _WordHuntCollectionScreenState
     ref.read(hapticServiceProvider).lightTap();
     await showModalBottomSheet<void>(
       context: context,
+      // Without this the dismiss barrier announces itself as "Scrim",
+      // Material's untranslated default.
+      barrierLabel:
+          MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => DiscoveredWordSheet(card: card),

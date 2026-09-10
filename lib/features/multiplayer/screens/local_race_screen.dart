@@ -1,4 +1,3 @@
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +21,7 @@ import '../widgets/quiz_race_player.dart';
 import '../widgets/race_result_view.dart';
 import '../widgets/race_sign_launcher.dart';
 import '../widgets/scramble_race_player.dart';
+import '../../../core/utils/seeded_random.dart';
 
 /// Same-device "pass-and-play" race. Two players share one tablet: Player 1
 /// plays the whole challenge, then Player 2 plays the **identical** content,
@@ -220,7 +220,7 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
 
   bool _buildContent() {
     final pool = ref.read(allFlashcardsProvider);
-    final rng = Random();
+    final rng = contentRandom();
     final isFilipino = ref.read(settingsProvider).locale == 'fil';
     final policy = _policy;
     final quizRounds = policy.rounds;

@@ -231,8 +231,8 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
         title: Text(isFilipino ? 'Burahin ang tala?' : 'Delete Note?'),
         content: Text(
           isFilipino
-              ? 'Sigurado ka bang burahin ang "${note.title}"?'
-              : 'Are you sure you want to delete "${note.title}"?',
+              ? 'Sigurado ka bang burahin ang “${note.title}”?'
+              : 'Are you sure you want to delete “${note.title}”?',
         ),
         actions: [
           TextButton(

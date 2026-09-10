@@ -36,6 +36,10 @@ Future<void> showFslVideoSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (context) => FslVideoSheet(
@@ -64,6 +68,10 @@ Future<void> showFslUnavailableSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
+    // Without this the dismiss barrier announces itself as "Scrim",
+    // Material's untranslated default.
+    barrierLabel:
+        MaterialLocalizations.of(context).modalBarrierDismissLabel,
     backgroundColor: Colors.transparent,
     // Scroll-controlled so the sheet isn't clamped to ~9/16 of the screen,
     // which would clip its content on short phones and at large font scales.
@@ -498,10 +506,10 @@ class _FslUnavailableSheet extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 unreachable
-                    ? 'The sign for "$wordEnglish" needs the internet to load '
+                    ? 'The sign for “$wordEnglish” needs the internet to load '
                           'the first time. Connect and try again — after that it '
                           'works offline.'
-                    : 'No FSL video available yet for "$wordEnglish".',
+                    : 'No FSL video available yet for “$wordEnglish”.',
                 style: AppTypography.bodyMedium.copyWith(
                   color: HCColor.of(context).textSecondary,
                 ),

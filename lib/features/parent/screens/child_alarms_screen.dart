@@ -50,7 +50,7 @@ class ChildAlarmsScreen extends ConsumerWidget {
                     Icon(Icons.alarm_off_rounded, size: 56),
                     SizedBox(height: 12),
                     Text(
-                      'No alarms set yet.\nTap "New alarm" to create one.',
+                      'No alarms set yet.\nTap “New alarm” to create one.',
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -94,7 +94,7 @@ class ChildAlarmsScreen extends ConsumerWidget {
                   return await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: Text('Delete "${a.label}"?'),
+                          title: Text('Delete “${a.label}”?'),
                           actions: [
                             TextButton(
                               onPressed: () =>

@@ -44,7 +44,7 @@ ProviderContainer _containerFor(String? profileId) => ProviderContainer(
 void main() {
   setUpAll(() async {
     Hive.init('./build/test_cache/gaze_front_door');
-    if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings');
+    if (!Hive.isBoxOpen('settings')) await Hive.openBox('settings', compactionStrategy: (_, _) => false);
   });
   setUp(() async => Hive.box('settings').clear());
 

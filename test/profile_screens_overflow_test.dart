@@ -17,6 +17,7 @@ import 'package:pwdpwdpwd/features/stories/screens/story_list_screen.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 
 import 'support/screen_matrix.dart';
+import 'support/device_matrix.dart';
 
 /// Second overflow matrix, covering the high-traffic **profile hubs and
 /// button-dense learner/educator screens** that the first matrix
@@ -73,7 +74,7 @@ void main() {
       'notebook',
       'mood_entries',
     ]) {
-      if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
+      if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
     await SyncQueueStorage.init();
   });
@@ -89,14 +90,16 @@ void main() {
   });
 
   // ─── Learner hubs & button-dense learner screens ─────────────────
-  for (final entry in <String, Widget Function()>{
+  final tabScreens = <String, Widget Function()>{
     'HomeScreen': () => const HomeScreen(),
     'GameHubScreen': () => const GameHubScreen(),
     'DeckListScreen': () => const DeckListScreen(),
     'StoryListScreen': () => const StoryListScreen(),
     'AssessmentHubScreen': () => const AssessmentHubScreen(),
     'BreakTimeScreen': () => const BreakTimeScreen(),
-  }.entries) {
+  };
+
+  for (final entry in tabScreens.entries) {
     testWidgets('${entry.key} (student) survives the device matrix', (
       tester,
     ) async {
@@ -159,4 +162,28 @@ void main() {
       overrides: _asRole(UserRole.parent),
     );
   });
+
+  // ─── The accessibility themes, at the accessibility font sizes ───
+  //
+  // These are the app's main tabs, so they are the screens a learner spends
+  // the most time in — and until now every one of them was only ever rendered
+  // under Flutter's default theme. The dyslexia theme adds a 1.6 line height
+  // and 0.6 letter spacing on top of its own font sizes; high contrast
+  // overrides the text theme and outlines every card. Narrow portrait at
+  // 1.5x/2.0x, where a theme's metrics bite first.
+  for (final theme in kLayoutThemes.entries) {
+    for (final entry in tabScreens.entries) {
+      testWidgets('${entry.key} (student) survives the ${theme.key} theme',
+          (tester) async {
+        await expectScreenNoOverflowAcrossDevices(
+          tester,
+          entry.value,
+          theme: theme.value(),
+          devices: kNarrowPortrait,
+          textScales: kLargeTextScales,
+          overrides: _asRole(UserRole.student),
+        );
+      });
+    }
+  }
 }

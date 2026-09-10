@@ -31,6 +31,8 @@ import '../../../widgets/fsl_video_sheet.dart';
 import '../../break_time/break_time.dart';
 import '../widgets/show_me_button.dart';
 import '../widgets/examples_gallery.dart';
+import '../../gamepad/providers/gamepad_screen.dart';
+import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_dpad_scope.dart';
 import '../../../widgets/fullscreen_host.dart';
 
@@ -220,6 +222,20 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
         );
   }
 
+  /// Reads the card that has just come into view.
+  ///
+  /// Moving to a new card is the whole action here, and it changes nothing a
+  /// learner driving by ear can otherwise perceive — the buttons in the action
+  /// bar keep the same names on every card.
+  void _announceCard(int index) {
+    if (!mounted || index < 0 || index >= _cards.length) return;
+    final card = _cards[index];
+    gamepadScreen.announce(
+      '${index + 1} of ${_cards.length}. '
+      '${card.wordEnglish}. ${card.wordFilipino}.',
+    );
+  }
+
   void _nextCard() {
     if (_currentIndex < _cards.length - 1) {
       _pageController.nextPage(
@@ -268,7 +284,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
       builder: (ctx) => AlertDialog(
         title: Text(AppLocalizations.of(context)!.deleteFlashcard),
         content: Text(
-          'Are you sure you want to delete "${card.wordEnglish}"? '
+          'Are you sure you want to delete “${card.wordEnglish}”? '
           'This cannot be undone.',
         ),
         actions: [
@@ -377,7 +393,31 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
       ],
     ];
 
-    return GazeDpadScope(
+    // The card itself, offered to the Bluetooth controller. The action bar is
+    // already assembled above as [actions], so the controller and the visible
+    // buttons can never disagree about what exists — and the narration carries
+    // the part a blind learner cannot get by pressing anything: the word, its
+    // translation, and the example sentence.
+    return GamepadScreenRegistrar(
+      title: widget.category.label,
+      narration: card == null
+          ? const []
+          : [
+              '${_currentIndex + 1} of ${_cards.length}.',
+              card.wordEnglish,
+              card.wordFilipino,
+              if ((card.exampleSentence ?? '').trim().isNotEmpty)
+                card.exampleSentence!,
+            ],
+      items: [
+        for (final action in actions)
+          GamepadItem(
+            label: action.label,
+            enabled: action.enabled && action.onTap != null,
+            onActivate: () => action.onTap?.call(),
+          ),
+      ],
+      child: GazeDpadScope(
       rows: dpadRows,
       // The viewer is immersive — the nav bar is hidden and the shell's D-pad
       // stands down — so without this the action bar is the whole world and a
@@ -520,6 +560,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                             _isFlipped = false;
                           });
                           _warmPictures(index);
+                          _announceCard(index);
                         },
                         itemBuilder: (context, index) {
                           final card = _cards[index];
@@ -689,6 +730,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
           ),
           if (_isLoadingFsl) const FslLoadingOverlay(),
         ],
+      ),
       ),
     );
   }

@@ -3,6 +3,8 @@ package com.example.pwdpwdpwd
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -16,6 +18,12 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
+     * Bluetooth game-controller support. Null until the engine is configured,
+     * and inert until Dart enables capture — see [GamepadBridge].
+     */
+    private var gamepadBridge: GamepadBridge? = null
+
+    /**
      * Bridges the TV Cast keep-alive service to Dart.
      *
      * Dart owns the cast lifecycle (the HTTP server is a Riverpod provider), so
@@ -27,6 +35,11 @@ class MainActivity : FlutterActivity() {
      */
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        gamepadBridge = GamepadBridge(
+            flutterEngine.dartExecutor.binaryMessenger,
+            applicationContext,
+        )
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CAST_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -71,6 +84,39 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    /**
+     * Gamepad key presses are offered to [GamepadBridge] before Flutter sees
+     * them.
+     *
+     * Taking them here rather than inside Flutter is what stops a single press
+     * acting twice: Flutter maps D-pad keys onto its own focus traversal, so if
+     * both layers ran, one press would move the app's cursor *and* shift
+     * Flutter's focus. The bridge consumes only events it recognises from a
+     * real external controller and only while Dart has enabled capture — the
+     * tablet's own volume and power keys, and every touch interaction, are
+     * untouched.
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (gamepadBridge?.handleKeyEvent(event) == true) return true
+        return super.dispatchKeyEvent(event)
+    }
+
+    /**
+     * The half of the controller Flutter cannot see at all: the D-pad hat, both
+     * thumbsticks and the analogue triggers arrive as `SOURCE_JOYSTICK` motion,
+     * which the Flutter embedding never forwards to Dart.
+     */
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (gamepadBridge?.handleMotionEvent(event) == true) return true
+        return super.dispatchGenericMotionEvent(event)
+    }
+
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        gamepadBridge?.dispose()
+        gamepadBridge = null
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -1350,14 +1350,14 @@ class SeedStories {
         'Mother cooks a special meal for everyone.',
         'Father helps clean the house.',
         'Brother and sister play in the garden.',
-        '"Hello, Lola!" they shout when Grandmother arrives.',
+        '“Hello, Lola!” they shout when Grandmother arrives.',
       ],
       sentencesFil: [
         'Tuwing Linggo, nagsasama-sama ang pamilya.',
         'Nagluluto si Nanay ng espesyal na pagkain para sa lahat.',
         'Tinutulungan ni Tatay na linisin ang bahay.',
         'Naglalaro sa hardin ang kapatid na lalaki at babae.',
-        '"Kumusta, Lola!" sigaw nila nang dumating ang Lola.',
+        '“Kumusta, Lola!” sigaw nila nang dumating ang Lola.',
       ],
       // FSL sign-language clip per story page (parallel to the sentences above).
       sentenceFslUrls: [
@@ -1533,17 +1533,17 @@ class SeedStories {
       vocabularyWordIds: ['g08', 'g09', 'g10', 'g11', 'g12'],
       sentencesEn: [
         'Every day, Mia uses kind words.',
-        'In the morning she says, "Good morning, everyone!"',
-        'When she wants something, she says "please."',
-        'When someone helps her, she says "thank you."',
-        'When she makes a mistake, she says "sorry" to her friend.',
+        'In the morning she says, “Good morning, everyone!”',
+        'When she wants something, she says “please.”',
+        'When someone helps her, she says “thank you.”',
+        'When she makes a mistake, she says “sorry” to her friend.',
       ],
       sentencesFil: [
         'Araw-araw, gumagamit si Mia ng magagandang salita.',
-        'Sa umaga, sinasabi niya, "Magandang umaga sa lahat!"',
-        'Kapag may gusto siya, sinasabi niyang "pakiusap."',
-        'Kapag may tumulong sa kanya, sinasabi niyang "salamat."',
-        'Kapag nagkamali siya, sinasabi niyang "pasensya" sa kaibigan niya.',
+        'Sa umaga, sinasabi niya, “Magandang umaga sa lahat!”',
+        'Kapag may gusto siya, sinasabi niyang “pakiusap.”',
+        'Kapag may tumulong sa kanya, sinasabi niyang “salamat.”',
+        'Kapag nagkamali siya, sinasabi niyang “pasensya” sa kaibigan niya.',
       ],
       questions: [
         StoryQuestion(
@@ -1561,8 +1561,8 @@ class SeedStories {
           correctIndex: 2,
         ),
         StoryQuestion(
-          questionEn: 'When does Mia say "sorry"?',
-          questionFil: 'Kailan sinasabi ni Mia ang "pasensya"?',
+          questionEn: 'When does Mia say “sorry”?',
+          questionFil: 'Kailan sinasabi ni Mia ang “pasensya”?',
           optionsEn: [
             'When helped',
             'When she makes a mistake',
@@ -2730,14 +2730,14 @@ class SeedStories {
       sentencesEn: [
         'Marco sometimes feels angry when things go wrong.',
         'He gets confused during hard math problems.',
-        'His teacher says, "It is okay to feel scared or confused."',
+        'His teacher says, “It is okay to feel scared or confused.”',
         'She teaches him to take deep breaths.',
         'After breathing, Marco feels calm and tries again.',
       ],
       sentencesFil: [
         'Minsan nagagalit si Marco kapag mali ang nangyayari.',
         'Naguguluhan siya sa mahirap na problema sa math.',
-        'Sabi ng guro niya, "Okay lang matakot o maguluhan."',
+        'Sabi ng guro niya, “Okay lang matakot o maguluhan.”',
         'Tinuturuan siya na huminga nang malalim.',
         'Pagkatapos huminga, naging kalmado si Marco at sinubukan ulit.',
       ],

@@ -15,6 +15,7 @@ import '../../../providers/experiment_provider.dart';
 import '../../experiment/models/experiment_models.dart';
 import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
+import '../../../core/utils/accessible_sizing.dart';
 
 /// Screen that runs an assessment quiz — supports multiple choice,
 /// true/false, and fill-in-the-blank question formats. Fully accessible
@@ -111,7 +112,15 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
 
   AssessmentQuestion get _currentQuestion => _questions[_currentIndex];
   bool get _isLastQuestion => _currentIndex >= _questions.length - 1;
-  double get _progress => (_currentIndex + 1) / _questions.length;
+  /// Guarded against an empty question list.
+  ///
+  /// Dividing by zero gives NaN, and the progress label rounds it —
+  /// `(NaN).round()` throws "Unsupported operation: Infinity or NaN toInt",
+  /// which took the whole screen down rather than showing an empty assessment.
+  /// The builder will not save a question-less assessment, but one can still
+  /// arrive from a Firestore sync, and a malformed record should not crash.
+  double get _progress =>
+      _questions.isEmpty ? 0 : (_currentIndex + 1) / _questions.length;
 
   void _selectAnswer(String answer) {
     if (_answered) return;
@@ -282,15 +291,12 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                 padding: EdgeInsets.fromLTRB(padding, 12, padding, 0),
                 child: Row(
                   children: [
-                    Semantics(
-                      button: true,
-                      label: 'Quit assessment',
-                      child: IconButton(
+                    IconButton(
+                        tooltip: 'Quit assessment',
                         onPressed: _confirmQuit,
                         icon: Icon(Icons.close_rounded,
                             color: hc.textSecondary),
                       ),
-                    ),
                     Expanded(
                       child: Column(
                         children: [
@@ -517,7 +523,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                       padding, 0, padding, padding),
                   child: SizedBox(
                     width: double.infinity,
-                    height: 56,
+                    height: scaledControlHeight(context, 56),
                     child: ElevatedButton(
                       onPressed: _nextQuestion,
                       style: ElevatedButton.styleFrom(
@@ -691,7 +697,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: scaledControlHeight(context, 50),
             child: ElevatedButton(
               onPressed: _submitFillIn,
               style: ElevatedButton.styleFrom(

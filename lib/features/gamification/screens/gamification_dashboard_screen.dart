@@ -180,6 +180,7 @@ class GamificationDashboardScreen extends ConsumerWidget {
                       avatarIndex: profile.avatarIndex,
                       equippedAvatar: equippedAvatar,
                       equippedTitle: equippedTitle,
+                      isFilipino: isFilipino,
                       hc: hc,
                     )
                     .animate()
@@ -501,6 +502,11 @@ class _PlayerCard extends StatelessWidget {
   final int avatarIndex;
   final ShopItem? equippedAvatar;
   final ShopItem? equippedTitle;
+
+  /// Titles are catalogue data, not ARB entries, so the Filipino name has to
+  /// be asked for by hand — this card was showing "Word Wizard" to a learner
+  /// who had bought "Salamangkero ng Salita".
+  final bool isFilipino;
   final HCColor hc;
 
   const _PlayerCard({
@@ -508,6 +514,7 @@ class _PlayerCard extends StatelessWidget {
     required this.avatarIndex,
     this.equippedAvatar,
     this.equippedTitle,
+    this.isFilipino = false,
     required this.hc,
   });
 
@@ -562,7 +569,7 @@ class _PlayerCard extends StatelessWidget {
                 border: Border.all(color: hc.primary.withValues(alpha: 0.5)),
               ),
               child: Text(
-                equippedTitle!.name,
+                equippedTitle!.localizedName(isFilipino),
                 style: AppTypography.labelMedium.copyWith(
                   color: hc.textPrimary,
                   fontWeight: FontWeight.w600,
@@ -617,12 +624,20 @@ class _StatCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              stat.label,
-              style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            // The value above already scales down this way; the label did
+            // not, and "Achievement / s" split beneath it. `FittedBox` rather
+            // than `FitText` because this tile sits in a grid that measures
+            // intrinsics, where a LayoutBuilder asserts — and a one-line label
+            // is exactly what FittedBox handles well.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                stat.label,
+                style:
+                    AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+              ),
             ),
             if (stat.sublabel != null)
               Text(

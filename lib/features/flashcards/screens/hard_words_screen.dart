@@ -48,30 +48,60 @@ class HardWordsScreen extends ConsumerWidget {
           // ─── Summary Stats ──────────────────────
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                _StatChip(
-                  label: 'Struggling',
-                  value: '${summary.wordsStruggling}',
-                  color: AppColors.error,
-                  icon: Icons.warning_amber_rounded,
-                ),
-                const SizedBox(width: 10),
-                _StatChip(
-                  label: 'Attempted',
-                  value: '${summary.totalAttempted}',
-                  color: AppColors.secondary,
-                  icon: Icons.quiz_rounded,
-                ),
-                const SizedBox(width: 10),
-                _StatChip(
-                  label: 'Correct',
-                  value: '${summary.totalCorrect}',
-                  color: AppColors.success,
-                  icon: Icons.check_circle_rounded,
-                ),
-              ],
-            ).animate().fadeIn(duration: 400.ms),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final chips = <Widget>[
+                  _StatChip(
+                    label: 'Struggling',
+                    value: '${summary.wordsStruggling}',
+                    color: AppColors.error,
+                    icon: Icons.warning_amber_rounded,
+                  ),
+                  _StatChip(
+                    label: 'Attempted',
+                    value: '${summary.totalAttempted}',
+                    color: AppColors.secondary,
+                    icon: Icons.quiz_rounded,
+                  ),
+                  _StatChip(
+                    label: 'Correct',
+                    value: '${summary.totalCorrect}',
+                    color: AppColors.success,
+                    icon: Icons.check_circle_rounded,
+                  ),
+                ];
+
+                // Three across only while the widest label still fits a third
+                // of the row. On a phone at the Visual Impairment preset it does
+                // not, and "Struggling" split as "Struggli / ng" -- the label
+                // that says what the number above it means. Stacking is the
+                // honest fallback: taller, but every word intact.
+                final scale = MediaQuery.textScalerOf(context).scale(1.0);
+                final each = (constraints.maxWidth - 20) / 3;
+                // "Struggling" is 10 characters at `labelSmall`, plus the
+                // chip's own 20 px of horizontal padding.
+                final needed = 10 * 0.58 * 11 * scale + 20;
+
+                if (each >= needed) {
+                  return Row(
+                    children: [
+                      for (var i = 0; i < chips.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 10),
+                        Expanded(child: chips[i]),
+                      ],
+                    ],
+                  ).animate().fadeIn(duration: 400.ms);
+                }
+                return Column(
+                  children: [
+                    for (var i = 0; i < chips.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 10),
+                      SizedBox(width: double.infinity, child: chips[i]),
+                    ],
+                  ],
+                ).animate().fadeIn(duration: 400.ms);
+              },
+            ),
           ),
 
           // ─── Hard Words List ────────────────────
@@ -134,9 +164,8 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Semantics(
-        label: '$label: $value',
+    return Semantics(
+      label: '$label: $value',
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
           decoration: BoxDecoration(
@@ -163,7 +192,6 @@ class _StatChip extends StatelessWidget {
               ),
             ],
           ),
-        ),
       ),
     );
   }

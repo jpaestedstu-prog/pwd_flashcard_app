@@ -17,6 +17,7 @@ import '../../features/goals/models/goal_model.dart';
 import '../../features/word_of_day/models/word_of_day_models.dart';
 import '../../features/focus_mode/models/focus_mode_models.dart';
 import '../../features/parent_teacher_notes/models/parent_teacher_note_models.dart';
+import '../../features/routine/models/routine_models.dart';
 import '../../core/services/sync_queue/sync_queue_storage.dart';
 
 /// Manages all local Hive storage operations
@@ -38,6 +39,17 @@ class HiveService {
   static const String _friendDirectoryCacheBox = 'friend_directory_cache';
   static const String _leaderboardConfigBox = 'leaderboard_config';
 
+  /// Daily routines authored by an educator for one learner, mirrored from
+  /// the Firestore `routines` collection. Keyed by routine id.
+  static const String _routinesBox = 'routines';
+
+  /// Per-learner, per-day routine completion. Keyed by `<profileId>_<date>`
+  /// — see `dayKeyFor`. Separate from `_progressBox` because a routine day is
+  /// written by whichever device the learner is holding and read by the
+  /// educator's, and mixing it into the progress blob would drag the whole
+  /// blob into that round trip.
+  static const String _routineLogsBox = 'routine_logs';
+
   /// Initialize Hive and open all boxes
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -57,6 +69,8 @@ class HiveService {
     await Hive.openBox(_friendRequestsCacheBox);
     await Hive.openBox(_friendDirectoryCacheBox);
     await Hive.openBox(_leaderboardConfigBox);
+    await Hive.openBox(_routinesBox);
+    await Hive.openBox(_routineLogsBox);
     // Open the sync queue box for offline change tracking
     await SyncQueueStorage.init();
     // One-shot migration to per-student note keys. Idempotent.
@@ -1132,6 +1146,95 @@ class HiveService {
     return result;
   }
 
+  // ─── Routines (per-learner daily routines) ────────────
+
+  static Box get _routineBox => Hive.box(_routinesBox);
+  static Box get _routineLogBox => Hive.box(_routineLogsBox);
+
+  static Future<void> cacheRoutine(Routine r) async {
+    await _routineBox.put(r.id, r.toJson());
+  }
+
+  static Future<void> deleteRoutineLocal(String routineId) async {
+    await _routineBox.delete(routineId);
+  }
+
+  /// Every cached routine for [childProfileId]. This is the offline path AND
+  /// the cold-start path: the learner's routine must be on screen before the
+  /// Firestore stream lands, or a child who opens the app in a house with no
+  /// signal sees an empty day.
+  static List<Routine> getRoutinesForChild(String childProfileId) {
+    final result = <Routine>[];
+    for (final key in _routineBox.keys) {
+      final raw = _routineBox.get(key);
+      if (raw is Map && raw['child_profile_id'] == childProfileId) {
+        try {
+          result.add(Routine.fromJson(Map<String, dynamic>.from(raw)));
+        } catch (_) {
+          continue;
+        }
+      }
+    }
+    return result;
+  }
+
+  /// Drops every cached routine for [childProfileId] that is not in [keepIds].
+  ///
+  /// Without this a routine an educator deleted on their own device lives on
+  /// in the learner's cache forever: the stream only reports what exists, so
+  /// nothing else would ever tell the local mirror that a row is gone.
+  static Future<void> pruneRoutinesForChild(
+    String childProfileId,
+    Set<String> keepIds,
+  ) async {
+    final stale = <dynamic>[];
+    for (final key in _routineBox.keys) {
+      final raw = _routineBox.get(key);
+      if (raw is Map &&
+          raw['child_profile_id'] == childProfileId &&
+          !keepIds.contains(raw['id'])) {
+        stale.add(key);
+      }
+    }
+    for (final key in stale) {
+      await _routineBox.delete(key);
+    }
+  }
+
+  static RoutineDayLog getRoutineDayLog(String profileId, DateTime day) {
+    final raw = _routineLogBox.get(dayKeyFor(profileId, day));
+    if (raw is Map) {
+      try {
+        return RoutineDayLog.fromJson(Map<String, dynamic>.from(raw));
+      } catch (_) {
+        // Fall through to the empty log — a corrupt day must not stop the
+        // learner ticking today's steps off.
+      }
+    }
+    return RoutineDayLog.empty(profileId, day);
+  }
+
+  static Future<void> saveRoutineDayLog(RoutineDayLog log) async {
+    await _routineLogBox.put(log.key, log.toJson());
+  }
+
+  /// The last [days] days of routine logs for [profileId], newest first.
+  /// Backs the educator's history strip and the learner's streak.
+  static List<RoutineDayLog> getRoutineHistory(
+    String profileId, {
+    int days = 14,
+    DateTime? from,
+  }) {
+    final anchor = from ?? DateTime.now();
+    final result = <RoutineDayLog>[];
+    for (var i = 0; i < days; i++) {
+      final day = DateTime(anchor.year, anchor.month, anchor.day)
+          .subtract(Duration(days: i));
+      result.add(getRoutineDayLog(profileId, day));
+    }
+    return result;
+  }
+
   // ─── Child Time Limits ────────────────────────────────
 
   static Box get _limitsBox => Hive.box(_childTimeLimitsBox);
@@ -1354,6 +1457,31 @@ class HiveService {
     return List<Map<String, dynamic>>.from(
       (data as List).map((e) => Map<String, dynamic>.from(e as Map)),
     );
+  }
+
+  /// Writes a session, replacing any earlier write that carries the same
+  /// `id`, and appending when there is none.
+  ///
+  /// [SessionTracker] checkpoints the sitting it is in the middle of once a
+  /// minute so a force-quit — or the power manager freezing the process, which
+  /// this tablet does after ~45 s of no touches — cannot discard it. Every
+  /// checkpoint is the *same* session growing, so it has to overwrite rather
+  /// than append; [addSessionLog] would have logged one row per minute and
+  /// inflated both the session count and the day's "was here" markers.
+  static Future<void> upsertSessionLog(
+    String profileId,
+    Map<String, dynamic> session,
+  ) async {
+    final id = session['id'];
+    if (id == null) return addSessionLog(profileId, session);
+    final sessions = getSessionLogs(profileId);
+    final at = sessions.indexWhere((s) => s['id'] == id);
+    if (at >= 0) {
+      sessions[at] = session;
+      await _sessBox.put('sessions_$profileId', sessions);
+      return;
+    }
+    return addSessionLog(profileId, session);
   }
 
   static Future<void> addSessionLog(

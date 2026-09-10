@@ -3,6 +3,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../data/models/models.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../core/widgets/fit_text.dart';
 
 /// A GitHub-style heatmap showing spaced repetition review activity.
 ///
@@ -44,7 +45,7 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
                   color: AppColors.accent, size: 22),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
+                child: FitText(
                   l10n.chartReviewHeatmap,
                   style: AppTypography.labelMedium.copyWith(
                     fontWeight: FontWeight.w700,

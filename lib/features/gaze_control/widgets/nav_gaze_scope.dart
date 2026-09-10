@@ -364,7 +364,7 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     final result = resolveDpadVoiceCommand(text, rows);
     if (kDebugMode) {
       debugPrint(
-        'VoiceCmd nav "$text" → ${result.intent} (${result.row},${result.col})',
+        'VoiceCmd nav “$text” → ${result.intent} (${result.row},${result.col})',
       );
     }
     switch (result.intent) {
@@ -587,6 +587,14 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// is covered — the hub is still visible behind a dialog's scrim, and a ring
   /// sitting on a tile the learner cannot open is a false promise.
   void _publishFocus() {
+    // Publish nothing while this scope's camera is down. [gazeHomeGrid] is a
+    // *shared* highlight registry — the Bluetooth-gamepad host drives the same
+    // rings — and this method runs on every cursor re-sync whether or not gaze
+    // is switched on. Without this guard an inert gaze scope kept writing
+    // `setFocus(null, null)` as hubs published their grids, wiping the ring a
+    // gamepad learner was steering by. Teardown clears the focus itself, so
+    // stopping gaze still drops its own highlight.
+    if (_gaze == null) return;
     if (_onTileRow && !_useTraversalForUi) {
       gazeHomeGrid.setFocus(_cursor.row, _cursor.col);
     } else {

@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../models/mood_models.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// One selectable mood face.
 ///
@@ -115,8 +116,17 @@ class MoodFace extends StatelessWidget {
                 ),
               ),
               SizedBox(height: compact ? 4 : 6),
-              Text(
+              // The mood's name under its face, in a fixed-width tile: it was
+              // splitting "Frustra / ted" on the screen a learner uses to say
+              // how they feel.
+              // FitText, not `fittedStyle`: the tile has a known fixed width,
+              // so the real column can be measured instead of guessed at. The
+              // layout-free fallback steps by a fixed factor, which was not
+              // enough under the dyslexia theme — "Frustrated" still split at
+              // 1.5x and even "Happy" at 2.0x, in an 84dp tile.
+              FitText(
                 label,
+                maxLines: 1,
                 style: (compact
                         ? AppTypography.labelSmall
                         : AppTypography.labelMedium)

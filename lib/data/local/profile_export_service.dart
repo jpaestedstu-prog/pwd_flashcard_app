@@ -58,7 +58,7 @@ class ProfileExportService {
     await Share.shareXFiles(
       [XFile(file.path)],
       subject: 'Student Profile – ${profile.name}',
-      text: 'Student profile "${profile.name}" exported from FlashLearn PWD.',
+      text: 'Student profile “${profile.name}” exported from FlashLearn PWD.',
     );
   }
 
@@ -161,7 +161,7 @@ class ProfileExportService {
 
       return (
         success: true,
-        message: 'Successfully imported "${profile.name}"',
+        message: 'Successfully imported “${profile.name}”',
       );
     } catch (e, stack) {
       ErrorHandler.report(e, stack, 'ProfileImport');

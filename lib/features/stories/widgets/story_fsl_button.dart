@@ -127,16 +127,13 @@ class _StoryFslButtonState extends State<StoryFslButton> {
     }
 
     if (widget.compact) {
-      return Semantics(
-        button: true,
-        label: 'Watch this choice in Filipino Sign Language',
-        child: IconButton(
+      return IconButton(
+          tooltip: 'Watch this choice in Filipino Sign Language',
           onPressed: _loading ? null : _play,
           visualDensity: VisualDensity.compact,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
           color: widget.color,
-          tooltip: 'Watch in FSL',
           iconSize: context.scaleIcon(22),
           icon: _loading
               ? SizedBox(
@@ -148,8 +145,7 @@ class _StoryFslButtonState extends State<StoryFslButton> {
                   ),
                 )
               : const Icon(Icons.sign_language_rounded),
-        ),
-      );
+        );
     }
 
     return Semantics(

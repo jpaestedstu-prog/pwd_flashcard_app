@@ -11,13 +11,13 @@ import 'package:pwdpwdpwd/data/models/models.dart';
 Future<void> _initHive() async {
   Hive.init('./build/test_cache/adaptive_difficulty');
   if (!Hive.isBoxOpen('progress')) {
-    await Hive.openBox('progress');
+    await Hive.openBox('progress', compactionStrategy: (_, _) => false);
   }
   // recordGameResult fires LearningLevelService.maybePromote, which reads
   // the profiles box via HiveService.getProfileById. Open it so the
   // fire-and-forget promotion path doesn't throw a HiveError.
   if (!Hive.isBoxOpen('profiles')) {
-    await Hive.openBox('profiles');
+    await Hive.openBox('profiles', compactionStrategy: (_, _) => false);
   }
 }
 

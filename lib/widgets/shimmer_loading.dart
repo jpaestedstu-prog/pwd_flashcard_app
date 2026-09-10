@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_providers.dart';
+import '../core/utils/reduced_motion.dart';
 
 /// A pastel shimmer effect widget that replaces loading spinners.
 ///
@@ -49,7 +50,7 @@ class _ShimmerLoadingState extends ConsumerState<ShimmerLoading>
     _controller = AnimationController(
       vsync: this,
       duration: widget.duration,
-    )..repeat();
+    );
   }
 
   @override
@@ -61,6 +62,9 @@ class _ShimmerLoadingState extends ConsumerState<ShimmerLoading>
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    // A skeleton goes static under reduced motion rather than disappearing,
+    // so it still reads as "still loading".
+    _controller.syncMotionLoop(settings.reducedMotion);
     final scheme = Theme.of(context).colorScheme;
 
     final base = widget.baseColor ??
@@ -121,7 +125,7 @@ class _PulseShimmerState extends State<_PulseShimmer>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
+    );
   }
 
   @override
@@ -132,6 +136,12 @@ class _PulseShimmerState extends State<_PulseShimmer>
 
   @override
   Widget build(BuildContext context) {
+    // Plain State, no ref — the scope is how a widget outside Riverpod
+    // subscribes to the setting.
+    _controller.syncMotionLoop(
+      ReducedMotionScope.of(context),
+      reverse: true,
+    );
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {

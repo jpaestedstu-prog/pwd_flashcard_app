@@ -80,7 +80,7 @@ class _HomeGroupDelegate extends GroupManagementDelegate {
 
   @override
   String get shareBlurb =>
-      'Open the app, tap "Join a home group", and enter the code.';
+      'Open the app, tap “Join a home group”, and enter the code.';
 
   @override
   AsyncValue<List<ManagedGroup>> watchGroups(WidgetRef ref) {

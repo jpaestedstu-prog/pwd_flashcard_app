@@ -13,6 +13,7 @@ import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
 import '../services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/widgets/fit_text.dart';
 
 class AssessmentHubScreen extends ConsumerWidget {
   const AssessmentHubScreen({super.key});
@@ -70,7 +71,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          FitText(
                             'Assessment Center',
                             style: AppTypography.headlineLarge.copyWith(
                               color: hc.textPrimary,
@@ -88,10 +89,8 @@ class AssessmentHubScreen extends ConsumerWidget {
                       ),
                     ),
                     if (results.isNotEmpty)
-                      Semantics(
-                        button: true,
-                        label: 'View assessment results and analytics',
-                        child: IconButton(
+                      IconButton(
+                          tooltip: 'View assessment results and analytics',
                           onPressed: () => context.push('/assessment/results'),
                           icon: Icon(
                             Icons.analytics_rounded,
@@ -99,7 +98,6 @@ class AssessmentHubScreen extends ConsumerWidget {
                             size: 28,
                           ),
                         ),
-                      ),
                   ],
                 ).animate().fadeIn(duration: 400.ms),
               ),
@@ -229,7 +227,15 @@ class AssessmentHubScreen extends ConsumerWidget {
                   crossAxisCount: context.isTablet ? 2 : 1,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  childAspectRatio: context.isTablet ? 2.5 : 3.2,
+                  // The cell has to get taller as the type does. Its two lines
+                  // are already capped at one line each, so the only way the
+                  // card can fit larger text is more height — under the
+                  // dyslexia theme (1.6 line height) at 2.0x a fixed ratio
+                  // left it 16px short. Dividing by the scale gives the text
+                  // room instead of taking size away from it; the grid
+                  // scrolls, so the extra height costs nothing else.
+                  childAspectRatio: (context.isTablet ? 2.5 : 3.2) /
+                      MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0),
                 ),
                 delegate: SliverChildListDelegate([
                   _AssessmentTypeCard(
@@ -308,7 +314,12 @@ class AssessmentHubScreen extends ConsumerWidget {
                   crossAxisCount: context.isTablet ? 3 : 2,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  childAspectRatio: 1.4,
+                  // Same reasoning as the type grid above: a fixed 40px icon
+                  // plus a label that grows with the font needs a taller cell
+                  // as the type grows, or the column runs off the bottom —
+                  // 36px under the dyslexia theme at 2.0x.
+                  childAspectRatio: 1.4 /
+                      MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0),
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final category = FlashcardCategory.values[index];
@@ -411,10 +422,8 @@ class AssessmentHubScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      Semantics(
-                        button: true,
-                        label: 'Create a new custom assessment',
-                        child: IconButton(
+                      IconButton(
+                          tooltip: 'Create a new custom assessment',
                           onPressed: () => context.push('/assessment/builder'),
                           icon: Icon(
                             Icons.add_circle_rounded,
@@ -422,7 +431,6 @@ class AssessmentHubScreen extends ConsumerWidget {
                             size: 32,
                           ),
                         ),
-                      ),
                     ],
                   ).animate().fadeIn(duration: 400.ms, delay: 600.ms),
                 ),
@@ -1167,7 +1175,7 @@ class _CustomAssessmentTile extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Assessment?'),
         content: Text(
-          'Are you sure you want to delete "${assessment.title}"? This cannot be undone.',
+          'Are you sure you want to delete “${assessment.title}”? This cannot be undone.',
         ),
         actions: [
           TextButton(

@@ -449,6 +449,12 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     /// The difficulty the game was played at (for adaptive tracking).
     GameDifficulty? playedDifficulty,
   }) {
+    // Count the game against the sitting that is open right now. The session
+    // row's `gamesPlayed` field goes into both CSV exports, and nothing had
+    // ever incremented it, so every exported row read 0. Done here because
+    // this method is the one thing in the app that knows a game finished.
+    SessionTracker.active?.recordGamePlayed();
+
     // ─── Experiment gating ────────────────────────────
     final experimentConfig = ExperimentService.getConfig(profileId);
     final effectiveStars =
@@ -706,11 +712,13 @@ class ProgressNotifier extends Notifier<LearningProgress> {
   }
 
   /// Get the equipped ShopItem for a given type, or null if none.
-  ShopItem? getEquippedShopItem(ShopItemType type) {
-    final itemId = getEquippedItemId(type);
-    if (itemId == null) return null;
-    return ShopData.findById(itemId);
-  }
+  ///
+  /// Resolved by type, not just by id: equipped rows sync between a learner's
+  /// devices, so the title slot can hold an avatar id — and the Player Profile
+  /// card, which asks for the title and draws whatever comes back, would then
+  /// label the learner "Alien".
+  ShopItem? getEquippedShopItem(ShopItemType type) =>
+      ShopData.findOfType(getEquippedItemId(type), type);
 
   /// Gives back the stars spent on items that have since been withdrawn from
   /// sale, and returns the total refunded (0 when there was nothing to undo).
@@ -723,9 +731,17 @@ class ProgressNotifier extends Notifier<LearningProgress> {
   /// Safe to call on every shop visit — it is a no-op once nothing withdrawn
   /// is owned, and it never touches [LearningProgress.totalStars], so a refund
   /// cannot inflate lifetime earnings or XP (see [XpLevelService]).
-  int refundWithdrawnPurchases() {
+  ///
+  /// [withdrawnIds] defaults to the catalogue's own withdrawn set, which is
+  /// currently empty — every shelf is sellable again now that the Sound Packs
+  /// have their audio. That is exactly why the parameter exists: this is the
+  /// safety net for the *next* withdrawal, and a safety net nothing can
+  /// exercise is a safety net nobody knows is broken. The tests pass a set of
+  /// their own so the machinery stays covered between withdrawals.
+  int refundWithdrawnPurchases({Set<String>? withdrawnIds}) {
     final purchased = HiveService.getPurchasedItems(profileId);
-    final toRefund = purchased.intersection(ShopData.withdrawnIds);
+    final toRefund =
+        purchased.intersection(withdrawnIds ?? ShopData.withdrawnIds);
     if (toRefund.isEmpty) return 0;
 
     var refunded = 0;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import 'fit_text.dart';
 
 /// "Professional surface" kit — a structured, data-dense visual language for
 /// the **teacher and parent** surfaces (dashboards, analytics, reports).
@@ -518,6 +519,8 @@ class ProActionTile extends StatelessWidget {
     this.accent,
     this.compact = false,
     this.badgeCount,
+    this.selected = false,
+    this.enabled = true,
   });
 
   final IconData icon;
@@ -539,23 +542,38 @@ class ProActionTile extends StatelessWidget {
   /// secondary "More" grid.
   final bool compact;
 
+  /// Draws the tile as the *chosen* one of a set (a picker), rather than as a
+  /// navigation button: filled icon badge, a full-strength 2px accent ring and
+  /// a check pip. The state is announced too, so it never reads by colour
+  /// alone — the picker has to work in the high-contrast theme and for a
+  /// learner or educator who can't distinguish the accent.
+  final bool selected;
+
+  /// A tile that is visible but currently unavailable. It stops responding to
+  /// taps and drops to the neutral border/text colours, so an option that
+  /// doesn't apply to the current mode stays discoverable (with its caption
+  /// explaining why) instead of vanishing.
+  final bool enabled;
+
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final theme = Theme.of(context);
-    final accentColor = accent ?? hc.primary;
+    final accentColor = enabled ? (accent ?? hc.primary) : hc.textHint;
     final double badge = compact ? 40 : 52;
     final double iconSize = compact ? 22 : 28;
 
     // A restrained dose of colour: the accent is *blended into* the surface so
     // the fill stays opaque (the screen sits on an animated gradient — a
     // translucent fill would bleed through) and auto-adapts to light/dark.
+    // A selected tile blends in twice as much so the chosen option reads at a
+    // glance from across a classroom.
     final Color fillStrong = Color.alphaBlend(
-      accentColor.withValues(alpha: 0.12),
+      accentColor.withValues(alpha: selected ? 0.22 : 0.12),
       hc.cardBackground,
     );
     final Color fillSoft = Color.alphaBlend(
-      accentColor.withValues(alpha: 0.04),
+      accentColor.withValues(alpha: selected ? 0.10 : 0.04),
       hc.cardBackground,
     );
 
@@ -569,9 +587,8 @@ class ProActionTile extends StatelessWidget {
         ),
         borderRadius: ProSurface.borderRadius,
         border: Border.all(
-          color: accentColor.withValues(alpha: 0.30),
-          // ignore: avoid_redundant_argument_values  (width comes from the token)
-          width: ProSurface.borderWidth,
+          color: selected ? accentColor : accentColor.withValues(alpha: 0.30),
+          width: selected ? 2 : ProSurface.borderWidth,
         ),
       ),
       child: Column(
@@ -579,38 +596,70 @@ class ProActionTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Fixed-size icon badge — never grows, so it always fits the cell.
-          Container(
-            width: badge,
-            height: badge,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.16),
-              borderRadius: ProSurface.borderRadius,
-            ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Icon(icon, size: iconSize, color: accentColor),
-            ),
+          // The badge is the check mark's row-mate: both are fixed size, so a
+          // selected tile is exactly as tall as its neighbours.
+          Row(
+            children: [
+              Container(
+                width: badge,
+                height: badge,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? accentColor
+                      : accentColor.withValues(alpha: 0.16),
+                  borderRadius: ProSurface.borderRadius,
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Icon(
+                    icon,
+                    size: iconSize,
+                    color: selected ? Colors.white : accentColor,
+                  ),
+                ),
+              ),
+              if (selected) ...[
+                const Spacer(),
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: compact ? 18 : 22,
+                  color: accentColor,
+                ),
+              ],
+            ],
           ),
           SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md),
+          // One-word tile labels must not split down the middle: this rendered
+          // "Work / sheets" and "Expe / riment". `fittedStyle` rather than
+          // `FitText` because these tiles sit in a grid that computes intrinsic
+          // sizes, and the `LayoutBuilder` inside `FitText` throws there.
           Text(
             label,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style:
-                (compact
-                        ? theme.textTheme.titleSmall
-                        : theme.textTheme.titleMedium)
-                    ?.copyWith(
-                      color: hc.textPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
+            style: fittedStyle(
+              context,
+              label,
+              (compact
+                      ? theme.textTheme.titleSmall
+                      : theme.textTheme.titleMedium)
+                  ?.copyWith(
+                    color: enabled ? hc.textPrimary : hc.textHint,
+                    fontWeight: FontWeight.w700,
+                  ),
+              // Deeper than the 0.85 default. A tile does not widen as the
+              // font grows, and at the "Large" (1.3x) setting the default step
+              // left an eleven-letter label — "Leaderboard" — a couple of
+              // pixels short and breaking as "Leaderboar / d".
+              factor: 0.78,
+            ),
           ),
           if (!compact && caption != null) ...[
             const SizedBox(height: AppSpacing.xs),
             Text(
               caption!,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(color: hc.textHint),
             ),
@@ -624,13 +673,15 @@ class ProActionTile extends StatelessWidget {
 
     return Semantics(
       button: true,
+      selected: selected,
+      enabled: enabled,
       // The pip below is IgnorePointer, so the count has to be spoken here or
       // a screen-reader user never hears it.
       label: count > 0 ? '$base. $count new' : base,
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          onTap: onTap,
+          onTap: enabled ? onTap : null,
           borderRadius: ProSurface.borderRadius,
           child: count > 0
               ? Stack(
@@ -737,11 +788,24 @@ class ProActionGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = columnsForWidth(
+        var cols = columnsForWidth(
           constraints.maxWidth,
           tiles.length,
           compact: compact,
         );
+        // Drop a column when the cells would be too narrow for their labels at
+        // the reader's font size. Width alone is not enough: a tile does not
+        // widen as the type grows, so at the 2.0x accessibility scale two
+        // columns on a 360dp phone left "Flashcards" rendering as
+        // "Flash / cards" — the one thing a reader at 2.0x cannot afford. One
+        // column there is not a compromise; it is the layout that stays
+        // readable. (Covered by the readability guard in the screen matrices.)
+        final scale = MediaQuery.textScalerOf(context).scale(1.0);
+        final minCell = (compact ? 80.0 : 104.0) * (scale < 1 ? 1 : scale);
+        while (cols > 1 &&
+            (constraints.maxWidth - spacing * (cols - 1)) / cols < minCell) {
+          cols--;
+        }
         final rows = <Widget>[];
         for (var i = 0; i < tiles.length; i += cols) {
           final rowTiles = tiles.sublist(
@@ -774,6 +838,221 @@ class ProActionGrid extends StatelessWidget {
           children: rows,
         );
       },
+    );
+  }
+}
+
+/// Lays out a handful of buttons (or any equal-weight controls) as **rows of
+/// equal-width cells**, the same geometry [ProActionGrid] uses for tiles.
+///
+/// This is what turns a ragged `Wrap` of `OutlinedButton`s — where "1 min" is
+/// half the width of "Extra large" and the last row trails off mid-line — into
+/// the aligned blocks the educator Home reads as. Column count comes from the
+/// available width and [minCellWidth], so the same call gives two columns on a
+/// phone and four on a tablet without the caller measuring anything.
+///
+/// Overflow-safe by construction: every cell is an [Expanded] of a bounded
+/// row, and rows share a height via [IntrinsicHeight], so a long label wraps
+/// inside its cell instead of pushing its neighbours off-screen.
+class ProButtonRow extends StatelessWidget {
+  const ProButtonRow({
+    super.key,
+    required this.children,
+    this.spacing = AppSpacing.sm,
+    this.minCellWidth = 132,
+    this.maxPerRow = 4,
+  });
+
+  final List<Widget> children;
+  final double spacing;
+
+  /// The narrowest a cell may get before the row drops a column.
+  ///
+  /// Unlike [ProActionGrid] this is not scaled by the text scaler: the labels
+  /// here are one or two short words that wrap inside their cell rather than
+  /// splitting, so the column count can stay fixed. Callers with longer labels
+  /// pass a wider value (see the cast screen's readability rows).
+  final double minCellWidth;
+
+  /// Hard cap on columns, so a wide tablet doesn't string eight thumb-sized
+  /// buttons across one line.
+  final int maxPerRow;
+
+  /// Width-aware column count, clamped to [maxPerRow] and the item count.
+  static int columnsForWidth(
+    double width,
+    int itemCount, {
+    double minCellWidth = 132,
+    double spacing = AppSpacing.sm,
+    int maxPerRow = 4,
+  }) {
+    if (itemCount <= 0) return 1;
+    final fit = ((width + spacing) / (minCellWidth + spacing)).floor();
+    return fit.clamp(1, maxPerRow < itemCount ? maxPerRow : itemCount);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (children.isEmpty) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = columnsForWidth(
+          constraints.maxWidth,
+          children.length,
+          minCellWidth: minCellWidth,
+          spacing: spacing,
+          maxPerRow: maxPerRow,
+        );
+        final rows = <Widget>[];
+        for (var i = 0; i < children.length; i += cols) {
+          final rowItems = children.sublist(
+            i,
+            (i + cols) > children.length ? children.length : i + cols,
+          );
+          final cells = <Widget>[];
+          for (var c = 0; c < cols; c++) {
+            if (c > 0) cells.add(SizedBox(width: spacing));
+            if (c < rowItems.length) {
+              cells.add(Expanded(child: rowItems[c]));
+            } else {
+              // Pad the last row so a lone trailing button keeps the width of
+              // the ones above it rather than stretching across the screen.
+              cells.add(const Expanded(child: SizedBox.shrink()));
+            }
+          }
+          if (rows.isNotEmpty) rows.add(SizedBox(height: spacing));
+          rows.add(
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: cells,
+              ),
+            ),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: rows,
+        );
+      },
+    );
+  }
+}
+
+/// An on/off setting as a flat, hairline-bordered row — the switch counterpart
+/// to [ProActionTile], carrying the same accent icon badge, 12px corners and
+/// label/caption typography so a screen of settings and a screen of actions
+/// read as one system.
+///
+/// Built on [SwitchListTile] rather than a hand-rolled `Row` + `Switch` so it
+/// inherits the framework's merged semantics (one "switch, on" node, not a
+/// button and a switch) and its text-scale behaviour.
+///
+/// Pass `standalone: false` to stack several inside one [ProPanel]; the tile
+/// then draws no border of its own.
+class ProSwitchTile extends StatelessWidget {
+  const ProSwitchTile({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.caption,
+    this.accent,
+    this.standalone = true,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool value;
+
+  /// Null disables the row (and greys it), for a setting that doesn't apply
+  /// right now. The [caption] should then say why.
+  final ValueChanged<bool>? onChanged;
+
+  final String? caption;
+  final Color? accent;
+  final bool standalone;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final theme = Theme.of(context);
+    final enabled = onChanged != null;
+    final accentColor = enabled ? (accent ?? hc.primary) : hc.textHint;
+
+    final tile = SwitchListTile(
+      value: value,
+      onChanged: onChanged,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      secondary: Container(
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: accentColor.withValues(alpha: value && enabled ? 0.16 : 0.08),
+          borderRadius: ProSurface.borderRadius,
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Icon(icon, size: 22, color: accentColor),
+        ),
+      ),
+      title: Text(
+        label,
+        // Same long-word guard as [ProActionTile]: a ListTile title sits in a
+        // narrow column between the badge and the switch, and "Fullscreen"
+        // rendered as "Fulls / creen" at the 2.0x accessibility scale.
+        style: fittedStyle(
+          context,
+          label,
+          theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: enabled ? hc.textPrimary : hc.textHint,
+          ),
+        ),
+      ),
+      subtitle: caption == null
+          ? null
+          : Text(
+              caption!,
+              // The caption is prose, but it still sits in the narrow column
+              // between the badge and the switch: under the dyslexia theme at
+              // 2.0x "Chromecast" broke as "Chrom / ecast". A slightly smaller
+              // caption is a far better trade than a split word.
+              style: fittedStyle(
+                context,
+                caption!,
+                theme.textTheme.bodySmall?.copyWith(color: hc.textHint),
+                factor: 0.82,
+                longWord: 9,
+              ),
+            ),
+    );
+
+    // A `SwitchListTile` paints its background and ink on the nearest Material
+    // ancestor, and Flutter asserts if an opaque `DecoratedBox` sits in
+    // between. Stacked inside a [ProPanel] that is exactly what happens (the
+    // panel's own container), so a non-standalone tile still gets a Material —
+    // a transparent one, so the panel's fill shows through.
+    if (!standalone) {
+      return Material(type: MaterialType.transparency, child: tile);
+    }
+
+    return Material(
+      color: hc.cardBackground,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: ProSurface.borderRadius,
+        // ignore: avoid_redundant_argument_values  (width comes from the token)
+        side: BorderSide(color: hc.border, width: ProSurface.borderWidth),
+      ),
+      child: tile,
     );
   }
 }

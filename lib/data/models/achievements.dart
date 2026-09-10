@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../features/object_scan/services/object_scan_discovery_service.dart';
+import '../local/seed_data.dart';
+import '../../features/progress/models/category_mastery.dart';
 import 'enums.dart';
 import 'models.dart';
 
@@ -57,6 +59,29 @@ class Achievement {
   });
 }
 
+/// Whether [p] has covered enough of [category] to call it mastered.
+///
+/// Coverage over the **seed** deck, at [CategoryMastery.masteryThreshold] — the
+/// same bar the certificates, the exports and the parent dashboard already use,
+/// so a learner cannot be "an Animal Expert" on one screen and not on another.
+///
+/// These used to read `categoryProgress >= 0.9`, i.e. the rolling *accuracy*
+/// average, which passed after about seven good rounds however few of the
+/// category's words had ever been shown — a learner could be told they had
+/// mastered all twelve animals having seen one. Seed-only on purpose: a teacher
+/// adding custom cards should not move a fixed badge's goalposts. Unlocks are
+/// stored as a union and never revoked, so raising the bar took no badge away
+/// from anyone who already had one.
+bool _categoryMastered(LearningProgress p, FlashcardCategory category) {
+  final cards = SeedData.getByCategory(category);
+  if (cards.isEmpty) return false;
+  var learned = 0;
+  for (final card in cards) {
+    if (p.learnedWordIds.contains(card.id)) learned++;
+  }
+  return learned / cards.length >= CategoryMastery.masteryThreshold;
+}
+
 /// All achievements available in the app.
 class Achievements {
   Achievements._();
@@ -109,141 +134,146 @@ class Achievements {
   );
 
   // ─── Category Mastery ─────────────────────────────────
+  //
+  // All of these go through [_categoryMastered] — coverage of the category's
+  // words, at the app's one shared mastery bar. See that function for what
+  // they used to measure and why it was wrong.
+  //
+  // The wording says "most of", not "all of", because the bar is
+  // [CategoryMastery.masteryThreshold] — 80%, the same figure the certificates
+  // print. A learner can hold "Animal Expert" with 10 of 12 animals, so a badge
+  // that reads "Mastered all animal vocabulary!" was overstating what they had
+  // done. If the threshold is ever raised to 1.0, this copy should go back to
+  // "all".
 
   static final allAnimals = Achievement(
     id: 'all_animals',
     title: 'Animal Expert',
-    description: 'Mastered all animal vocabulary!',
+    description: 'You know most of the animal words!',
     icon: Icons.pets_rounded,
     color: const Color(0xFFE65100),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.animals.label] ?? 0) >= 0.9,
+        _categoryMastered(p, FlashcardCategory.animals),
   );
 
   static final allColors = Achievement(
     id: 'all_colors',
     title: 'Color Wizard',
-    description: 'Mastered all colors & shapes!',
+    description: 'You know most of the colors & shapes!',
     icon: Icons.palette_rounded,
     color: const Color(0xFFC62828),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.colorsAndShapes.label] ?? 0) >=
-        0.9,
+        _categoryMastered(p, FlashcardCategory.colorsAndShapes),
   );
 
   static final allNumbers = Achievement(
     id: 'all_numbers',
     title: 'Number Ninja',
-    description: 'Mastered all number vocabulary!',
+    description: 'You know most of the number words!',
     icon: Icons.looks_one_rounded,
     color: const Color(0xFF1565C0),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.numbers.label] ?? 0) >= 0.9,
+        _categoryMastered(p, FlashcardCategory.numbers),
   );
 
   static final allBody = Achievement(
     id: 'all_body',
     title: 'Body Builder',
-    description: 'Mastered all body part vocabulary!',
+    description: 'You know most of the body part words!',
     icon: Icons.accessibility_new_rounded,
     color: const Color(0xFF2E7D32),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.bodyParts.label] ?? 0) >= 0.9,
+        _categoryMastered(p, FlashcardCategory.bodyParts),
   );
 
   static final allFood = Achievement(
     id: 'all_food',
     title: 'Foodie Star',
-    description: 'Mastered all food & drinks vocabulary!',
+    description: 'You know most of the food & drinks words!',
     icon: Icons.restaurant_rounded,
     color: const Color(0xFFBF360C),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.foodAndDrinks.label] ?? 0) >= 0.9,
+        _categoryMastered(p, FlashcardCategory.foodAndDrinks),
   );
 
   static final allFamily = Achievement(
     id: 'all_family',
     title: 'Family Hero',
-    description: 'Mastered family & greetings vocabulary!',
+    description: 'You know most of the family & greetings words!',
     icon: Icons.people_rounded,
     color: const Color(0xFF6A1B9A),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.familyAndGreetings.label] ?? 0) >=
-        0.9,
+        _categoryMastered(p, FlashcardCategory.familyAndGreetings),
   );
 
   static final allClothing = Achievement(
     id: 'all_clothing',
     title: 'Fashion Star',
-    description: 'Mastered all clothing vocabulary!',
+    description: 'You know most of the clothing words!',
     icon: Icons.checkroom_rounded,
     color: const Color(0xFFAD1457),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.clothing.label] ?? 0) >= 0.9,
+        _categoryMastered(p, FlashcardCategory.clothing),
   );
 
   static final allWeather = Achievement(
     id: 'all_weather',
     title: 'Weather Watcher',
-    description: 'Mastered all weather vocabulary!',
+    description: 'You know most of the weather words!',
     icon: Icons.wb_sunny_rounded,
     color: const Color(0xFFF57F17),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.weather.label] ?? 0) >= 0.9,
+        _categoryMastered(p, FlashcardCategory.weather),
   );
 
   static final allClassroom = Achievement(
     id: 'all_classroom',
     title: 'School Whiz',
-    description: 'Mastered all classroom vocabulary!',
+    description: 'You know most of the classroom words!',
     icon: Icons.class_rounded,
     color: const Color(0xFF0277BD),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.classroom.label] ?? 0) >= 0.9,
+        _categoryMastered(p, FlashcardCategory.classroom),
   );
 
   static final allTransportation = Achievement(
     id: 'all_transportation',
     title: 'Road Runner',
-    description: 'Mastered all transportation vocabulary!',
+    description: 'You know most of the transportation words!',
     icon: Icons.directions_bus_rounded,
     color: const Color(0xFF4527A0),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.transportation.label] ?? 0) >=
-        0.9,
+        _categoryMastered(p, FlashcardCategory.transportation),
   );
 
   static final allEmotions = Achievement(
     id: 'all_emotions',
     title: 'Feelings Expert',
-    description: 'Mastered all emotions vocabulary!',
+    description: 'You know most of the emotions words!',
     icon: Icons.emoji_emotions_rounded,
     color: const Color(0xFFB71C1C),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.emotions.label] ?? 0) >= 0.9,
+        _categoryMastered(p, FlashcardCategory.emotions),
   );
 
   static final allDaysAndTime = Achievement(
     id: 'all_days_time',
     title: 'Time Keeper',
-    description: 'Mastered all days & time vocabulary!',
+    description: 'You know most of the days & time words!',
     icon: Icons.calendar_today_rounded,
     color: const Color(0xFF33691E),
     checkUnlocked: (p) =>
-        (p.categoryProgress[FlashcardCategory.daysAndTime.label] ?? 0) >= 0.9,
+        _categoryMastered(p, FlashcardCategory.daysAndTime),
   );
 
   static final categoryChampion = Achievement(
     id: 'category_champion',
     title: 'Category Champ',
-    description: 'Mastered every single category — outstanding!',
+    description: 'You know most of the words in every category — outstanding!',
     icon: Icons.military_tech_rounded,
     color: const Color(0xFFFF6F00),
-    checkUnlocked: (p) {
-      return FlashcardCategory.values.every(
-        (cat) => (p.categoryProgress[cat.label] ?? 0) >= 0.9,
-      );
-    },
+    checkUnlocked: (p) =>
+        FlashcardCategory.values.every((cat) => _categoryMastered(p, cat)),
   );
 
   // ─── Streak Milestones ────────────────────────────────

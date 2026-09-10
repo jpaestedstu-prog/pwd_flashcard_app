@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/session_tracker.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../providers/app_providers.dart';
 
@@ -116,12 +118,37 @@ class WeeklySummary {
   }
 }
 
+/// Mirrors [sessionLogRevision] into Riverpod.
+///
+/// The global notifier outlives any provider container, so the mirror — not
+/// the notifier — is what Riverpod owns and disposes.
+class _SessionRevisionMirror extends ChangeNotifier {
+  _SessionRevisionMirror() {
+    sessionLogRevision.addListener(_onWrite);
+  }
+
+  void _onWrite() => notifyListeners();
+
+  @override
+  void dispose() {
+    sessionLogRevision.removeListener(_onWrite);
+    super.dispose();
+  }
+}
+
+final sessionRevisionProvider =
+    ChangeNotifierProvider<ChangeNotifier>((ref) => _SessionRevisionMirror());
+
 /// This week's activity for the active learner.
 ///
 /// Watches [progressProvider] so finishing a game refreshes the section — the
-/// ledger is written on the same call.
+/// ledger is written on the same call — and [sessionRevisionProvider] so the
+/// *minutes* refresh when a session checkpoint lands. Without the second one
+/// this panel reported the study time as of the last game while Detailed
+/// Analytics, which reads the log directly, reported the live figure.
 final weeklySummaryProvider = Provider<WeeklySummary>((ref) {
   final progress = ref.watch(progressProvider);
+  ref.watch(sessionRevisionProvider);
   if (progress.profileId.isEmpty) return WeeklySummary.empty;
   return WeeklySummary.forProfile(progress.profileId);
 });

@@ -1,9 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/services/cloud_sync_outcome.dart';
 import '../../../core/services/firebase_service.dart';
 import '../models/assessment_models.dart';
 import 'assessment_service.dart';
+
+// `CloudSyncOutcome` moved to core when Routines needed the same three-way
+// answer. Re-exported so the screens and tests that already import it through
+// this service keep compiling.
+export '../../../core/services/cloud_sync_outcome.dart'
+    show CloudSyncOutcome, isOwnershipRefusalError, outcomeForError;
 
 /// Mirrors the assessment module between Hive and Firestore, so the
 /// educator → learner assignment loop closes across devices instead of only
@@ -44,45 +51,13 @@ import 'assessment_service.dart';
 /// cloud for that profile. That is the intended design, not a bug to route
 /// around; see `docs/multi_device_sync.md`. What this service owes the user is
 /// honesty about it, which is [CloudSyncOutcome.notOwner].
-/// Whether a mirrored write actually reached Firestore.
-///
-/// Assigning is the one action where silence would mislead: a teacher who taps
-/// "Assign" and sees a plain success message will assume their class has the
-/// work. If the rules have not been deployed, or the tablet is offline, the
-/// row is safely in Hive and nowhere else — so the assign screen says which
-/// happened rather than claiming success either way.
-enum CloudSyncOutcome {
-  /// In Hive *and* Firestore; other devices will pick it up.
-  synced,
-
-  /// Safely in Hive, but this device is the only one that knows — Firebase is
-  /// unconfigured or the network is down. It goes up on the next connected
-  /// open, so "not yet" is the honest word for it.
-  localOnly,
-
-  /// Refused: this profile is now owned by a different device.
-  ///
-  /// Restoring a profile with a recovery code re-stamps `profiles/{id}
-  /// .owner_uid` to the new device, and the rules pin every assessment write
-  /// to the owning uid — so the moment a teacher restores themselves onto a
-  /// second tablet, the first one goes read-only for that profile without
-  /// anything on screen saying so.
-  ///
-  /// Separate from [localOnly] because the difference matters to the person
-  /// holding the tablet: a local-only row is waiting, and this one is never
-  /// going anywhere. Found on two real devices — a delete vanished from the
-  /// teacher's list, stayed in Firestore, and came back to the other tablet.
-  notOwner,
-}
-
 class AssessmentCloudService {
   const AssessmentCloudService();
 
   /// Whether Firestore refused this write outright, as opposed to not being
-  /// reachable. Only the rules produce `permission-denied`, and for this
-  /// module the only rule that can fail is the owning-uid check.
-  static bool isOwnershipRefusal(Object e) =>
-      e is FirebaseException && e.code == 'permission-denied';
+  /// reachable. Kept as a static so the existing call sites read unchanged;
+  /// the logic lives in `core/services/cloud_sync_outcome.dart`.
+  static bool isOwnershipRefusal(Object e) => isOwnershipRefusalError(e);
 
   static const String assessmentsCollection = 'assessments';
   static const String assignmentsCollection = 'assessment_assignments';

@@ -11,7 +11,7 @@ import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
-import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../../providers/tile_grid_active_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../widgets/story_cover_card.dart';
 
@@ -48,7 +48,7 @@ class StoryListScreen extends ConsumerWidget {
     // pass-through otherwise, so touch / the gaze-off layout are unchanged. The
     // per-category grids each append their rows (top-to-bottom) to one builder.
     final gazeOn = ref.watch(
-      gazeSettingsProvider.select((s) => s.enabled && s.navHomeTiles),
+      tileGridActiveProvider,
     );
     final gazeGrid = GazeTileGridBuilder(active: gazeOn);
 
