@@ -258,6 +258,84 @@ class RoutineService {
     return controller.stream;
   }
 
+  /// The steps [routines] schedule for [day], in the order a learner sees them.
+  static List<RoutineDayStep> scheduleFor(
+    List<Routine> routines,
+    DateTime day,
+  ) {
+    final out = <RoutineDayStep>[];
+    for (final r in routines) {
+      if (!r.enabled || !r.runsOn(day)) continue;
+      for (final step in r.orderedSteps) {
+        out.add(RoutineDayStep.of(step));
+      }
+    }
+    return out;
+  }
+
+  /// Freezes what [routines] scheduled for [day] into that day's log.
+  ///
+  /// Called whenever the learner's device *observes* a day — when their own
+  /// routine screen opens, and on every tick. Without this, history is scored
+  /// against the routine as it is today, so editing a routine silently
+  /// re-writes the past: a learner who finished four of four last Tuesday is
+  /// shown as four of six once two steps are added.
+  ///
+  /// Cheap and idempotent: the write is skipped unless the schedule actually
+  /// differs from what is already frozen, so re-opening the day all afternoon
+  /// costs one comparison.
+  ///
+  /// Only ever records the day the device is *living through* — it never
+  /// backfills earlier days, because a device that was switched off genuinely
+  /// does not know what was scheduled then, and inventing it would be worse
+  /// than admitting it. Unobserved days stay estimated, and the history screen
+  /// says which are which.
+  Future<RoutineDayLog> recordSchedule(
+    String profileId,
+    DateTime day,
+    List<Routine> routines,
+  ) async {
+    final current = HiveService.getRoutineDayLog(profileId, day);
+    final schedule = scheduleFor(routines, day);
+    // An unrecorded day is always written, even when the schedule is empty:
+    // "the device saw today and nothing was scheduled" is a real answer and
+    // the whole reason a rest day can be known rather than guessed.
+    if (current.hasSnapshot && _sameSchedule(current.scheduled, schedule)) {
+      return current;
+    }
+
+    final next = current.withSchedule(schedule);
+    await HiveService.saveRoutineDayLog(next);
+    if (!FirebaseService.isConfigured) return next;
+    try {
+      await _logCol.doc(next.key).set(
+            next.toJson()
+              ..['owner_uid'] = FirebaseService.currentUid
+              ..['profile_id'] = profileId,
+            SetOptions(merge: true),
+          );
+    } on Object catch (e, s) {
+      // The local freeze already happened, so history is correct on this
+      // device regardless; this is only the mirror.
+      ErrorHandler.report(e, s, 'RoutineRecordSchedule:silent');
+    }
+    return next;
+  }
+
+  static bool _sameSchedule(List<RoutineDayStep> a, List<RoutineDayStep> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id ||
+          a[i].activity != b[i].activity ||
+          a[i].title != b[i].title ||
+          a[i].titleFilipino != b[i].titleFilipino ||
+          a[i].emoji != b[i].emoji) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /// Tick [stepId] on or off for [profileId] on [day] and return the new log.
   ///
   /// Writes locally first so the checkmark lands on the next frame whatever
@@ -293,9 +371,16 @@ class RoutineService {
   /// Clears every tick for [profileId] on [day] — the educator's "start this
   /// day over" action, used when a routine is rebuilt mid-day.
   Future<RoutineDayLog> resetDay(String profileId, DateTime day) async {
+    // Clears the ticks but **keeps the frozen schedule**: "start today over"
+    // means the learner does the day again, not that the day never had a
+    // routine. Dropping the snapshot here would push the day back to being
+    // estimated against whatever the routine looks like later.
+    final existing = HiveService.getRoutineDayLog(profileId, day);
     final cleared = RoutineDayLog(
       profileId: profileId,
       day: DateTime(day.year, day.month, day.day),
+      scheduled: existing.scheduled,
+      snapshotAt: existing.snapshotAt,
       updatedAt: DateTime.now(),
     );
     await HiveService.saveRoutineDayLog(cleared);
@@ -325,6 +410,12 @@ class RoutineService {
         ...local.completedStepIds,
         ...remote.completedStepIds,
       },
+      // The snapshot is not unioned — two devices would interleave their step
+      // lists into a schedule neither ever showed. Whichever side actually has
+      // one wins, and when both do the local device's is kept: it is the one
+      // that watched the learner work through the day.
+      scheduled: local.hasSnapshot ? local.scheduled : remote.scheduled,
+      snapshotAt: local.hasSnapshot ? local.snapshotAt : remote.snapshotAt,
       updatedAt:
           local.updatedAt.isAfter(remote.updatedAt) ? local.updatedAt : remote.updatedAt,
     );

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
+import '../../../core/utils/error_handler.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
@@ -149,6 +152,11 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
               : 'Try again in a moment. Your routine is still saved.',
         ),
         data: (routines) {
+          // Freeze what today actually scheduled, the first time this device
+          // sees it. Doing it here — rather than only on a tick — is what
+          // makes a day the learner *looked at* but did nothing on still
+          // score against the right routine later.
+          _recordSchedule(profileId, routines);
           final today =
               routines.where((r) => r.enabled && r.runsOn(_today)).toList();
           if (today.isEmpty) {
@@ -168,6 +176,26 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
           );
         },
       ),
+    );
+  }
+
+  /// Guards against re-freezing on every rebuild: the service is idempotent,
+  /// but a build method should not be firing an async write on each frame.
+  String? _recordedFor;
+
+  void _recordSchedule(String profileId, List<Routine> routines) {
+    // An educator previewing a learner's day must not write to that learner's
+    // record — the day log is the learner's own.
+    if (widget.readOnly || widget.profileId != null) return;
+    if (_recordedFor == profileId) return;
+    _recordedFor = profileId;
+    unawaited(
+      const RoutineService()
+          .recordSchedule(profileId, _today, routines)
+          .catchError((Object e, StackTrace s) {
+        ErrorHandler.report(e, s, 'RoutineRecordSchedule:silent');
+        return RoutineDayLog.empty(profileId, _today);
+      }),
     );
   }
 

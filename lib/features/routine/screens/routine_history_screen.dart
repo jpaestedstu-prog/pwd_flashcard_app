@@ -89,9 +89,7 @@ class RoutineHistoryScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     ProSectionHeader(
                       title: l ? 'Huling 2 Linggo' : 'Last 2 Weeks',
-                      subtitle: l
-                          ? 'Batay sa kasalukuyang routine'
-                          : 'Based on the current routine',
+                      subtitle: _windowSubtitle(history, filipino: l),
                     ),
                     const SizedBox(height: 8),
                     _DayStrip(history: history, filipino: l),
@@ -214,7 +212,9 @@ class _DayBar extends StatelessWidget {
             : '${_dayStamp(day.day)}: nothing scheduled')
         : (filipino
             ? '${_dayStamp(day.day)}: ${day.done} sa ${day.scheduled} tapos'
-            : '${_dayStamp(day.day)}: ${day.done} of ${day.scheduled} done');
+                '${day.isEstimated ? ', tantiya' : ''}'
+            : '${_dayStamp(day.day)}: ${day.done} of ${day.scheduled} done'
+                '${day.isEstimated ? ', estimated' : ''}');
 
     return Semantics(
       label: semantics,
@@ -239,9 +239,20 @@ class _DayBar extends StatelessWidget {
                         heightFactor: (fraction ?? 0).clamp(0.06, 1.0),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: day.isComplete
-                                ? AppColors.success
-                                : hc.primary.withValues(alpha: 0.75),
+                            // An estimated day is drawn hollow: the height is
+                            // a guess against today's routine, and a solid bar
+                            // would claim more than the app knows.
+                            color: day.isEstimated
+                                ? Colors.transparent
+                                : (day.isComplete
+                                    ? AppColors.success
+                                    : hc.primary.withValues(alpha: 0.75)),
+                            border: day.isEstimated
+                                ? Border.all(
+                                    color: hc.primary.withValues(alpha: 0.55),
+                                    width: 1.5,
+                                  )
+                                : null,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -357,6 +368,30 @@ class _AllSteady extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Says how much of the window is a real record.
+///
+/// The distinction matters: a snapshot is what *was* scheduled, an estimate is
+/// today's routine projected backwards. Telling an educator their learner
+/// missed bath time nine days running is a serious claim, and it should only
+/// be made when the app actually watched those days.
+String _windowSubtitle(RoutineHistory history, {required bool filipino}) {
+  if (history.isFullyRecorded) {
+    return filipino
+        ? 'Naitalang bawat araw'
+        : 'Recorded day by day';
+  }
+  final recorded = history.recordedDays;
+  final total = history.activeDays.length;
+  if (recorded == 0) {
+    return filipino
+        ? 'Tantiya batay sa kasalukuyang routine'
+        : 'Estimated from the current routine';
+  }
+  return filipino
+      ? '$recorded sa $total araw ang naitala; ang iba ay tantiya'
+      : '$recorded of $total days recorded, the rest estimated';
 }
 
 String _weekdayLetter(DateTime d, {required bool filipino}) {

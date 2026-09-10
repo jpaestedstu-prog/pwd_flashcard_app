@@ -449,6 +449,69 @@ class Routine {
 /// Keyed by `<profileId>_<yyyy-mm-dd>` so a day is addressable without a
 /// query, which is what makes the offline path cheap: the learner's device
 /// writes its own day locally and the educator reads the same key.
+/// One step **as it was scheduled on a particular day**.
+///
+/// A routine is edited over time: steps are renamed, retimed, hidden and
+/// deleted. Scoring last Tuesday against today's routine therefore re-writes
+/// history every time an educator changes something — a learner who completed
+/// four steps out of four can be shown as 4/6 a week later because two steps
+/// were added since.
+///
+/// This is the frozen record that stops that. It carries only what the history
+/// screen needs to score and label the day, and it keeps [activity] plus the
+/// overrides rather than a rendered string, so a snapshot taken in English
+/// still reads correctly for a Filipino reader later.
+class RoutineDayStep {
+  final String id;
+  final RoutineActivity activity;
+  final String title;
+  final String titleFilipino;
+  final String emoji;
+
+  const RoutineDayStep({
+    required this.id,
+    required this.activity,
+    this.title = '',
+    this.titleFilipino = '',
+    this.emoji = '',
+  });
+
+  factory RoutineDayStep.of(RoutineStep step) => RoutineDayStep(
+        id: step.id,
+        activity: step.activity,
+        title: step.title,
+        titleFilipino: step.titleFilipino,
+        emoji: step.emoji,
+      );
+
+  /// Rebuilds a shell [RoutineStep] so `RoutineCatalog.titleFor` / `emojiFor`
+  /// can localise it exactly as the live screens do — one source of truth for
+  /// how a step is named, whether it still exists or not.
+  RoutineStep toStep() => RoutineStep(
+        id: id,
+        activity: activity,
+        title: title,
+        titleFilipino: titleFilipino,
+        emoji: emoji,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'activity': activity.index,
+        'title': title,
+        'title_filipino': titleFilipino,
+        'emoji': emoji,
+      };
+
+  factory RoutineDayStep.fromJson(Map<String, dynamic> json) => RoutineDayStep(
+        id: (json['id'] as String?) ?? '',
+        activity: RoutineActivity.fromIndex(json['activity']),
+        title: (json['title'] as String?) ?? '',
+        titleFilipino: (json['title_filipino'] as String?) ?? '',
+        emoji: (json['emoji'] as String?) ?? '',
+      );
+}
+
 class RoutineDayLog {
   final String profileId;
 
@@ -459,14 +522,36 @@ class RoutineDayLog {
   /// Step ids are uuids, so they do not collide between routines.
   final Set<String> completedStepIds;
 
+  /// What was actually scheduled that day, frozen when the learner's device
+  /// saw the day.
+  final List<RoutineDayStep> scheduled;
+
+  /// When the schedule was frozen, or null if this day was never observed.
+  ///
+  /// A separate flag rather than "is [scheduled] empty", because **an empty
+  /// snapshot is a real answer**: a device that saw the day and found nothing
+  /// scheduled has recorded a rest day, which is different from a device that
+  /// was switched off and knows nothing. Inferring from emptiness collapsed
+  /// those two and pushed known rest days back into being estimates.
+  final DateTime? snapshotAt;
+
   final DateTime updatedAt;
 
   const RoutineDayLog({
     required this.profileId,
     required this.day,
     this.completedStepIds = const <String>{},
+    this.scheduled = const <RoutineDayStep>[],
+    this.snapshotAt,
     required this.updatedAt,
   });
+
+  /// Whether this day was observed and its schedule frozen.
+  ///
+  /// Tolerates a row that has steps but no timestamp — that shape cannot be
+  /// written any more, but treating it as unrecorded would silently discard a
+  /// real schedule.
+  bool get hasSnapshot => snapshotAt != null || scheduled.isNotEmpty;
 
   factory RoutineDayLog.empty(String profileId, DateTime day) => RoutineDayLog(
         profileId: profileId,
@@ -502,14 +587,33 @@ class RoutineDayLog {
       profileId: profileId,
       day: day,
       completedStepIds: next,
+      scheduled: scheduled,
+      snapshotAt: snapshotAt,
       updatedAt: DateTime.now(),
     );
   }
+
+  /// Returns this log with [steps] frozen as the day's schedule.
+  ///
+  /// Deliberately **replaces** rather than merges: the snapshot is "what was
+  /// scheduled", and a step an educator removed part-way through the day
+  /// should stop counting against the learner from the next observation on.
+  RoutineDayLog withSchedule(List<RoutineDayStep> steps, {DateTime? at}) =>
+      RoutineDayLog(
+        profileId: profileId,
+        day: day,
+        completedStepIds: completedStepIds,
+        scheduled: steps,
+        snapshotAt: at ?? DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
 
   Map<String, dynamic> toJson() => {
         'profile_id': profileId,
         'day': dayStamp,
         'completed_step_ids': completedStepIds.toList()..sort(),
+        'scheduled': scheduled.map((s) => s.toJson()).toList(),
+        'snapshot_at': snapshotAt?.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
 
@@ -520,10 +624,27 @@ class RoutineDayLog {
     final dayRaw = json['day'] as String?;
     final parsed = dayRaw == null ? null : DateTime.tryParse(dayRaw);
     final day = parsed ?? DateTime.now();
+    final scheduledRaw = json['scheduled'] as List?;
+    final scheduled = <RoutineDayStep>[];
+    if (scheduledRaw != null) {
+      for (final raw in scheduledRaw) {
+        if (raw is Map) {
+          // One malformed row must not cost the whole day's snapshot.
+          try {
+            scheduled
+                .add(RoutineDayStep.fromJson(Map<String, dynamic>.from(raw)));
+          } catch (_) {}
+        }
+      }
+    }
     return RoutineDayLog(
       profileId: (json['profile_id'] as String?) ?? '',
       day: DateTime(day.year, day.month, day.day),
       completedStepIds: ids,
+      scheduled: scheduled,
+      snapshotAt: json['snapshot_at'] is String
+          ? DateTime.tryParse(json['snapshot_at'] as String)
+          : null,
       updatedAt: _parseDate(json['updated_at']),
     );
   }

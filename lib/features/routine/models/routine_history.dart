@@ -10,11 +10,24 @@ class RoutineDaySummary {
   /// Steps the learner ticked off.
   final int done;
 
+  /// Whether this day was scored against a **frozen snapshot** of what was
+  /// actually scheduled, rather than inferred from the routine as it is now.
+  ///
+  /// A day the learner's device never saw has no snapshot, so it is estimated
+  /// — and the screen labels it, because "we think this is what was scheduled"
+  /// and "this is what was scheduled" are different claims to make about a
+  /// child.
+  final bool fromSnapshot;
+
   const RoutineDaySummary({
     required this.day,
     required this.scheduled,
     required this.done,
+    this.fromSnapshot = false,
   });
+
+  /// True when the numbers are a best guess rather than a record.
+  bool get isEstimated => !fromSnapshot && !isRestDay;
 
   /// A day with nothing scheduled is a **rest day**, not a failure.
   ///
@@ -60,12 +73,17 @@ class RoutineStepReliability {
 /// arithmetic that an educator will act on ("bath time is where it stalls")
 /// is testable without Hive, Firestore or a clock.
 ///
-/// **Known limitation, stated rather than hidden:** past days are scored
-/// against the routines as they are *today*. There is no snapshot of what was
-/// scheduled on a Tuesday three weeks ago, so editing a routine re-scores its
-/// history. That is the honest trade for not writing a schedule snapshot on
-/// every day the learner never opened the app; the screen says the window is
-/// "based on the current routine" so nobody reads it as a permanent record.
+/// **Days are scored against a frozen snapshot wherever one exists.** The
+/// learner's device records what was actually scheduled each day it sees
+/// (`RoutineService.recordSchedule`), so editing a routine no longer re-writes
+/// the past — a learner who finished four of four last Tuesday stays at four
+/// of four when two steps are added today.
+///
+/// A day the device never saw has no snapshot and is *estimated* against the
+/// current routine, exactly as before. Those days are flagged
+/// ([RoutineDaySummary.isEstimated]) and the screen labels them, because
+/// inventing a schedule for a day the device was switched off would be worse
+/// than admitting the gap.
 class RoutineHistory {
   final List<RoutineDaySummary> days;
   final List<RoutineStepReliability> steps;
@@ -128,6 +146,13 @@ class RoutineHistory {
 
   bool get isEmpty => activeDays.isEmpty;
 
+  /// Active days scored from a frozen snapshot rather than inferred.
+  int get recordedDays => activeDays.where((d) => d.fromSnapshot).length;
+
+  /// True when every active day in the window is a real record.
+  bool get isFullyRecorded =>
+      activeDays.isNotEmpty && activeDays.every((d) => d.fromSnapshot);
+
   /// Scores [logs] against [routines].
   ///
   /// [logs] should be newest-first (as `HiveService.getRoutineHistory`
@@ -146,22 +171,31 @@ class RoutineHistory {
     final stepById = <String, RoutineStep>{};
 
     for (final log in logs) {
-      var scheduled = 0;
+      // The frozen record wins; the current routine is only a fallback for
+      // days the learner's device never observed.
+      final steps = log.hasSnapshot
+          ? log.scheduled.map((s) => s.toStep()).toList()
+          : [
+              for (final routine in live)
+                if (routine.runsOn(log.day)) ...routine.orderedSteps,
+            ];
+
       var done = 0;
-      for (final routine in live) {
-        if (!routine.runsOn(log.day)) continue;
-        for (final step in routine.orderedSteps) {
-          scheduled++;
-          stepById[step.id] = step;
-          scheduledCount[step.id] = (scheduledCount[step.id] ?? 0) + 1;
-          if (log.completedStepIds.contains(step.id)) {
-            done++;
-            doneCount[step.id] = (doneCount[step.id] ?? 0) + 1;
-          }
+      for (final step in steps) {
+        stepById[step.id] = step;
+        scheduledCount[step.id] = (scheduledCount[step.id] ?? 0) + 1;
+        if (log.completedStepIds.contains(step.id)) {
+          done++;
+          doneCount[step.id] = (doneCount[step.id] ?? 0) + 1;
         }
       }
       days.add(
-        RoutineDaySummary(day: log.day, scheduled: scheduled, done: done),
+        RoutineDaySummary(
+          day: log.day,
+          scheduled: steps.length,
+          done: done,
+          fromSnapshot: log.hasSnapshot,
+        ),
       );
     }
 
