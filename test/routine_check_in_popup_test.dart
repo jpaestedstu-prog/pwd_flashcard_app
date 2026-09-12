@@ -24,7 +24,8 @@ import 'package:pwdpwdpwd/providers/wall_clock_provider.dart';
 ///    now." — raised by the watcher when a Check-In Time step comes due,
 ///  * the per-step question — "How do you feel after brushing your teeth?", and
 ///  * the routine interstitial — "Time for Lunch! It is lunch time.", the step
-///    brought to the learner at its own hour, and then the question about it.
+///    brought to the learner at its own hour, and then the question about it —
+///    but only when the educator marked that step "ask how they feel".
 ///
 /// All of them carry the optional "Write why you feel this way" field, so a
 /// face chooses and Save records: the two-step flow is the feature, not a
@@ -94,6 +95,15 @@ const _checkIn = RoutineStep(
 
 const _lunch = RoutineStep(
   id: 'lunch',
+  activity: RoutineActivity.lunch,
+  hour: 12,
+  minute: 0,
+  askMood: true,
+);
+
+/// The same step with the educator's switch off: a reminder, and nothing more.
+const _quietLunch = RoutineStep(
+  id: 'lunch-quiet',
   activity: RoutineActivity.lunch,
   hour: 12,
   minute: 0,
@@ -519,6 +529,31 @@ void main() {
 
       expect(did, isTrue);
       expect(find.text('How do you feel after lunch?'), findsNothing);
+    });
+
+    testWidgets('asks nothing when the educator did not ask for it', (
+      tester,
+    ) async {
+      // The switch that governs the question after a manual tick governs it
+      // here too. A learner asked how every scheduled step of a ten-step day
+      // felt is being interviewed, not checked in on — and the reminder still
+      // does its job either way.
+      bool? did;
+      final mood = await _pumpHarness(tester, (c, r) async {
+        did = await showRoutineNowPopup(c, r, _quietLunch);
+      });
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Time for Lunch!'), findsOneWidget);
+      expect(find.text('It is lunch time.'), findsOneWidget);
+
+      await tester.tap(find.text('I did it!'));
+      await tester.pumpAndSettle();
+
+      expect(did, isTrue, reason: 'the step is still ticked off');
+      expect(find.text('How do you feel after lunch?'), findsNothing);
+      expect(mood.added, isEmpty);
     });
 
     testWidgets('a check-in step goes straight to its own pop-up', (

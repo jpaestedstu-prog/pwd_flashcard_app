@@ -22,13 +22,20 @@ import 'routine_mood_prompt.dart';
 /// deliberately an **interstitial**: it takes the screen, says the one thing
 /// that is true right now, and offers exactly two ways on.
 ///
-/// Two pages, in the order the day happens:
+/// Up to two pages, in the order the day happens:
 ///
 ///  1. **The routine.** "Time for Lunch!", the cue the educator wrote (or the
-///     catalog's), and the step's own time. "I did it!" or "Later".
+///     catalog's), and the step's own time. "I did it!" or "Later". Always.
 ///  2. **The mood check-in.** "How do you feel after lunch?" — the learner's
 ///     own faces and, where typing is not the barrier, the optional "Write why
-///     you feel this way" field.
+///     you feel this way" field. **Only for a step the educator marked "ask
+///     how they feel"** ([RoutineStep.asksMoodAfter]).
+///
+/// That second page is the educator's call, not this pop-up's. The same switch
+/// already governs the question after a manual tick, and a learner asked how
+/// every scheduled step of a ten-step day felt is being interviewed, not
+/// checked in on. With the switch off the reminder still arrives and still
+/// ticks the step — it simply says the one thing it came to say.
 ///
 /// One route for both pages rather than two dialogs in a row: the step and the
 /// question about it are one moment, and a screen that blinks back to Home in
@@ -59,13 +66,16 @@ Future<bool> showRoutineNowPopup(
   final cue = RoutineCatalog.audioCueFor(step, filipino: isFilipino);
   final question = RoutineCatalog.moodQuestionFor(step, filipino: isFilipino);
 
-  // Asked once a day per step: a learner who already said how lunch felt is
+  // The educator's switch decides whether there is a question at all, and
+  // then it is asked once a day: a learner who already said how lunch felt is
   // not asked again because they re-opened the app.
-  final askMood = !hasCheckedInFor(
-    ref.read(moodProvider),
-    MoodContext.afterStep,
-    routineStepId: step.id,
-  );
+  final askMood =
+      step.asksMoodAfter &&
+      !hasCheckedInFor(
+        ref.read(moodProvider),
+        MoodContext.afterStep,
+        routineStepId: step.id,
+      );
 
   speakMoodQuestion(ref, '$headline $cue');
 
