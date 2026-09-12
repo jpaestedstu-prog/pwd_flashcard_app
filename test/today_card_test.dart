@@ -94,13 +94,24 @@ MoodEntry _entry(
   MoodType mood,
   DateTime at, {
   MoodContext context = MoodContext.general,
+  String? stepId,
+  String? title,
 }) => MoodEntry(
   id: 'm-${at.microsecondsSinceEpoch}',
   profileId: _profileId,
   mood: mood,
   timestamp: at,
   activityContext: context.storageKey,
+  routineStepId: stepId,
+  routineStepTitle: title,
 );
+
+/// The semantic label of the card whose label starts with [prefix] — the
+/// sentence a screen reader actually reads out for that card.
+String _openLabel(WidgetTester tester, String prefix) => tester
+    .widgetList<Semantics>(find.byType(Semantics))
+    .map((s) => s.properties.label ?? '')
+    .firstWhere((l) => l.startsWith(prefix), orElse: () => '');
 
 RoutineStep _step(
   String id,
@@ -171,9 +182,13 @@ Future<_FakeMood> _pump(
           data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
           child: Scaffold(
             body: SingleChildScrollView(
-              child: TodayCard(
-                mood: TodayMoodPane(onOpen: () {}),
-                day: TodayDayPane(onOpen: () {}),
+              // The two cards as Home stacks them: My Day, then Mood
+              // Check-In.
+              child: Column(
+                children: [
+                  TodayCard(child: TodayDayPane(onOpen: () {})),
+                  TodayCard(child: TodayMoodPane(onOpen: () {})),
+                ],
               ),
             ),
           ),
@@ -491,11 +506,93 @@ void main() {
     });
   });
 
+  group('My Day + Mood', () {
+    // What makes the first card "My Day + Mood": the answers the *routine*
+    // collected. Not a second check-in control — the Mood Check-In card owns
+    // that — and not a claim about answers the routine never asked for.
+    //
+    // Read through the semantic label, because the chip itself sits inside the
+    // header's excluded subtree: the sentence below is the only form of it a
+    // screen reader ever gets, so it is the one worth testing.
+    testWidgets('My Day names the mood its own question collected', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        routines: [
+          _routine([
+            _step('s1', RoutineActivity.brushingTeeth, hour: 7, minute: 0),
+          ]),
+        ],
+        moods: [
+          _entry(
+            MoodType.sad,
+            DateTime.now(),
+            context: MoodContext.afterStep,
+            stepId: 's1',
+            title: 'Brushing Teeth',
+          ),
+        ],
+      );
+
+      expect(
+        _openLabel(tester, 'My Day'),
+        contains('You felt Sad after Brushing Teeth.'),
+      );
+    });
+
+    testWidgets('the day-end answer speaks for the day itself', (tester) async {
+      await _pump(
+        tester,
+        routines: [
+          _routine([
+            _step('s1', RoutineActivity.brushingTeeth, hour: 7, minute: 0),
+          ]),
+        ],
+        moods: [
+          _entry(
+            MoodType.tired,
+            DateTime.now(),
+            context: MoodContext.afterRoutine,
+          ),
+        ],
+      );
+
+      expect(
+        _openLabel(tester, 'My Day'),
+        contains('You said today felt Tired.'),
+      );
+    });
+
+    testWidgets('a plain Home check-in is not claimed by My Day', (
+      tester,
+    ) async {
+      // Answering "how are you today?" on Home says nothing about the
+      // routine, and a schedule that implied otherwise would be inventing
+      // data for the educator's wellbeing view to read.
+      await _pump(
+        tester,
+        routines: [
+          _routine([
+            _step('s1', RoutineActivity.brushingTeeth, hour: 7, minute: 0),
+          ]),
+        ],
+        moods: [_entry(MoodType.happy, DateTime.now())],
+      );
+
+      expect(_openLabel(tester, 'My Day'), isNot(contains('You felt')));
+      expect(_openLabel(tester, 'My Day'), isNot(contains('today felt')));
+      // …and the Mood Check-In card still shows it, because that is the card
+      // it belongs to.
+      expect(find.text('Feeling Happy'), findsOneWidget);
+    });
+  });
+
   group('layout', () {
-    // The two halves go to different screens, so they must stay two separate
+    // The two cards go to different screens, so they must stay two separate
     // "open" targets — and the in-place controls must sit outside them, or a
     // learner reaching for a face would navigate instead.
-    testWidgets('each half has its own open target', (tester) async {
+    testWidgets('each card has its own open target', (tester) async {
       await _pump(tester);
 
       final labels = tester
@@ -510,11 +607,10 @@ void main() {
     });
 
     // The worst case from the app's overflow matrix: a small phone at the
-    // largest font setting. The card stacks there rather than squeezing two
-    // columns into 360dp.
-    testWidgets('stacks instead of overflowing at 2.0x on a small phone', (
-      tester,
-    ) async {
+    // largest font setting. Full-width cards have room to grow downwards;
+    // what this guards is that the title row — now carrying a streak chip and
+    // a mood chip beside the title — still does not overflow sideways.
+    testWidgets('survives 2.0x on a small phone', (tester) async {
       await _pump(
         tester,
         size: const Size(360, 640),
@@ -534,7 +630,25 @@ void main() {
       expect(find.text('My Day'), findsOneWidget);
     });
 
-    testWidgets('the Child home can rename the mood half', (tester) async {
+    testWidgets('Mood Check-In is a card of its own, under My Day', (
+      tester,
+    ) async {
+      // The order the learner asked for: the day first, then the question.
+      // Two cards, not two halves of one — see the note on [TodayCard].
+      await _pump(tester);
+
+      expect(find.byType(TodayCard), findsNWidgets(2));
+      final day = tester.getTopLeft(find.byType(TodayDayPane));
+      final mood = tester.getTopLeft(find.byType(TodayMoodPane));
+      expect(day.dy, lessThan(mood.dy));
+      expect(
+        day.dx,
+        mood.dx,
+        reason: 'full width each, one under the other',
+      );
+    });
+
+    testWidgets('the Child home can rename the mood card', (tester) async {
       tester.view.physicalSize = const Size(900, 700);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -554,8 +668,7 @@ void main() {
           child: MaterialApp(
             home: Scaffold(
               body: TodayCard(
-                mood: TodayMoodPane(onOpen: () {}, title: 'My Feelings'),
-                day: TodayDayPane(onOpen: () {}),
+                child: TodayMoodPane(onOpen: () {}, title: 'My Feelings'),
               ),
             ),
           ),

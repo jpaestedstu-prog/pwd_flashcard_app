@@ -10,8 +10,9 @@ import 'package:pwdpwdpwd/features/mood_tracker/models/mood_context.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/models/mood_models.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_models.dart';
 import 'package:pwdpwdpwd/features/routine/providers/today_routine_provider.dart';
-import 'package:pwdpwdpwd/features/routine/widgets/routine_check_in_watcher.dart';
+import 'package:pwdpwdpwd/features/routine/widgets/routine_popup_watcher.dart';
 import 'package:pwdpwdpwd/features/routine/widgets/routine_mood_prompt.dart';
+import 'package:pwdpwdpwd/features/routine/widgets/routine_now_popup.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 import 'package:pwdpwdpwd/providers/lock_state_provider.dart';
 import 'package:pwdpwdpwd/providers/mood_provider.dart';
@@ -20,8 +21,14 @@ import 'package:pwdpwdpwd/providers/wall_clock_provider.dart';
 /// The questions "My Day" asks, as the learner meets them.
 ///
 ///  * the scheduled check-in pop-up — "Check-in time! Please do your check-in
-///    now." — raised by the watcher when a Check-In Time step comes due, and
-///  * the per-step question — "How do you feel after brushing your teeth?".
+///    now." — raised by the watcher when a Check-In Time step comes due,
+///  * the per-step question — "How do you feel after brushing your teeth?", and
+///  * the routine interstitial — "Time for Lunch! It is lunch time.", the step
+///    brought to the learner at its own hour, and then the question about it.
+///
+/// All of them carry the optional "Write why you feel this way" field, so a
+/// face chooses and Save records: the two-step flow is the feature, not a
+/// regression to work around.
 ///
 /// No Hive writes here: moods go to an in-memory notifier, and nothing a test
 /// taps ticks a step (an awaited `box.put` inside `testWidgets` hangs the
@@ -82,6 +89,13 @@ const _checkIn = RoutineStep(
   id: 'ci-9',
   activity: RoutineActivity.moodCheckIn,
   hour: 9,
+  minute: 0,
+);
+
+const _lunch = RoutineStep(
+  id: 'lunch',
+  activity: RoutineActivity.lunch,
+  hour: 12,
   minute: 0,
 );
 
@@ -153,7 +167,7 @@ Future<_FakeMood> _pumpWatcher(
         home: Scaffold(
           body: Stack(
             children: [
-              RoutineCheckInWatcher(location: location),
+              RoutinePopupWatcher(location: location),
               const Center(child: Text('hub')),
             ],
           ),
@@ -237,11 +251,24 @@ void main() {
       await tester.tap(find.text('go'));
       await tester.pumpAndSettle();
       await tester.tap(find.bySemanticsLabel('Happy'));
+      await tester.pump();
+
+      // The face chooses; the note is offered; Save records. Nothing is
+      // written on the tap of a face, or there would be nowhere to put the
+      // sentence the learner is about to type.
+      expect(mood.added, isEmpty);
+      expect(
+        find.text('Write why you feel this way (optional)...'),
+        findsOneWidget,
+      );
+      await tester.enterText(find.byType(TextField), 'I slept well');
+      await tester.tap(find.bySemanticsLabel('Save how you feel'));
       await tester.pumpAndSettle();
 
       expect(answered, isTrue);
       final entry = mood.added.single;
       expect(entry.mood, MoodType.happy);
+      expect(entry.note, 'I slept well');
       expect(entry.activityContext, 'check_in');
       expect(entry.routineStepId, 'ci-9');
       expect(entry.routineStepTitle, 'Check-In Time');
@@ -332,9 +359,14 @@ void main() {
         findsOneWidget,
       );
       await tester.tap(find.bySemanticsLabel('Sad'));
+      await tester.pump();
+      await tester.tap(find.bySemanticsLabel('Save how you feel'));
       await tester.pumpAndSettle();
 
       final entry = mood.added.single;
+      // Saved with the field left alone: "optional" means the learner may
+      // say nothing, and an untouched field is not an empty sentence.
+      expect(entry.note, isNull);
       expect(entry.activityContext, 'after_step');
       expect(entry.routineStepId, 'brush');
       expect(entry.routineActivity, RoutineActivity.brushingTeeth.index);
@@ -381,7 +413,167 @@ void main() {
     });
   });
 
-  group('the watcher raises the pop-up at check-in time', () {
+  group('the routine interstitial', () {
+    testWidgets('shows the step first, in its own words', (tester) async {
+      await _pumpHarness(tester, (c, r) async {
+        await showRoutineNowPopup(c, r, _lunch);
+      });
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Time for Lunch!'), findsOneWidget);
+      expect(find.text('It is lunch time.'), findsOneWidget);
+      expect(find.text('12:00 PM'), findsOneWidget);
+      expect(find.text('I did it!'), findsOneWidget);
+      expect(find.text('Later'), findsOneWidget);
+      // The question waits its turn. The routine comes first — a learner
+      // asked how lunch felt before eating it has been asked nothing.
+      expect(find.text('How do you feel after lunch?'), findsNothing);
+    });
+
+    testWidgets('then asks how it felt, with the optional note', (
+      tester,
+    ) async {
+      bool? did;
+      final mood = await _pumpHarness(tester, (c, r) async {
+        did = await showRoutineNowPopup(c, r, _lunch);
+      });
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('I did it!'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('How do you feel after lunch?'), findsOneWidget);
+      expect(
+        find.text('Time for Lunch!'),
+        findsNothing,
+        reason: 'one page at a time, in one route',
+      );
+
+      await tester.tap(find.bySemanticsLabel('Happy'));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'the rice was good');
+      await tester.tap(find.bySemanticsLabel('Save how you feel'));
+      await tester.pumpAndSettle();
+
+      expect(did, isTrue, reason: 'the caller ticks the step off');
+      final entry = mood.added.single;
+      expect(entry.mood, MoodType.happy);
+      expect(entry.note, 'the rice was good');
+      expect(entry.activityContext, 'after_step');
+      expect(entry.routineStepId, 'lunch');
+      expect(entry.routineStepTitle, 'Lunch');
+    });
+
+    testWidgets('"Later" does neither', (tester) async {
+      bool? did;
+      final mood = await _pumpHarness(tester, (c, r) async {
+        did = await showRoutineNowPopup(c, r, _lunch);
+      });
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Later'));
+      await tester.pumpAndSettle();
+
+      expect(did, isFalse);
+      expect(mood.added, isEmpty);
+    });
+
+    testWidgets('Skip finishes the step without a feeling', (tester) async {
+      // The tick is not held hostage to a feeling the learner would rather
+      // not name.
+      bool? did;
+      final mood = await _pumpHarness(tester, (c, r) async {
+        did = await showRoutineNowPopup(c, r, _lunch);
+      });
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('I did it!'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+
+      expect(did, isTrue);
+      expect(mood.added, isEmpty);
+    });
+
+    testWidgets('a step already asked about today is not asked twice', (
+      tester,
+    ) async {
+      final answered = MoodEntry(
+        id: 'earlier',
+        profileId: _profileId,
+        mood: MoodType.happy,
+        timestamp: DateTime.now(),
+        activityContext: MoodContext.afterStep.storageKey,
+        routineStepId: 'lunch',
+      );
+      bool? did;
+      await _pumpHarness(tester, (c, r) async {
+        did = await showRoutineNowPopup(c, r, _lunch);
+      }, moods: [answered]);
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('I did it!'));
+      await tester.pumpAndSettle();
+
+      expect(did, isTrue);
+      expect(find.text('How do you feel after lunch?'), findsNothing);
+    });
+
+    testWidgets('a check-in step goes straight to its own pop-up', (
+      tester,
+    ) async {
+      // There is no chore to announce first: the check-in *is* the question.
+      await _pumpHarness(tester, (c, r) async {
+        await showRoutineNowPopup(c, r, _checkIn);
+      });
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Check-in time!'), findsOneWidget);
+      expect(find.text('I did it!'), findsNothing);
+    });
+
+    testWidgets('survives the largest font on a small phone', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            profileProvider.overrideWith(_StubProfile.new),
+            moodProvider.overrideWith((ref) => _FakeMood()),
+          ],
+          child: MaterialApp(
+            home: MediaQuery(
+              data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
+              child: Consumer(
+                builder: (context, ref, _) => Scaffold(
+                  body: Center(
+                    child: ElevatedButton(
+                      onPressed: () => showRoutineNowPopup(context, ref, _lunch),
+                      child: const Text('go'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      // Both ways out stay reachable by scrolling rather than clipped away.
+      await tester.scrollUntilVisible(find.text('Later'), 100);
+      expect(find.text('Later'), findsOneWidget);
+    });
+  });
+
+  group('the watcher raises the pop-up when a step comes due', () {
     testWidgets('at 9:00 on Home, it asks', (tester) async {
       await _pumpWatcher(
         tester,
@@ -391,6 +583,32 @@ void main() {
       );
       expect(find.text('Check-in time!'), findsOneWidget);
       expect(find.text('Please do your check-in now.'), findsOneWidget);
+    });
+
+    testWidgets('at lunch time, the step itself comes to the learner', (
+      tester,
+    ) async {
+      // The notification fires whatever the app is doing; this is the in-app
+      // half. A learner holding the tablet at noon should not have to notice
+      // a banner to be told it is lunch time.
+      await _pumpWatcher(
+        tester,
+        location: '/home',
+        now: _todayAt(12),
+        today: _today([_lunch]),
+      );
+      expect(find.text('Time for Lunch!'), findsOneWidget);
+      expect(find.text('It is lunch time.'), findsOneWidget);
+    });
+
+    testWidgets('a chore that has gone stale is left alone', (tester) async {
+      await _pumpWatcher(
+        tester,
+        location: '/home',
+        now: _todayAt(20),
+        today: _today([_lunch]),
+      );
+      expect(find.text('Time for Lunch!'), findsNothing);
     });
 
     testWidgets('at 8:59, it waits', (tester) async {
@@ -477,7 +695,7 @@ void main() {
               builder: (context) => Scaffold(
                 body: Stack(
                   children: [
-                    const RoutineCheckInWatcher(location: '/home'),
+                    const RoutinePopupWatcher(location: '/home'),
                     Center(
                       child: ElevatedButton(
                         onPressed: () => showDialog<void>(

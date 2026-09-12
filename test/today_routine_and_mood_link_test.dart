@@ -341,9 +341,11 @@ void main() {
           child: MaterialApp(
             home: Scaffold(
               body: SingleChildScrollView(
-                child: TodayCard(
-                  mood: TodayMoodPane(onOpen: () {}),
-                  day: TodayDayPane(onOpen: () {}),
+                child: Column(
+                  children: [
+                    TodayCard(child: TodayDayPane(onOpen: () {})),
+                    TodayCard(child: TodayMoodPane(onOpen: () {})),
+                  ],
                 ),
               ),
             ),
@@ -393,10 +395,24 @@ void main() {
       expect(find.text('Not now'), findsOneWidget);
 
       await tester.tap(find.bySemanticsLabel('Tired'));
+      await tester.pump();
+
+      // The note comes *after* the face, and saving is the learner's own act.
+      // A sheet that recorded on the tap of a face would have nowhere to put
+      // the sentence — which is the whole reason the field exists.
+      expect(
+        find.text('Write why you feel this way (optional)...'),
+        findsOneWidget,
+      );
+      expect(mood.added, isEmpty, reason: 'the face only chose; Save records');
+
+      await tester.enterText(find.byType(TextField), 'my legs hurt');
+      await tester.tap(find.bySemanticsLabel('Save how you feel'));
       await tester.pumpAndSettle();
 
       expect(mood.added, hasLength(1));
       expect(mood.added.single.mood, MoodType.tired);
+      expect(mood.added.single.note, 'my legs hurt');
       expect(
         mood.added.single.activityContext,
         'after_routine',

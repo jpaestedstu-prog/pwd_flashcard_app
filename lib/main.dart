@@ -17,7 +17,7 @@ import 'core/services/active_time_tracker.dart';
 import 'core/services/alarm_scheduler.dart';
 import 'features/routine/services/routine_reminder_scheduler.dart';
 import 'features/routine/providers/today_routine_provider.dart';
-import 'features/routine/widgets/routine_check_in_watcher.dart';
+import 'features/routine/widgets/routine_popup_watcher.dart';
 import 'core/services/flashcard_photo_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/analytics_service.dart';
@@ -315,26 +315,24 @@ class FlashLearnApp extends ConsumerWidget {
             final ctx = rootNavigatorKey.currentContext;
             if (ctx == null) return;
             try {
-              // A "Check-in time" notification opens the check-in itself:
-              // Home, with the pop-up already up (the watcher in the learner
-              // shell sees the request and shows it). The learner tapped
-              // "Please do your check-in now" — making them find the step
-              // again would undo the tap.
+              // The notification and the in-app pop-up say the same
+              // thing at the same minute, so a tapped notification lands the
+              // learner *in* the pop-up (the watcher in the learner shell
+              // sees the request and raises it) rather than leaving them to
+              // find the step. They tapped "Please have your lunch now" —
+              // making them hunt for it would undo the tap.
+              //
+              // A check-in opens on Home, because it is a question rather
+              // than a chore; any other step opens on "My Day", so the rest
+              // of the day is visible behind its pop-up. `/routine` takes no
+              // path parameter on purpose — a learner must never reach
+              // another learner's day.
               final isCheckIn = ref
                   .read(todayRoutineProvider)
                   .steps
                   .any((s) => s.id == stepId && s.activity.isMoodCheckIn);
-              if (isCheckIn) {
-                ref.read(pendingCheckInRequestProvider.notifier).state = stepId;
-                GoRouter.of(ctx).go('/home');
-                return;
-              }
-              // Any other step: straight to the learner's own day — the
-              // notification carries the step id, but `/routine` has no path
-              // parameter on purpose (a learner must never reach another
-              // learner's day), and the day screen already highlights the
-              // next incomplete step.
-              GoRouter.of(ctx).go('/routine');
+              ref.read(pendingRoutinePopupProvider.notifier).state = stepId;
+              GoRouter.of(ctx).go(isCheckIn ? '/home' : '/routine');
             } catch (e, s) {
               ErrorHandler.report(e, s, 'OnRoutineReminder:silent');
             }

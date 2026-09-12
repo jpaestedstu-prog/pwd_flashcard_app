@@ -197,22 +197,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ],
     );
 
-    // ─── Gaze row 1: the two halves of the Today card ─────
-    // Two cells, not one: Mood and My Day open different screens, and the
-    // D-pad has to be able to land on each.
+    // ─── Gaze rows 1-2: the two Today cards ───────────────
+    // A row each, in the order the learner's eye travels down them: My Day,
+    // then Mood Check-In. Two cells, not one — they open different screens,
+    // and the D-pad has to be able to land on each.
     void openMood() => context.push('/mood-check-in');
     void openMyDay() => context.push('/routine');
     final todayPanes = gazeGrid.section(
-      columns: 2,
+      columns: 1,
       expand: false,
       entries: [
         (
-          tile: TodayMoodPane(onOpen: openMood),
-          cell: GazeTileCell(label: 'Mood Check-In', onActivate: openMood),
-        ),
-        (
           tile: TodayDayPane(onOpen: openMyDay),
           cell: GazeTileCell(label: 'My Day', onActivate: openMyDay),
+        ),
+        (
+          tile: TodayMoodPane(onOpen: openMood),
+          cell: GazeTileCell(label: 'Mood Check-In', onActivate: openMood),
         ),
       ],
     );
@@ -315,24 +316,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
 
-                    // ─── Today: Mood Check-In + My Day ────
+                    // ─── Today: My Day, then Mood Check-In ────
                     // The learner's own day, directly under their numbers and
-                    // above everything the app wants them to do. Both halves
-                    // show live state (today's face, today's routine
-                    // progress), which is the whole reason they earned the
-                    // spot the XP bar and the Player Profile button used to
-                    // take.
+                    // above everything the app wants them to do. Both cards
+                    // show live state (today's routine progress and the mood
+                    // it collected; today's face), which is the whole reason
+                    // they earned the spot the XP bar and the Player Profile
+                    // button used to take.
+                    //
+                    // Two cards rather than one with two halves: the routine
+                    // and the check-in are separate things, and each needs the
+                    // full width for its own controls.
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
+                        child: TodayCard(child: todayPanes.first)
+                            .animate()
+                            .fadeIn(duration: 400.ms, delay: 175.ms)
+                            .slideY(begin: 0.08, end: 0),
+                      ),
+                    ),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
-                        child:
-                            TodayCard(
-                                  mood: todayPanes.first,
-                                  day: todayPanes.last,
-                                )
-                                .animate()
-                                .fadeIn(duration: 400.ms, delay: 175.ms)
-                                .slideY(begin: 0.08, end: 0),
+                        child: TodayCard(child: todayPanes.last)
+                            .animate()
+                            .fadeIn(duration: 400.ms, delay: 225.ms)
+                            .slideY(begin: 0.08, end: 0),
                       ),
                     ),
 

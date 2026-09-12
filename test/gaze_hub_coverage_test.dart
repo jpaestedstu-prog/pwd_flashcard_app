@@ -146,18 +146,17 @@ void main() {
     expect(labels, isNot(contains('Join the class')));
 
     // The D-pad walks rows in the order they are published, so that order has
-    // to be the order a learner's eye travels down the page. The top two rows
-    // are the ones the Today card rearranged: the app bar (profile circle,
-    // shop, settings), then Mood Check-In and My Day side by side.
+    // to be the order a learner's eye travels down the page. The top three
+    // rows are the ones the Today cards rearranged: the app bar (profile
+    // circle, shop, settings), then My Day, then Mood Check-In — each a
+    // full-width card of its own.
     expect(gazeHomeGrid.rows.first.map((c) => c.label), [
       'Player Profile',
       'Star Shop',
       'Settings',
     ]);
-    expect(gazeHomeGrid.rows[1].map((c) => c.label), [
-      'Mood Check-In',
-      'My Day',
-    ]);
+    expect(gazeHomeGrid.rows[1].map((c) => c.label), ['My Day']);
+    expect(gazeHomeGrid.rows[2].map((c) => c.label), ['Mood Check-In']);
 
     await _unmount(tester);
   });

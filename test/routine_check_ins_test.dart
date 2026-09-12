@@ -4,7 +4,7 @@ import 'package:pwdpwdpwd/features/mood_tracker/models/mood_context.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/models/mood_models.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/models/mood_summary.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/services/quick_mood_check_in.dart';
-import 'package:pwdpwdpwd/features/routine/models/check_in_schedule.dart';
+import 'package:pwdpwdpwd/features/routine/models/routine_popup_schedule.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_catalog.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_models.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_templates.dart';
@@ -70,14 +70,14 @@ void main() {
 
     test('not before its time', () {
       expect(
-        CheckInSchedule.due(todaysSteps: steps, log: _log({}), now: _at(8, 59)),
+        RoutinePopupSchedule.due(todaysSteps: steps, log: _log({}), now: _at(8, 59)),
         isNull,
       );
     });
 
     test('at its time', () {
       expect(
-        CheckInSchedule.due(todaysSteps: steps, log: _log({}), now: _at(9))?.id,
+        RoutinePopupSchedule.due(todaysSteps: steps, log: _log({}), now: _at(9))?.id,
         'ci-9',
       );
     });
@@ -86,7 +86,7 @@ void main() {
       // The app was closed at 9:00. Opening it at noon should still ask:
       // the question has not been answered, and it has not stopped mattering.
       expect(
-        CheckInSchedule.due(todaysSteps: steps, log: _log({}), now: _at(12))
+        RoutinePopupSchedule.due(todaysSteps: steps, log: _log({}), now: _at(12))
             ?.id,
         'ci-9',
       );
@@ -94,7 +94,7 @@ void main() {
 
     test('never once it has been answered', () {
       expect(
-        CheckInSchedule.due(
+        RoutinePopupSchedule.due(
           todaysSteps: steps,
           log: _log({'ci-9'}),
           now: _at(12),
@@ -106,12 +106,12 @@ void main() {
     test('with two due, the earliest is asked first — one pop-up at a time',
         () {
       expect(
-        CheckInSchedule.due(todaysSteps: steps, log: _log({}), now: _at(16))
+        RoutinePopupSchedule.due(todaysSteps: steps, log: _log({}), now: _at(16))
             ?.id,
         'ci-9',
       );
       expect(
-        CheckInSchedule.due(
+        RoutinePopupSchedule.due(
           todaysSteps: steps,
           log: _log({'ci-9'}),
           now: _at(16),
@@ -123,7 +123,7 @@ void main() {
     test('"Later" puts it off for fifteen minutes, then asks again', () {
       final snooze = {'ci-9': _at(9, 15)};
       expect(
-        CheckInSchedule.due(
+        RoutinePopupSchedule.due(
           todaysSteps: steps,
           log: _log({}),
           now: _at(9, 10),
@@ -132,7 +132,7 @@ void main() {
         isNull,
       );
       expect(
-        CheckInSchedule.due(
+        RoutinePopupSchedule.due(
           todaysSteps: steps,
           log: _log({}),
           now: _at(9, 15),
@@ -140,12 +140,12 @@ void main() {
         )?.id,
         'ci-9',
       );
-      expect(CheckInSchedule.snoozeFor, const Duration(minutes: 15));
+      expect(RoutinePopupSchedule.snoozeFor, const Duration(minutes: 15));
     });
 
     test('an ordinary step never pops up, however late it is', () {
       expect(
-        CheckInSchedule.due(
+        RoutinePopupSchedule.due(
           todaysSteps: [_task('wake', RoutineActivity.morningRoutine)],
           log: _log({}),
           now: _at(23),
@@ -156,7 +156,7 @@ void main() {
 
     test('a check-in with no time never pops up on its own', () {
       expect(
-        CheckInSchedule.due(
+        RoutinePopupSchedule.due(
           todaysSteps: [_checkIn('ci', hour: null, minute: null)],
           log: _log({}),
           now: _at(23),
@@ -169,7 +169,7 @@ void main() {
       test('is honoured before its time and through a snooze', () {
         // The learner tapped "Please do your check-in now" — they asked.
         expect(
-          CheckInSchedule.due(
+          RoutinePopupSchedule.due(
             todaysSteps: steps,
             log: _log({}),
             now: _at(8),
@@ -182,7 +182,7 @@ void main() {
 
       test('never re-asks a check-in already answered', () {
         expect(
-          CheckInSchedule.due(
+          RoutinePopupSchedule.due(
             todaysSteps: steps,
             log: _log({'ci-9'}),
             now: _at(8),
@@ -192,24 +192,155 @@ void main() {
         );
       });
 
-      test('cannot name a step that is not a check-in, or not today', () {
+      test('can name any of today\'s steps — a chore as well as a question',
+          () {
+        // "Please have your lunch now" is as much a tap as "Please do your
+        // check-in now", so a task step is honoured too — and honoured past
+        // the freshness window, because the learner asked for it.
         expect(
-          CheckInSchedule.due(
+          RoutinePopupSchedule.due(
             todaysSteps: steps,
             log: _log({}),
+            now: _at(8),
+            requestedStepId: 'wake',
+          )?.id,
+          'wake',
+        );
+      });
+
+      test('cannot name a step already done, or one that is not today\'s',
+          () {
+        expect(
+          RoutinePopupSchedule.due(
+            todaysSteps: steps,
+            log: _log({'wake'}),
             now: _at(8),
             requestedStepId: 'wake',
           ),
           isNull,
         );
         expect(
-          CheckInSchedule.due(
+          RoutinePopupSchedule.due(
             todaysSteps: steps,
             log: _log({}),
             now: _at(8),
             requestedStepId: 'someone-elses-step',
           ),
           isNull,
+        );
+      });
+    });
+
+    group('a task step', () {
+      final lunch = [_task('lunch', RoutineActivity.lunch, hour: 12)];
+
+      test('comes to the learner at its time', () {
+        expect(
+          RoutinePopupSchedule.due(
+            todaysSteps: lunch,
+            log: _log({}),
+            now: _at(12),
+          )?.id,
+          'lunch',
+        );
+      });
+
+      test('not a minute early', () {
+        expect(
+          RoutinePopupSchedule.due(
+            todaysSteps: lunch,
+            log: _log({}),
+            now: _at(11, 59),
+          ),
+          isNull,
+        );
+      });
+
+      test('is still raised within the hour', () {
+        expect(
+          RoutinePopupSchedule.due(
+            todaysSteps: lunch,
+            log: _log({}),
+            now: _at(12, 59),
+          )?.id,
+          'lunch',
+        );
+      });
+
+      test('goes stale rather than nagging in the evening', () {
+        // "Time to eat lunch!" at eight at night is not a reminder, it is a
+        // mistake — the moment has passed, and the step can still be ticked
+        // from the list.
+        expect(RoutinePopupSchedule.taskFreshness, const Duration(hours: 1));
+        expect(
+          RoutinePopupSchedule.due(
+            todaysSteps: lunch,
+            log: _log({}),
+            now: _at(20),
+          ),
+          isNull,
+        );
+      });
+
+      test('a check-in, by contrast, never goes stale', () {
+        // A chore has a moment; "how do you feel?" is worth asking whenever
+        // it is answered.
+        expect(
+          RoutinePopupSchedule.due(
+            todaysSteps: [_checkIn('ci-9')],
+            log: _log({}),
+            now: _at(23),
+          )?.id,
+          'ci-9',
+        );
+      });
+
+      test('a step already done is never raised', () {
+        expect(
+          RoutinePopupSchedule.due(
+            todaysSteps: lunch,
+            log: _log({'lunch'}),
+            now: _at(12),
+          ),
+          isNull,
+        );
+      });
+
+      test('a step with no time on it is never raised', () {
+        // An "any time today" step has no moment to interrupt at.
+        expect(
+          RoutinePopupSchedule.due(
+            todaysSteps: const [
+              RoutineStep(id: 'anytime', activity: RoutineActivity.lunch),
+            ],
+            log: _log({}),
+            now: _at(12),
+          ),
+          isNull,
+        );
+      });
+
+      test('the earliest due step wins, chore or question', () {
+        // One pop-up at a time, oldest first — whichever kind it is.
+        final mixed = [
+          _checkIn('ci-9'),
+          _task('lunch', RoutineActivity.lunch, hour: 12),
+        ];
+        expect(
+          RoutinePopupSchedule.due(
+            todaysSteps: mixed,
+            log: _log({}),
+            now: _at(12, 30),
+          )?.id,
+          'ci-9',
+        );
+        expect(
+          RoutinePopupSchedule.due(
+            todaysSteps: mixed,
+            log: _log({'ci-9'}),
+            now: _at(12, 30),
+          )?.id,
+          'lunch',
         );
       });
     });
@@ -226,7 +357,7 @@ void main() {
         '/progress',
         '/routine',
       ]) {
-        expect(CheckInSchedule.isCalmLocation(path), isTrue, reason: path);
+        expect(RoutinePopupSchedule.isCalmLocation(path), isTrue, reason: path);
       }
     });
 
@@ -242,7 +373,7 @@ void main() {
         '/mood-check-in',
         '/lock',
       ]) {
-        expect(CheckInSchedule.isCalmLocation(path), isFalse, reason: path);
+        expect(RoutinePopupSchedule.isCalmLocation(path), isFalse, reason: path);
       }
     });
   });

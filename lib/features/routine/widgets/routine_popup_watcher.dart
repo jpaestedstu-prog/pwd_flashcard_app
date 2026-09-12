@@ -5,51 +5,53 @@ import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/lock_state_provider.dart';
 import '../../../providers/wall_clock_provider.dart';
-import '../models/check_in_schedule.dart';
 import '../models/routine_models.dart';
+import '../models/routine_popup_schedule.dart';
 import '../models/routine_presentation.dart';
 import '../providers/today_routine_provider.dart';
 import '../services/routine_step_action.dart';
 import 'routine_mood_prompt.dart';
+import 'routine_now_popup.dart';
 
-/// A check-in the learner asked for by tapping its notification, waiting for
-/// the watcher to show it. Holds a step id; cleared once shown.
-final pendingCheckInRequestProvider = StateProvider<String?>((ref) => null);
+/// A step the learner asked for by tapping its notification, waiting for the
+/// watcher to show it. Holds a step id; cleared once shown.
+final pendingRoutinePopupProvider = StateProvider<String?>((ref) => null);
 
-/// Raises the "Please do your check-in now" pop-up when a scheduled check-in
-/// step comes due while the learner is in the app.
+/// Raises the "My Day" pop-up when a scheduled step comes due while the
+/// learner is in the app — "It is lunch time.", and then "how do you feel?".
 ///
 /// The OS notification (see `RoutineReminderScheduler`) fires at the step's
 /// time whether or not the app is open. This is the in-app half: a learner
-/// already using the app at 9:00 should not have to notice a banner in the
-/// status bar to be asked — the question comes to them.
+/// already using the app at 12:00 should not have to notice a banner in the
+/// status bar to be told it is lunch time — the step comes to them.
 ///
 /// Mounted once in the learner shell, renders nothing, and does nothing at all
-/// unless today's routine actually contains a check-in step — so it adds no
-/// clock, no lock check and no rebuilds to a learner without one.
+/// unless today's routine actually contains a step with a time on it — so it
+/// adds no clock, no lock check and no rebuilds to a learner without one.
 ///
-/// It interrupts only where interrupting is fair ([CheckInSchedule
-/// .isCalmLocation]) and never over the time's-up lock screen; a check-in that
-/// comes due mid-game waits and is asked when the learner is back on a hub.
-class RoutineCheckInWatcher extends ConsumerStatefulWidget {
-  const RoutineCheckInWatcher({super.key, required this.location});
+/// It interrupts only where interrupting is fair
+/// ([RoutinePopupSchedule.isCalmLocation]) and never over the time's-up lock
+/// screen; a step that comes due mid-game waits and is raised when the learner
+/// is back on a hub.
+class RoutinePopupWatcher extends ConsumerStatefulWidget {
+  const RoutinePopupWatcher({super.key, required this.location});
 
   /// The router's current location, from the shell. Decides whether this is
-  /// a calm moment to ask.
+  /// a calm moment to interrupt.
   final String location;
 
   @override
-  ConsumerState<RoutineCheckInWatcher> createState() =>
-      _RoutineCheckInWatcherState();
+  ConsumerState<RoutinePopupWatcher> createState() =>
+      _RoutinePopupWatcherState();
 }
 
-class _RoutineCheckInWatcherState extends ConsumerState<RoutineCheckInWatcher> {
-  /// Step id → do not ask again before this time ("Later").
+class _RoutinePopupWatcherState extends ConsumerState<RoutinePopupWatcher> {
+  /// Step id → do not raise again before this time ("Later").
   final Map<String, DateTime> _snoozedUntil = {};
 
   /// Whose snoozes these are, and for which day — a profile switch or
   /// midnight wipes them, so one learner's "later" never silences another's
-  /// check-in and yesterday's never silences today's.
+  /// step and yesterday's never silences today's.
   String? _snoozeKey;
 
   bool _showing = false;
@@ -66,26 +68,26 @@ class _RoutineCheckInWatcherState extends ConsumerState<RoutineCheckInWatcher> {
     if (profile == null ||
         profile.role.isEducator ||
         profile.isGuestPlayer ||
-        // An educator peeking at a learner's account is not the person being
-        // asked how they feel.
+        // An educator peeking at a learner's account is not the person whose
+        // lunch time it is.
         ref.read(profileProvider.notifier).isViewingAsStudent) {
       return const SizedBox.shrink();
     }
 
     final today = ref.watch(todayRoutineProvider);
-    final request = ref.watch(pendingCheckInRequestProvider);
-    final hasCheckIn = today.steps.any((s) => s.activity.isMoodCheckIn);
-    if (!hasCheckIn) return const SizedBox.shrink();
+    final request = ref.watch(pendingRoutinePopupProvider);
+    final hasScheduled = today.steps.any((s) => s.isScheduled);
+    if (!hasScheduled) return const SizedBox.shrink();
 
     // Only now does the clock matter: re-evaluate every 10 s so the pop-up
-    // arrives at 9:00 on its own rather than on the learner's next tap.
+    // arrives at 12:00 on its own rather than on the learner's next tap.
     //
     // No `?? DateTime.now()` fallback. The ticker delivers its first value one
     // microtask after this first build, so falling back read the device clock
     // for exactly one frame — invisible in the app, and in tests it meant the
-    // *real* time decided whether a fixture's check-in was due: the suite
-    // passed when run before 9am and failed after it. Skipping that one frame
-    // costs nothing and makes the clock the only clock.
+    // *real* time decided whether a fixture's step was due: the suite passed
+    // when run before 9am and failed after it. Skipping that one frame costs
+    // nothing and makes the clock the only clock.
     final now = ref.watch(wallClockTickerProvider).valueOrNull;
     if (now == null) return const SizedBox.shrink();
     _lastNow = now;
@@ -96,7 +98,7 @@ class _RoutineCheckInWatcherState extends ConsumerState<RoutineCheckInWatcher> {
       _snoozedUntil.clear();
     }
 
-    final due = CheckInSchedule.due(
+    final due = RoutinePopupSchedule.due(
       todaysSteps: today.steps,
       log: today.log,
       now: now,
@@ -104,7 +106,7 @@ class _RoutineCheckInWatcherState extends ConsumerState<RoutineCheckInWatcher> {
       requestedStepId: request,
     );
     if (due == null || _showing) return const SizedBox.shrink();
-    if (!CheckInSchedule.isCalmLocation(widget.location)) {
+    if (!RoutinePopupSchedule.isCalmLocation(widget.location)) {
       return const SizedBox.shrink();
     }
     // Never on top of something the learner already has open. Two checks,
@@ -112,7 +114,7 @@ class _RoutineCheckInWatcherState extends ConsumerState<RoutineCheckInWatcher> {
     // ("How do you feel after brushing your teeth?") sits on the shell's own
     // navigator under `/routine`, and a dialog such as the daily reward sits
     // on the root navigator above the shell. Both re-evaluate on the next
-    // tick, so the check-in is asked moments after they close.
+    // tick, so the pop-up is raised moments after they close.
     if (isMoodQuestionOpen) return const SizedBox.shrink();
     final route = ModalRoute.of(context);
     if (route != null && !route.isCurrent) return const SizedBox.shrink();
@@ -124,24 +126,24 @@ class _RoutineCheckInWatcherState extends ConsumerState<RoutineCheckInWatcher> {
 
     _showing = true;
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _ask(due, today.steps, profile.id),
+      (_) => _raise(due, today.steps, profile.id),
     );
     return const SizedBox.shrink();
   }
 
-  Future<void> _ask(
+  Future<void> _raise(
     RoutineStep step,
     List<RoutineStep> todaysSteps,
     String profileId,
   ) async {
     if (!mounted) return;
     // The request is being honoured; clear it so it is not honoured twice.
-    ref.read(pendingCheckInRequestProvider.notifier).state = null;
+    ref.read(pendingRoutinePopupProvider.notifier).state = null;
 
-    final answered = await showCheckInPopup(context, ref, step);
+    final did = await showRoutineNowPopup(context, ref, step);
     if (!mounted) return;
 
-    if (answered) {
+    if (did) {
       await RoutineStepAction.toggle(
         ref: ref,
         profileId: profileId,
@@ -153,7 +155,7 @@ class _RoutineCheckInWatcherState extends ConsumerState<RoutineCheckInWatcher> {
       );
     } else {
       _snoozedUntil[step.id] = (_lastNow ?? DateTime.now()).add(
-        CheckInSchedule.snoozeFor,
+        RoutinePopupSchedule.snoozeFor,
       );
     }
     if (mounted) setState(() => _showing = false);

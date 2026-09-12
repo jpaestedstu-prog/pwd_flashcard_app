@@ -11,10 +11,11 @@ import '../../mood_tracker/models/mood_context.dart';
 import '../../mood_tracker/models/mood_models.dart';
 import '../../mood_tracker/models/mood_presentation.dart';
 import '../../mood_tracker/services/quick_mood_check_in.dart';
+import '../../mood_tracker/widgets/mood_picker.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 
-// ─── The three questions "My Day" asks ─────────────────
+// ─── The questions "My Day" asks ───────────────────────
 //
 // This file is where Mood Check-In and My Day are actually joined. Each
 // question is asked at a moment that means something, and each answer is
@@ -28,10 +29,15 @@ import '../models/routine_models.dart';
 //  3. [showRoutineMoodPrompt] — the last step of the day is ticked:
 //     "You finished your day! How do you feel?"
 //
-// All three offer exactly the learner's own face set
-// ([MoodPresentation.choices]), speak the question aloud for the categories
-// that are spoken to, and are asked once: a question already answered today
-// is not asked again.
+// A fourth lives next door in `routine_now_popup.dart`: the interstitial that
+// brings a scheduled step to the learner ("It is lunch time.") and then asks
+// the same question, through the same widgets.
+//
+// All of them offer exactly the learner's own face set
+// ([MoodPresentation.choices]) with the optional "Write why you feel this way"
+// field where typing is not the barrier ([MoodPresentation.showNote]), speak
+// the question aloud for the categories that are spoken to, and are asked
+// once: a question already answered today is not asked again.
 
 /// Asks how the day went, once the learner has finished it.
 ///
@@ -45,17 +51,17 @@ Future<void> showRoutineMoodPrompt(BuildContext context, WidgetRef ref) async {
     return;
   }
   final isFilipino = ref.read(settingsProvider).locale == 'fil';
-  final picked = await _askInSheet(
+  final answer = await _askInSheet(
     context,
     ref,
     emoji: '🎉',
     question: MoodContext.afterRoutine.promptOf(isFilipino: isFilipino),
   );
-  if (picked == null || !context.mounted) return;
-  await _recordAndThank(
+  if (answer == null || !context.mounted) return;
+  await recordMoodAnswer(
     context,
     ref,
-    picked,
+    answer,
     moodContext: MoodContext.afterRoutine,
   );
 }
@@ -80,17 +86,17 @@ Future<void> askAboutStep(
     return;
   }
   final isFilipino = ref.read(settingsProvider).locale == 'fil';
-  final picked = await _askInSheet(
+  final answer = await _askInSheet(
     context,
     ref,
     emoji: RoutineCatalog.emojiFor(step),
     question: RoutineCatalog.moodQuestionFor(step, filipino: isFilipino),
   );
-  if (picked == null || !context.mounted) return;
-  await _recordAndThank(
+  if (answer == null || !context.mounted) return;
+  await recordMoodAnswer(
     context,
     ref,
-    picked,
+    answer,
     moodContext: MoodContext.afterStep,
     step: step,
   );
@@ -118,7 +124,7 @@ Future<bool> showCheckInPopup(
   final presentation = ref.read(moodPresentationProvider);
   final question = RoutineCatalog.moodQuestionFor(step, filipino: isFilipino);
 
-  _speakIfWanted(
+  speakMoodQuestion(
     ref,
     isFilipino
         ? 'Oras na ng check-in. Pakigawa na ang iyong check-in ngayon. '
@@ -126,22 +132,22 @@ Future<bool> showCheckInPopup(
         : 'Check-in time. Please do your check-in now. $question',
   );
 
-  final picked = await showDialog<MoodType>(
+  final answer = await showDialog<MoodAnswer>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _QuestionPresence(
+    builder: (_) => MoodQuestionPresence(
       child: _CheckInDialog(
         question: question,
-        choices: presentation.choices,
+        presentation: presentation,
         isFilipino: isFilipino,
       ),
     ),
   );
-  if (picked == null || !context.mounted) return false;
-  return _recordAndThank(
+  if (answer == null || !context.mounted) return false;
+  return recordMoodAnswer(
     context,
     ref,
-    picked,
+    answer,
     moodContext: MoodContext.checkIn,
     step: step,
   );
@@ -149,52 +155,7 @@ Future<bool> showCheckInPopup(
 
 // ─── Shared plumbing ────────────────────────────────────
 
-/// How many of these questions are on screen right now.
-///
-/// The check-in watcher reads [isMoodQuestionOpen] so its scheduled pop-up
-/// never lands on top of a question the learner is already answering — two
-/// "how do you feel?" prompts stacked is one too many.
-///
-/// Counted by the question widget's own lifecycle ([_QuestionPresence]), not
-/// by awaiting the sheet's future. A future only completes when the route
-/// pops normally; a sheet torn down with its screen (a profile switch, a
-/// navigation that replaces the stack) never completes it, and a counter
-/// decremented in a `finally` would then stay up for good — silently
-/// blocking every later check-in until the app restarted. `dispose` always
-/// runs.
-int _openQuestions = 0;
-
-/// Whether a "My Day" mood question (sheet or pop-up) is showing.
-bool get isMoodQuestionOpen => _openQuestions > 0;
-
-/// Marks a question as on screen for exactly as long as it is mounted.
-class _QuestionPresence extends StatefulWidget {
-  const _QuestionPresence({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_QuestionPresence> createState() => _QuestionPresenceState();
-}
-
-class _QuestionPresenceState extends State<_QuestionPresence> {
-  @override
-  void initState() {
-    super.initState();
-    _openQuestions++;
-  }
-
-  @override
-  void dispose() {
-    _openQuestions--;
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
-}
-
-Future<MoodType?> _askInSheet(
+Future<MoodAnswer?> _askInSheet(
   BuildContext context,
   WidgetRef ref, {
   required String emoji,
@@ -203,19 +164,19 @@ Future<MoodType?> _askInSheet(
   final isFilipino = ref.read(settingsProvider).locale == 'fil';
   final presentation = ref.read(moodPresentationProvider);
   final reducedMotion = ref.read(settingsProvider).reducedMotion;
-  _speakIfWanted(ref, question);
-  return showModalBottomSheet<MoodType>(
+  speakMoodQuestion(ref, question);
+  return showModalBottomSheet<MoodAnswer>(
     context: context,
     isScrollControlled: true,
     // Reduced motion turns off the drag-to-dismiss gesture (and its
     // rubber-banding); the layout and the "Not now" button are identical
     // either way, so nothing is lost by it.
     enableDrag: !reducedMotion,
-    builder: (_) => _QuestionPresence(
+    builder: (_) => MoodQuestionPresence(
       child: _MoodQuestionSheet(
         emoji: emoji,
         question: question,
-        choices: presentation.choices,
+        presentation: presentation,
         isFilipino: isFilipino,
       ),
     ),
@@ -225,23 +186,28 @@ Future<MoodType?> _askInSheet(
 /// Speaks [text] for the categories that are spoken to — anyone already using
 /// text-to-speech, and always the visual / multiple-disability learners for
 /// whom the faces carry nothing (see [MoodPresentation.speakSelection]).
-void _speakIfWanted(WidgetRef ref, String text) {
+void speakMoodQuestion(WidgetRef ref, String text) {
   if (!ref.read(moodPresentationProvider).speakSelection) return;
   // Fire and forget: a learner should never wait on the speaker.
   ref.read(ttsServiceProvider).speak(text);
 }
 
-Future<bool> _recordAndThank(
+/// Saves [answer] against a moment of the day and tells the learner.
+///
+/// Returns false when the write failed, having said so — a mood the learner
+/// believes they recorded and the app quietly dropped is worse than an error.
+Future<bool> recordMoodAnswer(
   BuildContext context,
   WidgetRef ref,
-  MoodType picked, {
+  MoodAnswer answer, {
   required MoodContext moodContext,
   RoutineStep? step,
 }) async {
   final isFilipino = ref.read(settingsProvider).locale == 'fil';
   final ok = await QuickMoodCheckIn.record(
     ref,
-    mood: picked,
+    mood: answer.mood,
+    note: answer.note,
     context: moodContext,
     routineStepId: step?.id,
     routineActivity: step?.activity.index,
@@ -264,10 +230,55 @@ Future<bool> _recordAndThank(
   AppSnackBar.success(
     context,
     message: isFilipino
-        ? 'Salamat! Na-record ang pakiramdam mo. ${picked.emoji}'
-        : 'Thanks for telling us! ${picked.emoji}',
+        ? 'Salamat! Na-record ang pakiramdam mo. ${answer.mood.emoji}'
+        : 'Thanks for telling us! ${answer.mood.emoji}',
   );
   return true;
+}
+
+/// How many of these questions are on screen right now.
+///
+/// The pop-up watcher reads [isMoodQuestionOpen] so its scheduled pop-up
+/// never lands on top of a question the learner is already answering — two
+/// "how do you feel?" prompts stacked is one too many.
+///
+/// Counted by the question widget's own lifecycle ([MoodQuestionPresence]), not
+/// by awaiting the sheet's future. A future only completes when the route
+/// pops normally; a sheet torn down with its screen (a profile switch, a
+/// navigation that replaces the stack) never completes it, and a counter
+/// decremented in a `finally` would then stay up for good — silently
+/// blocking every later check-in until the app restarted. `dispose` always
+/// runs.
+int _openQuestions = 0;
+
+/// Whether a "My Day" mood question (sheet or pop-up) is showing.
+bool get isMoodQuestionOpen => _openQuestions > 0;
+
+/// Marks a question as on screen for exactly as long as it is mounted.
+class MoodQuestionPresence extends StatefulWidget {
+  const MoodQuestionPresence({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<MoodQuestionPresence> createState() => _MoodQuestionPresenceState();
+}
+
+class _MoodQuestionPresenceState extends State<MoodQuestionPresence> {
+  @override
+  void initState() {
+    super.initState();
+    _openQuestions++;
+  }
+
+  @override
+  void dispose() {
+    _openQuestions--;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 // ─── Widgets ────────────────────────────────────────────
@@ -277,13 +288,13 @@ class _MoodQuestionSheet extends StatelessWidget {
   const _MoodQuestionSheet({
     required this.emoji,
     required this.question,
-    required this.choices,
+    required this.presentation,
     required this.isFilipino,
   });
 
   final String emoji;
   final String question;
-  final List<MoodType> choices;
+  final MoodPresentation presentation;
   final bool isFilipino;
 
   @override
@@ -291,7 +302,15 @@ class _MoodQuestionSheet extends StatelessWidget {
     final hc = HCColor.of(context);
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        // The keyboard, when the note field has it: without this the field a
+        // learner is typing into — and the Save button under it — sit behind
+        // the keyboard.
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          20 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
         // Scrollable so the sheet survives the big-font settings rather than
         // clipping the "Not now" button off the bottom.
         child: SingleChildScrollView(
@@ -325,7 +344,12 @@ class _MoodQuestionSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              _FaceGrid(choices: choices, isFilipino: isFilipino),
+              MoodPicker(
+                choices: presentation.choices,
+                showNote: presentation.showNote,
+                isFilipino: isFilipino,
+                onAnswer: (answer) => Navigator.of(context).pop(answer),
+              ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
@@ -349,18 +373,23 @@ class _MoodQuestionSheet extends StatelessWidget {
 class _CheckInDialog extends StatelessWidget {
   const _CheckInDialog({
     required this.question,
-    required this.choices,
+    required this.presentation,
     required this.isFilipino,
   });
 
   final String question;
-  final List<MoodType> choices;
+  final MoodPresentation presentation;
   final bool isFilipino;
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     return Dialog(
+      // Deliberately *not* inset by the keyboard: shrinking the dialog to fit
+      // above it left a box barely taller than the faces. The dialog keeps
+      // its height and its scroll view carries the keyboard inset instead, so
+      // the content scrolls clear of the keyboard rather than being squeezed
+      // into what is left.
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(28),
@@ -373,7 +402,12 @@ class _CheckInDialog extends StatelessWidget {
         // Scrollable: at the largest font setting the question and six faces
         // are taller than a phone, and "Later" must stay reachable.
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            24,
+            20,
+            12 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -414,7 +448,12 @@ class _CheckInDialog extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              _FaceGrid(choices: choices, isFilipino: isFilipino),
+              MoodPicker(
+                choices: presentation.choices,
+                showNote: presentation.showNote,
+                isFilipino: isFilipino,
+                onAnswer: (answer) => Navigator.of(context).pop(answer),
+              ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
@@ -427,115 +466,6 @@ class _CheckInDialog extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FaceGrid extends StatelessWidget {
-  const _FaceGrid({required this.choices, required this.isFilipino});
-
-  final List<MoodType> choices;
-  final bool isFilipino;
-
-  @override
-  Widget build(BuildContext context) {
-    // Fewer faces buy bigger targets, matching the Home card.
-    final size = choices.length <= 3 ? 76.0 : 60.0;
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      alignment: WrapAlignment.center,
-      children: [
-        for (final mood in choices)
-          _Face(
-            mood: mood,
-            size: size,
-            isFilipino: isFilipino,
-            onTap: () => Navigator.of(context).pop(mood),
-          ),
-      ],
-    );
-  }
-}
-
-class _Face extends StatelessWidget {
-  const _Face({
-    required this.mood,
-    required this.size,
-    required this.isFilipino,
-    required this.onTap,
-  });
-
-  final MoodType mood;
-  final double size;
-  final bool isFilipino;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final hc = HCColor.of(context);
-    final tint = hc.hc
-        ? hc.primary
-        : (hc.isDark ? mood.darkColor : mood.color);
-    final label = mood.labelOf(isFilipino: isFilipino);
-
-    return Semantics(
-      button: true,
-      label: label,
-      excludeSemantics: true,
-      // Its own Material: this is rendered in a route above the app's, and a
-      // bare InkWell there has no ink to splash on.
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    color: tint.withValues(alpha: hc.hc ? 0.30 : 0.18),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: tint, width: 2),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    mood.emoji,
-                    style: TextStyle(
-                      fontSize: size * 0.45,
-                      height: 1.0,
-                      leadingDistribution: TextLeadingDistribution.even,
-                    ),
-                    textScaler: const TextScaler.linear(1.0),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                SizedBox(
-                  // Comfortably wider than the circle, because the label is
-                  // what has to fit — not the face. Tied to the circle it was
-                  // 68px, and "Frustrated" is one word wider than that, so
-                  // Flutter broke it mid-word ("Frustrat / ed").
-                  width: size + 40,
-                  child: Text(
-                    label,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: hc.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ),

@@ -16,35 +16,33 @@ import '../../routine/models/routine_presentation.dart';
 import '../../routine/providers/today_routine_provider.dart';
 import '../../routine/services/routine_completion_flow.dart';
 
-/// "Today" — the learner's **Mood Check-In** and their **My Day** routine in
-/// one card, directly under the stats banner on Home.
+/// One of the two "Today" cards on a learner's home: a full-width card
+/// holding a single pane, directly under the stats banner.
 ///
-/// The two used to be small, dead tiles buried in the "Personal & Wellbeing"
-/// group near the bottom of the page: identical whether or not the learner had
-/// checked in, and whether or not an adult had scheduled anything for them.
-/// They belong together — both answer "what is today like for me?" — and both
-/// are only useful if they show *state*.
+/// **My Day** comes first and **Mood Check-In** second — two cards, not two
+/// halves of one. They shared a card at first, and that made the routine and
+/// the check-in read as one thing to get through. They are not one thing: a
+/// routine is a schedule with times and ticks that an adult set, while the
+/// check-in is a question the learner can answer at any moment of any day.
+/// The routine asks its own mood questions as it goes — after a step, at a
+/// scheduled check-in, when the day is done (see `routine_mood_prompt.dart`) —
+/// so the standalone question belongs beside it rather than inside it.
 ///
-/// Each half is now also **actionable in place**: the faces record a check-in
-/// without a screen change, and Done ticks the next routine step. That is the
-/// point of the promotion. A daily habit dies at the navigation step, and for
-/// the learners this app is built for that step is the expensive part — so the
-/// card does the common thing and the full screens keep the rest (a written
-/// note, correcting yesterday, the history, the step instructions and signs).
+/// The split also buys each pane the full width, which is where six faces and
+/// a Done button actually fit. Side by side they were two squeezed columns
+/// that ellipsised exactly the words carrying the information and shrank
+/// exactly the buttons that had to stay big.
 ///
-/// The two halves stay **separate tap targets and separate gaze / voice
-/// cells**: they open different screens, and a learner driving the D-pad must
-/// be able to reach Mood without passing through My Day. The home screen
-/// therefore builds each pane as its own gaze entry and hands the wrapped
-/// widgets in — see [TodayMoodPane] / [TodayDayPane].
+/// Each pane is its own tap target and its own **gaze / voice cell**: they
+/// open different screens, and a learner driving the D-pad must be able to
+/// reach Mood without passing through My Day. The home screen therefore builds
+/// each pane as its own gaze entry and hands the wrapped widget in — see
+/// [TodayDayPane] / [TodayMoodPane].
 class TodayCard extends StatelessWidget {
-  const TodayCard({super.key, required this.mood, required this.day});
+  const TodayCard({super.key, required this.child});
 
-  /// The gaze-wrapped [TodayMoodPane].
-  final Widget mood;
-
-  /// The gaze-wrapped [TodayDayPane].
-  final Widget day;
+  /// The gaze-wrapped [TodayDayPane] or [TodayMoodPane].
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -53,66 +51,9 @@ class TodayCard extends StatelessWidget {
       color: hc.surface,
       borderRadius: 20,
       padding: const EdgeInsets.all(8),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Side by side only while both halves can still hold a headline, a
-          // line of state and their row of controls. Below that — a narrow
-          // phone, or a learner on the big-font setting — they stack, because
-          // two squeezed columns ellipsise exactly the words that carry the
-          // information and shrink exactly the buttons that must stay big.
-          final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
-          final stacked = constraints.maxWidth < 420 || scale > 1.25;
-
-          if (stacked) {
-            return _TodayLayout(
-              vertical: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  mood,
-                  Divider(height: 9, thickness: 1.5, color: hc.border),
-                  day,
-                ],
-              ),
-            );
-          }
-
-          return _TodayLayout(
-            vertical: true,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: mood),
-                Container(width: 1.5, height: 96, color: hc.border),
-                Expanded(child: day),
-              ],
-            ),
-          );
-        },
-      ),
+      child: child,
     );
   }
-}
-
-/// Carries the card's chosen orientation down to the panes.
-///
-/// The panes are constructed by the home screen (they have to be — each one is
-/// a gaze cell, and gaze cells must be registered in the screen's own build so
-/// their row order matches the visual order), but the orientation is only
-/// known inside the card's [LayoutBuilder]. An inherited widget is how the
-/// later answer reaches the earlier-built child.
-class _TodayLayout extends InheritedWidget {
-  const _TodayLayout({required this.vertical, required super.child});
-
-  final bool vertical;
-
-  static bool of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_TodayLayout>()?.vertical ??
-      false;
-
-  @override
-  bool updateShouldNotify(_TodayLayout oldWidget) =>
-      oldWidget.vertical != vertical;
 }
 
 // ─── Mood half ────────────────────────────────────────
@@ -232,42 +173,42 @@ class _MoodFaces extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fewer faces buy bigger targets. The three-way set is exactly the one
-    // given to the cognitive / multiple-disability categories, who are also
-    // the learners a 44px target serves worst. Nothing shrinks below 44 to
-    // make a row fit — the row wraps instead.
-    final size = choices.length <= 3 ? 52.0 : 44.0;
     const spacing = 6.0;
 
-    final faces = Wrap(
-      spacing: spacing,
-      runSpacing: spacing,
-      alignment: WrapAlignment.center,
-      children: [
-        for (final mood in choices)
-          _MoodFaceButton(
-            mood: mood,
-            size: size,
-            selected: mood == selected,
-            isFilipino: isFilipino,
-            onTap: enabled ? () => onPick(mood) : null,
-          ),
-      ],
-    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The faces grow to fill the row. A full-width card has room to
+        // spare — on a tablet these were 44dp circles adrift in 600dp of
+        // card — and a bigger target is strictly better for the learners a
+        // 44dp one serves worst. Clamped at both ends: never below the 44
+        // minimum (the Wrap breaks the row instead), and never so large that
+        // six feelings read as six buttons.
+        //
+        // The 3 + 3 cap this used to need is gone with the side-by-side
+        // layout it existed for; a full-width card takes all six in one row.
+        final n = choices.length;
+        final width = constraints.maxWidth;
+        final size = width.isFinite
+            ? ((width - spacing * (n - 1)) / n).clamp(44.0, 64.0)
+            : (n <= 3 ? 52.0 : 44.0);
 
-    // Six faces are ~5dp too wide for half a portrait tablet, so the Wrap
-    // broke them 5 + 1 — which reads as a mistake rather than a grid. Cap the
-    // row at three and it breaks 3 + 3 on purpose. Only in the side-by-side
-    // layout: stacked, the full width takes all six in one row.
-    if (_TodayLayout.of(context) && choices.length > 3) {
-      return Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: size * 3 + spacing * 2),
-          child: faces,
-        ),
-      );
-    }
-    return faces;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          alignment: WrapAlignment.center,
+          children: [
+            for (final mood in choices)
+              _MoodFaceButton(
+                mood: mood,
+                size: size,
+                selected: mood == selected,
+                isFilipino: isFilipino,
+                onTap: enabled ? () => onPick(mood) : null,
+              ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -344,9 +285,15 @@ class _MoodFaceButton extends StatelessWidget {
 
 // ─── My Day half ──────────────────────────────────────
 
-/// The My Day half of [TodayCard]: how much of today's routine is ticked off,
-/// what is next and when it was due, the streak, and a Done button for the
-/// next step.
+/// The **My Day** card: how much of today's routine is ticked off, what is
+/// next and when it was due, the streak, today's routine mood, and a Done
+/// button for the next step.
+///
+/// The mood chip is the "+ Mood" half of this card. It is not a second
+/// check-in control — the Mood Check-In card below owns that — it is the
+/// answer the *routine* collected: how brushing teeth felt, or how the day
+/// felt once it was finished. That is the pairing worth showing on a
+/// schedule.
 class TodayDayPane extends ConsumerStatefulWidget {
   const TodayDayPane({super.key, required this.onOpen, this.title = 'My Day'});
 
@@ -396,6 +343,10 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
 
     final next = today.nextStep;
     final overdue = today.isOverdue(now);
+    // Today's answer to one of My Day's own questions (a step, a scheduled
+    // check-in, the end of the day) — never a plain Home check-in, which
+    // belongs to the card below and says nothing about the routine.
+    final routineMood = ref.watch(todaysRoutineMoodProvider);
 
     final String subtitle;
     if (today.isEmpty) {
@@ -430,7 +381,15 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
       // showed the learner. Rest days are skipped, so a Mon/Wed/Fri routine
       // does not lose it every Tuesday.
       streak: today.streak,
-      openSemanticLabel: _daySemantics(today, isFilipino, overdue),
+      moodChip: routineMood == null
+          ? null
+          : _RoutineMoodChip(mood: routineMood.mood),
+      openSemanticLabel: _daySemantics(
+        today,
+        isFilipino,
+        overdue,
+        routineMood,
+      ),
       action: next == null
           ? null
           : _NextStepRow(
@@ -443,13 +402,28 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
     );
   }
 
-  String _daySemantics(TodayRoutine today, bool isFilipino, bool overdue) {
+  String _daySemantics(
+    TodayRoutine today,
+    bool isFilipino,
+    bool overdue,
+    MoodEntry? routineMood,
+  ) {
     if (today.isEmpty) {
       return today.hasEducator
           ? 'My Day. Nothing is scheduled for today — your teacher or parent '
                 'can set one up. Open your day.'
           : 'My Day. Nothing is scheduled for today. Open your day.';
     }
+    // The chip sits inside the header's excluded subtree, so this sentence is
+    // the only way the mood reaches a screen reader.
+    final mood = routineMood == null
+        ? ''
+        : (routineMood.routineStepTitle == null
+              ? ' You said today felt '
+                    '${routineMood.mood.labelOf(isFilipino: isFilipino)}.'
+              : ' You felt '
+                    '${routineMood.mood.labelOf(isFilipino: isFilipino)} '
+                    'after ${routineMood.routineStepTitle}.');
     // "1 days finished in a row" is the kind of thing a screen reader says
     // out loud, so it gets a plural.
     final streak = today.streak > 0
@@ -457,7 +431,7 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
               'finished in a row.'
         : '';
     if (today.allDone) {
-      return 'My Day. All ${today.total} steps are done.$streak '
+      return 'My Day. All ${today.total} steps are done.$streak$mood '
           'Open your day.';
     }
     final next = today.nextStep!;
@@ -466,7 +440,7 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
         ? ' at ${_clock(next)}${overdue ? ', overdue' : ''}'
         : '';
     return 'My Day. ${today.done} of ${today.total} steps done. '
-        'Next: $title$when.$streak Open your day.';
+        'Next: $title$when.$streak$mood Open your day.';
   }
 }
 
@@ -602,9 +576,8 @@ String _clock(RoutineStep step) {
 
 // ─── Shared pane shell ────────────────────────────────
 
-/// The shared shell of both halves: a tinted emoji badge, a title, one line of
-/// live state, and the half's own control. Laid out as a column when the card
-/// is side-by-side and as a row when it has stacked.
+/// The shared shell of both cards: a tinted emoji badge, a title, one line of
+/// live state, and the card's own control beneath it.
 class _TodayPane extends StatelessWidget {
   const _TodayPane({
     required this.onOpen,
@@ -617,6 +590,7 @@ class _TodayPane extends StatelessWidget {
     this.done = false,
     this.progress,
     this.streak = 0,
+    this.moodChip,
   });
 
   final VoidCallback onOpen;
@@ -642,10 +616,13 @@ class _TodayPane extends StatelessWidget {
   /// Consecutive complete days, shown as a chip next to the title when > 0.
   final int streak;
 
+  /// Today's routine mood, as a chip beside the streak. Null shows nothing —
+  /// a day nobody has been asked about yet has no face to report.
+  final Widget? moodChip;
+
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    final vertical = _TodayLayout.of(context);
 
     final badge = _Badge(
       emoji: emoji,
@@ -655,8 +632,6 @@ class _TodayPane extends StatelessWidget {
     );
     final titleRow = Row(
       mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment:
-          vertical ? MainAxisAlignment.center : MainAxisAlignment.start,
       children: [
         Flexible(
           child: Text(
@@ -673,6 +648,10 @@ class _TodayPane extends StatelessWidget {
           const SizedBox(width: 6),
           _StreakChip(streak: streak),
         ],
+        if (moodChip != null) ...[
+          const SizedBox(width: 6),
+          moodChip!,
+        ],
       ],
     );
     final subtitleText = Text(
@@ -680,7 +659,6 @@ class _TodayPane extends StatelessWidget {
       style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-      textAlign: vertical ? TextAlign.center : TextAlign.start,
     );
 
     final header = Semantics(
@@ -694,34 +672,20 @@ class _TodayPane extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: vertical
-                ? Column(
+            child: Row(
+              children: [
+                badge,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: [
-                      badge,
-                      const SizedBox(height: 8),
-                      titleRow,
-                      const SizedBox(height: 2),
-                      subtitleText,
-                    ],
-                  )
-                : Row(
-                    children: [
-                      badge,
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [titleRow, subtitleText],
-                        ),
-                      ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: hc.textSecondary,
-                      ),
-                    ],
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [titleRow, subtitleText],
                   ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: hc.textSecondary),
+              ],
+            ),
           ),
         ),
       ),
@@ -762,6 +726,39 @@ class _StreakChip extends StatelessWidget {
           color: hc.textPrimary,
           fontWeight: FontWeight.w800,
         ),
+        maxLines: 1,
+      ),
+    );
+  }
+}
+
+/// "🙂" — how My Day's own questions were answered today.
+class _RoutineMoodChip extends StatelessWidget {
+  const _RoutineMoodChip({required this.mood});
+
+  final MoodType mood;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final tint = hc.hc ? hc.primary : (hc.isDark ? mood.darkColor : mood.color);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: hc.hc ? 0.32 : 0.20),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        mood.emoji,
+        // Fixed size with even leading: emoji fonts have tall metrics, and
+        // letting this grow with the font setting is what pushes a chip out
+        // of a title row.
+        style: const TextStyle(
+          fontSize: 13,
+          height: 1.0,
+          leadingDistribution: TextLeadingDistribution.even,
+        ),
+        textScaler: const TextScaler.linear(1.0),
         maxLines: 1,
       ),
     );

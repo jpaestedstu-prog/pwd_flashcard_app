@@ -32,6 +32,34 @@ final todaysMoodProvider = Provider<MoodEntry?>((ref) {
   return todaysMoodFrom(ref.watch(moodProvider));
 });
 
+/// Today's latest answer that belongs to **My Day**, or null.
+///
+/// A step question ("How do you feel after brushing your teeth?"), a scheduled
+/// check-in, or the end-of-day question — the answers the routine itself
+/// collected. A plain Home check-in is deliberately excluded: it says how the
+/// learner is, not how their day went, and the My Day card would be claiming
+/// something it never asked.
+MoodEntry? todaysRoutineMoodFrom(List<MoodEntry> entries, {DateTime? now}) {
+  final today = now ?? DateTime.now();
+  MoodEntry? latest;
+  for (final e in entries) {
+    final t = e.timestamp;
+    if (t.year != today.year || t.month != today.month || t.day != today.day) {
+      continue;
+    }
+    final linked = e.routineStepId != null ||
+        MoodContextX.fromKey(e.activityContext) == MoodContext.afterRoutine;
+    if (!linked) continue;
+    if (latest == null || t.isAfter(latest.timestamp)) latest = e;
+  }
+  return latest;
+}
+
+/// The signed-in learner's latest My Day answer today, live.
+final todaysRoutineMoodProvider = Provider<MoodEntry?>((ref) {
+  return todaysRoutineMoodFrom(ref.watch(moodProvider));
+});
+
 /// Whether the learner has already answered *for a given moment* today.
 ///
 /// The post-routine prompt uses this: a learner who said how they felt this
@@ -91,9 +119,15 @@ class QuickMoodCheckIn {
   ///
   /// [routineStepId] / [routineActivity] / [routineStepTitle] tie the answer
   /// to one step of "My Day" (see `MoodEntry.routineStepId`).
+  ///
+  /// [note] is the learner's own "why you feel this way", offered wherever
+  /// typing is not itself the barrier ([MoodPresentation.showNote]). Passing
+  /// null when re-answering leaves an earlier note alone rather than wiping
+  /// it: a corrected face is not a retracted sentence.
   static Future<bool> record(
     WidgetRef ref, {
     required MoodType mood,
+    String? note,
     MoodContext context = MoodContext.general,
     String? routineStepId,
     int? routineActivity,
@@ -111,10 +145,13 @@ class QuickMoodCheckIn {
     );
     try {
       if (existing != null) {
-        await ref.read(moodProvider.notifier).updateMood(existing.id, mood);
+        await ref
+            .read(moodProvider.notifier)
+            .updateMood(existing.id, mood, note: note);
       } else {
         await ref.read(moodProvider.notifier).addMood(
               mood: mood,
+              note: note,
               context: context,
               routineStepId: routineStepId,
               routineActivity: routineActivity,

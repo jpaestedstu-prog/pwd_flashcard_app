@@ -147,16 +147,16 @@ class ChildHomeScreen extends ConsumerWidget {
     void openMood() => context.push('/mood-check-in');
     void openMyDay() => context.push('/routine');
     final todayPanes = gazeGrid.section(
-      columns: 2,
+      columns: 1,
       expand: false,
       entries: [
         (
-          tile: TodayMoodPane(onOpen: openMood, title: 'My Feelings'),
-          cell: GazeTileCell(label: 'My Feelings', onActivate: openMood),
-        ),
-        (
           tile: TodayDayPane(onOpen: openMyDay),
           cell: GazeTileCell(label: 'My Day', onActivate: openMyDay),
+        ),
+        (
+          tile: TodayMoodPane(onOpen: openMood, title: 'My Feelings'),
+          cell: GazeTileCell(label: 'My Feelings', onActivate: openMood),
         ),
       ],
     );
@@ -230,14 +230,17 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
           ),
 
-          // ─── Today: My Feelings + My Day ─────────
+          // ─── Today: My Day, then My Feelings ─────
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
-              child: TodayCard(
-                mood: todayPanes.first,
-                day: todayPanes.last,
-              ),
+              child: TodayCard(child: todayPanes.first),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
+              child: TodayCard(child: todayPanes.last),
             ),
           ),
 
