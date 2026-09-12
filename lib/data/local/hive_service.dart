@@ -1151,8 +1151,34 @@ class HiveService {
   static Box get _routineBox => Hive.box(_routinesBox);
   static Box get _routineLogBox => Hive.box(_routineLogsBox);
 
-  static Future<void> cacheRoutine(Routine r) async {
-    await _routineBox.put(r.id, r.toJson());
+  /// Local-only marker recording whether Firestore has ever acknowledged a
+  /// cached routine. Kept inside the stored map (never in the Firestore
+  /// payload, which `RoutineService.save` builds separately from
+  /// `toJson`) and ignored by `Routine.fromJson`.
+  static const String _routineSyncedKey = 'cloud_synced';
+
+  /// Caches [r] locally.
+  ///
+  /// [cloudSynced] records whether this version is known to exist in
+  /// Firestore — true for a routine that arrived *from* a snapshot or whose
+  /// write was acknowledged, false for one written while the cloud refused
+  /// (or was unreachable). [pruneRoutinesForChild] uses it to tell "the
+  /// educator deleted this" apart from "this never got out of the device",
+  /// which are the same shape in a snapshot and must not be.
+  static Future<void> cacheRoutine(
+    Routine r, {
+    required bool cloudSynced,
+  }) async {
+    await _routineBox.put(r.id, {
+      ...r.toJson(),
+      _routineSyncedKey: cloudSynced,
+    });
+  }
+
+  /// Whether [routineId] is cached but has never reached Firestore.
+  static bool routineAwaitsCloud(String routineId) {
+    final raw = _routineBox.get(routineId);
+    return raw is Map && raw[_routineSyncedKey] != true;
   }
 
   static Future<void> deleteRoutineLocal(String routineId) async {
@@ -1183,6 +1209,17 @@ class HiveService {
   /// Without this a routine an educator deleted on their own device lives on
   /// in the learner's cache forever: the stream only reports what exists, so
   /// nothing else would ever tell the local mirror that a row is gone.
+  ///
+  /// **A routine that has never reached Firestore is never pruned.** Absence
+  /// from a snapshot has two causes that look identical — the educator
+  /// deleted it, or this device's write was refused / is still queued — and
+  /// deleting on the second is destroying the only copy. That is exactly what
+  /// happened on a tablet whose educator profile had been restored elsewhere:
+  /// the save was denied, the very next snapshot came back empty, the local
+  /// row was pruned, and the learner's "My Day" showed *No routine yet* for a
+  /// routine the educator had just built. An unsynced row stays until its
+  /// write lands (which marks it synced and makes it prunable) or the
+  /// educator deletes it here.
   static Future<void> pruneRoutinesForChild(
     String childProfileId,
     Set<String> keepIds,
@@ -1192,7 +1229,8 @@ class HiveService {
       final raw = _routineBox.get(key);
       if (raw is Map &&
           raw['child_profile_id'] == childProfileId &&
-          !keepIds.contains(raw['id'])) {
+          !keepIds.contains(raw['id']) &&
+          raw[_routineSyncedKey] == true) {
         stale.add(key);
       }
     }

@@ -72,6 +72,43 @@ class ErrorHandler {
     // from the Hive cache, and a learner must never be shown an error banner
     // for a safeguarding feature quietly running in the background.
     'FriendService.watchBlocked:silent',
+    // Every routine path. All twelve already name themselves ":silent" but
+    // none was registered, so the suffix was a claim the set never honoured —
+    // see silent_source_convention_test.dart, which now enforces the two
+    // agreeing.
+    //
+    // The reads are background mirrors that fall back to the Hive cache
+    // (`watchForChild` re-emits the local list on a stream error), so there is
+    // nothing for a learner to do about them. The *writes* look user-initiated
+    // — an educator did press Save — but `RoutineService.save` returns a
+    // `CloudSyncOutcome` precisely so `reportRoutineSync` can say the specific
+    // true thing ("saved here, not sent yet" / "this device no longer syncs
+    // this profile"). The generic banner landed on top of that, and in the
+    // not-owner case flatly contradicted it.
+    //
+    // Seen on the tablet: opening "My Day" as a learner whose educator profile
+    // had been restored onto another device produced
+    // "Something went wrong. The app will continue working." over a routine
+    // that had in fact saved locally and was showing correctly.
+    'RoutineSave:silent',
+    'RoutineDelete:silent',
+    'RoutineList:silent',
+    'RoutineSetterList:silent',
+    'RoutineStream:silent',
+    'RoutineDayLog:silent',
+    'RoutineDayLogStream:silent',
+    'RoutineRecordSchedule:silent',
+    'RoutineResetDay:silent',
+    'RoutineToggle:silent',
+    // Notification plumbing, exactly like `AlarmScheduler:silent` above: a
+    // reminder that fails to schedule must not interrupt the learner, who was
+    // not the one asking for it.
+    'RoutineReminderScheduler:silent',
+    'OnRoutineReminder:silent',
+    // Deferred startup work (main.dart), the same class as
+    // `applyLifecycle:silent`: nobody asked for it and nothing is blocked on
+    // it, so it must not greet a learner at launch.
+    'startupBackground:silent',
   };
 
   /// Whether [source] is suppressed from the global snackbar.

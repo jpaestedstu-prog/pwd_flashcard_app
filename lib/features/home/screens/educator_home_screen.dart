@@ -369,11 +369,13 @@ class EducatorHomeScreen extends ConsumerWidget {
                                 stars: studentProgress.totalStars,
                                 lastActive: studentProgress.lastActivityDate,
                                 hc: hc,
-                                onTap: () {
-                                  ref
+                                onTap: () async {
+                                  await ref
                                       .read(profileProvider.notifier)
                                       .viewAsStudent(studentProfile);
-                                  context.push('/dashboard');
+                                  if (context.mounted) {
+                                    context.push('/dashboard');
+                                  }
                                 },
                               ),
                             );

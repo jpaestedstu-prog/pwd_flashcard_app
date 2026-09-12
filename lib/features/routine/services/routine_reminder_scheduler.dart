@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../../core/services/device_timezone.dart';
+import '../../../core/services/notification_schedule_mode.dart';
 import '../../../data/models/enums.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
@@ -100,6 +102,12 @@ class RoutineReminderScheduler {
   static final Set<int> _activeIds = {};
   static bool _pluginInitialised = false;
 
+  /// Whether Android will fire at the exact minute. The app declares
+  /// `USE_EXACT_ALARM`, but it is checked rather than assumed: on a device or
+  /// policy that withholds it, an exact schedule throws, and a late reminder
+  /// is better than none.
+  static bool _canScheduleExact = false;
+
   /// Builds the reminder set for [routines] — pure, no plugin, no clock.
   ///
   /// Ordered by time of day and capped at [maxPending] so the cap is
@@ -113,7 +121,7 @@ class RoutineReminderScheduler {
     for (final routine in routines) {
       for (final step in routine.remindableSteps) {
         final at = _remindAt(step);
-        final title = RoutineCatalog.titleFor(step, filipino: filipino);
+        final title = _titleFor(step, filipino: filipino);
         final body = _bodyFor(step, filipino: filipino);
         if (routine.isEveryDay) {
           out.add(RoutineReminder(
@@ -152,7 +160,24 @@ class RoutineReminderScheduler {
     return (wrapped ~/ 60, wrapped % 60);
   }
 
+  /// A check-in step announces itself as one — the learner needs to know this
+  /// notification is asking a question, not naming a chore. Everything else
+  /// is titled with the step's own name.
+  static String _titleFor(RoutineStep step, {required bool filipino}) {
+    if (step.activity.isMoodCheckIn) {
+      return filipino ? 'Oras na ng check-in 💬' : 'Check-in time 💬';
+    }
+    return RoutineCatalog.titleFor(step, filipino: filipino);
+  }
+
   static String _bodyFor(RoutineStep step, {required bool filipino}) {
+    // The words the brief asked for, verbatim. No "in N minutes" variant: a
+    // check-in is answered when it arrives, not prepared for.
+    if (step.activity.isMoodCheckIn) {
+      return filipino
+          ? 'Pakigawa na ang iyong check-in ngayon. Kumusta ang pakiramdam mo?'
+          : 'Please do your check-in now. How are you feeling?';
+    }
     final early = step.remindMinutesBefore;
     if (early > 0) {
       return filipino
@@ -240,6 +265,9 @@ class RoutineReminderScheduler {
   // ── private ──
 
   static Future<void> _initPlugin() async {
+    // Every call, not just the first: it is what puts tz.local on the
+    // device's zone (see DeviceTimezone), and cheap to repeat.
+    await DeviceTimezone.init();
     if (_pluginInitialised) return;
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings();
@@ -250,6 +278,11 @@ class RoutineReminderScheduler {
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     await android?.requestNotificationsPermission();
+    try {
+      _canScheduleExact = await android?.canScheduleExactNotifications() ?? false;
+    } catch (_) {
+      _canScheduleExact = false;
+    }
     _pluginInitialised = true;
   }
 
@@ -295,7 +328,12 @@ class RoutineReminderScheduler {
       _nextOccurrence(hour: r.hour, minute: r.minute, isoWeekday: r.isoWeekday),
       details,
       payload: 'routine:${r.routineId}|${r.stepId}',
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      // Exact where allowed. Inexact gave Android a one-hour window
+      // (`dumpsys alarm`: window=+1h) — "Please do your check-in now" at
+      // 9:47 for a 9:00 check-in is not a check-in at 9:00.
+      androidScheduleMode: exactWhenAllowed(
+        canScheduleExact: _canScheduleExact,
+      ),
       matchDateTimeComponents:
           r.isDaily ? DateTimeComponents.time : DateTimeComponents.dayOfWeekAndTime,
     );

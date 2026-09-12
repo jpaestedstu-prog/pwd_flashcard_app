@@ -10,6 +10,7 @@ import 'package:pwdpwdpwd/features/home/screens/home_screen.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 import 'package:pwdpwdpwd/providers/level_up_provider.dart';
+import 'package:pwdpwdpwd/widgets/profile_level_button.dart';
 import 'package:pwdpwdpwd/widgets/xp_level_bar.dart';
 
 /// The level economy behind the Player Profile and the home XP bar.
@@ -364,6 +365,8 @@ void main() {
         'progress',
         'custom_cards',
         'sessions',
+      'routines',
+      'routine_logs',
       ]) {
         if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
       }
@@ -381,9 +384,40 @@ void main() {
       await _pumpHome(tester, const HomeScreen(),
           role: UserRole.student, progress: sample);
 
-      expect(find.byType(XpLevelBar), findsOneWidget);
-      expect(find.text('Lv.2 Explorer'), findsOneWidget);
-      expect(find.text('15 / 200 XP'), findsOneWidget);
+      // The level lives on the top-left profile circle here, not in a bar:
+      // the badge carries the number, and the ring carries the same fraction
+      // the bar used to fill (15 of a 200-wide band).
+      expect(find.byType(ProfileLevelButton), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(ProfileLevelButton),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      final ring = tester.widget<CircularProgressIndicator>(
+        find.descendant(
+          of: find.byType(ProfileLevelButton),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+      );
+      expect(ring.value, closeTo(15 / 200, 0.001));
+
+      // Nothing is lost to a screen reader by the bar being gone: the button
+      // announces the level, the lifetime XP and the distance to the next.
+      final announced = tester
+          .widgetList<Semantics>(
+            find.descendant(
+              of: find.byType(ProfileLevelButton),
+              matching: find.byType(Semantics),
+            ),
+          )
+          .first
+          .properties
+          .label;
+      expect(announced, contains('Level 2 Explorer'));
+      expect(announced, contains('115 XP total'));
+      expect(announced, contains('185 XP to level 3'));
 
       await _unmount(tester);
     });

@@ -1,6 +1,6 @@
+import 'device_timezone.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest_10y.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 /// Manages daily study-reminder notifications via flutter_local_notifications.
@@ -40,7 +40,11 @@ class NotificationService {
 
     _onTapCallback = onNotificationTap;
 
-    tz.initializeTimeZones();
+    // Loads the zone database *and* sets tz.local to the device's zone. The
+    // bare `tz.initializeTimeZones()` that used to be here left tz.local on
+    // UTC, which scheduled every notification in the app 8 hours late on a
+    // Philippine device.
+    await DeviceTimezone.init();
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings(

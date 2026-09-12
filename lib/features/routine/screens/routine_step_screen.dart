@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/local/hive_service.dart';
+
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
@@ -16,6 +18,8 @@ import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_presentation.dart';
 import '../services/routine_service.dart';
+import '../services/routine_completion_flow.dart';
+import '../widgets/routine_mood_prompt.dart';
 import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
 import '../widgets/routine_step_card.dart';
@@ -33,6 +37,12 @@ class RoutineStepScreen extends ConsumerStatefulWidget {
   final DateTime day;
   final bool readOnly;
 
+  /// Today's whole day, when the caller knows it — lets "I did it!" tell
+  /// whether it finished the day and so ask how the day went. Null when the
+  /// screen is opened on its own; the day-end question is then left to the
+  /// list.
+  final List<RoutineStep>? todaysSteps;
+
   const RoutineStepScreen({
     super.key,
     required this.step,
@@ -40,6 +50,7 @@ class RoutineStepScreen extends ConsumerStatefulWidget {
     required this.profileId,
     required this.day,
     this.readOnly = false,
+    this.todaysSteps,
   });
 
   @override
@@ -161,6 +172,32 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
   }
 
   Future<void> _toggleDone(bool wasDone) async {
+    // A check-in step is answered, not ticked: its "done" opens the check-in,
+    // and the step only completes when a face is chosen. Everything else ticks
+    // and then asks whatever question the step earns — the same flow the list
+    // and the Home card run, so the learner meets one set of rules.
+    if (_step.activity.isMoodCheckIn || _step.asksMoodAfter) {
+      await RoutineCompletionFlow.complete(
+        context: context,
+        ref: ref,
+        profileId: widget.profileId,
+        day: widget.day,
+        step: _step,
+        todaysSteps: widget.todaysSteps,
+        presentation: _p,
+        filipino: ref.read(settingsProvider).locale == 'fil',
+      );
+      if (!mounted) return;
+      final nowDone = HiveService.getRoutineDayLog(
+        widget.profileId,
+        widget.day,
+      ).isDone(_step.id);
+      // Back to the list once the step is really done — not when a check-in
+      // was put off with "Later", which leaves the learner where they were.
+      if (nowDone && !wasDone) Navigator.of(context).maybePop();
+      return;
+    }
+
     await const RoutineService()
         .toggleStep(widget.profileId, widget.day, _step.id);
     if (!mounted) return;
@@ -177,6 +214,15 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
       await (filipino
           ? tts.speakFilipino('Magaling!')
           : tts.speakEnglish('Well done!'));
+    }
+    // Ticking the last step here finishes the day just as it does on the
+    // list, so it asks the same day-end question.
+    final steps = widget.todaysSteps;
+    if (mounted && steps != null && steps.isNotEmpty) {
+      final log = HiveService.getRoutineDayLog(widget.profileId, widget.day);
+      if (steps.every((s) => log.isDone(s.id))) {
+        await showRoutineMoodPrompt(context, ref);
+      }
     }
     if (mounted) Navigator.of(context).maybePop();
   }
@@ -387,6 +433,8 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
                     label: Text(
                       done
                           ? (l ? 'Hindi pa pala tapos' : 'Not done after all')
+                          : _step.activity.isMoodCheckIn
+                          ? (l ? 'Mag-check in ngayon' : 'Do my check-in')
                           : (l ? 'Tapos na!' : 'I did it!'),
                       style: AppTypography.titleSmall
                           .copyWith(fontWeight: FontWeight.w700),

@@ -188,30 +188,56 @@ class ProfileNotifier extends Notifier<UserProfile?> {
     }
   }
 
-  Future<void> setProfile(UserProfile profile) async {
-    // Route through LocalRepository so the profile reaches Firestore
-    // with `owner_uid` stamped. Going through HiveService directly only
-    // wrote locally — which broke any cloud action that depends on the
-    // profile existing server-side (e.g. createClassroom's rule check).
-    await const LocalRepository().saveProfile(profile);
-    await HiveService.setActiveProfileId(profile.id);
-    // Re-read from Hive so we pick up the auto-stamped ownerUid that
-    // LocalRepository.saveProfile wrote on our behalf.
-    state = HiveService.getProfileById(profile.id) ?? profile;
+  /// Makes [profile] the active one, using **local storage only**.
+  ///
+  /// Which profile the device is signed in as is a local fact, so nothing
+  /// here may await the network. It used to: the switch went through
+  /// `LocalRepository.saveProfile`, which mints a messaging handle from the
+  /// live directory and mirrors the profile to Firestore. On a device whose
+  /// profile had been restored elsewhere those writes are *refused*, and on a
+  /// bad connection they simply hang — either way the app stayed on the old
+  /// profile, which is how "view as student" came to open an educator's own
+  /// empty dashboard.
+  Future<UserProfile> _switchLocally(UserProfile profile) async {
+    // Still via LocalRepository, which stamps `owner_uid` — local bookkeeping
+    // every save site has always gone through.
+    final stored = await const LocalRepository().saveProfileLocal(profile);
+    await HiveService.setActiveProfileId(stored.id);
+    state = HiveService.getProfileById(stored.id) ?? stored;
     // Subscribe the freshly-saved profile to the remote-name listener
     // so a teacher / parent rename pushes here without a relaunch.
-    ref.read(profileSyncListenerProvider)?.watch(profile.id);
+    ref.read(profileSyncListenerProvider)?.watch(stored.id);
+    return state!;
+  }
+
+  /// Makes [profile] active and publishes it to the cloud.
+  ///
+  /// Awaiting this still means "the profile exists server-side", which the
+  /// creation flows rely on (e.g. `createClassroom`'s rule check). The
+  /// difference is the order: the switch is committed locally **first**, so a
+  /// refused or slow publish can no longer undo it.
+  Future<void> setProfile(UserProfile profile) async {
+    final stored = await _switchLocally(profile);
+    final published = await const LocalRepository().publishProfile(stored);
+    // Publishing can mint a messaging handle; keep the live profile in step.
+    if (published.username != stored.username && state?.id == published.id) {
+      state = published;
+    }
   }
 
   /// Temporarily switch to a student profile while preserving the
   /// educator's identity. Call [restoreEducatorProfile] to switch back.
+  ///
+  /// Deliberately local-only: this profile already exists — it came off the
+  /// educator's roster — so there is nothing to publish, and an educator
+  /// looking at a learner must never be blocked by a write the rules refuse.
   Future<void> viewAsStudent(UserProfile studentProfile) async {
     final current = state;
     if (current != null &&
         (current.role == UserRole.teacher || current.role == UserRole.parent)) {
       _savedEducatorProfile = current;
     }
-    await setProfile(studentProfile);
+    await _switchLocally(studentProfile);
   }
 
   /// Restore the previously saved educator profile, if any.
@@ -221,7 +247,11 @@ class ProfileNotifier extends Notifier<UserProfile?> {
   Future<void> restoreEducatorProfile() async {
     final saved = _savedEducatorProfile;
     if (saved != null) {
-      await setProfile(saved);
+      // Local-only, for the same reason as [viewAsStudent]: coming *back* to
+      // your own profile must not be able to fail. A stranded educator is the
+      // worse failure of the two — they would be left inside a learner's
+      // account.
+      await _switchLocally(saved);
       _savedEducatorProfile = null;
     }
   }

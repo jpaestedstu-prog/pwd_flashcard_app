@@ -15,6 +15,9 @@ class MainActivity : FlutterActivity() {
     companion object {
         /** Mirrors `TvCastKeepAlive._channel` on the Dart side. */
         private const val CAST_CHANNEL = "flashlearn/tv_cast_keepalive"
+
+        /** Mirrors `DeviceTimezone._channel` on the Dart side. */
+        private const val TIMEZONE_CHANNEL = "flashlearn/device_timezone"
     }
 
     /**
@@ -40,6 +43,19 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             applicationContext,
         )
+
+        // The device's IANA time zone ("Asia/Manila"). Dart's `DateTime` knows
+        // only the current offset, and the `timezone` package defaults its
+        // local zone to UTC — which scheduled every reminder, check-in and
+        // alarm eight hours late on a Philippine device.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TIMEZONE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "getLocalTimezone") {
+                    result.success(java.util.TimeZone.getDefault().id)
+                } else {
+                    result.notImplemented()
+                }
+            }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CAST_CHANNEL)
             .setMethodCallHandler { call, result ->

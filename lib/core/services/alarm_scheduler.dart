@@ -1,3 +1,5 @@
+import 'device_timezone.dart';
+import 'notification_schedule_mode.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -142,7 +144,14 @@ class AlarmScheduler {
 
   static bool _pluginInitialised = false;
 
+  /// Whether Android will fire these at the exact minute — see
+  /// [exactWhenAllowed].
+  static bool _canScheduleExact = false;
+
   static Future<void> _initPlugin() async {
+    // Puts tz.local on the device's zone; without it every alarm was
+    // scheduled in UTC (see DeviceTimezone).
+    await DeviceTimezone.init();
     if (_pluginInitialised) return;
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings();
@@ -161,6 +170,12 @@ class AlarmScheduler {
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     await android?.requestNotificationsPermission();
+    try {
+      _canScheduleExact =
+          await android?.canScheduleExactNotifications() ?? false;
+    } catch (_) {
+      _canScheduleExact = false;
+    }
 
     _pluginInitialised = true;
   }
@@ -206,7 +221,13 @@ class AlarmScheduler {
       scheduled,
       details,
       payload: 'alarm:${a.id}',
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      // An alarm is the one notification in the app that *is* the time: a
+      // daily limit that ends screen time, or a "time's up" hand-off the
+      // child has been counting down to. Inexact gave Android an hour to
+      // deliver it.
+      androidScheduleMode: exactWhenAllowed(
+        canScheduleExact: _canScheduleExact,
+      ),
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
     );
     _activeNotificationIds.add(id);

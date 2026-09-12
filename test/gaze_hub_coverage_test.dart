@@ -103,6 +103,8 @@ void main() {
       'progress',
       'custom_cards',
       'sessions',
+      'routines',
+      'routine_logs',
     ]) {
       if (!Hive.isBoxOpen(name)) await Hive.openBox(name, compactionStrategy: (_, _) => false);
     }
@@ -143,6 +145,20 @@ void main() {
     expect(labels, isNot(contains('Join a class')));
     expect(labels, isNot(contains('Join the class')));
 
+    // The D-pad walks rows in the order they are published, so that order has
+    // to be the order a learner's eye travels down the page. The top two rows
+    // are the ones the Today card rearranged: the app bar (profile circle,
+    // shop, settings), then Mood Check-In and My Day side by side.
+    expect(gazeHomeGrid.rows.first.map((c) => c.label), [
+      'Player Profile',
+      'Star Shop',
+      'Settings',
+    ]);
+    expect(gazeHomeGrid.rows[1].map((c) => c.label), [
+      'Mood Check-In',
+      'My Day',
+    ]);
+
     await _unmount(tester);
   });
 
@@ -157,7 +173,10 @@ void main() {
         'Games', 'Cards', 'Stories', 'Practice Words', 'My Progress',
         'Adventure Map', 'Practice With Me', 'Word Hunt', 'Talk Board',
         'Play Together', 'Messages',
-        'Stickers', 'My Feelings', 'How was it?', 'My Notebook',
+        'Stickers', 'How was it?', 'My Notebook',
+        // The Child home's own Today card — same widget as the Student
+        // home's, with this home's friendlier wording for the mood half.
+        'My Feelings', 'My Day',
         'Switch profile',
       ]),
     );

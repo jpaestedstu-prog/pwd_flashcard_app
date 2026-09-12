@@ -1,3 +1,4 @@
+import 'mood_context.dart';
 import 'mood_models.dart';
 
 /// A learner's recent wellbeing, reduced to what a caregiver can act on.
@@ -28,12 +29,32 @@ class MoodSummary {
   /// [MoodType.frustrated].
   final int lowCount;
 
+  /// Check-ins in the window that belong to "My Day" — a question after one
+  /// step, a scheduled check-in, or the day-end question (see
+  /// [isRoutineMoodContext]).
+  ///
+  /// Separated out because these are the check-ins an adult can act on
+  /// *directly*: every other one says how the learner felt, these say how a
+  /// routine **they set** felt. "Mostly sad after brushing teeth, four times
+  /// this week" is a conversation; "mostly sad" on its own is a mystery.
+  final int routineCount;
+
+  /// The mood recorded most often across [routineCount], or null when 0.
+  final MoodType? routineDominantMood;
+
+  /// How each moment of the day felt — one row per step asked about (and one
+  /// for the day-end question), busiest first.
+  final List<StepMood> stepMoods;
+
   const MoodSummary({
     this.entryCount = 0,
     this.dominantMood,
     this.latestMood,
     this.averageValue,
     this.lowCount = 0,
+    this.routineCount = 0,
+    this.routineDominantMood,
+    this.stepMoods = const <StepMood>[],
   });
 
   static const MoodSummary empty = MoodSummary();
@@ -71,13 +92,38 @@ class MoodSummary {
     if (window.isEmpty) return MoodSummary.empty;
 
     final counts = <MoodType, int>{};
+    final routineCounts = <MoodType, int>{};
+    // Keyed by the frozen step title; '' is the day-end question, which is
+    // about the whole day rather than one step.
+    final byStep = <String, Map<MoodType, int>>{};
     var sum = 0;
     var low = 0;
     for (final e in window) {
       counts[e.mood] = (counts[e.mood] ?? 0) + 1;
       sum += e.mood.numericValue;
       if (lowMoods.contains(e.mood)) low++;
+      final ctx = MoodContextX.fromKey(e.activityContext);
+      if (isRoutineMoodContext(ctx)) {
+        routineCounts[e.mood] = (routineCounts[e.mood] ?? 0) + 1;
+        final key = ctx == MoodContext.afterRoutine
+            ? ''
+            : (e.routineStepTitle ?? '').trim();
+        final tally = byStep.putIfAbsent(key, () => <MoodType, int>{});
+        tally[e.mood] = (tally[e.mood] ?? 0) + 1;
+      }
     }
+
+    final stepMoods = [
+      for (final entry in byStep.entries)
+        StepMood(
+          title: entry.key,
+          dominant: _dominantOf(entry.value)!,
+          count: entry.value.values.fold(0, (a, b) => a + b),
+        ),
+    ]..sort((a, b) {
+        final byCount = b.count.compareTo(a.count);
+        return byCount != 0 ? byCount : a.title.compareTo(b.title);
+      });
 
     // Ties break toward the *lower* mood: when a learner logged three happy
     // and three sad days, "mostly sad" is the reading a caregiver should see.
@@ -100,7 +146,71 @@ class MoodSummary {
       latestMood: window.last.mood,
       averageValue: sum / window.length,
       lowCount: low,
+      routineCount: routineCounts.values.fold(0, (a, b) => a + b),
+      routineDominantMood: _dominantOf(routineCounts),
+      stepMoods: stepMoods,
     );
+  }
+
+  /// Most frequent mood in [counts], ties breaking toward the lower mood for
+  /// the same reason [dominantMood] does.
+  static MoodType? _dominantOf(Map<MoodType, int> counts) {
+    MoodType? best;
+    var bestCount = -1;
+    for (final entry in counts.entries) {
+      final isBetter = entry.value > bestCount ||
+          (entry.value == bestCount &&
+              best != null &&
+              entry.key.numericValue < best.numericValue);
+      if (isBetter) {
+        best = entry.key;
+        bestCount = entry.value;
+      }
+    }
+    return best;
+  }
+
+  /// Whether any check-in in the window belonged to "My Day".
+  bool get hasRoutineMoods => routineCount > 0;
+
+  /// One line pairing the routine with how it felt, or null when the learner
+  /// answered none of its questions in the window.
+  String? routineLabelOf({required bool isFilipino}) {
+    final mood = routineDominantMood;
+    if (mood == null) return null;
+    final name = mood.labelOf(isFilipino: isFilipino);
+    return isFilipino
+        ? 'Check-in sa Araw Ko: kadalasan $name ($routineCount)'
+        : 'My Day check-ins: mostly $name ($routineCount)';
+  }
+
+  /// The moment of the day that feels worst — the step whose answers are
+  /// mostly [lowMoods] — or null when no step does.
+  ///
+  /// Only a *low* mood qualifies. "Hardest: breakfast (mostly Okay)" would
+  /// send a caregiver looking for a problem that is not there.
+  StepMood? get hardestStep {
+    StepMood? worst;
+    for (final s in stepMoods) {
+      if (s.isDayEnd || !lowMoods.contains(s.dominant)) continue;
+      if (worst == null ||
+          s.dominant.numericValue < worst.dominant.numericValue ||
+          (s.dominant.numericValue == worst.dominant.numericValue &&
+              s.count > worst.count)) {
+        worst = s;
+      }
+    }
+    return worst;
+  }
+
+  /// "Hardest: Brushing Teeth (mostly Sad)", or null.
+  String? hardestStepLabelOf({required bool isFilipino}) {
+    final s = hardestStep;
+    if (s == null) return null;
+    final name = s.dominant.labelOf(isFilipino: isFilipino);
+    return isFilipino
+        ? 'Pinakamahirap: ${s.title} (kadalasan $name)'
+        : 'Hardest: ${s.title} (mostly $name)';
   }
 
   /// One short line for a roster card, in the caregiver's language.
@@ -112,4 +222,28 @@ class MoodSummary {
     final name = mood.labelOf(isFilipino: isFilipino);
     return isFilipino ? 'Kadalasan: $name' : 'Mostly $name';
   }
+}
+
+
+/// How one moment of "My Day" has felt: the step's title as the learner saw it,
+/// the answer given most often, and how many answers there were.
+class StepMood {
+  const StepMood({
+    required this.title,
+    required this.dominant,
+    required this.count,
+  });
+
+  /// The step's frozen title, or '' for the day-end question.
+  final String title;
+  final MoodType dominant;
+  final int count;
+
+  /// The day-end question ("You finished your day!") rather than one step.
+  bool get isDayEnd => title.isEmpty;
+
+  /// The row's name for a reader.
+  String labelOf({required bool isFilipino}) => isDayEnd
+      ? (isFilipino ? 'Pagtatapos ng araw' : 'Finishing the day')
+      : title;
 }

@@ -8,8 +8,10 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../providers/mood_provider.dart';
 import '../../../providers/app_providers.dart';
+import '../../../widgets/shared_widgets.dart';
 import '../models/mood_context.dart';
 import '../models/mood_models.dart';
+import '../models/mood_summary.dart';
 
 /// Mood-Activity Correlation Dashboard for thesis research.
 ///
@@ -37,6 +39,10 @@ class MoodInsightsScreen extends ConsumerWidget {
         : <Map<String, dynamic>>[];
     final correlation = _buildDailyCorrelation(recent30, sessionLogs);
     final activityBreakdown = _buildActivityBreakdown(recent30);
+    // A 30-day window here, not the educator's 7: a learner looking at their
+    // own insights is looking for a pattern, and a month of finished days is
+    // where one becomes visible.
+    final routineSummary = MoodSummary.fromEntries(recent30, days: 30);
     final insights = _generateInsights(correlation, activityBreakdown, isFilipino);
 
     return Scaffold(
@@ -87,6 +93,23 @@ class MoodInsightsScreen extends ConsumerWidget {
                           colorScheme: colorScheme,
                         ),
                       ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+                    ),
+
+                  // ─── After My Day ──────────────────
+                  // The pairing this instrument exists for: how the learner
+                  // felt on the days they finished the routine an adult set.
+                  // Above the activity chart rather than inside it, because
+                  // one named comparison is read and a bar among six is
+                  // skimmed.
+                  if (routineSummary.hasRoutineMoods)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 20, padding, 0),
+                        child: _AfterMyDayCard(
+                          summary: routineSummary,
+                          isFilipino: isFilipino,
+                        ),
+                      ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
                     ),
 
                   // ─── Mood by Activity Context ──────
@@ -880,6 +903,133 @@ class _ChartCard extends StatelessWidget {
           const SizedBox(height: 16),
           child,
         ],
+      ),
+    );
+  }
+}
+
+
+/// How each moment of "My Day" has felt — "When you woke up: mostly Tired".
+///
+/// The learner-facing half of the routine/mood pairing (the educator sees the
+/// hardest moment as one line on their wellbeing row). A list of named rows
+/// rather than a chart: each row is one question the learner answered, and
+/// the value is in reading which part of the day it was.
+class _AfterMyDayCard extends StatelessWidget {
+  const _AfterMyDayCard({required this.summary, required this.isFilipino});
+
+  final MoodSummary summary;
+  final bool isFilipino;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final rows = summary.stepMoods;
+
+    return AppCard(
+      color: hc.surface,
+      borderRadius: 20,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              isFilipino ? 'Habang nasa Araw Ko' : 'During My Day',
+              style: AppTypography.titleSmall.copyWith(
+                fontWeight: FontWeight.w800,
+                color: hc.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            isFilipino
+                ? 'Ang naramdaman mo sa bawat bahagi ng araw mo'
+                : 'How each part of your day felt',
+            style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+          ),
+          const SizedBox(height: 10),
+          for (final row in rows) _StepMoodRow(row: row, isFilipino: isFilipino),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepMoodRow extends StatelessWidget {
+  const _StepMoodRow({required this.row, required this.isFilipino});
+
+  final StepMood row;
+  final bool isFilipino;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final mood = row.dominant;
+    final name = mood.labelOf(isFilipino: isFilipino);
+    final times = isFilipino
+        ? '${row.count} beses'
+        : '${row.count} time${row.count == 1 ? '' : 's'}';
+    final label = row.labelOf(isFilipino: isFilipino);
+
+    return Semantics(
+      label: isFilipino
+          ? '$label: kadalasan $name, $times.'
+          : '$label: mostly $name, $times.',
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: (hc.hc ? hc.primary : mood.color)
+                    .withValues(alpha: hc.hc ? 0.25 : 0.18),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                mood.emoji,
+                style: const TextStyle(
+                  fontSize: 20,
+                  height: 1.0,
+                  leadingDistribution: TextLeadingDistribution.even,
+                ),
+                textScaler: const TextScaler.linear(1.0),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: hc.textPrimary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    isFilipino
+                        ? 'Kadalasan $name · $times'
+                        : 'Mostly $name · $times',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -60,5 +60,13 @@ RoutineDayKey routineDayKey(String profileId, DateTime day) =>
 final routineHistoryProvider =
     Provider.family<List<RoutineDayLog>, String>((ref, profileId) {
   ref.watch(routineDayLogProvider(routineDayKey(profileId, DateTime.now())));
-  return HiveService.getRoutineHistory(profileId);
+  // Tolerates storage not being ready. An empty history is the right degraded
+  // answer — the streak reads 0 and nothing else changes — and this is watched
+  // from the top of Home now, where throwing would take the whole page with it
+  // rather than one number.
+  try {
+    return HiveService.getRoutineHistory(profileId);
+  } catch (_) {
+    return const <RoutineDayLog>[];
+  }
 });

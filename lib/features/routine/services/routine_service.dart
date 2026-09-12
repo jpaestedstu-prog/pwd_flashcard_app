@@ -62,13 +62,17 @@ class RoutineService {
           .map((d) => Routine.fromJson(Map<String, dynamic>.from(d.data())))
           .toList();
       for (final r in routines) {
-        await HiveService.cacheRoutine(r);
+        await HiveService.cacheRoutine(r, cloudSynced: true);
       }
       await HiveService.pruneRoutinesForChild(
         childProfileId,
         routines.map((r) => r.id).toSet(),
       );
-      return _sorted(routines);
+      // The cache, not the snapshot: it is the snapshot plus anything written
+      // here that has not reached the cloud yet (see
+      // [HiveService.pruneRoutinesForChild]). Returning the raw snapshot
+      // would hide a routine the educator just saved offline.
+      return _sorted(HiveService.getRoutinesForChild(childProfileId));
     } on Object catch (e, s) {
       ErrorHandler.report(e, s, 'RoutineList:silent');
       return _sorted(HiveService.getRoutinesForChild(childProfileId));
@@ -95,20 +99,29 @@ class RoutineService {
           .where('child_profile_id', isEqualTo: childProfileId)
           .snapshots()
           .listen(
-        (snap) {
+        (snap) async {
           final routines = <Routine>[];
           for (final d in snap.docs) {
             try {
               final r = Routine.fromJson(Map<String, dynamic>.from(d.data()));
               routines.add(r);
-              HiveService.cacheRoutine(r);
+              // Awaited: the emit below reads the cache back, and a
+              // fire-and-forget put is not visible to a read on the same
+              // frame.
+              await HiveService.cacheRoutine(r, cloudSynced: true);
             } catch (_) {}
           }
-          HiveService.pruneRoutinesForChild(
+          await HiveService.pruneRoutinesForChild(
             childProfileId,
             routines.map((r) => r.id).toSet(),
           );
-          if (!controller.isClosed) controller.add(_sorted(routines));
+          if (!controller.isClosed) {
+            // The cache is the snapshot *plus* any routine written here whose
+            // cloud write has not landed, which is what the learner must see.
+            controller.add(_sorted(
+              HiveService.getRoutinesForChild(childProfileId),
+            ));
+          }
         },
         onError: (Object e, StackTrace s) {
           ErrorHandler.report(e, s, 'RoutineStream:silent');
@@ -167,13 +180,17 @@ class RoutineService {
       createdAt: isNew ? now : routine.createdAt,
       updatedAt: now,
     );
-    await HiveService.cacheRoutine(saved);
+    // Cached as *not* synced first. Everything below can fail, and until one
+    // of them succeeds this device holds the only copy — which is what stops
+    // the next snapshot from pruning it away.
+    await HiveService.cacheRoutine(saved, cloudSynced: false);
     if (!FirebaseService.isConfigured) {
       return RoutineWrite(saved, CloudSyncOutcome.localOnly);
     }
     final payload = saved.toJson()..['owner_uid'] = FirebaseService.currentUid;
     try {
       await _col.doc(saved.id).set(payload, SetOptions(merge: true));
+      await HiveService.cacheRoutine(saved, cloudSynced: true);
       return RoutineWrite(saved, CloudSyncOutcome.synced);
     } on Object catch (e, s) {
       ErrorHandler.report(e, s, 'RoutineSave:silent');

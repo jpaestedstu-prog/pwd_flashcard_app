@@ -93,6 +93,22 @@ class MoodEntry {
   final DateTime timestamp;
   final String? activityContext; // e.g. 'after_game', 'start_session', 'end_session'
 
+  /// The "My Day" step this check-in was about, when it was about one — the
+  /// step ticked just before "How do you feel after brushing your teeth?", or
+  /// the scheduled check-in step itself. Null for every other check-in.
+  final String? routineStepId;
+
+  /// That step's activity index (a `RoutineActivity`), stored alongside the id
+  /// so the answer still reads correctly after the educator edits or deletes
+  /// the step. Kept as an int so the mood model does not import the routine
+  /// feature.
+  final int? routineActivity;
+
+  /// That step's title *as the learner saw it*, frozen at answer time for the
+  /// same reason: "After Brushing Teeth" should not turn into "After Custom
+  /// Activity" when the step is renamed next month.
+  final String? routineStepTitle;
+
   const MoodEntry({
     required this.id,
     required this.profileId,
@@ -100,7 +116,13 @@ class MoodEntry {
     this.note,
     required this.timestamp,
     this.activityContext,
+    this.routineStepId,
+    this.routineActivity,
+    this.routineStepTitle,
   });
+
+  /// Whether this check-in was tied to a particular step of the learner's day.
+  bool get isAboutRoutineStep => routineStepId != null;
 
   MoodEntry copyWith({
     String? id,
@@ -118,6 +140,10 @@ class MoodEntry {
       timestamp: timestamp ?? this.timestamp,
       activityContext:
           activityContext != null ? activityContext() : this.activityContext,
+      // Correcting a face never moves the answer to a different step.
+      routineStepId: routineStepId,
+      routineActivity: routineActivity,
+      routineStepTitle: routineStepTitle,
     );
   }
 
@@ -128,6 +154,11 @@ class MoodEntry {
         'note': note,
         'timestamp': timestamp.toIso8601String(),
         'activityContext': activityContext,
+        // Omitted rather than written as null, so an entry that was never
+        // about a step stays byte-identical to the pre-feature shape.
+        if (routineStepId != null) 'routineStepId': routineStepId,
+        if (routineActivity != null) 'routineActivity': routineActivity,
+        if (routineStepTitle != null) 'routineStepTitle': routineStepTitle,
       };
 
   factory MoodEntry.fromJson(Map<String, dynamic> json) {
@@ -141,6 +172,9 @@ class MoodEntry {
       note: json['note'] as String?,
       timestamp: DateTime.parse(json['timestamp'] as String),
       activityContext: json['activityContext'] as String?,
+      routineStepId: json['routineStepId'] as String?,
+      routineActivity: json['routineActivity'] as int?,
+      routineStepTitle: json['routineStepTitle'] as String?,
     );
   }
 

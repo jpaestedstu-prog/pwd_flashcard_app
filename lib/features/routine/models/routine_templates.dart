@@ -29,6 +29,15 @@ class RoutineTemplate {
   /// Accessibility categories this template was designed around.
   final Set<DisabilityType> suitedTo;
 
+  /// Activities whose step asks "how do you feel after this?" once ticked.
+  ///
+  /// A few, never all: a question after every step of a twelve-step day is a
+  /// survey, and a child learns to tap past surveys. The templates aimed at
+  /// cognitive and multiple-disability learners ask none by default — fewer
+  /// interruptions is the point of those templates — and an educator can
+  /// switch any step on afterwards.
+  final Set<RoutineActivity> askMoodAfter;
+
   const RoutineTemplate({
     required this.id,
     required this.emoji,
@@ -39,6 +48,7 @@ class RoutineTemplate {
     required this.activities,
     this.daysOfWeek = const <int>{},
     this.suitedTo = const <DisabilityType>{},
+    this.askMoodAfter = const <RoutineActivity>{},
   });
 
   String nameOf({required bool filipino}) => filipino ? nameFilipino : name;
@@ -64,6 +74,7 @@ class RoutineTemplate {
           hour: info.defaultHour,
           minute: info.defaultMinute,
           durationMinutes: info.defaultDurationMinutes,
+          askMood: askMoodAfter.contains(activities[i]),
         ),
       );
     }
@@ -93,6 +104,8 @@ class RoutineTemplates {
         RoutineActivity.breakfast,
         RoutineActivity.gettingDressed,
         RoutineActivity.schoolTime,
+        // 9:00 — the "Please do your check-in now" notification and pop-up.
+        RoutineActivity.moodCheckIn,
         RoutineActivity.lunch,
         RoutineActivity.napTime,
         RoutineActivity.playTime,
@@ -101,6 +114,11 @@ class RoutineTemplates {
         RoutineActivity.dinner,
         RoutineActivity.bedtime,
       ],
+      askMoodAfter: {
+        RoutineActivity.morningRoutine,
+        RoutineActivity.brushingTeeth,
+        RoutineActivity.schoolTime,
+      },
     ),
     RoutineTemplate(
       id: 'morning',
@@ -115,6 +133,11 @@ class RoutineTemplates {
         RoutineActivity.breakfast,
         RoutineActivity.gettingDressed,
       ],
+      // "How did you feel when you woke up?" / "…after brushing your teeth?"
+      askMoodAfter: {
+        RoutineActivity.morningRoutine,
+        RoutineActivity.brushingTeeth,
+      },
     ),
     RoutineTemplate(
       id: 'school_day',
@@ -131,6 +154,7 @@ class RoutineTemplates {
         RoutineActivity.lunch,
         RoutineActivity.homework,
       ],
+      askMoodAfter: {RoutineActivity.schoolTime},
     ),
     RoutineTemplate(
       id: 'evening',
@@ -146,6 +170,7 @@ class RoutineTemplates {
         RoutineActivity.brushingTeeth,
         RoutineActivity.bedtime,
       ],
+      askMoodAfter: {RoutineActivity.bedtime},
     ),
     RoutineTemplate(
       id: 'self_care',

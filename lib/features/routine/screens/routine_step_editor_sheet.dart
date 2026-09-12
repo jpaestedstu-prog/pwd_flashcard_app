@@ -356,6 +356,61 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                     ),
                   ),
 
+                  // ── Ask how they feel ──
+                  // Per step, because *which* moments are worth asking about
+                  // is the educator's call. Hidden on a check-in step, which
+                  // is a question already. The subtitle is the exact question
+                  // the learner will see, so the educator is choosing words,
+                  // not a setting.
+                  if (!_draft.activity.isMoodCheckIn) ...[
+                    const SizedBox(height: 8),
+                    // Its own Material: the sheet paints its background on a
+                    // DecoratedBox, which would hide the tile's ink (and
+                    // trips Flutter's "ListTile ink may be invisible" check).
+                    Material(
+                      type: MaterialType.transparency,
+                      child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _draft.askMood,
+                      onChanged: (v) => setState(
+                        () => _draft = _draft.copyWith(askMood: v),
+                      ),
+                      secondary: const Text(
+                        '💬',
+                        style: TextStyle(fontSize: 22),
+                      ),
+                      title: Text(
+                        l
+                            ? 'Tanungin ang nararamdaman pagkatapos'
+                            : 'Ask how they feel after this step',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: hc.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '“${RoutineCatalog.moodQuestionFor(_draft, filipino: l)}”',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: hc.textSecondary,
+                        ),
+                      ),
+                    ),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      l
+                          ? 'Sa oras na ito, may paalala at pop-up na '
+                                'magsasabing “Pakigawa na ang iyong check-in '
+                                'ngayon.”'
+                          : 'At this time the learner gets a notification and '
+                                'a pop-up: “Please do your check-in now.”',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: hc.textSecondary,
+                      ),
+                    ),
+                  ],
+
                   // ── Note / spoken cue ──
                   _SectionLabel(l ? 'Paalala at Boses' : 'Note & spoken cue'),
                   TextField(

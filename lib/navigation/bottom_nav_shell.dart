@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../features/routine/widgets/routine_check_in_watcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../data/models/enums.dart';
@@ -327,6 +328,11 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       onCommit: (index) => _onTap(context, index),
       builder: (context, gaze) => Stack(
         children: [
+          // The in-app half of a scheduled "Check-in time" step: asks "Please
+          // do your check-in now" when one comes due while the learner is on
+          // a hub. Renders nothing, and is inert for educators and for any
+          // learner without a check-in step today.
+          RoutineCheckInWatcher(location: location),
           Scaffold(
             body: RepaintBoundary(child: widget.child),
             bottomNavigationBar: Builder(

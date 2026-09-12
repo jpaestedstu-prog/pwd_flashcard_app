@@ -355,10 +355,75 @@ void main() {
         tester,
         const RoutineStep(id: 's', activity: RoutineActivity.brushingTeeth),
       );
+      // Below the reminder controls and the "ask how they feel" switch, so
+      // scrolled into view like the signs section below it.
+      await tester.dragUntilVisible(
+        find.text('What the learner will see'),
+        find.byType(ListView).first,
+        const Offset(0, -200),
+      );
+      await _settle(tester, const Duration(milliseconds: 300));
       expect(find.text('What the learner will see'), findsOneWidget);
       // Photo, GIF and video slots, all empty, all showing the designed
       // stand-in rather than a blank box.
       expect(find.byType(RoutineMediaPlaceholder), findsNWidgets(3));
+      await _unmount(tester);
+    });
+
+    testWidgets('offers "ask how they feel", showing the exact question',
+        (tester) async {
+      await pumpSheet(
+        tester,
+        const RoutineStep(id: 's', activity: RoutineActivity.brushingTeeth),
+      );
+      await tester.dragUntilVisible(
+        find.text('Ask how they feel after this step'),
+        find.byType(ListView).first,
+        const Offset(0, -200),
+      );
+      await _settle(tester, const Duration(milliseconds: 300));
+      // The educator reads the words the learner will be asked, not a setting
+      // name.
+      expect(
+        find.text('“How do you feel after brushing your teeth?”'),
+        findsOneWidget,
+      );
+      final off = tester.widget<SwitchListTile>(find.byType(SwitchListTile));
+      expect(off.value, isFalse, reason: 'off unless the educator asks');
+
+      await tester.tap(find.text('Ask how they feel after this step'));
+      await _settle(tester, const Duration(milliseconds: 300));
+      final on = tester.widget<SwitchListTile>(find.byType(SwitchListTile));
+      expect(on.value, isTrue);
+      await _unmount(tester);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a check-in step explains its pop-up instead of the switch',
+        (tester) async {
+      // A check-in step *is* a question; asking "how do you feel after your
+      // check-in?" would be absurd, so the switch is replaced by what the
+      // learner will actually get at that time.
+      await pumpSheet(
+        tester,
+        const RoutineStep(
+          id: 'ci',
+          activity: RoutineActivity.moodCheckIn,
+          hour: 9,
+          minute: 0,
+        ),
+      );
+      await tester.dragUntilVisible(
+        find.textContaining('Please do your check-in now.'),
+        find.byType(ListView).first,
+        const Offset(0, -200),
+      );
+      await _settle(tester, const Duration(milliseconds: 300));
+      expect(find.byType(SwitchListTile), findsNothing);
+      expect(
+        find.textContaining('notification and a pop-up'),
+        findsOneWidget,
+      );
       await _unmount(tester);
     });
 

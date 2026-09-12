@@ -448,6 +448,36 @@ class RoutineCatalog {
       audioCue: 'Bedtime. Let us get ready to sleep.',
       audioCueFilipino: 'Oras ng tulog. Maghanda na tayong matulog.',
     ),
+    // A scheduled "how do you feel?" in the middle of the day. At its time the
+    // learner's device raises a notification *and*, if the app is open, a
+    // pop-up — "Please do your check-in now". Ticking it off means choosing a
+    // face; there is no way to mark it done without answering.
+    RoutineActivityInfo(
+      activity: RoutineActivity.moodCheckIn,
+      emoji: '💬',
+      label: 'Check-In Time',
+      labelFilipino: 'Oras ng Check-In',
+      blurb: 'Say how you feel — a notification and a pop-up at this time',
+      blurbFilipino:
+          'Sabihin ang nararamdaman — may paalala at pop-up sa oras na ito',
+      defaultHour: 9,
+      defaultMinute: 0,
+      instructions: [
+        RoutineInstruction('🤔', 'Stop for a moment', 'Huminto sandali'),
+        RoutineInstruction('❤️', 'Think about how you feel',
+            'Isipin ang iyong nararamdaman'),
+        RoutineInstruction('😊', 'Pick the face that matches',
+            'Piliin ang mukhang katulad nito'),
+      ],
+      // Both verified in the manifest (Emotions): the two feelings a learner
+      // is most often asked to tell apart.
+      signCues: [
+        FslSignCue('Happy', FlashcardCategory.emotions),
+        FslSignCue('Sad', FlashcardCategory.emotions),
+      ],
+      audioCue: 'It is check-in time. How are you feeling?',
+      audioCueFilipino: 'Oras na ng check-in. Kumusta ang pakiramdam mo?',
+    ),
     // "Other customizable activities" from the brief. Everything here is a
     // fallback the educator is expected to override — including the empty
     // sign cue list, which is why `signCuesFor` returns nothing rather than
@@ -476,7 +506,9 @@ class RoutineCatalog {
   static RoutineActivityInfo infoFor(RoutineActivity activity) =>
       all.firstWhere(
         (i) => i.activity == activity,
-        orElse: () => all.last, // custom
+        // By name, not `all.last`: the list is in day order, so its last entry
+        // is whatever happens to be declared last, not necessarily custom.
+        orElse: () => all.firstWhere((i) => i.activity.isCustom),
       );
 
   /// The title a learner sees for [step] — the educator's override when they
@@ -527,6 +559,85 @@ class RoutineCatalog {
   /// case as a single instruction line rather than an empty section.
   static List<RoutineInstruction> instructionsFor(RoutineStep step) =>
       infoFor(step.activity).instructions;
+
+  /// The question asked straight after [step] — "How do you feel after
+  /// brushing your teeth?" — or, for a check-in step, the check-in question.
+  ///
+  /// Written per activity rather than templated from the title, because the
+  /// natural question differs by moment: you ask how someone felt *when they
+  /// woke up*, not "after Morning Routine", and a question that reads like a
+  /// form is one a child learns to skip. A custom step uses its own title,
+  /// since nothing better is known about it.
+  static String moodQuestionFor(RoutineStep step, {required bool filipino}) {
+    String q(String en, String fil) => filipino ? fil : en;
+    return switch (step.activity) {
+      RoutineActivity.morningRoutine => q(
+          'How did you feel when you woke up?',
+          'Ano ang pakiramdam mo nang magising ka?',
+        ),
+      RoutineActivity.brushingTeeth => q(
+          'How do you feel after brushing your teeth?',
+          'Ano ang pakiramdam mo pagkatapos magsipilyo?',
+        ),
+      RoutineActivity.breakfast => q(
+          'How do you feel after breakfast?',
+          'Ano ang pakiramdam mo pagkatapos mag-almusal?',
+        ),
+      RoutineActivity.lunch => q(
+          'How do you feel after lunch?',
+          'Ano ang pakiramdam mo pagkatapos mananghalian?',
+        ),
+      RoutineActivity.breakTime => q(
+          'How do you feel after your break?',
+          'Ano ang pakiramdam mo pagkatapos ng pahinga?',
+        ),
+      RoutineActivity.napTime => q(
+          'How do you feel after your nap?',
+          'Ano ang pakiramdam mo pagkatapos umidlip?',
+        ),
+      RoutineActivity.dinner => q(
+          'How do you feel after dinner?',
+          'Ano ang pakiramdam mo pagkatapos maghapunan?',
+        ),
+      RoutineActivity.bathTime => q(
+          'How do you feel after your bath?',
+          'Ano ang pakiramdam mo pagkatapos maligo?',
+        ),
+      RoutineActivity.gettingDressed => q(
+          'How do you feel now that you are dressed?',
+          'Ano ang pakiramdam mo ngayong nakabihis ka na?',
+        ),
+      RoutineActivity.schoolTime => q(
+          'How did school feel today?',
+          'Kumusta ang pakiramdam mo sa paaralan ngayon?',
+        ),
+      RoutineActivity.homework => q(
+          'How do you feel after your homework?',
+          'Ano ang pakiramdam mo pagkatapos ng takdang-aralin?',
+        ),
+      RoutineActivity.playTime => q(
+          'How did playtime feel?',
+          'Kumusta ang pakiramdam mo sa oras ng laro?',
+        ),
+      RoutineActivity.exercise => q(
+          'How do you feel after exercising?',
+          'Ano ang pakiramdam mo pagkatapos mag-ehersisyo?',
+        ),
+      RoutineActivity.bedtime => q(
+          'How are you feeling before bed?',
+          'Ano ang pakiramdam mo bago matulog?',
+        ),
+      RoutineActivity.moodCheckIn => q(
+          'How are you feeling right now?',
+          'Kumusta ang pakiramdam mo ngayon?',
+        ),
+      RoutineActivity.custom => q(
+          'How do you feel after ${titleFor(step, filipino: false)}?',
+          'Ano ang pakiramdam mo pagkatapos ng '
+              '${titleFor(step, filipino: true)}?',
+        ),
+    };
+  }
 
   /// The spoken cue for [step]: the educator's note when they wrote one (it is
   /// more specific than any default), otherwise the catalog line.

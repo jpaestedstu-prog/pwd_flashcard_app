@@ -98,11 +98,15 @@ class MultiStudentDashboardScreen extends ConsumerWidget {
                             profile: profile,
                             progress: progress,
                             totalWords: totalWords,
-                            onTap: () {
-                              ref
+                            // Awaited: the switch is local-only now, so it
+                            // costs a microtask — and pushing first meant
+                            // /dashboard built its first frame as the
+                            // educator, titled "Teacher Dashboard".
+                            onTap: () async {
+                              await ref
                                   .read(profileProvider.notifier)
                                   .viewAsStudent(profile);
-                              context.push('/dashboard');
+                              if (context.mounted) context.push('/dashboard');
                             },
                           )
                           .animate()

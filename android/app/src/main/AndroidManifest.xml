@@ -66,6 +66,14 @@
             android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
             android:value="true" />
 
+        <!-- Posts every scheduled notification when its alarm fires.
+             flutter_local_notifications does NOT merge this receiver into the
+             app (its own manifest declares only permissions), so without this
+             line every zonedSchedule alarm fired into a component that did
+             not exist: routine reminders, the "Check-in time" prompt, child
+             alarms and the daily reminder were scheduled correctly and never
+             shown (dumpsys activity broadcasts: dispatchTime=never). -->
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <!-- Boot receiver to reschedule notifications after reboot -->
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
             <intent-filter>

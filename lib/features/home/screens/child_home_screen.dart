@@ -22,6 +22,7 @@ import '../../messaging/providers/messaging_providers.dart';
 import '../../object_scan/word_hunt_entry.dart';
 import '../../stickers/widgets/sticker_sweep.dart';
 import '../widgets/home_tile.dart';
+import '../widgets/today_card.dart';
 
 /// Gamified home for the Child role (Family Group).
 ///
@@ -118,6 +119,48 @@ class ChildHomeScreen extends ConsumerWidget {
       ),
     );
 
+    // ─── Gaze row 0: the greeting strip's accessibility shortcut ──
+    // Built before the tree so the D-pad's row order matches the page: the
+    // shortcut sits in the greeting, above the stats strip and the card.
+    final accessibilityCell = gazeGrid
+        .section(
+          columns: 1,
+          expand: false,
+          entries: [
+            (
+              tile: const AccessibilityQuickButton(),
+              cell: GazeTileCell(
+                label: 'Accessibility',
+                onActivate: () => showAccessibilityQuickSheet(context),
+              ),
+            ),
+          ],
+        )
+        .first;
+
+    // ─── Gaze row 1: the two halves of the Today card ──
+    // The same card the Student home carries, with this home's friendlier
+    // wording. It replaces a "My Day" section that held one dead tile and a
+    // "My Feelings" tile four sections further down — a child who needs a
+    // visual schedule should not have to scroll past four hubs to reach it,
+    // and should be able to say how they feel without leaving Home.
+    void openMood() => context.push('/mood-check-in');
+    void openMyDay() => context.push('/routine');
+    final todayPanes = gazeGrid.section(
+      columns: 2,
+      expand: false,
+      entries: [
+        (
+          tile: TodayMoodPane(onOpen: openMood, title: 'My Feelings'),
+          cell: GazeTileCell(label: 'My Feelings', onActivate: openMood),
+        ),
+        (
+          tile: TodayDayPane(onOpen: openMyDay),
+          cell: GazeTileCell(label: 'My Day', onActivate: openMyDay),
+        ),
+      ],
+    );
+
     return GazeHomeRegistrar(
       active: gazeGrid.active,
       rows: gazeGrid.rows,
@@ -169,22 +212,7 @@ class ChildHomeScreen extends ConsumerWidget {
                   // service over text size, contrast, read-aloud, etc.
                   // Its own gaze row (the topmost), so the D-pad can
                   // reach it too.
-                  gazeGrid
-                      .section(
-                        columns: 1,
-                        expand: false,
-                        entries: [
-                          (
-                            tile: const AccessibilityQuickButton(),
-                            cell: GazeTileCell(
-                              label: 'Accessibility',
-                              onActivate: () =>
-                                  showAccessibilityQuickSheet(context),
-                            ),
-                          ),
-                        ],
-                      )
-                      .first,
+                  accessibilityCell,
                 ],
               ),
             ),
@@ -198,6 +226,17 @@ class ChildHomeScreen extends ConsumerWidget {
                 streak: progress.streakDays,
                 words: progress.wordsLearned,
                 stars: progress.totalStars,
+              ),
+            ),
+          ),
+
+          // ─── Today: My Feelings + My Day ─────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
+              child: TodayCard(
+                mood: todayPanes.first,
+                day: todayPanes.last,
               ),
             ),
           ),
@@ -250,25 +289,6 @@ class ChildHomeScreen extends ConsumerWidget {
                     .first,
               ),
             ),
-
-          // ─── Section: My Day ─────────────────────
-          // First, and on its own: the routine an adult set for this child is
-          // the thing they open on a school morning, and burying it under
-          // Games would mean the child who most needs a visual schedule has
-          // to scroll past four hubs to reach it. The section is declared
-          // here so its gaze row lands in the same place it is drawn.
-          const _ChildSectionHeader(emoji: '🗓️', title: 'My Day'),
-          grid([
-            entry(
-              emoji: '🗓️',
-              label: 'My Day',
-              gradient: const [
-                AppColors.bannerRoutineStart,
-                AppColors.bannerRoutineEnd,
-              ],
-              onTap: () => context.push('/routine'),
-            ),
-          ]),
 
           // ─── Section: Play & Learn (core hub) ────
           // Mirrors the Student home's core tiles: Games, Cards, Stories,
@@ -474,15 +494,6 @@ class ChildHomeScreen extends ConsumerWidget {
               ],
               badgeCount: unseenStickers,
               onTap: () => context.push('/sticker-album'),
-            ),
-            entry(
-              emoji: '😊',
-              label: 'My Feelings',
-              gradient: const [
-                AppColors.bannerMoodStart,
-                AppColors.bannerMoodEnd,
-              ],
-              onTap: () => context.push('/mood-check-in'),
             ),
             entry(
               emoji: '🙂',

@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/accessibility/sound_service.dart';
-import '../../../core/accessibility/tts_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../core/theme/app_colors.dart';
@@ -15,11 +13,12 @@ import '../../../providers/routine_provider.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/rich_empty_states.dart';
-import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
+import '../providers/today_routine_provider.dart';
 import '../models/routine_presentation.dart';
 import '../services/routine_service.dart';
 import '../services/routine_sign_launcher.dart';
+import '../services/routine_completion_flow.dart';
 import '../widgets/routine_step_card.dart';
 import 'routine_step_screen.dart';
 
@@ -163,6 +162,11 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
             return _EmptyDay(
               filipino: l,
               hasAnyRoutine: routines.isNotEmpty,
+              // Previewing: the learner plainly *has* an educator — the one
+              // reading this. Only the learner's own view consults their
+              // profile, which is whose class membership the provider knows.
+              hasEducator: widget.profileId != null ||
+                  ref.watch(todayRoutineProvider).hasEducator,
             );
           }
           return _dayBody(
@@ -270,6 +274,11 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
           done: doneCount,
           total: allSteps.length,
           filipino: filipino,
+          // The learner's own run only; an educator previewing someone's day
+          // is looking at the history screen for that.
+          streak: widget.profileId == null
+              ? ref.watch(todayRoutineProvider).streak
+              : 0,
           routineName: routines.length == 1
               ? (filipino && routines.first.nameFilipino.isNotEmpty
                   ? routines.first.nameFilipino
@@ -287,13 +296,21 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
             hasSigns: _signable.contains(step.id),
             onToggle: widget.readOnly
                 ? () {}
-                : () => _toggle(step, log, presentation, filipino, profileId),
+                : () => _toggle(
+                    step,
+                    log,
+                    presentation,
+                    filipino,
+                    profileId,
+                    allSteps,
+                  ),
             onOpen: () => _openStep(
               step,
               presentation,
               filipino,
               profileId,
               log.completedStepIds.contains(step.id),
+              allSteps,
             ),
           ),
         if (presentation.showOnlyNextStep && allSteps.length > visible.length)
@@ -332,25 +349,23 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
     RoutinePresentation presentation,
     bool filipino,
     String profileId,
+    List<RoutineStep> todaysSteps,
   ) async {
-    final wasDone = log.completedStepIds.contains(step.id);
-    await const RoutineService().toggleStep(profileId, _today, step.id);
-    if (!mounted) return;
-    // Invalidate rather than setState: the day log is provider state, and the
-    // local write has already landed in Hive.
-    ref.invalidate(routineDayLogProvider(routineDayKey(profileId, _today)));
-
-    if (wasDone) return;
-    if (presentation.playSoundCues) {
-      await ref.read(soundServiceProvider).playCorrect();
-    }
-    if (presentation.announceProgress) {
-      final title = RoutineCatalog.titleFor(step, filipino: filipino);
-      final tts = ref.read(ttsServiceProvider);
-      await (filipino
-          ? tts.speakFilipino('Tapos na ang $title. Magaling!')
-          : tts.speakEnglish('$title done. Well done!'));
-    }
+    // Only the learner's own day earns questions — an educator previewing it
+    // is not the person being asked how they feel, and cannot tick anyway.
+    if (widget.readOnly || widget.profileId != null) return;
+    // Shared with the step screen's "I did it!" and the Home card's Done
+    // button, so all three write, sound, speak, refresh — and ask — alike.
+    await RoutineCompletionFlow.complete(
+      context: context,
+      ref: ref,
+      profileId: profileId,
+      day: _today,
+      step: step,
+      todaysSteps: todaysSteps,
+      presentation: presentation,
+      filipino: filipino,
+    );
   }
 
   Future<void> _openStep(
@@ -359,7 +374,11 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
     bool filipino,
     String profileId,
     bool done,
+    List<RoutineStep> todaysSteps,
   ) async {
+    // The step screen asks its own questions ("I did it!" runs the same
+    // completion flow as the list), so it is handed the whole day to know
+    // whether its tick finished it.
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => RoutineStepScreen(
@@ -368,6 +387,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
           profileId: profileId,
           day: _today,
           readOnly: widget.readOnly,
+          todaysSteps: todaysSteps,
         ),
       ),
     );
@@ -382,10 +402,17 @@ class _ProgressHeader extends StatelessWidget {
   final bool filipino;
   final String? routineName;
 
+  /// Consecutive fully-complete days, rest days skipped. Computed by
+  /// [RoutineHistory.streak], which the educator's history screen has always
+  /// shown and the learner never saw — so the one person doing the work had
+  /// no idea they were on a run.
+  final int streak;
+
   const _ProgressHeader({
     required this.done,
     required this.total,
     required this.filipino,
+    required this.streak,
     this.routineName,
   });
 
@@ -400,7 +427,10 @@ class _ProgressHeader extends StatelessWidget {
       // carries the count, which is the part a learner acts on.
       label: filipino
           ? 'Tapos na ang $done sa $total na gawain ngayong araw.'
-          : '$done of $total activities finished today.',
+              '${streak > 0 ? ' $streak araw na sunod-sunod na tapos.' : ''}'
+          : '$done of $total activities finished today.'
+              '${streak > 0 ? ' $streak day${streak == 1 ? '' : 's'} '
+                  'finished in a row.' : ''}',
       child: Card(
         elevation: 0,
         color: hc.surface,
@@ -442,6 +472,20 @@ class _ProgressHeader extends StatelessWidget {
                               color: hc.textSecondary,
                             ),
                           ),
+                          if (streak > 0)
+                            Text(
+                              filipino
+                                  // Filipino numerals take the singular.
+                                  ? '🔥 $streak araw na sunod-sunod'
+                                  : '🔥 $streak day'
+                                        '${streak == 1 ? '' : 's'} in a row',
+                              style: AppTypography.labelSmall.copyWith(
+                                color: hc.textPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                         ],
                       ),
                     ),
@@ -519,7 +563,17 @@ class _EmptyDay extends StatelessWidget {
   /// a rest day, which is a different message from "nobody has set one up".
   final bool hasAnyRoutine;
 
-  const _EmptyDay({required this.filipino, required this.hasAnyRoutine});
+  /// Whether anyone is actually in a position to set one up. A Player profile
+  /// belongs to no class and no family group, so "your teacher or parent can
+  /// set this up" points at nobody — and a promise nobody can keep is worse
+  /// than an honest blank.
+  final bool hasEducator;
+
+  const _EmptyDay({
+    required this.filipino,
+    required this.hasAnyRoutine,
+    required this.hasEducator,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -530,6 +584,19 @@ class _EmptyDay extends StatelessWidget {
         description: filipino
             ? 'Walang routine para sa araw na ito. Magpahinga ka muna!'
             : 'You have no routine for today. Enjoy the rest!',
+      );
+    }
+    if (!hasEducator) {
+      return RichEmptyState(
+        emoji: '🗓️',
+        title: filipino ? 'Wala pang routine' : 'No routine yet',
+        description: filipino
+            ? 'Ang Araw Ko ay nagpapakita ng plano ng araw mo — isa-isang '
+                'hakbang, may larawan at oras. Sumali sa isang klase o family '
+                'group para makagawa ang guro o magulang mo ng isa para sa iyo.'
+            : 'My Day shows your plan for the day — one step at a time, with '
+                'pictures and times. Join a class or a family group and your '
+                'teacher or parent can build one for you.',
       );
     }
     return RichEmptyState(

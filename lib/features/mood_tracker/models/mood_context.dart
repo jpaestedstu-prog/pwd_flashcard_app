@@ -26,6 +26,22 @@ enum MoodContext {
 
   /// At the end of a study session.
   endSession,
+
+  /// Straight after finishing the last step of "My Day".
+  ///
+  /// The one context an adult can act on directly: it pairs how the learner
+  /// felt with a routine they can actually change. A run of `afterRoutine`
+  /// check-ins reading "tired" is a bedtime conversation, not a mystery.
+  afterRoutine,
+
+  /// Straight after ticking off one step of "My Day" that the educator marked
+  /// "ask how they feel" — "How do you feel after brushing your teeth?". The
+  /// step itself is recorded on the entry (`MoodEntry.routineStepId`).
+  afterStep,
+
+  /// A scheduled "Check-in time" step in "My Day" — the 9:00 AM "Please do
+  /// your check-in now".
+  checkIn,
 }
 
 extension MoodContextX on MoodContext {
@@ -38,6 +54,9 @@ extension MoodContextX on MoodContext {
         MoodContext.breakTime => 'break_time',
         MoodContext.afterStory => 'after_story',
         MoodContext.endSession => 'end_session',
+        MoodContext.afterRoutine => 'after_routine',
+        MoodContext.afterStep => 'after_step',
+        MoodContext.checkIn => 'check_in',
       };
 
   String get label => switch (this) {
@@ -46,6 +65,9 @@ extension MoodContextX on MoodContext {
         MoodContext.breakTime => 'Break time',
         MoodContext.afterStory => 'After a story',
         MoodContext.endSession => 'End of session',
+        MoodContext.afterRoutine => 'After My Day',
+        MoodContext.afterStep => 'During My Day',
+        MoodContext.checkIn => 'Check-in time',
       };
 
   String get labelFilipino => switch (this) {
@@ -54,6 +76,9 @@ extension MoodContextX on MoodContext {
         MoodContext.breakTime => 'Oras ng pahinga',
         MoodContext.afterStory => 'Pagkatapos ng kwento',
         MoodContext.endSession => 'Katapusan ng session',
+        MoodContext.afterRoutine => 'Pagkatapos ng Araw Ko',
+        MoodContext.afterStep => 'Habang nasa Araw Ko',
+        MoodContext.checkIn => 'Oras ng check-in',
       };
 
   String labelOf({required bool isFilipino}) =>
@@ -68,6 +93,11 @@ extension MoodContextX on MoodContext {
         MoodContext.breakTime => 'How are you feeling on your break?',
         MoodContext.afterStory => 'How did that story feel?',
         MoodContext.endSession => 'How do you feel after today?',
+        MoodContext.afterRoutine => 'You finished your day! How do you feel?',
+        // The real question comes from the step (`RoutineCatalog
+        // .moodQuestionFor`); these are the fallbacks if it is ever missing.
+        MoodContext.afterStep => 'How do you feel now?',
+        MoodContext.checkIn => 'How are you feeling right now?',
       };
 
   String get promptFilipino => switch (this) {
@@ -76,6 +106,10 @@ extension MoodContextX on MoodContext {
         MoodContext.breakTime => 'Kumusta ka sa iyong pahinga?',
         MoodContext.afterStory => 'Kumusta ang kwentong iyon?',
         MoodContext.endSession => 'Kumusta ang pakiramdam mo pagkatapos ngayon?',
+        MoodContext.afterRoutine =>
+          'Natapos mo ang araw mo! Kumusta ang pakiramdam mo?',
+        MoodContext.afterStep => 'Kumusta ang pakiramdam mo ngayon?',
+        MoodContext.checkIn => 'Kumusta ang pakiramdam mo ngayon?',
       };
 
   String promptOf({required bool isFilipino}) =>
@@ -87,6 +121,9 @@ extension MoodContextX on MoodContext {
         MoodContext.breakTime => Icons.self_improvement_rounded,
         MoodContext.afterStory => Icons.menu_book_rounded,
         MoodContext.endSession => Icons.nights_stay_rounded,
+        MoodContext.afterRoutine => Icons.event_available_rounded,
+        MoodContext.afterStep => Icons.checklist_rounded,
+        MoodContext.checkIn => Icons.alarm_rounded,
       };
 
   /// Resolve a stored value back to a context. Unknown / null values (older
@@ -101,3 +138,13 @@ extension MoodContextX on MoodContext {
     return MoodContext.general;
   }
 }
+
+
+/// Contexts that belong to the learner's "My Day" routine — the day-end
+/// question, a question after one step, and a scheduled check-in. Grouped so
+/// the educator summary and the insights can treat "how the routine felt" as
+/// one signal rather than three.
+bool isRoutineMoodContext(MoodContext c) =>
+    c == MoodContext.afterRoutine ||
+    c == MoodContext.afterStep ||
+    c == MoodContext.checkIn;

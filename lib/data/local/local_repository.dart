@@ -68,13 +68,44 @@ class LocalRepository implements DataRepository {
 
   @override
   Future<void> saveProfile(UserProfile profile) async {
+    final stored = await saveProfileLocal(profile);
+    await publishProfile(stored);
+  }
+
+  /// Writes [profile] to Hive and nothing else, returning what was stored.
+  ///
+  /// **Touches no network.** Split out of [saveProfile] because *switching*
+  /// profile is a purely local fact and must never be gated on the cloud:
+  /// [publishProfile] mints a messaging handle by querying the live directory
+  /// (up to five reads) and then mirrors the profile to Firestore, either of
+  /// which can be slow, offline, or flatly refused — a profile restored onto
+  /// another device makes this one read-only for it. An educator peeking at a
+  /// learner used to be left sitting on their own profile because of exactly
+  /// that.
+  ///
+  /// The owner-uid stamp stays here: it is local bookkeeping, costs nothing,
+  /// and every profile-save site has always gone through it.
+  Future<UserProfile> saveProfileLocal(UserProfile profile) async {
     // Stamp the device's anonymous-auth uid the first time a profile is
     // saved. Covers both new profile creation and the migration of pre-auth
-    // profiles — every profile-save site flows through this method.
+    // profiles.
     final uid = FirebaseService.currentUid;
-    var stamped = (profile.ownerUid == null && uid != null)
+    final stamped = (profile.ownerUid == null && uid != null)
         ? profile.copyWith(ownerUid: () => uid)
         : profile;
+    await HiveService.saveProfile(stamped);
+    return stamped;
+  }
+
+  /// The cloud half of a profile save: mint the messaging handle if it has
+  /// none, mirror the profile to Firestore, and publish it to the public
+  /// directory. Returns the profile as it now stands locally — the handle may
+  /// have been added, in which case it has already been re-saved to Hive.
+  ///
+  /// Never throws: the remote writes are fire-and-forget ([_remoteWrite]) and
+  /// the handle lookup falls back to a local-only handle.
+  Future<UserProfile> publishProfile(UserProfile profile) async {
+    var stamped = profile;
 
     // Mint a messaging handle if this profile doesn't have one yet. The
     // generator checks the live `profile_directory` for collisions, so a
@@ -93,27 +124,29 @@ class LocalRepository implements DataRepository {
         stamped = stamped.copyWith(
             username: () => UsernameGenerator.generateHandle(stamped.name));
         if (kDebugMode) {
-          debugPrint('LocalRepository.saveProfile: handle fallback ($e)');
+          debugPrint('LocalRepository.publishProfile: handle fallback ($e)');
         }
       }
+      await HiveService.saveProfile(stamped);
     }
 
-    await HiveService.saveProfile(stamped);
     // Player-mode profiles never reach the cloud.
-    if (stamped.isGuestPlayer) return;
+    if (stamped.isGuestPlayer) return stamped;
     // Only push profiles this device owns. A teacher/parent can view (and
     // therefore locally cache) a class member's profile owned by another
     // user; the security rules correctly deny non-owner writes, which
     // otherwise surface as `permission-denied` noise on back-navigation.
     // Cache such foreign profiles locally, but never remote-write them.
+    final uid = FirebaseService.currentUid;
     if (uid != null && stamped.ownerUid != null && stamped.ownerUid != uid) {
-      return;
+      return stamped;
     }
     await _remoteWrite('saveProfile', () => _remote.saveProfile(stamped));
     // Publish to the public messaging directory so other devices can
     // resolve this profile by username or by id.
     await _remoteWrite('profileDirectoryUpsert',
         () => ProfileDirectoryService.instance.upsert(stamped));
+    return stamped;
   }
 
   @override

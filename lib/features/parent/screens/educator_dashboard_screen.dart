@@ -13,6 +13,7 @@ import '../../../providers/active_time_provider.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/child_time_limit_provider.dart';
 import '../../../providers/parent_provider.dart';
+import '../../mood_tracker/models/mood_context.dart';
 import '../../mood_tracker/models/mood_models.dart';
 import '../../mood_tracker/models/mood_summary.dart';
 import '../../notifications/services/alert_service.dart';
@@ -394,10 +395,10 @@ class _EducatorDashboardScreenState
           }
           final match = allData.where((d) => d.$1.id == child.profileId);
           if (match.isNotEmpty && context.mounted) {
-            ref
+            await ref
                 .read(profileProvider.notifier)
                 .viewAsStudent(match.first.$1);
-            context.push('/dashboard');
+            if (context.mounted) context.push('/dashboard');
           }
         },
       ),
@@ -913,11 +914,23 @@ class _MoodRow extends ConsumerWidget {
         ? '${summary.entryCount} check-in'
         : '${summary.entryCount} check-in${summary.entryCount == 1 ? '' : 's'}';
 
+    // How their day felt, and which part of it felt worst. The wellbeing
+    // signals tied to something the educator themselves set — the routine —
+    // so they are the ones they can act on. See [MoodSummary.routineLabelOf]
+    // and [MoodSummary.hardestStepLabelOf].
+    final routineLine = summary.routineLabelOf(isFilipino: isFilipino);
+    final hardest = summary.hardestStepLabelOf(isFilipino: isFilipino);
+    final routineLabel = routineLine == null
+        ? null
+        : (hardest == null ? routineLine : '$routineLine · $hardest');
+
     return Semantics(
       label: isFilipino
           ? 'Kalagayan nitong nakaraang linggo. $label, $countLabel.'
+          '${routineLabel != null ? ' $routineLabel.' : ''}'
           '${attention ? ' Maaaring kailangan ng suporta.' : ''}'
           : 'Wellbeing this week. $label, $countLabel.'
+              '${routineLabel != null ? ' $routineLabel.' : ''}'
               '${attention ? ' May need support.' : ''}',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -928,7 +941,10 @@ class _MoodRow extends ConsumerWidget {
             color: (accent ?? hc.border).withValues(alpha: 0.35),
           ),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+        Row(
           children: [
             Text(
               summary.dominantMood?.emoji ?? '🙂',
@@ -959,6 +975,33 @@ class _MoodRow extends ConsumerWidget {
                 style: AppTypography.labelSmall.copyWith(
                   color: AppColors.warning,
                   fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+            if (routineLabel != null) ...[
+              const SizedBox(height: 4),
+              ExcludeSemantics(
+                child: Row(
+                  children: [
+                    Icon(
+                      MoodContext.afterRoutine.icon,
+                      size: 13,
+                      color: hc.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        routineLabel,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: hc.textSecondary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

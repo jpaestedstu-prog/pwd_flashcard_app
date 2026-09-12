@@ -27,9 +27,8 @@ import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/enhanced_category_card.dart';
 import '../../../widgets/animated_mascot_buddy.dart';
 import '../../../widgets/seasonal_decorations.dart';
-import '../../../widgets/profile_avatar.dart';
+import '../../../widgets/profile_level_button.dart';
 import '../../../widgets/flashcard_image.dart';
-import '../../../widgets/xp_level_bar.dart';
 import '../../assessment/providers/assessment_provider.dart';
 import '../../assessment/widgets/learner_assignment_sync.dart';
 import '../../assessment/widgets/pending_assignments_banner.dart';
@@ -42,6 +41,7 @@ import '../../messaging/providers/messaging_providers.dart';
 import '../../object_scan/word_hunt_entry.dart';
 import '../../stickers/widgets/sticker_sweep.dart';
 import '../widgets/home_tile.dart';
+import '../widgets/today_card.dart';
 import '../../progress/models/category_mastery.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -133,6 +133,90 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
     final gazeGrid = GazeTileGridBuilder(active: gazeHomeOn);
 
+    // ─── Topmost gaze row: profile+level, shop, settings ──
+    // Built here, before the widget tree, so these register as gaze row 0 —
+    // the D-pad's row order has to match the visual order, and the app bar is
+    // what a learner sees first.
+    void openPlayerProfile() => context.push('/gamification-dashboard');
+    final appBarCells = gazeGrid.section(
+      columns: 3,
+      expand: false,
+      entries: [
+        (
+          // The learner's own face, top-left, wearing their level: one control
+          // in place of the old avatar + XP bar + full-width "Player Profile"
+          // button, which between them cost three rows at the top of Home and
+          // said the same thing three times.
+          tile: ProfileLevelButton(
+            profile: profile,
+            progress: progress,
+            onTap: openPlayerProfile,
+          ).animate().fadeIn(duration: 400.ms),
+          cell: GazeTileCell(
+            label: 'Player Profile',
+            onActivate: openPlayerProfile,
+          ),
+        ),
+        if (ref.watch(
+          gamificationFeatureProvider(GamificationFeature.shop),
+        ))
+          (
+            // Labelled through `tooltip`, not a wrapping `Semantics`.
+            // IconButton already publishes its own node, so wrapping it
+            // produced a second node of identical bounds with no label -- an
+            // "unnamed item" a reader could land on instead of the real one.
+            tile: IconButton(
+              tooltip: 'Open star shop',
+              onPressed: () => context.push('/shop'),
+              icon: const Icon(Icons.store_rounded),
+              iconSize: 28,
+              color: hc.textSecondary,
+            ).animate().fadeIn(delay: 190.ms),
+            cell: GazeTileCell(
+              label: 'Star Shop',
+              onActivate: () => context.push('/shop'),
+            ),
+          ),
+        (
+          tile:
+              IconButton(
+                    tooltip: 'Open settings',
+                    onPressed: () => context.push('/settings'),
+                    icon: const Icon(Icons.settings_rounded),
+                    iconSize: 28,
+                    color: hc.textSecondary,
+                  )
+                  .animate()
+                  .fadeIn(delay: 200.ms)
+                  .rotate(begin: -0.1, end: 0, duration: 500.ms),
+          cell: GazeTileCell(
+            label: 'Settings',
+            onActivate: () => context.push('/settings'),
+          ),
+        ),
+      ],
+    );
+
+    // ─── Gaze row 1: the two halves of the Today card ─────
+    // Two cells, not one: Mood and My Day open different screens, and the
+    // D-pad has to be able to land on each.
+    void openMood() => context.push('/mood-check-in');
+    void openMyDay() => context.push('/routine');
+    final todayPanes = gazeGrid.section(
+      columns: 2,
+      expand: false,
+      entries: [
+        (
+          tile: TodayMoodPane(onOpen: openMood),
+          cell: GazeTileCell(label: 'Mood Check-In', onActivate: openMood),
+        ),
+        (
+          tile: TodayDayPane(onOpen: openMyDay),
+          cell: GazeTileCell(label: 'My Day', onActivate: openMyDay),
+        ),
+      ],
+    );
+
     return GazeHomeRegistrar(
       active: gazeGrid.active,
       rows: gazeGrid.rows,
@@ -167,7 +251,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
                         child: Row(
                           children: [
-                            ProfileAvatar(profile: profile, radius: 24),
+                            appBarCells.first,
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -207,63 +291,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             // Connectivity indicator (visible only when offline)
                             const ConnectivityIndicator(),
-                            // Shop + Settings — one gaze row so the D-pad can
-                            // reach them (they're the topmost tile row).
-                            ...gazeGrid.section(
-                              columns: 2,
-                              expand: false,
-                              entries: [
-                                if (ref.watch(
-                                  gamificationFeatureProvider(
-                                    GamificationFeature.shop,
-                                  ),
-                                ))
-                                  (
-                                    // Labelled through `tooltip`, not a
-                                    // wrapping `Semantics`. IconButton already
-                                    // publishes its own node, so wrapping it
-                                    // produced a second node of identical
-                                    // bounds with no label -- an "unnamed
-                                    // item" a reader could land on instead of
-                                    // the real one.
-                                    tile: IconButton(
-                                      tooltip: 'Open star shop',
-                                      onPressed: () => context.push('/shop'),
-                                      icon: const Icon(Icons.store_rounded),
-                                      iconSize: 28,
-                                      color: hc.textSecondary,
-                                    ).animate().fadeIn(delay: 190.ms),
-                                    cell: GazeTileCell(
-                                      label: 'Star Shop',
-                                      onActivate: () => context.push('/shop'),
-                                    ),
-                                  ),
-                                (
-                                  tile:
-                                      IconButton(
-                                            tooltip: 'Open settings',
-                                            onPressed: () =>
-                                                context.push('/settings'),
-                                            icon: const Icon(
-                                              Icons.settings_rounded,
-                                            ),
-                                            iconSize: 28,
-                                            color: hc.textSecondary,
-                                          )
-                                          .animate()
-                                          .fadeIn(delay: 200.ms)
-                                          .rotate(
-                                            begin: -0.1,
-                                            end: 0,
-                                            duration: 500.ms,
-                                          ),
-                                  cell: GazeTileCell(
-                                    label: 'Settings',
-                                    onActivate: () => context.push('/settings'),
-                                  ),
-                                ),
-                              ],
-                            ),
+                            // Shop + Settings, the right-hand end of the same
+                            // gaze row the profile button opens.
+                            ...appBarCells.skip(1),
                           ],
                         ),
                       ),
@@ -285,184 +315,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
 
-                    // ─── Player Mode CTA: upgrade to a class ─
-                    if (profile?.isGuestPlayer == true)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
-                          child: gazeGrid
-                              .section(
-                                columns: 1,
-                                expand: false,
-                                entries: [
-                                  (
-                                    tile:
-                                        _JoinClassCta(
-                                          onJoin: () =>
-                                              context.push('/join-class'),
-                                        ).animate().fadeIn(
-                                          duration: 400.ms,
-                                          delay: 180.ms,
-                                        ),
-                                    cell: GazeTileCell(
-                                      label: 'Join a class',
-                                      onActivate: () =>
-                                          context.push('/join-class'),
-                                    ),
-                                  ),
-                                ],
-                              )
-                              .first,
-                        ),
-                      ),
-
-                    // ─── Live Class CTA: join the live activity ─
-                    // Shown when the learner belongs to a classroom or home group,
-                    // so they can jump into a teacher/parent-run live session and
-                    // raise their hand.
-                    if (profile != null &&
-                        !profile.isGuestPlayer &&
-                        (profile.classroomId != null ||
-                            profile.homeGroupId != null))
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
-                          child: gazeGrid
-                              .section(
-                                columns: 1,
-                                expand: false,
-                                entries: [
-                                  (
-                                    tile:
-                                        _LiveClassCta(
-                                          onTap: () =>
-                                              context.push('/live-session'),
-                                        ).animate().fadeIn(
-                                          duration: 400.ms,
-                                          delay: 180.ms,
-                                        ),
-                                    cell: GazeTileCell(
-                                      label: 'Join the class',
-                                      onActivate: () =>
-                                          context.push('/live-session'),
-                                    ),
-                                  ),
-                                ],
-                              )
-                              .first,
-                        ),
-                      ),
-
-                    // ─── XP & Level Bar ───────────────────
+                    // ─── Today: Mood Check-In + My Day ────
+                    // The learner's own day, directly under their numbers and
+                    // above everything the app wants them to do. Both halves
+                    // show live state (today's face, today's routine
+                    // progress), which is the whole reason they earned the
+                    // spot the XP bar and the Player Profile button used to
+                    // take.
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
-                        child: XpLevelBar(progress: progress)
-                            .animate()
-                            .fadeIn(duration: 400.ms, delay: 175.ms)
-                            .slideY(begin: 0.08, end: 0),
-                      ),
-                    ),
-
-                    // ─── Player Profile / Gamification Dashboard ──
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
-                        child: gazeGrid
-                            .section(
-                              columns: 1,
-                              expand: false,
-                              entries: [
-                                (
-                                  cell: GazeTileCell(
-                                    label: 'Player Profile',
-                                    onActivate: () =>
-                                        context.push('/gamification-dashboard'),
-                                  ),
-                                  tile: Semantics(
-                                    button: true,
-                                    label:
-                                        'View your Player Profile with stats and rewards',
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () => context.push(
-                                          '/gamification-dashboard',
-                                        ),
-                                        borderRadius: BorderRadius.circular(16),
-                                        child: Ink(
-                                          decoration: BoxDecoration(
-                                            gradient: HCColor.of(
-                                              context,
-                                            ).heroGradient,
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 14,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              const Text(
-                                                '🎮',
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontSize: 24,
-                                                  height: 1.0,
-                                                  leadingDistribution:
-                                                      TextLeadingDistribution
-                                                          .even,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      'Player Profile',
-                                                      style: AppTypography
-                                                          .labelLarge
-                                                          .copyWith(
-                                                            color: hc
-                                                                .textOnPrimary,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                    ),
-                                                    Text(
-                                                      'View your stats, rewards & achievements',
-                                                      style: AppTypography
-                                                          .bodySmall
-                                                          .copyWith(
-                                                            color: hc
-                                                                .textOnPrimary
-                                                                .withValues(
-                                                                  alpha: 0.7,
-                                                                ),
-                                                          ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              Icon(
-                                                Icons.chevron_right_rounded,
-                                                color: hc.textOnPrimary
-                                                    .withValues(alpha: 0.7),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ).animate().fadeIn(duration: 400.ms, delay: 185.ms).slideY(begin: 0.08, end: 0),
-                                ),
-                              ],
-                            )
-                            .first,
+                        padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
+                        child:
+                            TodayCard(
+                                  mood: todayPanes.first,
+                                  day: todayPanes.last,
+                                )
+                                .animate()
+                                .fadeIn(duration: 400.ms, delay: 175.ms)
+                                .slideY(begin: 0.08, end: 0),
                       ),
                     ),
 
@@ -840,10 +710,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final stickersOn = ref.watch(
       gamificationFeatureProvider(GamificationFeature.stickers),
     );
+    final profile = ref.watch(profileProvider);
     // Player profiles focus on gameplay + PWD-awareness learning, so the
     // teacher/parent-style tiles (assessments, analytics, portfolio) are
     // hidden for them — those belong to the Classroom / Family-group flows.
-    final isPlayer = ref.watch(profileProvider)?.isPlayerMode ?? false;
+    final isPlayer = profile?.isPlayerMode ?? false;
 
     GazeTileEntry tile({
       required String emoji,
@@ -1060,6 +931,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         icon: Icons.people_rounded,
         color: AppColors.sectionSocial,
       ),
+
+      // ─── Class CTAs ───────────────────────────────
+      // Filed under the section they belong to rather than floating loose at
+      // the top of Home. They are class membership, which is exactly what
+      // this group is about, and up top they pushed the learner's own day
+      // below the fold for the one profile shape that has a class at all.
+
+      // Player Mode: upgrade to a class.
+      if (profile?.isGuestPlayer == true)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
+            child: gaze
+                .section(
+                  columns: 1,
+                  expand: false,
+                  entries: [
+                    (
+                      tile: _JoinClassCta(
+                        onJoin: () => context.push('/join-class'),
+                      ),
+                      cell: GazeTileCell(
+                        label: 'Join a class',
+                        onActivate: () => context.push('/join-class'),
+                      ),
+                    ),
+                  ],
+                )
+                .first,
+          ),
+        ),
+
+      // Join the live activity a teacher or parent is running. Shown when the
+      // learner belongs to a classroom or home group.
+      if (profile != null &&
+          !profile.isGuestPlayer &&
+          (profile.classroomId != null || profile.homeGroupId != null))
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
+            child: gaze
+                .section(
+                  columns: 1,
+                  expand: false,
+                  entries: [
+                    (
+                      tile: _LiveClassCta(
+                        onTap: () => context.push('/live-session'),
+                      ),
+                      cell: GazeTileCell(
+                        label: 'Join the class',
+                        onActivate: () => context.push('/live-session'),
+                      ),
+                    ),
+                  ],
+                )
+                .first,
+          ),
+        ),
+
       _tileGridSliver(
         context,
         padding: padding,
@@ -1130,15 +1061,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         tiles: gaze.section(
           columns: columns,
           entries: [
-            tile(
-              emoji: '😊',
-              label: 'Mood Check-In',
-              gradient: const [
-                AppColors.bannerMoodStart,
-                AppColors.bannerMoodEnd,
-              ],
-              onTap: () => context.push('/mood-check-in'),
-            ),
+            // Mood Check-In and My Day are not here any more: they are the
+            // Today card at the top of Home, where they show live state
+            // instead of being two more dead tiles at the bottom of the page.
             if (stickersOn)
               tile(
                 emoji: '🌟',
@@ -1152,19 +1077,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 badgeCount: unseenStickers,
                 onTap: () => context.push('/sticker-album'),
               ),
-            // The learner's own daily routine, set by their teacher or
-            // parent. First in the section rather than last: on a school
-            // morning it is the tile they open, and on most days it is the
-            // only one here with something waiting in it.
-            tile(
-              emoji: '🗓️',
-              label: 'My Day',
-              gradient: const [
-                AppColors.bannerRoutineStart,
-                AppColors.bannerRoutineEnd,
-              ],
-              onTap: () => context.push('/routine'),
-            ),
             tile(
               emoji: '📓',
               label: 'My Notebook',

@@ -129,6 +129,8 @@ void main() {
       'progress',
       'custom_cards',
       'sessions',
+      'routines',
+      'routine_logs',
       'goals',
       'notebook',
       'mood_entries',

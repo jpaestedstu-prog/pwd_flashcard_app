@@ -37,6 +37,7 @@ Future<void> _pump(
   List<Routine>? routines,
   Set<String> completed = const <String>{},
   Size size = const Size(800, 1400),
+  String? classroomId = 'routine-test-class',
 }) async {
   tester.view.physicalSize = size * 2.0;
   tester.view.devicePixelRatio = 2.0;
@@ -49,6 +50,7 @@ Future<void> _pump(
       disability: disability,
       routines: routines,
       completed: completed,
+      classroomId: classroomId,
     ),
   ));
   await _settle(tester);
@@ -214,6 +216,26 @@ void main() {
     expect(find.text('No routine yet'), findsOneWidget);
     expect(
       find.textContaining('Your teacher or parent can set up'),
+      findsOneWidget,
+    );
+    await _unmount(tester);
+  });
+
+  testWidgets('a Player with nobody to ask is told what My Day is for', (
+    tester,
+  ) async {
+    // A Player profile belongs to no class and no family group. "Your teacher
+    // or parent can set this up" points at nobody, and a promise nobody can
+    // keep is worse than an honest blank — so the empty state explains the
+    // feature and names the way in instead.
+    await _pump(tester, routines: const [], classroomId: null);
+    expect(find.text('No routine yet'), findsOneWidget);
+    expect(
+      find.textContaining('Your teacher or parent can set up'),
+      findsNothing,
+    );
+    expect(
+      find.textContaining('Join a class or a family group'),
       findsOneWidget,
     );
     await _unmount(tester);

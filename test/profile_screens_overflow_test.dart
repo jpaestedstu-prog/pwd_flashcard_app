@@ -59,6 +59,8 @@ void main() {
       'progress',
       'custom_cards',
       'sessions',
+      'routines',
+      'routine_logs',
       'classrooms',
       'classroom_members',
       'home_groups',

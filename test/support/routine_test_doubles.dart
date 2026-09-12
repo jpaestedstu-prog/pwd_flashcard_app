@@ -20,10 +20,16 @@ class StubRoutineProfileNotifier extends ProfileNotifier {
   StubRoutineProfileNotifier({
     required this.role,
     required this.disability,
+    this.classroomId = 'routine-test-class',
   });
 
   final UserRole role;
   final DisabilityType disability;
+
+  /// Enrolled by default: a routine is something an educator sets, so the
+  /// realistic learner in these tests belongs to a class. Pass null for the
+  /// Player shape — nobody to set one, and nobody to be told to ask.
+  final String? classroomId;
 
   @override
   UserProfile? build() => UserProfile(
@@ -31,6 +37,7 @@ class StubRoutineProfileNotifier extends ProfileNotifier {
         name: 'Routine Tester',
         role: role,
         disabilityType: disability,
+        classroomId: classroomId,
         createdAt: DateTime(2026),
       );
 }
@@ -98,11 +105,16 @@ List<Override> routineOverrides({
   Set<String> completed = const <String>{},
   String profileId = kTestProfileId,
   DateTime? today,
+  String? classroomId = 'routine-test-class',
 }) {
   final day = today ?? DateTime.now();
   return [
     profileProvider.overrideWith(
-      () => StubRoutineProfileNotifier(role: role, disability: disability),
+      () => StubRoutineProfileNotifier(
+        role: role,
+        disability: disability,
+        classroomId: classroomId,
+      ),
     ),
     routineListProvider(profileId).overrideWith(
       (ref) => Stream.value(routines ?? [buildTestRoutine()]),

@@ -16,6 +16,8 @@ import 'core/services/action_clip_service.dart';
 import 'core/services/active_time_tracker.dart';
 import 'core/services/alarm_scheduler.dart';
 import 'features/routine/services/routine_reminder_scheduler.dart';
+import 'features/routine/providers/today_routine_provider.dart';
+import 'features/routine/widgets/routine_check_in_watcher.dart';
 import 'core/services/flashcard_photo_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/analytics_service.dart';
@@ -313,10 +315,25 @@ class FlashLearnApp extends ConsumerWidget {
             final ctx = rootNavigatorKey.currentContext;
             if (ctx == null) return;
             try {
-              // Straight to the learner's own day — the notification carries
-              // the step id, but `/routine` has no path parameter on purpose
-              // (a learner must never reach another learner's day), and the
-              // day screen already highlights the next incomplete step.
+              // A "Check-in time" notification opens the check-in itself:
+              // Home, with the pop-up already up (the watcher in the learner
+              // shell sees the request and shows it). The learner tapped
+              // "Please do your check-in now" — making them find the step
+              // again would undo the tap.
+              final isCheckIn = ref
+                  .read(todayRoutineProvider)
+                  .steps
+                  .any((s) => s.id == stepId && s.activity.isMoodCheckIn);
+              if (isCheckIn) {
+                ref.read(pendingCheckInRequestProvider.notifier).state = stepId;
+                GoRouter.of(ctx).go('/home');
+                return;
+              }
+              // Any other step: straight to the learner's own day — the
+              // notification carries the step id, but `/routine` has no path
+              // parameter on purpose (a learner must never reach another
+              // learner's day), and the day screen already highlights the
+              // next incomplete step.
               GoRouter.of(ctx).go('/routine');
             } catch (e, s) {
               ErrorHandler.report(e, s, 'OnRoutineReminder:silent');

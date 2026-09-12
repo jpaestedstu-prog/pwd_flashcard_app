@@ -26,9 +26,20 @@ enum RoutineActivity {
   playTime,
   exercise,
   bedtime,
-  custom;
+  custom,
+
+  /// A scheduled moment to say how the learner feels — "Check-in time".
+  ///
+  /// Appended *after* [custom] because activities persist by index; putting it
+  /// anywhere else would re-label every stored custom step. Completing this
+  /// step *is* answering the check-in: it cannot be ticked off without a face,
+  /// because a check-in marked done with no answer recorded nothing.
+  moodCheckIn;
 
   bool get isCustom => this == RoutineActivity.custom;
+
+  /// Whether this step is a check-in rather than a task.
+  bool get isMoodCheckIn => this == RoutineActivity.moodCheckIn;
 
   /// Safe decode for a persisted index — an unknown value (a routine written
   /// by a newer build, synced down to an older one) degrades to [custom]
@@ -118,6 +129,16 @@ class RoutineStep {
   /// shown to the learner today.
   final bool enabled;
 
+  /// Ask the learner how they feel straight after ticking this step off —
+  /// "How do you feel after brushing your teeth?".
+  ///
+  /// Per step, and set by the educator, because *which* moments are worth
+  /// asking about is their call: a morning routine where waking up is the
+  /// hard part wants the question there, not after every one of six steps.
+  /// Meaningless on a [RoutineActivity.moodCheckIn] step, which is a question
+  /// already.
+  final bool askMood;
+
   const RoutineStep({
     required this.id,
     required this.activity,
@@ -136,9 +157,14 @@ class RoutineStep {
     this.signWord = '',
     this.remindMinutesBefore = 0,
     this.enabled = true,
+    this.askMood = false,
   });
 
   bool get isScheduled => hour != null && minute != null;
+
+  /// Whether completing this step should ask how the learner feels. A
+  /// check-in step never does: it already asked.
+  bool get asksMoodAfter => askMood && !activity.isMoodCheckIn;
 
   bool get hasTimer => durationMinutes > 0;
 
@@ -181,6 +207,7 @@ class RoutineStep {
     String? signWord,
     int? remindMinutesBefore,
     bool? enabled,
+    bool? askMood,
   }) {
     return RoutineStep(
       id: id ?? this.id,
@@ -200,6 +227,7 @@ class RoutineStep {
       signWord: signWord ?? this.signWord,
       remindMinutesBefore: remindMinutesBefore ?? this.remindMinutesBefore,
       enabled: enabled ?? this.enabled,
+      askMood: askMood ?? this.askMood,
     );
   }
 
@@ -230,6 +258,7 @@ class RoutineStep {
         'sign_word': signWord,
         'remind_minutes_before': remindMinutesBefore,
         'enabled': enabled,
+        'ask_mood': askMood,
       };
 
   factory RoutineStep.fromJson(Map<String, dynamic> json) {
@@ -264,6 +293,9 @@ class RoutineStep {
       remindMinutesBefore:
           (json['remind_minutes_before'] as int?)?.clamp(0, 60) ?? 0,
       enabled: (json['enabled'] as bool?) ?? true,
+      // Absent on every step written before per-step check-ins existed, and
+      // on any written by an older build — both mean "don't ask".
+      askMood: (json['ask_mood'] as bool?) ?? false,
     );
   }
 }

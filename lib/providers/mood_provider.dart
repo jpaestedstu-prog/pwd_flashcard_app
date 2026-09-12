@@ -31,10 +31,18 @@ class MoodNotifier extends StateNotifier<List<MoodEntry>> {
   /// [MoodContext.storageKey], which is what the Mood Insights dashboard's
   /// "Mood by Activity" chart reads — before contexts were written, every
   /// entry landed in a single `general` bucket and that chart was one bar.
+  ///
+  /// [routineStepId], [routineActivity] and [routineStepTitle] tie the
+  /// check-in to one step of "My Day" — the step just ticked, or a scheduled
+  /// check-in step — so the answer can later be read as "how brushing teeth
+  /// felt" rather than just "how the learner felt at 7am".
   Future<MoodEntry> addMood({
     required MoodType mood,
     String? note,
     MoodContext context = MoodContext.general,
+    String? routineStepId,
+    int? routineActivity,
+    String? routineStepTitle,
   }) async {
     final entry = MoodEntry(
       id: _uuid.v4(),
@@ -43,6 +51,9 @@ class MoodNotifier extends StateNotifier<List<MoodEntry>> {
       note: note,
       timestamp: DateTime.now(),
       activityContext: context.storageKey,
+      routineStepId: routineStepId,
+      routineActivity: routineActivity,
+      routineStepTitle: routineStepTitle,
     );
     state = [...state, entry];
     await HiveService.saveMoodEntries(profileId, state);
