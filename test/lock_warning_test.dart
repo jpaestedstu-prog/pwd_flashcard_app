@@ -473,6 +473,37 @@ void main() {
       expect(find.text('5 minutes left'), findsNothing);
     });
 
+    testWidgets('shows a warning that was already running when it opened',
+        (tester) async {
+      // The app launched, or the learner was switched in, three minutes
+      // before a lock: nothing changes until the count ticks down, and a
+      // one-minute warning would never change at all before the lock.
+      final announcer = RecordingAnnouncer();
+      final warning = ValueNotifier<LockWarning?>(
+        const LockWarning(
+          minutesLeft: 1,
+          cause: LockWarningCause.routineStep,
+          stepId: 'dress',
+          stepTitle: 'Getting Dressed',
+        ),
+      );
+      addTearDown(warning.dispose);
+
+      await _pumpGate(tester, announcer: announcer, warning: warning);
+      await _settle(tester);
+
+      expect(find.text('1 minute left'), findsOneWidget);
+      expect(find.textContaining('Getting Dressed'), findsOneWidget);
+      expect(announcer.calls, hasLength(1));
+
+      // Dismissed, it stays dismissed however often the gate rebuilds.
+      await tester.tap(find.byIcon(Icons.close_rounded));
+      await _settle(tester);
+      await tester.pump(const Duration(seconds: 13));
+      expect(find.text('1 minute left'), findsNothing);
+      expect(announcer.calls, hasLength(1));
+    });
+
     testWidgets('retires itself so it never sits over the activity',
         (tester) async {
       final warning = ValueNotifier<LockWarning?>(null);

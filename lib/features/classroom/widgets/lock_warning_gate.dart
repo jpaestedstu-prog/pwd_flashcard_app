@@ -96,6 +96,13 @@ class _LockWarningGateState extends ConsumerState<LockWarningGate> {
         lockWarningProvider(profile.id),
         (previous, next) => _onWarningChanged(previous, next, profile),
       );
+
+      // `listen` only reports changes. A warning that is already running
+      // when this profile opens — the app launched, or the learner was
+      // switched in, inside the window — would otherwise stay silent until
+      // the minute count next ticks down, and a one-minute warning never
+      // would. The seen set keeps this from repeating a banner.
+      if (_showing == null) _showIfAlreadyWarning(profile.id);
     }
 
     final showing = _showing;
@@ -152,6 +159,18 @@ class _LockWarningGateState extends ConsumerState<LockWarningGate> {
         speakFilipino: _isFilipino,
       ),
     );
+  }
+
+  /// Shows a warning that was already current before [build] started
+  /// listening. Runs after the frame, so it never calls `setState` in build.
+  void _showIfAlreadyWarning(String profileId) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _showing != null) return;
+      final profile = ref.read(profileProvider);
+      if (profile == null || profile.id != profileId) return;
+      final current = ref.read(lockWarningProvider(profileId));
+      if (current != null) _onWarningChanged(null, current, profile);
+    });
   }
 
   void _dismiss() {

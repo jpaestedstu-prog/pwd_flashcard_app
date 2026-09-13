@@ -483,7 +483,10 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
       children: [
         if (needsHelp) ...[
-          _NeedsHelpCard(filipino: l),
+          _NeedsHelpCard(
+            filipino: l,
+            onAsk: _busy ? null : () => _askGrownUp(step, profile.id),
+          ),
           const SizedBox(height: 14),
         ],
         // ── What is happening, in one line, before anything else ──
@@ -635,40 +638,23 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
           ),
         ),
         const SizedBox(height: 10),
-        // Once the step needs help, asking an adult stops being the quiet
-        // option at the bottom and becomes a proper button: the learner has
-        // been here a while, and the way out should be easy to see.
-        if (needsHelp)
-          SizedBox(
-            height: 56,
-            child: FilledButton.icon(
-              onPressed: _busy ? null : () => _askGrownUp(step, profile.id),
-              icon: const Icon(Icons.pan_tool_alt_rounded, size: 22),
-              label: Text(
-                l ? 'Tanungin ang nakatatanda' : 'Ask a grown-up',
-                maxLines: 2,
-                textAlign: TextAlign.center,
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.warning,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          )
-        else
-          TextButton.icon(
-            onPressed: _busy ? null : () => _askGrownUp(step, profile.id),
-            icon: const Icon(Icons.pan_tool_alt_rounded, size: 20),
-            label: Text(
-              l ? 'Tanungin ang nakatatanda' : 'Ask a grown-up',
-              maxLines: 2,
-              textAlign: TextAlign.center,
-            ),
-            style: TextButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-              foregroundColor: hc.textSecondary,
-            ),
+        // The quiet way to an adult, always here. Once the step needs help,
+        // the card at the top carries a proper button for the same thing —
+        // this one sits below the fold on a tablet, exactly where a learner
+        // who has been stuck for a while will not look.
+        TextButton.icon(
+          onPressed: _busy ? null : () => _askGrownUp(step, profile.id),
+          icon: const Icon(Icons.pan_tool_alt_rounded, size: 20),
+          label: Text(
+            l ? 'Tanungin ang nakatatanda' : 'Ask a grown-up',
+            maxLines: 2,
+            textAlign: TextAlign.center,
           ),
+          style: TextButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            foregroundColor: hc.textSecondary,
+          ),
+        ),
       ],
     );
 
@@ -929,9 +915,13 @@ class _ReleasedNotice extends StatelessWidget {
 /// "Still waiting on this one — that is okay." The learner's side of an
 /// escalation: warm, never a scolding, and pointing at the adult.
 class _NeedsHelpCard extends StatelessWidget {
-  const _NeedsHelpCard({required this.filipino});
+  const _NeedsHelpCard({required this.filipino, required this.onAsk});
 
   final bool filipino;
+
+  /// Opens the adult gate. The card says "ask a grown-up", so it offers the
+  /// way to do it right there, at the top of the screen.
+  final VoidCallback? onAsk;
 
   @override
   Widget build(BuildContext context) {
@@ -942,22 +932,26 @@ class _NeedsHelpCard extends StatelessWidget {
         ? 'Ayos lang. Kung may hadlang, magtanong sa nakatatanda para sa '
             'tulong.'
         : 'That is okay. If something is in the way, ask a grown-up to help.';
-    return Semantics(
-      container: true,
-      liveRegion: true,
-      label: '$title. $body',
-      child: ExcludeSemantics(
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.warning.withValues(alpha: hc.hc ? 0.3 : 0.16),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: hc.hc ? hc.primary : AppColors.warning,
-              width: 2,
-            ),
-          ),
-          child: Row(
+    final ask = l ? 'Tanungin ang nakatatanda' : 'Ask a grown-up';
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: hc.hc ? 0.3 : 0.16),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: hc.hc ? hc.primary : AppColors.warning,
+          width: 2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            container: true,
+            liveRegion: true,
+            label: '$title. $body',
+            child: ExcludeSemantics(
+              child: Row(
             children: [
               const Text(
                 '💛',
@@ -988,7 +982,22 @@ class _NeedsHelpCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 56,
+            child: FilledButton.icon(
+              onPressed: onAsk,
+              icon: const Icon(Icons.pan_tool_alt_rounded, size: 22),
+              label: Text(ask, maxLines: 2, textAlign: TextAlign.center),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.warning,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
