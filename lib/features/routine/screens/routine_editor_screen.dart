@@ -13,6 +13,7 @@ import '../../../widgets/rich_empty_states.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_templates.dart';
+import '../providers/routine_lock_skip_provider.dart';
 import '../services/routine_service.dart';
 import '../widgets/routine_ownership_banner.dart';
 import '../widgets/routine_step_card.dart';
@@ -284,10 +285,12 @@ class RoutineEditorScreen extends ConsumerWidget {
         title: Text(l ? 'Ulitin ang araw?' : 'Start today over?'),
         content: Text(
           l
-              ? 'Aalisin ang lahat ng markang tapos para sa araw na ito. Hindi '
-                  'mababago ang routine mismo.'
-              : 'Every tick for today will be cleared. The routine itself is '
-                  'not changed.',
+              ? 'Aalisin ang lahat ng markang tapos para sa araw na ito, pati '
+                  'ang mga hakbang na pinayagang laktawan. Hindi mababago ang '
+                  'routine mismo.'
+              : 'Every tick for today will be cleared, and any step an adult '
+                  'waved past goes back to locking. The routine itself is not '
+                  'changed.',
         ),
         actions: [
           TextButton(
@@ -304,6 +307,15 @@ class RoutineEditorScreen extends ConsumerWidget {
     if (ok != true) return;
     final today = DateTime.now();
     await const RoutineService().resetDay(childProfileId, today);
+    // The undo for "Ask a grown-up". A skip lasts the whole day and is
+    // granted by a maths question a distracted adult can answer by mistake,
+    // so there has to be a way back — and "start today over" is already the
+    // place an educator goes to say *none of today counted*. Without this the
+    // only way to re-arm a lock somebody excused at 6:50 was to wait for
+    // midnight.
+    await ref
+        .read(routineLockSkipProvider(childProfileId).notifier)
+        .clear();
     ref.invalidate(routineDayLogProvider(routineDayKey(childProfileId, today)));
   }
 
@@ -719,6 +731,37 @@ class _RoutineCard extends StatelessWidget {
               '${formatDays(routine.daysOfWeek, filipino: l)}',
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),
+            // A routine that holds the learner's device says so on its card.
+            // This is the strongest thing an educator can switch on here and
+            // it lives two screens deep; without a mark at this level the
+            // only way to know is to open every routine and look.
+            if (routine.lockingSteps.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.lock_clock_rounded,
+                    size: 15,
+                    color: AppColors.warning,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      l
+                          ? 'Nagla-lock sa ${routine.lockingSteps.length} '
+                                'hakbang'
+                          : 'Locks the app at '
+                                '${routine.lockingSteps.length} '
+                                '${routine.lockingSteps.length == 1 ? 'step' : 'steps'}',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: hc.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 10),
             Wrap(
               spacing: 6,

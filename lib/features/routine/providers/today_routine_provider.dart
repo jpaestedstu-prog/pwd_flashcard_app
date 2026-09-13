@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/routine_provider.dart';
 import '../models/routine_catalog.dart';
@@ -78,6 +79,34 @@ class TodayRoutine {
   }
 }
 
+/// Whether "My Day" applies to the signed-in profile at all.
+///
+/// The one place the two halves of this feature are told apart:
+///
+///  * A **Student or Child** always has it. Their routine is a Teacher's or a
+///    Parent's instrument — it can hold the device at each step — so there is
+///    deliberately no learner-facing switch to turn it off. Turning it off is
+///    the educator's job, in the routine itself.
+///  * A **Player (With Progress)** has it when they say so:
+///    `AppSettings.routineEnabled`, on their own Settings screen. Nobody sets
+///    a routine for a Player, nothing locks, and a checklist they did not ask
+///    for is just clutter on their home.
+///  * A **guest Player** never has it. Nothing a guest does is persisted past
+///    the session and their home is one button, so there is no day to plan and
+///    nowhere to show it.
+///  * An **educator** does not have a My Day of their own. Previewing a
+///    learner's is a different thing and goes straight to
+///    `routineListProvider` — see `RoutineScreen`, which never consults this.
+final routineFeatureProvider = Provider<bool>((ref) {
+  final profile = ref.watch(profileProvider);
+  if (profile == null) return false;
+  if (profile.isGuestPlayer) return false;
+  if (profile.role == UserRole.player) {
+    return ref.watch(settingsProvider.select((s) => s.routineEnabled));
+  }
+  return profile.role.isEnrollableLearner;
+});
+
 /// The signed-in learner's day, live.
 ///
 /// Rebuilds when a routine changes, when a step is ticked, and — through
@@ -87,6 +116,11 @@ class TodayRoutine {
 final todayRoutineProvider = Provider<TodayRoutine>((ref) {
   final profile = ref.watch(profileProvider);
   if (profile == null) return TodayRoutine.none;
+  // A Player who turned My Day off has an empty day, not a hidden one: every
+  // surface that reads this — the Home card, the screen, the notification tap
+  // handler — then agrees there is nothing to show, without each of them
+  // having to remember the setting.
+  if (!ref.watch(routineFeatureProvider)) return TodayRoutine.none;
 
   final today = DateTime.now();
   // `valueOrNull` throughout: no routine, a mirror that has not opened, and a

@@ -34,6 +34,12 @@ class RoutinePopupSchedule {
   /// was closed all morning — the **earliest** wins: one pop-up at a time,
   /// oldest first.
   ///
+  /// [skippedStepIds] are the steps an adult waved past for today on the
+  /// routine lock (`RoutineLockSkips`). An adult who has just excused a step
+  /// from holding the device has excused it, full stop — asking for the same
+  /// step again in a pop-up two seconds later would undo their decision and
+  /// make the gate look broken.
+  ///
   /// [requestedStepId] is a tapped notification: the learner asked for this
   /// step, so it bypasses the clock, the freshness window and any snooze — but
   /// never the "already done" rule, and never names a step that is not
@@ -43,19 +49,26 @@ class RoutinePopupSchedule {
     required RoutineDayLog? log,
     required DateTime now,
     Map<String, DateTime> snoozedUntil = const {},
+    Set<String> skippedStepIds = const <String>{},
     String? requestedStepId,
   }) {
     bool done(RoutineStep s) => log?.isDone(s.id) ?? false;
 
     if (requestedStepId != null) {
       for (final s in todaysSteps) {
-        if (s.id == requestedStepId && s.isScheduled && !done(s)) return s;
+        if (s.id == requestedStepId &&
+            s.isScheduled &&
+            !done(s) &&
+            !skippedStepIds.contains(s.id)) {
+          return s;
+        }
       }
     }
 
     RoutineStep? earliest;
     for (final s in todaysSteps) {
       if (!s.isScheduled || done(s)) continue;
+      if (skippedStepIds.contains(s.id)) continue;
       final dueAt = DateTime(now.year, now.month, now.day, s.hour!, s.minute!);
       if (now.isBefore(dueAt)) continue;
       if (!s.activity.isMoodCheckIn && now.difference(dueAt) > taskFreshness) {

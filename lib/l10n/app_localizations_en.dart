@@ -2716,6 +2716,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingVocabReviewTitle => 'Vocab Review Reminder';
 
   @override
+  String get settingSectionMyDay => 'My Day';
+
+  @override
+  String get settingRoutineTitle => 'Routine';
+
+  @override
+  String get settingRoutineOnDesc =>
+      'My Day shows on your home — plan your day, step by step';
+
+  @override
+  String get settingRoutineOffDesc =>
+      'Turn on My Day to plan your day, step by step';
+
+  @override
   String get settingSectionData => 'Data';
 
   @override

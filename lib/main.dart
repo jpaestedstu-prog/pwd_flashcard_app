@@ -28,7 +28,9 @@ import 'core/services/sync_service.dart';
 import 'data/models/alarm_action.dart';
 import 'data/models/enums.dart';
 import 'data/models/models.dart';
+import 'core/services/lock_enforcer.dart';
 import 'features/classroom/widgets/lock_enforcer_gate.dart';
+import 'providers/lock_state_provider.dart';
 import 'features/classroom/widgets/lock_warning_gate.dart';
 import 'features/companion/widgets/companion_overlay.dart';
 import 'features/gamepad/widgets/gamepad_host.dart';
@@ -308,9 +310,26 @@ class FlashLearnApp extends ConsumerWidget {
             }),
           );
 
-          // Routine reminders. A visual schedule nobody is nudged toward is a
-          // schedule that gets forgotten, so the learner's own device raises
-          // one notification per scheduled step.
+        } else {
+          AlarmScheduler.onAlarmFired = null;
+          ActiveTimeTracker.stopActive();
+          AlarmScheduler.shutdown();
+        }
+      } catch (e, s) {
+        ErrorHandler.report(e, s, 'applyLifecycle:silent');
+      }
+    }
+
+    // ── Routine reminders ──
+    // Its own lifecycle, not part of [applyLifecycle], for two reasons: it
+    // runs for Players as well as Students and Children (a Player's My Day is
+    // a checklist, but a checklist nobody is nudged toward is a checklist that
+    // gets forgotten), and a Player can switch it off mid-session, which the
+    // profile listener alone would never notice.
+    void applyRoutineLifecycle() {
+      try {
+        final next = ref.read(profileProvider);
+        if (next != null && ref.read(routineFeatureProvider)) {
           RoutineReminderScheduler.onReminderTapped = (routineId, stepId) {
             final ctx = rootNavigatorKey.currentContext;
             if (ctx == null) return;
@@ -322,6 +341,17 @@ class FlashLearnApp extends ConsumerWidget {
               // find the step. They tapped "Please have your lunch now" —
               // making them hunt for it would undo the tap.
               //
+              // A step that is holding the device right now goes
+              // straight to its lock. The pop-up is deliberately NOT armed
+              // for it: the interstitial offers "Later", and offering
+              // "Later" for a step the app will not let the learner past is
+              // a promise the very next screen breaks.
+              final locked = ref.read(lockStateProvider(next.id));
+              if (locked is RoutineStepDue && locked.step.id == stepId) {
+                ref.read(pendingRoutinePopupProvider.notifier).state = null;
+                GoRouter.of(ctx).go('/routine-lock');
+                return;
+              }
               // A check-in opens on Home, because it is a question rather
               // than a chore; any other step opens on "My Day", so the rest
               // of the day is visible behind its pop-up. `/routine` takes no
@@ -347,20 +377,25 @@ class FlashLearnApp extends ConsumerWidget {
             }),
           );
         } else {
-          AlarmScheduler.onAlarmFired = null;
-          ActiveTimeTracker.stopActive();
-          AlarmScheduler.shutdown();
           RoutineReminderScheduler.onReminderTapped = null;
           RoutineReminderScheduler.shutdown();
         }
       } catch (e, s) {
-        ErrorHandler.report(e, s, 'applyLifecycle:silent');
+        ErrorHandler.report(e, s, 'applyRoutineLifecycle:silent');
       }
     }
 
-    // Apply once for the current value, then react to subsequent changes.
+    // Apply once for the current values, then react to subsequent changes.
     applyLifecycle(ref.read(profileProvider));
-    ref.listen(profileProvider, (_, next) => applyLifecycle(next));
+    applyRoutineLifecycle();
+    ref.listen(profileProvider, (_, next) {
+      applyLifecycle(next);
+      applyRoutineLifecycle();
+    });
+    // A Player turning My Day off has to cancel the pending notifications it
+    // already scheduled, or the feature they switched off keeps tapping them
+    // on the shoulder every morning.
+    ref.listen(routineFeatureProvider, (_, _) => applyRoutineLifecycle());
 
     // Session logging. This `watch` is the whole point of the line: a Riverpod
     // `Provider` is lazy, so until something reads it the tracker is never

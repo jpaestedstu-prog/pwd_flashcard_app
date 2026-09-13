@@ -41,6 +41,7 @@ import '../../messaging/providers/messaging_providers.dart';
 import '../../object_scan/word_hunt_entry.dart';
 import '../../stickers/widgets/sticker_sweep.dart';
 import '../widgets/home_tile.dart';
+import '../../routine/providers/today_routine_provider.dart';
 import '../widgets/today_card.dart';
 import '../../progress/models/category_mastery.dart';
 
@@ -203,14 +204,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // and the D-pad has to be able to land on each.
     void openMood() => context.push('/mood-check-in');
     void openMyDay() => context.push('/routine');
+    // A Player who turned Routine off in Settings loses the card *and* its
+    // gaze cell: leaving the cell behind would let a hands-free learner
+    // D-pad onto a tile that is not there and open a screen the router
+    // bounces them straight back from.
+    final showMyDay = ref.watch(routineFeatureProvider);
     final todayPanes = gazeGrid.section(
       columns: 1,
       expand: false,
       entries: [
-        (
-          tile: TodayDayPane(onOpen: openMyDay),
-          cell: GazeTileCell(label: 'My Day', onActivate: openMyDay),
-        ),
+        if (showMyDay)
+          (
+            tile: TodayDayPane(onOpen: openMyDay),
+            cell: GazeTileCell(label: 'My Day', onActivate: openMyDay),
+          ),
         (
           tile: TodayMoodPane(onOpen: openMood),
           cell: GazeTileCell(label: 'Mood Check-In', onActivate: openMood),
@@ -327,24 +334,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     // Two cards rather than one with two halves: the routine
                     // and the check-in are separate things, and each needs the
                     // full width for its own controls.
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(padding, 0, padding, 12),
-                        child: TodayCard(child: todayPanes.first)
-                            .animate()
-                            .fadeIn(duration: 400.ms, delay: 175.ms)
-                            .slideY(begin: 0.08, end: 0),
+                    // Indexed rather than `.first` / `.last`: with My Day
+                    // switched off there is one pane, and those two getters
+                    // would then name the *same* widget and draw the mood
+                    // card twice.
+                    for (var i = 0; i < todayPanes.length; i++)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            padding,
+                            0,
+                            padding,
+                            i == todayPanes.length - 1 ? 16 : 12,
+                          ),
+                          child: TodayCard(child: todayPanes[i])
+                              .animate()
+                              .fadeIn(
+                                duration: 400.ms,
+                                delay: (175 + i * 50).ms,
+                              )
+                              .slideY(begin: 0.08, end: 0),
+                        ),
                       ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(padding, 0, padding, 16),
-                        child: TodayCard(child: todayPanes.last)
-                            .animate()
-                            .fadeIn(duration: 400.ms, delay: 225.ms)
-                            .slideY(begin: 0.08, end: 0),
-                      ),
-                    ),
 
                     // ─── Daily Word Card (gated by dailyChallenge experiment flag) ──
                     if (ref.watch(

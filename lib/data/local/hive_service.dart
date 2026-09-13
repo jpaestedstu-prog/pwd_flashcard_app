@@ -336,6 +336,7 @@ class HiveService {
       dailyMissionSize: g('dailyMissionSize', 4),
       learningAssistEnabled: g('learningAssistEnabled', true),
       aiCompanionEnabled: g('aiCompanionEnabled', true),
+      routineEnabled: g('routineEnabled', true),
     );
   }
 
@@ -365,6 +366,7 @@ class HiveService {
     await p('dailyMissionSize', settings.dailyMissionSize);
     await p('learningAssistEnabled', settings.learningAssistEnabled);
     await p('aiCompanionEnabled', settings.aiCompanionEnabled);
+    await p('routineEnabled', settings.routineEnabled);
   }
 
   /// Generic setting getter — read any key from the settings box.

@@ -4,6 +4,13 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <!-- Lets a "My Day" step that locks the app raise its lock screen itself
+         when the tablet is asleep, instead of waiting in the notification
+         shade for a tap. Revoked by default on Android 14+ for apps that are
+         not phones or alarm clocks, so it is requested from the routine
+         builder when an educator turns locking on, and the notification
+         degrades to an ordinary heads-up alert when it is not granted. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
 
     <!-- TV Cast: the app runs a local HTTP server so TVs on the same
          Wi-Fi can poll it. INTERNET is required even for listening

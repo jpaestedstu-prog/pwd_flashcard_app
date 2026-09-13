@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../data/models/enums.dart' show UserRole;
 import '../../../core/widgets/pro_surface.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/profile_role_provider.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
+import '../services/routine_reminder_scheduler.dart';
 import '../services/routine_service.dart';
 import '../widgets/routine_media.dart';
 import '../widgets/routine_step_card.dart';
@@ -124,6 +127,12 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
     final hc = HCColor.of(context);
     final l = ref.watch(settingsProvider).locale == 'fil';
     final steps = _draft.editorSteps;
+    // App-locking is a supervision feature: only a Student or a Child can be
+    // held by one, so nobody else is even shown the switch. An unknown role
+    // (a routine for a learner this device has not cached) reads as "no",
+    // which is the safe way to be wrong.
+    final role = ref.watch(profileRoleProvider(_draft.childProfileId));
+    final canLock = role == UserRole.student || role == UserRole.child;
 
     return PopScope(
       canPop: !_dirty,
@@ -229,6 +238,43 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                         onChanged: (v) =>
                             _mutate(_draft.copyWith(remindersEnabled: v)),
                       ),
+                      // ── Hold the app until each step is done ──
+                      // The strongest switch on this screen, so it says
+                      // plainly what it does and it is offered only where it
+                      // is allowed: a Student or a Child, whose device an
+                      // adult is responsible for. A Player runs the same
+                      // routine as a checklist and is never locked out of
+                      // their own tablet.
+                      if (canLock) ...[
+                        const SizedBox(height: 4),
+                        ProSwitchTile(
+                          icon: Icons.lock_clock_rounded,
+                          label: l
+                              ? 'I-lock ang app tuwing may hakbang'
+                              : 'Lock the app at each step',
+                          caption: l
+                              ? 'Sa oras ng bawat hakbang, ito lang ang '
+                                  'makikita ng bata hanggang sabihin nilang '
+                                  'tapos na — tapos itatanong kung ano ang '
+                                  'nararamdaman nila. Katulad ng Alarm at '
+                                  'Time Limit, pero ang paggawa mismo ang '
+                                  'nag-aalis nito.'
+                              : 'At the time of each step the learner sees '
+                                  'only that step until they mark it done, '
+                                  'and is then asked how they feel. Like the '
+                                  'Alarm and Time Limit locks, except doing '
+                                  'the step is what clears it. Steps can be '
+                                  'exempted one at a time.',
+                          value: _draft.lockEnabled,
+                          onChanged: (v) =>
+                              _mutate(_draft.copyWith(lockEnabled: v)),
+                          accent: AppColors.warning,
+                        ),
+                        if (_draft.lockEnabled) ...[
+                          _LockSummary(routine: _draft, filipino: l),
+                          _OpenByItselfRow(filipino: l),
+                        ],
+                      ],
                     ],
                   ),
                 ),
@@ -339,6 +385,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
         context,
         step: fresh,
         filipino: l,
+        routineLocks: _draft.lockEnabled,
       );
       if (edited == null || !mounted) return;
       _mutate(_draft.copyWith(steps: [..._draft.steps, edited]));
@@ -352,6 +399,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
       context,
       step: step,
       filipino: l,
+      routineLocks: _draft.lockEnabled,
     );
     if (edited == null || !mounted) return;
     _replaceStep(edited);
@@ -795,6 +843,173 @@ class _ActivityPicker extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// What the lock switch will actually do, in the educator's own numbers.
+///
+/// A switch that says "lock the app" and a routine with three timed steps and
+/// two untimed ones do not obviously add up, and the educator is the person
+/// who has to explain it to a parent. This says the count out loud, and says
+/// so plainly when the answer is *nothing* — a routine with no clock times
+/// cannot lock anything, and an educator who flips the switch expecting it to
+/// should find that out here rather than tomorrow morning.
+class _LockSummary extends StatelessWidget {
+  const _LockSummary({required this.routine, required this.filipino});
+
+  final Routine routine;
+  final bool filipino;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final n = routine.lockingSteps.length;
+    final l = filipino;
+    final String message;
+    if (n == 0) {
+      message = l
+          ? 'Walang hakbang na may oras, kaya wala pang mala-lock. Bigyan ng '
+              'oras ang isang hakbang para gumana ito.'
+          : 'No step has a time yet, so nothing will lock. Give a step a time '
+              'to make this work.';
+    } else {
+      message = l
+          ? 'Mala-lock ang app sa $n na hakbang. Puwedeng i-off ang lock ng '
+              'isa-isang hakbang sa loob nito.'
+          : 'The app will lock at $n ${n == 1 ? 'step' : 'steps'}. Open a step '
+              'to exempt it.';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            n == 0 ? Icons.info_outline_rounded : Icons.lock_outline_rounded,
+            size: 16,
+            color: n == 0 ? AppColors.warning : hc.textSecondary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTypography.labelSmall.copyWith(
+                color: hc.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// The one thing standing between "the lock appears by itself" and "the lock
+/// waits in the notification shade".
+///
+/// Inside the app the lock is already automatic — it arrives on the ten-second
+/// clock and on every resume, with nothing to tap. The gap is the tablet that
+/// is *asleep* at 6:45: Android only lets an app raise its own screen through
+/// a full-screen intent, and since Android 14 that permission is revoked by
+/// default for anything that is not a phone or an alarm clock.
+///
+/// So it is asked for here, at the moment an educator turns locking on, rather
+/// than thrown at whoever opens the app. Nothing breaks without it — the
+/// notification simply stays a notification — which is exactly why it needs
+/// saying out loud instead of failing quietly.
+class _OpenByItselfRow extends StatefulWidget {
+  const _OpenByItselfRow({required this.filipino});
+
+  final bool filipino;
+
+  @override
+  State<_OpenByItselfRow> createState() => _OpenByItselfRowState();
+}
+
+class _OpenByItselfRowState extends State<_OpenByItselfRow> {
+  /// Null until asked. Android answers "already granted" without showing
+  /// anything on versions that do not restrict this, so a true here is not
+  /// proof the educator did something — only that nothing is in the way.
+  bool? _granted;
+  bool _asking = false;
+
+  Future<void> _ask() async {
+    setState(() => _asking = true);
+    final ok = await RoutineReminderScheduler.requestFullScreenPermission();
+    if (!mounted) return;
+    setState(() {
+      _asking = false;
+      _granted = ok;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final l = widget.filipino;
+    // iOS and the desktop test harness have no such permission, and a row
+    // offering to fix a problem that cannot exist there is worse than no row.
+    if (Theme.of(context).platform != TargetPlatform.android) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l
+                ? 'Habang bukas ang app, kusang lalabas ang lock sa oras ng '
+                    'hakbang. Kapag tulog ang tablet, kailangan ng Android ng '
+                    'pahintulot para mag-isang bumukas ang FlashLearn.'
+                : 'While the app is open the lock appears on its own at the '
+                    'step\u2019s time. For a sleeping tablet, Android needs '
+                    'permission before FlashLearn can open by itself.',
+            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: _asking ? null : _ask,
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: Text(
+                  l
+                      ? 'Payagang bumukas nang kusa'
+                      : 'Let it open by itself',
+                  maxLines: 2,
+                ),
+              ),
+              if (_granted != null) ...[
+                const SizedBox(width: 6),
+                Icon(
+                  _granted! ? Icons.check_circle_rounded : Icons.info_rounded,
+                  size: 18,
+                  color: _granted! ? AppColors.success : AppColors.warning,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    _granted!
+                        ? (l ? 'Pinayagan na' : 'Allowed')
+                        : (l
+                              ? 'Hindi pa \u2014 paalala pa rin ang darating'
+                              : 'Not yet \u2014 a reminder will still arrive'),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
+                    maxLines: 2,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }

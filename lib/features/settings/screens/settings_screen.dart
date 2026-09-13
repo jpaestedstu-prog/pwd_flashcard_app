@@ -41,6 +41,15 @@ class SettingsScreen extends ConsumerWidget {
     final isMonitor =
         profile?.role == UserRole.teacher || profile?.role == UserRole.parent;
 
+    // Player profiles own their My Day; Students and Children do not, because
+    // theirs is set by a Teacher or Parent and can hold the device at each
+    // step. A switch that let a supervised learner turn that off would be a
+    // switch that unlocks their own lock — see [routineFeatureProvider].
+    // A guest Player is excluded: nothing they do is kept past the session,
+    // so there is no day for them to plan and no switch worth offering.
+    final isPlayer =
+        profile?.role == UserRole.player && !(profile?.isGuestPlayer ?? false);
+
     // Watched (not read) so the switch below tracks the mode even when it is
     // turned off from a collapsed app bar elsewhere in the app.
     final fullscreen = ref.watch(fullscreenModeProvider);
@@ -642,6 +651,36 @@ class SettingsScreen extends ConsumerWidget {
                     activeTrackColor: AppColors.primary,
                     onChanged: (v) => settingsNotifier.update(
                       settings.copyWith(aiCompanionEnabled: v),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+              ],
+
+              // ─── My Day Section (Player profiles only) ──
+              if (isPlayer) ...[
+                _SectionHeader(title: l10n?.settingSectionMyDay ?? 'My Day'),
+                const SizedBox(height: 8),
+
+                _SettingsTile(
+                  icon: Icons.event_note_rounded,
+                  title: l10n?.settingRoutineTitle ?? 'Routine',
+                  subtitle: settings.routineEnabled
+                      ? l10n?.settingRoutineOnDesc ??
+                            'My Day shows on your home — plan your day, '
+                                'step by step'
+                      : l10n?.settingRoutineOffDesc ??
+                            'Turn on My Day to plan your day, step by step',
+                  onTap: () => ((v) => settingsNotifier.update(
+                    settings.copyWith(routineEnabled: v),
+                  ))(!(settings.routineEnabled)),
+                  toggled: settings.routineEnabled,
+                  trailing: Switch.adaptive(
+                    value: settings.routineEnabled,
+                    activeTrackColor: AppColors.primary,
+                    onChanged: (v) => settingsNotifier.update(
+                      settings.copyWith(routineEnabled: v),
                     ),
                   ),
                 ),

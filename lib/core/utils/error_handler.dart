@@ -105,6 +105,11 @@ class ErrorHandler {
     // not the one asking for it.
     'RoutineReminderScheduler:silent',
     'OnRoutineReminder:silent',
+    // Same class again: starting or tearing down the routine reminder
+    // scheduler on a profile switch or a My Day toggle is background work the
+    // learner did not ask for, and a plugin hiccup in it must not become a
+    // snackbar over whatever they were doing.
+    'applyRoutineLifecycle:silent',
     // Deferred startup work (main.dart), the same class as
     // `applyLifecycle:silent`: nobody asked for it and nothing is blocked on
     // it, so it must not greet a learner at launch.

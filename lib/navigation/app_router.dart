@@ -64,6 +64,7 @@ import '../features/communication_board/screens/board_template_builder_screen.da
 import '../features/daily_challenge/screens/daily_challenge_screen.dart';
 import '../features/parent/screens/child_alarms_screen.dart';
 import '../features/routine/screens/routine_editor_screen.dart';
+import '../features/routine/screens/routine_lock_screen.dart';
 import '../features/routine/screens/routine_screen.dart';
 import '../features/parent/screens/child_time_limits_screen.dart';
 import '../features/parent/screens/parent_dashboard_screen.dart';
@@ -148,6 +149,8 @@ import '../features/reports/screens/export_report_screen.dart';
 import '../features/tv_cast/screens/tv_cast_screen.dart';
 import '../core/services/engagement_tracker.dart';
 import '../core/utils/slow_motion.dart';
+import '../core/services/lock_enforcer.dart';
+import '../features/routine/providers/today_routine_provider.dart';
 import '../providers/lock_state_provider.dart';
 import 'app_page_transitions.dart';
 import 'bottom_nav_shell.dart';
@@ -223,6 +226,21 @@ const _lockExemptRoutes = ['/profile-switcher'];
 /// profile switcher a few seconds after "Switch account" got them there.
 bool isLockExemptRoute(String location) =>
     _lockExemptRoutes.any(location.startsWith);
+
+/// Where a learner must be sent for [reason].
+///
+/// Two lock screens, because the two locks are cleared in opposite ways. A
+/// time limit, an alarm or a study-hours schedule all end the session and are
+/// dismissed by an adult's PIN — `/time-up-lock`. A "My Day" step is dismissed
+/// by *doing it*, and handing a child a PIN pad when the answer is "go and
+/// brush your teeth" would teach them the wrong thing about their own routine
+/// — `/routine-lock`.
+String lockRouteFor(LockReason reason) =>
+    reason is RoutineStepDue ? '/routine-lock' : '/time-up-lock';
+
+/// Every route a locked learner can be parked on, so a redirect can tell
+/// "already handled" from "needs moving".
+const lockScreenRoutes = <String>['/time-up-lock', '/routine-lock'];
 
 /// Routes the Player (guest) role cannot reach. Player profiles never
 /// sync to Firestore, so anything that requires a remote roster, a
@@ -315,12 +333,31 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLearner =
           (role == UserRole.student || role == UserRole.child) &&
           !profile.isGuestPlayer;
-      if (isLearner &&
-          !isViewingAsStudent &&
-          location != '/time-up-lock' &&
-          !isLockExemptRoute(location)) {
+      if (isLearner && !isViewingAsStudent && !isLockExemptRoute(location)) {
         final reason = ref.read(lockStateProvider(profile.id));
-        if (reason != null) return '/time-up-lock';
+        // Compared against the *right* lock screen rather than "any lock
+        // screen": a routine step coming due while a child sits on the
+        // time's-up screen must not swap it out (the time limit still
+        // applies and outranks it), but a time limit crossed while the
+        // routine lock is up must.
+        if (reason != null) {
+          final target = lockRouteFor(reason);
+          if (location != target) return target;
+        }
+      }
+
+      // ── My Day off ────────────────────────────────────────
+      // A Player who turned Routine off in Settings has no My Day, so no
+      // route into it either — the card is gone from Home and a stale deep
+      // link (a notification tapped after the switch was flipped, the back
+      // stack, a restored session) must not put them somewhere the feature
+      // says does not exist. Players only: a Student's or Child's My Day is
+      // their educator's to switch off, in the routine itself.
+      if (role == UserRole.player &&
+          !isViewingAsStudent &&
+          location.startsWith('/routine') &&
+          !ref.read(routineFeatureProvider)) {
+        return '/home';
       }
 
       // Guest-player guard: hard block on anything that needs Firestore reads
@@ -644,6 +681,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => AppPageTransitions.fade(
           key: state.pageKey,
           child: const TimeUpLockScreen(),
+        ),
+      ),
+      // Routine Lock — the "My Day" half of the same idea. Full-screen and
+      // outside the shell like the time's-up lock, but the way out is doing
+      // the step rather than an adult's PIN, and finishing it asks how the
+      // learner feels. Raised only for a Student or Child whose educator
+      // switched their routine to locking.
+      GoRoute(
+        path: '/routine-lock',
+        pageBuilder: (context, state) => AppPageTransitions.fade(
+          key: state.pageKey,
+          child: const RoutineLockScreen(),
         ),
       ),
       // Membership Removed — full-screen, no bottom nav. Pushed by

@@ -31,6 +31,16 @@ class RoutineReminder {
   /// schedules as a single daily repeat rather than seven weekly ones.
   final int? isoWeekday;
 
+  /// Whether this step will hold the learner's device when its time arrives
+  /// ([Routine.lockEnabled] + [RoutineStep.canLock]).
+  ///
+  /// Changes what kind of notification this is, not just its words. A
+  /// reminder invites; a lock announces something that is about to happen
+  /// whether the learner taps or not — so it is filed as an **alarm** and
+  /// carries a full-screen intent, which is the only handle Android gives an
+  /// app for "bring yourself up, the moment has come".
+  final bool locksScreen;
+
   const RoutineReminder({
     required this.routineId,
     required this.stepId,
@@ -39,6 +49,7 @@ class RoutineReminder {
     required this.hour,
     required this.minute,
     this.isoWeekday,
+    this.locksScreen = false,
   });
 
   bool get isDaily => isoWeekday == null;
@@ -119,10 +130,17 @@ class RoutineReminderScheduler {
   }) {
     final out = <RoutineReminder>[];
     for (final routine in routines) {
+      final locking = {for (final s in routine.lockingSteps) s.id};
       for (final step in routine.remindableSteps) {
         final at = _remindAt(step);
+        // Only the reminder that lands *at* the step is an alarm. An early
+        // warning is still a warning — nothing is locked five minutes before,
+        // and dressing it as an alarm would be a promise the learner soon
+        // learns to ignore.
+        final locks =
+            locking.contains(step.id) && step.remindMinutesBefore == 0;
         final title = _titleFor(step, filipino: filipino);
-        final body = _bodyFor(step, filipino: filipino);
+        final body = _bodyFor(step, filipino: filipino, locks: locks);
         if (routine.isEveryDay) {
           out.add(RoutineReminder(
             routineId: routine.id,
@@ -131,6 +149,7 @@ class RoutineReminderScheduler {
             body: body,
             hour: at.$1,
             minute: at.$2,
+            locksScreen: locks,
           ));
         } else {
           for (final day in (routine.daysOfWeek.toList()..sort())) {
@@ -142,6 +161,7 @@ class RoutineReminderScheduler {
               hour: at.$1,
               minute: at.$2,
               isoWeekday: day,
+              locksScreen: locks,
             ));
           }
         }
@@ -170,7 +190,11 @@ class RoutineReminderScheduler {
     return RoutineCatalog.titleFor(step, filipino: filipino);
   }
 
-  static String _bodyFor(RoutineStep step, {required bool filipino}) {
+  static String _bodyFor(
+    RoutineStep step, {
+    required bool filipino,
+    bool locks = false,
+  }) {
     // The words the brief asked for, verbatim. No "in N minutes" variant: a
     // check-in is answered when it arrives, not prepared for.
     if (step.activity.isMoodCheckIn) {
@@ -188,6 +212,14 @@ class RoutineReminderScheduler {
     // it is what the learner has been read before.
     final note = RoutineCatalog.noteFor(step, filipino: filipino);
     if (note.isNotEmpty) return note;
+    // "Tap to see what to do" is the wrong promise for a step that locks: the
+    // app is not offering to show the learner something, it is waiting for
+    // them, and it will keep waiting whether they tap or not.
+    if (locks) {
+      return filipino
+          ? 'Hinihintay ka ng FlashLearn para dito.'
+          : 'FlashLearn is waiting for you to do this.';
+    }
     return filipino ? 'Oras na. I-tap para makita.' : 'Tap to see what to do.';
   }
 
@@ -286,6 +318,25 @@ class RoutineReminderScheduler {
     _pluginInitialised = true;
   }
 
+  /// Asks Android for the permission a locking routine needs to raise its
+  /// lock by itself, and reports whether it is now granted.
+  ///
+  /// Deliberately separate from [_initPlugin] and never called at start-up: on
+  /// Android 14+ this opens a system settings page, and throwing one of those
+  /// at whoever launches the app would be worse than the delay it fixes. The
+  /// routine builder offers it at the one moment it is relevant — when an
+  /// educator switches a routine to locking.
+  static Future<bool> requestFullScreenPermission() async {
+    try {
+      await _initPlugin();
+      final android = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      return await android?.requestFullScreenIntentPermission() ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static void _onTap(NotificationResponse response) {
     final payload = response.payload;
     if (payload == null || !payload.startsWith('routine:')) return;
@@ -308,10 +359,22 @@ class RoutineReminderScheduler {
       silent ? _silentChannelId : _channelId,
       silent ? _silentChannelName : _channelName,
       channelDescription: _channelDesc,
-      importance: Importance.high,
-      priority: Priority.high,
+      importance: r.locksScreen ? Importance.max : Importance.high,
+      priority: r.locksScreen ? Priority.max : Priority.high,
       icon: '@mipmap/ic_launcher',
       playSound: !silent,
+      // A locking step is an alarm in the platform's own vocabulary, and
+      // saying so is what earns it an alarm's treatment: it wakes a sleeping
+      // screen and it is not filed away with the rest of the app's chatter.
+      category: r.locksScreen ? AndroidNotificationCategory.alarm : null,
+      // The only handle Android gives an app for "come to the front now".
+      // On a device that is awake and in use the platform downgrades this to
+      // a heads-up notification — no app may seize a screen somebody is
+      // already using — but on the sleeping tablet at 6:45 it is the
+      // difference between the lock being there and the lock waiting in the
+      // shade. Degrades silently when the permission is not granted; see
+      // [requestFullScreenPermission].
+      fullScreenIntent: r.locksScreen,
     );
     final iosDetails = DarwinNotificationDetails(
       presentAlert: true,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/utils/error_handler.dart';
@@ -106,6 +107,28 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
   String get _profileId =>
       widget.profileId ?? ref.read(profileProvider)?.id ?? '';
 
+  /// Whether the person looking at this day is also the person who plans it.
+  ///
+  /// True only for a Player looking at their own day. A Student's or a Child's
+  /// routine belongs to their Teacher or Parent — it can hold their device at
+  /// each step — so handing them the builder would hand them the key to their
+  /// own lock. A Player has no educator to ask, and "ask your teacher" pointed
+  /// at nobody: without this their My Day was a screen that could only ever
+  /// say "no routine yet".
+  bool get _selfManaged {
+    if (widget.readOnly || widget.profileId != null) return false;
+    final profile = ref.watch(profileProvider);
+    return profile != null &&
+        profile.role == UserRole.player &&
+        !profile.isGuestPlayer;
+  }
+
+  void _openMyBuilder() {
+    final id = _profileId;
+    if (id.isEmpty) return;
+    context.push('/routine-manage/$id?noun=day');
+  }
+
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
@@ -167,6 +190,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
               // profile, which is whose class membership the provider knows.
               hasEducator: widget.profileId != null ||
                   ref.watch(todayRoutineProvider).hasEducator,
+              onBuildMyOwn: _selfManaged ? _openMyBuilder : null,
             );
           }
           return _dayBody(
@@ -237,6 +261,17 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
               color: hc.textPrimary,
             ),
           ),
+          actions: [
+            if (_selfManaged)
+              IconButton(
+                tooltip: l ? 'Ayusin ang araw ko' : 'Edit my day',
+                icon: Icon(
+                  Icons.edit_calendar_rounded,
+                  color: hc.textSecondary,
+                ),
+                onPressed: _openMyBuilder,
+              ),
+          ],
         ),
         body: SafeArea(child: child),
       ),
@@ -569,10 +604,16 @@ class _EmptyDay extends StatelessWidget {
   /// than an honest blank.
   final bool hasEducator;
 
+  /// Opens the builder, for the one learner who plans their own day: a Player.
+  /// Null for everyone else, and then the copy goes back to naming the adult
+  /// whose job it is.
+  final VoidCallback? onBuildMyOwn;
+
   const _EmptyDay({
     required this.filipino,
     required this.hasAnyRoutine,
     required this.hasEducator,
+    this.onBuildMyOwn,
   });
 
   @override
@@ -584,6 +625,20 @@ class _EmptyDay extends StatelessWidget {
         description: filipino
             ? 'Walang routine para sa araw na ito. Magpahinga ka muna!'
             : 'You have no routine for today. Enjoy the rest!',
+      );
+    }
+    if (onBuildMyOwn != null) {
+      return RichEmptyState(
+        emoji: '🗓️',
+        title: filipino ? 'Gawin ang araw mo' : 'Plan your day',
+        description: filipino
+            ? 'Ang Araw Ko ay nagpapakita ng plano ng araw mo — isa-isang '
+                'hakbang, may larawan at oras. Ikaw ang gagawa ng sa iyo.'
+            : 'My Day shows your plan for the day — one step at a time, with '
+                'pictures and times. This one is yours to build.',
+        actionLabel: filipino ? 'Gumawa ng routine' : 'Build my routine',
+        actionIcon: Icons.add_rounded,
+        onAction: onBuildMyOwn,
       );
     }
     if (!hasEducator) {

@@ -1500,6 +1500,19 @@ class VoiceNavigationService {
         description: 'Tapos na ang oras sa screen para ngayong araw.',
       ),
     ),
+    '/routine-lock': (
+      en: (
+        name: 'Routine Time',
+        description:
+            'It is time for one step of your day. Finish it to carry on.',
+      ),
+      fil: (
+        name: 'Oras ng Routine',
+        description:
+            'Oras na para sa isang hakbang ng araw mo. Tapusin ito para '
+            'makapagpatuloy.',
+      ),
+    ),
     '/tv-cast': (
       en: (
         name: 'TV Cast',

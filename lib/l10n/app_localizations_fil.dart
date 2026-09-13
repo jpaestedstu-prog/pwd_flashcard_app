@@ -2757,6 +2757,20 @@ class AppLocalizationsFil extends AppLocalizations {
   String get settingVocabReviewTitle => 'Paalala sa Pagbabalik-aral';
 
   @override
+  String get settingSectionMyDay => 'Ang Araw Ko';
+
+  @override
+  String get settingRoutineTitle => 'Routine';
+
+  @override
+  String get settingRoutineOnDesc =>
+      'Lalabas ang Ang Araw Ko sa home mo — planuhin ang araw mo, hakbang-hakbang';
+
+  @override
+  String get settingRoutineOffDesc =>
+      'Buksan ang Ang Araw Ko para planuhin ang araw mo, hakbang-hakbang';
+
+  @override
   String get settingSectionData => 'Datos';
 
   @override

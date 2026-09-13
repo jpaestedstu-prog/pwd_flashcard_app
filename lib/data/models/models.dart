@@ -782,6 +782,19 @@ class AppSettings {
   /// there is deliberately no separate setting for that (it "just works").
   final bool aiCompanionEnabled;
 
+  /// "My Day" — the daily routine surface — on or off.
+  ///
+  /// **A Player profile's own switch.** A Student or a Child does not get one:
+  /// their routine is set by a Teacher or a Parent and can hold the device at
+  /// each step (see `Routine.lockEnabled`), so letting the learner turn it off
+  /// would hand them the key to their own lock. A Player has no educator, no
+  /// lock and nobody else's plan to follow — for them My Day is a simple
+  /// checklist they keep for themselves, and keeping it is their choice.
+  ///
+  /// Settings are per-profile, so one Player switching it off changes nothing
+  /// for anyone else on the tablet. Default on, so it is discoverable.
+  final bool routineEnabled;
+
   const AppSettings({
     this.fontScale = 1.0,
     this.highContrastMode = false,
@@ -803,6 +816,7 @@ class AppSettings {
     this.dailyMissionSize = 4,
     this.learningAssistEnabled = true,
     this.aiCompanionEnabled = true,
+    this.routineEnabled = true,
   });
 
   AppSettings copyWith({
@@ -826,6 +840,7 @@ class AppSettings {
     int? dailyMissionSize,
     bool? learningAssistEnabled,
     bool? aiCompanionEnabled,
+    bool? routineEnabled,
   }) {
     return AppSettings(
       fontScale: fontScale ?? this.fontScale,
@@ -849,6 +864,7 @@ class AppSettings {
       learningAssistEnabled:
           learningAssistEnabled ?? this.learningAssistEnabled,
       aiCompanionEnabled: aiCompanionEnabled ?? this.aiCompanionEnabled,
+      routineEnabled: routineEnabled ?? this.routineEnabled,
     );
   }
 }

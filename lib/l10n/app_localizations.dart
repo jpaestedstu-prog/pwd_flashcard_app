@@ -4827,6 +4827,30 @@ abstract class AppLocalizations {
   /// **'Vocab Review Reminder'**
   String get settingVocabReviewTitle;
 
+  /// No description provided for @settingSectionMyDay.
+  ///
+  /// In en, this message translates to:
+  /// **'My Day'**
+  String get settingSectionMyDay;
+
+  /// No description provided for @settingRoutineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Routine'**
+  String get settingRoutineTitle;
+
+  /// No description provided for @settingRoutineOnDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'My Day shows on your home — plan your day, step by step'**
+  String get settingRoutineOnDesc;
+
+  /// No description provided for @settingRoutineOffDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on My Day to plan your day, step by step'**
+  String get settingRoutineOffDesc;
+
   /// No description provided for @settingSectionData.
   ///
   /// In en, this message translates to:

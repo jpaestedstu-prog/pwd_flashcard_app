@@ -8,8 +8,12 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/lock_state_provider.dart';
 
 /// App-root gate that watches the active child profile's lock state
-/// and routes to `/time-up-lock` whenever a [LockReason] becomes
-/// non-null mid-session.
+/// and routes to whichever lock screen the reason calls for
+/// ([lockRouteFor]) whenever a [LockReason] becomes non-null mid-session.
+///
+/// Two reasons need it rather than one: a daily limit crossed mid-game, and
+/// a "My Day" step whose time arrives mid-game. Neither is a navigation, so
+/// the router redirect alone would not see either.
 ///
 /// Catches the case of a child crossing the daily limit while already
 /// in the middle of a game — the router redirect alone fires only on
@@ -48,8 +52,9 @@ class LockEnforcerGate extends ConsumerWidget {
           // the profile switcher by "Switch account" would be dragged
           // back to the lock before anyone could pick a profile.
           final loc = router.routeInformationProvider.value.uri.path;
-          if (loc == '/time-up-lock' || isLockExemptRoute(loc)) return;
-          router.go('/time-up-lock');
+          final target = lockRouteFor(next);
+          if (loc == target || isLockExemptRoute(loc)) return;
+          router.go(target);
         } catch (e, s) {
           // GoRouter can throw if the navigator is being torn down or
           // the context isn't ready yet. Log silently — the next 10 s

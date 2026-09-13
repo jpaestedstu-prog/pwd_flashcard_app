@@ -1,6 +1,7 @@
 import '../../data/models/alarm_action.dart';
 import '../../data/models/child_alarm.dart';
 import '../../data/models/child_time_limit.dart';
+import '../../features/routine/models/routine_models.dart';
 
 /// Why the child's screen is currently locked.
 ///
@@ -66,6 +67,41 @@ class AlarmTriggered extends LockReason {
   String get subtitle => 'Time to take a break.';
 }
 
+/// A "My Day" step whose time has arrived and which is not done yet.
+///
+/// The one lock a learner can clear by themselves: doing the thing it names
+/// unlocks it. Every other [LockReason] means "stop and hand the device over";
+/// this one means "do this first". The lock screen (`RoutineLockScreen`) shows
+/// the step, ticks it off when the learner says they did it, and then asks how
+/// they feel about it.
+///
+/// Only ever raised for a Student or a Child, and only for a routine a Teacher
+/// or Parent explicitly switched to locking — see [Routine.lockEnabled].
+///
+/// [title] and [subtitle] are the untranslated fallbacks; the lock screen
+/// itself renders the step through `RoutineCatalog`, so a Filipino learner
+/// reads their own words.
+class RoutineStepDue extends LockReason {
+  final RoutineStep step;
+
+  const RoutineStepDue(this.step);
+
+  @override
+  String get title => step.title.isEmpty ? 'Routine time' : step.title;
+
+  @override
+  String get subtitle => 'Finish this to carry on.';
+}
+
+/// How long after its time a routine step still holds the device.
+///
+/// The same hour [RoutinePopupSchedule.taskFreshness] gives the pop-up, and
+/// for the same reason: a step whose moment has long passed is not a lock, it
+/// is an obstacle. A missed step stays missed and stays tickable in "My Day" —
+/// it just stops standing in the way. Without a window, a device switched off
+/// over the weekend would come back locked to Saturday breakfast.
+const Duration kRoutineLockWindow = Duration(hours: 1);
+
 /// Pure-function evaluator: given the child's policy, current minutes
 /// used, list of alarms, and `now`, returns a [LockReason] or null.
 ///
@@ -80,10 +116,15 @@ class LockEnforcer {
   /// `null` means "not locked".
   ///
   /// Order of checks: alarm-triggered (explicit user-set events) →
-  /// daily-time-limit (cumulative) → schedule (time of day). The first
-  /// matching reason wins; ties broken by this order so a user can
-  /// always see the most actionable message ("alarm just fired" beats
+  /// daily-time-limit (cumulative) → schedule (time of day) → routine step
+  /// due. The first matching reason wins; ties broken by this order so a user
+  /// can always see the most actionable message ("alarm just fired" beats
   /// "you've gone over the limit").
+  ///
+  /// The routine comes last on purpose. The three above it all mean "stop
+  /// using the device"; telling a child to go and brush their teeth *in the
+  /// app* when their screen time is over would be asking them to do the one
+  /// thing they have just been told not to.
   ///
   /// [recentAlarmFireWindow] caps how far back an alarm whose fire-time
   /// has just elapsed can be treated as "currently locking". Defaults
@@ -96,6 +137,10 @@ class LockEnforcer {
     required List<ChildAlarm> alarms,
     required DateTime now,
     Duration recentAlarmFireWindow = const Duration(minutes: 5),
+    List<RoutineStep> routineSteps = const <RoutineStep>[],
+    Set<String> completedStepIds = const <String>{},
+    Set<String> skippedStepIds = const <String>{},
+    Duration routineLockWindow = kRoutineLockWindow,
   }) {
     // 1. Alarm-triggered. We treat any enabled `lockScreen` alarm whose
     //    most-recent fire was within [recentAlarmFireWindow] as locking.
@@ -141,7 +186,50 @@ class LockEnforcer {
       }
     }
 
+    // 4. "My Day" step due.
+    final step = routineStepDue(
+      steps: routineSteps,
+      completedStepIds: completedStepIds,
+      skippedStepIds: skippedStepIds,
+      now: now,
+      window: routineLockWindow,
+    );
+    if (step != null) return RoutineStepDue(step);
+
     return null;
+  }
+
+  /// The routine step that should be holding the device right now, or null.
+  ///
+  /// A step qualifies when its clock time has arrived, that time is no more
+  /// than [window] ago, it has not been ticked off, and an adult has not
+  /// waved it through for today. With several overdue at once — the tablet was
+  /// off all morning — the **earliest** wins, so the day is worked through in
+  /// the order it was planned rather than backwards.
+  ///
+  /// [steps] must already be filtered to the ones that may lock (see
+  /// [Routine.lockingSteps]); this function does not re-check the routine's
+  /// own switch, because it never sees the routine.
+  static RoutineStep? routineStepDue({
+    required List<RoutineStep> steps,
+    required Set<String> completedStepIds,
+    required Set<String> skippedStepIds,
+    required DateTime now,
+    Duration window = kRoutineLockWindow,
+  }) {
+    RoutineStep? earliest;
+    for (final s in steps) {
+      if (!s.isScheduled) continue;
+      if (completedStepIds.contains(s.id)) continue;
+      if (skippedStepIds.contains(s.id)) continue;
+      final dueAt = DateTime(now.year, now.month, now.day, s.hour!, s.minute!);
+      if (now.isBefore(dueAt)) continue;
+      if (now.difference(dueAt) > window) continue;
+      if (earliest == null || s.minutesOfDay! < earliest.minutesOfDay!) {
+        earliest = s;
+      }
+    }
+    return earliest;
   }
 
   /// True if [hour] falls inside `[start, end)`. Wraps around midnight

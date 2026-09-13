@@ -15,13 +15,18 @@ Future<RoutineStep?> openRoutineStepEditor(
   BuildContext context, {
   required RoutineStep step,
   required bool filipino,
+  bool routineLocks = false,
 }) {
   return showModalBottomSheet<RoutineStep>(
     context: context,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => RoutineStepEditorSheet(step: step, filipino: filipino),
+    builder: (_) => RoutineStepEditorSheet(
+      step: step,
+      filipino: filipino,
+      routineLocks: routineLocks,
+    ),
   );
 }
 
@@ -40,10 +45,20 @@ class RoutineStepEditorSheet extends StatefulWidget {
   final RoutineStep step;
   final bool filipino;
 
+  /// Whether the routine this step belongs to holds the learner's device at
+  /// each step's time ([Routine.lockEnabled]).
+  ///
+  /// Decides only whether the per-step exemption is *shown*. The flag itself
+  /// is always edited and always saved — an educator who turns the routine's
+  /// lock off and back on again should find the exemptions they set still
+  /// there, not silently reset to "everything locks".
+  final bool routineLocks;
+
   const RoutineStepEditorSheet({
     super.key,
     required this.step,
     required this.filipino,
+    this.routineLocks = false,
   });
 
   @override
@@ -407,6 +422,56 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                                 'a pop-up: “Please do your check-in now.”',
                       style: AppTypography.labelSmall.copyWith(
                         color: hc.textSecondary,
+                      ),
+                    ),
+                  ],
+
+                  // ── Does this step hold the device? ──
+                  // Only offered when the routine locks at all, and only on a
+                  // step with a time — a lock needs a moment to start at.
+                  // Off means the step still appears, still reminds and is
+                  // still ticked off; it simply does not stop the learner.
+                  if (widget.routineLocks && _draft.isScheduled) ...[
+                    const SizedBox(height: 8),
+                    Material(
+                      type: MaterialType.transparency,
+                      child: SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: _draft.lockScreen,
+                        onChanged: (v) => setState(
+                          () => _draft = _draft.copyWith(lockScreen: v),
+                        ),
+                        secondary: const Text(
+                          '🔒',
+                          style: TextStyle(fontSize: 22),
+                        ),
+                        title: Text(
+                          l
+                              ? 'I-lock ang app hanggang tapos ito'
+                              : 'Lock the app until this is done',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: hc.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _draft.lockScreen
+                              ? (l
+                                    ? 'Sa ${formatStepTime(_draft)}, ito lang '
+                                          'ang makikita ng bata hanggang '
+                                          'markahan nilang tapos na.'
+                                    : 'At ${formatStepTime(_draft)} this is '
+                                          'all the learner can see until they '
+                                          'mark it done.')
+                              : (l
+                                    ? 'Hindi hihinto ang app para sa hakbang '
+                                          'na ito — paalala lang.'
+                                    : 'This step will not stop the learner — '
+                                          'it only reminds.'),
+                          style: AppTypography.labelSmall.copyWith(
+                            color: hc.textSecondary,
+                          ),
+                        ),
                       ),
                     ),
                   ],

@@ -24,6 +24,8 @@ import 'routine_step_action.dart';
 ///    that finished it already asked a question. One question per tap, never
 ///    two sheets stacked.
 ///  * **Un-ticking** asks nothing.
+///  * **A step that locked the device** always asks, whatever the educator
+///    set — see [complete]'s `alwaysAskMood`.
 class RoutineCompletionFlow {
   const RoutineCompletionFlow._();
 
@@ -33,6 +35,12 @@ class RoutineCompletionFlow {
   /// whether this tap finished the day. Pass null where the caller does not
   /// know the whole day (a step screen opened on its own); the day-end
   /// question is then simply not asked from there.
+  ///
+  /// [alwaysAskMood] overrides the educator's per-step switch and asks anyway.
+  /// The routine **lock** passes it: the lock exists to make one moment of the
+  /// day happen, and "how did that feel?" is the other half of that moment —
+  /// it is the question the whole interruption was for. It never stacks with
+  /// the day-end question; one tap still earns one question.
   static Future<void> complete({
     required BuildContext context,
     required WidgetRef ref,
@@ -42,6 +50,7 @@ class RoutineCompletionFlow {
     required List<RoutineStep>? todaysSteps,
     required RoutinePresentation presentation,
     required bool filipino,
+    bool alwaysAskMood = false,
   }) async {
     final wasDone = HiveService.getRoutineDayLog(
       profileId,
@@ -77,7 +86,7 @@ class RoutineCompletionFlow {
     );
     if (result.wasDone || !context.mounted) return;
 
-    if (step.asksMoodAfter) {
+    if (step.asksMoodAfter || alwaysAskMood) {
       await askAboutStep(context, ref, step);
       return;
     }

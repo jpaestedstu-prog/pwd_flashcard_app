@@ -33,6 +33,7 @@ Routine _routine({
   Set<int> days = const {},
   bool enabled = true,
   bool reminders = true,
+  bool locks = false,
   String id = 'r1',
 }) =>
     Routine(
@@ -45,6 +46,7 @@ Routine _routine({
       steps: steps,
       enabled: enabled,
       remindersEnabled: reminders,
+      lockEnabled: locks,
       createdAt: DateTime(2026, 9),
       updatedAt: DateTime(2026, 9),
     );
@@ -190,6 +192,71 @@ void main() {
       expect(plan, hasLength(2));
       // Earliest first, across routines.
       expect(plan.first.stepId, 'b1');
+    });
+  });
+
+  // ── A step that locks is an alarm, not a nudge ──
+  //
+  // The distinction is the whole reason a learner does not have to tap
+  // anything: an alarm-category notification with a full-screen intent is the
+  // only handle Android gives an app for raising its own screen on a sleeping
+  // tablet. A plain reminder can only wait to be tapped.
+  group('a step that holds the device', () {
+    test('is marked as locking, and an ordinary step is not', () {
+      final locking = _plan([
+        _routine(locks: true, steps: [_step('a', hour: 7)]),
+      ]);
+      expect(locking.single.locksScreen, isTrue);
+
+      final plain = _plan([
+        _routine(steps: [_step('a', hour: 7)]),
+      ]);
+      expect(plain.single.locksScreen, isFalse);
+    });
+
+    test('says it is waiting rather than inviting a tap', () {
+      final locking = _plan([
+        _routine(locks: true, steps: [_step('a', hour: 7)]),
+      ]);
+      expect(locking.single.body, contains('waiting'));
+      expect(locking.single.body, isNot(contains('Tap')));
+
+      final plain = _plan([
+        _routine(steps: [_step('a', hour: 7)]),
+      ]);
+      expect(plain.single.body, contains('Tap'));
+    });
+
+    test('an early warning is still only a warning', () {
+      // Nothing is locked five minutes before the step, so dressing the
+      // warning as an alarm would be a promise the app cannot keep.
+      final plan = _plan([
+        _routine(locks: true, steps: [_step('a', hour: 7, before: 5)]),
+      ]);
+      expect(plan.single.locksScreen, isFalse);
+      expect(plan.single.body, contains('In 5 minutes'));
+    });
+
+    test('a step the educator exempted stays an ordinary reminder', () {
+      const exempt = RoutineStep(
+        id: 'a',
+        activity: RoutineActivity.breakfast,
+        hour: 7,
+        minute: 0,
+        lockScreen: false,
+      );
+      final plan = _plan([
+        _routine(locks: true, steps: [exempt]),
+      ]);
+      expect(plan.single.locksScreen, isFalse);
+    });
+
+    test('every day of a weekly locking routine carries the flag', () {
+      final plan = _plan([
+        _routine(locks: true, days: {1, 3, 5}, steps: [_step('a', hour: 7)]),
+      ]);
+      expect(plan, hasLength(3));
+      expect(plan.every((r) => r.locksScreen), isTrue);
     });
   });
 

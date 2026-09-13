@@ -8,6 +8,7 @@ import '../../../providers/wall_clock_provider.dart';
 import '../models/routine_models.dart';
 import '../models/routine_popup_schedule.dart';
 import '../models/routine_presentation.dart';
+import '../providers/routine_lock_skip_provider.dart';
 import '../providers/today_routine_provider.dart';
 import '../services/routine_step_action.dart';
 import 'routine_mood_prompt.dart';
@@ -67,7 +68,12 @@ class _RoutinePopupWatcherState extends ConsumerState<RoutinePopupWatcher> {
     final profile = ref.watch(profileProvider);
     if (profile == null ||
         profile.role.isEducator ||
-        profile.isGuestPlayer ||
+        // A Player who turned My Day off, and a guest Player, who never had
+        // one. `routineFeatureProvider` is the single answer to "does this
+        // profile have a routine at all" — reading it here rather than
+        // re-deriving the rule keeps the pop-up and the Home card from ever
+        // disagreeing about whether the feature exists.
+        !ref.watch(routineFeatureProvider) ||
         // An educator peeking at a learner's account is not the person whose
         // lunch time it is.
         ref.read(profileProvider.notifier).isViewingAsStudent) {
@@ -103,6 +109,8 @@ class _RoutinePopupWatcherState extends ConsumerState<RoutinePopupWatcher> {
       log: today.log,
       now: now,
       snoozedUntil: _snoozedUntil,
+      // A step an adult excused on the routine lock is excused here too.
+      skippedStepIds: ref.watch(routineLockSkipProvider(profile.id)).on(now),
       requestedStepId: request,
     );
     if (due == null || _showing) return const SizedBox.shrink();
@@ -118,8 +126,10 @@ class _RoutinePopupWatcherState extends ConsumerState<RoutinePopupWatcher> {
     if (isMoodQuestionOpen) return const SizedBox.shrink();
     final route = ModalRoute.of(context);
     if (route != null && !route.isCurrent) return const SizedBox.shrink();
-    // Never over the time's-up lock: the child cannot dismiss that screen,
-    // and a dialog on top of it would be one more thing they cannot get past.
+    // Never over a lock screen — the time's-up one or My Day's own. The child
+    // cannot dismiss either, and a dialog on top would be one more thing they
+    // cannot get past. (The routine lock is already showing the step this
+    // pop-up would announce, so there is nothing to lose by waiting.)
     if (ref.watch(lockStateProvider(profile.id)) != null) {
       return const SizedBox.shrink();
     }

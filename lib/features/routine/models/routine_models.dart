@@ -129,6 +129,18 @@ class RoutineStep {
   /// shown to the learner today.
   final bool enabled;
 
+  /// Hold the device on this step, at its time, until it is marked done.
+  ///
+  /// Only ever consulted when the parent routine's [Routine.lockEnabled] is
+  /// on — the routine carries the decision to lock at all, and this is the
+  /// per-step exemption for the ones that should not. Meaningless on an
+  /// unscheduled step: there is no moment for the lock to start at.
+  ///
+  /// Defaults to **true** so that switching a routine to locking locks the
+  /// whole routine, which is what an educator means by the switch. Steps they
+  /// want to leave open are turned off one at a time.
+  final bool lockScreen;
+
   /// Ask the learner how they feel straight after ticking this step off —
   /// "How do you feel after brushing your teeth?".
   ///
@@ -157,10 +169,15 @@ class RoutineStep {
     this.signWord = '',
     this.remindMinutesBefore = 0,
     this.enabled = true,
+    this.lockScreen = true,
     this.askMood = false,
   });
 
   bool get isScheduled => hour != null && minute != null;
+
+  /// Whether this step can hold the device when its time arrives. The routine
+  /// still has to be locking — see [Routine.lockingSteps].
+  bool get canLock => enabled && lockScreen && isScheduled;
 
   /// Whether completing this step should ask how the learner feels. A
   /// check-in step never does: it already asked.
@@ -207,6 +224,7 @@ class RoutineStep {
     String? signWord,
     int? remindMinutesBefore,
     bool? enabled,
+    bool? lockScreen,
     bool? askMood,
   }) {
     return RoutineStep(
@@ -227,6 +245,7 @@ class RoutineStep {
       signWord: signWord ?? this.signWord,
       remindMinutesBefore: remindMinutesBefore ?? this.remindMinutesBefore,
       enabled: enabled ?? this.enabled,
+      lockScreen: lockScreen ?? this.lockScreen,
       askMood: askMood ?? this.askMood,
     );
   }
@@ -258,6 +277,7 @@ class RoutineStep {
         'sign_word': signWord,
         'remind_minutes_before': remindMinutesBefore,
         'enabled': enabled,
+        'lock_screen': lockScreen,
         'ask_mood': askMood,
       };
 
@@ -293,6 +313,11 @@ class RoutineStep {
       remindMinutesBefore:
           (json['remind_minutes_before'] as int?)?.clamp(0, 60) ?? 0,
       enabled: (json['enabled'] as bool?) ?? true,
+      // Absent on a step written before locking existed. True is the safe
+      // default *because* it is gated behind the routine's own switch, which
+      // those routines do not have set either — so an old routine still locks
+      // nothing until an educator says so.
+      lockScreen: (json['lock_screen'] as bool?) ?? true,
       // Absent on every step written before per-step check-ins existed, and
       // on any written by an older build — both mean "don't ask".
       askMood: (json['ask_mood'] as bool?) ?? false,
@@ -336,6 +361,20 @@ class Routine {
   /// answers, and an adult sitting beside the learner does not need either.
   final bool remindersEnabled;
 
+  /// Whether each scheduled step of this routine holds the learner's device
+  /// until it is done — the same full-screen stop as the Alarm and Time Limit
+  /// locks, but cleared by finishing the step rather than by a PIN.
+  ///
+  /// **Off by default, and only ever set by a Teacher or a Parent.** Turning a
+  /// routine into a lock changes what the device *is* for that learner, and
+  /// doing it silently to every routine that already exists would trap
+  /// children whose educator never asked for it. Per-step exemptions live on
+  /// [RoutineStep.lockScreen].
+  ///
+  /// Only meaningful for a Student or Child profile. A Player runs the same
+  /// routines as a checklist — see `routineFeatureProvider`.
+  final bool lockEnabled;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -350,6 +389,7 @@ class Routine {
     this.steps = const <RoutineStep>[],
     this.enabled = true,
     this.remindersEnabled = true,
+    this.lockEnabled = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -387,6 +427,16 @@ class Routine {
     return orderedSteps.where((s) => s.isScheduled).toList();
   }
 
+  /// The steps that may hold the learner's device today, earliest first.
+  ///
+  /// Empty unless the routine is enabled *and* locking; an unscheduled step
+  /// never locks, because there is no moment for the lock to begin at, and a
+  /// step the educator exempted never locks either.
+  List<RoutineStep> get lockingSteps {
+    if (!enabled || !lockEnabled) return const [];
+    return orderedSteps.where((s) => s.canLock).toList();
+  }
+
   int get stepCount => steps.where((s) => s.enabled).length;
 
   Routine copyWith({
@@ -400,6 +450,7 @@ class Routine {
     List<RoutineStep>? steps,
     bool? enabled,
     bool? remindersEnabled,
+    bool? lockEnabled,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -414,6 +465,7 @@ class Routine {
       steps: steps ?? this.steps,
       enabled: enabled ?? this.enabled,
       remindersEnabled: remindersEnabled ?? this.remindersEnabled,
+      lockEnabled: lockEnabled ?? this.lockEnabled,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -432,6 +484,7 @@ class Routine {
         'steps': steps.map((s) => s.toJson()).toList(),
         'enabled': enabled,
         'reminders_enabled': remindersEnabled,
+        'lock_enabled': lockEnabled,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -470,6 +523,10 @@ class Routine {
       // Absent on routines written before reminders existed; those should
       // start reminding rather than stay silent forever.
       remindersEnabled: (json['reminders_enabled'] as bool?) ?? true,
+      // Absent on every routine written before locking existed. Those must
+      // stay checklists: a routine nobody chose to make a lock must never
+      // become one because the app updated.
+      lockEnabled: (json['lock_enabled'] as bool?) ?? false,
       createdAt: _parseDate(json['created_at']),
       updatedAt: _parseDate(json['updated_at']),
     );
