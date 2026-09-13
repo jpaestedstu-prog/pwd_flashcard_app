@@ -68,6 +68,23 @@ class RoutineReminder {
   }
 }
 
+/// One OS schedule behind a [RoutineReminder]: an id, when it first fires,
+/// and how it repeats — null for a one-off.
+class RoutineReminderSlot {
+  final int id;
+  final DateTime firstFire;
+  final DateTimeComponents? repeat;
+
+  const RoutineReminderSlot({
+    required this.id,
+    required this.firstFire,
+    this.repeat,
+  });
+
+  @override
+  String toString() => 'RoutineReminderSlot($id, $firstFire, $repeat)';
+}
+
 /// Turns a learner's routines into OS notifications.
 ///
 /// A visual schedule nobody is nudged toward is a schedule that gets
@@ -130,6 +147,10 @@ class RoutineReminderScheduler {
   /// already started from tomorrow, which is now today.
   static String _suppressedDay = '';
   static final Set<int> _suppressedToday = {};
+
+  /// Daily reminders currently spread over weekly slots to skip today (see
+  /// [slotsFor]), counted against [maxPending].
+  static final Set<int> _expanded = {};
 
   /// Today's day log and educator actions for the learner, watched so an
   /// excuse or approval made on another device reaches this device's
@@ -318,9 +339,9 @@ class RoutineReminderScheduler {
     if (id != null) _watchToday(id);
     _suppressedDay = dayStampOf(today);
     _suppressedToday.clear();
-    // A step already done or excused today is scheduled from tomorrow, so
-    // editing the routine at 6:50 cannot resurrect a reminder for a morning
-    // that is already settled.
+    // A step already done or excused today skips today's reminder (see
+    // [slotsFor]), so editing the routine at 6:50 cannot resurrect a reminder
+    // for a morning that is already settled.
     final settled = _settledToday(today);
     for (final r in reminders) {
       final skip = settled.contains(r.stepId);
@@ -341,7 +362,20 @@ class RoutineReminderScheduler {
       } catch (_) {}
     }
     _activeIds.clear();
+    _expanded.clear();
+    // Schedules made by an earlier run of the app are not in [_activeIds]. A
+    // day skipped back then left weekly slots behind, and they would fire
+    // alongside the daily reminder about to be scheduled in their place.
+    try {
+      for (final p in await _plugin.pendingNotificationRequests()) {
+        if (isReminderId(p.id)) await _plugin.cancel(p.id);
+      }
+    } catch (_) {}
   }
+
+  /// Whether [id] belongs to this scheduler: reminders sit at 1,000,000 and
+  /// up, below the educator help alerts at 2,000,000.
+  static bool isReminderId(int id) => id >= 1000000 && id < 2000000;
 
   // ── private ──
 
@@ -467,73 +501,142 @@ class RoutineReminderScheduler {
     final details =
         NotificationDetails(android: androidDetails, iOS: iosDetails);
 
-    await _plugin.zonedSchedule(
-      r.notificationId,
-      r.title,
-      r.body,
-      _nextOccurrence(
-        hour: r.hour,
-        minute: r.minute,
-        isoWeekday: r.isoWeekday,
-        skipToday: skipToday,
-      ),
-      details,
-      payload: 'routine:${r.routineId}|${r.stepId}',
-      // Exact where allowed. Inexact gave Android a one-hour window
-      // (`dumpsys alarm`: window=+1h) — "Please do your check-in now" at
-      // 9:47 for a 9:00 check-in is not a check-in at 9:00.
-      androidScheduleMode: exactWhenAllowed(
-        canScheduleExact: _canScheduleExact,
-      ),
-      matchDateTimeComponents:
-          r.isDaily ? DateTimeComponents.time : DateTimeComponents.dayOfWeekAndTime,
+    final zoned = tz.TZDateTime.now(tz.local);
+    final now = DateTime(
+      zoned.year,
+      zoned.month,
+      zoned.day,
+      zoned.hour,
+      zoned.minute,
+      zoned.second,
     );
-    _activeIds.add(r.notificationId);
+
+    // Spreading a daily reminder over a week costs six more pending
+    // notifications. Past the cap, a reminder for a step already done is the
+    // lesser harm than one that silently never arrives.
+    _expanded.remove(r.notificationId);
+    var skip = skipToday;
+    if (skip &&
+        expandsToSkip(r, now) &&
+        _plan.length + 6 * (_expanded.length + 1) > maxPending) {
+      skip = false;
+    }
+
+    final slots = slotsFor(r, now: now, skipToday: skip);
+    if (slots.length > 1) _expanded.add(r.notificationId);
+    for (final s in slots) {
+      await _plugin.zonedSchedule(
+        s.id,
+        r.title,
+        r.body,
+        tz.TZDateTime(
+          tz.local,
+          s.firstFire.year,
+          s.firstFire.month,
+          s.firstFire.day,
+          s.firstFire.hour,
+          s.firstFire.minute,
+        ),
+        details,
+        payload: 'routine:${r.routineId}|${r.stepId}',
+        // Exact where allowed. Inexact gave Android a one-hour window
+        // (`dumpsys alarm`: window=+1h) — "Please do your check-in now" at
+        // 9:47 for a 9:00 check-in is not a check-in at 9:00.
+        androidScheduleMode: exactWhenAllowed(
+          canScheduleExact: _canScheduleExact,
+        ),
+        matchDateTimeComponents: s.repeat,
+      );
+      _activeIds.add(s.id);
+    }
   }
 
-  /// The next local occurrence of the given time. The repeat component
-  /// handles everything after it; this only needs a valid future start.
-  static tz.TZDateTime _nextOccurrence({
-    required int hour,
-    required int minute,
-    int? isoWeekday,
-    bool skipToday = false,
+  /// Whether skipping today turns daily reminder [r] into a week of slots:
+  /// only while its time is still ahead today.
+  static bool expandsToSkip(RoutineReminder r, DateTime now) =>
+      r.isDaily &&
+      DateTime(now.year, now.month, now.day, r.hour, r.minute).isAfter(now);
+
+  /// Every id reminder [r] can occupy, so switching between its forms never
+  /// leaves an old schedule behind.
+  static Set<int> variantIds(RoutineReminder r) => r.isDaily
+      ? {for (var wd = 0; wd <= 7; wd++) r.notificationId + wd}
+      : {r.notificationId};
+
+  /// The OS schedules behind [r] — pure, no plugin, no clock.
+  ///
+  /// **Why skipping today is not just "start tomorrow".** For a repeating
+  /// schedule the plugin throws the start date away and fires at the next
+  /// matching time from now (`zonedSchedule` in
+  /// FlutterLocalNotificationsPlugin.java, 19.5.0) — found on the tablet, where
+  /// a step done at 4:30 still got its 4:35 reminder. So a skipped day is
+  /// built only from schedules that *cannot* land today:
+  ///
+  ///  * a daily reminder becomes weekly repeats on the six other weekdays,
+  ///    which carry on by themselves, plus a one-off on today's weekday next
+  ///    week; the app's next start folds them back into one daily repeat;
+  ///  * a weekly reminder on today's weekday becomes a one-off next week.
+  ///
+  /// Once today's time has passed there is nothing left to skip, and the
+  /// reminder keeps its ordinary form.
+  static List<RoutineReminderSlot> slotsFor(
+    RoutineReminder r, {
+    required DateTime now,
+    required bool skipToday,
   }) {
-    final now = tz.TZDateTime.now(tz.local);
-    final next = firstFireAfter(
-      now: DateTime(
-        now.year,
-        now.month,
-        now.day,
-        now.hour,
-        now.minute,
-        now.second,
-      ),
-      hour: hour,
-      minute: minute,
-      isoWeekday: isoWeekday,
-      skipToday: skipToday,
-    );
-    return tz.TZDateTime(
-      tz.local,
-      next.year,
-      next.month,
-      next.day,
-      next.hour,
-      next.minute,
-    );
+    DateTime first({int? weekday, bool skip = false}) => firstFireAfter(
+          now: now,
+          hour: r.hour,
+          minute: r.minute,
+          isoWeekday: weekday,
+          skipToday: skip,
+        );
+    final dueLaterToday =
+        DateTime(now.year, now.month, now.day, r.hour, r.minute).isAfter(now);
+    final skips = skipToday &&
+        dueLaterToday &&
+        (r.isDaily || r.isoWeekday == now.weekday);
+
+    if (!skips) {
+      return [
+        RoutineReminderSlot(
+          id: r.notificationId,
+          firstFire: first(weekday: r.isoWeekday),
+          repeat: r.isDaily
+              ? DateTimeComponents.time
+              : DateTimeComponents.dayOfWeekAndTime,
+        ),
+      ];
+    }
+    if (!r.isDaily) {
+      return [
+        RoutineReminderSlot(
+          id: r.notificationId,
+          firstFire: first(weekday: r.isoWeekday, skip: true),
+        ),
+      ];
+    }
+    return [
+      for (var wd = 1; wd <= 7; wd++)
+        wd == now.weekday
+            ? RoutineReminderSlot(
+                id: r.notificationId + wd,
+                firstFire: first(weekday: wd, skip: true),
+              )
+            : RoutineReminderSlot(
+                id: r.notificationId + wd,
+                firstFire: first(weekday: wd),
+                repeat: DateTimeComponents.dayOfWeekAndTime,
+              ),
+    ];
   }
 
   /// When a reminder at [hour]:[minute] should first fire, counting from
   /// [now] — optionally not today at all.
   ///
-  /// **Skipping today is safe for the days after** because of how the
-  /// repeat works on Android: the alarm is set for exactly this first date,
-  /// each firing schedules the next one from the time components, and a
-  /// reboot re-arms from this same stored date. Starting a daily reminder
-  /// tomorrow therefore skips one morning and keeps every morning after it.
-  /// (iOS repeats from the time components alone and would still fire today;
-  /// nothing breaks, the one skip just does not happen there.)
+  /// On its own this does NOT skip a repeating reminder — the plugin
+  /// recomputes a repeat's first date from now. [slotsFor] uses it for
+  /// one-offs and for weekdays other than today, where the date is honoured.
   ///
   /// Built day by day with calendar arithmetic rather than adding 24-hour
   /// durations, so a daylight-saving change cannot slide the time an hour.
@@ -600,19 +703,28 @@ class RoutineReminderScheduler {
       _suppressedDay = stamp;
       _suppressedToday.clear();
     }
+    final settled = _settledToday(today);
     final changes = suppressionChanges(
       plan: _plan,
-      settled: _settledToday(today),
+      settled: settled,
       suppressed: _suppressedToday,
     );
+    if (kDebugMode) {
+      debugPrint(
+        'RoutineReminderScheduler refreshSettled: plan=${_plan.length} '
+        'settled=$settled suppressed=$_suppressedToday changes=$changes',
+      );
+    }
     if (changes.isEmpty) return;
     for (final r in _plan) {
       final skip = changes[r.notificationId];
       if (skip == null) continue;
       try {
-        await _plugin.cancel(r.notificationId);
+        for (final id in variantIds(r)) {
+          await _plugin.cancel(id);
+          _activeIds.remove(id);
+        }
         await _scheduleOne(r, accessibility: _accessibility, skipToday: skip);
-        _activeIds.add(r.notificationId);
         skip
             ? _suppressedToday.add(r.notificationId)
             : _suppressedToday.remove(r.notificationId);
