@@ -331,6 +331,14 @@ class RoutineLockEvent {
       ));
     }
 
+    // Taking back an excuse the tablet granted writes that same mark, now
+    // revoked, into the educator's document — so it is in both. It happened
+    // once, and the log says so once.
+    final seen = <String>{};
+    out.retainWhere(
+      (e) => seen.add('${e.kind.name}|${e.stepId}|${e.at.toIso8601String()}'),
+    );
+
     out.sort((a, b) => b.at.compareTo(a.at));
     return out;
   }

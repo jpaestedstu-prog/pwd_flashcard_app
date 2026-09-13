@@ -396,6 +396,37 @@ void main() {
       expect(kinds.last, RoutineLockEventKind.lockShown);
     });
 
+    test('an excuse taken back from the tablet is listed once', () {
+      // Taking back copies the tablet's mark, revoked, into the educator's
+      // document; the same excuse now sits in both. Found on the tablet.
+      final tabletExcuse =
+          _mark(_t(7, 31), by: '', source: RoutineMarkSource.learnerDevice);
+      final events = RoutineLockEvent.forDay(
+        log: _empty().withExcuse('dress', tabletExcuse),
+        actions: _noActions().withExcuse(
+          'dress',
+          tabletExcuse.revoke(at: _t(7, 50), byName: 'Rose'),
+        ),
+      );
+      expect(events.map((e) => e.kind), [
+        RoutineLockEventKind.excuseRevoked,
+        RoutineLockEventKind.excused,
+      ]);
+    });
+
+    test('two separate excuses of one step are both kept', () {
+      final first =
+          _mark(_t(7, 31), by: '', source: RoutineMarkSource.learnerDevice);
+      final events = RoutineLockEvent.forDay(
+        log: _empty().withExcuse('dress', first),
+        actions: _noActions().withExcuse('dress', _mark(_t(7, 40))),
+      );
+      expect(
+        events.where((e) => e.kind == RoutineLockEventKind.excused),
+        hasLength(2),
+      );
+    });
+
     test('a reset is recorded with who did it', () {
       final events = RoutineLockEvent.forDay(
         log: _empty(),
