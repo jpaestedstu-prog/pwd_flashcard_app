@@ -1,6 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/lock_warning.dart';
+import '../features/routine/models/routine_models.dart';
+import 'lock_state_provider.dart';
+import 'profile_role_provider.dart';
+import 'routine_provider.dart';
 import 'active_time_provider.dart';
 import 'child_alarm_provider.dart';
 import 'child_time_limit_provider.dart';
@@ -39,11 +43,38 @@ final lockWarningProvider = Provider.family<LockWarning?, String>((
       ref.watch(childAlarmListProvider(childProfileId)).valueOrNull ?? const [];
   final used = ref.watch(activeTimeProvider(childProfileId));
 
+  // "My Day" steps about to hold the device — read exactly as
+  // lockStateProvider reads them, so the warning and the lock can never
+  // disagree about which step is coming.
+  var routineSteps = const <RoutineStep>[];
+  var settled = const <String>{};
+  if (canBeLockedByRoutine(ref.watch(profileRoleProvider(childProfileId)))) {
+    final today = DateTime(now.year, now.month, now.day);
+    final routines =
+        ref.watch(routineListProvider(childProfileId)).valueOrNull ??
+            const <Routine>[];
+    final steps = [
+      for (final r in routines)
+        if (r.runsOn(today)) ...r.lockingSteps,
+    ];
+    if (steps.isNotEmpty) {
+      final key = routineDayKey(childProfileId, today);
+      if (ref.watch(routineDayLogProvider(key)).hasValue &&
+          ref.watch(routineDayActionsProvider(key)).hasValue) {
+        final view = ref.watch(routineDayViewProvider(key));
+        routineSteps = steps;
+        settled = {...view.doneIds, ...view.excusedIds};
+      }
+    }
+  }
+
   return LockWarningEvaluator.evaluate(
     limit: limit,
     minutesUsedToday: used,
     alarms: alarms,
     now: now,
+    routineSteps: routineSteps,
+    settledStepIds: settled,
   );
 });
 

@@ -696,6 +696,97 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
+    testWidgets('a step that has waited too long asks for an adult, warmly',
+        (tester) async {
+      tester.view.physicalSize = const Size(900, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      _recorder.escalations.clear();
+
+      final n = DateTime.now();
+      final at = DateTime(n.year, n.month, n.day, 7, 5);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            profileProvider.overrideWith(
+              () => _FixedProfile(
+                UserProfile(
+                  id: _profileId,
+                  name: 'Ana',
+                  role: UserRole.student,
+                  createdAt: DateTime(2026),
+                ),
+              ),
+            ),
+            routineLockRecorderProvider.overrideWithValue(_recorder),
+            lockStateProvider(_profileId)
+                .overrideWithValue(const RoutineStepDue(_brushing)),
+            wallClockTickerProvider.overrideWith((ref) => Stream.value(at)),
+            routineListProvider(_profileId).overrideWith(
+              (ref) => Stream.value([
+                _routine(steps: const [_brushing]),
+              ]),
+            ),
+          ],
+          child: const MaterialApp(home: RoutineLockScreen()),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Still waiting on this one'), findsOneWidget);
+      expect(
+        find.ancestor(
+          of: find.text('Ask a grown-up'),
+          matching: find.byWidgetPredicate((w) => w is FilledButton),
+        ),
+        findsOneWidget,
+      );
+      expect(_recorder.escalations, ['$_profileId/brush']);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('before the escalation time there is no prompt', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(900, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final n = DateTime.now();
+      final at = DateTime(n.year, n.month, n.day, 6, 50);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            profileProvider.overrideWith(
+              () => _FixedProfile(
+                UserProfile(
+                  id: _profileId,
+                  name: 'Ana',
+                  role: UserRole.student,
+                  createdAt: DateTime(2026),
+                ),
+              ),
+            ),
+            routineLockRecorderProvider.overrideWithValue(_recorder),
+            lockStateProvider(_profileId)
+                .overrideWithValue(const RoutineStepDue(_brushing)),
+            wallClockTickerProvider.overrideWith((ref) => Stream.value(at)),
+            routineListProvider(_profileId).overrideWith(
+              (ref) => Stream.value([
+                _routine(steps: const [_brushing]),
+              ]),
+            ),
+          ],
+          child: const MaterialApp(home: RoutineLockScreen()),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Still waiting on this one'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
     testWidgets('reports that the lock appeared, once per step', (
       tester,
     ) async {

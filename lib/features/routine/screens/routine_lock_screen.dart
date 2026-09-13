@@ -19,6 +19,7 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/lock_announcement_provider.dart';
 import '../../../providers/lock_state_provider.dart';
 import '../../../providers/routine_provider.dart';
+import '../../../providers/wall_clock_provider.dart';
 import '../../../widgets/adult_gate_dialog.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../models/routine_catalog.dart';
@@ -26,6 +27,7 @@ import '../models/routine_models.dart';
 import '../models/routine_presentation.dart';
 import '../services/routine_completion_flow.dart';
 import '../services/routine_lock_recorder.dart';
+import '../services/routine_reminder_scheduler.dart';
 import '../services/routine_service.dart';
 import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
@@ -123,6 +125,11 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   ({RoutineStepMark mark, bool approved})? _releasedBy;
   Timer? _releaseTimer;
 
+  /// The step already escalated on this screen, so the prompt, the report
+  /// and the spoken nudge each happen once per step.
+  String? _escalatedFor;
+  Timer? _helpTimer;
+
   @override
   void initState() {
     super.initState();
@@ -145,6 +152,7 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _announceTimer?.cancel();
     _releaseTimer?.cancel();
+    _helpTimer?.cancel();
     _pulse?.dispose();
     unawaited(_announcer?.stop());
     super.dispose();
@@ -239,6 +247,8 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
         stepId: step.id,
       );
       ref.invalidate(routineDayLogProvider(routineDayKey(profileId, day)));
+      // The excused step's alert, if it is still in the shade, goes too.
+      unawaited(RoutineReminderScheduler.refreshSettled());
     } finally {
       _finish();
     }
@@ -325,6 +335,25 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     }
   }
 
+  /// One gentle spoken or felt nudge once the step has waited long enough
+  /// to need help. Not a second alarm — the learner is not in trouble.
+  void _announceHelp(RoutineStep step) {
+    if (!mounted) return;
+    final filipino = ref.read(settingsProvider).locale == 'fil';
+    final title = RoutineCatalog.titleFor(step, filipino: filipino);
+    final LockAnnouncer announcer =
+        _announcer ?? ref.read(lockAnnouncerProvider);
+    unawaited(
+      announcer.announce(
+        presentation: _lockPresentation,
+        message: filipino
+            ? 'Hindi pa tapos ang $title. Ayos na magtanong sa nakatatanda.'
+            : '$title is not done yet. It is okay to ask a grown-up for help.',
+        speakFilipino: filipino,
+      ),
+    );
+  }
+
   Future<void> _showSigns(RoutineStep step, String profileId) async {
     await RoutineSignLauncher.showSignsFor(
       context,
@@ -379,6 +408,41 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
       );
     }
 
+    // ── Escalation: waited long enough to need help ──
+    // Measured from the step's own time on the shared wall clock, against
+    // the routine's own threshold, so this and the educator's red row turn
+    // at the same minute.
+    final now =
+        ref.watch(wallClockTickerProvider).valueOrNull ?? DateTime.now();
+    final owning = (ref.watch(routineListProvider(profile.id)).valueOrNull ??
+            const <Routine>[])
+        .where((r) => r.steps.any((s) => s.id == step.id));
+    final escalateAfter =
+        owning.isEmpty ? 0 : owning.first.escalateAfterMinutes;
+    final dueAt = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      step.hour ?? 0,
+      step.minute ?? 0,
+    );
+    final waited = now.difference(dueAt);
+    final needsHelp = escalateAfter > 0 &&
+        step.isScheduled &&
+        !waited.isNegative &&
+        waited >= Duration(minutes: escalateAfter);
+    if (needsHelp && _escalatedFor != step.id && reason is RoutineStepDue) {
+      _escalatedFor = step.id;
+      unawaited(
+        ref.read(routineLockRecorderProvider).escalated(profile.id, step.id),
+      );
+      _helpTimer?.cancel();
+      _helpTimer = Timer(
+        const Duration(milliseconds: 600),
+        () => _announceHelp(step),
+      );
+    }
+
     final released = _releasedBy;
     if (released != null) {
       return PopScope(
@@ -418,6 +482,10 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     final body = ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
       children: [
+        if (needsHelp) ...[
+          _NeedsHelpCard(filipino: l),
+          const SizedBox(height: 14),
+        ],
         // ── What is happening, in one line, before anything else ──
         Semantics(
           header: true,
@@ -567,19 +635,40 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
           ),
         ),
         const SizedBox(height: 10),
-        TextButton.icon(
-          onPressed: _busy ? null : () => _askGrownUp(step, profile.id),
-          icon: const Icon(Icons.pan_tool_alt_rounded, size: 20),
-          label: Text(
-            l ? 'Tanungin ang nakatatanda' : 'Ask a grown-up',
-            maxLines: 2,
-            textAlign: TextAlign.center,
+        // Once the step needs help, asking an adult stops being the quiet
+        // option at the bottom and becomes a proper button: the learner has
+        // been here a while, and the way out should be easy to see.
+        if (needsHelp)
+          SizedBox(
+            height: 56,
+            child: FilledButton.icon(
+              onPressed: _busy ? null : () => _askGrownUp(step, profile.id),
+              icon: const Icon(Icons.pan_tool_alt_rounded, size: 22),
+              label: Text(
+                l ? 'Tanungin ang nakatatanda' : 'Ask a grown-up',
+                maxLines: 2,
+                textAlign: TextAlign.center,
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.warning,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          )
+        else
+          TextButton.icon(
+            onPressed: _busy ? null : () => _askGrownUp(step, profile.id),
+            icon: const Icon(Icons.pan_tool_alt_rounded, size: 20),
+            label: Text(
+              l ? 'Tanungin ang nakatatanda' : 'Ask a grown-up',
+              maxLines: 2,
+              textAlign: TextAlign.center,
+            ),
+            style: TextButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              foregroundColor: hc.textSecondary,
+            ),
           ),
-          style: TextButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            foregroundColor: hc.textSecondary,
-          ),
-        ),
       ],
     );
 
@@ -830,6 +919,74 @@ class _ReleasedNotice extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Still waiting on this one — that is okay." The learner's side of an
+/// escalation: warm, never a scolding, and pointing at the adult.
+class _NeedsHelpCard extends StatelessWidget {
+  const _NeedsHelpCard({required this.filipino});
+
+  final bool filipino;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final l = filipino;
+    final title = l ? 'Hindi pa tapos ito' : 'Still waiting on this one';
+    final body = l
+        ? 'Ayos lang. Kung may hadlang, magtanong sa nakatatanda para sa '
+            'tulong.'
+        : 'That is okay. If something is in the way, ask a grown-up to help.';
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: '$title. $body',
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(alpha: hc.hc ? 0.3 : 0.16),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: hc.hc ? hc.primary : AppColors.warning,
+              width: 2,
+            ),
+          ),
+          child: Row(
+            children: [
+              const Text(
+                '💛',
+                style: TextStyle(fontSize: 30),
+                textScaler: TextScaler.linear(1.0),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.titleSmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: hc.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      body,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: hc.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

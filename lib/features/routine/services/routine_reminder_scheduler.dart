@@ -8,6 +8,7 @@ import '../../../core/services/device_timezone.dart';
 import '../../../core/services/notification_schedule_mode.dart';
 import '../../../data/models/enums.dart';
 import '../models/routine_catalog.dart';
+import '../models/routine_day_state.dart';
 import '../models/routine_models.dart';
 import 'routine_service.dart';
 
@@ -100,6 +101,10 @@ class RoutineReminderScheduler {
   static const _silentChannelId = 'routine_reminder_silent';
   static const _silentChannelName = 'Routine Reminders (vibrate only)';
 
+  /// Educator-side alerts that a learner has waited too long on a step.
+  static const _helpChannelId = 'routine_help';
+  static const _helpChannelName = 'Routine Help Alerts';
+
   /// Hard cap on pending routine notifications. iOS allows 64 across the whole
   /// app and `AlarmScheduler` is already using some, so routines take a little
   /// under half and drop the rest — the earliest steps of the day survive,
@@ -112,6 +117,26 @@ class RoutineReminderScheduler {
   static StreamSubscription<List<Routine>>? _sub;
   static final Set<int> _activeIds = {};
   static bool _pluginInitialised = false;
+
+  /// The reminders currently scheduled, the learner they are for, and how
+  /// their notifications are delivered — kept so today's settled steps can be
+  /// re-checked without re-reading routines.
+  static List<RoutineReminder> _plan = const [];
+  static String? _profileId;
+  static DisabilityType _accessibility = DisabilityType.none;
+
+  /// Notification ids whose occurrence **today** has been skipped, and the day
+  /// that set belongs to. A new day clears it; the schedules themselves were
+  /// already started from tomorrow, which is now today.
+  static String _suppressedDay = '';
+  static final Set<int> _suppressedToday = {};
+
+  /// Today's day log and educator actions for the learner, watched so an
+  /// excuse or approval made on another device reaches this device's
+  /// notifications too.
+  static StreamSubscription<RoutineDayLog>? _logSub;
+  static StreamSubscription<RoutineDayActions>? _actionsSub;
+  static String _watchedDay = '';
 
   /// Whether Android will fire at the exact minute. The app declares
   /// `USE_EXACT_ALARM`, but it is checked rather than assumed: on a device or
@@ -234,6 +259,9 @@ class RoutineReminderScheduler {
     await _initPlugin();
     await _sub?.cancel();
     await cancelAll();
+    _profileId = profileId;
+    _accessibility = accessibility;
+    _watchToday(profileId);
 
     _sub = const RoutineService().watchForChild(profileId).listen(
       (routines) {
@@ -265,6 +293,14 @@ class RoutineReminderScheduler {
   static Future<void> shutdown() async {
     await _sub?.cancel();
     _sub = null;
+    await _logSub?.cancel();
+    await _actionsSub?.cancel();
+    _logSub = null;
+    _actionsSub = null;
+    _watchedDay = '';
+    _plan = const [];
+    _profileId = null;
+    _suppressedToday.clear();
     await cancelAll();
   }
 
@@ -275,8 +311,21 @@ class RoutineReminderScheduler {
   }) async {
     await cancelAll();
     final reminders = plan(routines, filipino: filipino);
+    _plan = reminders;
+    _accessibility = accessibility;
+    final today = DateTime.now();
+    final id = _profileId;
+    if (id != null) _watchToday(id);
+    _suppressedDay = dayStampOf(today);
+    _suppressedToday.clear();
+    // A step already done or excused today is scheduled from tomorrow, so
+    // editing the routine at 6:50 cannot resurrect a reminder for a morning
+    // that is already settled.
+    final settled = _settledToday(today);
     for (final r in reminders) {
-      await _scheduleOne(r, accessibility: accessibility);
+      final skip = settled.contains(r.stepId);
+      await _scheduleOne(r, accessibility: accessibility, skipToday: skip);
+      if (skip) _suppressedToday.add(r.notificationId);
     }
     if (kDebugMode) {
       debugPrint(
@@ -337,6 +386,39 @@ class RoutineReminderScheduler {
     }
   }
 
+  /// Posts "Ana needs help with Brushing Teeth" on the educator's device.
+  ///
+  /// A one-off, not a schedule. Ids sit at 2,000,000+, clear of the reminder
+  /// range above and the alarm scheduler's below. Failures are swallowed: an
+  /// alert that could not be posted must never take the dashboard down with
+  /// it, and the red row is still there.
+  static Future<void> showHelpAlert({
+    required String key,
+    required String title,
+    required String body,
+  }) async {
+    try {
+      await _initPlugin();
+      await _plugin.show(
+        2000000 + (key.hashCode & 0xFFFF),
+        title,
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _helpChannelId,
+            _helpChannelName,
+            channelDescription:
+                'When a learner has waited too long on a routine step.',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+          ),
+          iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+        ),
+      );
+    } catch (_) {}
+  }
+
   static void _onTap(NotificationResponse response) {
     final payload = response.payload;
     if (payload == null || !payload.startsWith('routine:')) return;
@@ -353,6 +435,7 @@ class RoutineReminderScheduler {
   static Future<void> _scheduleOne(
     RoutineReminder r, {
     required DisabilityType accessibility,
+    bool skipToday = false,
   }) async {
     final silent = usesSilentChannel(accessibility);
     final androidDetails = AndroidNotificationDetails(
@@ -388,7 +471,12 @@ class RoutineReminderScheduler {
       r.notificationId,
       r.title,
       r.body,
-      _nextOccurrence(hour: r.hour, minute: r.minute, isoWeekday: r.isoWeekday),
+      _nextOccurrence(
+        hour: r.hour,
+        minute: r.minute,
+        isoWeekday: r.isoWeekday,
+        skipToday: skipToday,
+      ),
       details,
       payload: 'routine:${r.routineId}|${r.stepId}',
       // Exact where allowed. Inexact gave Android a one-hour window
@@ -409,20 +497,162 @@ class RoutineReminderScheduler {
     required int hour,
     required int minute,
     int? isoWeekday,
+    bool skipToday = false,
   }) {
     final now = tz.TZDateTime.now(tz.local);
-    var candidate =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (isoWeekday != null) {
-      while (candidate.weekday != isoWeekday) {
-        candidate = candidate.add(const Duration(days: 1));
-      }
-      if (!candidate.isAfter(now)) {
-        candidate = candidate.add(const Duration(days: 7));
-      }
-    } else if (!candidate.isAfter(now)) {
-      candidate = candidate.add(const Duration(days: 1));
+    final next = firstFireAfter(
+      now: DateTime(
+        now.year,
+        now.month,
+        now.day,
+        now.hour,
+        now.minute,
+        now.second,
+      ),
+      hour: hour,
+      minute: minute,
+      isoWeekday: isoWeekday,
+      skipToday: skipToday,
+    );
+    return tz.TZDateTime(
+      tz.local,
+      next.year,
+      next.month,
+      next.day,
+      next.hour,
+      next.minute,
+    );
+  }
+
+  /// When a reminder at [hour]:[minute] should first fire, counting from
+  /// [now] — optionally not today at all.
+  ///
+  /// **Skipping today is safe for the days after** because of how the
+  /// repeat works on Android: the alarm is set for exactly this first date,
+  /// each firing schedules the next one from the time components, and a
+  /// reboot re-arms from this same stored date. Starting a daily reminder
+  /// tomorrow therefore skips one morning and keeps every morning after it.
+  /// (iOS repeats from the time components alone and would still fire today;
+  /// nothing breaks, the one skip just does not happen there.)
+  ///
+  /// Built day by day with calendar arithmetic rather than adding 24-hour
+  /// durations, so a daylight-saving change cannot slide the time an hour.
+  static DateTime firstFireAfter({
+    required DateTime now,
+    required int hour,
+    required int minute,
+    int? isoWeekday,
+    bool skipToday = false,
+  }) {
+    bool tooEarly(DateTime c) =>
+        !c.isAfter(now) ||
+        (skipToday &&
+            c.year == now.year &&
+            c.month == now.month &&
+            c.day == now.day);
+    var candidate = DateTime(now.year, now.month, now.day, hour, minute);
+    while ((isoWeekday != null && candidate.weekday != isoWeekday) ||
+        tooEarly(candidate)) {
+      candidate = DateTime(
+        candidate.year,
+        candidate.month,
+        candidate.day + 1,
+        hour,
+        minute,
+      );
     }
     return candidate;
+  }
+
+  /// Which reminders need re-scheduling, and whether each should now skip
+  /// today (true) or get today back (false). Pure; unchanged ids are absent.
+  static Map<int, bool> suppressionChanges({
+    required List<RoutineReminder> plan,
+    required Set<String> settled,
+    required Set<int> suppressed,
+  }) {
+    final out = <int, bool>{};
+    for (final r in plan) {
+      final shouldSkip = settled.contains(r.stepId);
+      final isSkipped = suppressed.contains(r.notificationId);
+      if (shouldSkip != isSkipped) out[r.notificationId] = shouldSkip;
+    }
+    return out;
+  }
+
+  /// Brings today's reminders in line with today's day.
+  ///
+  /// A step that is done, excused or approved has nothing left to remind
+  /// about: its reminder — including one already sitting in the shade saying
+  /// "FlashLearn is waiting for you to do this" — is cleared, and the schedule
+  /// is started again from its next day. A step un-ticked before its time
+  /// gets today's reminder back.
+  ///
+  /// Called whenever today's log or actions change (from any device), and
+  /// straight after a local tick or excuse. A no-op before [init], which is
+  /// every widget test and every profile that has no reminders.
+  static Future<void> refreshSettled() async {
+    final id = _profileId;
+    if (id == null || _plan.isEmpty) return;
+    final today = DateTime.now();
+    final stamp = dayStampOf(today);
+    if (_suppressedDay != stamp) {
+      _suppressedDay = stamp;
+      _suppressedToday.clear();
+    }
+    final changes = suppressionChanges(
+      plan: _plan,
+      settled: _settledToday(today),
+      suppressed: _suppressedToday,
+    );
+    if (changes.isEmpty) return;
+    for (final r in _plan) {
+      final skip = changes[r.notificationId];
+      if (skip == null) continue;
+      try {
+        await _plugin.cancel(r.notificationId);
+        await _scheduleOne(r, accessibility: _accessibility, skipToday: skip);
+        _activeIds.add(r.notificationId);
+        skip
+            ? _suppressedToday.add(r.notificationId)
+            : _suppressedToday.remove(r.notificationId);
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('RoutineReminderScheduler refreshSettled failed: $e');
+        }
+      }
+    }
+  }
+
+  static Set<String> _settledToday(DateTime today) {
+    final id = _profileId;
+    if (id == null) return const <String>{};
+    try {
+      final view = RoutineService.viewFromCache(id, today);
+      return {...view.doneIds, ...view.excusedIds};
+    } catch (_) {
+      return const <String>{};
+    }
+  }
+
+  /// Watches today's log and actions for [profileId], re-subscribing when the
+  /// date has moved on. The service writes each merged snapshot to the local
+  /// mirror before emitting, so [refreshSettled] can simply read the mirror.
+  static void _watchToday(String profileId) {
+    final today = DateTime.now();
+    final stamp = '$profileId|${dayStampOf(today)}';
+    if (_watchedDay == stamp) return;
+    _watchedDay = stamp;
+    unawaited(_logSub?.cancel());
+    unawaited(_actionsSub?.cancel());
+    _logSub = const RoutineService().watchDayLog(profileId, today).listen(
+          (_) => unawaited(refreshSettled()),
+          onError: (Object _) {},
+        );
+    _actionsSub =
+        const RoutineService().watchDayActions(profileId, today).listen(
+              (_) => unawaited(refreshSettled()),
+              onError: (Object _) {},
+            );
   }
 }

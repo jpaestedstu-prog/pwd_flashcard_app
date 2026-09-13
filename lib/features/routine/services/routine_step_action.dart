@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/sound_service.dart';
@@ -6,6 +8,7 @@ import '../../../providers/routine_provider.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_presentation.dart';
+import 'routine_reminder_scheduler.dart';
 import 'routine_service.dart';
 
 /// What ticking a step off actually did.
@@ -101,6 +104,10 @@ class RoutineStepAction {
             : tts.speakEnglish('$title done. Well done!'));
       }
     }
+
+    // A step ticked before its reminder no longer needs one, and one
+    // un-ticked before its time gets it back.
+    unawaited(RoutineReminderScheduler.refreshSettled());
 
     return RoutineTickResult(
       log: log,

@@ -272,6 +272,13 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                         ),
                         if (_draft.lockEnabled) ...[
                           _LockSummary(routine: _draft, filipino: l),
+                          _EscalationPicker(
+                            minutes: _draft.escalateAfterMinutes,
+                            filipino: l,
+                            onChanged: (m) => _mutate(
+                              _draft.copyWith(escalateAfterMinutes: m),
+                            ),
+                          ),
                           _OpenByItselfRow(filipino: l),
                         ],
                       ],
@@ -1008,6 +1015,89 @@ class _OpenByItselfRowState extends State<_OpenByItselfRow> {
                 ),
               ],
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Ask for help after 15 min" — how long a locked step may wait before the
+/// learner is prompted to fetch an adult and the educator is alerted.
+///
+/// A handful of fixed choices rather than a slider: the numbers that matter
+/// are few, a chip is a large target, and "Off" has to be a first-class
+/// answer for a routine where waiting a long time is normal.
+class _EscalationPicker extends StatelessWidget {
+  const _EscalationPicker({
+    required this.minutes,
+    required this.filipino,
+    required this.onChanged,
+  });
+
+  static const choices = <int>[0, 10, 15, 20, 30, 45];
+
+  final int minutes;
+  final bool filipino;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final l = filipino;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.support_agent_rounded, size: 18, color: hc.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l ? 'Humingi ng tulong makalipas ang' : 'Ask for help after',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: hc.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              for (final m in choices)
+                ChoiceChip(
+                  label: Text(
+                    m == 0
+                        ? (l ? 'Huwag' : 'Off')
+                        : (l ? '$m minuto' : '$m min'),
+                  ),
+                  selected: minutes == m,
+                  onSelected: (_) => onChanged(m),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            minutes == 0
+                ? (l
+                    ? 'Hindi hihingi ng tulong: nananatili ang lock hanggang '
+                        'tapos o lumipas ang oras nito.'
+                    : 'No escalation: the lock simply waits until the step is '
+                        'done or its hour runs out.')
+                : (l
+                    ? 'Kung hindi pa tapos $minutes minuto makalipas ang oras, '
+                        'hihikayatin ang bata na magtanong sa nakatatanda, at '
+                        'aabisuhan kayo sa dashboard.'
+                    : 'If a step is still not done $minutes min after its time, '
+                        'the learner is prompted to ask a grown-up, and your '
+                        'dashboard alerts you.'),
+            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'routine_reminder_scheduler.dart';
 import 'routine_service.dart';
 
 /// What the learner's device reports about its own routine lock: that the
@@ -23,3 +24,25 @@ class RoutineLockRecorder {
 final routineLockRecorderProvider = Provider<RoutineLockRecorder>(
   (ref) => const RoutineLockRecorder(),
 );
+
+/// Raises "a learner needs help" on the educator's own device. A seam, like
+/// [RoutineLockRecorder], so dashboard tests can count alerts instead of
+/// touching the notification plugin.
+class RoutineHelpAlerter {
+  const RoutineHelpAlerter();
+
+  Future<void> alert({
+    required String key,
+    required String title,
+    required String body,
+  }) =>
+      RoutineReminderScheduler.showHelpAlert(key: key, title: title, body: body);
+}
+
+final routineHelpAlerterProvider = Provider<RoutineHelpAlerter>(
+  (ref) => const RoutineHelpAlerter(),
+);
+
+/// `learner|day|step` keys already alerted on this device, so a learner who
+/// needs help is announced once, not on every ten-second tick.
+final routineHelpAlertedProvider = StateProvider<Set<String>>((ref) => {});

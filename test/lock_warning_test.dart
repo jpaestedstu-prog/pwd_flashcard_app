@@ -308,7 +308,9 @@ void main() {
 
   group('LockWarning wording', () {
     test('every cause produces a non-empty message naming the guardian', () {
-      for (final cause in LockWarningCause.values) {
+      // A routine warning names the step coming, not a guardian — it is not
+      // a hand-over — so it is checked in routine_escalation_test.dart.
+      for (final cause in LockWarningCause.values.where((c) => c != LockWarningCause.routineStep)) {
         final w = LockWarning(minutesLeft: 5, cause: cause);
         expect(w.title, isNotEmpty);
         expect(w.body('Teacher Ana'), contains('Teacher Ana'));

@@ -1,6 +1,9 @@
 import '../../data/models/alarm_action.dart';
 import '../../data/models/child_alarm.dart';
 import '../../data/models/child_time_limit.dart';
+import '../../features/routine/models/routine_catalog.dart';
+import '../../features/routine/models/routine_lock_status.dart';
+import '../../features/routine/models/routine_models.dart';
 import 'lock_enforcer.dart';
 
 /// Why the child is about to be locked out.
@@ -13,6 +16,9 @@ enum LockWarningCause {
 
   /// A lock-screen alarm is about to fire.
   alarm,
+
+  /// A "My Day" step that holds the device is about to come due.
+  routineStep,
 }
 
 /// "Nearly time" notice, raised before [LockEnforcer] would lock.
@@ -28,14 +34,30 @@ class LockWarning {
 
   final LockWarningCause cause;
 
-  const LockWarning({required this.minutesLeft, required this.cause});
+  /// For [LockWarningCause.routineStep]: the step coming due, and its name
+  /// in both languages — resolved here so the banner needs no catalog.
+  final String? stepId;
+  final String stepTitle;
+  final String stepTitleFilipino;
+
+  const LockWarning({
+    required this.minutesLeft,
+    required this.cause,
+    this.stepId,
+    this.stepTitle = '',
+    this.stepTitleFilipino = '',
+  });
 
   /// Identity of the *lock event* this warning is about.
   ///
   /// Used to show the warning once per approaching lock rather than once
   /// per evaluation tick. Deliberately excludes [minutesLeft]: 5-minutes-left
   /// and 4-minutes-left are the same event, so the second must not re-fire.
-  String get eventKey => cause.name;
+  String get eventKey => cause == LockWarningCause.routineStep
+      // One warning per step: brushing teeth at 6:45 and getting dressed at
+      // 7:30 are two approaching locks, and each deserves its notice.
+      ? 'routineStep:$stepId'
+      : cause.name;
 
   /// Headline, e.g. "5 minutes left".
   String get title =>
@@ -50,23 +72,31 @@ class LockWarning {
       'Then study time is over and the device goes to $address.',
     LockWarningCause.alarm =>
       'Then it will be time to give the device to $address.',
+    LockWarningCause.routineStep =>
+      'Then it will be time for $stepTitle. Get ready to finish up.',
   };
 
   /// One short sentence for cognitive / multiple-disability profiles.
-  String bodySimple(String address) => 'Then give the device to $address.';
+  String bodySimple(String address) =>
+      cause == LockWarningCause.routineStep
+          ? 'Then it is time for $stepTitle.'
+          : 'Then give the device to $address.';
 
   /// Filipino counterpart of [body].
   String bodyFilipino(String address) =>
-      'Pagkatapos, ibigay ang device kay $address.';
+      cause == LockWarningCause.routineStep
+          ? 'Pagkatapos, oras na para sa $stepTitleFilipino.'
+          : 'Pagkatapos, ibigay ang device kay $address.';
 
   @override
   bool operator ==(Object other) =>
       other is LockWarning &&
       other.minutesLeft == minutesLeft &&
-      other.cause == cause;
+      other.cause == cause &&
+      other.stepId == stepId;
 
   @override
-  int get hashCode => Object.hash(minutesLeft, cause);
+  int get hashCode => Object.hash(minutesLeft, cause, stepId);
 }
 
 /// Pure "is a lock coming soon?" evaluator.
@@ -86,14 +116,21 @@ class LockWarningEvaluator {
   /// Precedence matches [LockEnforcer.evaluate] — alarm, then daily limit,
   /// then schedule — so a learner who is close to two cut-offs at once is
   /// warned about the one that will actually fire first.
+  ///
+  /// [routineSteps] are today's steps that can hold the device and
+  /// [settledStepIds] the ones already done or excused. A routine step is
+  /// warned about last, after every time-limit cause, and independently of
+  /// the time limit's own warning switch — that switch belongs to the time
+  /// limit, and a learner whose educator set a locking routine but no daily
+  /// limit must still be told the lock is coming.
   static LockWarning? evaluate({
     required ChildTimeLimit? limit,
     required int minutesUsedToday,
     required List<ChildAlarm> alarms,
     required DateTime now,
+    List<RoutineStep> routineSteps = const <RoutineStep>[],
+    Set<String> settledStepIds = const <String>{},
   }) {
-    if (limit == null || !limit.warningEnabled) return null;
-
     // Already locked → the lock screen is the message. Guard against
     // stacking a "5 minutes left" banner on top of "Time's up".
     final locked = LockEnforcer.evaluate(
@@ -101,8 +138,60 @@ class LockWarningEvaluator {
       minutesUsedToday: minutesUsedToday,
       alarms: alarms,
       now: now,
+      routineSteps: routineSteps,
+      completedStepIds: settledStepIds,
     );
     if (locked != null) return null;
+
+    final timeLimitWarning = limit == null || !limit.warningEnabled
+        ? null
+        : _timeLimitWarning(limit, minutesUsedToday, alarms, now);
+    if (timeLimitWarning != null) return timeLimitWarning;
+
+    return _routineWarning(routineSteps, settledStepIds, now);
+  }
+
+  /// The soonest routine step close enough to warn about.
+  ///
+  /// A step's own reminder lead decides how close that is, so an educator who
+  /// asked for ten minutes' notice gets the banner at ten minutes too.
+  static LockWarning? _routineWarning(
+    List<RoutineStep> steps,
+    Set<String> settled,
+    DateTime now,
+  ) {
+    RoutineStep? soonest;
+    var soonestMinutes = 0;
+    for (final s in steps) {
+      if (!s.isScheduled || settled.contains(s.id)) continue;
+      final dueAt = DateTime(now.year, now.month, now.day, s.hour!, s.minute!);
+      if (!dueAt.isAfter(now)) continue;
+      final lead = s.remindMinutesBefore > 0
+          ? s.remindMinutesBefore
+          : kRoutineWarnMinutes;
+      final minutes = (dueAt.difference(now).inSeconds / 60).ceil();
+      if (minutes > lead) continue;
+      if (soonest == null || minutes < soonestMinutes) {
+        soonest = s;
+        soonestMinutes = minutes;
+      }
+    }
+    if (soonest == null) return null;
+    return LockWarning(
+      minutesLeft: _atLeastOne(soonestMinutes),
+      cause: LockWarningCause.routineStep,
+      stepId: soonest.id,
+      stepTitle: RoutineCatalog.titleFor(soonest, filipino: false),
+      stepTitleFilipino: RoutineCatalog.titleFor(soonest, filipino: true),
+    );
+  }
+
+  static LockWarning? _timeLimitWarning(
+    ChildTimeLimit limit,
+    int minutesUsedToday,
+    List<ChildAlarm> alarms,
+    DateTime now,
+  ) {
 
     final lead = limit.effectiveWarningMinutes;
 

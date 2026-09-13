@@ -2,9 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/local/hive_service.dart';
 import '../features/routine/models/routine_day_state.dart';
+import '../features/routine/models/routine_lock_status.dart';
 import '../features/routine/models/routine_models.dart';
 import '../features/routine/services/routine_service.dart';
 import 'app_providers.dart';
+import 'wall_clock_provider.dart';
 
 /// Live stream of every routine targeting one learner.
 ///
@@ -114,4 +116,18 @@ final routineRecentDaysSyncProvider =
   await const RoutineService().fetchRecentDays(profileId);
   ref.invalidate(routineHistoryProvider(profileId));
   ref.invalidate(routineActionsHistoryProvider(profileId));
+});
+
+/// One learner's locking steps for today, live on the wall clock — what the
+/// educator's dashboard alerts from.
+final routineLockSummaryProvider =
+    Provider.family<RoutineLockSummary, String>((ref, profileId) {
+  final now = ref.watch(wallClockTickerProvider).valueOrNull ?? DateTime.now();
+  final routines =
+      ref.watch(routineListProvider(profileId)).valueOrNull ?? const <Routine>[];
+  if (!routines.any((r) => r.enabled && r.lockEnabled)) {
+    return RoutineLockSummary.none;
+  }
+  final view = ref.watch(routineDayViewProvider(routineDayKey(profileId, now)));
+  return RoutineLockSummary.of(routines: routines, view: view, now: now);
 });
