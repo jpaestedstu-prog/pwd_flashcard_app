@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/accessibility/sound_service.dart';
+import '../../../core/accessibility/tts_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/services/lock_announcer.dart';
 import '../../../core/services/lock_enforcer.dart';
@@ -26,6 +28,7 @@ import '../services/routine_completion_flow.dart';
 import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
 import '../widgets/routine_step_card.dart';
+import '../widgets/routine_step_timer.dart';
 
 /// How long the screen waits before announcing itself. Same reasoning as the
 /// time's-up lock: the learner should *see* the step before they hear it.
@@ -245,6 +248,29 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     GoRouter.of(context).go(next == null ? '/home' : lockRouteFor(next));
   }
 
+  /// The step's countdown reached zero: say so in the channels this learner
+  /// uses. A Deaf learner feels it, a learner who reads with their ears hears
+  /// it, and everyone sees the timer turn green.
+  ///
+  /// It does not tick the step. Running the timer is not the same as brushing,
+  /// and the learner is the one who says they did it.
+  Future<void> _onTimerDone() async {
+    if (!mounted) return;
+    final presentation = ref.read(routinePresentationProvider);
+    final filipino = ref.read(settingsProvider).locale == 'fil';
+    if (_lockPresentation.haptics) unawaited(HapticFeedback.heavyImpact());
+    if (presentation.playSoundCues) {
+      await ref.read(soundServiceProvider).playComplete();
+    }
+    if (!mounted) return;
+    if (presentation.speakOnOpen || presentation.announceProgress) {
+      final tts = ref.read(ttsServiceProvider);
+      await (filipino
+          ? tts.speakFilipino('Tapos na ang oras. Pindutin ang Tapos na.')
+          : tts.speakEnglish('Time is up. Tap I did it.'));
+    }
+  }
+
   Future<void> _showSigns(RoutineStep step, String profileId) async {
     await RoutineSignLauncher.showSignsFor(
       context,
@@ -409,6 +435,20 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
                   accent: AppColors.success,
                 ),
             ],
+          ),
+        ],
+
+        // ── The timer: "brush for two minutes" as something to watch ──
+        // Keyed by step, so a lock that rolls on to the next step of the day
+        // starts that step's timer fresh instead of inheriting a half-run one.
+        if (step.hasTimer && !isCheckIn) ...[
+          const SizedBox(height: 16),
+          RoutineStepTimer(
+            key: ValueKey('lock-timer-${step.id}'),
+            durationMinutes: step.durationMinutes,
+            asBar: presentation.timerAsBar,
+            filipino: l,
+            onFinished: _onTimerDone,
           ),
         ],
 

@@ -23,6 +23,7 @@ import '../widgets/routine_mood_prompt.dart';
 import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
 import '../widgets/routine_step_card.dart';
+import '../widgets/routine_step_timer.dart';
 
 /// One routine step, full screen: its picture, its visual instructions, its
 /// media, its signs, its timer, and the button that ticks it off.
@@ -61,10 +62,6 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
   RoutineStep get _step => widget.step;
   RoutinePresentation get _p => widget.presentation;
 
-  Timer? _ticker;
-  int _secondsLeft = 0;
-  bool _running = false;
-
   /// Null until the FSL manifest has been read. Three states matter here:
   /// unknown (no button yet), available, and unavailable (no button ever) —
   /// a Deaf learner must not be given a Signs button that dead-ends.
@@ -91,7 +88,6 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
   @override
   void initState() {
     super.initState();
-    _secondsLeft = _step.durationMinutes * 60;
     _resolveSigns();
     // After the first frame: speaking during initState races the route
     // transition, and on some devices the utterance is cut off by it.
@@ -100,7 +96,6 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
 
   @override
   void dispose() {
-    _ticker?.cancel();
     // Stop any cue still playing — walking back to the day list with a voice
     // still reading the last step is disorienting, especially for the learners
     // who rely on that voice.
@@ -123,29 +118,6 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
     await (filipino
         ? tts.speakFilipino('$title. $cue')
         : tts.speakEnglish('$title. $cue'));
-  }
-
-  void _toggleTimer() {
-    if (_running) {
-      _ticker?.cancel();
-      setState(() => _running = false);
-      return;
-    }
-    if (_secondsLeft <= 0) _secondsLeft = _step.durationMinutes * 60;
-    setState(() => _running = true);
-    _ticker?.cancel();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      setState(() => _secondsLeft = (_secondsLeft - 1).clamp(0, 1 << 30));
-      if (_secondsLeft <= 0) {
-        t.cancel();
-        setState(() => _running = false);
-        _onTimerDone();
-      }
-    });
   }
 
   Future<void> _onTimerDone() async {
@@ -399,22 +371,13 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
               // ── Timer ──
               if (_step.hasTimer) ...[
                 const SizedBox(height: 14),
-                _TimerPanel(
-                  secondsLeft: _secondsLeft,
-                  totalSeconds: _step.durationMinutes * 60,
-                  running: _running,
+                RoutineStepTimer(
+                  key: ValueKey('step-timer-${_step.id}'),
+                  durationMinutes: _step.durationMinutes,
                   asBar: _p.timerAsBar,
                   filipino: l,
-                  onToggle: widget.readOnly ? null : _toggleTimer,
-                  onReset: widget.readOnly
-                      ? null
-                      : () {
-                          _ticker?.cancel();
-                          setState(() {
-                            _running = false;
-                            _secondsLeft = _step.durationMinutes * 60;
-                          });
-                        },
+                  enabled: !widget.readOnly,
+                  onFinished: _onTimerDone,
                 ),
               ],
 
@@ -763,100 +726,6 @@ class _InstructionPanelState extends State<_InstructionPanel> {
                   ),
               ],
             ),
-    );
-  }
-}
-
-class _TimerPanel extends StatelessWidget {
-  final int secondsLeft;
-  final int totalSeconds;
-  final bool running;
-  final bool asBar;
-  final bool filipino;
-  final VoidCallback? onToggle;
-  final VoidCallback? onReset;
-
-  const _TimerPanel({
-    required this.secondsLeft,
-    required this.totalSeconds,
-    required this.running,
-    required this.asBar,
-    required this.filipino,
-    this.onToggle,
-    this.onReset,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hc = HCColor.of(context);
-    final l = filipino;
-    final fraction =
-        totalSeconds == 0 ? 0.0 : (secondsLeft / totalSeconds).clamp(0.0, 1.0);
-    final mm = (secondsLeft ~/ 60).toString().padLeft(2, '0');
-    final ss = (secondsLeft % 60).toString().padLeft(2, '0');
-
-    return _Panel(
-      title: l ? 'Timer' : 'Timer',
-      icon: Icons.timer_rounded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (asBar)
-            // A shrinking bar is concrete in a way "03:41" is not — the
-            // configuration for learners who do not read a clock yet.
-            Semantics(
-              label: l
-                  ? '$mm minuto at $ss segundo ang natitira'
-                  : '$mm minutes $ss seconds left',
-              child: ExcludeSemantics(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: fraction,
-                    minHeight: 18,
-                    backgroundColor: hc.textHint.withValues(alpha: 0.2),
-                    valueColor: AlwaysStoppedAnimation(
-                      fraction > 0.25 ? hc.primary : AppColors.warning,
-                    ),
-                  ),
-                ),
-              ),
-            )
-          else
-            Text(
-              '$mm:$ss',
-              textAlign: TextAlign.center,
-              style: AppTypography.displaySmall.copyWith(
-                fontWeight: FontWeight.w700,
-                color: secondsLeft == 0 ? AppColors.success : hc.textPrimary,
-              ),
-            ),
-          const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              FilledButton.icon(
-                onPressed: onToggle,
-                icon: Icon(
-                  running ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                ),
-                label: Text(
-                  running
-                      ? (l ? 'I-pause' : 'Pause')
-                      : (l ? 'Simulan' : 'Start'),
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: onReset,
-                icon: const Icon(Icons.replay_rounded),
-                label: Text(l ? 'Ulitin' : 'Reset'),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

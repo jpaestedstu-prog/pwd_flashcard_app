@@ -50,6 +50,50 @@ const _lunch = RoutineStep(
   minute: 0,
 );
 
+/// The same step with its two-minute timer — the case the lock's countdown
+/// exists for.
+const _timedBrushing = RoutineStep(
+  id: 'brush-timed',
+  activity: RoutineActivity.brushingTeeth,
+  hour: 6,
+  minute: 45,
+  durationMinutes: 2,
+);
+
+const _checkIn = RoutineStep(
+  id: 'check-in',
+  activity: RoutineActivity.moodCheckIn,
+  hour: 6,
+  minute: 45,
+  durationMinutes: 2,
+);
+
+/// Pumps the lock screen held on [step], without Hive writes.
+Future<void> _pumpLock(WidgetTester tester, RoutineStep step) async {
+  tester.view.physicalSize = const Size(900, 2400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        profileProvider.overrideWith(
+          () => _FixedProfile(
+            UserProfile(
+              id: _profileId,
+              name: 'Ana',
+              role: UserRole.student,
+              createdAt: DateTime(2026),
+            ),
+          ),
+        ),
+        lockStateProvider(_profileId).overrideWithValue(RoutineStepDue(step)),
+      ],
+      child: const MaterialApp(home: RoutineLockScreen()),
+    ),
+  );
+  await tester.pump();
+}
+
 /// Sequenced but not timed — there is no moment for a lock to begin at.
 const _homework = RoutineStep(
   id: 'homework',
@@ -605,6 +649,35 @@ void main() {
       expect(find.text('Ask a grown-up'), findsOneWidget);
       // A shared tablet must still be handed on.
       expect(find.text('Switch account'), findsOneWidget);
+    });
+
+    testWidgets('a timed step brings its countdown onto the lock', (
+      tester,
+    ) async {
+      await _pumpLock(tester, _timedBrushing);
+      expect(find.text('Timer'), findsOneWidget);
+      expect(find.text('02:00'), findsOneWidget);
+
+      await tester.tap(find.text('Start'));
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('01:56'), findsOneWidget);
+      // Guidance, never a gate: the way out stays open while it runs.
+      final didIt = tester.widget<FilledButton>(
+        find.ancestor(
+          of: find.text('I did it!'),
+          matching: find.byWidgetPredicate((w) => w is FilledButton),
+        ),
+      );
+      expect(didIt.onPressed, isNotNull);
+    });
+
+    testWidgets('an untimed step and a check-in show no timer', (tester) async {
+      await _pumpLock(tester, _brushing);
+      expect(find.text('Timer'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+
+      await _pumpLock(tester, _checkIn);
+      expect(find.text('Timer'), findsNothing);
     });
 
     testWidgets('the back button cannot dismiss it', (tester) async {
