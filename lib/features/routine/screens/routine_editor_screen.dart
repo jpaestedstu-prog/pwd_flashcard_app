@@ -14,6 +14,7 @@ import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_templates.dart';
 import '../services/routine_service.dart';
+import '../widgets/routine_educator_actions.dart';
 import '../widgets/routine_lock_status_line.dart';
 import '../widgets/routine_ownership_banner.dart';
 import '../widgets/routine_step_card.dart';
@@ -188,6 +189,18 @@ class RoutineEditorScreen extends ConsumerWidget {
                     child: RoutineLearnerLockStatus(
                       profileId: childProfileId,
                       filipino: l,
+                      actionsFor: (context, status) => RoutineStepActionBar(
+                        childProfileId: childProfileId,
+                        learnerName: childDisplayName ??
+                            (l ? 'ang bata' : 'this $learnerNoun'),
+                        status: status,
+                        filipino: l,
+                      ),
+                      undoFor: (context, status) => RoutineUndoMarkButton(
+                        childProfileId: childProfileId,
+                        status: status,
+                        filipino: l,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

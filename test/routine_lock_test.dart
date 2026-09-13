@@ -635,6 +635,67 @@ void main() {
   // ─── The screen itself ───
 
   group('the routine lock screen', () {
+    testWidgets('an educator lifting the lock is announced, not vanished', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(900, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final lock = StateProvider<LockReason?>(
+        (ref) => const RoutineStepDue(_brushing),
+      );
+      final now = DateTime.now();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            profileProvider.overrideWith(
+              () => _FixedProfile(
+                UserProfile(
+                  id: _profileId,
+                  name: 'Ana',
+                  role: UserRole.student,
+                  createdAt: DateTime(2026),
+                ),
+              ),
+            ),
+            routineLockRecorderProvider.overrideWithValue(_recorder),
+            lockStateProvider(_profileId).overrideWith((ref) => ref.watch(lock)),
+            routineDayViewProvider(routineDayKey(_profileId, now))
+                .overrideWithValue(
+              RoutineDayView.of(
+                profileId: _profileId,
+                day: now,
+                actions: RoutineDayActions.empty(_profileId, now).withApproval(
+                  'brush',
+                  RoutineStepMark(
+                    at: now,
+                    byProfileId: 'rose',
+                    byName: 'Rose',
+                    source: RoutineMarkSource.educator,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          child: const MaterialApp(home: RoutineLockScreen()),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('I did it!'), findsOneWidget);
+
+      ProviderScope.containerOf(
+        tester.element(find.byType(RoutineLockScreen)),
+      ).read(lock.notifier).state = null;
+      await tester.pump();
+
+      expect(find.text('Rose marked Brushing Teeth done.'), findsOneWidget);
+      expect(find.text('Going back to Home…'), findsOneWidget);
+      expect(find.text('I did it!'), findsNothing);
+      // Unmount before the notice's timer sends the learner Home.
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
     testWidgets('reports that the lock appeared, once per step', (
       tester,
     ) async {

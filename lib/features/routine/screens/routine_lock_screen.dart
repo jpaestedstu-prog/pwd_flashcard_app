@@ -36,6 +36,10 @@ import '../widgets/routine_step_timer.dart';
 /// time's-up lock: the learner should *see* the step before they hear it.
 const Duration _announceDelay = Duration(milliseconds: 400);
 
+/// How long the "your teacher marked it done" notice stays before Home.
+/// Long enough to read slowly; short enough not to feel like a second lock.
+const Duration _releaseNoticeFor = Duration(milliseconds: 2800);
+
 /// Full-screen "it is time to do this" lock for a "My Day" step.
 ///
 /// The routine twin of `TimeUpLockScreen`, and deliberately the opposite kind
@@ -114,6 +118,11 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   /// made once per step rather than once per rebuild.
   String? _shownReportedFor;
 
+  /// An educator's approval or excuse that lifted the lock from their own
+  /// device, shown briefly before the learner is sent Home.
+  ({RoutineStepMark mark, bool approved})? _releasedBy;
+  Timer? _releaseTimer;
+
   @override
   void initState() {
     super.initState();
@@ -135,6 +144,7 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _announceTimer?.cancel();
+    _releaseTimer?.cancel();
     _pulse?.dispose();
     unawaited(_announcer?.stop());
     super.dispose();
@@ -254,9 +264,42 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   /// other lock screen when something that outranks the routine has taken
   /// over. A no-op while a question is on screen; [_finish] retries then.
   void _leave(LockReason? next) {
-    if (!mounted || _busy) return;
+    if (!mounted || _busy || _releasedBy != null) return;
     unawaited(_announcer?.stop());
+    final release = next == null ? _remoteRelease() : null;
+    if (release != null) {
+      // An adult lifted this lock from their own device. Say so before the
+      // screen goes: a lock that vanishes without a word, in the middle of
+      // the task it was holding the learner on, reads as a glitch — or as
+      // having done something wrong.
+      if (_lockPresentation.haptics) unawaited(HapticFeedback.mediumImpact());
+      setState(() => _releasedBy = release);
+      _releaseTimer = Timer(_releaseNoticeFor, () {
+        if (mounted) GoRouter.of(context).go('/home');
+      });
+      return;
+    }
     GoRouter.of(context).go(next == null ? '/home' : lockRouteFor(next));
+  }
+
+  /// The educator's approval or excuse that just settled the held step, when
+  /// an educator's action — not the learner, not the clock — is what lifted
+  /// the lock.
+  ({RoutineStepMark mark, bool approved})? _remoteRelease() {
+    final step = _step;
+    if (step == null) return null;
+    final view = ref.read(
+      routineDayViewProvider(routineDayKey(_profileId, DateTime.now())),
+    );
+    final approval = view.approval(step.id);
+    if (approval != null && approval.source == RoutineMarkSource.educator) {
+      return (mark: approval, approved: true);
+    }
+    final excuse = view.excuse(step.id);
+    if (excuse != null && excuse.source == RoutineMarkSource.educator) {
+      return (mark: excuse, approved: false);
+    }
+    return null;
   }
 
   /// The step's countdown reached zero: say so in the channels this learner
@@ -333,6 +376,28 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
       _shownReportedFor = step.id;
       unawaited(
         ref.read(routineLockRecorderProvider).lockShown(profile.id, step.id),
+      );
+    }
+
+    final released = _releasedBy;
+    if (released != null) {
+      return PopScope(
+        canPop: false,
+        child: AnimatedGradientBackground(
+          intensity: 0.22,
+          preset: GradientPreset.assessment,
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              child: _ReleasedNotice(
+                step: step,
+                mark: released.mark,
+                approved: released.approved,
+                filipino: ref.watch(settingsProvider).locale == 'fil',
+              ),
+            ),
+          ),
+        ),
       );
     }
 
@@ -685,6 +750,87 @@ class _SwitchAccountBar extends StatelessWidget {
         style: TextButton.styleFrom(
           minimumSize: const Size.fromHeight(44),
           foregroundColor: hc.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+/// "Rose marked Brushing Teeth done." — the lock lifted from an educator's
+/// device, said plainly before the learner goes Home.
+class _ReleasedNotice extends StatelessWidget {
+  const _ReleasedNotice({
+    required this.step,
+    required this.mark,
+    required this.approved,
+    required this.filipino,
+  });
+
+  final RoutineStep step;
+  final RoutineStepMark mark;
+  final bool approved;
+  final bool filipino;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final l = filipino;
+    final title = RoutineCatalog.titleFor(step, filipino: l);
+    final name = mark.byName;
+    final message = approved
+        ? (name.isEmpty
+            ? (l
+                ? 'Minarkahang tapos ng iyong guro o magulang ang $title.'
+                : 'Your teacher or parent marked $title done.')
+            : (l
+                ? 'Minarkahang tapos ni $name ang $title.'
+                : '$name marked $title done.'))
+        : (name.isEmpty
+            ? (l
+                ? 'Sabi ng iyong guro o magulang, puwedeng laktawan ang $title '
+                    'ngayon.'
+                : 'Your teacher or parent says you can skip $title today.')
+            : (l
+                ? 'Sabi ni $name, puwedeng laktawan ang $title ngayon.'
+                : '$name says you can skip $title today.'));
+    final next = l ? 'Bumabalik sa Home…' : 'Going back to Home…';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Semantics(
+          liveRegion: true,
+          container: true,
+          label: '$message $next',
+          child: ExcludeSemantics(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  approved ? '✅' : '👍',
+                  style: const TextStyle(fontSize: 72),
+                  textScaler: const TextScaler.linear(1.0),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.headlineSmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: hc.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  next,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: hc.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

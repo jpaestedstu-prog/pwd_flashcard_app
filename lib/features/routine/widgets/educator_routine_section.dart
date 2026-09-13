@@ -8,6 +8,7 @@ import '../../../data/models/enums.dart';
 import '../../../providers/routine_provider.dart';
 import '../../../widgets/app_card.dart';
 import '../models/routine_models.dart';
+import 'routine_educator_actions.dart';
 import 'routine_lock_status_line.dart';
 
 /// "Today's Routines" — the Routine surface on the Teacher and Parent
@@ -214,6 +215,18 @@ class _RoutineRow extends ConsumerWidget {
                         child: RoutineLearnerLockStatus(
                           profileId: learner.profileId,
                           filipino: l,
+                          actionsFor: (context, status) =>
+                              RoutineStepActionBar(
+                            childProfileId: learner.profileId,
+                            learnerName: learner.name,
+                            status: status,
+                            filipino: l,
+                          ),
+                          undoFor: (context, status) => RoutineUndoMarkButton(
+                            childProfileId: learner.profileId,
+                            status: status,
+                            filipino: l,
+                          ),
                         ),
                       ),
                     ],
