@@ -14,6 +14,7 @@ import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_templates.dart';
 import '../services/routine_service.dart';
+import '../widgets/routine_copy_sheet.dart';
 import '../widgets/routine_educator_actions.dart';
 import '../widgets/routine_lock_status_line.dart';
 import '../widgets/routine_ownership_banner.dart';
@@ -229,6 +230,17 @@ class RoutineEditorScreen extends ConsumerWidget {
                         );
                       },
                       onDelete: () => _confirmDelete(context, r, l),
+                      // An educator's tool: a Player planning their own day
+                      // has nobody to copy it to.
+                      onCopy: ref.watch(profileProvider)?.role.isEducator ==
+                              true
+                          ? () => showRoutineCopySheet(
+                                context,
+                                ref,
+                                routine: r,
+                                filipino: l,
+                              )
+                          : null,
                     ),
                 ],
               );
@@ -678,6 +690,9 @@ class _RoutineCard extends StatelessWidget {
   final ValueChanged<bool> onToggle;
   final VoidCallback onDelete;
 
+  /// Null hides "Copy to other learners".
+  final VoidCallback? onCopy;
+
   const _RoutineCard({
     required this.routine,
     required this.log,
@@ -685,6 +700,7 @@ class _RoutineCard extends StatelessWidget {
     required this.onEdit,
     required this.onToggle,
     required this.onDelete,
+    this.onCopy,
   });
 
   @override
@@ -725,6 +741,7 @@ class _RoutineCard extends StatelessWidget {
                   onSelected: (v) {
                     if (v == 'edit') onEdit();
                     if (v == 'delete') onDelete();
+                    if (v == 'copy') onCopy?.call();
                   },
                   itemBuilder: (_) => [
                     PopupMenuItem(
@@ -737,6 +754,23 @@ class _RoutineCard extends StatelessWidget {
                         ],
                       ),
                     ),
+                    if (onCopy != null)
+                      PopupMenuItem(
+                        value: 'copy',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.copy_all_rounded, size: 18),
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Text(
+                                l
+                                    ? 'Kopyahin sa ibang bata'
+                                    : 'Copy to other learners',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     PopupMenuItem(
                       value: 'delete',
                       child: Row(
