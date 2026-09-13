@@ -8,6 +8,7 @@ import '../../../data/models/enums.dart';
 import '../../../providers/routine_provider.dart';
 import '../../../widgets/app_card.dart';
 import '../models/routine_models.dart';
+import 'routine_lock_status_line.dart';
 
 /// "Today's Routines" — the Routine surface on the Teacher and Parent
 /// dashboards.
@@ -126,10 +127,8 @@ class _RoutineRow extends ConsumerWidget {
         ref.watch(routineListProvider(learner.profileId)).valueOrNull ??
             const <Routine>[];
     final log = ref
-            .watch(routineDayLogProvider(
-                routineDayKey(learner.profileId, today)))
-            .valueOrNull ??
-        RoutineDayLog.empty(learner.profileId, today);
+        .watch(routineDayViewProvider(routineDayKey(learner.profileId, today)))
+        .effectiveLog;
 
     final live = routines.where((r) => r.enabled && r.runsOn(today)).toList();
     final steps = [for (final r in live) ...r.orderedSteps];
@@ -207,6 +206,16 @@ class _RoutineRow extends ConsumerWidget {
                           ),
                         ),
                       ],
+                      // Live, for a learner whose routine locks: what the
+                      // device is waiting on, whether it needs help, and
+                      // every step an adult excused or marked done today.
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: RoutineLearnerLockStatus(
+                          profileId: learner.profileId,
+                          filipino: l,
+                        ),
+                      ),
                     ],
                   ),
                 ),

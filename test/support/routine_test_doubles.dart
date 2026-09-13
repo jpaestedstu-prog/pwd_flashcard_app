@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_catalog.dart';
+import 'package:pwdpwdpwd/features/routine/models/routine_day_state.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_models.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 import 'package:pwdpwdpwd/providers/routine_provider.dart';
@@ -118,6 +119,9 @@ List<Override> routineOverrides({
     ),
     routineListProvider(profileId).overrideWith(
       (ref) => Stream.value(routines ?? [buildTestRoutine()]),
+    ),
+    routineDayActionsProvider(routineDayKey(profileId, day)).overrideWith(
+      (ref) => Stream.value(RoutineDayActions.empty(profileId, day)),
     ),
     routineDayLogProvider(routineDayKey(profileId, day)).overrideWith(
       (ref) => Stream.value(

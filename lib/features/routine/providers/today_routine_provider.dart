@@ -22,7 +22,12 @@ class TodayRoutine {
     required this.log,
     required this.streak,
     required this.hasEducator,
+    this.excusedIds = const <String>{},
   });
+
+  /// Steps an adult waved past for today. Not done — the card still counts
+  /// them as outstanding — but never offered as the next thing to do.
+  final Set<String> excusedIds;
 
   /// Every live step scheduled for today, in display order.
   final List<RoutineStep> steps;
@@ -63,7 +68,9 @@ class TodayRoutine {
   /// The first step not yet ticked, or null when the day is done or empty.
   RoutineStep? get nextStep {
     for (final s in steps) {
-      if (!(log?.isDone(s.id) ?? false)) return s;
+      if (!(log?.isDone(s.id) ?? false) && !excusedIds.contains(s.id)) {
+        return s;
+      }
     }
     return null;
   }
@@ -128,9 +135,13 @@ final todayRoutineProvider = Provider<TodayRoutine>((ref) {
   // reason to break the top of Home.
   final routines =
       ref.watch(myRoutinesProvider).valueOrNull ?? const <Routine>[];
-  final log = ref
-      .watch(routineDayLogProvider(routineDayKey(profile.id, today)))
-      .valueOrNull;
+  final key = routineDayKey(profile.id, today);
+  // The joined day: an educator's approval shows as done on Home, their
+  // excuse stops the step being offered as next, and their reset clears the
+  // card. Null until the learner's own log has loaded, as before.
+  final view = ref.watch(routineDayViewProvider(key));
+  final log =
+      ref.watch(routineDayLogProvider(key)).hasValue ? view.effectiveLog : null;
 
   final steps = <RoutineStep>[
     for (final r in routines)
@@ -148,6 +159,7 @@ final todayRoutineProvider = Provider<TodayRoutine>((ref) {
   return TodayRoutine(
     steps: steps,
     log: log,
+    excusedIds: view.excusedIds,
     streak: history.streak(now: today),
     // A learner who belongs to a class or a family group has someone whose
     // job this is. A Player profile does not, and telling them to ask their

@@ -8,7 +8,6 @@ import '../../../providers/wall_clock_provider.dart';
 import '../models/routine_models.dart';
 import '../models/routine_popup_schedule.dart';
 import '../models/routine_presentation.dart';
-import '../providers/routine_lock_skip_provider.dart';
 import '../providers/today_routine_provider.dart';
 import '../services/routine_step_action.dart';
 import 'routine_mood_prompt.dart';
@@ -110,7 +109,7 @@ class _RoutinePopupWatcherState extends ConsumerState<RoutinePopupWatcher> {
       now: now,
       snoozedUntil: _snoozedUntil,
       // A step an adult excused on the routine lock is excused here too.
-      skippedStepIds: ref.watch(routineLockSkipProvider(profile.id)).on(now),
+      skippedStepIds: today.excusedIds,
       requestedStepId: request,
     );
     if (due == null || _showing) return const SizedBox.shrink();

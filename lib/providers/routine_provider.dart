@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/local/hive_service.dart';
+import '../features/routine/models/routine_day_state.dart';
 import '../features/routine/models/routine_models.dart';
 import '../features/routine/services/routine_service.dart';
 import 'app_providers.dart';
@@ -69,4 +70,48 @@ final routineHistoryProvider =
   } catch (_) {
     return const <RoutineDayLog>[];
   }
+});
+
+/// Live educator actions on one learner's day — approvals, excuses, resets
+/// made from a Teacher's or Parent's own device.
+final routineDayActionsProvider =
+    StreamProvider.family<RoutineDayActions, RoutineDayKey>((ref, key) {
+  return const RoutineService().watchDayActions(key.profileId, key.day);
+});
+
+/// One learner's day as it actually stands: their log joined with any
+/// educator actions. What screens should ask "is this step done?".
+final routineDayViewProvider =
+    Provider.family<RoutineDayView, RoutineDayKey>((ref, key) {
+  return RoutineDayView.of(
+    profileId: key.profileId,
+    day: key.day,
+    log: ref.watch(routineDayLogProvider(key)).valueOrNull,
+    actions: ref.watch(routineDayActionsProvider(key)).valueOrNull,
+  );
+});
+
+/// The last two weeks of educator actions for [profileId], newest first,
+/// from the local mirror. Re-reads when today's actions change.
+final routineActionsHistoryProvider =
+    Provider.family<List<RoutineDayActions>, String>((ref, profileId) {
+  ref.watch(
+    routineDayActionsProvider(routineDayKey(profileId, DateTime.now())),
+  );
+  try {
+    return HiveService.getRoutineActionsHistory(profileId);
+  } catch (_) {
+    return const <RoutineDayActions>[];
+  }
+});
+
+/// Pulls a learner's recent days from the cloud into this device's mirror,
+/// then refreshes the history that reads it. Watched by the history screen,
+/// which on an educator's device would otherwise only know the days it had
+/// open.
+final routineRecentDaysSyncProvider =
+    FutureProvider.autoDispose.family<void, String>((ref, profileId) async {
+  await const RoutineService().fetchRecentDays(profileId);
+  ref.invalidate(routineHistoryProvider(profileId));
+  ref.invalidate(routineActionsHistoryProvider(profileId));
 });

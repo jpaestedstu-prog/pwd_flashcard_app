@@ -208,12 +208,10 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
     final emoji = RoutineCatalog.emojiFor(_step);
     final instructions = RoutineCatalog.instructionsFor(_step);
     final media = _p.mediaFor(_step);
-    final log = ref
-            .watch(routineDayLogProvider(
-                routineDayKey(widget.profileId, widget.day)))
-            .valueOrNull ??
-        RoutineDayLog.empty(widget.profileId, widget.day);
-    final done = log.isDone(_step.id);
+    final done = ref
+        .watch(routineDayViewProvider(
+            routineDayKey(widget.profileId, widget.day)))
+        .isDone(_step.id);
 
     return AnimatedGradientBackground(
       intensity: 0.2,

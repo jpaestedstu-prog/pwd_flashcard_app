@@ -1,5 +1,9 @@
 import '../../../data/models/enums.dart';
 
+/// Minutes a locked routine step waits before it counts as "needs help",
+/// unless the educator chose otherwise ([Routine.escalateAfterMinutes]).
+const int kRoutineDefaultEscalateMinutes = 15;
+
 /// One activity a daily routine can be built from.
 ///
 /// Persisted **by index** (Firestore + Hive both store the int), so entries
@@ -375,6 +379,15 @@ class Routine {
   /// routines as a checklist — see `routineFeatureProvider`.
   final bool lockEnabled;
 
+  /// How long a locked step may wait before the learner is treated as
+  /// needing help — the lock screen offers the adult more plainly, and the
+  /// educator's dashboard turns the row red and alerts them.
+  ///
+  /// Zero switches escalation off. Clamped to 45, below the one-hour lock
+  /// window, because an escalation that can only fire after the lock has
+  /// already lapsed would never fire at all.
+  final int escalateAfterMinutes;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -390,6 +403,7 @@ class Routine {
     this.enabled = true,
     this.remindersEnabled = true,
     this.lockEnabled = false,
+    this.escalateAfterMinutes = kRoutineDefaultEscalateMinutes,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -451,6 +465,7 @@ class Routine {
     bool? enabled,
     bool? remindersEnabled,
     bool? lockEnabled,
+    int? escalateAfterMinutes,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -466,6 +481,7 @@ class Routine {
       enabled: enabled ?? this.enabled,
       remindersEnabled: remindersEnabled ?? this.remindersEnabled,
       lockEnabled: lockEnabled ?? this.lockEnabled,
+      escalateAfterMinutes: escalateAfterMinutes ?? this.escalateAfterMinutes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -485,6 +501,7 @@ class Routine {
         'enabled': enabled,
         'reminders_enabled': remindersEnabled,
         'lock_enabled': lockEnabled,
+        'escalate_after_minutes': escalateAfterMinutes,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -527,6 +544,9 @@ class Routine {
       // stay checklists: a routine nobody chose to make a lock must never
       // become one because the app updated.
       lockEnabled: (json['lock_enabled'] as bool?) ?? false,
+      escalateAfterMinutes:
+          (json['escalate_after_minutes'] as int?)?.clamp(0, 45) ??
+              kRoutineDefaultEscalateMinutes,
       createdAt: _parseDate(json['created_at']),
       updatedAt: _parseDate(json['updated_at']),
     );
@@ -601,6 +621,129 @@ class RoutineDayStep {
       );
 }
 
+/// Who excused or approved a step, when, and whether it still stands.
+///
+/// The record behind "Brushing Teeth — excused by Ma'am Rose at 6:52". A lock
+/// that anyone can wave past is only accountable if the waving leaves a trace
+/// the educator can read afterwards, so an excuse is never a bare flag.
+///
+/// Revoking keeps the mark and stamps [revokedAt] rather than deleting it.
+/// Two devices hold copies of the same day, and a deletion cannot win a merge
+/// against a copy that still has the entry; a later timestamp can.
+class RoutineStepMark {
+  final DateTime at;
+  final String byProfileId;
+  final String byName;
+  final UserRole? byRole;
+  final RoutineMarkSource source;
+  final DateTime? revokedAt;
+  final String revokedByName;
+
+  const RoutineStepMark({
+    required this.at,
+    required this.byProfileId,
+    required this.byName,
+    this.byRole,
+    required this.source,
+    this.revokedAt,
+    this.revokedByName = '',
+  });
+
+  bool get isActive => revokedAt == null;
+
+  /// The moment this mark last changed — what a merge compares.
+  DateTime get lastChanged {
+    final r = revokedAt;
+    return r != null && r.isAfter(at) ? r : at;
+  }
+
+  RoutineStepMark revoke({required DateTime at, String byName = ''}) =>
+      RoutineStepMark(
+        at: this.at,
+        byProfileId: byProfileId,
+        byName: this.byName,
+        byRole: byRole,
+        source: source,
+        revokedAt: at,
+        revokedByName: byName,
+      );
+
+  /// Whichever of [a] and [b] changed last. Ties keep [a], the local copy.
+  static RoutineStepMark? latest(RoutineStepMark? a, RoutineStepMark? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return b.lastChanged.isAfter(a.lastChanged) ? b : a;
+  }
+
+  Map<String, dynamic> toJson() => {
+        'at': at.toIso8601String(),
+        'by_profile_id': byProfileId,
+        'by_name': byName,
+        'by_role': byRole?.index,
+        'source': source.name,
+        'revoked_at': revokedAt?.toIso8601String(),
+        'revoked_by_name': revokedByName,
+      };
+
+  static RoutineStepMark? tryFromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final at = raw['at'] is String ? DateTime.tryParse(raw['at'] as String) : null;
+    if (at == null) return null;
+    final roleIdx = raw['by_role'];
+    final sourceName = raw['source'];
+    return RoutineStepMark(
+      at: at,
+      byProfileId: (raw['by_profile_id'] as String?) ?? '',
+      byName: (raw['by_name'] as String?) ?? '',
+      byRole: roleIdx is int && roleIdx >= 0 && roleIdx < UserRole.values.length
+          ? UserRole.values[roleIdx]
+          : null,
+      source: RoutineMarkSource.values.firstWhere(
+        (s) => s.name == sourceName,
+        orElse: () => RoutineMarkSource.educator,
+      ),
+      revokedAt: raw['revoked_at'] is String
+          ? DateTime.tryParse(raw['revoked_at'] as String)
+          : null,
+      revokedByName: (raw['revoked_by_name'] as String?) ?? '',
+    );
+  }
+
+  static Map<String, RoutineStepMark> mapFromJson(Object? raw) {
+    final out = <String, RoutineStepMark>{};
+    if (raw is! Map) return out;
+    raw.forEach((key, value) {
+      final mark = tryFromJson(value);
+      if (key is String && mark != null) out[key] = mark;
+    });
+    return out;
+  }
+
+  static Map<String, dynamic> mapToJson(Map<String, RoutineStepMark> marks) =>
+      {for (final e in marks.entries) e.key: e.value.toJson()};
+
+  /// Per-key [latest] of two mark maps.
+  static Map<String, RoutineStepMark> mergeMaps(
+    Map<String, RoutineStepMark> a,
+    Map<String, RoutineStepMark> b,
+  ) {
+    final out = <String, RoutineStepMark>{};
+    for (final key in {...a.keys, ...b.keys}) {
+      out[key] = latest(a[key], b[key])!;
+    }
+    return out;
+  }
+}
+
+/// Where a [RoutineStepMark] was made.
+enum RoutineMarkSource {
+  /// On the learner's own device, through the adult gate on the lock screen.
+  learnerDevice,
+
+  /// By a Teacher or Parent from their own dashboard.
+  educator,
+}
+
 class RoutineDayLog {
   final String profileId;
 
@@ -610,6 +753,32 @@ class RoutineDayLog {
   /// Ids of the steps ticked off, across every routine that ran that day.
   /// Step ids are uuids, so they do not collide between routines.
   final Set<String> completedStepIds;
+
+  /// When each tick in [completedStepIds] was made.
+  ///
+  /// What lets an educator's "start today over" reach a learner's device: a
+  /// tick made before [resetAt] no longer counts, one made after it does.
+  /// Absent on ticks written before timestamps existed; those count only
+  /// until a day is reset.
+  final Map<String, DateTime> completedAt;
+
+  /// Steps excused **on this learner's device** through the adult gate.
+  /// Excuses an educator grants remotely live in `RoutineDayActions`, a
+  /// document the educator can write.
+  final Map<String, RoutineStepMark> excused;
+
+  /// When the learner's device first showed the lock for each step — proof
+  /// the tablet was on and the lock actually appeared, and the start of
+  /// "how long did the lock hold".
+  final Map<String, DateTime> lockShownAt;
+
+  /// When the learner's device first treated each locked step as needing
+  /// help (see `Routine.escalateAfterMinutes`).
+  final Map<String, DateTime> escalatedAt;
+
+  /// The last time this day was started over. Everything recorded before it
+  /// is history, not today.
+  final DateTime? resetAt;
 
   /// What was actually scheduled that day, frozen when the learner's device
   /// saw the day.
@@ -630,6 +799,11 @@ class RoutineDayLog {
     required this.profileId,
     required this.day,
     this.completedStepIds = const <String>{},
+    this.completedAt = const <String, DateTime>{},
+    this.excused = const <String, RoutineStepMark>{},
+    this.lockShownAt = const <String, DateTime>{},
+    this.escalatedAt = const <String, DateTime>{},
+    this.resetAt,
     this.scheduled = const <RoutineDayStep>[],
     this.snapshotAt,
     required this.updatedAt,
@@ -669,16 +843,108 @@ class RoutineDayLog {
   int doneCountFor(Routine routine) =>
       routine.orderedSteps.where((s) => completedStepIds.contains(s.id)).length;
 
-  RoutineDayLog toggle(String stepId) {
-    final next = Set<String>.from(completedStepIds);
-    if (!next.add(stepId)) next.remove(stepId);
+  RoutineDayLog _copy({
+    Set<String>? completedStepIds,
+    Map<String, DateTime>? completedAt,
+    Map<String, RoutineStepMark>? excused,
+    Map<String, DateTime>? lockShownAt,
+    Map<String, DateTime>? escalatedAt,
+    DateTime? resetAt,
+    bool clearReset = false,
+    List<RoutineDayStep>? scheduled,
+    DateTime? snapshotAt,
+    DateTime? updatedAt,
+  }) =>
+      RoutineDayLog(
+        profileId: profileId,
+        day: day,
+        completedStepIds: completedStepIds ?? this.completedStepIds,
+        completedAt: completedAt ?? this.completedAt,
+        excused: excused ?? this.excused,
+        lockShownAt: lockShownAt ?? this.lockShownAt,
+        escalatedAt: escalatedAt ?? this.escalatedAt,
+        resetAt: clearReset ? null : (resetAt ?? this.resetAt),
+        scheduled: scheduled ?? this.scheduled,
+        snapshotAt: snapshotAt ?? this.snapshotAt,
+        updatedAt: updatedAt ?? DateTime.now(),
+      );
+
+  RoutineDayLog toggle(String stepId, {DateTime? at}) =>
+      setDone(stepId, !completedStepIds.contains(stepId), at: at);
+
+  /// Marks [stepId] done or not done. Re-marking a done step refreshes its
+  /// time, which is what makes a tick made after a reset count again.
+  RoutineDayLog setDone(String stepId, bool done, {DateTime? at}) {
+    final when = at ?? DateTime.now();
+    final ids = Set<String>.from(completedStepIds);
+    final times = Map<String, DateTime>.from(completedAt);
+    if (done) {
+      ids.add(stepId);
+      times[stepId] = when;
+    } else {
+      ids.remove(stepId);
+      times.remove(stepId);
+    }
+    return _copy(completedStepIds: ids, completedAt: times, updatedAt: when);
+  }
+
+  RoutineDayLog withExcuse(String stepId, RoutineStepMark mark) =>
+      _copy(excused: {...excused, stepId: mark}, updatedAt: mark.lastChanged);
+
+  /// Records that the lock for [stepId] appeared at [at]. The first sighting
+  /// wins; later ones return this log unchanged so callers can skip a write.
+  RoutineDayLog withLockShown(String stepId, DateTime at) {
+    if (lockShownAt.containsKey(stepId)) return this;
+    return _copy(lockShownAt: {...lockShownAt, stepId: at}, updatedAt: at);
+  }
+
+  /// Records that [stepId] first needed help at [at]. First one wins.
+  RoutineDayLog withEscalated(String stepId, DateTime at) {
+    if (escalatedAt.containsKey(stepId)) return this;
+    return _copy(escalatedAt: {...escalatedAt, stepId: at}, updatedAt: at);
+  }
+
+  /// Starts the day over at [at]: every tick, excuse and lock record goes, and
+  /// the frozen schedule stays — "do today again" is not "today had no plan".
+  RoutineDayLog resetAll({required DateTime at}) => RoutineDayLog(
+        profileId: profileId,
+        day: day,
+        resetAt: at,
+        scheduled: scheduled,
+        snapshotAt: snapshotAt,
+        updatedAt: at,
+      );
+
+  /// Drops whatever was recorded at or before [at] — the view of this log
+  /// after a reset that happened somewhere else.
+  RoutineDayLog applyReset(DateTime at) {
+    bool after(DateTime? t) => t != null && t.isAfter(at);
+    final ids = completedStepIds.where((id) => after(completedAt[id])).toSet();
+    final current = resetAt;
     return RoutineDayLog(
       profileId: profileId,
       day: day,
-      completedStepIds: next,
+      completedStepIds: ids,
+      completedAt: {
+        for (final e in completedAt.entries)
+          if (after(e.value)) e.key: e.value,
+      },
+      excused: {
+        for (final e in excused.entries)
+          if (after(e.value.lastChanged)) e.key: e.value,
+      },
+      lockShownAt: {
+        for (final e in lockShownAt.entries)
+          if (after(e.value)) e.key: e.value,
+      },
+      escalatedAt: {
+        for (final e in escalatedAt.entries)
+          if (after(e.value)) e.key: e.value,
+      },
+      resetAt: current != null && current.isAfter(at) ? current : at,
       scheduled: scheduled,
       snapshotAt: snapshotAt,
-      updatedAt: DateTime.now(),
+      updatedAt: updatedAt,
     );
   }
 
@@ -688,19 +954,65 @@ class RoutineDayLog {
   /// scheduled", and a step an educator removed part-way through the day
   /// should stop counting against the learner from the next observation on.
   RoutineDayLog withSchedule(List<RoutineDayStep> steps, {DateTime? at}) =>
-      RoutineDayLog(
-        profileId: profileId,
-        day: day,
-        completedStepIds: completedStepIds,
-        scheduled: steps,
-        snapshotAt: at ?? DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+      _copy(scheduled: steps, snapshotAt: at ?? DateTime.now());
+
+  /// Two copies of the same day, reconciled.
+  ///
+  /// * The latest reset applies to **both** sides before anything is joined,
+  ///   so a device that never saw the reset cannot smuggle yesterday's-news
+  ///   ticks back in.
+  /// * Ticks are a union — nothing a learner earns is taken away — keeping the
+  ///   latest time per step, so a re-tick after a reset survives it.
+  /// * Excuses keep whichever changed last, which is how a revocation wins.
+  /// * Lock sightings and escalations keep the earliest: they are "since".
+  /// * The frozen schedule is not unioned — two devices would interleave their
+  ///   step lists into a schedule neither ever showed — and the local copy
+  ///   wins when both have one.
+  static RoutineDayLog merge(RoutineDayLog local, RoutineDayLog remote) {
+    final a = local.resetAt;
+    final b = remote.resetAt;
+    final reset = a == null ? b : (b == null || a.isAfter(b) ? a : b);
+    final l = reset == null ? local : local.applyReset(reset);
+    final r = reset == null ? remote : remote.applyReset(reset);
+
+    DateTime? latestOf(DateTime? x, DateTime? y) =>
+        x == null ? y : (y == null || x.isAfter(y) ? x : y);
+    DateTime? earliestOf(DateTime? x, DateTime? y) =>
+        x == null ? y : (y == null || x.isBefore(y) ? x : y);
+
+    Map<String, DateTime> join(
+      Map<String, DateTime> x,
+      Map<String, DateTime> y,
+      DateTime? Function(DateTime?, DateTime?) pick,
+    ) =>
+        {
+          for (final k in {...x.keys, ...y.keys}) k: pick(x[k], y[k])!,
+        };
+
+    return RoutineDayLog(
+      profileId: l.profileId.isEmpty ? r.profileId : l.profileId,
+      day: l.day,
+      completedStepIds: {...l.completedStepIds, ...r.completedStepIds},
+      completedAt: join(l.completedAt, r.completedAt, latestOf),
+      excused: RoutineStepMark.mergeMaps(l.excused, r.excused),
+      lockShownAt: join(l.lockShownAt, r.lockShownAt, earliestOf),
+      escalatedAt: join(l.escalatedAt, r.escalatedAt, earliestOf),
+      resetAt: reset,
+      scheduled: l.hasSnapshot ? l.scheduled : r.scheduled,
+      snapshotAt: l.hasSnapshot ? l.snapshotAt : r.snapshotAt,
+      updatedAt: l.updatedAt.isAfter(r.updatedAt) ? l.updatedAt : r.updatedAt,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'profile_id': profileId,
         'day': dayStamp,
         'completed_step_ids': completedStepIds.toList()..sort(),
+        'completed_at': _dateMapToJson(completedAt),
+        'excused': RoutineStepMark.mapToJson(excused),
+        'lock_shown_at': _dateMapToJson(lockShownAt),
+        'escalated_at': _dateMapToJson(escalatedAt),
+        'reset_at': resetAt?.toIso8601String(),
         'scheduled': scheduled.map((s) => s.toJson()).toList(),
         'snapshot_at': snapshotAt?.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
@@ -730,6 +1042,13 @@ class RoutineDayLog {
       profileId: (json['profile_id'] as String?) ?? '',
       day: DateTime(day.year, day.month, day.day),
       completedStepIds: ids,
+      completedAt: _dateMapFromJson(json['completed_at']),
+      excused: RoutineStepMark.mapFromJson(json['excused']),
+      lockShownAt: _dateMapFromJson(json['lock_shown_at']),
+      escalatedAt: _dateMapFromJson(json['escalated_at']),
+      resetAt: json['reset_at'] is String
+          ? DateTime.tryParse(json['reset_at'] as String)
+          : null,
       scheduled: scheduled,
       snapshotAt: json['snapshot_at'] is String
           ? DateTime.tryParse(json['snapshot_at'] as String)
@@ -737,6 +1056,21 @@ class RoutineDayLog {
       updatedAt: _parseDate(json['updated_at']),
     );
   }
+}
+
+Map<String, dynamic> _dateMapToJson(Map<String, DateTime> map) =>
+    {for (final e in map.entries) e.key: e.value.toIso8601String()};
+
+Map<String, DateTime> _dateMapFromJson(Object? raw) {
+  final out = <String, DateTime>{};
+  if (raw is! Map) return out;
+  raw.forEach((key, value) {
+    if (key is String && value is String) {
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) out[key] = parsed;
+    }
+  });
+  return out;
 }
 
 /// `yyyy-mm-dd` for [day], from the **local** calendar fields.

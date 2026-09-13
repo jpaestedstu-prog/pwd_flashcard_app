@@ -10,9 +10,10 @@ import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_models.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_popup_schedule.dart';
-import 'package:pwdpwdpwd/features/routine/providers/routine_lock_skip_provider.dart';
+import 'package:pwdpwdpwd/features/routine/models/routine_day_state.dart';
 import 'package:pwdpwdpwd/features/routine/providers/today_routine_provider.dart';
 import 'package:pwdpwdpwd/features/routine/screens/routine_lock_screen.dart';
+import 'package:pwdpwdpwd/features/routine/services/routine_lock_recorder.dart';
 import 'package:pwdpwdpwd/navigation/app_router.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 import 'package:pwdpwdpwd/providers/lock_state_provider.dart';
@@ -87,6 +88,7 @@ Future<void> _pumpLock(WidgetTester tester, RoutineStep step) async {
           ),
         ),
         lockStateProvider(_profileId).overrideWithValue(RoutineStepDue(step)),
+        routineLockRecorderProvider.overrideWithValue(_recorder),
       ],
       child: const MaterialApp(home: RoutineLockScreen()),
     ),
@@ -392,62 +394,6 @@ void main() {
     });
   });
 
-  group('an adult excusing a step', () {
-    test('applies to the day it was given and no other', () {
-      const skips = RoutineLockSkips(
-        dayStamp: '2026-09-12',
-        stepIds: {'brush'},
-      );
-      expect(skips.on(DateTime(2026, 9, 12, 23, 59)), {'brush'});
-      expect(skips.on(DateTime(2026, 9, 13)), isEmpty);
-    });
-
-    test('survives a restart intact', () {
-      const skips = RoutineLockSkips(
-        dayStamp: '2026-09-12',
-        stepIds: {'brush', 'lunch'},
-      );
-      final back = RoutineLockSkips.decode(skips.encode());
-      expect(back.dayStamp, '2026-09-12');
-      expect(back.stepIds, {'brush', 'lunch'});
-    });
-
-    test('can be taken back, which is what re-arms the lock', () {
-      // "Ask a grown-up" is a maths question a distracted adult can answer by
-      // mistake, and the skip then lasts all day. The educator's "start today
-      // over" is the undo; without one the only way back was midnight.
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      final notifier = container.read(
-        routineLockSkipProvider(_profileId).notifier,
-      );
-
-      notifier.skip('brush', day: DateTime(2026, 9, 12));
-      expect(
-        container
-            .read(routineLockSkipProvider(_profileId))
-            .on(DateTime(2026, 9, 12)),
-        {'brush'},
-      );
-
-      notifier.clear();
-      expect(
-        container
-            .read(routineLockSkipProvider(_profileId))
-            .on(DateTime(2026, 9, 12)),
-        isEmpty,
-      );
-    });
-
-    test('a missing or malformed record is simply no skips', () {
-      expect(RoutineLockSkips.decode(null).stepIds, isEmpty);
-      expect(RoutineLockSkips.decode('').stepIds, isEmpty);
-      expect(RoutineLockSkips.decode('nonsense').stepIds, isEmpty);
-      // A day with nothing skipped round-trips to empty, not to a phantom id.
-      expect(RoutineLockSkips.decode('2026-09-12|').stepIds, isEmpty);
-    });
-  });
-
   group('a routine written before locking existed', () {
     test('stays a checklist, and its steps keep their default', () {
       final legacy = Routine.fromJson({
@@ -479,8 +425,14 @@ void main() {
   // ─── Wiring: the same routine, two kinds of profile ───
 
   group('lockStateProvider', () {
-    ProviderContainer containerFor(UserRole role, {DateTime? now}) {
+    ProviderContainer containerFor(
+      UserRole role, {
+      DateTime? now,
+      RoutineDayLog? log,
+      RoutineDayActions? actions,
+    }) {
       final at = now ?? _at(6, 50);
+      final key = routineDayKey(_profileId, at);
       final container = ProviderContainer(
         overrides: [
           profileRoleProvider(_profileId).overrideWithValue(role),
@@ -489,8 +441,13 @@ void main() {
               _routine(steps: [_brushing, _lunch]),
             ]),
           ),
-          routineDayLogProvider(routineDayKey(_profileId, at)).overrideWith(
-            (ref) => Stream.value(RoutineDayLog.empty(_profileId, at)),
+          routineDayLogProvider(key).overrideWith(
+            (ref) => Stream.value(log ?? RoutineDayLog.empty(_profileId, at)),
+          ),
+          routineDayActionsProvider(key).overrideWith(
+            (ref) => Stream.value(
+              actions ?? RoutineDayActions.empty(_profileId, at),
+            ),
           ),
           wallClockTickerProvider.overrideWith((ref) => Stream.value(at)),
         ],
@@ -502,8 +459,14 @@ void main() {
     Future<LockReason?> settle(ProviderContainer c) async {
       // The routine list and the clock are streams; the first read of the
       // provider happens before either has emitted, so let both land.
+      // Streams all the way down, and each layer only subscribes to the next
+      // once the one above has produced a value — the routine list first,
+      // then the day log and actions it unlocks. Let every layer land.
       c.listen(lockStateProvider(_profileId), (_, _) {});
-      await Future<void>.delayed(Duration.zero);
+      for (var i = 0; i < 4; i++) {
+        await Future<void>.delayed(Duration.zero);
+        c.read(lockStateProvider(_profileId));
+      }
       return c.read(lockStateProvider(_profileId));
     }
 
@@ -522,6 +485,64 @@ void main() {
 
     test('never holds a Player, with the very same routine', () async {
       expect(await settle(containerFor(UserRole.player)), isNull);
+    });
+
+    RoutineStepMark mark(DateTime at, RoutineMarkSource source) =>
+        RoutineStepMark(
+          at: at,
+          byProfileId: 'teacher-1',
+          byName: 'Rose',
+          source: source,
+        );
+
+    test("an educator's mark-done from their own device lifts it", () async {
+      final reason = await settle(containerFor(
+        UserRole.student,
+        actions: RoutineDayActions.empty(_profileId, _at(6, 50))
+            .withApproval('brush', mark(_at(6, 48), RoutineMarkSource.educator)),
+      ));
+      expect(reason, isNull);
+    });
+
+    test('an excuse from the tablet lifts it, and a revocation re-arms it',
+        () async {
+      final onTablet = mark(_at(6, 47), RoutineMarkSource.learnerDevice);
+      final excusedLog =
+          RoutineDayLog.empty(_profileId, _at(6, 50)).withExcuse('brush', onTablet);
+      expect(
+        await settle(containerFor(UserRole.student, log: excusedLog)),
+        isNull,
+      );
+
+      final revoked = RoutineDayActions.empty(_profileId, _at(6, 50))
+          .withExcuse('brush', onTablet.revoke(at: _at(6, 49), byName: 'Rose'));
+      expect(
+        await settle(containerFor(
+          UserRole.student,
+          log: excusedLog,
+          actions: revoked,
+        )),
+        isA<RoutineStepDue>(),
+      );
+    });
+
+    test("an educator's reset re-arms a step ticked before it", () async {
+      final ticked = RoutineDayLog.empty(_profileId, _at(6, 50))
+          .setDone('brush', true, at: _at(6, 46));
+      expect(
+        await settle(containerFor(UserRole.student, log: ticked)),
+        isNull,
+      );
+      final reset = RoutineDayActions.empty(_profileId, _at(6, 50))
+          .withReset(at: _at(6, 48), byName: 'Rose');
+      expect(
+        await settle(containerFor(
+          UserRole.student,
+          log: ticked,
+          actions: reset,
+        )),
+        isA<RoutineStepDue>(),
+      );
     });
 
     test('nothing is due outside the step window', () async {
@@ -614,6 +635,16 @@ void main() {
   // ─── The screen itself ───
 
   group('the routine lock screen', () {
+    testWidgets('reports that the lock appeared, once per step', (
+      tester,
+    ) async {
+      _recorder.shown.clear();
+      await _pumpLock(tester, _brushing);
+      await tester.pump();
+      await tester.pump();
+      expect(_recorder.shown, ['$_profileId/brush']);
+    });
+
     testWidgets('shows the step, its time, and the way out', (tester) async {
       tester.view.physicalSize = const Size(900, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -635,6 +666,7 @@ void main() {
             lockStateProvider(
               _profileId,
             ).overrideWithValue(const RoutineStepDue(_brushing)),
+            routineLockRecorderProvider.overrideWithValue(_recorder),
           ],
           child: const MaterialApp(home: RoutineLockScreen()),
         ),
@@ -701,6 +733,7 @@ void main() {
             lockStateProvider(
               _profileId,
             ).overrideWithValue(const RoutineStepDue(_brushing)),
+            routineLockRecorderProvider.overrideWithValue(_recorder),
           ],
           child: const MaterialApp(home: RoutineLockScreen()),
         ),
@@ -741,3 +774,21 @@ class _FixedSettings extends SettingsNotifier {
   @override
   AppSettings build() => _settings;
 }
+
+/// Remembers lock reports instead of writing them to Hive.
+class _MemoryRecorder extends RoutineLockRecorder {
+  final List<String> shown = [];
+  final List<String> escalations = [];
+
+  @override
+  Future<void> lockShown(String profileId, String stepId) async {
+    shown.add('$profileId/$stepId');
+  }
+
+  @override
+  Future<void> escalated(String profileId, String stepId) async {
+    escalations.add('$profileId/$stepId');
+  }
+}
+
+final _recorder = _MemoryRecorder();

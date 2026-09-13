@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/services/lock_enforcer.dart';
 import '../data/models/enums.dart';
 import '../features/routine/models/routine_models.dart';
-import '../features/routine/providers/routine_lock_skip_provider.dart';
 import 'active_time_provider.dart';
 import 'child_alarm_provider.dart';
 import 'child_time_limit_provider.dart';
@@ -105,15 +104,24 @@ final lockStateProvider =
     // it. A learner whose routines are all plain checklists costs this
     // provider exactly one list comprehension.
     if (routineSteps.isNotEmpty) {
-      completed = ref
-              .watch(routineDayLogProvider(
-                routineDayKey(childProfileId, today),
-              ))
-              .valueOrNull
-              ?.completedStepIds ??
-          const <String>{};
-      skipped =
-          ref.watch(routineLockSkipProvider(childProfileId)).on(today);
+      final key = routineDayKey(childProfileId, today);
+      // Nothing locks until both halves of the day have loaded. Deciding from
+      // an empty day for the moment before the learner's log arrives would
+      // flash the lock for a step they finished an hour ago: the gate routes
+      // on any non-null reason, and the lock screen would bounce straight
+      // back to Home.
+      final logLoaded = ref.watch(routineDayLogProvider(key)).hasValue;
+      final actionsLoaded = ref.watch(routineDayActionsProvider(key)).hasValue;
+      if (!logLoaded || !actionsLoaded) {
+        routineSteps = const <RoutineStep>[];
+      } else {
+        // The joined day, not the raw log: an educator's "mark done" or
+        // "excuse" from their own phone has to lift the lock, and their
+        // "start today over" has to re-arm it.
+        final view = ref.watch(routineDayViewProvider(key));
+        completed = view.doneIds;
+        skipped = view.excusedIds;
+      }
     }
   }
 

@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/accessibility/tts_service.dart';
-import '../../../data/local/hive_service.dart';
 import '../../../providers/routine_provider.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
@@ -67,15 +66,17 @@ class RoutineStepAction {
     // Hive, not `RoutineService.dayLog`: that merges a Firestore read, and a
     // network round-trip has no business between a child's tap and their
     // checkmark.
-    final wasDone = HiveService.getRoutineDayLog(
-      profileId,
-      day,
-    ).completedStepIds.contains(step.id);
+    // Decided from the joined day, as the service does: a tick from before an
+    // educator's reset no longer counts, so tapping the step re-ticks it
+    // rather than silently un-ticking it.
+    final wasDone =
+        RoutineService.viewFromCache(profileId, day).isTicked(step.id);
 
-    final log = await const RoutineService().toggleStep(
+    final log = await const RoutineService().setStepDone(
       profileId,
       day,
       step.id,
+      !wasDone,
     );
 
     // Invalidate rather than setState: the day log is provider state and the
@@ -83,9 +84,8 @@ class RoutineStepAction {
     // day (the list, the Home card, the streak) re-reads together.
     ref.invalidate(routineDayLogProvider(routineDayKey(profileId, day)));
 
-    final doneNow = todaysSteps
-        .where((s) => log.completedStepIds.contains(s.id))
-        .length;
+    final after = RoutineService.viewFromCache(profileId, day);
+    final doneNow = todaysSteps.where((s) => after.isDone(s.id)).length;
     final dayComplete =
         !wasDone && todaysSteps.isNotEmpty && doneNow >= todaysSteps.length;
 

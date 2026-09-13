@@ -18,13 +18,15 @@ import '../../../navigation/app_router.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/lock_announcement_provider.dart';
 import '../../../providers/lock_state_provider.dart';
+import '../../../providers/routine_provider.dart';
 import '../../../widgets/adult_gate_dialog.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_presentation.dart';
-import '../providers/routine_lock_skip_provider.dart';
 import '../services/routine_completion_flow.dart';
+import '../services/routine_lock_recorder.dart';
+import '../services/routine_service.dart';
 import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
 import '../widgets/routine_step_card.dart';
@@ -51,7 +53,8 @@ const Duration _announceDelay = Duration(milliseconds: 400);
 /// Two ways out besides doing the step, and both are deliberate:
 ///
 ///  * **"Ask a grown-up"** runs the standard adult gate and then excuses the
-///    step for today ([RoutineLockSkips]). A child can be ill, out of the
+///    step for today, in the learner's own day log where the educator can
+///    see it afterwards. A child can be ill, out of the
 ///    house, or nowhere near a toothbrush, and a lock a learner physically
 ///    cannot clear would be a broken tablet rather than a routine. The step is
 ///    *not* ticked — the history keeps telling the truth about the morning.
@@ -106,6 +109,10 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   /// The step the manifest was resolved for, so a lock that rolls on to the
   /// next step of the day re-resolves rather than reusing the last answer.
   String? _signsFor;
+
+  /// The step this screen has already reported as shown, so the report is
+  /// made once per step rather than once per rebuild.
+  String? _shownReportedFor;
 
   @override
   void initState() {
@@ -215,9 +222,13 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
         reason: 'to skip $title for today',
       );
       if (!passed || !mounted) return;
-      await ref
-          .read(routineLockSkipProvider(profileId).notifier)
-          .skip(step.id);
+      final day = DateTime.now();
+      await const RoutineService().excuseOnDevice(
+        profileId: profileId,
+        day: day,
+        stepId: step.id,
+      );
+      ref.invalidate(routineDayLogProvider(routineDayKey(profileId, day)));
     } finally {
       _finish();
     }
@@ -315,6 +326,15 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     }
     _step = step;
     unawaited(_resolveSigns(step));
+    // Tells the educator the lock is actually on screen — not merely due. A
+    // tablet that is switched off is waiting on a step too, and "the lock is
+    // showing" is a claim only this device can make.
+    if (_shownReportedFor != step.id && reason is RoutineStepDue) {
+      _shownReportedFor = step.id;
+      unawaited(
+        ref.read(routineLockRecorderProvider).lockShown(profile.id, step.id),
+      );
+    }
 
     final hc = HCColor.of(context);
     final l = ref.watch(settingsProvider).locale == 'fil';

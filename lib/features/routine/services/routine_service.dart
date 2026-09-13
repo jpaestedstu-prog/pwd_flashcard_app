@@ -7,6 +7,8 @@ import '../../../core/services/cloud_sync_outcome.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../data/local/hive_service.dart';
+import '../../../data/models/models.dart';
+import '../models/routine_day_state.dart';
 import '../models/routine_models.dart';
 
 /// Per-learner routine CRUD against Firestore with a Hive mirror.
@@ -44,6 +46,11 @@ class RoutineService {
 
   CollectionReference<Map<String, dynamic>> get _logCol =>
       FirebaseService.db.collection('routine_logs');
+
+  /// Educator-written actions on a learner's day. Separate from `routine_logs`
+  /// because the rules let only the learner's own device write their log.
+  CollectionReference<Map<String, dynamic>> get _actionsCol =>
+      FirebaseService.db.collection('routine_actions');
 
   String newId() => _uuid.v4();
 
@@ -362,27 +369,64 @@ class RoutineService {
     String profileId,
     DateTime day,
     String stepId,
+  ) {
+    // Decided from the learner's own tick as it stands *after* any reset an
+    // educator made elsewhere: a stale pre-reset tick must re-tick, not
+    // un-tick, when the learner taps it.
+    final view = viewFromCache(profileId, day);
+    return setStepDone(profileId, day, stepId, !view.isTicked(stepId));
+  }
+
+  /// Marks [stepId] done or not done for [profileId] on [day].
+  Future<RoutineDayLog> setStepDone(
+    String profileId,
+    DateTime day,
+    String stepId,
+    bool done,
   ) async {
-    final current = HiveService.getRoutineDayLog(profileId, day);
-    final next = current.toggle(stepId);
+    final next = HiveService.getRoutineDayLog(profileId, day)
+        .setDone(stepId, done);
     await HiveService.saveRoutineDayLog(next);
-    if (!FirebaseService.isConfigured) return next;
-    final payload = next.toJson()
-      ..['owner_uid'] = FirebaseService.currentUid
-      ..['profile_id'] = profileId;
-    try {
-      await _logCol
-          .doc(next.key)
-          .set(payload, SetOptions(merge: true));
-    } on Object catch (e, s) {
-      // The local write already succeeded, so this is a sync failure, not a
-      // lost tick — report it quietly and let the next write catch up. The
-      // learner is deliberately never told: a child who ticked their teeth
-      // off has done the thing, and whose tablet owns the cloud copy is not
-      // their problem. The educator's side surfaces it instead.
-      ErrorHandler.report(e, s, 'RoutineToggle:silent');
-    }
+    // The learner is deliberately never told if this fails: a child who ticked
+    // their teeth off has done the thing, and whose tablet owns the cloud copy
+    // is not their problem. The educator's side surfaces it instead.
+    await _pushLog(next, 'RoutineToggle:silent');
     return next;
+  }
+
+  /// The day as this device's cache knows it — the learner's log joined with
+  /// any educator actions. What every write here decides from.
+  static RoutineDayView viewFromCache(String profileId, DateTime day) =>
+      RoutineDayView.of(
+        profileId: profileId,
+        day: day,
+        log: HiveService.getRoutineDayLog(profileId, day),
+        actions: _cachedActions(profileId, day),
+      );
+
+  static RoutineDayActions _cachedActions(String profileId, DateTime day) {
+    try {
+      return HiveService.getRoutineDayActions(profileId, day);
+    } catch (_) {
+      return RoutineDayActions.empty(profileId, day);
+    }
+  }
+
+  /// Mirrors [log] to Firestore, reporting (quietly) rather than throwing: the
+  /// local write has already happened, so a failure here is a sync gap, not a
+  /// lost tick.
+  Future<void> _pushLog(RoutineDayLog log, String silentSource) async {
+    if (!FirebaseService.isConfigured) return;
+    try {
+      await _logCol.doc(log.key).set(
+            log.toJson()
+              ..['owner_uid'] = FirebaseService.currentUid
+              ..['profile_id'] = log.profileId,
+            SetOptions(merge: true),
+          );
+    } on Object catch (e, s) {
+      ErrorHandler.report(e, s, silentSource);
+    }
   }
 
   /// Clears every tick for [profileId] on [day] — the educator's "start this
@@ -390,21 +434,17 @@ class RoutineService {
   Future<RoutineDayLog> resetDay(String profileId, DateTime day) async {
     // Clears the ticks but **keeps the frozen schedule**: "start today over"
     // means the learner does the day again, not that the day never had a
-    // routine. Dropping the snapshot here would push the day back to being
-    // estimated against whatever the routine looks like later.
-    final existing = HiveService.getRoutineDayLog(profileId, day);
-    final cleared = RoutineDayLog(
-      profileId: profileId,
-      day: DateTime(day.year, day.month, day.day),
-      scheduled: existing.scheduled,
-      snapshotAt: existing.snapshotAt,
-      updatedAt: DateTime.now(),
-    );
+    // routine. It also stamps the reset, which is what stops a copy of this
+    // day on another device from carrying the old ticks back in on a merge.
+    final cleared = HiveService.getRoutineDayLog(profileId, day)
+        .resetAll(at: DateTime.now());
     await HiveService.saveRoutineDayLog(cleared);
     if (!FirebaseService.isConfigured) return cleared;
     try {
       await _logCol.doc(cleared.key).set(
-            cleared.toJson()..['owner_uid'] = FirebaseService.currentUid,
+            cleared.toJson()
+              ..['owner_uid'] = FirebaseService.currentUid
+              ..['profile_id'] = profileId,
           );
     } on Object catch (e, s) {
       ErrorHandler.report(e, s, 'RoutineResetDay:silent');
@@ -419,23 +459,295 @@ class RoutineService {
   /// child completed on this device seconds ago. Un-ticking across devices is
   /// therefore not supported, which is the right trade — see the note in
   /// `progress-durability`: nothing a learner earns is taken away.
-  RoutineDayLog _mergeLogs(RoutineDayLog local, RoutineDayLog remote) {
-    return RoutineDayLog(
-      profileId: local.profileId.isEmpty ? remote.profileId : local.profileId,
-      day: local.day,
-      completedStepIds: {
-        ...local.completedStepIds,
-        ...remote.completedStepIds,
-      },
-      // The snapshot is not unioned — two devices would interleave their step
-      // lists into a schedule neither ever showed. Whichever side actually has
-      // one wins, and when both do the local device's is kept: it is the one
-      // that watched the learner work through the day.
-      scheduled: local.hasSnapshot ? local.scheduled : remote.scheduled,
-      snapshotAt: local.hasSnapshot ? local.snapshotAt : remote.snapshotAt,
-      updatedAt:
-          local.updatedAt.isAfter(remote.updatedAt) ? local.updatedAt : remote.updatedAt,
+  RoutineDayLog _mergeLogs(RoutineDayLog local, RoutineDayLog remote) =>
+      RoutineDayLog.merge(local, remote);
+
+  // ─── Lock records (the learner's own device) ─────────
+
+  static RoutineStepMark _markBy(
+    UserProfile? by,
+    RoutineMarkSource source,
+    DateTime at,
+  ) =>
+      RoutineStepMark(
+        at: at,
+        byProfileId: by?.id ?? '',
+        byName: by?.name ?? '',
+        byRole: by?.role,
+        source: source,
+      );
+
+  /// Excuses [stepId] from the learner's device, after the adult gate.
+  ///
+  /// Written into the learner's own log — which that device may write — so the
+  /// educator sees it, with its time, even though nobody identified themselves
+  /// to a maths question.
+  Future<RoutineDayLog> excuseOnDevice({
+    required String profileId,
+    required DateTime day,
+    required String stepId,
+    UserProfile? by,
+  }) async {
+    final next = HiveService.getRoutineDayLog(profileId, day).withExcuse(
+      stepId,
+      _markBy(by, RoutineMarkSource.learnerDevice, DateTime.now()),
     );
+    await HiveService.saveRoutineDayLog(next);
+    await _pushLog(next, 'RoutineLockRecord:silent');
+    return next;
+  }
+
+  /// Records that the lock for [stepId] appeared. Only the first sighting is
+  /// written, so calling this on every build of the lock screen costs nothing.
+  Future<void> markLockShown(
+    String profileId,
+    DateTime day,
+    String stepId, {
+    DateTime? at,
+  }) async {
+    final current = HiveService.getRoutineDayLog(profileId, day);
+    final next = current.withLockShown(stepId, at ?? DateTime.now());
+    if (identical(next, current)) return;
+    await HiveService.saveRoutineDayLog(next);
+    await _pushLog(next, 'RoutineLockRecord:silent');
+  }
+
+  /// Records that [stepId] has waited long enough to need help. First only.
+  Future<void> markEscalated(
+    String profileId,
+    DateTime day,
+    String stepId, {
+    DateTime? at,
+  }) async {
+    final current = HiveService.getRoutineDayLog(profileId, day);
+    final next = current.withEscalated(stepId, at ?? DateTime.now());
+    if (identical(next, current)) return;
+    await HiveService.saveRoutineDayLog(next);
+    await _pushLog(next, 'RoutineLockRecord:silent');
+  }
+
+  // ─── Educator actions (a Teacher's or Parent's device) ─
+
+  /// Live educator actions on [childProfileId]'s [day], cache-seeded.
+  ///
+  /// Watched by the learner's device — it is what lifts a lock the moment an
+  /// educator taps "Mark done" across the room — and by the educator's own
+  /// dashboard.
+  Stream<RoutineDayActions> watchDayActions(
+    String childProfileId,
+    DateTime day,
+  ) {
+    final local = _cachedActions(childProfileId, day);
+    if (!FirebaseService.isConfigured) return Stream.value(local);
+
+    final controller = StreamController<RoutineDayActions>();
+    controller.add(local);
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? sub;
+    controller.onListen = () {
+      sub = _actionsCol.doc(dayKeyFor(childProfileId, day)).snapshots().listen(
+        (doc) async {
+          final data = doc.data();
+          if (data == null) return;
+          try {
+            final remote =
+                RoutineDayActions.fromJson(Map<String, dynamic>.from(data));
+            final merged = RoutineDayActions.merge(
+              _cachedActions(childProfileId, day),
+              remote,
+            );
+            await HiveService.saveRoutineDayActions(merged);
+            await _applyActionsReset(childProfileId, day, merged);
+            if (!controller.isClosed) controller.add(merged);
+          } catch (e, s) {
+            ErrorHandler.report(e, s, 'RoutineActionsStream:silent');
+          }
+        },
+        onError: (Object e, StackTrace s) {
+          ErrorHandler.report(e, s, 'RoutineActionsStream:silent');
+        },
+      );
+    };
+    controller.onCancel = () async {
+      await sub?.cancel();
+      await controller.close();
+    };
+    return controller.stream;
+  }
+
+  /// An educator started the day over from their own device: bring this
+  /// device's copy of the learner's log into line, so every write made here
+  /// from now on decides from the day as it now is.
+  Future<void> _applyActionsReset(
+    String profileId,
+    DateTime day,
+    RoutineDayActions actions,
+  ) async {
+    final reset = actions.resetAt;
+    if (reset == null) return;
+    final log = HiveService.getRoutineDayLog(profileId, day);
+    final current = log.resetAt;
+    if (current != null && !reset.isAfter(current)) return;
+    final next = log.applyReset(reset);
+    await HiveService.saveRoutineDayLog(next);
+    await _pushLog(next, 'RoutineLockRecord:silent');
+  }
+
+  /// Saves [next] locally and writes only [delta] to the cloud.
+  ///
+  /// Only the changed step goes up, never the whole document: an educator
+  /// whose copy is a minute stale must not overwrite what a second educator
+  /// just did to a different step.
+  Future<CloudSyncOutcome> _writeActions(
+    RoutineDayActions next,
+    Map<String, dynamic> delta,
+    UserProfile by,
+  ) async {
+    await HiveService.saveRoutineDayActions(next);
+    if (!FirebaseService.isConfigured) return CloudSyncOutcome.localOnly;
+    try {
+      await _actionsCol.doc(next.key).set(
+        {
+          'child_profile_id': next.childProfileId,
+          'day': dayStampOf(next.day),
+          'updated_at': next.updatedAt.toIso8601String(),
+          'setter_profile_id': by.id,
+          'owner_uid': FirebaseService.currentUid,
+          ...delta,
+        },
+        SetOptions(merge: true),
+      );
+      return CloudSyncOutcome.synced;
+    } on Object catch (e, s) {
+      ErrorHandler.report(e, s, 'RoutineActions:silent');
+      return outcomeForError(e);
+    }
+  }
+
+  /// Excuses [stepId] for today, from an educator's device.
+  Future<CloudSyncOutcome> excuseStep({
+    required String childProfileId,
+    required DateTime day,
+    required String stepId,
+    required UserProfile by,
+  }) {
+    final mark = _markBy(by, RoutineMarkSource.educator, DateTime.now());
+    final next = _cachedActions(childProfileId, day).withExcuse(stepId, mark);
+    return _writeActions(next, {
+      'excused': {stepId: mark.toJson()},
+    }, by);
+  }
+
+  /// Marks [stepId] done on the learner's behalf.
+  Future<CloudSyncOutcome> approveStep({
+    required String childProfileId,
+    required DateTime day,
+    required String stepId,
+    required UserProfile by,
+  }) {
+    final mark = _markBy(by, RoutineMarkSource.educator, DateTime.now());
+    final next = _cachedActions(childProfileId, day).withApproval(stepId, mark);
+    return _writeActions(next, {
+      'approved': {stepId: mark.toJson()},
+    }, by);
+  }
+
+  /// Takes back the standing excuse on [stepId], wherever it was granted.
+  ///
+  /// Written as a newer, revoked copy of that excuse into the educator's
+  /// document, which outranks a tablet's excuse in [RoutineDayView] — the
+  /// educator cannot write the tablet's log, and does not need to.
+  Future<CloudSyncOutcome> revokeExcuse({
+    required String childProfileId,
+    required DateTime day,
+    required String stepId,
+    required UserProfile by,
+  }) async {
+    final standing = viewFromCache(childProfileId, day).excuse(stepId);
+    if (standing == null) return CloudSyncOutcome.synced;
+    final revoked = standing.revoke(at: DateTime.now(), byName: by.name);
+    final next =
+        _cachedActions(childProfileId, day).withExcuse(stepId, revoked);
+    return _writeActions(next, {
+      'excused': {stepId: revoked.toJson()},
+    }, by);
+  }
+
+  /// Takes back an educator's "mark done".
+  Future<CloudSyncOutcome> revokeApproval({
+    required String childProfileId,
+    required DateTime day,
+    required String stepId,
+    required UserProfile by,
+  }) async {
+    final standing = viewFromCache(childProfileId, day).approval(stepId);
+    if (standing == null) return CloudSyncOutcome.synced;
+    final revoked = standing.revoke(at: DateTime.now(), byName: by.name);
+    final next =
+        _cachedActions(childProfileId, day).withApproval(stepId, revoked);
+    return _writeActions(next, {
+      'approved': {stepId: revoked.toJson()},
+    }, by);
+  }
+
+  /// The educator's "start today over", made to reach the learner's device.
+  ///
+  /// The reset goes into the educator's own document, which the learner's
+  /// device watches; the local log is reset as well, which is all it takes on
+  /// a shared family tablet where both profiles live on one device.
+  Future<CloudSyncOutcome> resetDayForLearner({
+    required String childProfileId,
+    required DateTime day,
+    required UserProfile by,
+  }) async {
+    final at = DateTime.now();
+    final next = _cachedActions(childProfileId, day)
+        .withReset(at: at, byName: by.name);
+    final outcome = await _writeActions(next, {
+      'reset_at': at.toIso8601String(),
+      'reset_by_name': by.name,
+    }, by);
+    await resetDay(childProfileId, day);
+    return outcome;
+  }
+
+  /// Pulls the last [days] days of [profileId]'s logs and educator actions
+  /// into the local mirror.
+  ///
+  /// The learner's device lived through its own days; an educator's device
+  /// did not, and without this its history screen could only show the days it
+  /// happened to have open. Single-field queries, so no composite index.
+  Future<void> fetchRecentDays(String profileId, {int days = 14}) async {
+    if (!FirebaseService.isConfigured) return;
+    final now = DateTime.now();
+    final cutoff = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: days));
+    try {
+      final logs =
+          await _logCol.where('profile_id', isEqualTo: profileId).get();
+      for (final doc in logs.docs) {
+        final remote =
+            RoutineDayLog.fromJson(Map<String, dynamic>.from(doc.data()));
+        if (remote.day.isBefore(cutoff)) continue;
+        await HiveService.saveRoutineDayLog(RoutineDayLog.merge(
+          HiveService.getRoutineDayLog(profileId, remote.day),
+          remote,
+        ));
+      }
+      final acts = await _actionsCol
+          .where('child_profile_id', isEqualTo: profileId)
+          .get();
+      for (final doc in acts.docs) {
+        final remote =
+            RoutineDayActions.fromJson(Map<String, dynamic>.from(doc.data()));
+        if (remote.day.isBefore(cutoff)) continue;
+        await HiveService.saveRoutineDayActions(RoutineDayActions.merge(
+          _cachedActions(profileId, remote.day),
+          remote,
+        ));
+      }
+    } on Object catch (e, s) {
+      ErrorHandler.report(e, s, 'RoutineRecentDays:silent');
+    }
   }
 
   /// Enabled routines first, then by the earliest step's time, then by name —

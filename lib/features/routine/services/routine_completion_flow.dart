@@ -1,10 +1,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../data/local/hive_service.dart';
 import '../models/routine_models.dart';
 import '../models/routine_presentation.dart';
 import '../widgets/routine_mood_prompt.dart';
+import 'routine_service.dart';
 import 'routine_step_action.dart';
 
 /// Finishing one step of "My Day", including the question it earns.
@@ -52,10 +52,8 @@ class RoutineCompletionFlow {
     required bool filipino,
     bool alwaysAskMood = false,
   }) async {
-    final wasDone = HiveService.getRoutineDayLog(
-      profileId,
-      day,
-    ).completedStepIds.contains(step.id);
+    final wasDone =
+        RoutineService.viewFromCache(profileId, day).isTicked(step.id);
 
     if (step.activity.isMoodCheckIn && !wasDone) {
       final answered = await showCheckInPopup(context, ref, step);

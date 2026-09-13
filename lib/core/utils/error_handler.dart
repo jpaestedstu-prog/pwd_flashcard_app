@@ -110,6 +110,13 @@ class ErrorHandler {
     // learner did not ask for, and a plugin hiccup in it must not become a
     // snackbar over whatever they were doing.
     'applyRoutineLifecycle:silent',
+    // Routine lock records and educator actions: all written locally first,
+    // so a refused or offline cloud write is a sync gap the educator's UI
+    // reports on its own terms — never a snackbar over a learner's lock.
+    'RoutineLockRecord:silent',
+    'RoutineActions:silent',
+    'RoutineActionsStream:silent',
+    'RoutineRecentDays:silent',
     // Deferred startup work (main.dart), the same class as
     // `applyLifecycle:silent`: nobody asked for it and nothing is blocked on
     // it, so it must not greet a learner at launch.

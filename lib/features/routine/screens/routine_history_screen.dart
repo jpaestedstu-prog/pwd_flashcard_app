@@ -12,6 +12,7 @@ import '../../../widgets/rich_empty_states.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_history.dart';
 import '../models/routine_models.dart';
+import '../widgets/routine_lock_log.dart';
 
 /// What actually happened, day by day.
 ///
@@ -72,14 +73,25 @@ class RoutineHistoryScreen extends ConsumerWidget {
         body: SafeArea(
           child: history.isEmpty
               ? SingleChildScrollView(
-                  child: RichEmptyState(
-                    emoji: '📈',
-                    title: l ? 'Wala pang kasaysayan' : 'No history yet',
-                    description: l
-                        ? 'Lalabas dito ang bawat araw kapag nagsimula nang '
-                            'markahan ng bata ang mga hakbang.'
-                        : 'Once the $learnerNoun starts ticking steps off, '
-                            'every day shows up here.',
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  child: Column(
+                    children: [
+                      RichEmptyState(
+                        emoji: '📈',
+                        title: l ? 'Wala pang kasaysayan' : 'No history yet',
+                        description: l
+                            ? 'Lalabas dito ang bawat araw kapag nagsimula '
+                                'nang markahan ng bata ang mga hakbang.'
+                            : 'Once the $learnerNoun starts ticking steps '
+                                'off, every day shows up here.',
+                      ),
+                      // A day can have lock activity and no ticks — a step
+                      // that was excused is exactly that day.
+                      RoutineLockLogSection(
+                        profileId: childProfileId,
+                        filipino: l,
+                      ),
+                    ],
                   ),
                 )
               : ListView(
@@ -106,6 +118,11 @@ class RoutineHistoryScreen extends ConsumerWidget {
                         _StallRow(entry: s, filipino: l),
                     ] else
                       _AllSteady(filipino: l, learnerNoun: learnerNoun),
+                    const SizedBox(height: 16),
+                    RoutineLockLogSection(
+                      profileId: childProfileId,
+                      filipino: l,
+                    ),
                   ],
                 ),
         ),

@@ -18,6 +18,7 @@ import '../../features/word_of_day/models/word_of_day_models.dart';
 import '../../features/focus_mode/models/focus_mode_models.dart';
 import '../../features/parent_teacher_notes/models/parent_teacher_note_models.dart';
 import '../../features/routine/models/routine_models.dart';
+import '../../features/routine/models/routine_day_state.dart';
 import '../../core/services/sync_queue/sync_queue_storage.dart';
 
 /// Manages all local Hive storage operations
@@ -1256,6 +1257,52 @@ class HiveService {
 
   static Future<void> saveRoutineDayLog(RoutineDayLog log) async {
     await _routineLogBox.put(log.key, log.toJson());
+  }
+
+  /// Educator actions share the day-log box under their own prefix, so they
+  /// need no box of their own — every test and startup path that opens the
+  /// routine logs already opens this.
+  static const String _routineActionsPrefix = 'actions::';
+
+  static RoutineDayActions getRoutineDayActions(
+    String childProfileId,
+    DateTime day,
+  ) {
+    final raw =
+        _routineLogBox.get('$_routineActionsPrefix${dayKeyFor(childProfileId, day)}');
+    if (raw is Map) {
+      try {
+        return RoutineDayActions.fromJson(Map<String, dynamic>.from(raw));
+      } catch (_) {
+        // A corrupt row is no actions, never a crash on the lock path.
+      }
+    }
+    return RoutineDayActions.empty(childProfileId, day);
+  }
+
+  static Future<void> saveRoutineDayActions(RoutineDayActions actions) async {
+    await _routineLogBox.put(
+      '$_routineActionsPrefix${actions.key}',
+      actions.toJson(),
+    );
+  }
+
+  /// The last [days] days of educator actions for [childProfileId], newest
+  /// first — the other half of the routine history's audit trail.
+  static List<RoutineDayActions> getRoutineActionsHistory(
+    String childProfileId, {
+    int days = 14,
+    DateTime? from,
+  }) {
+    final anchor = from ?? DateTime.now();
+    return [
+      for (var i = 0; i < days; i++)
+        getRoutineDayActions(
+          childProfileId,
+          DateTime(anchor.year, anchor.month, anchor.day)
+              .subtract(Duration(days: i)),
+        ),
+    ];
   }
 
   /// The last [days] days of routine logs for [profileId], newest first.

@@ -13,8 +13,8 @@ import '../../../widgets/rich_empty_states.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_templates.dart';
-import '../providers/routine_lock_skip_provider.dart';
 import '../services/routine_service.dart';
+import '../widgets/routine_lock_status_line.dart';
 import '../widgets/routine_ownership_banner.dart';
 import '../widgets/routine_step_card.dart';
 import '../widgets/routine_sync_feedback.dart';
@@ -59,10 +59,11 @@ class RoutineEditorScreen extends ConsumerWidget {
     final l = ref.watch(settingsProvider).locale == 'fil';
     final routinesAsync = ref.watch(routineListProvider(childProfileId));
     final today = DateTime.now();
+    // The joined day, so an approval made here shows as done at once and a
+    // reset clears the card without waiting for the learner's device.
     final log = ref
-            .watch(routineDayLogProvider(routineDayKey(childProfileId, today)))
-            .valueOrNull ??
-        RoutineDayLog.empty(childProfileId, today);
+        .watch(routineDayViewProvider(routineDayKey(childProfileId, today)))
+        .effectiveLog;
 
     return AnimatedGradientBackground(
       intensity: 0.22,
@@ -181,6 +182,13 @@ class RoutineEditorScreen extends ConsumerWidget {
                     log: log,
                     filipino: l,
                     onReset: () => _resetToday(context, ref, l),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: RoutineLearnerLockStatus(
+                      profileId: childProfileId,
+                      filipino: l,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   ProSectionHeader(
@@ -305,18 +313,30 @@ class RoutineEditorScreen extends ConsumerWidget {
       ),
     );
     if (ok != true) return;
+    final by = ref.read(profileProvider);
+    if (by == null) return;
     final today = DateTime.now();
-    await const RoutineService().resetDay(childProfileId, today);
-    // The undo for "Ask a grown-up". A skip lasts the whole day and is
-    // granted by a maths question a distracted adult can answer by mistake,
-    // so there has to be a way back — and "start today over" is already the
-    // place an educator goes to say *none of today counted*. Without this the
-    // only way to re-arm a lock somebody excused at 6:50 was to wait for
-    // midnight.
-    await ref
-        .read(routineLockSkipProvider(childProfileId).notifier)
-        .clear();
-    ref.invalidate(routineDayLogProvider(routineDayKey(childProfileId, today)));
+    // Written to the educator's own actions document as well as the local
+    // log, so it reaches a learner on a different device — and it is the undo
+    // for "Ask a grown-up" as much as for the ticks: an excuse granted by a
+    // maths question a distracted adult answered by mistake lasts the whole
+    // day otherwise.
+    final outcome = await const RoutineService().resetDayForLearner(
+      childProfileId: childProfileId,
+      day: today,
+      by: by,
+    );
+    final key = routineDayKey(childProfileId, today);
+    ref.invalidate(routineDayLogProvider(key));
+    ref.invalidate(routineDayActionsProvider(key));
+    if (context.mounted) {
+      reportRoutineSync(
+        context,
+        outcome,
+        filipino: l,
+        subject: l ? 'pagbabago' : 'change',
+      );
+    }
   }
 
   Future<void> _confirmDelete(

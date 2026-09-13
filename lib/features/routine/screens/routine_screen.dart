@@ -156,10 +156,10 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
     }
 
     final routinesAsync = ref.watch(routineListProvider(profileId));
-    final logAsync =
-        ref.watch(routineDayLogProvider(routineDayKey(profileId, _today)));
-    final log = logAsync.valueOrNull ??
-        RoutineDayLog.empty(profileId, _today);
+    // The joined day: a step an educator marked done shows as done here too.
+    final log = ref
+        .watch(routineDayViewProvider(routineDayKey(profileId, _today)))
+        .effectiveLog;
 
     return _shell(
       context,

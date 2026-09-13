@@ -509,6 +509,22 @@ service cloud.firestore {
         && ownsProfile(resource.data.profile_id);
     }
 
+    // ─── Educator actions on a learner's routine day ──
+    // Keyed `<childProfileId>_<yyyy-mm-dd>`. A Teacher's or Parent's
+    // "mark done", "excuse for today" and "start today over", made from
+    // their own device. Kept out of routine_logs so that record stays
+    // writable only by the learner's own device; same write semantics as
+    // child_unlock_overrides — the writer must own the profile named by
+    // setter_profile_id.
+    match /routine_actions/{actionId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.setter_profile_id);
+      allow delete: if signedIn()
+        && ownsProfile(resource.data.setter_profile_id);
+    }
+
     // ─── Per-child unlock overrides ────────────────────
     // One doc per child, keyed by childProfileId. Granted by an
     // educator (parent or teacher) to lift the lock screen for a
