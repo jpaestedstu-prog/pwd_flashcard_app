@@ -62,7 +62,9 @@ RoutineDayKey routineDayKey(String profileId, DateTime day) =>
 /// educator is watching a learner work through their morning.
 final routineHistoryProvider =
     Provider.family<List<RoutineDayLog>, String>((ref, profileId) {
-  ref.watch(routineDayLogProvider(routineDayKey(profileId, DateTime.now())));
+  ref.watch(
+    routineDayLogProvider(routineDayKey(profileId, ref.watch(currentDayProvider))),
+  );
   // Tolerates storage not being ready. An empty history is the right degraded
   // answer — the streak reads 0 and nothing else changes — and this is watched
   // from the top of Home now, where throwing would take the whole page with it
@@ -98,7 +100,9 @@ final routineDayViewProvider =
 final routineActionsHistoryProvider =
     Provider.family<List<RoutineDayActions>, String>((ref, profileId) {
   ref.watch(
-    routineDayActionsProvider(routineDayKey(profileId, DateTime.now())),
+    routineDayActionsProvider(
+      routineDayKey(profileId, ref.watch(currentDayProvider)),
+    ),
   );
   try {
     return HiveService.getRoutineActionsHistory(profileId);

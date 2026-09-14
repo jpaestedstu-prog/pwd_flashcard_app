@@ -41,3 +41,27 @@ final wallClockTickerProvider = StreamProvider<DateTime>((ref) {
   });
   return controller.stream;
 });
+
+/// Today's date (midnight) — what anything keyed by the day should watch:
+/// "My Day", its history, the day log a screen follows.
+///
+/// Reading `DateTime.now()` once inside a provider keys it to the day it was
+/// first built on: with the app left running past midnight, Home kept
+/// yesterday's "All done" (found on the emulator after a date change).
+///
+/// It reads the date rather than watching [wallClockTickerProvider] itself,
+/// which would start a ten-second periodic timer in every widget test that
+/// mounts a learner's day. The app shell advances it instead — see
+/// [isNewDay] and its listener in `main.dart` — so dependents recompute
+/// exactly once when the date changes.
+final currentDayProvider = Provider<DateTime>((ref) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
+});
+
+/// Whether [now] falls on a different calendar day from [currentDay] — later
+/// (midnight passed) or earlier (the clock was set back). Pure.
+bool isNewDay(DateTime currentDay, DateTime now) =>
+    now.year != currentDay.year ||
+    now.month != currentDay.month ||
+    now.day != currentDay.day;

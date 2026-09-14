@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/routine_provider.dart';
+import '../../../providers/wall_clock_provider.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_history.dart';
 import '../models/routine_models.dart';
@@ -116,9 +117,9 @@ final routineFeatureProvider = Provider<bool>((ref) {
 
 /// The signed-in learner's day, live.
 ///
-/// Rebuilds when a routine changes, when a step is ticked, and — through
-/// [wallClockTickerProvider] in the widgets that need it — when a step falls
-/// overdue. Degrades to [TodayRoutine.none] for a learner with no profile,
+/// Rebuilds when a routine changes, when a step is ticked, when the calendar
+/// day changes ([currentDayProvider]), and — through [wallClockTickerProvider]
+/// in the widgets that need it — when a step falls overdue. Degrades to [TodayRoutine.none] for a learner with no profile,
 /// which is the right answer rather than an error.
 final todayRoutineProvider = Provider<TodayRoutine>((ref) {
   final profile = ref.watch(profileProvider);
@@ -129,7 +130,8 @@ final todayRoutineProvider = Provider<TodayRoutine>((ref) {
   // having to remember the setting.
   if (!ref.watch(routineFeatureProvider)) return TodayRoutine.none;
 
-  final today = DateTime.now();
+  // Watched, not read: a running app must move to the new day at midnight.
+  final today = ref.watch(currentDayProvider);
   // `valueOrNull` throughout: no routine, a mirror that has not opened, and a
   // cloud read that failed all mean "nothing to show", and none of them is a
   // reason to break the top of Home.

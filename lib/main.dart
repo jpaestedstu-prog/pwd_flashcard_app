@@ -33,6 +33,7 @@ import 'data/models/models.dart';
 import 'core/services/lock_enforcer.dart';
 import 'features/classroom/widgets/lock_enforcer_gate.dart';
 import 'providers/lock_state_provider.dart';
+import 'providers/wall_clock_provider.dart';
 import 'features/classroom/widgets/lock_warning_gate.dart';
 import 'features/companion/widgets/companion_overlay.dart';
 import 'features/gamepad/widgets/gamepad_host.dart';
@@ -427,6 +428,20 @@ class FlashLearnApp extends ConsumerWidget {
     // already scheduled, or the feature they switched off keeps tapping them
     // on the shoulder every morning.
     ref.listen(routineFeatureProvider, (_, _) => applyRoutineLifecycle());
+    // Midnight with the app running. The ticker (already alive for the lock)
+    // notices the date change; moving [currentDayProvider] rebuilds "My Day"
+    // and its history for the new day, and the reminder scheduler follows the
+    // new day's log and actions (see RoutineReminderScheduler.onDayChanged).
+    ref.listen<AsyncValue<DateTime>>(wallClockTickerProvider, (_, next) {
+      final now = next.valueOrNull;
+      if (now != null && isNewDay(ref.read(currentDayProvider), now)) {
+        ref.invalidate(currentDayProvider);
+      }
+    });
+    ref.listen<DateTime>(
+      currentDayProvider,
+      (_, _) => unawaited(RoutineReminderScheduler.onDayChanged()),
+    );
 
     // Session logging. This `watch` is the whole point of the line: a Riverpod
     // `Provider` is lazy, so until something reads it the tracker is never

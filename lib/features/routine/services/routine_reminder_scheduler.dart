@@ -761,9 +761,22 @@ class RoutineReminderScheduler {
   /// Called whenever today's log or actions change (from any device), and
   /// straight after a local tick or excuse. A no-op before [init], which is
   /// every widget test and every profile that has no reminders.
+  /// The calendar day changed while the app was running: follow today's log
+  /// and actions instead of yesterday's, and tell the alarms what is settled.
+  /// Without it, an educator's approval after midnight reached the Hive
+  /// mirror through nothing, and the native alarm still fired for the step.
+  static Future<void> onDayChanged() async {
+    final id = _profileId;
+    if (id == null) return;
+    _watchToday(id);
+    await refreshSettled();
+  }
+
   static Future<void> refreshSettled() async {
     final id = _profileId;
     if (id == null || _plan.isEmpty) return;
+    // Any event after midnight re-subscribes to the new day first.
+    _watchToday(id);
     final today = DateTime.now();
     if (RoutineNativeAlarms.isSupported) {
       // The native alarms read this when they fire; nothing to reschedule.
