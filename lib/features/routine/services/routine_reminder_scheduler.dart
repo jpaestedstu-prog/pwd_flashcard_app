@@ -11,6 +11,7 @@ import '../../../data/models/enums.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_day_state.dart';
 import '../models/routine_models.dart';
+import 'routine_native_alarms.dart';
 import 'routine_service.dart';
 
 /// One reminder the OS should raise: a step, on a weekday, at a wall time.
@@ -301,6 +302,19 @@ class RoutineReminderScheduler {
     _accessibility = accessibility;
     _watchToday(profileId);
 
+    // Android: taps and lock launches come from RoutineAlarms. A launch that
+    // started the app waits for sign-in, then routes like a tap.
+    RoutineNativeAlarms.listen(_deliverLaunch);
+    final launch = await RoutineNativeAlarms.consumeLaunch();
+    if (launch != null) {
+      unawaited(
+        Future<void>.delayed(
+          const Duration(milliseconds: 800),
+          () => _deliverLaunch(launch),
+        ),
+      );
+    }
+
     _sub = const RoutineService().watchForChild(profileId).listen(
       (routines) {
         unawaited(
@@ -366,6 +380,24 @@ class RoutineReminderScheduler {
     if (id != null) _watchToday(id);
     _suppressedDay = dayStampOf(today);
     _suppressedToday.clear();
+
+    // Android schedules natively: one exact alarm per reminder that re-arms
+    // itself and checks today's settled steps when it fires, so skipping a
+    // day needs no rescheduling at all (see RoutineAlarms.kt).
+    if (RoutineNativeAlarms.isSupported && id != null) {
+      await RoutineNativeAlarms.apply(
+        reminders,
+        silent: usesSilentChannel(accessibility),
+        profileId: id,
+      );
+      await RoutineNativeAlarms.setSettled(today, _settledToday(today));
+      if (kDebugMode) {
+        debugPrint(
+          'RoutineReminderScheduler: ${reminders.length} native reminders',
+        );
+      }
+      return;
+    }
     // A step already done or excused today skips today's reminder (see
     // [slotsFor]), so editing the routine at 6:50 cannot resurrect a reminder
     // for a morning that is already settled.
@@ -383,6 +415,7 @@ class RoutineReminderScheduler {
   }
 
   static Future<void> cancelAll() async {
+    await RoutineNativeAlarms.cancelAll();
     for (final id in _activeIds.toList()) {
       try {
         await _plugin.cancel(id);
@@ -478,6 +511,13 @@ class RoutineReminderScheduler {
         ),
       );
     } catch (_) {}
+  }
+
+  /// Routes a native tap or lock launch like a plugin tap. A launch for a
+  /// profile that is not the one signed in is stale and dropped.
+  static void _deliverLaunch(RoutineLaunch launch) {
+    if (launch.profileId.isNotEmpty && launch.profileId != _profileId) return;
+    onReminderTapped?.call(launch.routineId, launch.stepId);
   }
 
   static void _onTap(NotificationResponse response) {
@@ -725,6 +765,11 @@ class RoutineReminderScheduler {
     final id = _profileId;
     if (id == null || _plan.isEmpty) return;
     final today = DateTime.now();
+    if (RoutineNativeAlarms.isSupported) {
+      // The native alarms read this when they fire; nothing to reschedule.
+      await RoutineNativeAlarms.setSettled(today, _settledToday(today));
+      return;
+    }
     final stamp = dayStampOf(today);
     if (_suppressedDay != stamp) {
       _suppressedDay = stamp;

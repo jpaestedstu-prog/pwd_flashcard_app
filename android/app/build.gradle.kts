@@ -57,6 +57,16 @@ flutter {
     source = "../.."
 }
 
+// firebase_messaging (the educator's "needs help" push) bundles the Firebase
+// instance-id receiver itself. ML Kit's image labeling still drags in the old
+// standalone firebase-iid through com.google.mlkit:linkfirebase, and the two
+// define the same class, so the build fails. linkfirebase only needs it for
+// models downloaded from Firebase; Word Hunt uses the bundled on-device model
+// (`ImageLabelerOptions`), so the old artifact is dropped.
+configurations.all {
+    exclude(group = "com.google.firebase", module = "firebase-iid")
+}
+
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     // Provides Theme.Material3.* parents used by res/values*/styles.xml.

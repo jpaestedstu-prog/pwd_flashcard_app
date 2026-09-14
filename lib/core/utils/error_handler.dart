@@ -110,6 +110,11 @@ class ErrorHandler {
     // learner did not ask for, and a plugin hiccup in it must not become a
     // snackbar over whatever they were doing.
     'applyRoutineLifecycle:silent',
+    // The educator's "needs help" push: registering this device's token and
+    // asking the Cloud Function to send. Background work nobody pressed a
+    // button for; the dashboard's own alert still covers an open app.
+    'EducatorPush:silent',
+    'RoutineHelpPush:silent',
     // Routine lock records and educator actions: all written locally first,
     // so a refused or offline cloud write is a sync gap the educator's UI
     // reports on its own terms — never a snackbar over a learner's lock.

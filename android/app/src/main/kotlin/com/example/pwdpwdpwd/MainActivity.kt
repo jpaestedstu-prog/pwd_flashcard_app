@@ -1,8 +1,10 @@
 package com.example.pwdpwdpwd
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.WindowManager
@@ -18,6 +20,17 @@ class MainActivity : FlutterActivity() {
 
         /** Mirrors `DeviceTimezone._channel` on the Dart side. */
         private const val TIMEZONE_CHANNEL = "flashlearn/device_timezone"
+
+        /** Mirrors `RoutineNativeAlarms._channel` on the Dart side. */
+        private const val ROUTINE_CHANNEL = "flashlearn/routine_alarms"
+
+        /**
+         * True while FlashLearn is the app in front. [RoutineAlarms] reads it
+         * so it never throws an overlay over the app's own lock, which already
+         * appears by itself when the app is open.
+         */
+        @Volatile
+        var isInForeground = false
     }
 
     /**
@@ -25,6 +38,15 @@ class MainActivity : FlutterActivity() {
      * and inert until Dart enables capture — see [GamepadBridge].
      */
     private var gamepadBridge: GamepadBridge? = null
+
+    /** The routine channel, once the engine exists. */
+    private var routineChannel: MethodChannel? = null
+
+    /**
+     * A routine notification tap or lock launch that arrived before Dart was
+     * listening (a cold start). Dart collects it with `takeLaunch`.
+     */
+    private var pendingRoutineLaunch: Map<String, Any>? = null
 
     /**
      * Bridges the TV Cast keep-alive service to Dart.
@@ -100,6 +122,93 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        // "My Day" reminders and locks — see [RoutineAlarms].
+        routineChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            ROUTINE_CHANNEL,
+        ).also { channel ->
+            channel.setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "apply" -> {
+                        RoutineAlarms.apply(
+                            applicationContext,
+                            call.argument<String>("plan") ?: "[]",
+                            call.argument<Boolean>("silent") ?: false,
+                            call.argument<String>("profile") ?: "",
+                        )
+                        result.success(true)
+                    }
+                    "cancelAll" -> {
+                        RoutineAlarms.cancelAll(applicationContext)
+                        result.success(true)
+                    }
+                    "setSettled" -> {
+                        RoutineAlarms.setSettled(
+                            applicationContext,
+                            call.argument<String>("day") ?: "",
+                            call.argument<List<String>>("ids") ?: emptyList(),
+                        )
+                        result.success(true)
+                    }
+                    "canDrawOverlays" ->
+                        result.success(RoutineAlarms.canDrawOverlays(applicationContext))
+                    "openOverlaySettings" -> {
+                        try {
+                            startActivity(
+                                Intent(
+                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:$packageName"),
+                                ),
+                            )
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.success(false)
+                        }
+                    }
+                    "setShowWhenLocked" -> {
+                        applyShowWhenLocked(call.argument<Boolean>("on") ?: false)
+                        result.success(true)
+                    }
+                    "takeLaunch" -> {
+                        result.success(pendingRoutineLaunch)
+                        pendingRoutineLaunch = null
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        }
+    }
+
+    /**
+     * Picks up a routine notification tap or lock launch. On a cold start Dart
+     * is not listening yet, so it is kept for `takeLaunch`; while running it is
+     * delivered straight away.
+     */
+    private fun captureRoutineLaunch(intent: Intent?, running: Boolean) {
+        val payload = intent?.getStringExtra(RoutineAlarms.EXTRA_PAYLOAD) ?: return
+        val lock = intent.getBooleanExtra(RoutineAlarms.EXTRA_LOCK, false)
+        val launch = mapOf(
+            "payload" to payload,
+            "lock" to lock,
+            "profile" to (intent.getStringExtra(RoutineAlarms.EXTRA_PROFILE) ?: ""),
+        )
+        // Consumed once: a rotation or a return from Settings must not replay it.
+        intent.removeExtra(RoutineAlarms.EXTRA_PAYLOAD)
+        // A lock opened by the alarm must be visible over the tablet's own lock
+        // screen. Dart turns this off again as soon as the routine lock closes.
+        if (lock) applyShowWhenLocked(true)
+        val channel = routineChannel
+        if (running && channel != null) {
+            channel.invokeMethod("onLaunch", launch)
+        } else {
+            pendingRoutineLaunch = launch
+        }
+    }
+
+    private fun applyShowWhenLocked(on: Boolean) {
+        setShowWhenLocked(on)
+        setTurnScreenOn(on)
     }
 
     /**
@@ -132,11 +241,33 @@ class MainActivity : FlutterActivity() {
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
         gamepadBridge?.dispose()
         gamepadBridge = null
+        routineChannel?.setMethodCallHandler(null)
+        routineChannel = null
         super.cleanUpFlutterEngine(flutterEngine)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        captureRoutineLaunch(intent, running = true)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isInForeground = true
+    }
+
+    override fun onPause() {
+        isInForeground = false
+        super.onPause()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        captureRoutineLaunch(intent, running = false)
+        // The routine and "needs help" channels must exist before the first
+        // push arrives, which can be long before any routine alarm fires.
+        RoutineAlarms.ensureChannels(applicationContext)
         // Keep the display awake while the app is in the foreground. Learners
         // using Gaze Control / voice commands never touch the screen, so the
         // normal touch-based screen timeout would blank the display mid-use —

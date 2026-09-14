@@ -10,6 +10,7 @@ import '../../../providers/profile_role_provider.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
+import '../services/routine_native_alarms.dart';
 import '../services/routine_reminder_scheduler.dart';
 import '../services/routine_service.dart';
 import '../widgets/routine_media.dart';
@@ -278,6 +279,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                             ),
                           ),
                           _OpenByItselfRow(filipino: l),
+                          _OverOtherAppsRow(filipino: l),
                         ],
                       ],
                     ],
@@ -926,6 +928,114 @@ class _LockSummary extends StatelessWidget {
 /// than thrown at whoever opens the app. Nothing breaks without it — the
 /// notification simply stays a notification — which is exactly why it needs
 /// saying out loud instead of failing quietly.
+/// The awake-tablet half of "open by itself".
+///
+/// While someone is using another app, Android shows a due lock as a banner
+/// instead of letting FlashLearn take the screen. "Display over other apps" is
+/// the one permission that lets it come to the front anyway. It belongs to the
+/// device, so it matters on the learner's own tablet — which is where an
+/// educator setting up a shared tablet opens this screen — and the row says
+/// whether it is granted *here*.
+class _OverOtherAppsRow extends StatefulWidget {
+  const _OverOtherAppsRow({required this.filipino});
+
+  final bool filipino;
+
+  @override
+  State<_OverOtherAppsRow> createState() => _OverOtherAppsRowState();
+}
+
+class _OverOtherAppsRowState extends State<_OverOtherAppsRow>
+    with WidgetsBindingObserver {
+  bool? _granted;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _check();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Coming back from Android's settings page is when the answer changes.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _check();
+  }
+
+  Future<void> _check() async {
+    final ok = await RoutineNativeAlarms.canDrawOverlays();
+    if (mounted) setState(() => _granted = ok);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (Theme.of(context).platform != TargetPlatform.android) {
+      return const SizedBox.shrink();
+    }
+    final hc = HCColor.of(context);
+    final l = widget.filipino;
+    final granted = _granted ?? false;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l
+                ? 'Kapag may ibang app na nakabukas, banner lang ang lock '
+                    'maliban kung pinapayagang lumabas ang FlashLearn sa '
+                    'ibabaw ng ibang app. Itakda ito sa tablet ng bata.'
+                : 'When another app is open, the lock is only a banner unless '
+                    'FlashLearn may appear over other apps. Set this on the '
+                    'learner\u2019s tablet.',
+            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed:
+                    granted ? null : RoutineNativeAlarms.openOverlaySettings,
+                icon: const Icon(Icons.layers_rounded, size: 18),
+                label: Text(
+                  l ? 'Ipakita sa ibabaw ng ibang app' : 'Open over other apps',
+                  maxLines: 2,
+                ),
+              ),
+              if (_granted != null) ...[
+                const SizedBox(width: 6),
+                Icon(
+                  granted ? Icons.check_circle_rounded : Icons.info_rounded,
+                  size: 18,
+                  color: granted ? AppColors.success : AppColors.warning,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    granted
+                        ? (l ? 'Pinayagan sa device na ito' : 'Allowed on this device')
+                        : (l ? 'Hindi pa pinapayagan' : 'Not allowed yet'),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
+                    maxLines: 2,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _OpenByItselfRow extends StatefulWidget {
   const _OpenByItselfRow({required this.filipino});
 

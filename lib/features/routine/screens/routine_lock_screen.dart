@@ -19,6 +19,7 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/lock_announcement_provider.dart';
 import '../../../providers/lock_state_provider.dart';
 import '../../../providers/routine_provider.dart';
+import '../../../providers/unlocking_educators_provider.dart';
 import '../../../providers/wall_clock_provider.dart';
 import '../../../widgets/adult_gate_dialog.dart';
 import '../../../widgets/animated_gradient_background.dart';
@@ -27,6 +28,7 @@ import '../models/routine_models.dart';
 import '../models/routine_presentation.dart';
 import '../services/routine_completion_flow.dart';
 import '../services/routine_lock_recorder.dart';
+import '../services/routine_native_alarms.dart';
 import '../services/routine_reminder_scheduler.dart';
 import '../services/routine_service.dart';
 import '../services/routine_sign_launcher.dart';
@@ -68,6 +70,11 @@ const Duration _releaseNoticeFor = Duration(milliseconds: 2800);
 ///    learner. Not a bypass: choosing this learner again trips the router's
 ///    lock redirect and puts them straight back here.
 class RoutineLockScreen extends ConsumerStatefulWidget {
+  /// Whether a routine lock is on screen. The splash screen reads it to take
+  /// the "show over the lock screen" permission back when a lock launch ends
+  /// somewhere else (the step was settled before the app finished starting).
+  static bool isShowing = false;
+
   const RoutineLockScreen({super.key});
 
   @override
@@ -134,6 +141,11 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+    // Visible over the tablet's own lock screen while — and only while — this
+    // step is holding the device: a sleeping tablet woken by the alarm shows
+    // the step, not the PIN pad.
+    RoutineLockScreen.isShowing = true;
+    unawaited(RoutineNativeAlarms.setShowWhenLocked(true));
     _lockPresentation = LockPresentation.forProfile(
       ref.read(profileProvider)?.disabilityType ?? DisabilityType.none,
       ref.read(settingsProvider),
@@ -150,6 +162,8 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    RoutineLockScreen.isShowing = false;
+    unawaited(RoutineNativeAlarms.setShowWhenLocked(false));
     _announceTimer?.cancel();
     _releaseTimer?.cancel();
     _helpTimer?.cancel();
@@ -435,6 +449,23 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
       _escalatedFor = step.id;
       unawaited(
         ref.read(routineLockRecorderProvider).escalated(profile.id, step.id),
+      );
+      // And to the educators' phones, even with their app closed: the routine's
+      // author plus every educator linked to this learner on the device.
+      final educators = <String>{
+        if (owning.isNotEmpty) owning.first.setterProfileId,
+        ...?ref
+            .read(unlockingEducatorsProvider(profile.id))
+            .valueOrNull
+            ?.map((e) => e.id),
+      };
+      unawaited(
+        ref.read(routineHelpRequesterProvider).request(
+              childProfileId: profile.id,
+              childName: profile.name,
+              step: step,
+              educatorProfileIds: educators.toList(),
+            ),
       );
       _helpTimer?.cancel();
       _helpTimer = Timer(

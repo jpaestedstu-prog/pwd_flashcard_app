@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/local/hive_service.dart';
+import '../../routine/screens/routine_lock_screen.dart';
+import '../../routine/services/routine_native_alarms.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/reduced_motion.dart';
 import '../../../providers/app_providers.dart';
@@ -67,7 +69,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   void _scheduleNavigation() {
-    _navigationTimer = Timer(const Duration(milliseconds: 3000), () {
+    _navigationTimer = Timer(const Duration(milliseconds: 3000), () async {
+      if (!mounted) return;
+      if (await _openRoutineLaunch()) return;
       if (!mounted) return;
 
       final profiles = HiveService.getProfiles();
@@ -84,6 +88,41 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         context.go('/profile');
       }
     });
+  }
+
+  /// A routine reminder or lock that started the app goes to its learner.
+  ///
+  /// A cold start normally lands on the profile picker — right for a shared
+  /// tablet, but a lock the alarm woke the tablet for would then wait behind
+  /// it, and a tapped reminder would lose its step. The profile the reminder
+  /// was scheduled for is signed in instead, unless it is PIN-protected: then
+  /// the picker asks, exactly as before.
+  Future<bool> _openRoutineLaunch() async {
+    final launch = await RoutineNativeAlarms.peekLaunch();
+    if (launch == null || !mounted) return false;
+    final profile = launch.profileId.isEmpty
+        ? null
+        : HiveService.getProfileById(launch.profileId);
+    if (profile == null || profile.hasPinProtection) {
+      // Never leave the profile picker showing over the tablet's lock screen.
+      if (launch.isLock) unawaited(RoutineNativeAlarms.setShowWhenLocked(false));
+      return false;
+    }
+    await ref.read(profileProvider.notifier).setProfile(profile);
+    if (!mounted) return true;
+    context.go('/home');
+    if (launch.isLock) {
+      // The lock gate moves to the step within a frame or two. If the step was
+      // settled in the meantime, take the lock-screen permission back.
+      unawaited(
+        Future<void>.delayed(const Duration(seconds: 10), () {
+          if (!RoutineLockScreen.isShowing) {
+            unawaited(RoutineNativeAlarms.setShowWhenLocked(false));
+          }
+        }),
+      );
+    }
+    return true;
   }
 
   @override

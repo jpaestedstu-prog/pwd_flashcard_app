@@ -525,6 +525,34 @@ service cloud.firestore {
         && ownsProfile(resource.data.setter_profile_id);
     }
 
+    // ─── Routine help requests ─────────────────────────
+    // One doc per learner, day and step, written by the learner's own device
+    // when a My Day step has waited long enough to need help. The
+    // routineHelpPush Cloud Function answers it by notifying the educators it
+    // names. Create-only: a second write (a restart, another escalation of the
+    // same step) is refused, which is what keeps an educator from being
+    // alerted twice. Nobody reads it but the function (admin access).
+    match /routine_help/{helpId} {
+      allow read: if false;
+      allow create: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.child_profile_id);
+      allow update, delete: if false;
+    }
+
+    // ─── Educator push tokens ──────────────────────────
+    // Where routineHelpPush sends a "needs help" alert: one doc per educator
+    // profile and device. Written by the device that owns the educator
+    // profile; read only by the Cloud Function.
+    match /push_tokens/{tokenId} {
+      allow read: if false;
+      allow create, update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.profile_id);
+      allow delete: if signedIn()
+        && resource.data.owner_uid == request.auth.uid;
+    }
+
     // ─── Per-child unlock overrides ────────────────────
     // One doc per child, keyed by childProfileId. Granted by an
     // educator (parent or teacher) to lift the lock screen for a

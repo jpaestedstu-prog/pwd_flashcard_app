@@ -1,3 +1,4 @@
+import '../models/routine_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'routine_reminder_scheduler.dart';
@@ -46,3 +47,28 @@ final routineHelpAlerterProvider = Provider<RoutineHelpAlerter>(
 /// `learner|day|step` keys already alerted on this device, so a learner who
 /// needs help is announced once, not on every ten-second tick.
 final routineHelpAlertedProvider = StateProvider<Set<String>>((ref) => {});
+
+/// Starts the push that tells a stuck learner's educators, on their own
+/// phones, that the learner needs help. A seam, like [RoutineLockRecorder]:
+/// widget tests swap it out rather than touch Firestore.
+class RoutineHelpRequester {
+  const RoutineHelpRequester();
+
+  Future<void> request({
+    required String childProfileId,
+    required String childName,
+    required RoutineStep step,
+    required List<String> educatorProfileIds,
+  }) =>
+      const RoutineService().requestHelpPush(
+        childProfileId: childProfileId,
+        childName: childName,
+        step: step,
+        educatorProfileIds: educatorProfileIds,
+        at: DateTime.now(),
+      );
+}
+
+final routineHelpRequesterProvider = Provider<RoutineHelpRequester>(
+  (ref) => const RoutineHelpRequester(),
+);

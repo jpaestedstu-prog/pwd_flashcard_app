@@ -15,6 +15,7 @@ import 'core/security/username_migration.dart';
 import 'core/services/action_clip_service.dart';
 import 'core/services/active_time_tracker.dart';
 import 'core/services/alarm_scheduler.dart';
+import 'core/services/educator_push_service.dart';
 import 'core/services/schedule_ownership.dart';
 import 'features/routine/services/routine_reminder_scheduler.dart';
 import 'features/routine/providers/today_routine_provider.dart';
@@ -397,12 +398,30 @@ class FlashLearnApp extends ConsumerWidget {
       }
     }
 
+    // ── Educator push ──
+    // A Teacher or Parent signed in on this device registers it for the
+    // "needs help" alert, so the alert reaches them with the app closed.
+    void applyEducatorPush(UserProfile? next) {
+      if (next == null ||
+          !(next.role == UserRole.teacher || next.role == UserRole.parent)) {
+        return;
+      }
+      unawaited(
+        EducatorPushService.register(
+          next,
+          filipino: ref.read(settingsProvider).locale == 'fil',
+        ),
+      );
+    }
+
     // Apply once for the current values, then react to subsequent changes.
     applyLifecycle(ref.read(profileProvider));
     applyRoutineLifecycle();
+    applyEducatorPush(ref.read(profileProvider));
     ref.listen(profileProvider, (_, next) {
       applyLifecycle(next);
       applyRoutineLifecycle();
+      applyEducatorPush(next);
     });
     // A Player turning My Day off has to cancel the pending notifications it
     // already scheduled, or the feature they switched off keeps tapping them
