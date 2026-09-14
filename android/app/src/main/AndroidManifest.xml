@@ -142,13 +142,6 @@
             android:exported="false"
             android:foregroundServiceType="dataSync"/>
 
-        <!-- A "needs help" push (routineHelpPush Cloud Function) arrives on the
-             educator's routine_help channel, which RoutineAlarms creates at
-             start-up, even when the message does not name one. -->
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="routine_help" />
-
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

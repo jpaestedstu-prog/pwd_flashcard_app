@@ -19,7 +19,6 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/lock_announcement_provider.dart';
 import '../../../providers/lock_state_provider.dart';
 import '../../../providers/routine_provider.dart';
-import '../../../providers/unlocking_educators_provider.dart';
 import '../../../providers/wall_clock_provider.dart';
 import '../../../widgets/adult_gate_dialog.dart';
 import '../../../widgets/animated_gradient_background.dart';
@@ -442,23 +441,6 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
       _escalatedFor = step.id;
       unawaited(
         ref.read(routineLockRecorderProvider).escalated(profile.id, step.id),
-      );
-      // And to the educators' phones, even with their app closed: the routine's
-      // author plus every educator linked to this learner on the device.
-      final educators = <String>{
-        if (owning.isNotEmpty) owning.first.setterProfileId,
-        ...?ref
-            .read(unlockingEducatorsProvider(profile.id))
-            .valueOrNull
-            ?.map((e) => e.id),
-      };
-      unawaited(
-        ref.read(routineHelpRequesterProvider).request(
-              childProfileId: profile.id,
-              childName: profile.name,
-              step: step,
-              educatorProfileIds: educators.toList(),
-            ),
       );
       _helpTimer?.cancel();
       _helpTimer = Timer(

@@ -8,7 +8,6 @@ import '../../../core/services/firebase_service.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/models.dart';
-import '../models/routine_catalog.dart';
 import '../models/routine_day_state.dart';
 import '../models/routine_models.dart';
 
@@ -52,46 +51,6 @@ class RoutineService {
   /// because the rules let only the learner's own device write their log.
   CollectionReference<Map<String, dynamic>> get _actionsCol =>
       FirebaseService.db.collection('routine_actions');
-
-  /// One "needs help" request per learner, day and step, answered by the
-  /// routineHelpPush Cloud Function (see firestore.rules).
-  CollectionReference<Map<String, dynamic>> get _helpCol =>
-      FirebaseService.db.collection('routine_help');
-
-  /// Asks the Cloud Function to tell [educatorProfileIds], on their own
-  /// phones and with the app closed, that the learner is stuck on [step].
-  ///
-  /// Created once: the rules refuse a second write to the same learner, day
-  /// and step, so a restart or a second escalation cannot alert anyone twice.
-  Future<void> requestHelpPush({
-    required String childProfileId,
-    required String childName,
-    required RoutineStep step,
-    required List<String> educatorProfileIds,
-    required DateTime at,
-  }) async {
-    if (!FirebaseService.isConfigured) return;
-    final educators =
-        {...educatorProfileIds.where((id) => id.isNotEmpty)}.toList();
-    if (educators.isEmpty) return;
-    final stamp = dayStampOf(at);
-    try {
-      await _helpCol.doc('${childProfileId}_${stamp}_${step.id}').set({
-        'key': '$childProfileId|$stamp|${step.id}',
-        'child_profile_id': childProfileId,
-        'child_name': childName,
-        'step_id': step.id,
-        'step_title': RoutineCatalog.titleFor(step, filipino: false),
-        'step_title_filipino': RoutineCatalog.titleFor(step, filipino: true),
-        'day': stamp,
-        'educator_profile_ids': educators,
-        'requested_at': FieldValue.serverTimestamp(),
-        'owner_uid': FirebaseService.currentUid,
-      });
-    } on Object catch (e, s) {
-      ErrorHandler.report(e, s, 'RoutineHelpPush:silent');
-    }
-  }
 
   String newId() => _uuid.v4();
 

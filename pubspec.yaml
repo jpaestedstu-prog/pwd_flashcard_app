@@ -99,7 +99,6 @@ dependencies:
   qr_flutter: ^4.1.0
 
   intl: any
-  firebase_messaging: ^15.2.10
 dev_dependencies:
   flutter_test:
     sdk: flutter
