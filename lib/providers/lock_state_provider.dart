@@ -136,6 +136,28 @@ final lockStateProvider =
   );
 });
 
+/// Until when an adult has unlocked this profile's device, or null.
+///
+/// The same two sources [lockStateProvider] short-circuits on — the on-device
+/// PIN grace and an educator's remote unlock — as one moment, the later of the
+/// two. Raw values with no clock: whether the moment has passed is for the
+/// reader to decide against its own `now`, so a reader on the wall-clock
+/// ticker and this provider can never disagree about the time.
+///
+/// "My Day" reads it so an unlocked device is left alone by the pop-up as well
+/// as by the lock.
+final deviceUnlockedUntilProvider =
+    Provider.family<DateTime?, String>((ref, childProfileId) {
+  final grace = ref.watch(pinUnlockGraceProvider(childProfileId));
+  final remote = ref
+      .watch(childUnlockOverrideProvider(childProfileId))
+      .valueOrNull
+      ?.unlockedUntil;
+  if (grace == null) return remote;
+  if (remote == null) return grace;
+  return grace.isAfter(remote) ? grace : remote;
+});
+
 /// Whether a profile in [role] can be held by a routine step.
 ///
 /// Students and Children only. Parents and Teachers set the routines; Players

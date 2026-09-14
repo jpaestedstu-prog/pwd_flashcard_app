@@ -40,6 +40,13 @@ class RoutinePopupSchedule {
   /// step again in a pop-up two seconds later would undo their decision and
   /// make the gate look broken.
   ///
+  /// [unlockedUntil] is an adult's unlock of the whole device — the PIN on a
+  /// lock screen, or an educator's "Unlock 30 min" from their dashboard. Until
+  /// it runs out nothing pops up on its own: "leave them alone for a bit"
+  /// covers the reminder as much as the lock, and the step the adult just
+  /// released coming straight back as a pop-up would make the unlock look
+  /// broken. A tapped notification is the learner asking, so it still opens.
+  ///
   /// [requestedStepId] is a tapped notification: the learner asked for this
   /// step, so it bypasses the clock, the freshness window and any snooze — but
   /// never the "already done" rule, and never names a step that is not
@@ -50,6 +57,7 @@ class RoutinePopupSchedule {
     required DateTime now,
     Map<String, DateTime> snoozedUntil = const {},
     Set<String> skippedStepIds = const <String>{},
+    DateTime? unlockedUntil,
     String? requestedStepId,
   }) {
     bool done(RoutineStep s) => log?.isDone(s.id) ?? false;
@@ -64,6 +72,8 @@ class RoutinePopupSchedule {
         }
       }
     }
+
+    if (unlockedUntil != null && now.isBefore(unlockedUntil)) return null;
 
     RoutineStep? earliest;
     for (final s in todaysSteps) {

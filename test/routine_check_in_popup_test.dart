@@ -158,6 +158,7 @@ Future<_FakeMood> _pumpWatcher(
   required DateTime now,
   required TodayRoutine today,
   UserRole role = UserRole.student,
+  DateTime? unlockedUntil,
 }) async {
   tester.view.physicalSize = const Size(900, 1400);
   tester.view.devicePixelRatio = 1.0;
@@ -172,6 +173,9 @@ Future<_FakeMood> _pumpWatcher(
         todayRoutineProvider.overrideWithValue(today),
         wallClockTickerProvider.overrideWith((ref) => Stream.value(now)),
         lockStateProvider(_profileId).overrideWithValue(null),
+        deviceUnlockedUntilProvider(
+          _profileId,
+        ).overrideWithValue(unlockedUntil),
       ],
       child: MaterialApp(
         home: Scaffold(
@@ -636,6 +640,34 @@ void main() {
       expect(find.text('It is lunch time.'), findsOneWidget);
     });
 
+    testWidgets('a device an adult unlocked is left alone until it ends', (
+      tester,
+    ) async {
+      // "Unlock 30 min" means leave them alone: the lock lifting and the same
+      // step popping straight back up would undo it.
+      await _pumpWatcher(
+        tester,
+        location: '/home',
+        now: _todayAt(12, 5),
+        today: _today([_lunch]),
+        unlockedUntil: _todayAt(12, 30),
+      );
+      expect(find.text('Time for Lunch!'), findsNothing);
+    });
+
+    testWidgets('an unlock that has run out no longer holds it back', (
+      tester,
+    ) async {
+      await _pumpWatcher(
+        tester,
+        location: '/home',
+        now: _todayAt(12, 31),
+        today: _today([_lunch]),
+        unlockedUntil: _todayAt(12, 30),
+      );
+      expect(find.text('Time for Lunch!'), findsOneWidget);
+    });
+
     testWidgets('a chore that has gone stale is left alone', (tester) async {
       await _pumpWatcher(
         tester,
@@ -724,6 +756,7 @@ void main() {
             todayRoutineProvider.overrideWithValue(_today([_checkIn])),
             wallClockTickerProvider.overrideWith((ref) => clock.stream),
             lockStateProvider(_profileId).overrideWithValue(null),
+            deviceUnlockedUntilProvider(_profileId).overrideWithValue(null),
           ],
           child: MaterialApp(
             home: Builder(

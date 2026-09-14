@@ -364,6 +364,45 @@ void main() {
     });
   });
 
+  group('a device an adult unlocked', () {
+    // Found on the NDL W09: the teacher's "Unlock 30 min" lifted the lock, and
+    // two seconds later the same step was back as "Time for Play Time!".
+    test('does not pop the step back up until the unlock ends', () {
+      expect(
+        RoutinePopupSchedule.due(
+          todaysSteps: const [_brushing],
+          log: null,
+          now: _at(6, 50),
+          unlockedUntil: _at(7, 15),
+        ),
+        isNull,
+      );
+      // Once the half hour is over the step is due again (still fresh).
+      expect(
+        RoutinePopupSchedule.due(
+          todaysSteps: const [_brushing],
+          log: null,
+          now: _at(7, 16),
+          unlockedUntil: _at(7, 15),
+        ),
+        _brushing,
+      );
+    });
+
+    test('still opens a step the learner asked for from its notification', () {
+      expect(
+        RoutinePopupSchedule.due(
+          todaysSteps: const [_brushing],
+          log: null,
+          now: _at(6, 50),
+          unlockedUntil: _at(7, 15),
+          requestedStepId: 'brush',
+        ),
+        _brushing,
+      );
+    });
+  });
+
   group('where each lock sends the learner', () {
     test('a routine step goes to its own screen, everything else to the PIN', () {
       expect(lockRouteFor(const RoutineStepDue(_brushing)), '/routine-lock');

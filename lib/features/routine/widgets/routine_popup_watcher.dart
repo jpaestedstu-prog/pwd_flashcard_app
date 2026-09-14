@@ -110,6 +110,8 @@ class _RoutinePopupWatcherState extends ConsumerState<RoutinePopupWatcher> {
       snoozedUntil: _snoozedUntil,
       // A step an adult excused on the routine lock is excused here too.
       skippedStepIds: today.excusedIds,
+      // …and a device an adult unlocked is left alone until the unlock ends.
+      unlockedUntil: ref.watch(deviceUnlockedUntilProvider(profile.id)),
       requestedStepId: request,
     );
     if (due == null || _showing) return const SizedBox.shrink();
