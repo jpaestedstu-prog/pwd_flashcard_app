@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/local/hive_service.dart';
-import '../../routine/screens/routine_lock_screen.dart';
 import '../../routine/services/routine_native_alarms.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/reduced_motion.dart';
@@ -111,17 +110,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     await ref.read(profileProvider.notifier).setProfile(profile);
     if (!mounted) return true;
     context.go('/home');
-    if (launch.isLock) {
-      // The lock gate moves to the step within a frame or two. If the step was
-      // settled in the meantime, take the lock-screen permission back.
-      unawaited(
-        Future<void>.delayed(const Duration(seconds: 10), () {
-          if (!RoutineLockScreen.isShowing) {
-            unawaited(RoutineNativeAlarms.setShowWhenLocked(false));
-          }
-        }),
-      );
-    }
+    // A lock launch whose step turns out to be settled never reaches the
+    // routine lock; the native side takes "show over the lock screen" back by
+    // itself when no lock confirms (MainActivity's watchdog).
     return true;
   }
 

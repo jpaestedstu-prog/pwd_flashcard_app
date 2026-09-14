@@ -70,11 +70,6 @@ const Duration _releaseNoticeFor = Duration(milliseconds: 2800);
 ///    learner. Not a bypass: choosing this learner again trips the router's
 ///    lock redirect and puts them straight back here.
 class RoutineLockScreen extends ConsumerStatefulWidget {
-  /// Whether a routine lock is on screen. The splash screen reads it to take
-  /// the "show over the lock screen" permission back when a lock launch ends
-  /// somewhere else (the step was settled before the app finished starting).
-  static bool isShowing = false;
-
   const RoutineLockScreen({super.key});
 
   @override
@@ -144,7 +139,6 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     // Visible over the tablet's own lock screen while — and only while — this
     // step is holding the device: a sleeping tablet woken by the alarm shows
     // the step, not the PIN pad.
-    RoutineLockScreen.isShowing = true;
     unawaited(RoutineNativeAlarms.setShowWhenLocked(true));
     _lockPresentation = LockPresentation.forProfile(
       ref.read(profileProvider)?.disabilityType ?? DisabilityType.none,
@@ -162,7 +156,6 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    RoutineLockScreen.isShowing = false;
     unawaited(RoutineNativeAlarms.setShowWhenLocked(false));
     _announceTimer?.cancel();
     _releaseTimer?.cancel();

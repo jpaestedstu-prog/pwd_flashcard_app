@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
@@ -33,6 +35,13 @@ class MainActivity : FlutterActivity() {
          */
         @Volatile
         var isInForeground = false
+
+        /**
+         * How long a lock launch may take to reach the routine lock before
+         * "show over the lock screen" is taken back. A cold start from a
+         * sleeping tablet reached the lock in about 12 s on the emulator.
+         */
+        private const val LOCK_SCREEN_GRACE_MS = 45_000L
     }
 
     /**
@@ -49,6 +58,19 @@ class MainActivity : FlutterActivity() {
      * listening (a cold start). Dart collects it with `takeLaunch`.
      */
     private var pendingRoutineLaunch: Map<String, Any>? = null
+
+    /**
+     * Takes "show over the lock screen" back when a lock launch never reaches
+     * the routine lock. Found on the emulator with a PIN set: the step was
+     * already done, the launch ended on My Day, and FlashLearn stayed usable in
+     * front of the PIN screen. Only the routine lock confirming itself on
+     * screen (or closing) cancels it.
+     */
+    private val lockScreenWatchdog = Handler(Looper.getMainLooper())
+    private val lockScreenTakeBack = Runnable {
+        Log.i("RoutineAlarms", "no routine lock appeared; taking the lock screen back")
+        applyShowWhenLocked(false)
+    }
 
     /**
      * Bridges the TV Cast keep-alive service to Dart.
@@ -169,6 +191,9 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                     "setShowWhenLocked" -> {
+                        // The routine lock is on screen (on) or has closed
+                        // (off) — either way the watchdog's job is done.
+                        lockScreenWatchdog.removeCallbacks(lockScreenTakeBack)
                         applyShowWhenLocked(call.argument<Boolean>("on") ?: false)
                         result.success(true)
                     }
@@ -198,8 +223,13 @@ class MainActivity : FlutterActivity() {
         // Consumed once: a rotation or a return from Settings must not replay it.
         intent.removeExtra(RoutineAlarms.EXTRA_PAYLOAD)
         // A lock opened by the alarm must be visible over the tablet's own lock
-        // screen. Dart turns this off again as soon as the routine lock closes.
-        if (lock) applyShowWhenLocked(true)
+        // screen — but only if the routine lock actually appears. If the launch
+        // ends anywhere else, the watchdog takes it back.
+        if (lock) {
+            applyShowWhenLocked(true)
+            lockScreenWatchdog.removeCallbacks(lockScreenTakeBack)
+            lockScreenWatchdog.postDelayed(lockScreenTakeBack, LOCK_SCREEN_GRACE_MS)
+        }
         val channel = routineChannel
         if (running && channel != null) {
             channel.invokeMethod("onLaunch", launch)
@@ -254,6 +284,11 @@ class MainActivity : FlutterActivity() {
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
         if (gamepadBridge?.handleMotionEvent(event) == true) return true
         return super.dispatchGenericMotionEvent(event)
+    }
+
+    override fun onDestroy() {
+        lockScreenWatchdog.removeCallbacks(lockScreenTakeBack)
+        super.onDestroy()
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
