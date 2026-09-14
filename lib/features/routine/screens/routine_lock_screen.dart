@@ -639,54 +639,65 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
           ),
         ],
 
-        const SizedBox(height: 24),
-
-        // ── The way out: doing it ──
-        SizedBox(
-          height: 64,
-          child: FilledButton.icon(
-            onPressed: _busy ? null : () => _didIt(step, profile.id),
-            icon: Icon(
-              isCheckIn
-                  ? Icons.chat_bubble_rounded
-                  : Icons.check_circle_rounded,
-              size: 28,
-            ),
-            label: Text(
-              isCheckIn
-                  ? (l ? 'Mag-check in ngayon' : 'Do my check-in')
-                  : (l ? 'Tapos na!' : 'I did it!'),
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.success,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        // The quiet way to an adult, always here. Once the step needs help,
-        // the card at the top carries a proper button for the same thing —
-        // this one sits below the fold on a tablet, exactly where a learner
-        // who has been stuck for a while will not look.
-        TextButton.icon(
-          onPressed: _busy ? null : () => _askGrownUp(step, profile.id),
-          icon: const Icon(Icons.pan_tool_alt_rounded, size: 20),
-          label: Text(
-            l ? 'Tumawag ng nakatatanda' : 'Ask a grown-up',
-            maxLines: 2,
-            textAlign: TextAlign.center,
-          ),
-          style: TextButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            foregroundColor: hc.textSecondary,
-          ),
-        ),
+        const SizedBox(height: 8),
       ],
+    );
+
+    // ── The way out: doing it, or an adult ──
+    // Pinned under the scrolling content, never inside it. On a short screen
+    // (a letterboxed tablet held sideways, a phone, a large font) the list
+    // above scrolls, and "I did it!" used to scroll with it — below the fold,
+    // while the learner stared at a lock with no visible way out.
+    final actions = Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 64,
+            child: FilledButton.icon(
+              onPressed: _busy ? null : () => _didIt(step, profile.id),
+              icon: Icon(
+                isCheckIn
+                    ? Icons.chat_bubble_rounded
+                    : Icons.check_circle_rounded,
+                size: 28,
+              ),
+              label: Text(
+                isCheckIn
+                    ? (l ? 'Mag-check in ngayon' : 'Do my check-in')
+                    : (l ? 'Tapos na!' : 'I did it!'),
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // The quiet way to an adult, always in reach. Once the step needs
+          // help, the card at the top carries a proper button for it too.
+          TextButton.icon(
+            onPressed: _busy ? null : () => _askGrownUp(step, profile.id),
+            icon: const Icon(Icons.pan_tool_alt_rounded, size: 20),
+            label: Text(
+              l ? 'Tumawag ng nakatatanda' : 'Ask a grown-up',
+              maxLines: 2,
+              textAlign: TextAlign.center,
+            ),
+            style: TextButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              foregroundColor: hc.textSecondary,
+            ),
+          ),
+        ],
+      ),
     );
 
     return PopScope(
@@ -701,6 +712,7 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
             child: Column(
               children: [
                 Expanded(child: _pulseBorder(body)),
+                actions,
                 _SwitchAccountBar(filipino: l),
               ],
             ),
