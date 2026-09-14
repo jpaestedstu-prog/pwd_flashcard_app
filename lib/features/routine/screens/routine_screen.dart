@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/lock_state_provider.dart' show canBeLockedByRoutine;
 import '../../../providers/routine_provider.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/app_back_button.dart';
@@ -20,6 +21,7 @@ import '../models/routine_presentation.dart';
 import '../services/routine_service.dart';
 import '../services/routine_sign_launcher.dart';
 import '../services/routine_completion_flow.dart';
+import '../widgets/routine_over_other_apps.dart';
 import '../widgets/routine_step_card.dart';
 import 'routine_step_screen.dart';
 
@@ -302,9 +304,17 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
         )
         ?.id;
 
+    // Only on the learner's own device, and only when today can hold it: this
+    // tablet is where "Display over other apps" has to be granted.
+    final asksForOverlay = widget.profileId == null &&
+        !widget.readOnly &&
+        canBeLockedByRoutine(ref.watch(profileProvider)?.role) &&
+        routines.any((r) => r.lockingSteps.isNotEmpty);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
+        if (asksForOverlay) RoutineOverOtherAppsBanner(filipino: filipino),
         _ProgressHeader(
           done: doneCount,
           total: allSteps.length,
