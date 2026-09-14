@@ -200,8 +200,8 @@ class _RoutineCopySheetState extends State<RoutineCopySheet> {
           const SizedBox(height: 4),
           Text(
             l
-                ? 'Bawat bata ay makakakuha ng sariling kopya na may parehong '
-                    'araw, oras, hakbang at lock. Puwedeng baguhin ang anumang '
+                ? 'Makakakuha ang bawat bata ng sariling kopya na may parehong '
+                    'araw, oras, hakbang at setting ng lock. Puwedeng baguhin ang anumang '
                     'kopya pagkatapos.'
                 : 'Each learner gets their own copy with the same days, times, '
                     'steps and lock settings. You can change any copy '
@@ -214,7 +214,7 @@ class _RoutineCopySheetState extends State<RoutineCopySheet> {
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
                 l
-                    ? 'Walang ibang bata na mapagkopyahan.'
+                    ? 'Wala pang ibang bata na mapagkopyahan.'
                     : 'There are no other learners to copy to yet.',
                 textAlign: TextAlign.center,
                 style: AppTypography.bodyMedium.copyWith(

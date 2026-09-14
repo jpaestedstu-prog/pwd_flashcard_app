@@ -155,7 +155,7 @@ class _Headline extends StatelessWidget {
               accent: AppColors.success,
             ),
             ProStatTile(
-              label: l ? 'Buong araw' : 'Full days',
+              label: l ? 'Buong araw na tapos' : 'Full days',
               value: '${history.completeDays}',
               icon: Icons.event_available_rounded,
             ),
@@ -396,7 +396,7 @@ class _AllSteady extends StatelessWidget {
 String _windowSubtitle(RoutineHistory history, {required bool filipino}) {
   if (history.isFullyRecorded) {
     return filipino
-        ? 'Naitalang bawat araw'
+        ? 'Naitala araw-araw'
         : 'Recorded day by day';
   }
   final recorded = history.recordedDays;

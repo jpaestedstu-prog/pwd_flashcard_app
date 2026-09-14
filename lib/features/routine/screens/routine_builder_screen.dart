@@ -109,7 +109,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l ? 'Bumalik' : 'Keep editing'),
+            child: Text(l ? 'Magpatuloy sa pag-edit' : 'Keep editing'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
@@ -174,7 +174,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
           ),
           floatingActionButton: FloatingActionButton.extended(
             icon: const Icon(Icons.add_rounded),
-            label: Text(l ? 'Magdagdag' : 'Add activity'),
+            label: Text(l ? 'Magdagdag ng gawain' : 'Add activity'),
             onPressed: () => _addStep(l),
           ),
           body: SafeArea(
@@ -183,7 +183,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
               children: [
                 // ── Name & recurrence ──
                 ProPanel(
-                  title: l ? 'Tungkol sa Routine' : 'About this routine',
+                  title: l ? 'Tungkol sa routine na ito' : 'About this routine',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -250,15 +250,13 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                         ProSwitchTile(
                           icon: Icons.lock_clock_rounded,
                           label: l
-                              ? 'I-lock ang app tuwing may hakbang'
+                              ? 'I-lock ang app sa oras ng bawat hakbang'
                               : 'Lock the app at each step',
                           caption: l
                               ? 'Sa oras ng bawat hakbang, ito lang ang '
-                                  'makikita ng bata hanggang sabihin nilang '
-                                  'tapos na — tapos itatanong kung ano ang '
-                                  'nararamdaman nila. Katulad ng Alarm at '
-                                  'Time Limit, pero ang paggawa mismo ang '
-                                  'nag-aalis nito.'
+                                  'makikita ng bata hanggang markahan nila '
+                                  'itong tapos, at pagkatapos ay itatanong kung ano ang kanilang nararamdaman. Katulad ng Alarm at '
+                                  'Time Limit na lock, ngunit ang paggawa sa hakbang ang siyang nag-aalis nito. Maaaring hindi isama ang anumang hakbang, isa-isa.'
                               : 'At the time of each step the learner sees '
                                   'only that step until they mark it done, '
                                   'and is then asked how they feel. Like the '
@@ -478,9 +476,9 @@ class _DayPicker extends StatelessWidget {
             Expanded(
               child: Text(
                 days.isEmpty
-                    ? (filipino ? 'Tumatakbo araw-araw' : 'Runs every day')
+                    ? (filipino ? 'Nakatakda araw-araw' : 'Runs every day')
                     : (filipino
-                          ? 'Tumatakbo tuwing ${formatDays(days, filipino: true)}'
+                          ? 'Nakatakda tuwing ${formatDays(days, filipino: true)}'
                           : 'Runs on ${formatDays(days, filipino: false)}'),
                 style: AppTypography.bodySmall.copyWith(
                   color: hc.textSecondary,
@@ -583,7 +581,7 @@ class _StepTile extends StatelessWidget {
                     if (step.isScheduled)
                       formatStepTime(step)
                     else
-                      (l ? 'Walang oras' : 'No set time'),
+                      (l ? 'Walang takdang oras' : 'No set time'),
                     if (step.hasTimer)
                       l
                           ? '${step.durationMinutes} minuto'
@@ -611,7 +609,7 @@ class _StepTile extends StatelessWidget {
               ],
             ),
             trailing: PopupMenuButton<String>(
-              tooltip: l ? 'Mga aksyon' : 'Step actions',
+              tooltip: l ? 'Mga aksyon sa hakbang' : 'Step actions',
               icon: Icon(Icons.more_vert_rounded, color: hc.textSecondary),
               onSelected: (v) {
                 switch (v) {
@@ -731,7 +729,7 @@ class _EmptySteps extends StatelessWidget {
           FilledButton.icon(
             onPressed: onAdd,
             icon: const Icon(Icons.add_rounded),
-            label: Text(filipino ? 'Magdagdag' : 'Add activity'),
+            label: Text(filipino ? 'Magdagdag ng gawain' : 'Add activity'),
           ),
         ],
       ),
@@ -877,14 +875,14 @@ class _LockSummary extends StatelessWidget {
     final String message;
     if (n == 0) {
       message = l
-          ? 'Walang hakbang na may oras, kaya wala pang mala-lock. Bigyan ng '
+          ? 'Walang hakbang na may oras, kaya walang ila-lock. Bigyan ng '
               'oras ang isang hakbang para gumana ito.'
           : 'No step has a time yet, so nothing will lock. Give a step a time '
               'to make this work.';
     } else {
       message = l
-          ? 'Mala-lock ang app sa $n na hakbang. Puwedeng i-off ang lock ng '
-              'isa-isang hakbang sa loob nito.'
+          ? 'Mala-lock ang app sa $n na hakbang. Buksan ang isang hakbang '
+              'para hindi ito isama.'
           : 'The app will lock at $n ${n == 1 ? 'step' : 'steps'}. Open a step '
               'to exempt it.';
     }
@@ -973,7 +971,7 @@ class _OpenByItselfRowState extends State<_OpenByItselfRow> {
             l
                 ? 'Habang bukas ang app, kusang lalabas ang lock sa oras ng '
                     'hakbang. Kapag tulog ang tablet, kailangan ng Android ng '
-                    'pahintulot para mag-isang bumukas ang FlashLearn.'
+                    'pahintulot para kusang bumukas ang FlashLearn.'
                 : 'While the app is open the lock appears on its own at the '
                     'step\u2019s time. For a sleeping tablet, Android needs '
                     'permission before FlashLearn can open by itself.',
@@ -1005,7 +1003,7 @@ class _OpenByItselfRowState extends State<_OpenByItselfRow> {
                     _granted!
                         ? (l ? 'Pinayagan na' : 'Allowed')
                         : (l
-                              ? 'Hindi pa \u2014 paalala pa rin ang darating'
+                              ? 'Hindi pa \u2014 darating pa rin ang paalala'
                               : 'Not yet \u2014 a reminder will still arrive'),
                     style: AppTypography.labelSmall.copyWith(
                       color: hc.textSecondary,
@@ -1074,7 +1072,7 @@ class _EscalationPicker extends StatelessWidget {
                 ChoiceChip(
                   label: Text(
                     m == 0
-                        ? (l ? 'Huwag' : 'Off')
+                        ? (l ? 'Walang' : 'Off')
                         : (l ? '$m minuto' : '$m min'),
                   ),
                   selected: minutes == m,
@@ -1086,13 +1084,13 @@ class _EscalationPicker extends StatelessWidget {
           Text(
             minutes == 0
                 ? (l
-                    ? 'Hindi hihingi ng tulong: nananatili ang lock hanggang '
-                        'tapos o lumipas ang oras nito.'
+                    ? 'Walang paghingi ng tulong: nananatili ang lock '
+                        'hanggang tapusin ang hakbang o lumipas ang oras nito.'
                     : 'No escalation: the lock simply waits until the step is '
                         'done or its hour runs out.')
                 : (l
                     ? 'Kung hindi pa tapos $minutes minuto makalipas ang oras, '
-                        'hihikayatin ang bata na magtanong sa nakatatanda, at '
+                        'hihikayatin ang bata na humingi ng tulong sa nakatatanda, at '
                         'aabisuhan kayo sa dashboard.'
                     : 'If a step is still not done $minutes min after its time, '
                         'the learner is prompted to ask a grown-up, and your '

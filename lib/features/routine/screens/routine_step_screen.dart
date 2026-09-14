@@ -270,7 +270,7 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
               if (note.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 _Panel(
-                  title: l ? 'Paalala' : 'Note',
+                  title: l ? 'Tala' : 'Note',
                   icon: Icons.sticky_note_2_rounded,
                   child: Text(
                     note,
@@ -320,7 +320,7 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
                         OutlinedButton.icon(
                           onPressed: () => _speakCue(l),
                           icon: const Icon(Icons.record_voice_over_rounded),
-                          label: Text(l ? 'Basahin ito' : 'Read it to me'),
+                          label: Text(l ? 'Basahin ito para sa akin' : 'Read it to me'),
                         ),
                         if (_step.hasMedia(RoutineMediaKind.audio))
                           RoutineAudioButton(

@@ -347,7 +347,7 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
       announcer.announce(
         presentation: _lockPresentation,
         message: filipino
-            ? 'Hindi pa tapos ang $title. Ayos na magtanong sa nakatatanda.'
+            ? 'Hindi pa tapos ang $title. Ayos lang na humingi ng tulong sa nakatatanda.'
             : '$title is not done yet. It is okay to ask a grown-up for help.',
         speakFilipino: filipino,
       ),
@@ -493,7 +493,7 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
         Semantics(
           header: true,
           child: Text(
-            l ? 'Oras na para dito' : 'It is time for this',
+            l ? 'Oras na para rito' : 'It is time for this',
             textAlign: TextAlign.center,
             style: AppTypography.labelLarge.copyWith(
               color: hc.textSecondary,
@@ -646,7 +646,7 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
           onPressed: _busy ? null : () => _askGrownUp(step, profile.id),
           icon: const Icon(Icons.pan_tool_alt_rounded, size: 20),
           label: Text(
-            l ? 'Tanungin ang nakatatanda' : 'Ask a grown-up',
+            l ? 'Tumawag ng nakatatanda' : 'Ask a grown-up',
             maxLines: 2,
             textAlign: TextAlign.center,
           ),
@@ -927,12 +927,12 @@ class _NeedsHelpCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final l = filipino;
-    final title = l ? 'Hindi pa tapos ito' : 'Still waiting on this one';
+    final title = l ? 'Hinihintay pa ang hakbang na ito' : 'Still waiting on this one';
     final body = l
-        ? 'Ayos lang. Kung may hadlang, magtanong sa nakatatanda para sa '
-            'tulong.'
+        ? 'Ayos lang. Kung may humahadlang, humingi ng tulong sa '
+            'nakatatanda.'
         : 'That is okay. If something is in the way, ask a grown-up to help.';
-    final ask = l ? 'Tanungin ang nakatatanda' : 'Ask a grown-up';
+    final ask = l ? 'Tumawag ng nakatatanda' : 'Ask a grown-up';
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(

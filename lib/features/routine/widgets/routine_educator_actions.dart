@@ -88,11 +88,11 @@ class _RoutineStepActionBarState extends ConsumerState<RoutineStepActionBar> {
           context,
           filipino: l,
           title: l
-              ? 'Markahang tapos ang $_title?'
+              ? 'Markahang tapos ang $_title ni ${widget.learnerName}?'
               : 'Mark $_title done for ${widget.learnerName}?',
           body: l
               ? 'Gawin ito kung nakita ninyong ginawa ito. Aalis ang lock sa '
-                  'device ni ${widget.learnerName} at bibilangin itong tapos.'
+                  'device ni ${widget.learnerName}, bibilangin itong tapos, at itatala na kayo ang nagmarka.'
               : 'Only if you saw it done. ${widget.learnerName}’s lock '
                   'lifts and the step counts as done, recorded as marked by '
                   'you.',
@@ -118,8 +118,8 @@ class _RoutineStepActionBarState extends ConsumerState<RoutineStepActionBar> {
               : 'Excuse $_title for today?',
           body: l
               ? 'Aalis ang lock sa device ni ${widget.learnerName}. Hindi '
-                  'bibilangin itong tapos, at itatala sa kasaysayan kung sino '
-                  'nagpasya.'
+                  'bibilangin itong tapos, at itatala sa kasaysayan na kayo '
+                  'ang pumayag.'
               : '${widget.learnerName}’s lock lifts. The step stays not '
                   'done, and the history records that you excused it.',
           confirm: l ? 'Laktawan' : 'Excuse',
@@ -144,8 +144,8 @@ class _RoutineStepActionBarState extends ConsumerState<RoutineStepActionBar> {
           ? 'I-unlock ang device ni ${widget.learnerName} nang 30 minuto?'
           : 'Unlock ${widget.learnerName}’s device for 30 minutes?',
       body: l
-          ? 'Mahihinto ang bawat lock — routine, time limit at alarm. Hindi '
-              'binabago ang routine.'
+          ? 'Mapapahinto ang bawat lock — routine, time limit at alarm. Hindi '
+              'binabago ang routine mismo.'
           : 'Every lock pauses — routine, time limit and alarm. The routine '
               'itself is not changed.',
       confirm: l ? 'I-unlock' : 'Unlock',
@@ -203,7 +203,7 @@ class _RoutineStepActionBarState extends ConsumerState<RoutineStepActionBar> {
         TextButton.icon(
           onPressed: _busy ? null : _unlock,
           icon: const Icon(Icons.lock_open_rounded, size: 18),
-          label: Text(l ? 'I-unlock 30 min' : 'Unlock 30 min'),
+          label: Text(l ? 'I-unlock 30 minuto' : 'Unlock 30 min'),
           style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
         ),
       ],
@@ -251,7 +251,7 @@ class _RoutineUndoMarkButtonState extends ConsumerState<RoutineUndoMarkButton> {
           : (l ? 'Bawiin ang pagpapalaktaw?' : 'Take back the excuse?'),
       body: approval
           ? (l
-              ? 'Hindi na bibilangin tapos ang $title.'
+              ? 'Ibabalik sa hindi tapos ang $title.'
               : '$title goes back to not done.')
           : (l
               ? 'Kung hindi pa lumipas ang oras nito, babalik ang lock para sa '

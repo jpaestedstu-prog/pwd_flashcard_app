@@ -80,7 +80,7 @@ class RoutineEditorScreen extends ConsumerWidget {
             childDisplayName == null
                 ? (l ? 'Mga Routine' : 'Routines')
                 : (l
-                    ? 'Routine ni $childDisplayName'
+                    ? 'Mga Routine ni $childDisplayName'
                     : 'Routines — $childDisplayName'),
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
@@ -315,11 +315,11 @@ class RoutineEditorScreen extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l ? 'Ulitin ang araw?' : 'Start today over?'),
+        title: Text(l ? 'Simulan muli ang araw na ito?' : 'Start today over?'),
         content: Text(
           l
-              ? 'Aalisin ang lahat ng markang tapos para sa araw na ito, pati '
-                  'ang mga hakbang na pinayagang laktawan. Hindi mababago ang '
+              ? 'Aalisin ang lahat ng markang tapos para sa araw na ito, at '
+                  'ang mga hakbang na pinalaktaw ng nakatatanda ay muling mala-lock. Hindi mababago ang '
                   'routine mismo.'
               : 'Every tick for today will be cleared, and any step an adult '
                   'waved past goes back to locking. The routine itself is not '
@@ -332,7 +332,7 @@ class RoutineEditorScreen extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l ? 'Ulitin' : 'Start over'),
+            child: Text(l ? 'Simulan muli' : 'Start over'),
           ),
         ],
       ),
@@ -468,7 +468,7 @@ class _TemplateSheet extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               l
-                  ? 'Handa nang template — mababago ang bawat hakbang pagkatapos.'
+                  ? 'Isang handang plano — mababago ang bawat hakbang pagkatapos.'
                   : 'A ready-made plan — every step stays editable afterwards.',
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),
@@ -620,12 +620,12 @@ class _TodayCard extends StatelessWidget {
               ? 'Walang routine na nakatakda ngayon'
               : 'No routine scheduled today')
           : (filipino
-              ? '$done sa ${steps.length} gawain tapos na'
+              ? '$done sa ${steps.length} gawain ang tapos'
               : '$done of ${steps.length} activities done'),
       trailing: steps.isEmpty
           ? null
           : IconButton(
-              tooltip: filipino ? 'Ulitin ang araw' : 'Start today over',
+              tooltip: filipino ? 'Simulan muli ang araw' : 'Start today over',
               icon: Icon(Icons.restart_alt_rounded, color: hc.textSecondary),
               onPressed: onReset,
             ),
@@ -735,7 +735,7 @@ class _RoutineCard extends StatelessWidget {
                   onChanged: onToggle,
                 ),
                 PopupMenuButton<String>(
-                  tooltip: l ? 'Mga aksyon' : 'Routine actions',
+                  tooltip: l ? 'Mga aksyon sa routine' : 'Routine actions',
                   icon: Icon(Icons.more_horiz_rounded,
                       color: hc.textSecondary),
                   onSelected: (v) {
@@ -815,7 +815,7 @@ class _RoutineCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       l
-                          ? 'Nagla-lock sa ${routine.lockingSteps.length} '
+                          ? 'Mala-lock ang app sa ${routine.lockingSteps.length} '
                                 'hakbang'
                           : 'Locks the app at '
                                 '${routine.lockingSteps.length} '

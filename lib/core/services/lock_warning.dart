@@ -63,6 +63,9 @@ class LockWarning {
   String get title =>
       minutesLeft == 1 ? '1 minute left' : '$minutesLeft minutes left';
 
+  /// Filipino counterpart of [title] — the numeral takes the singular.
+  String get titleFilipino => '$minutesLeft minuto ang natitira';
+
   /// Plain-language explanation of what happens next. [address] is the
   /// resolved guardian name (see `GuardianAddress`).
   String body(String address) => switch (cause) {

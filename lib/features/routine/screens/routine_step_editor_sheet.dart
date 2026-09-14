@@ -278,8 +278,8 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                   const SizedBox(height: 4),
                   Text(
                     l
-                        ? 'Walang oras = sunod-sunod lang, walang orasan. Mas '
-                              'madali ito para sa ilang bata.'
+                        ? 'Kung walang oras, sinusunod ang hakbang ayon sa '
+                              'pagkakasunod, hindi ayon sa orasan — kadalasang mas madali para sa batang hindi nagbabasa ng orasan.'
                         : 'No time means the step is sequenced, not clocked — '
                               'often easier for a learner who does not read a clock.',
                     style: AppTypography.labelSmall.copyWith(
@@ -335,7 +335,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                                     : 'Remind at the time')
                               : (l
                                     ? 'Paalala ${_draft.remindMinutesBefore} '
-                                          'minuto bago'
+                                          'minuto bago ang oras'
                                     : 'Remind ${_draft.remindMinutesBefore} min '
                                           'before'),
                           style: AppTypography.bodyMedium.copyWith(
@@ -415,8 +415,8 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                     const SizedBox(height: 8),
                     Text(
                       l
-                          ? 'Sa oras na ito, may paalala at pop-up na '
-                                'magsasabing “Pakigawa na ang iyong check-in '
+                          ? 'Sa oras na ito, makatatanggap ang bata ng '
+                                'abiso at pop-up: “Pakigawa na ang iyong check-in '
                                 'ngayon.”'
                           : 'At this time the learner gets a notification and '
                                 'a pop-up: “Please do your check-in now.”',
@@ -464,7 +464,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                                           'all the learner can see until they '
                                           'mark it done.')
                               : (l
-                                    ? 'Hindi hihinto ang app para sa hakbang '
+                                    ? 'Hindi mapapahinto ang bata sa hakbang '
                                           'na ito — paalala lang.'
                                     : 'This step will not stop the learner — '
                                           'it only reminds.'),
@@ -477,13 +477,13 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                   ],
 
                   // ── Note / spoken cue ──
-                  _SectionLabel(l ? 'Paalala at Boses' : 'Note & spoken cue'),
+                  _SectionLabel(l ? 'Tala at Binibigkas na Paalala' : 'Note & spoken cue'),
                   TextField(
                     controller: _note,
                     maxLines: 2,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      labelText: l ? 'Paalala (English)' : 'Note',
+                      labelText: l ? 'Tala (English)' : 'Note',
                       hintText: info.audioCue,
                       helperText: l
                           ? 'Ito rin ang binabasa nang malakas sa bata.'
@@ -497,7 +497,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                     maxLines: 2,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      labelText: l ? 'Paalala sa Filipino' : 'Filipino note',
+                      labelText: l ? 'Tala sa Filipino' : 'Filipino note',
                       hintText: info.audioCueFilipino,
                       border: const OutlineInputBorder(),
                     ),
@@ -727,7 +727,7 @@ class _MediaFieldState extends State<_MediaField> {
                       )
                     : const Icon(Icons.phone_android_rounded, size: 18),
                 label: Text(
-                  filipino ? 'Kumuha sa device' : 'Choose from device',
+                  filipino ? 'Pumili mula sa device' : 'Choose from device',
                 ),
               ),
               const SizedBox(width: 10),
@@ -740,7 +740,7 @@ class _MediaFieldState extends State<_MediaField> {
                             : 'On this tablet only — a learner using a different '
                                   'device will not see it.')
                       : (filipino
-                            ? 'Ang link ay umaabot sa lahat ng device.'
+                            ? 'Makikita ang link sa bawat device.'
                             : 'A link reaches every device.'),
                   style: AppTypography.labelSmall.copyWith(
                     color: onDevice ? AppColors.warning : hc.textSecondary,
@@ -779,7 +779,7 @@ class _PreviewStrip extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          filipino ? 'Makikita ng bata' : 'What the learner will see',
+          filipino ? 'Ang makikita ng bata' : 'What the learner will see',
           style: AppTypography.labelMedium.copyWith(
             color: hc.textSecondary,
             fontWeight: FontWeight.w700,

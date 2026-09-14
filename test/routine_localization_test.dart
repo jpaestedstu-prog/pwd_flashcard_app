@@ -238,7 +238,7 @@ void main() {
       expect(find.text('Basain ang sipilyo'), findsOneWidget);
       expect(find.text('Magmumog ng tubig'), findsOneWidget);
       expect(find.text('Tulong sa Gawain'), findsOneWidget);
-      expect(find.text('Basahin ito'), findsOneWidget);
+      expect(find.text('Basahin ito para sa akin'), findsOneWidget);
       expect(find.text('Tapos na!'), findsOneWidget);
       expect(find.text('2 minuto'), findsWidgets);
       expect(

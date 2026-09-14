@@ -124,7 +124,7 @@ class RoutineTemplates {
       id: 'morning',
       emoji: '🌅',
       name: 'Morning Routine',
-      nameFilipino: 'Rutina sa Umaga',
+      nameFilipino: 'Routine sa Umaga',
       description: 'Wake up, wash, eat and get ready.',
       descriptionFilipino: 'Gumising, maghilamos, kumain at maghanda.',
       activities: [

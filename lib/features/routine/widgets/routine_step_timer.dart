@@ -233,7 +233,7 @@ class RoutineStepTimerState extends State<RoutineStepTimer> {
               OutlinedButton.icon(
                 onPressed: widget.enabled ? _reset : null,
                 icon: const Icon(Icons.replay_rounded),
-                label: Text(l ? 'Ulitin' : 'Reset'),
+                label: Text(l ? 'I-reset' : 'Reset'),
               ),
             ],
           ),

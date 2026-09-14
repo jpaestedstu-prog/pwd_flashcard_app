@@ -254,7 +254,7 @@ class _RoutineNowDialogState extends State<_RoutineNowDialog> {
           child: Semantics(
             button: true,
             label: isFilipino
-                ? 'Tapos na. Markahan ang hakbang na tapos.'
+                ? 'Tapos na. Markahang tapos ang hakbang na ito.'
                 : 'I did it. Mark this step done.',
             excludeSemantics: true,
             child: ElevatedButton.icon(
@@ -303,7 +303,7 @@ class _RoutineNowDialogState extends State<_RoutineNowDialog> {
         // Said plainly, because the tick is a write the learner cannot see
         // behind the dialog: their answer to page 1 has been taken.
         Text(
-          isFilipino ? 'Ayos! ✅' : 'Nice work! ✅',
+          isFilipino ? 'Mahusay! ✅' : 'Nice work! ✅',
           style: AppTypography.titleSmall.copyWith(
             color: AppColors.success,
             fontWeight: FontWeight.w800,

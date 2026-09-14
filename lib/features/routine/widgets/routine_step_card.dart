@@ -194,7 +194,7 @@ class RoutineStepCard extends StatelessWidget {
                         label: Text(
                           done
                               ? (filipino ? 'Tapos na!' : 'Done!')
-                              : (filipino ? 'Tapos na ba?' : 'Mark as done'),
+                              : (filipino ? 'Markahang tapos' : 'Mark as done'),
                           style: AppTypography.titleSmall.copyWith(
                             fontWeight: FontWeight.w700,
                           ),

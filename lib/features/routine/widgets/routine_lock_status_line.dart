@@ -89,7 +89,7 @@ class RoutineLearnerLockStatus extends ConsumerWidget {
         color: AppColors.info,
         text: l
             ? 'Mala-lock para sa $title sa ${formatClockTime(upcoming.dueAt)}'
-                ' · ${upcoming.minutesUntil} minuto'
+                ' · makalipas ang ${upcoming.minutesUntil} minuto'
             : '$title locks at ${formatClockTime(upcoming.dueAt)}'
                 ' · in ${upcoming.minutesUntil} min',
       ));

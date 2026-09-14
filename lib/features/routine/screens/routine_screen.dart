@@ -264,7 +264,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
           actions: [
             if (_selfManaged)
               IconButton(
-                tooltip: l ? 'Ayusin ang araw ko' : 'Edit my day',
+                tooltip: l ? 'Ayusin ang aking araw' : 'Edit my day',
                 icon: Icon(
                   Icons.edit_calendar_rounded,
                   color: hc.textSecondary,
@@ -580,7 +580,7 @@ class _DayCompleteBanner extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             filipino
-                ? 'Napakagaling mo ngayong araw.'
+                ? 'Ginawa mo ang bawat hakbang ngayon. Mahusay!'
                 : 'You did every step today. Great work.',
             textAlign: TextAlign.center,
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
@@ -623,20 +623,20 @@ class _EmptyDay extends StatelessWidget {
         emoji: '🌴',
         title: filipino ? 'Walang nakatakda ngayon' : 'Nothing scheduled today',
         description: filipino
-            ? 'Walang routine para sa araw na ito. Magpahinga ka muna!'
+            ? 'Walang routine para sa araw na ito. Magsaya!'
             : 'You have no routine for today. Enjoy the rest!',
       );
     }
     if (onBuildMyOwn != null) {
       return RichEmptyState(
         emoji: '🗓️',
-        title: filipino ? 'Gawin ang araw mo' : 'Plan your day',
+        title: filipino ? 'Planuhin ang iyong araw' : 'Plan your day',
         description: filipino
-            ? 'Ang Araw Ko ay nagpapakita ng plano ng araw mo — isa-isang '
-                'hakbang, may larawan at oras. Ikaw ang gagawa ng sa iyo.'
+            ? 'Ang Aking Araw ay nagpapakita ng plano ng iyong araw — isa-isang '
+                'hakbang, may larawan at oras. Ikaw ang bubuo nito.'
             : 'My Day shows your plan for the day — one step at a time, with '
                 'pictures and times. This one is yours to build.',
-        actionLabel: filipino ? 'Gumawa ng routine' : 'Build my routine',
+        actionLabel: filipino ? 'Buuin ang aking routine' : 'Build my routine',
         actionIcon: Icons.add_rounded,
         onAction: onBuildMyOwn,
       );
@@ -646,7 +646,7 @@ class _EmptyDay extends StatelessWidget {
         emoji: '🗓️',
         title: filipino ? 'Wala pang routine' : 'No routine yet',
         description: filipino
-            ? 'Ang Araw Ko ay nagpapakita ng plano ng araw mo — isa-isang '
+            ? 'Ang Aking Araw ay nagpapakita ng plano ng iyong araw — isa-isang '
                 'hakbang, may larawan at oras. Sumali sa isang klase o family '
                 'group para makagawa ang guro o magulang mo ng isa para sa iyo.'
             : 'My Day shows your plan for the day — one step at a time, with '

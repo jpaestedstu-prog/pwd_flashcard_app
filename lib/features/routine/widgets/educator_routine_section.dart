@@ -141,7 +141,7 @@ class _RoutineRow extends ConsumerWidget {
     final title = RoutineCatalog.titleFor(current.step, filipino: l);
     final minutes = current.minutesWaiting;
     final message = l
-        ? 'Kailangan ng tulong si ${learner.name}: $title ($minutes minuto)'
+        ? 'Kailangan ng tulong si ${learner.name} sa $title ($minutes minuto)'
         : '${learner.name} needs help with $title ($minutes min)';
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(content: Text(message)),
@@ -149,7 +149,7 @@ class _RoutineRow extends ConsumerWidget {
     unawaited(
       ref.read(routineHelpAlerterProvider).alert(
             key: key,
-            title: l ? 'Kailangan ng tulong' : 'A learner needs help',
+            title: l ? 'Kailangan ng tulong ang isang bata' : 'A learner needs help',
             body: message,
           ),
     );
@@ -189,7 +189,7 @@ class _RoutineRow extends ConsumerWidget {
     final hasAny = routines.isNotEmpty;
 
     final subtitle = !hasAny
-        ? (l ? 'Wala pang routine — magtakda' : 'No routine yet — set one up')
+        ? (l ? 'Wala pang routine — gumawa ng isa' : 'No routine yet — set one up')
         : steps.isEmpty
             ? (l ? 'Walang nakatakda ngayon' : 'Nothing scheduled today')
             : (l

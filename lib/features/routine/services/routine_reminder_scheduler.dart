@@ -265,7 +265,7 @@ class RoutineReminderScheduler {
     final early = step.remindMinutesBefore;
     if (early > 0) {
       return filipino
-          ? 'Sa loob ng $early minuto. I-tap para makita.'
+          ? 'Sa loob ng $early minuto. I-tap para makita ang gagawin.'
           : 'In $early minutes. Tap to see what to do.';
     }
     // The educator's own note beats a generic line — it is more specific and
@@ -277,10 +277,10 @@ class RoutineReminderScheduler {
     // them, and it will keep waiting whether they tap or not.
     if (locks) {
       return filipino
-          ? 'Hinihintay ka ng FlashLearn para dito.'
+          ? 'Naghihintay sa iyo ang FlashLearn para gawin ito.'
           : 'FlashLearn is waiting for you to do this.';
     }
-    return filipino ? 'Oras na. I-tap para makita.' : 'Tap to see what to do.';
+    return filipino ? 'I-tap para makita ang gagawin.' : 'Tap to see what to do.';
   }
 
   /// Start scheduling for [profileId]. Safe to call repeatedly; each call

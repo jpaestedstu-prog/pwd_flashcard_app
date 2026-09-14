@@ -116,6 +116,7 @@ class _LockWarningGateState extends ConsumerState<LockWarningGate> {
             right: 0,
             child: _WarningBanner(
               warning: showing,
+              title: _titleFor(showing),
               message: _bodyFor(showing, profile),
               presentation: _presentationFor(profile),
               onDismiss: _dismiss,
@@ -153,7 +154,7 @@ class _LockWarningGateState extends ConsumerState<LockWarningGate> {
     unawaited(
       _announcer?.announce(
         presentation: _presentationFor(profile).warningVariant,
-        message: '${next.title}. ${_bodyFor(next, profile)}',
+        message: '${_titleFor(next)}. ${_bodyFor(next, profile)}',
         alarmEnabled: _limit?.alarmSoundEnabled ?? true,
         voiceEnabled: _limit?.voiceMessageEnabled ?? true,
         speakFilipino: _isFilipino,
@@ -181,6 +182,8 @@ class _LockWarningGateState extends ConsumerState<LockWarningGate> {
 
   bool get _isFilipino => ref.read(settingsProvider).locale == 'fil';
 
+  String _titleFor(LockWarning w) => _isFilipino ? w.titleFilipino : w.title;
+
   LockPresentation _presentationFor(UserProfile profile) =>
       LockPresentation.forProfile(
         profile.disabilityType,
@@ -207,12 +210,14 @@ class _LockWarningGateState extends ConsumerState<LockWarningGate> {
 /// screen and can always be dismissed by tapping it.
 class _WarningBanner extends StatelessWidget {
   final LockWarning warning;
+  final String title;
   final String message;
   final LockPresentation presentation;
   final VoidCallback onDismiss;
 
   const _WarningBanner({
     required this.warning,
+    required this.title,
     required this.message,
     required this.presentation,
     required this.onDismiss,
@@ -231,7 +236,7 @@ class _WarningBanner extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
           child: Semantics(
             liveRegion: true,
-            label: '${warning.title}. $message',
+            label: '$title. $message',
             container: true,
             child: ExcludeSemantics(
               child: Card(
@@ -260,7 +265,7 @@ class _WarningBanner extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                warning.title,
+                                title,
                                 style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(
                                       fontWeight: FontWeight.bold,
