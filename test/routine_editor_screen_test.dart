@@ -201,6 +201,39 @@ void main() {
       await _unmount(tester);
     });
 
+    testWidgets(
+        'offers app-locking for a learner this device has never cached',
+        (tester) async {
+      // A teacher building on their own phone for a learner whose profile
+      // lives on the learner's tablet. Found in the two-device test: the
+      // switch never appeared, so locking could not be turned on at all.
+      await pumpBuilder(
+        tester,
+        routine: Routine(
+          id: 'r-remote',
+          childProfileId: 'learner-on-another-tablet',
+          setterProfileId: 'teacher-phone',
+          setterRole: UserRole.teacher,
+          name: 'Morning',
+          steps: defaultTestSteps(),
+          createdAt: DateTime(2026, 9),
+          updatedAt: DateTime(2026, 9),
+        ),
+      );
+      expect(find.text('Lock the app at each step'), findsOneWidget);
+      await _unmount(tester);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('does not offer app-locking for a profile known not to be a '
+        'learner', (tester) async {
+      // The default test routine's learner id is the signed-in stub profile,
+      // which is a teacher here: a known non-learner is never shown the switch.
+      await pumpBuilder(tester);
+      expect(find.text('Lock the app at each step'), findsNothing);
+      await _unmount(tester);
+    });
+
     testWidgets('picking days marks the routine dirty and enables Save',
         (tester) async {
       await pumpBuilder(tester);

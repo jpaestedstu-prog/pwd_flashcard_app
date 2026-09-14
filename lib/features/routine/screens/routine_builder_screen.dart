@@ -129,11 +129,22 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
     final l = ref.watch(settingsProvider).locale == 'fil';
     final steps = _draft.editorSteps;
     // App-locking is a supervision feature: only a Student or a Child can be
-    // held by one, so nobody else is even shown the switch. An unknown role
-    // (a routine for a learner this device has not cached) reads as "no",
-    // which is the safe way to be wrong.
+    // held by one, so nobody else is even shown the switch.
+    //
+    // The learner is usually *not* cached on this device: a teacher builds on
+    // their own phone for a learner whose profile lives on the learner's
+    // tablet (found in the two-device test — the switch never appeared, so
+    // locking could not be turned on from an educator's phone at all). A
+    // routine a Teacher or Parent is authoring is, by construction, for their
+    // enrolled Student or Child, so an unknown role still offers the switch
+    // then. A flag set by mistake cannot hold a Player: the learner's own
+    // device decides from its own role (`canBeLockedByRoutine`).
     final role = ref.watch(profileRoleProvider(_draft.childProfileId));
-    final canLock = role == UserRole.student || role == UserRole.child;
+    final authoredByEducator = _draft.setterRole == UserRole.teacher ||
+        _draft.setterRole == UserRole.parent;
+    final canLock = role == UserRole.student ||
+        role == UserRole.child ||
+        (role == null && authoredByEducator);
 
     return PopScope(
       canPop: !_dirty,
