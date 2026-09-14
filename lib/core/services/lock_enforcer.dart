@@ -93,15 +93,6 @@ class RoutineStepDue extends LockReason {
   String get subtitle => 'Finish this to carry on.';
 }
 
-/// How long after its time a routine step still holds the device.
-///
-/// The same hour [RoutinePopupSchedule.taskFreshness] gives the pop-up, and
-/// for the same reason: a step whose moment has long passed is not a lock, it
-/// is an obstacle. A missed step stays missed and stays tickable in "My Day" —
-/// it just stops standing in the way. Without a window, a device switched off
-/// over the weekend would come back locked to Saturday breakfast.
-const Duration kRoutineLockWindow = Duration(hours: 1);
-
 /// Pure-function evaluator: given the child's policy, current minutes
 /// used, list of alarms, and `now`, returns a [LockReason] or null.
 ///
@@ -140,7 +131,6 @@ class LockEnforcer {
     List<RoutineStep> routineSteps = const <RoutineStep>[],
     Set<String> completedStepIds = const <String>{},
     Set<String> skippedStepIds = const <String>{},
-    Duration routineLockWindow = kRoutineLockWindow,
   }) {
     // 1. Alarm-triggered. We treat any enabled `lockScreen` alarm whose
     //    most-recent fire was within [recentAlarmFireWindow] as locking.
@@ -192,7 +182,6 @@ class LockEnforcer {
       completedStepIds: completedStepIds,
       skippedStepIds: skippedStepIds,
       now: now,
-      window: routineLockWindow,
     );
     if (step != null) return RoutineStepDue(step);
 
@@ -201,11 +190,16 @@ class LockEnforcer {
 
   /// The routine step that should be holding the device right now, or null.
   ///
-  /// A step qualifies when its clock time has arrived, that time is no more
-  /// than [window] ago, it has not been ticked off, and an adult has not
-  /// waved it through for today. With several overdue at once — the tablet was
-  /// off all morning — the **earliest** wins, so the day is worked through in
-  /// the order it was planned rather than backwards.
+  /// A step holds the device from its clock time until its time ends
+  /// ([RoutineStep.endsOn]) — and then lets go by itself. A Student or Child
+  /// never taps their own way out: an adult who finishes the step early, or
+  /// excuses it, is what lands here as [completedStepIds] or
+  /// [skippedStepIds]. With two steps overlapping, the **earliest** wins, so
+  /// the day is worked through in the order it was planned.
+  ///
+  /// The end time is also what keeps a tablet switched off over a weekend
+  /// from coming back locked to Saturday breakfast: a step whose time is over
+  /// is history, not a lock.
   ///
   /// [steps] must already be filtered to the ones that may lock (see
   /// [Routine.lockingSteps]); this function does not re-check the routine's
@@ -215,16 +209,15 @@ class LockEnforcer {
     required Set<String> completedStepIds,
     required Set<String> skippedStepIds,
     required DateTime now,
-    Duration window = kRoutineLockWindow,
   }) {
     RoutineStep? earliest;
     for (final s in steps) {
-      if (!s.isScheduled) continue;
+      final start = s.startsOn(now);
+      final end = s.endsOn(now);
+      if (start == null || end == null) continue;
       if (completedStepIds.contains(s.id)) continue;
       if (skippedStepIds.contains(s.id)) continue;
-      final dueAt = DateTime(now.year, now.month, now.day, s.hour!, s.minute!);
-      if (now.isBefore(dueAt)) continue;
-      if (now.difference(dueAt) > window) continue;
+      if (now.isBefore(start) || !now.isBefore(end)) continue;
       if (earliest == null || s.minutesOfDay! < earliest.minutesOfDay!) {
         earliest = s;
       }

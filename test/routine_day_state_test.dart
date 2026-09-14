@@ -313,8 +313,10 @@ void main() {
       expect(phaseOf(at(_t(6, 0)), 'brush'), RoutineStepPhase.later);
       expect(phaseOf(at(_t(6, 41)), 'brush'), RoutineStepPhase.upcoming);
       expect(phaseOf(at(_t(6, 45)), 'brush'), RoutineStepPhase.waiting);
-      expect(phaseOf(at(_t(6, 59)), 'brush'), RoutineStepPhase.waiting);
-      expect(phaseOf(at(_t(7, 0)), 'brush'), RoutineStepPhase.needsHelp);
+      // No length of its own: the lock holds for the ten-minute default, and
+      // a step whose time ended with nothing recorded has lapsed.
+      expect(phaseOf(at(_t(6, 54)), 'brush'), RoutineStepPhase.waiting);
+      expect(phaseOf(at(_t(6, 55)), 'brush'), RoutineStepPhase.lapsed);
       expect(phaseOf(at(_t(7, 46)), 'brush'), RoutineStepPhase.lapsed);
     });
 
@@ -324,11 +326,22 @@ void main() {
       expect(phaseOf(at(_t(7, 19)), 'dress'), RoutineStepPhase.later);
     });
 
-    test('escalation switched off never asks for help', () {
-      expect(
-        phaseOf(at(_t(7, 30), escalateAfter: 0), 'brush'),
-        RoutineStepPhase.waiting,
-      );
+    test('a step with its own length holds until that length is up', () {
+      RoutineStepLockStatus brushAt(DateTime now) => RoutineLockSummary.of(
+            routines: [
+              _routine().copyWith(
+                steps: [_brush.copyWith(durationMinutes: 30), _dress],
+              ),
+            ],
+            view: RoutineDayView.of(profileId: _learner, day: _day),
+            now: now,
+          ).steps.firstWhere((x) => x.step.id == 'brush');
+
+      final holding = brushAt(_t(7, 14));
+      expect(holding.phase, RoutineStepPhase.waiting);
+      expect(holding.endsAt, _t(7, 15));
+      expect(holding.minutesLeft, 1);
+      expect(brushAt(_t(7, 15)).phase, RoutineStepPhase.lapsed);
     });
 
     test('done, approved and excused are read from the joined day', () {
@@ -354,11 +367,13 @@ void main() {
       expect(approved.approved.single.step.id, 'brush');
     });
 
-    test('the current step is the earliest one holding the device', () {
+    test('the current step is the one whose time is running', () {
       final s = at(_t(7, 31));
-      expect(s.current!.step.id, 'brush');
-      expect(s.needsHelp, isTrue);
-      expect(s.current!.minutesWaiting, 46);
+      expect(phaseOf(s, 'brush'), RoutineStepPhase.lapsed);
+      expect(s.current!.step.id, 'dress');
+      expect(s.current!.minutesWaiting, 1);
+      expect(s.current!.endsAt, _t(7, 40));
+      expect(s.current!.minutesLeft, 9);
     });
 
     test('a routine that does not lock has nothing to summarise', () {

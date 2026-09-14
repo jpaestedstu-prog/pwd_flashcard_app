@@ -156,14 +156,17 @@ class RoutineOverOtherAppsBanner extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
+                    // Addressed to the adult who set the tablet up, never to
+                    // the child: a Student's or Child's routine does not tell
+                    // them to go and find a grown-up.
                     l
-                        ? 'Magpatulong sa nakatatanda. Kapag may ibang app na '
-                            'nakabukas, banner lang ang lock hanggang payagang '
-                            'lumabas ang FlashLearn sa ibabaw ng ibang app sa '
-                            'tablet na ito.'
-                        : 'Ask a grown-up. When another app is open, the lock '
-                            'is only a banner until FlashLearn may appear over '
-                            'other apps on this tablet.',
+                        ? 'Para sa nakatatandang namamahala sa tablet na ito: '
+                            'kapag may ibang app na nakabukas, banner lang ang '
+                            'lock hanggang payagang lumabas ang FlashLearn sa '
+                            'ibabaw ng ibang app dito.'
+                        : 'For the adult who looks after this tablet: when '
+                            'another app is open, the lock is only a banner '
+                            'until FlashLearn may appear over other apps here.',
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textSecondary,
                     ),

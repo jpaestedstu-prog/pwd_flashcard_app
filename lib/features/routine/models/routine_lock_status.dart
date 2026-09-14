@@ -1,4 +1,3 @@
-import '../../../core/services/lock_enforcer.dart';
 import 'routine_day_state.dart';
 import 'routine_models.dart';
 
@@ -14,19 +13,19 @@ enum RoutineStepPhase {
   /// Its time is close enough to warn about.
   upcoming,
 
-  /// Its time has come; the learner's device is (or will be) held on it.
+  /// Its time has come and not yet ended; the learner's device is (or will
+  /// be) held on it until then.
   waiting,
 
-  /// Held for longer than the routine's escalation allows.
-  needsHelp,
-
-  /// Ticked by the learner or approved by an educator.
+  /// Finished: its time ended on the learner's device, or an adult finished
+  /// it early.
   done,
 
   /// Waved past by an adult. Not done.
   excused,
 
-  /// Its window ran out without it being done or excused.
+  /// Its time ended with nothing recorded — the learner's device never saw it
+  /// end (switched off, or the app not opened) and no adult marked it.
   lapsed,
 }
 
@@ -36,6 +35,9 @@ class RoutineStepLockStatus {
   final RoutineStep step;
   final RoutineStepPhase phase;
   final DateTime dueAt;
+
+  /// When the step's time ends and the lock lets go by itself.
+  final DateTime endsAt;
   final DateTime now;
 
   /// The approval or excuse behind [RoutineStepPhase.done] or
@@ -51,6 +53,7 @@ class RoutineStepLockStatus {
     required this.step,
     required this.phase,
     required this.dueAt,
+    required this.endsAt,
     required this.now,
     this.mark,
     this.doneAt,
@@ -74,8 +77,14 @@ class RoutineStepLockStatus {
     return m < 1 ? 1 : m;
   }
 
-  bool get isHolding =>
-      phase == RoutineStepPhase.waiting || phase == RoutineStepPhase.needsHelp;
+  /// Whole minutes until the step's time ends, rounded up; zero once over.
+  int get minutesLeft {
+    final d = endsAt.difference(now);
+    if (d <= Duration.zero) return 0;
+    return (d.inSeconds / 60).ceil();
+  }
+
+  bool get isHolding => phase == RoutineStepPhase.waiting;
 
   /// Approved by an educator rather than ticked by the learner.
   bool get wasApproved => phase == RoutineStepPhase.done && mark != null;
@@ -92,7 +101,7 @@ class RoutineStepLockStatus {
 /// A learner's locking steps for today, and the one that matters most.
 ///
 /// Pure — routines, the joined day and the clock in. The educator's dashboard
-/// row, the routine manager and the lock screen's escalation all read this, so
+/// row and the routine manager both read this, so
 /// "is Ana waiting on something?" has one answer everywhere.
 ///
 /// This describes the **routine**, not the tablet. A learner can be due on a
@@ -126,8 +135,6 @@ class RoutineLockSummary {
 
   bool get isHolding => current != null;
 
-  bool get needsHelp => current?.phase == RoutineStepPhase.needsHelp;
-
   List<RoutineStepLockStatus> get excused =>
       steps.where((s) => s.phase == RoutineStepPhase.excused).toList();
 
@@ -138,7 +145,6 @@ class RoutineLockSummary {
     required List<Routine> routines,
     required RoutineDayView view,
     required DateTime now,
-    Duration window = kRoutineLockWindow,
   }) {
     final today = DateTime(now.year, now.month, now.day);
     final out = <RoutineStepLockStatus>[];
@@ -150,7 +156,6 @@ class RoutineLockSummary {
           step: step,
           view: view,
           now: now,
-          window: window,
         ));
       }
     }
@@ -163,10 +168,10 @@ class RoutineLockSummary {
     required RoutineStep step,
     required RoutineDayView view,
     required DateTime now,
-    Duration window = kRoutineLockWindow,
   }) {
     final dueAt =
         DateTime(now.year, now.month, now.day, step.hour ?? 0, step.minute ?? 0);
+    final endsAt = dueAt.add(Duration(minutes: step.lockMinutes));
     final id = step.id;
 
     RoutineStepPhase phase;
@@ -184,12 +189,8 @@ class RoutineLockSummary {
       phase = dueAt.difference(now) <= Duration(minutes: lead)
           ? RoutineStepPhase.upcoming
           : RoutineStepPhase.later;
-    } else if (now.difference(dueAt) > window) {
+    } else if (!now.isBefore(endsAt)) {
       phase = RoutineStepPhase.lapsed;
-    } else if (routine.escalateAfterMinutes > 0 &&
-        now.difference(dueAt) >=
-            Duration(minutes: routine.escalateAfterMinutes)) {
-      phase = RoutineStepPhase.needsHelp;
     } else {
       phase = RoutineStepPhase.waiting;
     }
@@ -199,6 +200,7 @@ class RoutineLockSummary {
       step: step,
       phase: phase,
       dueAt: dueAt,
+      endsAt: endsAt,
       now: now,
       mark: mark,
       doneAt: view.doneAt(id),

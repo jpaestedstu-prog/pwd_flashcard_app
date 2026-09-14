@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,10 +7,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/routine_provider.dart';
 import '../../../widgets/app_card.dart';
-import '../models/routine_catalog.dart';
-import '../models/routine_lock_status.dart';
 import '../models/routine_models.dart';
-import '../services/routine_lock_recorder.dart';
 import 'routine_educator_actions.dart';
 import 'routine_lock_status_line.dart';
 
@@ -124,57 +119,12 @@ class _RoutineRow extends ConsumerWidget {
     required this.filipino,
   });
 
-  void _alertIfNeeded(
-    BuildContext context,
-    WidgetRef ref,
-    RoutineLockSummary summary,
-  ) {
-    final current = summary.current;
-    if (current == null || current.phase != RoutineStepPhase.needsHelp) return;
-    final key =
-        '${learner.profileId}|${dayStampOf(current.now)}|${current.step.id}';
-    final alerted = ref.read(routineHelpAlertedProvider);
-    if (alerted.contains(key)) return;
-    ref.read(routineHelpAlertedProvider.notifier).state = {...alerted, key};
-
-    final l = filipino;
-    final title = RoutineCatalog.titleFor(current.step, filipino: l);
-    final minutes = current.minutesWaiting;
-    final message = l
-        ? 'Kailangan ng tulong si ${learner.name} sa $title ($minutes minuto)'
-        : '${learner.name} needs help with $title ($minutes min)';
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-    unawaited(
-      ref.read(routineHelpAlerterProvider).alert(
-            key: key,
-            title: l ? 'Kailangan ng tulong ang isang bata' : 'A learner needs help',
-            body: message,
-          ),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hc = HCColor.of(context);
     final l = filipino;
     final today = DateTime.now();
 
-    // The escalation's other half: tell the educator, once, the moment a
-    // learner has waited too long — including when the dashboard opens on a
-    // learner who already has. The red row says it too; this makes sure it
-    // is noticed by someone who is not staring at the row. Watched rather
-    // than listened to, so an already-stuck learner counts on the very first
-    // frame; the alert itself runs after the frame, where changing state and
-    // showing a snackbar are allowed.
-    final lockSummary =
-        ref.watch(routineLockSummaryProvider(learner.profileId));
-    if (lockSummary.needsHelp) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) _alertIfNeeded(context, ref, lockSummary);
-      });
-    }
     final routines =
         ref.watch(routineListProvider(learner.profileId)).valueOrNull ??
             const <Routine>[];

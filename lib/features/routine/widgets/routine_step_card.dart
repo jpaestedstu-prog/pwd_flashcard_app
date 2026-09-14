@@ -5,6 +5,7 @@ import '../../../core/theme/app_typography.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_presentation.dart';
+import '../models/routine_timeline.dart';
 
 /// One step of a learner's day, as a card in the routine list.
 ///
@@ -12,6 +13,11 @@ import '../models/routine_presentation.dart';
 /// [RoutinePresentation], not from a `DisabilityType` switch here: whether the
 /// tick target is a checkbox or a full-width button, whether the instructions
 /// are already open, whether a Signs button appears at all.
+///
+/// A Student's or Child's day runs on the clock ([canTick] false). Their card
+/// has nothing to tick — no checkbox, no "Mark as done" — and says where the
+/// step stands instead: "Now · until 7:40 PM", "Earlier today", "Not today".
+/// A Player ticks their own steps, as before.
 class RoutineStepCard extends StatelessWidget {
   final RoutineStep step;
   final bool done;
@@ -27,6 +33,13 @@ class RoutineStepCard extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onOpen;
 
+  /// Whether the learner ticks this step off themselves. False for a Student
+  /// or Child, whose steps are finished when their time ends.
+  final bool canTick;
+
+  /// Where the step stands on the clock. Only shown when [canTick] is false.
+  final RoutineStepMoment moment;
+
   const RoutineStepCard({
     super.key,
     required this.step,
@@ -37,6 +50,8 @@ class RoutineStepCard extends StatelessWidget {
     required this.hasSigns,
     required this.onToggle,
     required this.onOpen,
+    this.canTick = true,
+    this.moment = RoutineStepMoment.upcoming,
   });
 
   @override
@@ -46,25 +61,33 @@ class RoutineStepCard extends StatelessWidget {
     final note = RoutineCatalog.noteFor(step, filipino: filipino);
     final emoji = RoutineCatalog.emojiFor(step);
     final accent = isNext ? hc.primary : hc.textSecondary;
+    final over = canTick ? done : moment == RoutineStepMoment.earlier;
+    final momentLabel = canTick
+        ? ''
+        : routineMomentLabel(step, moment, filipino: filipino);
 
     final timeLabel = step.isScheduled
         ? formatStepTime(step)
         : (filipino ? 'Kahit anong oras' : 'Any time');
 
+    final spokenState = canTick
+        ? (done
+            ? (filipino ? 'tapos na' : 'done')
+            : (filipino ? 'hindi pa tapos' : 'not done yet'))
+        : routineMomentSpoken(step, moment, filipino: filipino);
+
     return Semantics(
       container: true,
       button: true,
       // One label for the whole card: a screen-reader learner hears
-      // "Brushing teeth, 6:45 AM, 2 minutes, done" rather than sweeping four
-      // separate nodes. Curly apostrophes only — a straight quote empties the
-      // whole content description on Android.
+      // "Brushing teeth, 6:45 AM, 2 minutes, happening now" rather than
+      // sweeping four separate nodes. Curly apostrophes only — a straight
+      // quote empties the whole content description on Android.
       label: [
         title,
         timeLabel,
         if (step.hasTimer) _durationLabel(),
-        done
-            ? (filipino ? 'tapos na' : 'done')
-            : (filipino ? 'hindi pa tapos' : 'not done yet'),
+        if (spokenState.isNotEmpty) spokenState,
       ].join(', '),
       child: ExcludeSemantics(
         child: Card(
@@ -79,7 +102,7 @@ class RoutineStepCard extends StatelessWidget {
               width: isNext ? 2 : 1,
             ),
           ),
-          color: done
+          color: over
               ? Color.alphaBlend(
                   AppColors.success.withValues(alpha: 0.12),
                   hc.surface,
@@ -108,7 +131,7 @@ class RoutineStepCard extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                                 color: hc.textPrimary,
                                 decoration:
-                                    done ? TextDecoration.lineThrough : null,
+                                    over ? TextDecoration.lineThrough : null,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -119,6 +142,21 @@ class RoutineStepCard extends StatelessWidget {
                               runSpacing: 2,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
+                                if (momentLabel.isNotEmpty)
+                                  _MetaChip(
+                                    icon: switch (moment) {
+                                      RoutineStepMoment.now =>
+                                        Icons.play_circle_rounded,
+                                      RoutineStepMoment.earlier =>
+                                        Icons.check_circle_rounded,
+                                      _ => Icons.do_not_disturb_on_rounded,
+                                    },
+                                    label: momentLabel,
+                                    color: moment == RoutineStepMoment.now
+                                        ? hc.primary
+                                        : hc.textSecondary,
+                                    strong: moment == RoutineStepMoment.now,
+                                  ),
                                 _MetaChip(
                                   icon: Icons.schedule_rounded,
                                   label: timeLabel,
@@ -166,7 +204,7 @@ class RoutineStepCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (!presentation.largeCompleteTarget)
+                      if (canTick && !presentation.largeCompleteTarget)
                         Checkbox(
                           value: done,
                           onChanged: (_) => onToggle(),
@@ -176,7 +214,7 @@ class RoutineStepCard extends StatelessWidget {
                         ),
                     ],
                   ),
-                  if (presentation.largeCompleteTarget) ...[
+                  if (canTick && presentation.largeCompleteTarget) ...[
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
@@ -225,11 +263,13 @@ class _MetaChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
+  final bool strong;
 
   const _MetaChip({
     required this.icon,
     required this.label,
     required this.color,
+    this.strong = false,
   });
 
   @override
@@ -244,7 +284,7 @@ class _MetaChip extends StatelessWidget {
             label,
             style: AppTypography.labelSmall.copyWith(
               color: color,
-              fontWeight: FontWeight.w600,
+              fontWeight: strong ? FontWeight.w800 : FontWeight.w600,
             ),
           ),
         ],

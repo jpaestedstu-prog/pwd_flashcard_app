@@ -11,6 +11,7 @@ import '../../mood_tracker/services/quick_mood_check_in.dart';
 import '../../mood_tracker/widgets/mood_picker.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
+import '../models/routine_timeline.dart';
 import 'routine_mood_prompt.dart';
 
 /// "It is lunch time." — the step, brought to the learner, and then the
@@ -49,8 +50,9 @@ import 'routine_mood_prompt.dart';
 Future<bool> showRoutineNowPopup(
   BuildContext context,
   WidgetRef ref,
-  RoutineStep step,
-) async {
+  RoutineStep step, {
+  bool canTick = true,
+}) async {
   if (!context.mounted) return false;
 
   // A check-in step *is* the question — there is no chore to announce first,
@@ -70,6 +72,9 @@ Future<bool> showRoutineNowPopup(
   // then it is asked once a day: a learner who already said how lunch felt is
   // not asked again because they re-opened the app.
   final askMood =
+      // A Student or Child is asked once the step's time is over (the
+      // watcher does that), not from a tap they no longer make here.
+      canTick &&
       step.asksMoodAfter &&
       !hasCheckedInFor(
         ref.read(moodProvider),
@@ -91,6 +96,7 @@ Future<bool> showRoutineNowPopup(
         cue: cue,
         question: question,
         askMood: askMood,
+        canTick: canTick,
         presentation: presentation,
         isFilipino: isFilipino,
         onAskMood: () => speakMoodQuestion(ref, question),
@@ -130,6 +136,7 @@ class _RoutineNowDialog extends StatefulWidget {
     required this.cue,
     required this.question,
     required this.askMood,
+    required this.canTick,
     required this.presentation,
     required this.isFilipino,
     required this.onAskMood,
@@ -142,6 +149,11 @@ class _RoutineNowDialog extends StatefulWidget {
 
   /// Whether the mood page follows "I did it!" at all.
   final bool askMood;
+
+  /// False for a Student or Child: no "I did it!" and no "Later". Their step
+  /// is finished when its time ends, so the pop-up only says what is
+  /// happening and until when, with a single OK.
+  final bool canTick;
 
   final MoodPresentation presentation;
   final bool isFilipino;
@@ -246,29 +258,60 @@ class _RoutineNowDialogState extends State<_RoutineNowDialog> {
         ],
         if (step.isScheduled) ...[
           const SizedBox(height: 10),
-          _TimeChip(step: step),
+          _TimeChip(step: step, showEnd: !widget.canTick),
         ],
         const SizedBox(height: 18),
-        SizedBox(
-          width: double.infinity,
-          child: Semantics(
-            button: true,
-            label: isFilipino
-                ? 'Tapos na. Markahang tapos ang hakbang na ito.'
-                : 'I did it. Mark this step done.',
-            excludeSemantics: true,
-            child: ElevatedButton.icon(
-              onPressed: _didIt,
-              icon: const Icon(Icons.check_rounded, color: Colors.white),
-              label: Text(
-                isFilipino ? 'Tapos na!' : 'I did it!',
-                style: AppTypography.titleSmall.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
+        if (widget.canTick) ...[
+          SizedBox(
+            width: double.infinity,
+            child: Semantics(
+              button: true,
+              label: isFilipino
+                  ? 'Tapos na. Markahang tapos ang hakbang na ito.'
+                  : 'I did it. Mark this step done.',
+              excludeSemantics: true,
+              child: ElevatedButton.icon(
+                onPressed: _didIt,
+                icon: const Icon(Icons.check_rounded, color: Colors.white),
+                label: Text(
+                  isFilipino ? 'Tapos na!' : 'I did it!',
+                  style: AppTypography.titleSmall.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: hc.primary,
+                  minimumSize: const Size.fromHeight(52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                  shadowColor: Colors.transparent,
+                ),
               ),
+            ),
+          ),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+              child: Text(isFilipino ? 'Mamaya na' : 'Later'),
+            ),
+          ),
+        ] else
+          // A Student or Child finishes nothing here — the step is over when
+          // its time is. One way on, and it only says they have seen it.
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(const _NowResult(did: false)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: hc.primary,
                 minimumSize: const Size.fromHeight(52),
@@ -278,19 +321,15 @@ class _RoutineNowDialogState extends State<_RoutineNowDialog> {
                 elevation: 0,
                 shadowColor: Colors.transparent,
               ),
+              child: Text(
+                'OK',
+                style: AppTypography.titleSmall.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
-        ),
-        SizedBox(
-          width: double.infinity,
-          child: TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: TextButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-            ),
-            child: Text(isFilipino ? 'Mamaya na' : 'Later'),
-          ),
-        ),
       ],
     );
   }
@@ -351,11 +390,14 @@ class _RoutineNowDialogState extends State<_RoutineNowDialog> {
 }
 
 /// The step's own time — "12:00 PM" — so the pop-up says *when* as well as
-/// what. Orientation for a learner who has just picked the tablet up.
+/// what. Orientation for a learner who has just picked the tablet up. With
+/// [showEnd] it is the whole span, "12:00 PM – 12:10 PM": a Student's or
+/// Child's step is over when its time is, so that is worth saying.
 class _TimeChip extends StatelessWidget {
-  const _TimeChip({required this.step});
+  const _TimeChip({required this.step, this.showEnd = false});
 
   final RoutineStep step;
+  final bool showEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -363,7 +405,8 @@ class _TimeChip extends StatelessWidget {
     final h = step.hour!;
     final m = step.minute!.toString().padLeft(2, '0');
     final hour12 = h % 12 == 0 ? 12 : h % 12;
-    final clock = '$hour12:$m ${h < 12 ? 'AM' : 'PM'}';
+    final start = '$hour12:$m ${h < 12 ? 'AM' : 'PM'}';
+    final clock = showEnd ? '$start – ${formatStepEnd(step)}' : start;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -376,13 +419,16 @@ class _TimeChip extends StatelessWidget {
         children: [
           Icon(Icons.schedule_rounded, size: 16, color: hc.primary),
           const SizedBox(width: 6),
-          Text(
-            clock,
-            style: AppTypography.labelMedium.copyWith(
-              color: hc.textPrimary,
-              fontWeight: FontWeight.w800,
+          Flexible(
+            child: Text(
+              clock,
+              style: AppTypography.labelMedium.copyWith(
+                color: hc.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
           ),
         ],
       ),

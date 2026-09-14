@@ -28,15 +28,16 @@ import 'package:pwdpwdpwd/providers/routine_provider.dart';
 const _profileId = 'today-learner';
 
 class _StubProfile extends ProfileNotifier {
-  _StubProfile({this.classroomId = 'class-1'});
+  _StubProfile({this.classroomId = 'class-1', this.role = UserRole.student});
 
   final String? classroomId;
+  final UserRole role;
 
   @override
   UserProfile? build() => UserProfile(
     id: _profileId,
     name: 'Today Learner',
-    role: UserRole.student,
+    role: role,
     classroomId: classroomId,
     createdAt: DateTime(2026),
   );
@@ -158,6 +159,7 @@ Future<_FakeMood> _pump(
   double textScale = 1.0,
   String? classroomId = 'class-1',
   List<Override> extra = const [],
+  UserRole role = UserRole.student,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
@@ -168,7 +170,7 @@ Future<_FakeMood> _pump(
     ProviderScope(
       overrides: [
         profileProvider.overrideWith(
-          () => _StubProfile(classroomId: classroomId),
+          () => _StubProfile(classroomId: classroomId, role: role),
         ),
         moodProvider.overrideWith((ref) => mood),
         myRoutinesProvider.overrideWith((ref) => Stream.value(routines)),
@@ -276,7 +278,8 @@ void main() {
         done: {'s1'},
       );
 
-      expect(find.text('1 of 3 done'), findsOneWidget);
+      // A Student's day runs on the clock: where they are in it, not "done".
+      expect(find.text('Step 2 of 3'), findsOneWidget);
 
       final rings = tester
           .widgetList<CircularProgressIndicator>(
@@ -300,7 +303,7 @@ void main() {
         ],
       );
 
-      expect(find.text('0 of 1 done'), findsOneWidget);
+      expect(find.text('Step 1 of 1'), findsOneWidget);
     });
 
     testWidgets('a routine that does not run today is not counted', (
@@ -451,9 +454,13 @@ void main() {
       expect(find.textContaining('PM'), findsNothing);
     });
 
-    testWidgets('Done is present and big enough to hit', (tester) async {
+    testWidgets('a Player’s Done is present and big enough to hit', (
+      tester,
+    ) async {
       await _pump(
         tester,
+        role: UserRole.player,
+        classroomId: null,
         routines: [
           _routine([
             _step('s1', RoutineActivity.morningRoutine),
@@ -465,6 +472,27 @@ void main() {
       final done = find.bySemanticsLabel('Mark Morning Routine as done');
       expect(done, findsOneWidget);
       expect(tester.getSize(done).height, greaterThanOrEqualTo(44));
+    });
+
+    testWidgets('a Student has no Done — the card only says what is next', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        routines: [
+          _routine([
+            _step('s1', RoutineActivity.morningRoutine),
+            _step('s2', RoutineActivity.brushingTeeth),
+          ]),
+        ],
+      );
+
+      expect(
+        find.bySemanticsLabel('Mark Morning Routine as done'),
+        findsNothing,
+      );
+      expect(find.text('Done'), findsNothing);
+      expect(find.textContaining('Next: Morning Routine'), findsOneWidget);
     });
 
     testWidgets(
@@ -481,10 +509,28 @@ void main() {
           done: {'s1', 's2'},
         );
 
-        expect(find.text('All done! 🎉'), findsOneWidget);
+        expect(find.text('That’s all for today 🎉'), findsOneWidget);
+        expect(find.text('All done! 🎉'), findsNothing);
         expect(find.textContaining('Mark '), findsNothing);
       },
     );
+
+    testWidgets('a Player’s finished day still says all done', (tester) async {
+      await _pump(
+        tester,
+        role: UserRole.player,
+        classroomId: null,
+        routines: [
+          _routine([
+            _step('s1', RoutineActivity.morningRoutine),
+            _step('s2', RoutineActivity.brushingTeeth),
+          ]),
+        ],
+        done: {'s1', 's2'},
+      );
+
+      expect(find.text('All done! 🎉'), findsOneWidget);
+    });
   });
 
   group('the empty day', () {

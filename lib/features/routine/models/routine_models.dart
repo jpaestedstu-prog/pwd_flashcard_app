@@ -75,6 +75,14 @@ enum RoutineMediaKind {
   bool get isVisualOnly => this != RoutineMediaKind.audio;
 }
 
+/// How long a step lasts when the educator gave it no length of its own.
+///
+/// A Student's or Child's step is finished when its time ends, and a
+/// locking step lets go of the device at that moment — so every scheduled
+/// step needs an end. The builder asks for a duration on a locking step; a
+/// step written before that rule existed gets this one.
+const int kRoutineDefaultStepMinutes = 10;
+
 /// One step of a routine — "Brush your teeth", at 07:10, for 3 minutes.
 ///
 /// A step is deliberately shallow: it holds the *addresses* of its media
@@ -133,7 +141,8 @@ class RoutineStep {
   /// shown to the learner today.
   final bool enabled;
 
-  /// Hold the device on this step, at its time, until it is marked done.
+  /// Hold the device on this step from its time until its time ends
+  /// ([endsOn]). The learner never taps their way out; see [releaseEarly].
   ///
   /// Only ever consulted when the parent routine's [Routine.lockEnabled] is
   /// on — the routine carries the decision to lock at all, and this is the
@@ -155,6 +164,14 @@ class RoutineStep {
   /// already.
   final bool askMood;
 
+  /// Whether an adult may end this step before its time is up.
+  ///
+  /// Off by default: the learner waits until the step's time ends. On, a
+  /// Teacher or Parent can finish it early — "Mark done" from their own
+  /// dashboard, or behind the adult check on the learner's tablet. It is
+  /// never a control the learner sees.
+  final bool releaseEarly;
+
   const RoutineStep({
     required this.id,
     required this.activity,
@@ -175,6 +192,7 @@ class RoutineStep {
     this.enabled = true,
     this.lockScreen = true,
     this.askMood = false,
+    this.releaseEarly = false,
   });
 
   bool get isScheduled => hour != null && minute != null;
@@ -188,6 +206,23 @@ class RoutineStep {
   bool get asksMoodAfter => askMood && !activity.isMoodCheckIn;
 
   bool get hasTimer => durationMinutes > 0;
+
+  /// How long this step's time lasts: its own duration, or
+  /// [kRoutineDefaultStepMinutes] when it has none.
+  int get lockMinutes =>
+      durationMinutes > 0 ? durationMinutes : kRoutineDefaultStepMinutes;
+
+  /// When this step starts on [day]'s date, or null for an unscheduled step.
+  DateTime? startsOn(DateTime day) => isScheduled
+      ? DateTime(day.year, day.month, day.day, hour!, minute!)
+      : null;
+
+  /// When this step's time ends on [day]'s date — its start plus
+  /// [lockMinutes] — or null for an unscheduled step. A Student's or Child's
+  /// step is finished at this moment, and a locking step lets go of the
+  /// device.
+  DateTime? endsOn(DateTime day) =>
+      startsOn(day)?.add(Duration(minutes: lockMinutes));
 
   /// Minutes since midnight, or null for an unscheduled step. Sorting keys off
   /// this, so an unscheduled step keeps its authored position instead of being
@@ -230,6 +265,7 @@ class RoutineStep {
     bool? enabled,
     bool? lockScreen,
     bool? askMood,
+    bool? releaseEarly,
   }) {
     return RoutineStep(
       id: id ?? this.id,
@@ -251,6 +287,7 @@ class RoutineStep {
       enabled: enabled ?? this.enabled,
       lockScreen: lockScreen ?? this.lockScreen,
       askMood: askMood ?? this.askMood,
+      releaseEarly: releaseEarly ?? this.releaseEarly,
     );
   }
 
@@ -283,6 +320,7 @@ class RoutineStep {
         'enabled': enabled,
         'lock_screen': lockScreen,
         'ask_mood': askMood,
+        'release_early': releaseEarly,
       };
 
   factory RoutineStep.fromJson(Map<String, dynamic> json) {
@@ -325,6 +363,9 @@ class RoutineStep {
       // Absent on every step written before per-step check-ins existed, and
       // on any written by an older build — both mean "don't ask".
       askMood: (json['ask_mood'] as bool?) ?? false,
+      // Absent on every step written before early release existed: that
+      // learner waits until the time ends, which is the default.
+      releaseEarly: (json['release_early'] as bool?) ?? false,
     );
   }
 }

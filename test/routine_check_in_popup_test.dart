@@ -10,6 +10,7 @@ import 'package:pwdpwdpwd/features/mood_tracker/models/mood_context.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/models/mood_models.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_models.dart';
 import 'package:pwdpwdpwd/features/routine/providers/today_routine_provider.dart';
+import 'package:pwdpwdpwd/features/routine/services/routine_time_finisher.dart';
 import 'package:pwdpwdpwd/features/routine/widgets/routine_popup_watcher.dart';
 import 'package:pwdpwdpwd/features/routine/widgets/routine_mood_prompt.dart';
 import 'package:pwdpwdpwd/features/routine/widgets/routine_now_popup.dart';
@@ -86,6 +87,23 @@ class _FakeMood extends MoodNotifier {
   }
 }
 
+/// Records what the watcher would have written as "time is over", without
+/// Hive — an awaited box write inside `testWidgets` hangs the file.
+class _FakeFinisher extends RoutineTimeFinisher {
+  final List<String> finished = [];
+
+  @override
+  Future<bool> finish(
+    String profileId,
+    DateTime day,
+    List<RoutineStep> steps, {
+    required DateTime now,
+  }) async {
+    finished.addAll(steps.map((s) => s.id));
+    return false;
+  }
+}
+
 const _checkIn = RoutineStep(
   id: 'ci-9',
   activity: RoutineActivity.moodCheckIn,
@@ -159,6 +177,7 @@ Future<_FakeMood> _pumpWatcher(
   required TodayRoutine today,
   UserRole role = UserRole.student,
   DateTime? unlockedUntil,
+  RoutineTimeFinisher? finisher,
 }) async {
   tester.view.physicalSize = const Size(900, 1400);
   tester.view.devicePixelRatio = 1.0;
@@ -176,6 +195,9 @@ Future<_FakeMood> _pumpWatcher(
         deviceUnlockedUntilProvider(
           _profileId,
         ).overrideWithValue(unlockedUntil),
+        routineTimeFinisherProvider.overrideWithValue(
+          finisher ?? _FakeFinisher(),
+        ),
       ],
       child: MaterialApp(
         home: Scaffold(
@@ -662,7 +684,8 @@ void main() {
         tester,
         location: '/home',
         now: _todayAt(12, 31),
-        today: _today([_lunch]),
+        // An hour long, so the step is still on when the unlock runs out.
+        today: _today([_lunch.copyWith(durationMinutes: 60)]),
         unlockedUntil: _todayAt(12, 30),
       );
       expect(find.text('Time for Lunch!'), findsOneWidget);
@@ -757,6 +780,7 @@ void main() {
             wallClockTickerProvider.overrideWith((ref) => clock.stream),
             lockStateProvider(_profileId).overrideWithValue(null),
             deviceUnlockedUntilProvider(_profileId).overrideWithValue(null),
+            routineTimeFinisherProvider.overrideWithValue(_FakeFinisher()),
           ],
           child: MaterialApp(
             home: Builder(
@@ -856,6 +880,69 @@ void main() {
       );
       expect(find.text('Check-in time!'), findsNothing);
       expect(find.text('hub'), findsOneWidget);
+    });
+  });
+
+  group('a Student’s day on the clock', () {
+    testWidgets('the pop-up only says what is happening, with a single OK', (
+      tester,
+    ) async {
+      await _pumpWatcher(
+        tester,
+        location: '/home',
+        now: _todayAt(12),
+        today: _today([_quietLunch]),
+      );
+      expect(find.text('Time for Lunch!'), findsOneWidget);
+      expect(find.text('12:00 PM – 12:10 PM'), findsOneWidget);
+      expect(find.text('OK'), findsOneWidget);
+      expect(find.text('I did it!'), findsNothing);
+      expect(find.text('Later'), findsNothing);
+
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(find.text('Time for Lunch!'), findsNothing);
+    });
+
+    testWidgets('a Player still ticks their own step', (tester) async {
+      await _pumpWatcher(
+        tester,
+        location: '/home',
+        now: _todayAt(12),
+        today: _today([_quietLunch]),
+        role: UserRole.player,
+      );
+      expect(find.text('I did it!'), findsOneWidget);
+      expect(find.text('Later'), findsOneWidget);
+    });
+
+    testWidgets('a step whose time is over is recorded, not announced', (
+      tester,
+    ) async {
+      final finisher = _FakeFinisher();
+      await _pumpWatcher(
+        tester,
+        location: '/home',
+        now: _todayAt(12, 15),
+        today: _today([_quietLunch]),
+        finisher: finisher,
+      );
+      expect(find.text('Time for Lunch!'), findsNothing);
+      expect(finisher.finished, ['lunch-quiet']);
+    });
+
+    testWidgets('once its time is over, a step that asks how they feel asks', (
+      tester,
+    ) async {
+      await _pumpWatcher(
+        tester,
+        location: '/home',
+        now: _todayAt(12, 15),
+        today: _today([_lunch], done: {'lunch'}),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.textContaining('How do you feel'), findsOneWidget);
+      expect(find.text('Time for Lunch!'), findsNothing);
     });
   });
 }

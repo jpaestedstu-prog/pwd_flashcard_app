@@ -171,21 +171,19 @@ class _HoldingBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final l = filipino;
-    final help = status.phase == RoutineStepPhase.needsHelp;
-    final tint = hc.hc ? hc.primary : (help ? AppColors.error : AppColors.warning);
+    final tint = hc.hc ? hc.primary : AppColors.warning;
     final title = RoutineCatalog.titleFor(status.step, filipino: l);
     final emoji = RoutineCatalog.emojiFor(status.step);
     final since = formatClockTime(status.dueAt);
-    final minutes = status.minutesWaiting;
+    final until = formatClockTime(status.endsAt);
+    final left = status.minutesLeft;
 
-    final headline = help
-        ? (l ? 'Kailangan ng tulong: $title' : 'Needs help: $title')
-        : (l ? 'Naghihintay sa $title' : 'Waiting on $title');
-    final detail = help
-        ? (l
-            ? '$minutes minutong naghihintay, mula $since'
-            : 'Waiting $minutes min, since $since')
-        : (l ? 'Mula $since · $minutes minuto' : 'Since $since · $minutes min');
+    final headline = l ? 'Naka-lock sa $title' : 'Locked on $title';
+    // The lock lets go by itself at [until]: say when, and how long is left,
+    // so an educator can tell whether finishing it early is worth doing.
+    final detail = l
+        ? '$since–$until · $left minuto natitira'
+        : '$since–$until · $left min left';
     final device = status.lockShownAt != null
         ? (l
             ? 'Nakabukas ang lock sa kanilang device.'
@@ -212,10 +210,10 @@ class _HoldingBanner extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    help ? '⚠️' : '🔒',
-                    style: const TextStyle(fontSize: 18, height: 1.2),
-                    textScaler: const TextScaler.linear(1.0),
+                  const Text(
+                    '🔒',
+                    style: TextStyle(fontSize: 18, height: 1.2),
+                    textScaler: TextScaler.linear(1.0),
                   ),
                   const SizedBox(width: 8),
                   Expanded(

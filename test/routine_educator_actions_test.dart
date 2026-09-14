@@ -16,6 +16,11 @@ import 'package:pwdpwdpwd/providers/app_providers.dart';
 /// open each confirmation and cancel it — the writes behind them are covered
 /// by `routine_actions_service_test.dart`, outside the widget-test zone where
 /// Hive writes are safe.
+///
+/// "Mark done" ends a step before its time is up, so it is only offered on a
+/// step the educator set as "can be released early". Otherwise the learner
+/// waits until the time ends; excusing the step and the 30-minute unlock stay
+/// on every step, for a day that went wrong.
 
 class _Educator extends ProfileNotifier {
   @override
@@ -34,23 +39,35 @@ const _brush = RoutineStep(
   minute: 45,
 );
 
-final _routine = Routine(
-  id: 'morning',
-  childProfileId: 'ana',
-  setterProfileId: 'rose',
-  setterRole: UserRole.teacher,
-  name: 'Morning',
-  steps: const [_brush],
-  lockEnabled: true,
-  createdAt: DateTime(2026),
-  updatedAt: DateTime(2026),
+/// The same step, set by its educator as "can be released early".
+const _brushEarly = RoutineStep(
+  id: 'brush',
+  activity: RoutineActivity.brushingTeeth,
+  hour: 6,
+  minute: 45,
+  releaseEarly: true,
 );
 
-RoutineStepLockStatus _status({RoutineDayActions? actions}) {
+Routine _routine(RoutineStep step) => Routine(
+      id: 'morning',
+      childProfileId: 'ana',
+      setterProfileId: 'rose',
+      setterRole: UserRole.teacher,
+      name: 'Morning',
+      steps: [step],
+      lockEnabled: true,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+RoutineStepLockStatus _status({
+  RoutineStep step = _brush,
+  RoutineDayActions? actions,
+}) {
   final now = DateTime.now();
   return RoutineLockSummary.statusFor(
-    routine: _routine,
-    step: _brush,
+    routine: _routine(step),
+    step: step,
     view: RoutineDayView.of(profileId: 'ana', day: now, actions: actions),
     now: DateTime(now.year, now.month, now.day, 6, 50),
   );
@@ -83,9 +100,24 @@ Future<void> _openAndCancel(
 }
 
 void main() {
-  testWidgets('offers mark done, excuse and unlock for a waiting step', (
-    tester,
-  ) async {
+  testWidgets('a step that may end early offers mark done, excuse and unlock',
+      (tester) async {
+    await _pump(
+      tester,
+      RoutineStepActionBar(
+        childProfileId: 'ana',
+        learnerName: 'Ana',
+        status: _status(step: _brushEarly),
+        filipino: false,
+      ),
+    );
+    expect(find.text('Mark done'), findsOneWidget);
+    expect(find.text('Excuse today'), findsOneWidget);
+    expect(find.text('Unlock 30 min'), findsOneWidget);
+  });
+
+  testWidgets('a step that must wait offers no mark done — only excuse and '
+      'unlock', (tester) async {
     await _pump(
       tester,
       RoutineStepActionBar(
@@ -95,7 +127,7 @@ void main() {
         filipino: false,
       ),
     );
-    expect(find.text('Mark done'), findsOneWidget);
+    expect(find.text('Mark done'), findsNothing);
     expect(find.text('Excuse today'), findsOneWidget);
     expect(find.text('Unlock 30 min'), findsOneWidget);
   });
@@ -108,7 +140,7 @@ void main() {
       RoutineStepActionBar(
         childProfileId: 'ana',
         learnerName: 'Ana',
-        status: _status(),
+        status: _status(step: _brushEarly),
         filipino: false,
       ),
     );
@@ -164,11 +196,12 @@ void main() {
       RoutineStepActionBar(
         childProfileId: 'ana',
         learnerName: 'Ana',
-        status: _status(),
+        status: _status(step: _brushEarly),
         filipino: true,
       ),
     );
     expect(find.text('Markahang tapos'), findsOneWidget);
     expect(find.text('Laktawan ngayon'), findsOneWidget);
+    expect(find.text('I-unlock 30 minuto'), findsOneWidget);
   });
 }

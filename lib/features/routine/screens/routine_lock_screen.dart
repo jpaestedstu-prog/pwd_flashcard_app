@@ -5,8 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/accessibility/sound_service.dart';
-import '../../../core/accessibility/tts_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/services/lock_announcer.dart';
 import '../../../core/services/lock_enforcer.dart';
@@ -25,15 +23,15 @@ import '../../../widgets/animated_gradient_background.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_presentation.dart';
-import '../services/routine_completion_flow.dart';
+import '../models/routine_timeline.dart';
 import '../services/routine_lock_recorder.dart';
 import '../services/routine_native_alarms.dart';
 import '../services/routine_reminder_scheduler.dart';
 import '../services/routine_service.dart';
 import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
+import '../widgets/routine_mood_prompt.dart';
 import '../widgets/routine_step_card.dart';
-import '../widgets/routine_step_timer.dart';
 
 /// How long the screen waits before announcing itself. Same reasoning as the
 /// time's-up lock: the learner should *see* the step before they hear it.
@@ -47,27 +45,25 @@ const Duration _releaseNoticeFor = Duration(milliseconds: 2800);
 ///
 /// The routine twin of `TimeUpLockScreen`, and deliberately the opposite kind
 /// of stop. The time's-up lock says *put the device down and fetch an adult*,
-/// and only an adult's PIN clears it. This one says *do this one thing first*,
-/// and the learner clears it themselves by doing it — then the app asks how it
-/// felt, which is the other half of the moment the lock was created for.
+/// and only an adult's PIN clears it. This one says *this is what happens
+/// now*, and it clears itself when the step's time is over.
 ///
 /// Reached only through [lockRouteFor], which means only when
 /// [lockStateProvider] has resolved to a [RoutineStepDue]: a Student or Child
 /// whose Teacher or Parent switched their routine to locking
-/// ([Routine.lockEnabled]), at a step whose time has come and gone by less
-/// than [kRoutineLockWindow]. A Player is never sent here.
+/// ([Routine.lockEnabled]), at a step whose time has come and not yet ended
+/// ([RoutineStep.endsOn]). A Player is never sent here.
 ///
-/// Two ways out besides doing the step, and both are deliberate:
+/// There is nothing for the learner to press to leave. The lock lets go by
+/// itself when the step's time ends, and until then the screen says until
+/// when. Whether the step may end sooner is the educator's call
+/// ([RoutineStep.releaseEarly]): when it may, a Teacher or Parent finishes it
+/// from their own dashboard, or here by pressing and holding the step's time
+/// and passing the adult check — never through a button a child sees.
 ///
-///  * **"Ask a grown-up"** runs the standard adult gate and then excuses the
-///    step for today, in the learner's own day log where the educator can
-///    see it afterwards. A child can be ill, out of the
-///    house, or nowhere near a toothbrush, and a lock a learner physically
-///    cannot clear would be a broken tablet rather than a routine. The step is
-///    *not* ticked — the history keeps telling the truth about the morning.
-///  * **"Switch account"** hands a shared classroom tablet to the next
-///    learner. Not a bypass: choosing this learner again trips the router's
-///    lock redirect and puts them straight back here.
+/// **"Switch account"** stays, to hand a shared classroom tablet to the next
+/// learner. Not a bypass: choosing this learner again trips the router's lock
+/// redirect and puts them straight back here.
 class RoutineLockScreen extends ConsumerStatefulWidget {
   const RoutineLockScreen({super.key});
 
@@ -126,10 +122,6 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   ({RoutineStepMark mark, bool approved})? _releasedBy;
   Timer? _releaseTimer;
 
-  /// The step already escalated on this screen, so the prompt, the report
-  /// and the spoken nudge each happen once per step.
-  String? _escalatedFor;
-  Timer? _helpTimer;
 
   @override
   void initState() {
@@ -159,7 +151,6 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     _resumeListener?.dispose();
     _announceTimer?.cancel();
     _releaseTimer?.cancel();
-    _helpTimer?.cancel();
     _pulse?.dispose();
     unawaited(_announcer?.stop());
     super.dispose();
@@ -185,8 +176,9 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
       announcer.announce(
         presentation: _lockPresentation,
         message: filipino
-            ? 'Oras na para sa $title. $cue'
-            : 'Time for $title. $cue',
+            ? 'Oras na para sa $title. $cue '
+                'Magtatapos sa ${formatStepEnd(step)}.'
+            : 'Time for $title. $cue This ends at ${formatStepEnd(step)}.',
         speakFilipino: filipino,
       ),
     );
@@ -200,61 +192,43 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     setState(() => _hasSigns = RoutineSignLauncher.hasSigns(step));
   }
 
-  /// "I did it!" — tick the step, then ask how it felt.
+  /// A check-in step's own question — "How are you feeling right now?".
   ///
-  /// The tick is what clears the lock: [lockStateProvider] recomputes off the
-  /// day log, finds this step done, and either moves on to the next step that
-  /// is due or returns null and sends the learner home. Nothing here navigates
-  /// on its own, so the lock and the router can never disagree about whether
-  /// it is still up.
-  Future<void> _didIt(RoutineStep step, String profileId) async {
+  /// Answering records the mood; it does not end the lock. The step is over
+  /// when its time is, like every other step.
+  Future<void> _checkIn(RoutineStep step) async {
     if (_busy) return;
     setState(() => _busy = true);
     unawaited(_announcer?.stop());
     try {
-      await RoutineCompletionFlow.complete(
-        context: context,
-        ref: ref,
-        profileId: profileId,
-        day: DateTime.now(),
-        step: step,
-        // The lock only ever knows about its own step, so the day-end
-        // question is left to "My Day" — and `alwaysAskMood` means this tap
-        // has already earned a question of its own.
-        todaysSteps: null,
-        presentation: ref.read(routinePresentationProvider),
-        filipino: ref.read(settingsProvider).locale == 'fil',
-        alwaysAskMood: true,
-      );
+      await showCheckInPopup(context, ref, step);
     } finally {
       _finish();
     }
   }
 
-  /// "Ask a grown-up" — adult gate, then excuse this step for today.
-  Future<void> _askGrownUp(RoutineStep step, String profileId) async {
-    if (_busy) return;
+  /// An adult's early release, on a step the educator allowed to end early:
+  /// press and hold the step's time, pass the adult check, and the step is
+  /// finished now. Never a button — a child waiting on a lock should not be
+  /// looking at a way out.
+  Future<void> _releaseEarly(RoutineStep step, String profileId) async {
+    if (_busy || !step.releaseEarly) return;
     setState(() => _busy = true);
     unawaited(_announcer?.stop());
     try {
       // An infinitive phrase, because the gate builds the sentence around it:
-      // "Answer this to skip Brushing Teeth for today." The dialog is English
-      // only, so the step's English title goes in whatever the app locale is.
+      // "Answer this to end Brushing Teeth early." The dialog is English only,
+      // so the step's English title goes in whatever the app locale is.
       final title = RoutineCatalog.titleFor(step, filipino: false);
       final passed = await requireAdult(
         context,
         ref,
-        reason: 'to skip $title for today',
+        reason: 'to end $title early',
       );
       if (!passed || !mounted) return;
       final day = DateTime.now();
-      await const RoutineService().excuseOnDevice(
-        profileId: profileId,
-        day: day,
-        stepId: step.id,
-      );
+      await const RoutineService().setStepDone(profileId, day, step.id, true);
       ref.invalidate(routineDayLogProvider(routineDayKey(profileId, day)));
-      // The excused step's alert, if it is still in the shade, goes too.
       unawaited(RoutineReminderScheduler.refreshSettled());
     } finally {
       _finish();
@@ -368,48 +342,6 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     return null;
   }
 
-  /// The step's countdown reached zero: say so in the channels this learner
-  /// uses. A Deaf learner feels it, a learner who reads with their ears hears
-  /// it, and everyone sees the timer turn green.
-  ///
-  /// It does not tick the step. Running the timer is not the same as brushing,
-  /// and the learner is the one who says they did it.
-  Future<void> _onTimerDone() async {
-    if (!mounted) return;
-    final presentation = ref.read(routinePresentationProvider);
-    final filipino = ref.read(settingsProvider).locale == 'fil';
-    if (_lockPresentation.haptics) unawaited(HapticFeedback.heavyImpact());
-    if (presentation.playSoundCues) {
-      await ref.read(soundServiceProvider).playComplete();
-    }
-    if (!mounted) return;
-    if (presentation.speakOnOpen || presentation.announceProgress) {
-      final tts = ref.read(ttsServiceProvider);
-      await (filipino
-          ? tts.speakFilipino('Tapos na ang oras. Pindutin ang Tapos na.')
-          : tts.speakEnglish('Time is up. Tap I did it.'));
-    }
-  }
-
-  /// One gentle spoken or felt nudge once the step has waited long enough
-  /// to need help. Not a second alarm — the learner is not in trouble.
-  void _announceHelp(RoutineStep step) {
-    if (!mounted) return;
-    final filipino = ref.read(settingsProvider).locale == 'fil';
-    final title = RoutineCatalog.titleFor(step, filipino: filipino);
-    final LockAnnouncer announcer =
-        _announcer ?? ref.read(lockAnnouncerProvider);
-    unawaited(
-      announcer.announce(
-        presentation: _lockPresentation,
-        message: filipino
-            ? 'Hindi pa tapos ang $title. Ayos lang na humingi ng tulong sa nakatatanda.'
-            : '$title is not done yet. It is okay to ask a grown-up for help.',
-        speakFilipino: filipino,
-      ),
-    );
-  }
-
   Future<void> _showSigns(RoutineStep step, String profileId) async {
     await RoutineSignLauncher.showSignsFor(
       context,
@@ -464,40 +396,10 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
       );
     }
 
-    // ── Escalation: waited long enough to need help ──
-    // Measured from the step's own time on the shared wall clock, against
-    // the routine's own threshold, so this and the educator's red row turn
-    // at the same minute.
+    // The ten-second clock: the countdown moves on its own, and the lock lets
+    // go on the minute the step's time ends.
     final now =
         ref.watch(wallClockTickerProvider).valueOrNull ?? DateTime.now();
-    final owning = (ref.watch(routineListProvider(profile.id)).valueOrNull ??
-            const <Routine>[])
-        .where((r) => r.steps.any((s) => s.id == step.id));
-    final escalateAfter =
-        owning.isEmpty ? 0 : owning.first.escalateAfterMinutes;
-    final dueAt = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      step.hour ?? 0,
-      step.minute ?? 0,
-    );
-    final waited = now.difference(dueAt);
-    final needsHelp = escalateAfter > 0 &&
-        step.isScheduled &&
-        !waited.isNegative &&
-        waited >= Duration(minutes: escalateAfter);
-    if (needsHelp && _escalatedFor != step.id && reason is RoutineStepDue) {
-      _escalatedFor = step.id;
-      unawaited(
-        ref.read(routineLockRecorderProvider).escalated(profile.id, step.id),
-      );
-      _helpTimer?.cancel();
-      _helpTimer = Timer(
-        const Duration(milliseconds: 600),
-        () => _announceHelp(step),
-      );
-    }
 
     final released = _releasedBy;
     if (released != null) {
@@ -538,13 +440,6 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     final body = ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
       children: [
-        if (needsHelp) ...[
-          _NeedsHelpCard(
-            filipino: l,
-            onAsk: _busy ? null : () => _askGrownUp(step, profile.id),
-          ),
-          const SizedBox(height: 14),
-        ],
         // ── What is happening, in one line, before anything else ──
         Semantics(
           header: true,
@@ -612,7 +507,22 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
           ),
         ],
         const SizedBox(height: 12),
-        Center(child: _TimePill(step: step)),
+        // Press and hold the time: the adult's early release — only on a step
+        // the educator allowed to end early, and only behind the adult check.
+        Center(
+          child: step.releaseEarly
+              ? Semantics(
+                  onLongPressHint: l
+                      ? 'Para sa nakatatanda: tapusin nang maaga'
+                      : 'For adults: end early',
+                  child: GestureDetector(
+                    onLongPress:
+                        _busy ? null : () => _releaseEarly(step, profile.id),
+                    child: _TimePill(step: step),
+                  ),
+                )
+              : _TimePill(step: step),
+        ),
 
         // ── How to do it. Always expanded here: the learner is being held
         //    on this screen precisely so they can follow it.
@@ -650,77 +560,43 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
           ),
         ],
 
-        // ── The timer: "brush for two minutes" as something to watch ──
-        // Keyed by step, so a lock that rolls on to the next step of the day
-        // starts that step's timer fresh instead of inheriting a half-run one.
-        if (step.hasTimer && !isCheckIn) ...[
-          const SizedBox(height: 16),
-          RoutineStepTimer(
-            key: ValueKey('lock-timer-${step.id}'),
-            durationMinutes: step.durationMinutes,
-            asBar: presentation.timerAsBar,
-            filipino: l,
-            onFinished: _onTimerDone,
-          ),
-        ],
-
         const SizedBox(height: 8),
       ],
     );
 
-    // ── The way out: doing it, or an adult ──
-    // Pinned under the scrolling content, never inside it. On a short screen
-    // (a letterboxed tablet held sideways, a phone, a large font) the list
-    // above scrolls, and "I did it!" used to scroll with it — below the fold,
-    // while the learner stared at a lock with no visible way out.
+    // ── Until when ──
+    // Pinned under the scrolling content, never inside it, so a learner on a
+    // short screen or at a large font always sees how long is left. There is
+    // nothing to press: the lock lets go by itself.
     final actions = Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 64,
-            child: FilledButton.icon(
-              onPressed: _busy ? null : () => _didIt(step, profile.id),
-              icon: Icon(
-                isCheckIn
-                    ? Icons.chat_bubble_rounded
-                    : Icons.check_circle_rounded,
-                size: 28,
-              ),
-              label: Text(
-                isCheckIn
-                    ? (l ? 'Mag-check in ngayon' : 'Do my check-in')
-                    : (l ? 'Tapos na!' : 'I did it!'),
-                style: AppTypography.titleMedium.copyWith(
-                  fontWeight: FontWeight.w800,
+          _UnlockCountdown(step: step, now: now, filipino: l),
+          if (isCheckIn) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 56,
+              child: FilledButton.icon(
+                onPressed: _busy ? null : () => _checkIn(step),
+                icon: const Icon(Icons.chat_bubble_rounded, size: 24),
+                label: Text(
+                  l ? 'Mag-check in ngayon' : 'Do my check-in',
+                  style: AppTypography.titleMedium.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.success,
-                foregroundColor: Colors.white,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 4),
-          // The quiet way to an adult, always in reach. Once the step needs
-          // help, the card at the top carries a proper button for it too.
-          TextButton.icon(
-            onPressed: _busy ? null : () => _askGrownUp(step, profile.id),
-            icon: const Icon(Icons.pan_tool_alt_rounded, size: 20),
-            label: Text(
-              l ? 'Tumawag ng nakatatanda' : 'Ask a grown-up',
-              maxLines: 2,
-              textAlign: TextAlign.center,
-            ),
-            style: TextButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-              foregroundColor: hc.textSecondary,
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -905,7 +781,7 @@ class _SwitchAccountBar extends StatelessWidget {
   }
 }
 
-/// "Rose marked Brushing Teeth done." — the lock lifted from an educator's
+/// "Rose ended Brushing Teeth early." — the lock lifted from an educator's
 /// device, said plainly before the learner goes Home.
 class _ReleasedNotice extends StatelessWidget {
   const _ReleasedNotice({
@@ -929,11 +805,11 @@ class _ReleasedNotice extends StatelessWidget {
     final message = approved
         ? (name.isEmpty
             ? (l
-                ? 'Minarkahang tapos ng iyong guro o magulang ang $title.'
-                : 'Your teacher or parent marked $title done.')
+                ? 'Tinapos nang maaga ng iyong guro o magulang ang $title.'
+                : 'Your teacher or parent ended $title early.')
             : (l
-                ? 'Minarkahang tapos ni $name ang $title.'
-                : '$name marked $title done.'))
+                ? 'Tinapos nang maaga ni $name ang $title.'
+                : '$name ended $title early.'))
         : (name.isEmpty
             ? (l
                 ? 'Sabi ng iyong guro o magulang, puwedeng laktawan ang $title '
@@ -986,92 +862,101 @@ class _ReleasedNotice extends StatelessWidget {
   }
 }
 
-/// "Still waiting on this one — that is okay." The learner's side of an
-/// escalation: warm, never a scolding, and pointing at the adult.
-class _NeedsHelpCard extends StatelessWidget {
-  const _NeedsHelpCard({required this.filipino, required this.onAsk});
+/// "Please wait. This ends at 7:40 PM." — and how much of the wait is left.
+///
+/// Measured on the shared ten-second clock from the step's own start and end,
+/// so it moves by itself and runs out on the minute the lock lets go. Words
+/// for every learner, and a bar beside them for the ones who read a bar.
+class _UnlockCountdown extends StatelessWidget {
+  const _UnlockCountdown({
+    required this.step,
+    required this.now,
+    required this.filipino,
+  });
 
+  final RoutineStep step;
+  final DateTime now;
   final bool filipino;
-
-  /// Opens the adult gate. The card says "ask a grown-up", so it offers the
-  /// way to do it right there, at the top of the screen.
-  final VoidCallback? onAsk;
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final l = filipino;
-    final title = l ? 'Hinihintay pa ang hakbang na ito' : 'Still waiting on this one';
-    final body = l
-        ? 'Ayos lang. Kung may humahadlang, humingi ng tulong sa '
-            'nakatatanda.'
-        : 'That is okay. If something is in the way, ask a grown-up to help.';
-    final ask = l ? 'Tumawag ng nakatatanda' : 'Ask a grown-up';
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: hc.hc ? 0.3 : 0.16),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: hc.hc ? hc.primary : AppColors.warning,
-          width: 2,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            container: true,
-            liveRegion: true,
-            label: '$title. $body',
-            child: ExcludeSemantics(
-              child: Row(
+    final start = step.startsOn(now) ?? now;
+    final end = step.endsOn(now) ?? now;
+    final total = end.difference(start).inSeconds;
+    final left = end.difference(now);
+    final leftMinutes = left.isNegative ? 0 : (left.inSeconds / 60).ceil();
+    final double fraction =
+        total <= 0 ? 1.0 : (1 - left.inSeconds / total).clamp(0.0, 1.0);
+    final until = formatStepEnd(step);
+    final headline = l
+        ? 'Pakihintay. Magtatapos sa $until.'
+        : 'Please wait. This ends at $until.';
+    final remaining = leftMinutes <= 1
+        ? (l ? 'Malapit na.' : 'Almost there.')
+        : (l ? '$leftMinutes minuto natitira' : '$leftMinutes minutes left');
+
+    return Semantics(
+      container: true,
+      label: '$headline $remaining',
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: hc.surface.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: hc.primary.withValues(alpha: 0.5),
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                '💛',
-                style: TextStyle(fontSize: 30),
-                textScaler: TextScaler.linear(1.0),
+              Row(
+                children: [
+                  const Text(
+                    '⏳',
+                    style: TextStyle(fontSize: 26),
+                    textScaler: TextScaler.linear(1.0),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          headline,
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: hc.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          remaining,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: hc.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTypography.titleSmall.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: hc.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      body,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: hc.textPrimary,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: fraction,
+                  minHeight: 12,
+                  backgroundColor: hc.textHint.withValues(alpha: 0.2),
+                  valueColor: AlwaysStoppedAnimation(hc.primary),
                 ),
               ),
             ],
           ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 56,
-            child: FilledButton.icon(
-              onPressed: onAsk,
-              icon: const Icon(Icons.pan_tool_alt_rounded, size: 22),
-              label: Text(ask, maxLines: 2, textAlign: TextAlign.center),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.warning,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -22,7 +22,8 @@ import 'package:pwdpwdpwd/providers/routine_provider.dart';
 import 'package:pwdpwdpwd/providers/wall_clock_provider.dart';
 
 /// "My Day" as a lock: at 6:45 the app holds the learner on Brushing Teeth
-/// until they say they did it, and then asks how they feel.
+/// until its time ends at 6:55 — nothing for the learner to press, and only an
+/// adult can end it sooner, on a step the educator allowed to end early.
 ///
 /// The two halves of the feature are tested against each other throughout,
 /// because the difference between them is the requirement: a **Student or
@@ -220,14 +221,23 @@ void main() {
     });
 
     test('a minute late still counts — the tablet was in a bag', () {
-      expect(_evaluate(steps: steps, now: _at(7, 30)), isA<RoutineStepDue>());
+      expect(_evaluate(steps: steps, now: _at(6, 46)), isA<RoutineStepDue>());
     });
 
-    test('an hour later the moment has passed and the lock lifts', () {
-      // Deliberate: a missed step stays missed and stays tickable in My Day.
-      // A device switched off over a weekend must not come back locked to
+    test('when its time ends the lock lets go by itself', () {
+      // No length of its own, so it holds for the ten-minute default. Nobody
+      // taps it away: at 6:55 it is simply over. That is also what keeps a
+      // device switched off over a weekend from coming back locked to
       // Saturday breakfast.
+      expect(_evaluate(steps: steps, now: _at(6, 54)), isA<RoutineStepDue>());
+      expect(_evaluate(steps: steps, now: _at(6, 55)), isNull);
       expect(_evaluate(steps: steps, now: _at(8, 0)), isNull);
+    });
+
+    test('a step with its own length holds for exactly that long', () {
+      final long = [_brushing.copyWith(durationMinutes: 30)];
+      expect(_evaluate(steps: long, now: _at(7, 14)), isA<RoutineStepDue>());
+      expect(_evaluate(steps: long, now: _at(7, 15)), isNull);
     });
 
     test('doing it clears the lock', () {
@@ -244,11 +254,11 @@ void main() {
       );
     });
 
-    test('with two overdue at once, the earliest is asked for first', () {
+    test('with two running at once, the earliest holds first', () {
       final earlyLunch = _lunch.copyWith(hour: 6, minute: 50);
       final reason = _evaluate(
         steps: [earlyLunch, _brushing],
-        now: _at(6, 55),
+        now: _at(6, 52),
       );
       expect((reason! as RoutineStepDue).step.id, 'brush');
     });
@@ -721,79 +731,28 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.text('I did it!'), findsOneWidget);
+      expect(find.textContaining('Please wait'), findsOneWidget);
 
       ProviderScope.containerOf(
         tester.element(find.byType(RoutineLockScreen)),
       ).read(lock.notifier).state = null;
       await tester.pump();
 
-      expect(find.text('Rose marked Brushing Teeth done.'), findsOneWidget);
+      expect(find.text('Rose ended Brushing Teeth early.'), findsOneWidget);
       expect(find.text('Going back to Home…'), findsOneWidget);
-      expect(find.text('I did it!'), findsNothing);
+      expect(find.textContaining('Please wait'), findsNothing);
       // Unmount before the notice's timer sends the learner Home.
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
-    testWidgets('a step that has waited too long asks for an adult, warmly',
-        (tester) async {
-      tester.view.physicalSize = const Size(900, 2400);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-      _recorder.escalations.clear();
-
-      final n = DateTime.now();
-      final at = DateTime(n.year, n.month, n.day, 7, 5);
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            profileProvider.overrideWith(
-              () => _FixedProfile(
-                UserProfile(
-                  id: _profileId,
-                  name: 'Ana',
-                  role: UserRole.student,
-                  createdAt: DateTime(2026),
-                ),
-              ),
-            ),
-            routineLockRecorderProvider.overrideWithValue(_recorder),
-            lockStateProvider(_profileId)
-                .overrideWithValue(const RoutineStepDue(_brushing)),
-            wallClockTickerProvider.overrideWith((ref) => Stream.value(at)),
-            routineListProvider(_profileId).overrideWith(
-              (ref) => Stream.value([
-                _routine(steps: const [_brushing]),
-              ]),
-            ),
-          ],
-          child: const MaterialApp(home: RoutineLockScreen()),
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('Still waiting on this one'), findsOneWidget);
-      expect(
-        find.ancestor(
-          of: find.text('Ask a grown-up'),
-          matching: find.byWidgetPredicate((w) => w is FilledButton),
-        ),
-        findsOneWidget,
-      );
-      expect(_recorder.escalations, ['$_profileId/brush']);
-      await tester.pumpWidget(const SizedBox.shrink());
-    });
-
-    testWidgets('before the escalation time there is no prompt', (
-      tester,
+    Future<void> pumpAt(
+      WidgetTester tester,
+      RoutineStep step,
+      DateTime at,
     ) async {
       tester.view.physicalSize = const Size(900, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-
-      final n = DateTime.now();
-      final at = DateTime(n.year, n.month, n.day, 6, 50);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -809,20 +768,63 @@ void main() {
             ),
             routineLockRecorderProvider.overrideWithValue(_recorder),
             lockStateProvider(_profileId)
-                .overrideWithValue(const RoutineStepDue(_brushing)),
+                .overrideWithValue(RoutineStepDue(step)),
             wallClockTickerProvider.overrideWith((ref) => Stream.value(at)),
-            routineListProvider(_profileId).overrideWith(
-              (ref) => Stream.value([
-                _routine(steps: const [_brushing]),
-              ]),
-            ),
           ],
           child: const MaterialApp(home: RoutineLockScreen()),
         ),
       );
       await tester.pump();
       await tester.pump();
+    }
+
+    DateTime todayAt(int h, int m) {
+      final n = DateTime.now();
+      return DateTime(n.year, n.month, n.day, h, m);
+    }
+
+    testWidgets('a long wait never turns into a way out', (tester) async {
+      await pumpAt(tester, _brushing, todayAt(6, 54));
+      expect(find.text('I did it!'), findsNothing);
+      expect(find.text('Ask a grown-up'), findsNothing);
       expect(find.text('Still waiting on this one'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('says until when, and how much of the wait is left', (
+      tester,
+    ) async {
+      await pumpAt(tester, _brushing, todayAt(6, 50));
+      expect(find.text('Please wait. This ends at 6:55 AM.'), findsOneWidget);
+      expect(find.text('5 minutes left'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('holding the time does nothing on a step that must wait', (
+      tester,
+    ) async {
+      await pumpAt(tester, _brushing, todayAt(6, 50));
+      final before = find.byType(ModalBarrier).evaluate().length;
+      await tester.longPress(find.text('6:45 AM'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(ModalBarrier).evaluate().length, before);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('on a step that may end early, holding the time asks for an '
+        'adult', (tester) async {
+      await pumpAt(
+        tester,
+        _brushing.copyWith(releaseEarly: true),
+        todayAt(6, 50),
+      );
+      final before = find.byType(ModalBarrier).evaluate().length;
+      await tester.longPress(find.text('6:45 AM'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      // The adult check opened; nothing is answered here.
+      expect(find.byType(ModalBarrier).evaluate().length, greaterThan(before));
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
@@ -836,7 +838,7 @@ void main() {
       expect(_recorder.shown, ['$_profileId/brush']);
     });
 
-    testWidgets('shows the step, its time, and the way out', (tester) async {
+    testWidgets('shows the step, its time, and until when', (tester) async {
       tester.view.physicalSize = const Size(900, 1600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -867,31 +869,20 @@ void main() {
       expect(find.text('It is time for this'), findsOneWidget);
       expect(find.text('Brushing Teeth'), findsOneWidget);
       expect(find.text('6:45 AM'), findsOneWidget);
-      // Doing it is the primary way out; the adult gate is the other one.
-      expect(find.text('I did it!'), findsOneWidget);
-      expect(find.text('Ask a grown-up'), findsOneWidget);
+      // Nothing to press to leave — only until when.
+      expect(find.text('I did it!'), findsNothing);
+      expect(find.text('Ask a grown-up'), findsNothing);
+      expect(find.text('Please wait. This ends at 6:55 AM.'), findsOneWidget);
       // A shared tablet must still be handed on.
       expect(find.text('Switch account'), findsOneWidget);
     });
 
-    testWidgets('a timed step brings its countdown onto the lock', (
-      tester,
-    ) async {
+    testWidgets('a timed step waits for its own length, not for a timer to run',
+        (tester) async {
       await _pumpLock(tester, _timedBrushing);
-      expect(find.text('Timer'), findsOneWidget);
-      expect(find.text('02:00'), findsOneWidget);
-
-      await tester.tap(find.text('Start'));
-      await tester.pump(const Duration(seconds: 4));
-      expect(find.text('01:56'), findsOneWidget);
-      // Guidance, never a gate: the way out stays open while it runs.
-      final didIt = tester.widget<FilledButton>(
-        find.ancestor(
-          of: find.text('I did it!'),
-          matching: find.byWidgetPredicate((w) => w is FilledButton),
-        ),
-      );
-      expect(didIt.onPressed, isNotNull);
+      expect(find.text('Please wait. This ends at 6:47 AM.'), findsOneWidget);
+      expect(find.text('Timer'), findsNothing);
+      expect(find.text('Start'), findsNothing);
     });
 
     testWidgets('an untimed step and a check-in show no timer', (tester) async {
@@ -969,16 +960,10 @@ class _FixedSettings extends SettingsNotifier {
 /// Remembers lock reports instead of writing them to Hive.
 class _MemoryRecorder extends RoutineLockRecorder {
   final List<String> shown = [];
-  final List<String> escalations = [];
 
   @override
   Future<void> lockShown(String profileId, String stepId) async {
     shown.add('$profileId/$stepId');
-  }
-
-  @override
-  Future<void> escalated(String profileId, String stepId) async {
-    escalations.add('$profileId/$stepId');
   }
 }
 

@@ -9,6 +9,7 @@ import 'package:pwdpwdpwd/features/routine/models/routine_presentation.dart';
 import 'package:pwdpwdpwd/features/routine/screens/routine_step_screen.dart';
 import 'package:pwdpwdpwd/features/routine/widgets/routine_media.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
+import 'package:pwdpwdpwd/providers/wall_clock_provider.dart';
 
 import 'support/routine_test_doubles.dart';
 
@@ -28,9 +29,15 @@ Widget _app({
   required RoutineStep step,
   required DisabilityType type,
   bool readOnly = false,
+  bool canTick = true,
+  DateTime? now,
 }) {
   return ProviderScope(
-    overrides: routineOverrides(disability: type),
+    overrides: [
+      ...routineOverrides(disability: type),
+      if (now != null)
+        wallClockTickerProvider.overrideWith((ref) => Stream.value(now)),
+    ],
     child: MaterialApp(
       debugShowCheckedModeBanner: false,
       locale: const Locale('en'),
@@ -42,6 +49,7 @@ Widget _app({
         profileId: kTestProfileId,
         day: DateTime.now(),
         readOnly: readOnly,
+        canTick: canTick,
       ),
     ),
   );
@@ -63,12 +71,20 @@ Future<void> _pump(
   DisabilityType type = DisabilityType.none,
   bool readOnly = false,
   Size size = const Size(800, 1600),
+  bool canTick = true,
+  DateTime? now,
 }) async {
   tester.view.physicalSize = size * 2.0;
   tester.view.devicePixelRatio = 2.0;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-  await tester.pumpWidget(_app(step: step, type: type, readOnly: readOnly));
+  await tester.pumpWidget(_app(
+    step: step,
+    type: type,
+    readOnly: readOnly,
+    canTick: canTick,
+    now: now,
+  ));
   await _settle(tester);
 }
 
@@ -292,6 +308,41 @@ void main() {
       expect(find.text('How to do it'), findsNothing);
       await _unmount(tester);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('a Student’s step runs on the clock', () {
+    DateTime at(int h, int m) {
+      final n = DateTime.now();
+      return DateTime(n.year, n.month, n.day, h, m);
+    }
+
+    testWidgets('no "I did it!" — it says the step is on now, and until when',
+        (tester) async {
+      await _pump(
+        tester,
+        canTick: false,
+        now: at(6, 46),
+        size: const Size(800, 4000),
+      );
+      expect(find.text('I did it!'), findsNothing);
+      expect(
+        find.text('This is happening now, until 6:47 AM.'),
+        findsOneWidget,
+      );
+      await _unmount(tester);
+    });
+
+    testWidgets('before its time it says when it starts', (tester) async {
+      await _pump(
+        tester,
+        canTick: false,
+        now: at(6, 30),
+        size: const Size(800, 4000),
+      );
+      expect(find.text('This starts at 6:45 AM.'), findsOneWidget);
+      expect(find.text('I did it!'), findsNothing);
+      await _unmount(tester);
     });
   });
 }

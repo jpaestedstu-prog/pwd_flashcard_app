@@ -14,6 +14,7 @@ import 'package:pwdpwdpwd/features/routine/screens/routine_step_screen.dart';
 import 'package:pwdpwdpwd/features/routine/widgets/routine_step_card.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
+import 'package:pwdpwdpwd/providers/wall_clock_provider.dart';
 
 import 'support/routine_test_doubles.dart';
 
@@ -167,7 +168,7 @@ void main() {
       await _settle(tester);
 
       expect(find.text('Ang Aking Araw'), findsOneWidget);
-      expect(find.text('0 sa 4 tapos na'), findsOneWidget);
+      expect(find.text('Hakbang 1 sa 4'), findsOneWidget);
       expect(find.text('Gawain sa Umaga'), findsOneWidget);
       expect(find.text('Pagsisipilyo'), findsOneWidget);
       expect(find.text('Almusal'), findsOneWidget);
@@ -263,6 +264,11 @@ void main() {
       overrides: [
         ...routineOverrides(),
         settingsProvider.overrideWith(() => _SwitchableSettings('en')),
+        // A fixed clock: this container outlives the widget tree, and the
+        // live ten-second ticker would leave a timer pending at teardown.
+        wallClockTickerProvider.overrideWith(
+          (ref) => Stream.value(DateTime.now()),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -278,14 +284,14 @@ void main() {
       ),
     ));
     await _settle(tester);
-    expect(find.text('0 of 4 done'), findsOneWidget);
+    expect(find.text('Step 1 of 4'), findsOneWidget);
 
     (container.read(settingsProvider.notifier) as _SwitchableSettings)
         .setLocale('fil');
     await _settle(tester, const Duration(milliseconds: 400));
 
-    expect(find.text('0 sa 4 tapos na'), findsOneWidget);
-    expect(find.text('0 of 4 done'), findsNothing);
+    expect(find.text('Hakbang 1 sa 4'), findsOneWidget);
+    expect(find.text('Step 1 of 4'), findsNothing);
     await _unmount(tester);
   });
 }

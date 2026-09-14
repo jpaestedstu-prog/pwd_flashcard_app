@@ -1,3 +1,4 @@
+import '../../../providers/lock_state_provider.dart' show canBeLockedByRoutine;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/enums.dart';
@@ -85,6 +86,20 @@ class TodayRoutine {
     final due = DateTime(now.year, now.month, now.day, step.hour!, step.minute!);
     return now.isAfter(due);
   }
+
+  /// The step whose time is running right now — started, not yet ended, and
+  /// neither finished nor excused — or null.
+  RoutineStep? currentStep(DateTime now) {
+    for (final s in steps) {
+      final start = s.startsOn(now);
+      final end = s.endsOn(now);
+      if (start == null || end == null) continue;
+      if (log?.isDone(s.id) ?? false) continue;
+      if (excusedIds.contains(s.id)) continue;
+      if (!now.isBefore(start) && now.isBefore(end)) return s;
+    }
+    return null;
+  }
 }
 
 /// Whether "My Day" applies to the signed-in profile at all.
@@ -169,4 +184,16 @@ final todayRoutineProvider = Provider<TodayRoutine>((ref) {
     hasEducator: !profile.isGuestPlayer &&
         (profile.classroomId != null || profile.homeGroupId != null),
   );
+});
+
+/// Whether the signed-in learner's routine runs on the clock rather than on
+/// their own ticks.
+///
+/// A **Student or Child** never marks a step done, never says "I did it!"
+/// and never asks their own way out of a lock: a step is finished when its
+/// time ends, or when their Teacher or Parent finishes it early. Every learner
+/// surface — My Day, the step screen, the pop-up, the Home card — reads this
+/// one answer. A **Player** keeps the checklist they tick themselves.
+final routineRunsOnClockProvider = Provider<bool>((ref) {
+  return canBeLockedByRoutine(ref.watch(profileProvider)?.role);
 });

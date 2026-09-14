@@ -394,6 +394,38 @@ class RoutineService {
     return next;
   }
 
+  /// Records every step of [steps] whose time is over as finished, each
+  /// stamped with the moment its time ended — one write however many ended.
+  ///
+  /// A Student or Child does not tick their own steps: a step is finished when
+  /// its time ends, or when an adult finishes it early. This is where "its
+  /// time ended" becomes a fact in the learner's own day log, so the educator's
+  /// dashboard, the history, the streak and the reminders read it exactly like
+  /// any other finished step. Idempotent — a step already finished, or excused
+  /// by an adult, is left alone — and it writes nothing when nothing ended.
+  /// Returns the new log, or null when there was nothing to record.
+  Future<RoutineDayLog?> finishEndedSteps(
+    String profileId,
+    DateTime day,
+    List<RoutineStep> steps, {
+    required DateTime now,
+  }) async {
+    final view = viewFromCache(profileId, day);
+    var next = HiveService.getRoutineDayLog(profileId, day);
+    var changed = false;
+    for (final s in steps) {
+      final end = s.endsOn(day);
+      if (end == null || now.isBefore(end)) continue;
+      if (view.isSettled(s.id) || next.isDone(s.id)) continue;
+      next = next.setDone(s.id, true, at: end);
+      changed = true;
+    }
+    if (!changed) return null;
+    await HiveService.saveRoutineDayLog(next);
+    await _pushLog(next, 'RoutineToggle:silent');
+    return next;
+  }
+
   /// The day as this device's cache knows it — the learner's log joined with
   /// any educator actions. What every write here decides from.
   static RoutineDayView viewFromCache(String profileId, DateTime day) =>

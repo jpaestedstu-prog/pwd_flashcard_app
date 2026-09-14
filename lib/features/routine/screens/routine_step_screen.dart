@@ -12,11 +12,13 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/routine_provider.dart';
+import '../../../providers/wall_clock_provider.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/app_back_button.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_presentation.dart';
+import '../models/routine_timeline.dart';
 import '../services/routine_service.dart';
 import '../services/routine_completion_flow.dart';
 import '../widgets/routine_mood_prompt.dart';
@@ -38,6 +40,11 @@ class RoutineStepScreen extends ConsumerStatefulWidget {
   final DateTime day;
   final bool readOnly;
 
+  /// Whether the learner finishes this step themselves. False for a Student
+  /// or Child: their step is finished when its time ends, so this screen has
+  /// no "I did it!" and says where the step stands instead.
+  final bool canTick;
+
   /// Today's whole day, when the caller knows it — lets "I did it!" tell
   /// whether it finished the day and so ask how the day went. Null when the
   /// screen is opened on its own; the day-end question is then left to the
@@ -51,6 +58,7 @@ class RoutineStepScreen extends ConsumerStatefulWidget {
     required this.profileId,
     required this.day,
     this.readOnly = false,
+    this.canTick = true,
     this.todaysSteps,
   });
 
@@ -208,10 +216,20 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
     final emoji = RoutineCatalog.emojiFor(_step);
     final instructions = RoutineCatalog.instructionsFor(_step);
     final media = _p.mediaFor(_step);
-    final done = ref
-        .watch(routineDayViewProvider(
-            routineDayKey(widget.profileId, widget.day)))
-        .isDone(_step.id);
+    final view = ref.watch(
+      routineDayViewProvider(routineDayKey(widget.profileId, widget.day)),
+    );
+    final done = view.isDone(_step.id);
+    // Ten-second ticks, so "happening now" turns into "earlier today" on its
+    // own while the learner is looking at the step.
+    final now =
+        ref.watch(wallClockTickerProvider).valueOrNull ?? DateTime.now();
+    final moment = routineStepMoment(
+      _step,
+      now: now,
+      done: done,
+      excused: view.isExcused(_step.id),
+    );
 
     return AnimatedGradientBackground(
       intensity: 0.2,
@@ -380,7 +398,9 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
               ],
 
               const SizedBox(height: 20),
-              if (!widget.readOnly)
+              if (!widget.canTick)
+                _WhenPanel(step: _step, moment: moment, filipino: l)
+              else if (!widget.readOnly)
                 SizedBox(
                   height: 60,
                   child: FilledButton.icon(
@@ -812,6 +832,85 @@ class _InfoPill extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Where a Student's or Child's step stands, in place of "I did it!".
+///
+/// Their step is finished when its time ends, so there is nothing to press —
+/// the panel says what is happening instead: "This is happening now, until
+/// 7:40 PM", "This starts at 7:30 PM".
+class _WhenPanel extends StatelessWidget {
+  const _WhenPanel({
+    required this.step,
+    required this.moment,
+    required this.filipino,
+  });
+
+  final RoutineStep step;
+  final RoutineStepMoment moment;
+  final bool filipino;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final l = filipino;
+    final start = formatStepTime(step);
+    final end = formatStepEnd(step);
+    final (IconData icon, String text) = switch (moment) {
+      RoutineStepMoment.now => (
+          Icons.play_circle_rounded,
+          l ? 'Ito ay ngayon, hanggang $end.' : 'This is happening now, until $end.',
+        ),
+      RoutineStepMoment.upcoming => (
+          Icons.schedule_rounded,
+          l ? 'Magsisimula ito sa $start.' : 'This starts at $start.',
+        ),
+      RoutineStepMoment.earlier => (
+          Icons.check_circle_rounded,
+          l ? 'Ito ay kanina.' : 'This was earlier today.',
+        ),
+      RoutineStepMoment.excused => (
+          Icons.do_not_disturb_on_rounded,
+          l ? 'Hindi ngayon.' : 'Not today.',
+        ),
+      RoutineStepMoment.anyTime => (
+          Icons.all_inclusive_rounded,
+          l
+              ? 'Walang takdang oras ang hakbang na ito.'
+              : 'This step has no set time.',
+        ),
+    };
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: text,
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: hc.primary.withValues(alpha: hc.hc ? 0.24 : 0.12),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: hc.primary.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: hc.primary, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  text,
+                  style: AppTypography.titleSmall.copyWith(
+                    color: hc.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

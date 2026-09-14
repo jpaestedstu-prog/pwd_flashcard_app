@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
+import '../models/routine_timeline.dart';
 import '../services/routine_media_store.dart';
 import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
@@ -85,8 +86,21 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
   @override
   void initState() {
     super.initState();
+    // A locking step needs an end — it unlocks when its time is up — so one
+    // without a length yet starts at the default the lock would use anyway.
+    _draft = _withLockLength(_draft);
     _checkSign();
   }
+
+  /// Whether [step] will hold the learner's device at its time.
+  bool _locks(RoutineStep step) =>
+      widget.routineLocks && step.isScheduled && step.lockScreen;
+
+  /// [step], given the default length when it locks and has none.
+  RoutineStep _withLockLength(RoutineStep step) =>
+      _locks(step) && step.durationMinutes == 0
+          ? step.copyWith(durationMinutes: kRoutineDefaultStepMinutes)
+          : step;
 
   @override
   void dispose() {
@@ -138,7 +152,9 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
     );
     if (picked == null) return;
     setState(() {
-      _draft = _draft.copyWith(hour: picked.hour, minute: picked.minute);
+      _draft = _withLockLength(
+        _draft.copyWith(hour: picked.hour, minute: picked.minute),
+      );
     });
   }
 
@@ -293,7 +309,15 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _draft.durationMinutes == 0
+                          _locks(_draft)
+                              ? (l
+                                    ? 'Tatagal ${_draft.durationMinutes} minuto '
+                                          '— bubukas ang app sa '
+                                          '${formatStepEnd(_draft)}'
+                                    : 'Lasts ${_draft.durationMinutes} min — '
+                                          'the app unlocks at '
+                                          '${formatStepEnd(_draft)}')
+                              : _draft.durationMinutes == 0
                               ? (l ? 'Walang timer' : 'No timer')
                               : (l
                                     ? 'Timer: ${_draft.durationMinutes} minuto'
@@ -305,10 +329,16 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                       ),
                     ],
                   ),
+                  // A locking step must end, so its length starts at five
+                  // minutes; any other step may have no timer at all.
                   Slider(
-                    value: _draft.durationMinutes.toDouble().clamp(0, 60),
+                    value: _draft.durationMinutes.toDouble().clamp(
+                      _locks(_draft) ? 5 : 0,
+                      60,
+                    ),
+                    min: _locks(_draft) ? 5 : 0,
                     max: 60,
-                    divisions: 12,
+                    divisions: _locks(_draft) ? 11 : 12,
                     label: _draft.durationMinutes == 0
                         ? (l ? 'wala' : 'off')
                         : '${_draft.durationMinutes}',
@@ -428,9 +458,10 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
 
                   // ── Does this step hold the device? ──
                   // Only offered when the routine locks at all, and only on a
-                  // step with a time — a lock needs a moment to start at.
-                  // Off means the step still appears, still reminds and is
-                  // still ticked off; it simply does not stop the learner.
+                  // step with a time — a lock needs a moment to start at, and
+                  // it lets go when the step's time ends. Off means the step
+                  // still appears and still reminds; it simply does not stop
+                  // the learner.
                   if (widget.routineLocks && _draft.isScheduled) ...[
                     const SizedBox(height: 8),
                     Material(
@@ -439,7 +470,9 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                         contentPadding: EdgeInsets.zero,
                         value: _draft.lockScreen,
                         onChanged: (v) => setState(
-                          () => _draft = _draft.copyWith(lockScreen: v),
+                          () => _draft = _withLockLength(
+                            _draft.copyWith(lockScreen: v),
+                          ),
                         ),
                         secondary: const Text(
                           '🔒',
@@ -447,8 +480,8 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                         ),
                         title: Text(
                           l
-                              ? 'I-lock ang app hanggang tapos ito'
-                              : 'Lock the app until this is done',
+                              ? 'I-lock ang app hanggang sa pagtatapos ng oras nito'
+                              : 'Lock the app until this step’s time ends',
                           style: AppTypography.bodyMedium.copyWith(
                             color: hc.textPrimary,
                             fontWeight: FontWeight.w600,
@@ -457,12 +490,14 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                         subtitle: Text(
                           _draft.lockScreen
                               ? (l
-                                    ? 'Sa ${formatStepTime(_draft)}, ito lang '
-                                          'ang makikita ng bata hanggang '
-                                          'markahan nilang tapos na.'
-                                    : 'At ${formatStepTime(_draft)} this is '
-                                          'all the learner can see until they '
-                                          'mark it done.')
+                                    ? 'Mula ${formatStepTime(_draft)} hanggang '
+                                          '${formatStepEnd(_draft)}, ito lang '
+                                          'ang makikita ng bata. Kusang bubukas '
+                                          'ang app.'
+                                    : 'From ${formatStepTime(_draft)} to '
+                                          '${formatStepEnd(_draft)} this is all '
+                                          'the learner sees. The app unlocks by '
+                                          'itself.')
                               : (l
                                     ? 'Hindi mapapahinto ang bata sa hakbang '
                                           'na ito — paalala lang.'
@@ -474,8 +509,57 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                         ),
                       ),
                     ),
+                    // ── Can an adult end it early? ──
+                    // The learner never sees a button either way; this only
+                    // decides whether a Teacher or Parent may finish the step
+                    // before its time is up.
+                    if (_draft.lockScreen)
+                      Material(
+                        type: MaterialType.transparency,
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: _draft.releaseEarly,
+                          onChanged: (v) => setState(
+                            () => _draft = _draft.copyWith(releaseEarly: v),
+                          ),
+                          secondary: const Text(
+                            '🗝️',
+                            style: TextStyle(fontSize: 22),
+                          ),
+                          title: Text(
+                            l
+                                ? 'Maaaring tapusin nang maaga ng nakatatanda'
+                                : 'Can be released early',
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: hc.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            _draft.releaseEarly
+                                ? (l
+                                      ? 'Maaaring tapusin ito ng guro o magulang '
+                                            'bago ang ${formatStepEnd(_draft)} — '
+                                            'mula sa kanilang dashboard, o sa '
+                                            'tablet ng bata sa pagdiin nang '
+                                            'matagal sa oras ng hakbang.'
+                                      : 'A teacher or parent can end it before '
+                                            '${formatStepEnd(_draft)} — from '
+                                            'their dashboard, or on the '
+                                            'learner’s tablet by pressing and '
+                                            'holding the step’s time.')
+                                : (l
+                                      ? 'Kailangang maghintay ang bata hanggang '
+                                            '${formatStepEnd(_draft)}.'
+                                      : 'The learner waits until '
+                                            '${formatStepEnd(_draft)}.'),
+                            style: AppTypography.labelSmall.copyWith(
+                              color: hc.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
-
                   // ── Note / spoken cue ──
                   _SectionLabel(l ? 'Tala at Binibigkas na Paalala' : 'Note & spoken cue'),
                   TextField(

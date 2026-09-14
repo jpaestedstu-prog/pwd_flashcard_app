@@ -355,7 +355,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('🔥 2'), findsOneWidget);
-      expect(find.text('1 of 2 done'), findsOneWidget);
+      expect(find.text('Step 2 of 2'), findsOneWidget);
     });
 
     testWidgets('finishing the day asks how it went, and records the context', (

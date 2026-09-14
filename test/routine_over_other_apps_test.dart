@@ -108,7 +108,12 @@ void main() {
       await _pumpDay(tester, granted: false);
       expect(find.text(_title), findsOneWidget);
       expect(find.text(_button), findsOneWidget);
-      expect(find.textContaining('Ask a grown-up'), findsOneWidget);
+      expect(
+        find.textContaining('For the adult who looks after this tablet'),
+        findsOneWidget,
+      );
+      // Spoken to the adult, never to the child.
+      expect(find.textContaining('Ask a grown-up'), findsNothing);
       await _unmount(tester);
       expect(tester.takeException(), isNull);
     });

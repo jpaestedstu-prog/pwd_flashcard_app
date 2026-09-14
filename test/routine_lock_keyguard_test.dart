@@ -50,9 +50,6 @@ class _FixedProfile extends ProfileNotifier {
 class _SilentRecorder extends RoutineLockRecorder {
   @override
   Future<void> lockShown(String profileId, String stepId) async {}
-
-  @override
-  Future<void> escalated(String profileId, String stepId) async {}
 }
 
 /// What the native side was asked, and whether the tablet is "locked".
@@ -105,7 +102,9 @@ Future<StateController<LockReason?>> _pumpRouted(WidgetTester tester) async {
     ),
   );
   await tester.pump();
-  expect(find.text('I did it!'), findsOneWidget);
+  // Nothing to press on a routine lock — only until when.
+  expect(find.textContaining('Please wait'), findsOneWidget);
+  expect(find.text('I did it!'), findsNothing);
   return ProviderScope.containerOf(
     tester.element(find.byType(RoutineLockScreen)),
   ).read(lock.notifier);

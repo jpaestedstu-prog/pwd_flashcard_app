@@ -91,28 +91,50 @@ Future<void> _pumpStatus(
 
 void main() {
   group('live status on the dashboard row', () {
-    testWidgets('a due step reads as waiting, and says the lock has not shown',
-        (tester) async {
+    testWidgets('a due step says until when it holds, and that the lock has '
+        'not shown', (tester) async {
       await _pumpStatus(tester, now: _today(6, 52));
-      expect(find.textContaining('Waiting on Brushing Teeth'), findsOneWidget);
-      expect(find.text('Since 6:45 AM · 7 min'), findsOneWidget);
+      expect(find.textContaining('Locked on Brushing Teeth'), findsOneWidget);
+      // No length of its own, so the lock lasts the ten-minute default.
+      expect(find.text('6:45 AM–6:55 AM · 3 min left'), findsOneWidget);
       expect(
         find.text("Their device hasn't shown the lock yet — it may be off."),
         findsOneWidget,
       );
     });
 
-    testWidgets('past the escalation time it turns into "needs help"',
+    testWidgets('a step with its own length says when its lock lets go',
         (tester) async {
+      final long = Routine(
+        id: 'morning',
+        childProfileId: _learner,
+        setterProfileId: 'rose',
+        setterRole: UserRole.teacher,
+        name: 'Morning',
+        steps: const [
+          RoutineStep(
+            id: 'brush',
+            activity: RoutineActivity.brushingTeeth,
+            hour: 6,
+            minute: 45,
+            durationMinutes: 30,
+          ),
+        ],
+        lockEnabled: true,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
       await _pumpStatus(
         tester,
         now: _today(7, 5),
+        routine: long,
         log: RoutineDayLog.empty(_learner, _today(7, 5))
             .withLockShown('brush', _today(6, 45)),
       );
-      expect(find.textContaining('Needs help: Brushing Teeth'), findsOneWidget);
-      expect(find.text('Waiting 20 min, since 6:45 AM'), findsOneWidget);
+      expect(find.textContaining('Locked on Brushing Teeth'), findsOneWidget);
+      expect(find.text('6:45 AM–7:15 AM · 10 min left'), findsOneWidget);
       expect(find.text('The lock is showing on their device.'), findsOneWidget);
+      expect(find.textContaining('Needs help'), findsNothing);
     });
 
     testWidgets('the host supplies the buttons for the step holding the device',
@@ -132,7 +154,7 @@ void main() {
         actions: RoutineDayActions.empty(_learner, _today(6, 55))
             .withExcuse('brush', _mark(_today(6, 50))),
       );
-      expect(find.textContaining('Waiting on'), findsNothing);
+      expect(find.textContaining('Locked on'), findsNothing);
       expect(
         find.text('Brushing Teeth excused by Rose at 6:50 AM'),
         findsOneWidget,

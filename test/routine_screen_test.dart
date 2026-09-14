@@ -8,6 +8,7 @@ import 'package:pwdpwdpwd/features/routine/models/routine_models.dart';
 import 'package:pwdpwdpwd/features/routine/screens/routine_screen.dart';
 import 'package:pwdpwdpwd/features/routine/widgets/routine_step_card.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
+import 'package:pwdpwdpwd/providers/wall_clock_provider.dart';
 
 import 'support/routine_test_doubles.dart';
 
@@ -38,6 +39,7 @@ Future<void> _pump(
   Set<String> completed = const <String>{},
   Size size = const Size(800, 1400),
   String? classroomId = 'routine-test-class',
+  DateTime? now,
 }) async {
   tester.view.physicalSize = size * 2.0;
   tester.view.devicePixelRatio = 2.0;
@@ -45,13 +47,17 @@ Future<void> _pump(
   addTearDown(tester.view.resetDevicePixelRatio);
 
   await tester.pumpWidget(_app(
-    overrides: routineOverrides(
-      role: role,
-      disability: disability,
-      routines: routines,
-      completed: completed,
-      classroomId: classroomId,
-    ),
+    overrides: [
+      ...routineOverrides(
+        role: role,
+        disability: disability,
+        routines: routines,
+        completed: completed,
+        classroomId: classroomId,
+      ),
+      if (now != null)
+        wallClockTickerProvider.overrideWith((ref) => Stream.value(now)),
+    ],
   ));
   await _settle(tester);
 }
@@ -118,7 +124,7 @@ void main() {
       expect(find.text(testTitleOf(step)), findsOneWidget,
           reason: '${step.id} is missing from the day');
     }
-    expect(find.text('0 of 4 done'), findsOneWidget);
+    expect(find.text('Step 1 of 4'), findsOneWidget);
     await _unmount(tester);
     expect(tester.takeException(), isNull);
   });
@@ -163,7 +169,7 @@ void main() {
       completed: {'step-wake', 'step-brush'},
     );
     expect(find.text('Breakfast'), findsOneWidget);
-    expect(find.text('2 of 4 done'), findsOneWidget);
+    expect(find.text('Step 3 of 4'), findsOneWidget);
     await _unmount(tester);
   });
 
@@ -180,23 +186,14 @@ void main() {
       },
     );
     expect(find.byType(RoutineStepCard), findsNWidgets(4));
-    expect(find.text('The whole day is done!'), findsOneWidget);
+    expect(find.text('That’s all for today!'), findsOneWidget);
+    expect(find.text('The whole day is done!'), findsNothing);
     await _unmount(tester);
   });
 
-  testWidgets('motor and cognitive learners tick off from a full-width '
-      'button, not a checkbox', (tester) async {
-    for (final type in [DisabilityType.motor, DisabilityType.cognitive]) {
-      await _pump(tester, disability: type);
-      expect(find.byType(Checkbox), findsNothing, reason: '$type');
-      expect(find.text('Mark as done'), findsWidgets, reason: '$type');
-      await _unmount(tester);
-    }
-  });
-
-  testWidgets('a learner with no accessibility category gets the compact '
+  testWidgets('a Player with no accessibility category gets the compact '
       'checkbox', (tester) async {
-    await _pump(tester);
+    await _pump(tester, role: UserRole.player, classroomId: null);
     expect(find.byType(Checkbox), findsNWidgets(4));
     await _unmount(tester);
   });
@@ -281,7 +278,7 @@ void main() {
   testWidgets('the whole day carries one screen-reader label per step',
       (tester) async {
     final handle = tester.ensureSemantics();
-    await _pump(tester);
+    await _pump(tester, role: UserRole.player, classroomId: null);
     // The card merges its own children, so a screen reader hears the title,
     // the time and the done-state as one node rather than four.
     expect(
@@ -292,5 +289,60 @@ void main() {
     );
     handle.dispose();
     await _unmount(tester);
+  });
+
+  group('a Student’s day runs on the clock', () {
+    DateTime at(int h, int m) {
+      final n = DateTime.now();
+      return DateTime(n.year, n.month, n.day, h, m);
+    }
+
+    testWidgets('nothing to tick — each card says where its step stands',
+        (tester) async {
+      await _pump(tester, now: at(6, 46));
+      expect(find.byType(Checkbox), findsNothing);
+      expect(find.text('Mark as done'), findsNothing);
+      expect(find.text('Done!'), findsNothing);
+      // Wake Up ran 6:30–6:45; Brushing Teeth runs 6:45–6:47.
+      expect(find.text('Earlier today'), findsOneWidget);
+      expect(find.text('Now · until 6:47 AM'), findsOneWidget);
+      await _unmount(tester);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a motor or cognitive Student gets no big button either',
+        (tester) async {
+      for (final type in [DisabilityType.motor, DisabilityType.cognitive]) {
+        await _pump(tester, disability: type, now: at(6, 46));
+        expect(find.text('Mark as done'), findsNothing, reason: '$type');
+        expect(find.text('Done!'), findsNothing, reason: '$type');
+        await _unmount(tester);
+      }
+    });
+
+    testWidgets('a screen reader hears what is happening now', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(tester, now: at(6, 46));
+      expect(
+        find.bySemanticsLabel(
+          RegExp(r'Brushing Teeth, 6:45 AM, 2 min, happening now, until 6:47 AM'),
+        ),
+        findsOneWidget,
+      );
+      handle.dispose();
+      await _unmount(tester);
+    });
+
+    testWidgets('a Player’s finished day still celebrates it as done',
+        (tester) async {
+      await _pump(
+        tester,
+        role: UserRole.player,
+        classroomId: null,
+        completed: {'step-wake', 'step-brush', 'step-breakfast', 'step-tidy'},
+      );
+      expect(find.text('The whole day is done!'), findsOneWidget);
+      await _unmount(tester);
+    });
   });
 }

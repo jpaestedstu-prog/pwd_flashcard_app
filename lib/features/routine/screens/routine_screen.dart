@@ -11,13 +11,16 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/lock_state_provider.dart' show canBeLockedByRoutine;
+import '../../../providers/profile_role_provider.dart';
 import '../../../providers/routine_provider.dart';
+import '../../../providers/wall_clock_provider.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../models/routine_models.dart';
 import '../providers/today_routine_provider.dart';
 import '../models/routine_presentation.dart';
+import '../models/routine_timeline.dart';
 import '../services/routine_service.dart';
 import '../services/routine_sign_launcher.dart';
 import '../services/routine_completion_flow.dart';
@@ -159,9 +162,9 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
 
     final routinesAsync = ref.watch(routineListProvider(profileId));
     // The joined day: a step an educator marked done shows as done here too.
-    final log = ref
-        .watch(routineDayViewProvider(routineDayKey(profileId, _today)))
-        .effectiveLog;
+    final view =
+        ref.watch(routineDayViewProvider(routineDayKey(profileId, _today)));
+    final log = view.effectiveLog;
 
     return _shell(
       context,
@@ -201,6 +204,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
             filipino: l,
             routines: today,
             log: log,
+            excusedIds: view.excusedIds,
             presentation: presentation,
             profileId: profileId,
           );
@@ -236,6 +240,14 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
       if (entry.$1.id == profileId) return entry.$1.disabilityType;
     }
     return DisabilityType.none;
+  }
+
+  /// Whether the learner being previewed runs on the clock. An educator only
+  /// previews their own learners, so a role this device has not cached yet
+  /// counts as one.
+  bool _previewRunsOnClock(String profileId) {
+    final role = ref.watch(profileRoleProvider(profileId));
+    return role == null || canBeLockedByRoutine(role);
   }
 
   Widget _shell(
@@ -286,6 +298,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
     required bool filipino,
     required List<Routine> routines,
     required RoutineDayLog log,
+    required Set<String> excusedIds,
     required RoutinePresentation presentation,
     required String profileId,
   }) {
@@ -304,6 +317,15 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
         )
         ?.id;
 
+    // A Student's or Child's day runs on the clock: nothing to tick, and each
+    // card says where its step stands. An educator previewing that learner
+    // sees exactly the same.
+    final clock = widget.profileId == null
+        ? ref.watch(routineRunsOnClockProvider)
+        : _previewRunsOnClock(profileId);
+    final now =
+        ref.watch(wallClockTickerProvider).valueOrNull ?? DateTime.now();
+
     // Only on the learner's own device, and only when today can hold it: this
     // tablet is where "Display over other apps" has to be granted.
     final asksForOverlay = widget.profileId == null &&
@@ -319,6 +341,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
           done: doneCount,
           total: allSteps.length,
           filipino: filipino,
+          clock: clock,
           // The learner's own run only; an educator previewing someone's day
           // is looking at the history screen for that.
           streak: widget.profileId == null
@@ -339,7 +362,14 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
             filipino: filipino,
             presentation: presentation,
             hasSigns: _signable.contains(step.id),
-            onToggle: widget.readOnly
+            canTick: !clock,
+            moment: routineStepMoment(
+              step,
+              now: now,
+              done: log.completedStepIds.contains(step.id),
+              excused: excusedIds.contains(step.id),
+            ),
+            onToggle: widget.readOnly || clock
                 ? () {}
                 : () => _toggle(
                     step,
@@ -356,6 +386,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
               profileId,
               log.completedStepIds.contains(step.id),
               allSteps,
+              clock,
             ),
           ),
         if (presentation.showOnlyNextStep && allSteps.length > visible.length)
@@ -382,7 +413,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
           ),
         if (doneCount == allSteps.length && allSteps.isNotEmpty) ...[
           const SizedBox(height: 8),
-          _DayCompleteBanner(filipino: filipino),
+          _DayCompleteBanner(filipino: filipino, clock: clock),
         ],
       ],
     );
@@ -420,6 +451,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
     String profileId,
     bool done,
     List<RoutineStep> todaysSteps,
+    bool clock,
   ) async {
     // The step screen asks its own questions ("I did it!" runs the same
     // completion flow as the list), so it is handed the whole day to know
@@ -432,6 +464,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
           profileId: profileId,
           day: _today,
           readOnly: widget.readOnly,
+          canTick: !clock,
           todaysSteps: todaysSteps,
         ),
       ),
@@ -453,27 +486,43 @@ class _ProgressHeader extends StatelessWidget {
   /// no idea they were on a run.
   final int streak;
 
+  /// A Student's or Child's day: says where they are in it ("Step 2 of 4"),
+  /// never how much is "done".
+  final bool clock;
+
   const _ProgressHeader({
     required this.done,
     required this.total,
     required this.filipino,
     required this.streak,
     this.routineName,
+    this.clock = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final fraction = total == 0 ? 0.0 : done / total;
+    final at = (done + 1).clamp(1, total == 0 ? 1 : total);
+    final count = clock
+        ? (total > 0 && done >= total
+            ? (filipino ? 'Iyan ang lahat ngayon' : 'That’s all for today')
+            : (filipino ? 'Hakbang $at sa $total' : 'Step $at of $total'))
+        : (filipino ? '$done sa $total tapos na' : '$done of $total done');
+    final spokenCount = clock
+        ? '$count.'
+        : (filipino
+            ? 'Tapos na ang $done sa $total na gawain ngayong araw.'
+            : '$done of $total activities finished today.');
 
     return Semantics(
       container: true,
       // The bar's own value is announced by the progress indicator; this label
       // carries the count, which is the part a learner acts on.
       label: filipino
-          ? 'Tapos na ang $done sa $total na gawain ngayong araw.'
+          ? '$spokenCount'
               '${streak > 0 ? ' $streak araw na sunod-sunod na tapos.' : ''}'
-          : '$done of $total activities finished today.'
+          : '$spokenCount'
               '${streak > 0 ? ' $streak day${streak == 1 ? '' : 's'} '
                   'finished in a row.' : ''}',
       child: Card(
@@ -510,9 +559,7 @@ class _ProgressHeader extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            filipino
-                                ? '$done sa $total tapos na'
-                                : '$done of $total done',
+                            count,
                             style: AppTypography.bodySmall.copyWith(
                               color: hc.textSecondary,
                             ),
@@ -560,7 +607,10 @@ class _ProgressHeader extends StatelessWidget {
 class _DayCompleteBanner extends StatelessWidget {
   final bool filipino;
 
-  const _DayCompleteBanner({required this.filipino});
+  /// A Student's or Child's day, said without "done".
+  final bool clock;
+
+  const _DayCompleteBanner({required this.filipino, this.clock = false});
 
   @override
   Widget build(BuildContext context) {
@@ -580,7 +630,13 @@ class _DayCompleteBanner extends StatelessWidget {
           const Text('🌟', style: TextStyle(fontSize: 40)),
           const SizedBox(height: 8),
           Text(
-            filipino ? 'Tapos na ang buong araw!' : 'The whole day is done!',
+            clock
+                ? (filipino
+                    ? 'Iyan ang lahat para ngayon!'
+                    : 'That’s all for today!')
+                : (filipino
+                    ? 'Tapos na ang buong araw!'
+                    : 'The whole day is done!'),
             textAlign: TextAlign.center,
             style: AppTypography.titleSmall.copyWith(
               fontWeight: FontWeight.w700,
@@ -589,9 +645,13 @@ class _DayCompleteBanner extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            filipino
-                ? 'Ginawa mo ang bawat hakbang ngayon. Mahusay!'
-                : 'You did every step today. Great work.',
+            clock
+                ? (filipino
+                    ? 'Sinunod mo ang iyong plano ngayon. Mahusay!'
+                    : 'You followed your plan today. Great job.')
+                : (filipino
+                    ? 'Ginawa mo ang bawat hakbang ngayon. Mahusay!'
+                    : 'You did every step today. Great work.'),
             textAlign: TextAlign.center,
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),

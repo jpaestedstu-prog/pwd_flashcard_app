@@ -5,14 +5,17 @@ import 'package:pwdpwdpwd/core/services/lock_warning.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_day_state.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_models.dart';
-import 'package:pwdpwdpwd/features/routine/services/routine_lock_recorder.dart';
 import 'package:pwdpwdpwd/features/routine/widgets/educator_routine_section.dart';
 import 'package:pwdpwdpwd/providers/routine_provider.dart';
 import 'package:pwdpwdpwd/providers/wall_clock_provider.dart';
 
-/// Warning before a routine step locks, and escalation after it has held for
-/// too long — the learner is told the lock is coming, and the educator is told
-/// when a learner has been stuck.
+/// Warning before a routine step locks, and what the educator sees while it
+/// holds — the learner is told the lock is coming, and the educator is told
+/// until when it lasts.
+///
+/// There is no "needs help" any more. A step's lock lets go by itself when its
+/// time ends, so a Student or Child is never stuck on one and has nobody to
+/// fetch; the educator's row says when the wait is over instead.
 
 const _brush = RoutineStep(
   id: 'brush',
@@ -34,19 +37,6 @@ DateTime _at(int h, int m) => DateTime(2026, 9, 14, h, m);
 DateTime _today(int h, int m) {
   final n = DateTime.now();
   return DateTime(n.year, n.month, n.day, h, m);
-}
-
-class _MemoryAlerter extends RoutineHelpAlerter {
-  final List<String> bodies = [];
-
-  @override
-  Future<void> alert({
-    required String key,
-    required String title,
-    required String body,
-  }) async {
-    bodies.add(body);
-  }
 }
 
 void main() {
@@ -91,19 +81,17 @@ void main() {
     });
   });
 
-  group("the educator's needs-help alert", () {
-    Future<_MemoryAlerter> pump(
+  group('the dashboard row while a step holds the device', () {
+    Future<void> pump(
       WidgetTester tester, {
       required DateTime now,
       RoutineDayActions? actions,
     }) async {
-      final alerter = _MemoryAlerter();
       final key = routineDayKey('ana', now);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             wallClockTickerProvider.overrideWith((ref) => Stream.value(now)),
-            routineHelpAlerterProvider.overrideWithValue(alerter),
             routineListProvider('ana').overrideWith(
               (ref) => Stream.value([
                 Routine(
@@ -152,49 +140,41 @@ void main() {
       await tester.pump();
       await tester.pump();
       await tester.pump();
-      return alerter;
     }
 
-    testWidgets('fires once, with a snackbar, when a learner needs help', (
-      tester,
-    ) async {
-      final alerter = await pump(tester, now: _today(7, 5));
-      expect(alerter.bodies, ['Ana needs help with Brushing Teeth (20 min)']);
-      expect(
-        find.text('Ana needs help with Brushing Teeth (20 min)'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('Needs help: Brushing Teeth'), findsOneWidget);
-
-      // Ten seconds later it is the same learner on the same step.
-      await tester.pump(const Duration(seconds: 1));
-      expect(alerter.bodies, hasLength(1));
+    testWidgets('names the step and when its lock lets go', (tester) async {
+      await pump(tester, now: _today(6, 50));
+      expect(find.textContaining('Locked on Brushing Teeth'), findsOneWidget);
+      // No length of its own, so the lock lasts the ten-minute default.
+      expect(find.text('6:45 AM–6:55 AM · 5 min left'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
     });
 
-    testWidgets('a learner who is only waiting raises no alert', (
-      tester,
-    ) async {
-      final alerter = await pump(tester, now: _today(6, 50));
-      expect(alerter.bodies, isEmpty);
-      expect(find.textContaining('Waiting on Brushing Teeth'), findsOneWidget);
+    testWidgets('once its time is over there is nothing to wait on — and no '
+        'alarm about it', (tester) async {
+      await pump(tester, now: _today(7, 5));
+      expect(find.textContaining('Locked on'), findsNothing);
+      expect(find.textContaining('needs help'), findsNothing);
+      expect(find.textContaining('Needs help'), findsNothing);
+      expect(find.byType(SnackBar), findsNothing);
     });
 
-    testWidgets('an excused step raises no alert', (tester) async {
-      final now = _today(7, 5);
-      final alerter = await pump(
+    testWidgets('an excused step holds nothing', (tester) async {
+      final now = _today(6, 50);
+      await pump(
         tester,
         now: now,
         actions: RoutineDayActions.empty('ana', now).withExcuse(
           'brush',
           RoutineStepMark(
-            at: _today(7, 1),
+            at: _today(6, 47),
             byProfileId: 'rose',
             byName: 'Rose',
             source: RoutineMarkSource.educator,
           ),
         ),
       );
-      expect(alerter.bodies, isEmpty);
+      expect(find.textContaining('Locked on'), findsNothing);
     });
   });
 }

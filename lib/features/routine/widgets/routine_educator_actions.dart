@@ -178,20 +178,26 @@ class _RoutineStepActionBarState extends ConsumerState<RoutineStepActionBar> {
 
   @override
   Widget build(BuildContext context) {
+    // "Mark done" ends a step before its time is up, so it is offered only on
+    // a step the educator set as "can be released early" — otherwise the
+    // learner waits until the time ends. Excuse and the 30-minute unlock stay
+    // on every step: they are for a day that went wrong, not for finishing.
+    final canReleaseEarly = widget.status.step.releaseEarly;
     return Wrap(
       spacing: 8,
       runSpacing: 6,
       children: [
-        FilledButton.icon(
-          onPressed: _busy ? null : _approve,
-          icon: const Icon(Icons.verified_rounded, size: 18),
-          label: Text(l ? 'Markahang tapos' : 'Mark done'),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.success,
-            foregroundColor: Colors.white,
-            visualDensity: VisualDensity.compact,
+        if (canReleaseEarly)
+          FilledButton.icon(
+            onPressed: _busy ? null : _approve,
+            icon: const Icon(Icons.verified_rounded, size: 18),
+            label: Text(l ? 'Markahang tapos' : 'Mark done'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.white,
+              visualDensity: VisualDensity.compact,
+            ),
           ),
-        ),
         OutlinedButton.icon(
           onPressed: _busy ? null : _excuse,
           icon: const Icon(Icons.pan_tool_alt_rounded, size: 18),

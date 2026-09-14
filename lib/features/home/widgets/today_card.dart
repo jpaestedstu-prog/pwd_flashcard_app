@@ -11,6 +11,7 @@ import '../../mood_tracker/models/mood_models.dart';
 import '../../mood_tracker/models/mood_presentation.dart';
 import '../../mood_tracker/services/quick_mood_check_in.dart';
 import '../../routine/models/routine_catalog.dart';
+import '../../routine/models/routine_timeline.dart';
 import '../../routine/models/routine_models.dart';
 import '../../routine/models/routine_presentation.dart';
 import '../../routine/providers/today_routine_provider.dart';
@@ -341,8 +342,13 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
     final now =
         ref.watch(wallClockTickerProvider).valueOrNull ?? DateTime.now();
 
-    final next = today.nextStep;
-    final overdue = today.isOverdue(now);
+    // A Student's or Child's day runs on the clock: nothing to tick, and the
+    // card says what is on now rather than what is "done".
+    final clock = ref.watch(routineRunsOnClockProvider);
+    final current = clock ? today.currentStep(now) : null;
+    final next = current ?? today.nextStep;
+    // A step can only be late when the learner is the one who finishes it.
+    final overdue = !clock && today.isOverdue(now);
     // Today's answer to one of My Day's own questions (a step, a scheduled
     // check-in, the end of the day) — never a plain Home check-in, which
     // belongs to the card below and says nothing about the routine.
@@ -359,7 +365,14 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
                 : 'Ask your teacher or parent')
           : (isFilipino ? 'Walang nakatakda ngayon' : 'Nothing planned today');
     } else if (today.allDone) {
-      subtitle = isFilipino ? 'Tapos na lahat! 🎉' : 'All done! 🎉';
+      subtitle = clock
+          ? (isFilipino ? 'Iyan ang lahat ngayon 🎉' : 'That’s all for today 🎉')
+          : (isFilipino ? 'Tapos na lahat! 🎉' : 'All done! 🎉');
+    } else if (clock) {
+      final at = (today.done + 1).clamp(1, today.total);
+      subtitle = isFilipino
+          ? 'Hakbang $at sa ${today.total}'
+          : 'Step $at of ${today.total}';
     } else {
       subtitle = isFilipino
           ? '${today.done} sa ${today.total} tapos'
@@ -389,6 +402,8 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
         isFilipino,
         overdue,
         routineMood,
+        clock: clock,
+        current: current,
       ),
       action: next == null
           ? null
@@ -397,7 +412,10 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
               isFilipino: isFilipino,
               overdue: overdue,
               busy: _ticking,
-              onDone: () => _done(today, next),
+              // A Student or Child has nothing to press: the row only says
+              // what is on now, or next.
+              onDone: clock ? null : () => _done(today, next),
+              isNow: current != null,
             ),
     );
   }
@@ -406,8 +424,10 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
     TodayRoutine today,
     bool isFilipino,
     bool overdue,
-    MoodEntry? routineMood,
-  ) {
+    MoodEntry? routineMood, {
+    bool clock = false,
+    RoutineStep? current,
+  }) {
     if (today.isEmpty) {
       return today.hasEducator
           ? 'My Day. Nothing is scheduled for today — your teacher or parent '
@@ -431,14 +451,22 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
               'finished in a row.'
         : '';
     if (today.allDone) {
-      return 'My Day. All ${today.total} steps are done.$streak$mood '
-          'Open your day.';
+      return clock
+          ? 'My Day. That’s all for today.$streak$mood Open your day.'
+          : 'My Day. All ${today.total} steps are done.$streak$mood '
+              'Open your day.';
+    }
+    if (current != null) {
+      final title = RoutineCatalog.titleFor(current, filipino: isFilipino);
+      return 'My Day. Now: $title, until ${formatStepEnd(current)}.'
+          '$streak$mood Open your day.';
     }
     final next = today.nextStep!;
     final title = RoutineCatalog.titleFor(next, filipino: isFilipino);
     final when = next.isScheduled
         ? ' at ${_clock(next)}${overdue ? ', overdue' : ''}'
         : '';
+    if (clock) return 'My Day. Next: $title$when.$streak$mood Open your day.';
     return 'My Day. ${today.done} of ${today.total} steps done. '
         'Next: $title$when.$streak$mood Open your day.';
   }
@@ -452,13 +480,19 @@ class _NextStepRow extends StatelessWidget {
     required this.overdue,
     required this.busy,
     required this.onDone,
+    this.isNow = false,
   });
 
   final RoutineStep step;
   final bool isFilipino;
   final bool overdue;
   final bool busy;
-  final VoidCallback onDone;
+
+  /// Null for a Student or Child: nothing to tick, so no button.
+  final VoidCallback? onDone;
+
+  /// The step's time is running now (a Student's or Child's current step).
+  final bool isNow;
 
   @override
   Widget build(BuildContext context) {
@@ -488,7 +522,11 @@ class _NextStepRow extends StatelessWidget {
               ],
               Flexible(
                 child: Text(
-                  step.isScheduled
+                  isNow
+                      ? '${isFilipino ? 'Ngayon' : 'Now'}: $title · '
+                            '${isFilipino ? 'hanggang' : 'until'} '
+                            '${formatStepEnd(step)}'
+                      : step.isScheduled
                       ? '${isFilipino ? 'Susunod' : 'Next'}: $title · '
                             '${_clock(step)}'
                       : '${isFilipino ? 'Susunod' : 'Next'}: $title',
@@ -504,62 +542,64 @@ class _NextStepRow extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 6),
-        Semantics(
-          button: true,
-          // A check-in is answered, not ticked, so its button says so.
-          label: step.activity.isMoodCheckIn
-              ? (isFilipino
-                    ? 'Gawin na ang check-in ngayon'
-                    : 'Do your check-in now')
-              : (isFilipino ? 'Tapos na ang $title' : 'Mark $title as done'),
-          excludeSemantics: true,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: busy ? null : onDone,
-              borderRadius: BorderRadius.circular(22),
-              child: Container(
-                // 44 high, so the one control a learner is meant to hit from
-                // Home clears the minimum target on every profile.
-                constraints: const BoxConstraints(minHeight: 44),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: hc.primary.withValues(alpha: hc.hc ? 0.30 : 0.16),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: hc.primary, width: 1.5),
-                ),
-                alignment: Alignment.center,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      step.activity.isMoodCheckIn
-                          ? Icons.chat_bubble_rounded
-                          : Icons.check_rounded,
-                      size: 18,
-                      color: hc.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
+        if (onDone != null) ...[
+          const SizedBox(height: 6),
+          Semantics(
+            button: true,
+            // A check-in is answered, not ticked, so its button says so.
+            label: step.activity.isMoodCheckIn
+                ? (isFilipino
+                      ? 'Gawin na ang check-in ngayon'
+                      : 'Do your check-in now')
+                : (isFilipino ? 'Tapos na ang $title' : 'Mark $title as done'),
+            excludeSemantics: true,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: busy ? null : onDone,
+                borderRadius: BorderRadius.circular(22),
+                child: Container(
+                  // 44 high, so the one control a learner is meant to hit from
+                  // Home clears the minimum target on every profile.
+                  constraints: const BoxConstraints(minHeight: 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: hc.primary.withValues(alpha: hc.hc ? 0.30 : 0.16),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: hc.primary, width: 1.5),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
                         step.activity.isMoodCheckIn
-                            ? (isFilipino ? 'Mag-check in' : 'Check in')
-                            : (isFilipino ? 'Tapos na' : 'Done'),
-                        style: AppTypography.labelMedium.copyWith(
-                          color: hc.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                            ? Icons.chat_bubble_rounded
+                            : Icons.check_rounded,
+                        size: 18,
+                        color: hc.primary,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          step.activity.isMoodCheckIn
+                              ? (isFilipino ? 'Mag-check in' : 'Check in')
+                              : (isFilipino ? 'Tapos na' : 'Done'),
+                          style: AppTypography.labelMedium.copyWith(
+                            color: hc.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
