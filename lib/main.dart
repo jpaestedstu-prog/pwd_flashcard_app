@@ -15,6 +15,7 @@ import 'core/security/username_migration.dart';
 import 'core/services/action_clip_service.dart';
 import 'core/services/active_time_tracker.dart';
 import 'core/services/alarm_scheduler.dart';
+import 'core/services/schedule_ownership.dart';
 import 'features/routine/services/routine_reminder_scheduler.dart';
 import 'features/routine/providers/today_routine_provider.dart';
 import 'features/routine/widgets/routine_popup_watcher.dart';
@@ -257,9 +258,10 @@ class FlashLearnApp extends ConsumerWidget {
     // ── Active-time tracking + alarm scheduler lifecycle ──
     // When the active profile is a student/child, start the tracker
     // and the alarm scheduler. Otherwise (teacher/parent/no profile),
-    // tear them down so a teacher previewing a student dashboard
+    // stop the tracker so a teacher previewing a student dashboard
     // doesn't spuriously rack up "minutes used today" against their
-    // own profile.
+    // own profile — but leave the last learner's alarms scheduled (see
+    // [ScheduleOwnership]).
     //
     // The whole body is wrapped in try/catch so that a plugin-init or
     // tracker hiccup at the moment a learner becomes active does not
@@ -269,11 +271,8 @@ class FlashLearnApp extends ConsumerWidget {
     // [ErrorHandler.report] under the silent source 'applyLifecycle:silent'.
     void applyLifecycle(UserProfile? next) {
       try {
-        final isLearner =
-            next != null &&
-            (next.role == UserRole.student || next.role == UserRole.child) &&
-            !next.isGuestPlayer;
-        if (isLearner) {
+        if (next != null &&
+            ScheduleOwnership.forAlarms(next) == ScheduleChange.start) {
           // Wire alarm tap → "Time's Up" lock screen for `lockScreen`
           // actions; for `endSession`, just route home; `notifyOnly`
           // does nothing extra.
@@ -311,9 +310,13 @@ class FlashLearnApp extends ConsumerWidget {
           );
 
         } else {
+          // The alarms stay. They belong to the last learner on this device,
+          // and shutting them down here cancelled a child's 1:20 PM alarm the
+          // moment an educator — or just the profile picker — opened. Another
+          // learner signing in replaces them; deleting the learner cancels
+          // them (LocalRepository.deleteProfile).
           AlarmScheduler.onAlarmFired = null;
           ActiveTimeTracker.stopActive();
-          AlarmScheduler.shutdown();
         }
       } catch (e, s) {
         ErrorHandler.report(e, s, 'applyLifecycle:silent');
@@ -329,7 +332,12 @@ class FlashLearnApp extends ConsumerWidget {
     void applyRoutineLifecycle() {
       try {
         final next = ref.read(profileProvider);
-        if (next != null && ref.read(routineFeatureProvider)) {
+        final change = ScheduleOwnership.forRoutines(
+          next: next,
+          featureOn: ref.read(routineFeatureProvider),
+          scheduledFor: RoutineReminderScheduler.profileId,
+        );
+        if (next != null && change == ScheduleChange.start) {
           RoutineReminderScheduler.onReminderTapped = (routineId, stepId) {
             final ctx = rootNavigatorKey.currentContext;
             if (ctx == null) return;
@@ -378,7 +386,11 @@ class FlashLearnApp extends ConsumerWidget {
           );
         } else {
           RoutineReminderScheduler.onReminderTapped = null;
-          RoutineReminderScheduler.shutdown();
+          // Only the profile the reminders are for can switch them off. An
+          // educator or the profile picker on screen leaves them running.
+          if (change == ScheduleChange.stop) {
+            unawaited(RoutineReminderScheduler.shutdown());
+          }
         }
       } catch (e, s) {
         ErrorHandler.report(e, s, 'applyRoutineLifecycle:silent');

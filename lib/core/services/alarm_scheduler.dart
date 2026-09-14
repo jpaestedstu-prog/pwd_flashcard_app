@@ -53,6 +53,22 @@ class AlarmScheduler {
   /// notifications when an alarm is deleted or its weekday changes.
   static final Set<int> _activeNotificationIds = {};
 
+  /// The learner these alarms are scheduled for. Kept while an educator or
+  /// the profile picker is on screen — see `ScheduleOwnership`.
+  static String? _profileId;
+
+  static const _ownerKey = 'child_alarms';
+
+  /// The learner the device's alarms belong to, surviving a restart.
+  static String? get scheduledFor {
+    if (_profileId != null) return _profileId;
+    try {
+      return HiveService.getScheduleOwner(_ownerKey);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Callback for when an alarm's notification is tapped (or fires while
   /// the app is in the foreground). Set by `main.dart`.
   ///
@@ -74,6 +90,10 @@ class AlarmScheduler {
     // profile switch doesn't fire the previous child's alarms here.
     await _sub?.cancel();
     await _cancelAllAlarmIds();
+    _profileId = profileId;
+    try {
+      await HiveService.setScheduleOwner(_ownerKey, profileId);
+    } catch (_) {}
 
     // Pre-warm with whatever's in Hive so the very first OS reboot
     // doesn't lose alarms while Firestore takes its time.
@@ -109,6 +129,26 @@ class AlarmScheduler {
     await _sub?.cancel();
     _sub = null;
     await _cancelAllAlarmIds();
+    _profileId = null;
+    try {
+      await HiveService.setScheduleOwner(_ownerKey, null);
+    } catch (_) {}
+  }
+
+  /// Cancels the alarms when [profileId] — the learner they are for — is
+  /// deleted from this device, including alarms scheduled by an earlier run
+  /// of the app whose ids are no longer in memory.
+  static Future<void> forgetProfile(String profileId) async {
+    if (scheduledFor != profileId) return;
+    await shutdown();
+    try {
+      await _initPlugin();
+      for (final p in await _plugin.pendingNotificationRequests()) {
+        if (p.payload?.startsWith('alarm:') ?? false) {
+          await _plugin.cancel(p.id);
+        }
+      }
+    } catch (_) {}
   }
 
   /// Cancel every prior alarm-id and re-schedule [alarms].

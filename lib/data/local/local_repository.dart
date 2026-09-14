@@ -1,3 +1,5 @@
+import '../../core/services/alarm_scheduler.dart';
+import '../../features/routine/services/routine_reminder_scheduler.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -157,6 +159,12 @@ class LocalRepository implements DataRepository {
     final wasGuest =
         HiveService.getProfileById(profileId)?.isGuestPlayer ?? false;
     await HiveService.deleteProfile(profileId);
+    // A deleted learner's alarms and reminders must not keep firing on this
+    // device. Best-effort: the profile is gone either way.
+    try {
+      await AlarmScheduler.forgetProfile(profileId);
+      await RoutineReminderScheduler.forgetProfile(profileId);
+    } catch (_) {}
     if (wasGuest) return;
     await _remoteWrite(
         'deleteProfile', () => _remote.deleteProfile(profileId));

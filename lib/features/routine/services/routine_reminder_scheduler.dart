@@ -6,6 +6,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../../../core/services/device_timezone.dart';
 import '../../../core/services/notification_schedule_mode.dart';
+import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_day_state.dart';
@@ -140,6 +141,19 @@ class RoutineReminderScheduler {
   /// re-checked without re-reading routines.
   static List<RoutineReminder> _plan = const [];
   static String? _profileId;
+
+  static const _ownerKey = 'routine_reminders';
+
+  /// The profile the device's reminders are scheduled for, surviving a
+  /// restart — see `ScheduleOwnership`.
+  static String? get profileId {
+    if (_profileId != null) return _profileId;
+    try {
+      return HiveService.getScheduleOwner(_ownerKey);
+    } catch (_) {
+      return null;
+    }
+  }
   static DisabilityType _accessibility = DisabilityType.none;
 
   /// Notification ids whose occurrence **today** has been skipped, and the day
@@ -281,6 +295,9 @@ class RoutineReminderScheduler {
     await _sub?.cancel();
     await cancelAll();
     _profileId = profileId;
+    try {
+      await HiveService.setScheduleOwner(_ownerKey, profileId);
+    } catch (_) {}
     _accessibility = accessibility;
     _watchToday(profileId);
 
@@ -323,6 +340,16 @@ class RoutineReminderScheduler {
     _profileId = null;
     _suppressedToday.clear();
     await cancelAll();
+    try {
+      await HiveService.setScheduleOwner(_ownerKey, null);
+    } catch (_) {}
+  }
+
+  /// Cancels the reminders when [id] — the profile they are for — is deleted
+  /// from this device.
+  static Future<void> forgetProfile(String id) async {
+    if (profileId != id) return;
+    await shutdown();
   }
 
   static Future<void> rescheduleAll(

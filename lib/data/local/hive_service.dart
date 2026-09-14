@@ -299,6 +299,17 @@ class HiveService {
 
   static Box get _settBox => Hive.box(_settingsBox);
 
+  /// Which profile a device-wide schedule (child alarms, routine reminders)
+  /// was last set up for. Survives a restart, unlike the schedulers' memory,
+  /// so deleting that learner can still cancel what was scheduled for them.
+  static String? getScheduleOwner(String kind) =>
+      _settBox.get('schedule_owner::$kind') as String?;
+
+  static Future<void> setScheduleOwner(String kind, String? profileId) =>
+      profileId == null
+          ? _settBox.delete('schedule_owner::$kind')
+          : _settBox.put('schedule_owner::$kind', profileId);
+
   /// Namespace a settings key to a profile, so each profile keeps its own
   /// accessibility settings. A `null` [profileId] uses the legacy unprefixed
   /// keys — kept for the no-active-profile state (splash / profile picker)
