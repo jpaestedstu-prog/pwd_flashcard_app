@@ -194,8 +194,11 @@ class MainActivity : FlutterActivity() {
                         // The routine lock is on screen (on) or has closed
                         // (off) — either way the watchdog's job is done.
                         lockScreenWatchdog.removeCallbacks(lockScreenTakeBack)
-                        applyShowWhenLocked(call.argument<Boolean>("on") ?: false)
-                        result.success(true)
+                        // True when FlashLearn went behind a locked tablet, so
+                        // Dart knows not to build Home until it comes back.
+                        result.success(
+                            applyShowWhenLocked(call.argument<Boolean>("on") ?: false),
+                        )
                     }
                     "takeLaunch" -> {
                         result.success(pendingRoutineLaunch)
@@ -247,8 +250,10 @@ class MainActivity : FlutterActivity() {
      * the whole app usable over the PIN screen). So when the device is still
      * locked, the task also moves to the back and the lock screen covers it.
      * While the device is unlocked the flag is simply cleared; nothing moves.
+     *
+     * Returns whether the task moved behind the lock screen.
      */
-    private fun applyShowWhenLocked(on: Boolean) {
+    private fun applyShowWhenLocked(on: Boolean): Boolean {
         setShowWhenLocked(on)
         setTurnScreenOn(on)
         val locked = getSystemService(KeyguardManager::class.java)?.isKeyguardLocked ?: false
@@ -256,7 +261,9 @@ class MainActivity : FlutterActivity() {
         if (!on && locked) {
             moveTaskToBack(true)
             Log.i("RoutineAlarms", "moved behind the lock screen")
+            return true
         }
+        return false
     }
 
     /**

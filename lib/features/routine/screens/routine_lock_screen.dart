@@ -156,6 +156,7 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     unawaited(RoutineNativeAlarms.setShowWhenLocked(false));
+    _resumeListener?.dispose();
     _announceTimer?.cancel();
     _releaseTimer?.cancel();
     _helpTimer?.cancel();
@@ -291,11 +292,60 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
       if (_lockPresentation.haptics) unawaited(HapticFeedback.mediumImpact());
       setState(() => _releasedBy = release);
       _releaseTimer = Timer(_releaseNoticeFor, () {
-        if (mounted) GoRouter.of(context).go('/home');
+        if (mounted) unawaited(_goOffTheLock('/home'));
       });
       return;
     }
-    GoRouter.of(context).go(next == null ? '/home' : lockRouteFor(next));
+    if (next != null) {
+      // Another lock screen: it is a lock too, so nothing is exposed.
+      GoRouter.of(context).go(lockRouteFor(next));
+      return;
+    }
+    unawaited(_goOffTheLock('/home'));
+  }
+
+  /// Where this screen is waiting to go once the tablet is unlocked, if it
+  /// handed the screen back to the PIN pad first.
+  String? _leavingFor;
+  AppLifecycleListener? _resumeListener;
+
+  /// Leaves for somewhere that is not a lock — never over the tablet's own
+  /// lock screen.
+  ///
+  /// Found on the NDL W09: a step finished over the PIN screen at 23:59 left
+  /// the learner's Home standing in front of the PIN pad for several seconds,
+  /// because "show over the lock screen" was only turned off in [dispose] —
+  /// after the router had already built Home. So it is turned off *first*. If
+  /// that moved FlashLearn behind a tablet that is still locked, this screen
+  /// stays put (finished, and nothing on it opens the app) and [target] waits
+  /// for the app to come back after someone unlocks.
+  Future<void> _goOffTheLock(String target) async {
+    if (_leavingFor != null) return;
+    _leavingFor = target;
+    final movedBehind = await RoutineNativeAlarms.setShowWhenLocked(false);
+    if (!mounted) return;
+    if (!movedBehind) {
+      _leavingFor = null;
+      GoRouter.of(context).go(target);
+      return;
+    }
+    _resumeListener?.dispose();
+    _resumeListener = AppLifecycleListener(
+      onResume: () {
+        _resumeListener?.dispose();
+        _resumeListener = null;
+        _leavingFor = null;
+        if (!mounted) return;
+        // Whatever holds the device now decides, not what held it when the
+        // screen went dark.
+        final now = ref.read(lockStateProvider(_profileId));
+        if (now is RoutineStepDue) {
+          unawaited(RoutineNativeAlarms.setShowWhenLocked(true));
+          return;
+        }
+        GoRouter.of(context).go(now == null ? target : lockRouteFor(now));
+      },
+    );
   }
 
   /// The educator's approval or excuse that just settled the held step, when
@@ -688,7 +738,12 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
               children: [
                 Expanded(child: _pulseBorder(body)),
                 actions,
-                _SwitchAccountBar(filipino: l),
+                _SwitchAccountBar(
+                  filipino: l,
+                  // Through the same door as Home: over a locked tablet the
+                  // profile picker must not stand in front of the PIN pad.
+                  onSwitch: () => unawaited(_goOffTheLock('/profile-switcher')),
+                ),
               ],
             ),
           ),
@@ -821,9 +876,10 @@ class _Steps extends StatelessWidget {
 /// Hands a shared tablet on without an adult. Outside the scroll so it is
 /// always reachable, exactly like the time's-up lock's own version.
 class _SwitchAccountBar extends StatelessWidget {
-  const _SwitchAccountBar({required this.filipino});
+  const _SwitchAccountBar({required this.filipino, required this.onSwitch});
 
   final bool filipino;
+  final VoidCallback onSwitch;
 
   @override
   Widget build(BuildContext context) {
@@ -833,7 +889,7 @@ class _SwitchAccountBar extends StatelessWidget {
       child: TextButton.icon(
         // The profile switcher is lock-exempt, so this actually lands — and
         // picking this learner again re-locks them.
-        onPressed: () => GoRouter.of(context).go('/profile-switcher'),
+        onPressed: onSwitch,
         icon: const Icon(Icons.switch_account_rounded, size: 20),
         label: Text(
           filipino ? 'Magpalit ng account' : 'Switch account',

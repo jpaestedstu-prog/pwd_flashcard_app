@@ -109,8 +109,11 @@ class RoutineNativeAlarms {
 
   /// Lets the lock show over the tablet's own lock screen — only while the
   /// routine lock is on screen, never for the rest of the app.
-  static Future<void> setShowWhenLocked(bool on) =>
-      _call<bool>('setShowWhenLocked', {'on': on});
+  ///
+  /// Resolves to true when turning it off moved FlashLearn behind a tablet
+  /// that is still locked; false otherwise (and off Android, in tests).
+  static Future<bool> setShowWhenLocked(bool on) async =>
+      await _call<bool>('setShowWhenLocked', {'on': on}) ?? false;
 
   static RoutineLaunch? _launch;
   static bool _fetched = false;
