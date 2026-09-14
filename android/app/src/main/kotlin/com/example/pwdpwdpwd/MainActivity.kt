@@ -1,10 +1,12 @@
 package com.example.pwdpwdpwd
 
+import android.app.KeyguardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.WindowManager
@@ -206,9 +208,25 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /**
+     * Shows FlashLearn over the tablet's own lock screen, or takes that back.
+     *
+     * Taking it back is not enough on its own: an activity that is *already*
+     * in front of the lock screen stays there after the flag is cleared (found
+     * on the emulator with a PIN set — a lock launch that ended on My Day left
+     * the whole app usable over the PIN screen). So when the device is still
+     * locked, the task also moves to the back and the lock screen covers it.
+     * While the device is unlocked the flag is simply cleared; nothing moves.
+     */
     private fun applyShowWhenLocked(on: Boolean) {
         setShowWhenLocked(on)
         setTurnScreenOn(on)
+        val locked = getSystemService(KeyguardManager::class.java)?.isKeyguardLocked ?: false
+        Log.i("RoutineAlarms", "showWhenLocked=$on keyguardLocked=$locked")
+        if (!on && locked) {
+            moveTaskToBack(true)
+            Log.i("RoutineAlarms", "moved behind the lock screen")
+        }
     }
 
     /**
