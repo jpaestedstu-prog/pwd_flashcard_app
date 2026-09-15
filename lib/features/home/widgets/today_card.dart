@@ -368,7 +368,10 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
                 ? 'Hilingin sa guro o magulang'
                 : 'Ask your teacher or parent')
           : (isFilipino ? 'Walang nakatakda ngayon' : 'Nothing planned today');
-    } else if (today.allDone) {
+    } else if (today.allDone || (onNow == null && today.nextStep == null)) {
+      // All done — or every step still open was excused by an adult. Either
+      // way the day is over, and "Step 13 of 13" would name a step that is
+      // not coming.
       subtitle = clock
           ? (isFilipino ? 'Iyan ang lahat ngayon 🎉' : 'That’s all for today 🎉')
           : (isFilipino ? 'Tapos na lahat! 🎉' : 'All done! 🎉');
@@ -520,7 +523,14 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
       return 'My Day. Paused: $title. Your teacher or parent will start it '
           'again.$streak$mood Open your day.';
     }
-    final next = today.nextStep!;
+    final next = today.nextStep;
+    if (next == null) {
+      // Not all done, nothing running or paused, and no next step: every step
+      // still open was excused by an adult. There is nothing more today —
+      // found on the NDL W09, where this was a null check that took the whole
+      // Home card down (and its "Something went wrong" snackbar with it).
+      return 'My Day. That’s all for today.$streak$mood Open your day.';
+    }
     final title = RoutineCatalog.titleFor(next, filipino: isFilipino);
     final when = next.isScheduled
         ? ' at ${_clock(next)}${overdue ? ', overdue' : ''}'

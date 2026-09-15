@@ -247,6 +247,14 @@ void main() {
       tester,
     ) async {
       final now = DateTime.now();
+      final midnight = DateTime(now.year, now.month, now.day);
+      // Anchored to today rather than "3 hours ago": for the first hours after
+      // midnight that was yesterday, and this test failed whenever the suite
+      // ran then. Never later than now, so no entry is in the future.
+      DateTime todayAt(Duration sinceMidnight) {
+        final t = midnight.add(sinceMidnight);
+        return t.isAfter(now) ? now : t;
+      }
       await _pump(
         tester,
         moods: [
@@ -254,8 +262,8 @@ void main() {
           // latest of today's wins — a learner who corrects their face should
           // see the correction.
           _entry(MoodType.sad, now.subtract(const Duration(days: 1))),
-          _entry(MoodType.tired, now.subtract(const Duration(hours: 3))),
-          _entry(MoodType.happy, now.subtract(const Duration(minutes: 5))),
+          _entry(MoodType.tired, todayAt(Duration.zero)),
+          _entry(MoodType.happy, todayAt(const Duration(microseconds: 1))),
         ],
       );
 

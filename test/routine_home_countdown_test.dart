@@ -211,6 +211,31 @@ void main() {
     expect(find.textContaining('Next: Breakfast'), findsOneWidget);
   });
 
+  testWidgets('a day whose last open step was excused ends quietly — no crash',
+      (tester) async {
+    // Brushing Teeth ran out and was recorded; Breakfast was excused by the
+    // teacher. Nothing is done-but-open, running, paused or next: the card
+    // must say the day is over, not throw (a null check did, on the tablet).
+    await _pump(
+      tester,
+      now: _today(9, 0),
+      done: {'brush'},
+      actions: RoutineDayActions.empty(_profileId, DateTime.now()).withExcuse(
+        'breakfast',
+        RoutineStepMark(
+          at: _today(7, 55),
+          byProfileId: 'rose',
+          byName: 'Rose',
+          source: RoutineMarkSource.educator,
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('That’s all for today 🎉'), findsOneWidget);
+    expect(find.byType(RoutineTimeTimer), findsNothing);
+    expect(_paneLabel(tester), startsWith('My Day. That’s all for today.'));
+  });
+
   testWidgets('a Player keeps their checklist: Done, and no countdown',
       (tester) async {
     await _pump(tester, now: _today(7, 6), role: UserRole.player);
