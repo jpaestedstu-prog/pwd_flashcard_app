@@ -618,31 +618,60 @@ class RoutineDayStep {
   final String titleFilipino;
   final String emoji;
 
+  /// When the step was planned for that day and how long it lasted, as it
+  /// stood when the day was frozen. Null [hour] on a step that had no time —
+  /// and on every snapshot frozen before times were recorded, which is what
+  /// [hasTiming] tells a reader apart.
+  final int? hour;
+  final int? minute;
+  final int durationMinutes;
+
+  /// Whether the step held the learner's device that day.
+  final bool locks;
+
+  /// Whether this row was frozen with its time and lock recorded.
+  final bool hasTiming;
+
   const RoutineDayStep({
     required this.id,
     required this.activity,
     this.title = '',
     this.titleFilipino = '',
     this.emoji = '',
+    this.hour,
+    this.minute,
+    this.durationMinutes = 0,
+    this.locks = false,
+    this.hasTiming = false,
   });
 
-  factory RoutineDayStep.of(RoutineStep step) => RoutineDayStep(
+  factory RoutineDayStep.of(RoutineStep step, {bool locks = false}) =>
+      RoutineDayStep(
         id: step.id,
         activity: step.activity,
         title: step.title,
         titleFilipino: step.titleFilipino,
         emoji: step.emoji,
+        hour: step.hour,
+        minute: step.minute,
+        durationMinutes: step.durationMinutes,
+        locks: locks,
+        hasTiming: true,
       );
 
   /// Rebuilds a shell [RoutineStep] so `RoutineCatalog.titleFor` / `emojiFor`
   /// can localise it exactly as the live screens do — one source of truth for
-  /// how a step is named, whether it still exists or not.
+  /// how a step is named, whether it still exists or not. Carries the frozen
+  /// time and length, so a past day is timed as it was planned.
   RoutineStep toStep() => RoutineStep(
         id: id,
         activity: activity,
         title: title,
         titleFilipino: titleFilipino,
         emoji: emoji,
+        hour: hour,
+        minute: minute,
+        durationMinutes: durationMinutes,
       );
 
   Map<String, dynamic> toJson() => {
@@ -651,15 +680,35 @@ class RoutineDayStep {
         'title': title,
         'title_filipino': titleFilipino,
         'emoji': emoji,
+        if (hasTiming) ...{
+          'hour': hour,
+          'minute': minute,
+          'duration_minutes': durationMinutes,
+          'locks': locks,
+        },
       };
 
-  factory RoutineDayStep.fromJson(Map<String, dynamic> json) => RoutineDayStep(
-        id: (json['id'] as String?) ?? '',
-        activity: RoutineActivity.fromIndex(json['activity']),
-        title: (json['title'] as String?) ?? '',
-        titleFilipino: (json['title_filipino'] as String?) ?? '',
-        emoji: (json['emoji'] as String?) ?? '',
-      );
+  factory RoutineDayStep.fromJson(Map<String, dynamic> json) {
+    int? clamped(Object? raw, int max) =>
+        raw is int && raw >= 0 && raw <= max ? raw : null;
+    final h = clamped(json['hour'], 23);
+    final m = clamped(json['minute'], 59);
+    final bothSet = h != null && m != null;
+    return RoutineDayStep(
+      id: (json['id'] as String?) ?? '',
+      activity: RoutineActivity.fromIndex(json['activity']),
+      title: (json['title'] as String?) ?? '',
+      titleFilipino: (json['title_filipino'] as String?) ?? '',
+      emoji: (json['emoji'] as String?) ?? '',
+      hour: bothSet ? h : null,
+      minute: bothSet ? m : null,
+      durationMinutes: (json['duration_minutes'] as int?)?.clamp(0, 600) ?? 0,
+      locks: (json['locks'] as bool?) ?? false,
+      // The lock flag is always written with the times, so its presence is
+      // what says this row was frozen with them.
+      hasTiming: json.containsKey('locks'),
+    );
+  }
 }
 
 /// Who excused or approved a step, when, and whether it still stands.

@@ -24,6 +24,8 @@ import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_presentation.dart';
 import '../models/routine_timeline.dart';
+import '../models/routine_wait_cues.dart';
+import '../providers/today_routine_provider.dart';
 import '../services/routine_lock_recorder.dart';
 import '../services/routine_native_alarms.dart';
 import '../services/routine_reminder_scheduler.dart';
@@ -32,6 +34,7 @@ import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
 import '../widgets/routine_mood_prompt.dart';
 import '../widgets/routine_step_card.dart';
+import '../widgets/routine_time_timer.dart';
 
 /// How long the screen waits before announcing itself. Same reasoning as the
 /// time's-up lock: the learner should *see* the step before they hear it.
@@ -78,6 +81,17 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   /// once: the learner cannot change their settings from behind a lock.
   late final LockPresentation _lockPresentation;
 
+  /// What the "Please wait" part shows and says for this learner — the
+  /// picture timer, First / Then, signs, spoken milestones.
+  late final RoutineWaitCues _waitCues;
+
+  /// Whether the wait signs resolve to clips; null until the FSL manifest
+  /// has been read.
+  bool? _hasWaitSigns;
+
+  /// The last milestone spoken, as `stepId|minutes`, so each is said once.
+  String? _spokenMilestone;
+
   AnimationController? _pulse;
   Timer? _announceTimer;
   bool _announced = false;
@@ -117,9 +131,9 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
   /// made once per step rather than once per rebuild.
   String? _shownReportedFor;
 
-  /// An educator's approval or excuse that lifted the lock from their own
-  /// device, shown briefly before the learner is sent Home.
-  ({RoutineStepMark mark, bool approved})? _releasedBy;
+  /// An educator's approval, excuse or pause that lifted the lock from their
+  /// own device, shown briefly before the learner is sent Home.
+  ({RoutineReleaseKind kind, String byName})? _releasedBy;
   Timer? _releaseTimer;
 
 
@@ -134,6 +148,9 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     _lockPresentation = LockPresentation.forProfile(
       ref.read(profileProvider)?.disabilityType ?? DisabilityType.none,
       ref.read(settingsProvider),
+    );
+    _waitCues = RoutineWaitCues.forType(
+      ref.read(profileProvider)?.disabilityType ?? DisabilityType.none,
     );
     if (_lockPresentation.visualAlert) {
       _pulse = AnimationController(
@@ -171,14 +188,20 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     final cue = RoutineCatalog.audioCueFor(step, filipino: filipino);
     final LockAnnouncer announcer =
         _announcer ?? ref.read(lockAnnouncerProvider);
+    final at = DateTime.now();
+    final until = formatStepEnd(
+      step,
+      end: ref
+          .read(routineDayViewProvider(routineDayKey(profile.id, at)))
+          .endOf(step, at),
+    );
 
     unawaited(
       announcer.announce(
         presentation: _lockPresentation,
         message: filipino
-            ? 'Oras na para sa $title. $cue '
-                'Magtatapos sa ${formatStepEnd(step)}.'
-            : 'Time for $title. $cue This ends at ${formatStepEnd(step)}.',
+            ? 'Oras na para sa $title. $cue Magtatapos sa $until.'
+            : 'Time for $title. $cue This ends at $until.',
         speakFilipino: filipino,
       ),
     );
@@ -189,7 +212,52 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     _signsFor = step.id;
     await FslAssetsService.load();
     if (!mounted) return;
-    setState(() => _hasSigns = RoutineSignLauncher.hasSigns(step));
+    setState(() {
+      _hasSigns = RoutineSignLauncher.hasSigns(step);
+      _hasWaitSigns = _waitCues.signs.isNotEmpty &&
+          RoutineSignLauncher.playableCardsFor(_waitCues.signs).isNotEmpty;
+    });
+  }
+
+  /// "Five minutes left." — once per milestone, for the learners who are
+  /// told the time rather than shown it.
+  void _speakMilestone(RoutineStep step, DateTime now, DateTime? end) {
+    if (!_waitCues.speakMilestones || end == null || _busy) return;
+    final start = step.startsOn(now);
+    if (start == null) return;
+    final milestone = RoutineWaitCues.milestoneFor(
+      minutesLeft: minutesUntilEnd(end, now),
+      totalMinutes: end.difference(start).inMinutes,
+    );
+    if (milestone == null) return;
+    final key = '${step.id}|$milestone';
+    if (_spokenMilestone == key) return;
+    _spokenMilestone = key;
+    final l = ref.read(settingsProvider).locale == 'fil';
+    final message = milestone == 1
+        ? (l ? 'Isang minuto na natitira.' : 'One minute left.')
+        : (l
+            ? '$milestone minuto na natitira.'
+            : '$milestone minutes left.');
+    final LockAnnouncer announcer =
+        _announcer ?? ref.read(lockAnnouncerProvider);
+    unawaited(
+      announcer.announce(
+        presentation: _lockPresentation.warningVariant,
+        message: message,
+        speakFilipino: l,
+      ),
+    );
+  }
+
+  Future<void> _showWaitSigns(String profileId) async {
+    await RoutineSignLauncher.showCues(
+      context,
+      cues: _waitCues.signs,
+      fallbackWord: 'Please',
+      filipino: ref.read(settingsProvider).locale == 'fil',
+      profileId: profileId,
+    );
   }
 
   /// A check-in step's own question — "How are you feeling right now?".
@@ -322,10 +390,10 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     );
   }
 
-  /// The educator's approval or excuse that just settled the held step, when
-  /// an educator's action — not the learner, not the clock — is what lifted
-  /// the lock.
-  ({RoutineStepMark mark, bool approved})? _remoteRelease() {
+  /// The educator's approval, excuse or pause that just lifted the held
+  /// step, when an educator's action — not the learner, not the clock — is
+  /// what lifted the lock.
+  ({RoutineReleaseKind kind, String byName})? _remoteRelease() {
     final step = _step;
     if (step == null) return null;
     final view = ref.read(
@@ -333,11 +401,17 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     );
     final approval = view.approval(step.id);
     if (approval != null && approval.source == RoutineMarkSource.educator) {
-      return (mark: approval, approved: true);
+      return (kind: RoutineReleaseKind.approved, byName: approval.byName);
     }
     final excuse = view.excuse(step.id);
     if (excuse != null && excuse.source == RoutineMarkSource.educator) {
-      return (mark: excuse, approved: false);
+      return (kind: RoutineReleaseKind.excused, byName: excuse.byName);
+    }
+    if (view.isPaused(step.id)) {
+      return (
+        kind: RoutineReleaseKind.paused,
+        byName: view.adjustment(step.id)?.byName ?? '',
+      );
     }
     return null;
   }
@@ -400,6 +474,16 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     // go on the minute the step's time ends.
     final now =
         ref.watch(wallClockTickerProvider).valueOrNull ?? DateTime.now();
+    // The step's end as it stands today: later when an adult added time.
+    final endsAt = ref
+        .watch(routineDayViewProvider(routineDayKey(profile.id, now)))
+        .endOf(step, now);
+    final startsAt = step.startsOn(now);
+    if (reason is RoutineStepDue) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _speakMilestone(step, now, endsAt);
+      });
+    }
 
     final released = _releasedBy;
     if (released != null) {
@@ -413,8 +497,8 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
             body: SafeArea(
               child: _ReleasedNotice(
                 step: step,
-                mark: released.mark,
-                approved: released.approved,
+                kind: released.kind,
+                byName: released.byName,
                 filipino: ref.watch(settingsProvider).locale == 'fil',
               ),
             ),
@@ -524,6 +608,40 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
               : _TimePill(step: step),
         ),
 
+        // ── The wait, in pictures and signs, for this learner ──
+        if (_waitCues.showTimer && startsAt != null && endsAt != null) ...[
+          const SizedBox(height: 16),
+          Center(
+            child: RoutineTimeTimer(
+              start: startsAt,
+              end: endsAt,
+              now: now,
+              size: _waitCues.timerSize,
+              emoji: '⏳',
+            ),
+          ),
+        ],
+        if (_waitCues.firstThen && !isCheckIn) ...[
+          const SizedBox(height: 14),
+          _FirstThenCard(
+            first: step,
+            then: _stepAfter(step),
+            filipino: l,
+          ),
+        ],
+        if (_hasWaitSigns ?? false) ...[
+          const SizedBox(height: 12),
+          Center(
+            child: OutlinedButton.icon(
+              onPressed: () => _showWaitSigns(profile.id),
+              icon: const Icon(Icons.sign_language_rounded),
+              label: Text(
+                l ? 'Pakiusap, kalmado · FSL' : 'Please, calm · FSL',
+              ),
+            ),
+          ),
+        ],
+
         // ── How to do it. Always expanded here: the learner is being held
         //    on this screen precisely so they can follow it.
         if (instructions.isNotEmpty && !isCheckIn) ...[
@@ -574,7 +692,12 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _UnlockCountdown(step: step, now: now, filipino: l),
+          _UnlockCountdown(
+            step: step,
+            now: now,
+            filipino: l,
+            endsAt: endsAt,
+          ),
           if (isCheckIn) ...[
             const SizedBox(height: 8),
             SizedBox(
@@ -628,6 +751,20 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     );
   }
 
+  /// The step that comes after [step] today and is still ahead — what the
+  /// First / Then card names — or null when [step] is the last.
+  RoutineStep? _stepAfter(RoutineStep step) {
+    final today = ref.watch(todayRoutineProvider);
+    final index = today.steps.indexWhere((s) => s.id == step.id);
+    if (index < 0) return null;
+    for (final s in today.steps.skip(index + 1)) {
+      if (today.log?.isDone(s.id) ?? false) continue;
+      if (today.excusedIds.contains(s.id)) continue;
+      return s;
+    }
+    return null;
+  }
+
   /// The slow border pulse for learners who cannot hear the chime. Wrapped
   /// rather than painted into the body so the body stays a plain scrollable.
   Widget _pulseBorder(Widget child) {
@@ -651,6 +788,104 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     );
   }
 }
+
+/// "First: brushing teeth. Then: breakfast." — the visual support a
+/// learner with a cognitive disability already uses in class, so the wait
+/// has an after.
+class _FirstThenCard extends StatelessWidget {
+  const _FirstThenCard({
+    required this.first,
+    required this.then,
+    required this.filipino,
+  });
+
+  final RoutineStep first;
+  final RoutineStep? then;
+  final bool filipino;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final l = filipino;
+    final firstTitle = RoutineCatalog.titleFor(first, filipino: l);
+    final next = then;
+    final thenTitle = next == null
+        ? (l ? 'Malayang oras' : 'Free time')
+        : RoutineCatalog.titleFor(next, filipino: l);
+    final thenEmoji = next == null ? '🎉' : RoutineCatalog.emojiFor(next);
+
+    Widget tile(String label, String emoji, String title, bool now) =>
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: now
+                  ? hc.primary.withValues(alpha: hc.hc ? 0.28 : 0.14)
+                  : hc.surface.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: now ? hc.primary : hc.border,
+                width: now ? 2 : 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  label,
+                  style: AppTypography.labelLarge.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: hc.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  emoji,
+                  style: const TextStyle(fontSize: 40, height: 1.1),
+                  textScaler: const TextScaler.linear(1.0),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: hc.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+    final firstLabel = l ? 'Una' : 'First';
+    final thenLabel = l ? 'Pagkatapos' : 'Then';
+    return Semantics(
+      container: true,
+      label: '$firstLabel: $firstTitle. $thenLabel: $thenTitle.',
+      child: ExcludeSemantics(
+        child: Row(
+          children: [
+            tile(firstLabel, RoutineCatalog.emojiFor(first), firstTitle, true),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Icon(
+                Icons.arrow_forward_rounded,
+                color: hc.textSecondary,
+                size: 28,
+              ),
+            ),
+            tile(thenLabel, thenEmoji, thenTitle, false),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Which adult action lifted a routine lock from another device.
+enum RoutineReleaseKind { approved, excused, paused }
 
 /// "6:45 AM" — the step's own time, so the learner is told *why* now.
 class _TimePill extends StatelessWidget {
@@ -786,14 +1021,14 @@ class _SwitchAccountBar extends StatelessWidget {
 class _ReleasedNotice extends StatelessWidget {
   const _ReleasedNotice({
     required this.step,
-    required this.mark,
-    required this.approved,
+    required this.kind,
+    required this.byName,
     required this.filipino,
   });
 
   final RoutineStep step;
-  final RoutineStepMark mark;
-  final bool approved;
+  final RoutineReleaseKind kind;
+  final String byName;
   final bool filipino;
 
   @override
@@ -801,8 +1036,20 @@ class _ReleasedNotice extends StatelessWidget {
     final hc = HCColor.of(context);
     final l = filipino;
     final title = RoutineCatalog.titleFor(step, filipino: l);
-    final name = mark.byName;
-    final message = approved
+    final name = byName;
+    final approved = kind == RoutineReleaseKind.approved;
+    final message = kind == RoutineReleaseKind.paused
+        ? (name.isEmpty
+            ? (l
+                ? 'Pinahinto sandali ng iyong guro o magulang ang $title. '
+                    'Maaari kang magpahinga.'
+                : 'Your teacher or parent paused $title. You can take a '
+                    'break.')
+            : (l
+                ? 'Pinahinto sandali ni $name ang $title. Maaari kang '
+                    'magpahinga.'
+                : '$name paused $title. You can take a break.'))
+        : approved
         ? (name.isEmpty
             ? (l
                 ? 'Tinapos nang maaga ng iyong guro o magulang ang $title.'
@@ -832,7 +1079,11 @@ class _ReleasedNotice extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  approved ? '✅' : '👍',
+                  switch (kind) {
+                    RoutineReleaseKind.approved => '✅',
+                    RoutineReleaseKind.excused => '👍',
+                    RoutineReleaseKind.paused => '⏸️',
+                  },
                   style: const TextStyle(fontSize: 72),
                   textScaler: const TextScaler.linear(1.0),
                 ),
@@ -872,24 +1123,29 @@ class _UnlockCountdown extends StatelessWidget {
     required this.step,
     required this.now,
     required this.filipino,
+    this.endsAt,
   });
 
   final RoutineStep step;
   final DateTime now;
   final bool filipino;
 
+  /// The end as it stands today — later than planned when an adult added
+  /// time. Null means the planned end.
+  final DateTime? endsAt;
+
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final l = filipino;
     final start = step.startsOn(now) ?? now;
-    final end = step.endsOn(now) ?? now;
+    final end = endsAt ?? step.endsOn(now) ?? now;
     final total = end.difference(start).inSeconds;
     final left = end.difference(now);
     final leftMinutes = left.isNegative ? 0 : (left.inSeconds / 60).ceil();
     final double fraction =
         total <= 0 ? 1.0 : (1 - left.inSeconds / total).clamp(0.0, 1.0);
-    final until = formatStepEnd(step);
+    final until = formatStepEnd(step, end: end);
     final headline = l
         ? 'Pakihintay. Magtatapos sa $until.'
         : 'Please wait. This ends at $until.';

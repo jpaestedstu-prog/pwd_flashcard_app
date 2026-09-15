@@ -13,6 +13,7 @@ import '../models/routine_catalog.dart';
 import '../models/routine_history.dart';
 import '../models/routine_models.dart';
 import '../widgets/routine_lock_log.dart';
+import '../widgets/routine_wait_report_section.dart';
 
 /// What actually happened, day by day.
 ///
@@ -87,6 +88,11 @@ class RoutineHistoryScreen extends ConsumerWidget {
                       ),
                       // A day can have lock activity and no ticks — a step
                       // that was excused is exactly that day.
+                      RoutineWaitReportSection(
+                        profileId: childProfileId,
+                        filipino: l,
+                      ),
+                      const SizedBox(height: 16),
                       RoutineLockLogSection(
                         profileId: childProfileId,
                         filipino: l,
@@ -118,6 +124,11 @@ class RoutineHistoryScreen extends ConsumerWidget {
                         _StallRow(entry: s, filipino: l),
                     ] else
                       _AllSteady(filipino: l, learnerNoun: learnerNoun),
+                    const SizedBox(height: 16),
+                    RoutineWaitReportSection(
+                      profileId: childProfileId,
+                      filipino: l,
+                    ),
                     const SizedBox(height: 16),
                     RoutineLockLogSection(
                       profileId: childProfileId,

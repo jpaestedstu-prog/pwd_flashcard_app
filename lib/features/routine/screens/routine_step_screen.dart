@@ -224,11 +224,14 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
     // own while the learner is looking at the step.
     final now =
         ref.watch(wallClockTickerProvider).valueOrNull ?? DateTime.now();
+    final endsAt = view.endOf(_step, now);
     final moment = routineStepMoment(
       _step,
       now: now,
       done: done,
       excused: view.isExcused(_step.id),
+      endsAt: endsAt,
+      paused: view.isPaused(_step.id),
     );
 
     return AnimatedGradientBackground(
@@ -399,7 +402,12 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
 
               const SizedBox(height: 20),
               if (!widget.canTick)
-                _WhenPanel(step: _step, moment: moment, filipino: l)
+                _WhenPanel(
+                  step: _step,
+                  moment: moment,
+                  filipino: l,
+                  endsAt: endsAt,
+                )
               else if (!widget.readOnly)
                 SizedBox(
                   height: 60,
@@ -847,19 +855,31 @@ class _WhenPanel extends StatelessWidget {
     required this.step,
     required this.moment,
     required this.filipino,
+    this.endsAt,
   });
 
   final RoutineStep step;
   final RoutineStepMoment moment;
   final bool filipino;
 
+  /// The step's end as it stands today; null means its planned end.
+  final DateTime? endsAt;
+
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final l = filipino;
     final start = formatStepTime(step);
-    final end = formatStepEnd(step);
+    final end = formatStepEnd(step, end: endsAt);
     final (IconData icon, String text) = switch (moment) {
+      RoutineStepMoment.paused => (
+          Icons.pause_circle_rounded,
+          l
+              ? 'Nakahinto ito sandali. Ang iyong guro o magulang ay magpapatuloy '
+                  'dito.'
+              : 'This is paused for now. Your teacher or parent will start it '
+                  'again.',
+        ),
       RoutineStepMoment.now => (
           Icons.play_circle_rounded,
           l ? 'Ito ay ngayon, hanggang $end.' : 'This is happening now, until $end.',

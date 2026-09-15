@@ -16,6 +16,7 @@ import '../../routine/models/routine_models.dart';
 import '../../routine/models/routine_presentation.dart';
 import '../../routine/providers/today_routine_provider.dart';
 import '../../routine/services/routine_completion_flow.dart';
+import '../../routine/widgets/routine_time_timer.dart';
 
 /// One of the two "Today" cards on a learner's home: a full-width card
 /// holding a single pane, directly under the stats banner.
@@ -346,7 +347,10 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
     // card says what is on now rather than what is "done".
     final clock = ref.watch(routineRunsOnClockProvider);
     final current = clock ? today.currentStep(now) : null;
-    final next = current ?? today.nextStep;
+    // A step an adult paused is still today's step: it shows, frozen.
+    final paused = clock && current == null ? today.pausedStep(now) : null;
+    final onNow = current ?? paused;
+    final next = onNow ?? today.nextStep;
     // A step can only be late when the learner is the one who finishes it.
     final overdue = !clock && today.isOverdue(now);
     // Today's answer to one of My Day's own questions (a step, a scheduled
@@ -404,19 +408,62 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
         routineMood,
         clock: clock,
         current: current,
+        paused: paused,
+        now: now,
       ),
       action: next == null
           ? null
-          : _NextStepRow(
-              step: next,
-              isFilipino: isFilipino,
-              overdue: overdue,
-              busy: _ticking,
-              // A Student or Child has nothing to press: the row only says
-              // what is on now, or next.
-              onDone: clock ? null : () => _done(today, next),
-              isNow: current != null,
-            ),
+          : _dayAction(today, next, onNow, now, isFilipino, overdue, clock),
+    );
+  }
+
+  /// The next or current step, and — for a Student's or Child's step that
+  /// is on now — a picture of its time running out.
+  Widget _dayAction(
+    TodayRoutine today,
+    RoutineStep next,
+    RoutineStep? onNow,
+    DateTime now,
+    bool isFilipino,
+    bool overdue,
+    bool clock,
+  ) {
+    final isPaused = onNow != null && today.isPaused(onNow.id);
+    final endsAt = onNow == null ? null : today.endOf(onNow, now);
+    final row = _NextStepRow(
+      step: next,
+      isFilipino: isFilipino,
+      overdue: overdue,
+      busy: _ticking,
+      // A Student or Child has nothing to press: the row only says what is
+      // on now, or next.
+      onDone: clock ? null : () => _done(today, next),
+      isNow: onNow != null,
+      paused: isPaused,
+      endsAt: endsAt,
+    );
+    final start = onNow?.startsOn(now);
+    if (onNow == null || start == null || endsAt == null) return row;
+    // Bigger for the learners whose day is shown one step at a time: the
+    // picture is doing the telling there.
+    final big = ref.watch(routinePresentationProvider).showOnlyNextStep;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: RoutineNowCountdown(
+            start: start,
+            end: endsAt,
+            now: now,
+            filipino: isFilipino,
+            emoji: RoutineCatalog.emojiFor(onNow),
+            paused: isPaused,
+            timerSize: big ? 104 : 76,
+          ),
+        ),
+        row,
+      ],
     );
   }
 
@@ -427,6 +474,8 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
     MoodEntry? routineMood, {
     bool clock = false,
     RoutineStep? current,
+    RoutineStep? paused,
+    DateTime? now,
   }) {
     if (today.isEmpty) {
       return today.hasEducator
@@ -458,8 +507,18 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
     }
     if (current != null) {
       final title = RoutineCatalog.titleFor(current, filipino: isFilipino);
-      return 'My Day. Now: $title, until ${formatStepEnd(current)}.'
-          '$streak$mood Open your day.';
+      final at = now ?? DateTime.now();
+      final end = today.endOf(current, at);
+      final left = end == null
+          ? ''
+          : ' ${RoutineNowCountdown.leftLabel(end: end, now: at, filipino: false)}.';
+      return 'My Day. Now: $title, until ${formatStepEnd(current, end: end)}.'
+          '$left$streak$mood Open your day.';
+    }
+    if (paused != null) {
+      final title = RoutineCatalog.titleFor(paused, filipino: isFilipino);
+      return 'My Day. Paused: $title. Your teacher or parent will start it '
+          'again.$streak$mood Open your day.';
     }
     final next = today.nextStep!;
     final title = RoutineCatalog.titleFor(next, filipino: isFilipino);
@@ -481,6 +540,8 @@ class _NextStepRow extends StatelessWidget {
     required this.busy,
     required this.onDone,
     this.isNow = false,
+    this.paused = false,
+    this.endsAt,
   });
 
   final RoutineStep step;
@@ -493,6 +554,12 @@ class _NextStepRow extends StatelessWidget {
 
   /// The step's time is running now (a Student's or Child's current step).
   final bool isNow;
+
+  /// An adult paused the step that is on now.
+  final bool paused;
+
+  /// The step's end as it stands today; null means its planned end.
+  final DateTime? endsAt;
 
   @override
   Widget build(BuildContext context) {
@@ -522,10 +589,12 @@ class _NextStepRow extends StatelessWidget {
               ],
               Flexible(
                 child: Text(
-                  isNow
+                  isNow && paused
+                      ? '${isFilipino ? 'Nakahinto' : 'Paused'}: $title'
+                      : isNow
                       ? '${isFilipino ? 'Ngayon' : 'Now'}: $title · '
                             '${isFilipino ? 'hanggang' : 'until'} '
-                            '${formatStepEnd(step)}'
+                            '${formatStepEnd(step, end: endsAt)}'
                       : step.isScheduled
                       ? '${isFilipino ? 'Susunod' : 'Next'}: $title · '
                             '${_clock(step)}'

@@ -404,6 +404,12 @@ class FlashLearnApp extends ConsumerWidget {
     ref.listen(profileProvider, (_, next) {
       applyLifecycle(next);
       applyRoutineLifecycle();
+      // A Teacher's or Parent's start/end alerts are theirs: once a learner
+      // (or nobody) is signed in on this device they must not keep arriving.
+      // The dashboard re-plans them when an educator is back.
+      if (next == null || !next.role.isEducator) {
+        unawaited(RoutineReminderScheduler.cancelEducatorAlerts());
+      }
     });
     // A Player turning My Day off has to cancel the pending notifications it
     // already scheduled, or the feature they switched off keeps tapping them

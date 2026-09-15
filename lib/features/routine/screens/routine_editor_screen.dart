@@ -406,6 +406,18 @@ class RoutineEditorScreen extends ConsumerWidget {
   }
 }
 
+/// "1 h 5 min" / "1 oras 5 minuto" — a template's total length.
+String formatTemplateLength(int minutes, {required bool filipino}) {
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  if (filipino) {
+    if (h == 0) return '$m minuto';
+    return m == 0 ? '$h oras' : '$h oras $m minuto';
+  }
+  if (h == 0) return '$m min';
+  return m == 0 ? '$h h' : '$h h $m min';
+}
+
 /// What the "new routine" sheet returns: a template id, or null for a blank
 /// routine the educator will fill in themselves.
 class _CreateChoice {
@@ -573,11 +585,26 @@ class _TemplateTile extends StatelessWidget {
                     Text(
                       filipino
                           ? '${template.activities.length} hakbang · '
+                              '${formatTemplateLength(template.totalMinutes, filipino: true)} · '
                               '${formatDays(template.daysOfWeek, filipino: true)}'
                           : '${template.activities.length} steps · '
+                              '${formatTemplateLength(template.totalMinutes, filipino: false)} · '
                               '${formatDays(template.daysOfWeek, filipino: false)}',
                       style: AppTypography.labelSmall
                           .copyWith(color: hc.textHint),
+                    ),
+                    const SizedBox(height: 4),
+                    // Each step's length, so an educator sees what a lock
+                    // would hold before they pick the template.
+                    Text(
+                      [
+                        for (final a in template.activities)
+                          '${RoutineCatalog.infoFor(a).emoji} '
+                              '${template.lengthOf(a)}',
+                      ].join('  ·  ') +
+                          (filipino ? ' minuto' : ' min'),
+                      style: AppTypography.labelSmall
+                          .copyWith(color: hc.textSecondary),
                     ),
                   ],
                 ),

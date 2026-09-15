@@ -91,110 +91,113 @@ class FirestoreRepository implements DataRepository {
 
   @override
   Future<void> deleteProfile(String profileId) async {
-    // Cascade: every per-profile collection / document is removed so the
-    // delete is a true "this profile no longer exists anywhere" operation.
-    // Subcollections (achievements/items, shop_purchases/items) need their
-    // documents enumerated and deleted in a batch.
-    final batch = _db.batch();
+    // Every per-profile document goes, so a delete means "this profile no
+    // longer exists anywhere". Two rules shape how:
+    //
+    //  * **One refusal must not undo the rest.** This used to be one batch,
+    //    and the batch also deleted documents that did not exist — a
+    //    learner's daily-challenge or tutorial flag they never set. The rules
+    //    for those read `resource.data.owner_uid`, a delete of a missing
+    //    document is refused, and the refusal rolled back the whole batch:
+    //    the profile and its class memberships stayed in the cloud, which is
+    //    how a learner deleted on a tablet kept appearing in their teacher's
+    //    roster. Each delete now stands alone, and a document is only deleted
+    //    when it exists.
+    //  * **Memberships first, the profile last.** The rules let a profile's
+    //    owner remove its own class and family-group rows only while the
+    //    profile document still exists (`ownsProfile` reads it).
+    var profileGone = false;
+    Object? firstFailure;
 
-    // Owner-scoped top-level docs keyed by profile id.
-    batch.delete(_db.collection('profiles').doc(profileId));
-    batch.delete(_db.collection('progress').doc(profileId));
-    batch.delete(_db.collection('app_state').doc('tutorial_seen_$profileId'));
-    batch.delete(_db.collection('app_state').doc('daily_challenge_$profileId'));
-    batch.delete(_db.collection('app_state').doc('daily_streak_$profileId'));
-
-    // Equipped-item docs are keyed `${profileId}_${type}`. We don't know
-    // every type up-front, so query by profile_id and delete what we find.
-    final equipped = await _db
-        .collection('shop_equipped')
-        .where('profile_id', isEqualTo: profileId)
-        .get();
-    for (final d in equipped.docs) {
-      batch.delete(d.reference);
+    Future<void> attempt(Future<void> Function() op) async {
+      try {
+        await op();
+      } catch (e, stack) {
+        firstFailure ??= e;
+        ErrorHandler.report(e, stack, 'FirestoreRepository.deleteProfile:silent');
+      }
     }
 
-    // Drop classroom membership rows for this profile.
-    final memberships = await _db
-        .collection('classroom_members')
-        .where('profile_id', isEqualTo: profileId)
-        .get();
-    for (final d in memberships.docs) {
-      batch.delete(d.reference);
-    }
+    Future<void> deleteMatching(String collection, String field) =>
+        attempt(() async {
+          final snap = await _db
+              .collection(collection)
+              .where(field, isEqualTo: profileId)
+              .get();
+          for (final d in snap.docs) {
+            await attempt(() => d.reference.delete());
+          }
+        });
 
+    Future<void> deleteIfPresent(DocumentReference<Map<String, dynamic>> ref) =>
+        attempt(() async {
+          final doc = await ref.get();
+          if (doc.exists) await ref.delete();
+        });
+
+    Future<void> deleteItems(String collection) => attempt(() async {
+          final items = await _db
+              .collection(collection)
+              .doc(profileId)
+              .collection('items')
+              .get();
+          for (final d in items.docs) {
+            await attempt(() => d.reference.delete());
+          }
+        });
+
+    // 1. The rows that put this learner in a class or a family group.
+    await deleteMatching('classroom_members', 'profile_id');
+    await deleteMatching('home_group_members', 'profile_id');
+
+    // 2. Everything else keyed to the profile.
+    await deleteMatching('shop_equipped', 'profile_id');
     // Assessment module (see AssessmentCloudService): the templates and
     // assignments this profile authored as an educator, and the results it
-    // submitted as a learner. Without this a deleted profile left orphan docs
-    // that nothing could ever read or clean up.
-    final authored = await _db
-        .collection('assessments')
-        .where('created_by_profile_id', isEqualTo: profileId)
-        .get();
-    for (final d in authored.docs) {
-      batch.delete(d.reference);
-    }
-    final assigned = await _db
-        .collection('assessment_assignments')
-        .where('assignedBy', isEqualTo: profileId)
-        .get();
-    for (final d in assigned.docs) {
-      batch.delete(d.reference);
-    }
-    final results = await _db
-        .collection('assessment_results')
-        .where('profileId', isEqualTo: profileId)
-        .get();
-    for (final d in results.docs) {
-      batch.delete(d.reference);
-    }
-
-    await batch.commit();
-
+    // submitted as a learner.
+    await deleteMatching('assessments', 'created_by_profile_id');
+    await deleteMatching('assessment_assignments', 'assignedBy');
+    await deleteMatching('assessment_results', 'profileId');
     // Other educators' assignments that named this profile keep existing, but
     // must stop naming it — otherwise every one of their tracking views shows
-    // a row that is permanently "Unknown · Pending". Not batched with the
-    // above: the rules pin these writes to the *assigning* educator, so they
-    // are attempted separately and a refusal must not roll back the delete.
-    try {
+    // a row that is permanently "Unknown · Pending". The rules pin these
+    // writes to the assigning educator, so a refusal here is expected on a
+    // shared project and must not stop the delete.
+    await attempt(() async {
       final naming = await _db
           .collection('assessment_assignments')
           .where('studentIds', arrayContains: profileId)
           .get();
       for (final d in naming.docs) {
-        await d.reference.update({
-          'studentIds': FieldValue.arrayRemove([profileId]),
-        });
+        await attempt(() => d.reference.update({
+              'studentIds': FieldValue.arrayRemove([profileId]),
+            }));
       }
-    } catch (e, stack) {
-      ErrorHandler.report(e, stack, 'FirestoreRepository.deleteProfile');
+    });
+    await deleteItems('achievements');
+    await deleteItems('shop_purchases');
+    await deleteIfPresent(_db.collection('progress').doc(profileId));
+    for (final key in [
+      'tutorial_seen_$profileId',
+      'daily_challenge_$profileId',
+      'daily_streak_$profileId',
+    ]) {
+      await deleteIfPresent(_db.collection('app_state').doc(key));
     }
 
-    // Subcollections need their own per-doc deletes.
-    final achievements = await _db
-        .collection('achievements')
-        .doc(profileId)
-        .collection('items')
-        .get();
-    if (achievements.docs.isNotEmpty) {
-      final aBatch = _db.batch();
-      for (final d in achievements.docs) {
-        aBatch.delete(d.reference);
-      }
-      await aBatch.commit();
-    }
+    // 3. The profile itself, last.
+    await attempt(() async {
+      final ref = _db.collection('profiles').doc(profileId);
+      final doc = await ref.get();
+      if (doc.exists) await ref.delete();
+      profileGone = true;
+    });
 
-    final purchases = await _db
-        .collection('shop_purchases')
-        .doc(profileId)
-        .collection('items')
-        .get();
-    if (purchases.docs.isNotEmpty) {
-      final pBatch = _db.batch();
-      for (final d in purchases.docs) {
-        pBatch.delete(d.reference);
-      }
-      await pBatch.commit();
+    // The profile still being there is the failure that matters — it keeps
+    // the learner listed and recoverable — so that one is surfaced for a
+    // retry. A stray document that could not be removed is only reported.
+    if (!profileGone) {
+      throw firstFailure ?? StateError('Profile $profileId was not deleted');
     }
   }
 

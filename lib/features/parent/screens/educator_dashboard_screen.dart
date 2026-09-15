@@ -17,6 +17,7 @@ import '../../mood_tracker/models/mood_context.dart';
 import '../../mood_tracker/models/mood_models.dart';
 import '../../mood_tracker/models/mood_summary.dart';
 import '../../notifications/services/alert_service.dart';
+import '../../routine/widgets/educator_routine_alerts.dart';
 import '../../routine/widgets/educator_routine_section.dart';
 import '../models/educator_audience.dart';
 import '../services/educator_recommendations.dart';
@@ -102,6 +103,20 @@ class _EducatorDashboardScreenState
           ),
         ),
         actions: [
+          // Renders nothing: keeps this device's routine start and end alerts
+          // in step with the learners' days while the dashboard is open. In the
+          // app bar because it is always built, unlike the lazy list below.
+          EducatorRoutineAlertSync(
+            learners: [
+              for (final c in snapshot.children)
+                EducatorRoutineLearner(
+                  profileId: c.profileId,
+                  name: c.name,
+                  avatarEmoji: c.avatarEmoji,
+                  accessibility: c.disabilityType,
+                ),
+            ],
+          ),
           // Alert bell with unread badge
           Stack(
             alignment: Alignment.center,

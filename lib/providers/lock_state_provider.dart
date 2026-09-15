@@ -91,6 +91,8 @@ final lockStateProvider =
   var routineSteps = const <RoutineStep>[];
   var completed = const <String>{};
   var skipped = const <String>{};
+  var ends = const <String, DateTime>{};
+  var paused = const <String>{};
   if (canBeLockedByRoutine(ref.watch(profileRoleProvider(childProfileId)))) {
     final today = DateTime(now.year, now.month, now.day);
     final routines =
@@ -121,6 +123,9 @@ final lockStateProvider =
         final view = ref.watch(routineDayViewProvider(key));
         completed = view.doneIds;
         skipped = view.excusedIds;
+        // An adult's pause lifts the lock; time they added keeps it longer.
+        ends = view.movedEnds(routineSteps, now);
+        paused = view.pausedIds;
       }
     }
   }
@@ -133,6 +138,8 @@ final lockStateProvider =
     routineSteps: routineSteps,
     completedStepIds: completed,
     skippedStepIds: skipped,
+    routineStepEnds: ends,
+    pausedStepIds: paused,
   );
 });
 

@@ -40,6 +40,10 @@ class RoutineStepCard extends StatelessWidget {
   /// Where the step stands on the clock. Only shown when [canTick] is false.
   final RoutineStepMoment moment;
 
+  /// The step's end as it stands today, when an adult added time or paused
+  /// it. Null means its planned end.
+  final DateTime? endsAt;
+
   const RoutineStepCard({
     super.key,
     required this.step,
@@ -52,6 +56,7 @@ class RoutineStepCard extends StatelessWidget {
     required this.onOpen,
     this.canTick = true,
     this.moment = RoutineStepMoment.upcoming,
+    this.endsAt,
   });
 
   @override
@@ -64,7 +69,7 @@ class RoutineStepCard extends StatelessWidget {
     final over = canTick ? done : moment == RoutineStepMoment.earlier;
     final momentLabel = canTick
         ? ''
-        : routineMomentLabel(step, moment, filipino: filipino);
+        : routineMomentLabel(step, moment, filipino: filipino, endsAt: endsAt);
 
     final timeLabel = step.isScheduled
         ? formatStepTime(step)
@@ -74,7 +79,7 @@ class RoutineStepCard extends StatelessWidget {
         ? (done
             ? (filipino ? 'tapos na' : 'done')
             : (filipino ? 'hindi pa tapos' : 'not done yet'))
-        : routineMomentSpoken(step, moment, filipino: filipino);
+        : routineMomentSpoken(step, moment, filipino: filipino, endsAt: endsAt);
 
     return Semantics(
       container: true,
@@ -149,6 +154,8 @@ class RoutineStepCard extends StatelessWidget {
                                         Icons.play_circle_rounded,
                                       RoutineStepMoment.earlier =>
                                         Icons.check_circle_rounded,
+                                      RoutineStepMoment.paused =>
+                                        Icons.pause_circle_rounded,
                                       _ => Icons.do_not_disturb_on_rounded,
                                     },
                                     label: momentLabel,

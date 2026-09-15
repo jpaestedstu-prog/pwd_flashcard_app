@@ -75,12 +75,19 @@ class RoutineLearnerLockStatus extends ConsumerWidget {
     final l = filipino;
     final children = <Widget>[];
     final current = summary.current;
+    final paused = summary.paused;
     final upcoming = summary.upcoming;
     if (current != null) {
       children.add(_HoldingBanner(
         status: current,
         filipino: l,
         actions: actionsFor?.call(context, current),
+      ));
+    } else if (paused != null) {
+      children.add(_HoldingBanner(
+        status: paused,
+        filipino: l,
+        actions: actionsFor?.call(context, paused),
       ));
     } else if (upcoming != null) {
       final title = RoutineCatalog.titleFor(upcoming.step, filipino: l);
@@ -178,20 +185,35 @@ class _HoldingBanner extends StatelessWidget {
     final until = formatClockTime(status.endsAt);
     final left = status.minutesLeft;
 
-    final headline = l ? 'Naka-lock sa $title' : 'Locked on $title';
+    final paused = status.isPaused;
+    final added = status.addedMinutes;
+    final headline = paused
+        ? (l ? 'Nakahinto: $title' : 'Paused: $title')
+        : (l ? 'Naka-lock sa $title' : 'Locked on $title');
+    final addedNote =
+        added > 0 ? (l ? ' · +$added minutong idinagdag' : ' · +$added min added') : '';
     // The lock lets go by itself at [until]: say when, and how long is left,
-    // so an educator can tell whether finishing it early is worth doing.
-    final detail = l
-        ? '$since–$until · $left minuto natitira'
-        : '$since–$until · $left min left';
-    final device = status.lockShownAt != null
+    // so an educator can tell whether finishing it early is worth doing. A
+    // paused step's clock is stopped, so it says what is left for later.
+    final detail = paused
         ? (l
-            ? 'Nakabukas ang lock sa kanilang device.'
-            : 'The lock is showing on their device.')
+            ? '$left minuto natitira kapag ipagpatuloy$addedNote'
+            : '$left min left when you resume it$addedNote')
         : (l
-            ? 'Hindi pa ipinapakita ng kanilang device ang lock — maaaring '
-                'nakapatay ito.'
-            : "Their device hasn't shown the lock yet — it may be off.");
+            ? '$since–$until · $left minuto natitira$addedNote'
+            : '$since–$until · $left min left$addedNote');
+    final device = paused
+        ? (l
+            ? 'Nakaalis ang lock sa kanilang device hanggang ipagpatuloy.'
+            : 'The lock is lifted on their device until you resume it.')
+        : status.lockShownAt != null
+            ? (l
+                ? 'Nakabukas ang lock sa kanilang device.'
+                : 'The lock is showing on their device.')
+            : (l
+                ? 'Hindi pa ipinapakita ng kanilang device ang lock — maaaring '
+                    'nakapatay ito.'
+                : "Their device hasn't shown the lock yet — it may be off.");
 
     return Semantics(
       container: true,

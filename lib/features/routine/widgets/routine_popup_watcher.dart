@@ -132,15 +132,16 @@ class _RoutinePopupWatcherState extends ConsumerState<RoutinePopupWatcher> {
       log: today.log,
       now: now,
       snoozedUntil: _snoozedUntil,
-      // A step an adult excused on the routine lock is excused here too.
-      skippedStepIds: today.excusedIds,
+      // A step an adult excused on the routine lock is excused here too, and
+      // so is one an adult paused: nothing is announced until they resume it.
+      skippedStepIds: {...today.excusedIds, ...today.pausedIds},
       // …and a device an adult unlocked is left alone until the unlock ends.
       unlockedUntil: ref.watch(deviceUnlockedUntilProvider(profile.id)),
       requestedStepId: request,
     );
     // On the clock a step whose time is over is finished, not due: it is never
     // announced after the fact (it is recorded a moment later).
-    if (clock && due != null && _isOver(due, now)) due = null;
+    if (clock && due != null && _isOver(today, due, now)) due = null;
     final shown = due;
     final askAfter = clock && shown == null ? _moodDueAfter(today, now) : null;
     if ((shown == null && askAfter == null) || _showing) {
@@ -177,8 +178,11 @@ class _RoutinePopupWatcherState extends ConsumerState<RoutinePopupWatcher> {
     return const SizedBox.shrink();
   }
 
-  static bool _isOver(RoutineStep step, DateTime now) {
-    final end = step.endsOn(now);
+  /// Whether [step]'s time is over — its end as it stands today, after any
+  /// time an adult added. A paused step's clock is stopped, so it never is.
+  static bool _isOver(TodayRoutine today, RoutineStep step, DateTime now) {
+    if (today.isPaused(step.id)) return false;
+    final end = today.endOf(step, now);
     return end != null && !now.isBefore(end);
   }
 
@@ -190,7 +194,7 @@ class _RoutinePopupWatcherState extends ConsumerState<RoutinePopupWatcher> {
     if (_finishing || log == null) return;
     final ended = [
       for (final s in today.steps)
-        if (_isOver(s, now) &&
+        if (_isOver(today, s, now) &&
             !log.isDone(s.id) &&
             !today.excusedIds.contains(s.id))
           s,
@@ -220,7 +224,7 @@ class _RoutinePopupWatcherState extends ConsumerState<RoutinePopupWatcher> {
     for (final s in today.steps) {
       if (!s.asksMoodAfter || !log.isDone(s.id)) continue;
       if (_askedAfter.contains(s.id)) continue;
-      final finishedAt = log.completedAt[s.id] ?? s.endsOn(now);
+      final finishedAt = log.completedAt[s.id] ?? today.endOf(s, now);
       if (finishedAt == null ||
           now.difference(finishedAt) > RoutinePopupSchedule.taskFreshness) {
         continue;
@@ -261,8 +265,8 @@ class _RoutinePopupWatcherState extends ConsumerState<RoutinePopupWatcher> {
       // Seen, which is all the pop-up asks of a Student or Child: not raised
       // again before the step's time is over. A check-in's answer, if given,
       // is already recorded.
-      _snoozedUntil[step.id] =
-          step.endsOn(at) ?? at.add(RoutinePopupSchedule.snoozeFor);
+      _snoozedUntil[step.id] = ref.read(todayRoutineProvider).endOf(step, at) ??
+          at.add(RoutinePopupSchedule.snoozeFor);
     } else if (did) {
       await RoutineStepAction.toggle(
         ref: ref,

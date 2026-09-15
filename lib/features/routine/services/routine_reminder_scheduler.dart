@@ -8,6 +8,7 @@ import '../../../core/services/device_timezone.dart';
 import '../../../core/services/notification_schedule_mode.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
+import '../models/educator_step_alerts.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_day_state.dart';
 import '../models/routine_models.dart';
@@ -511,6 +512,109 @@ class RoutineReminderScheduler {
         ),
       );
     } catch (_) {}
+  }
+
+  // ── Educator start / end alerts ──
+
+  static const _educatorChannelId = 'routine_educator_alerts';
+  static const _educatorChannelName = 'Routine Start & End Alerts';
+
+  /// Alerts sit at 3,000,000 – 3,099,999: clear of the reminders
+  /// (1,000,000+) and the help alerts (2,000,000+), so neither side's
+  /// cancel-everything ever touches the other.
+  static bool isEducatorAlertId(int id) => id >= 3000000 && id < 3100000;
+
+  /// The plan last scheduled, so an unchanged re-plan costs nothing.
+  static String _educatorPlanKey = '';
+
+  static const NotificationDetails _educatorDetails = NotificationDetails(
+    android: AndroidNotificationDetails(
+      _educatorChannelId,
+      _educatorChannelName,
+      channelDescription:
+          'When a learner’s routine step starts and when it ends.',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    ),
+    iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+  );
+
+  /// Replaces this device's pending educator alerts with [alerts].
+  ///
+  /// One-off schedules, each at its moment; an alert whose moment has passed
+  /// is skipped. Failures are swallowed — an alert that could not be
+  /// scheduled must never take the dashboard down, and the dashboard still
+  /// shows the step live.
+  static Future<void> scheduleEducatorAlerts(
+    List<EducatorStepAlert> alerts,
+  ) async {
+    final key = alerts.map((a) => a.key).join('\n');
+    if (key == _educatorPlanKey) return;
+    try {
+      await cancelEducatorAlerts(force: true);
+      if (alerts.isEmpty) {
+        _educatorPlanKey = key;
+        return;
+      }
+      final nowZoned = tz.TZDateTime.now(tz.local);
+      for (var i = 0; i < alerts.length && i < 99999; i++) {
+        final a = alerts[i];
+        final when = tz.TZDateTime.from(a.at, tz.local);
+        if (!when.isAfter(nowZoned)) continue;
+        await _plugin.zonedSchedule(
+          3000000 + i,
+          a.title,
+          a.body,
+          when,
+          _educatorDetails,
+          payload: 'educator_routine:${a.learnerId}',
+          androidScheduleMode: exactWhenAllowed(
+            canScheduleExact: _canScheduleExact,
+          ),
+        );
+      }
+      await HiveService.setEducatorAlertsPending(true);
+      _educatorPlanKey = key;
+    } catch (e) {
+      if (kDebugMode) debugPrint('EducatorRoutineAlerts: $e');
+    }
+  }
+
+  /// Posts [alert] now — a step an adult ended early, which no schedule could
+  /// have known about.
+  static Future<void> showEducatorAlertNow(EducatorStepAlert alert) async {
+    try {
+      await _initPlugin();
+      await _plugin.show(
+        3090000 + (alert.key.hashCode & 0x270F),
+        alert.title,
+        alert.body,
+        _educatorDetails,
+        payload: 'educator_routine:${alert.learnerId}',
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint('EducatorRoutineAlerts: $e');
+    }
+  }
+
+  /// Cancels every pending educator alert on this device.
+  ///
+  /// Skipped, without touching the plugin, when nothing was ever scheduled —
+  /// this runs on every profile switch, and a learner signing in must not be
+  /// the moment a notification permission prompt appears.
+  static Future<void> cancelEducatorAlerts({bool force = false}) async {
+    _educatorPlanKey = '';
+    try {
+      if (!force && !HiveService.getEducatorAlertsPending()) return;
+      await _initPlugin();
+      for (final p in await _plugin.pendingNotificationRequests()) {
+        if (isEducatorAlertId(p.id)) await _plugin.cancel(p.id);
+      }
+      await HiveService.setEducatorAlertsPending(false);
+    } catch (e) {
+      if (kDebugMode) debugPrint('EducatorRoutineAlerts: $e');
+    }
   }
 
   /// Routes a native tap or lock launch like a plugin tap. A launch for a

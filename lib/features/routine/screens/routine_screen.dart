@@ -17,6 +17,7 @@ import '../../../providers/wall_clock_provider.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/rich_empty_states.dart';
+import '../models/routine_day_state.dart';
 import '../models/routine_models.dart';
 import '../providers/today_routine_provider.dart';
 import '../models/routine_presentation.dart';
@@ -205,6 +206,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
             routines: today,
             log: log,
             excusedIds: view.excusedIds,
+            view: view,
             presentation: presentation,
             profileId: profileId,
           );
@@ -299,6 +301,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
     required List<Routine> routines,
     required RoutineDayLog log,
     required Set<String> excusedIds,
+    required RoutineDayView view,
     required RoutinePresentation presentation,
     required String profileId,
   }) {
@@ -363,11 +366,14 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
             presentation: presentation,
             hasSigns: _signable.contains(step.id),
             canTick: !clock,
+            endsAt: view.endOf(step, now),
             moment: routineStepMoment(
               step,
               now: now,
               done: log.completedStepIds.contains(step.id),
               excused: excusedIds.contains(step.id),
+              endsAt: view.endOf(step, now),
+              paused: view.isPaused(step.id),
             ),
             onToggle: widget.readOnly || clock
                 ? () {}

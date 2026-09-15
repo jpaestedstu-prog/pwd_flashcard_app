@@ -293,6 +293,28 @@ class HiveService {
     final progressBox = Hive.box(_progressBox);
     await progressBox.delete(profileId);
     await progressBox.delete('achievements_$profileId');
+    await removeMembershipsLocal(profileId);
+  }
+
+  /// Drops every class and family-group row on this device that names
+  /// [profileId] — `<groupId>:<profileId>` in both boxes.
+  ///
+  /// A deleted learner otherwise stayed on a teacher's or parent's roster on
+  /// a shared tablet, because the roster reads these rows. Tolerates either
+  /// box being closed: a profile deletes whether or not groups were ever
+  /// opened on this device.
+  static Future<void> removeMembershipsLocal(String profileId) async {
+    for (final name in [_membersBox, _homeGroupMembersBox]) {
+      if (!Hive.isBoxOpen(name)) continue;
+      final box = Hive.box(name);
+      final stale = [
+        for (final key in box.keys)
+          if (key.toString().endsWith(':$profileId')) key,
+      ];
+      for (final key in stale) {
+        await box.delete(key);
+      }
+    }
   }
 
   // ─── Settings ──────────────────────────────────────────
@@ -309,6 +331,27 @@ class HiveService {
       profileId == null
           ? _settBox.delete('schedule_owner::$kind')
           : _settBox.put('schedule_owner::$kind', profileId);
+
+  /// Which routine steps an educator is alerted about on this device, as an
+  /// `EducatorAlertMode` index, or null when they never chose.
+  static int? getRoutineAlertModeIndex(String educatorProfileId) =>
+      _settBox.get(_settKey('routineEducatorAlerts', educatorProfileId))
+          as int?;
+
+  static Future<void> setRoutineAlertModeIndex(
+    String educatorProfileId,
+    int index,
+  ) =>
+      _settBox.put(_settKey('routineEducatorAlerts', educatorProfileId), index);
+
+  /// Whether this device may have educator routine alerts pending — so a
+  /// learner signing in cancels them without waking the notification plugin
+  /// on every profile switch.
+  static bool getEducatorAlertsPending() =>
+      (_settBox.get('routineEducatorAlertsPending') as bool?) ?? false;
+
+  static Future<void> setEducatorAlertsPending(bool pending) =>
+      _settBox.put('routineEducatorAlertsPending', pending);
 
   /// Namespace a settings key to a profile, so each profile keeps its own
   /// accessibility settings. A `null` [profileId] uses the legacy unprefixed

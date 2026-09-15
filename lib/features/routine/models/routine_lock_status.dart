@@ -27,6 +27,10 @@ enum RoutineStepPhase {
   /// Its time ended with nothing recorded — the learner's device never saw it
   /// end (switched off, or the app not opened) and no adult marked it.
   lapsed,
+
+  /// Its time had started and an adult paused it: the lock is lifted and the
+  /// clock stopped until they resume it.
+  paused,
 }
 
 /// One locking step's status, with everything a screen needs to say it.
@@ -48,6 +52,9 @@ class RoutineStepLockStatus {
   final DateTime? lockShownAt;
   final DateTime? escalatedAt;
 
+  /// Time an adult added to this step today, and any pause.
+  final RoutineStepAdjustment? adjustment;
+
   const RoutineStepLockStatus({
     required this.routine,
     required this.step,
@@ -59,7 +66,13 @@ class RoutineStepLockStatus {
     this.doneAt,
     this.lockShownAt,
     this.escalatedAt,
+    this.adjustment,
   });
+
+  bool get isPaused => phase == RoutineStepPhase.paused;
+
+  /// Minutes an adult added to this step today.
+  int get addedMinutes => adjustment?.addedMinutes ?? 0;
 
   /// How long the step has been due; zero before its time.
   Duration get waitingFor {
@@ -135,6 +148,14 @@ class RoutineLockSummary {
 
   bool get isHolding => current != null;
 
+  /// The earliest started step an adult has paused, if any.
+  RoutineStepLockStatus? get paused {
+    for (final s in steps) {
+      if (s.isPaused) return s;
+    }
+    return null;
+  }
+
   List<RoutineStepLockStatus> get excused =>
       steps.where((s) => s.phase == RoutineStepPhase.excused).toList();
 
@@ -171,7 +192,9 @@ class RoutineLockSummary {
   }) {
     final dueAt =
         DateTime(now.year, now.month, now.day, step.hour ?? 0, step.minute ?? 0);
-    final endsAt = dueAt.add(Duration(minutes: step.lockMinutes));
+    // As it stands today: an adult's added time and pauses move the end.
+    final endsAt = view.endOf(step, now) ??
+        dueAt.add(Duration(minutes: step.lockMinutes));
     final id = step.id;
 
     RoutineStepPhase phase;
@@ -182,6 +205,8 @@ class RoutineLockSummary {
     } else if (view.excuse(id) != null) {
       phase = RoutineStepPhase.excused;
       mark = view.excuse(id);
+    } else if (!now.isBefore(dueAt) && view.isPaused(id)) {
+      phase = RoutineStepPhase.paused;
     } else if (now.isBefore(dueAt)) {
       final lead = step.remindMinutesBefore > 0
           ? step.remindMinutesBefore
@@ -206,6 +231,7 @@ class RoutineLockSummary {
       doneAt: view.doneAt(id),
       lockShownAt: view.lockShownAt(id),
       escalatedAt: view.escalatedAt(id),
+      adjustment: view.adjustment(id),
     );
   }
 }

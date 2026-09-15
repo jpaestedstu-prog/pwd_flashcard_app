@@ -131,6 +131,8 @@ class LockEnforcer {
     List<RoutineStep> routineSteps = const <RoutineStep>[],
     Set<String> completedStepIds = const <String>{},
     Set<String> skippedStepIds = const <String>{},
+    Map<String, DateTime> routineStepEnds = const <String, DateTime>{},
+    Set<String> pausedStepIds = const <String>{},
   }) {
     // 1. Alarm-triggered. We treat any enabled `lockScreen` alarm whose
     //    most-recent fire was within [recentAlarmFireWindow] as locking.
@@ -182,6 +184,8 @@ class LockEnforcer {
       completedStepIds: completedStepIds,
       skippedStepIds: skippedStepIds,
       now: now,
+      endsAt: routineStepEnds,
+      pausedStepIds: pausedStepIds,
     );
     if (step != null) return RoutineStepDue(step);
 
@@ -204,19 +208,26 @@ class LockEnforcer {
   /// [steps] must already be filtered to the ones that may lock (see
   /// [Routine.lockingSteps]); this function does not re-check the routine's
   /// own switch, because it never sees the routine.
+  ///
+  /// [endsAt] carries a step's end as it stands today when an adult added
+  /// time or paused it; a step missing from it ends as planned. A step in
+  /// [pausedStepIds] holds nothing until an adult resumes it.
   static RoutineStep? routineStepDue({
     required List<RoutineStep> steps,
     required Set<String> completedStepIds,
     required Set<String> skippedStepIds,
     required DateTime now,
+    Map<String, DateTime> endsAt = const <String, DateTime>{},
+    Set<String> pausedStepIds = const <String>{},
   }) {
     RoutineStep? earliest;
     for (final s in steps) {
       final start = s.startsOn(now);
-      final end = s.endsOn(now);
+      final end = endsAt[s.id] ?? s.endsOn(now);
       if (start == null || end == null) continue;
       if (completedStepIds.contains(s.id)) continue;
       if (skippedStepIds.contains(s.id)) continue;
+      if (pausedStepIds.contains(s.id)) continue;
       if (now.isBefore(start) || !now.isBefore(end)) continue;
       if (earliest == null || s.minutesOfDay! < earliest.minutesOfDay!) {
         earliest = s;

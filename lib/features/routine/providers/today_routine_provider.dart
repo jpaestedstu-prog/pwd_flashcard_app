@@ -6,6 +6,7 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/routine_provider.dart';
 import '../../../providers/wall_clock_provider.dart';
 import '../models/routine_catalog.dart';
+import '../models/routine_day_state.dart';
 import '../models/routine_history.dart';
 import '../models/routine_models.dart';
 
@@ -25,7 +26,35 @@ class TodayRoutine {
     required this.streak,
     required this.hasEducator,
     this.excusedIds = const <String>{},
+    this.view,
   });
+
+  /// The joined day, when it is known — what answers how an adult moved a
+  /// step's end (added time, a pause). Null reads as "nothing moved".
+  final RoutineDayView? view;
+
+  /// When [step]'s time ends today as of [now], after any time an adult added
+  /// or any pause.
+  DateTime? endOf(RoutineStep step, DateTime now) =>
+      view?.endOf(step, now) ?? step.endsOn(now);
+
+  /// Whether an adult has paused [stepId] and not resumed it.
+  bool isPaused(String stepId) => view?.isPaused(stepId) ?? false;
+
+  /// Steps an adult has paused.
+  Set<String> get pausedIds => view?.pausedIds ?? const <String>{};
+
+  /// The started step an adult paused, or null.
+  RoutineStep? pausedStep(DateTime now) {
+    for (final s in steps) {
+      final start = s.startsOn(now);
+      if (start == null || now.isBefore(start)) continue;
+      if (log?.isDone(s.id) ?? false) continue;
+      if (excusedIds.contains(s.id)) continue;
+      if (isPaused(s.id)) return s;
+    }
+    return null;
+  }
 
   /// Steps an adult waved past for today. Not done — the card still counts
   /// them as outstanding — but never offered as the next thing to do.
@@ -87,15 +116,16 @@ class TodayRoutine {
     return now.isAfter(due);
   }
 
-  /// The step whose time is running right now — started, not yet ended, and
-  /// neither finished nor excused — or null.
+  /// The step whose time is running right now — started, not yet ended,
+  /// neither finished nor excused, and not paused by an adult — or null.
   RoutineStep? currentStep(DateTime now) {
     for (final s in steps) {
       final start = s.startsOn(now);
-      final end = s.endsOn(now);
+      final end = endOf(s, now);
       if (start == null || end == null) continue;
       if (log?.isDone(s.id) ?? false) continue;
       if (excusedIds.contains(s.id)) continue;
+      if (isPaused(s.id)) continue;
       if (!now.isBefore(start) && now.isBefore(end)) return s;
     }
     return null;
@@ -177,6 +207,7 @@ final todayRoutineProvider = Provider<TodayRoutine>((ref) {
     steps: steps,
     log: log,
     excusedIds: view.excusedIds,
+    view: view,
     streak: history.streak(now: today),
     // A learner who belongs to a class or a family group has someone whose
     // job this is. A Player profile does not, and telling them to ask their

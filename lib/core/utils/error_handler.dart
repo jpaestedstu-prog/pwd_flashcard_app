@@ -116,6 +116,10 @@ class ErrorHandler {
     'RoutineLockRecord:silent',
     'RoutineActions:silent',
     'RoutineActionsStream:silent',
+    // One document of a profile delete that could not be removed — reported,
+    // never shown: the delete carries on, and the one refusal that matters
+    // (the profile itself) is rethrown for a retry.
+    'FirestoreRepository.deleteProfile:silent',
     'RoutineRecentDays:silent',
     // Deferred startup work (main.dart), the same class as
     // `applyLifecycle:silent`: nobody asked for it and nothing is blocked on

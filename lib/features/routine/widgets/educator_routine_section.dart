@@ -8,6 +8,7 @@ import '../../../data/models/enums.dart';
 import '../../../providers/routine_provider.dart';
 import '../../../widgets/app_card.dart';
 import '../models/routine_models.dart';
+import 'educator_routine_alerts.dart';
 import 'routine_educator_actions.dart';
 import 'routine_lock_status_line.dart';
 
@@ -68,6 +69,8 @@ class EducatorRoutineSection extends ConsumerWidget {
                   ),
                 ),
               ),
+              // Which steps start and end alerts come to this device for.
+              EducatorRoutineAlertsButton(filipino: l),
             ],
           ),
           const SizedBox(height: 4),

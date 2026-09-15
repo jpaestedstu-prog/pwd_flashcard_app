@@ -90,16 +90,38 @@ class RoutineSignLauncher {
     required RoutineStep step,
     required bool filipino,
     String? profileId,
+  }) =>
+      showCues(
+        context,
+        cues: RoutineCatalog.signCuesFor(step),
+        fallbackWord: RoutineCatalog.titleFor(step, filipino: false),
+        filipino: filipino,
+        profileId: profileId,
+      );
+
+  /// Cards for [cues] that have a clip a learner can actually watch.
+  static List<Flashcard> playableCardsFor(List<FslSignCue> cues) => [
+        for (final cue in cues)
+          if (cardFor(cue) case final card?)
+            if (FslAssetsService.hasAnyVideoSource(card)) card,
+      ];
+
+  /// Plays [cues], one sheet after another — the general form of
+  /// [showSignsFor], also used for the lock's "please wait" signs.
+  ///
+  /// [fallbackWord] names what was asked for when nothing resolves.
+  static Future<int> showCues(
+    BuildContext context, {
+    required List<FslSignCue> cues,
+    required String fallbackWord,
+    required bool filipino,
+    String? profileId,
   }) async {
     await FslAssetsService.load();
     if (!context.mounted) return 0;
 
-    final cues = RoutineCatalog.signCuesFor(step);
     if (cues.isEmpty) {
-      await showFslUnavailableSheet(
-        context,
-        wordEnglish: RoutineCatalog.titleFor(step, filipino: false),
-      );
+      await showFslUnavailableSheet(context, wordEnglish: fallbackWord);
       return 0;
     }
 
@@ -136,8 +158,7 @@ class RoutineSignLauncher {
       final first = cardFor(cues.first);
       await showFslUnavailableSheet(
         context,
-        wordEnglish: first?.wordEnglish ??
-            RoutineCatalog.titleFor(step, filipino: false),
+        wordEnglish: first?.wordEnglish ?? fallbackWord,
         // Registered-but-unreachable is the offline case; say that rather
         // than telling a Deaf learner the sign does not exist.
         unreachable:

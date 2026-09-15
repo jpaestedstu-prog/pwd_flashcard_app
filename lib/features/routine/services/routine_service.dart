@@ -290,8 +290,9 @@ class RoutineService {
     final out = <RoutineDayStep>[];
     for (final r in routines) {
       if (!r.enabled || !r.runsOn(day)) continue;
+      final locking = {for (final s in r.lockingSteps) s.id};
       for (final step in r.orderedSteps) {
-        out.add(RoutineDayStep.of(step));
+        out.add(RoutineDayStep.of(step, locks: locking.contains(step.id)));
       }
     }
     return out;
@@ -353,7 +354,14 @@ class RoutineService {
           a[i].activity != b[i].activity ||
           a[i].title != b[i].title ||
           a[i].titleFilipino != b[i].titleFilipino ||
-          a[i].emoji != b[i].emoji) {
+          a[i].emoji != b[i].emoji ||
+          // A retimed or re-locked step is a different plan for the day, and
+          // a snapshot frozen before times were recorded gets them now.
+          a[i].hasTiming != b[i].hasTiming ||
+          a[i].hour != b[i].hour ||
+          a[i].minute != b[i].minute ||
+          a[i].durationMinutes != b[i].durationMinutes ||
+          a[i].locks != b[i].locks) {
         return false;
       }
     }
@@ -414,7 +422,13 @@ class RoutineService {
     var next = HiveService.getRoutineDayLog(profileId, day);
     var changed = false;
     for (final s in steps) {
-      final end = s.endsOn(day);
+      // A paused step's clock is stopped: it cannot run out.
+      if (view.isPaused(s.id)) continue;
+      final planned = s.endsOn(day);
+      final moved = view.adjustment(s.id);
+      final end = planned == null || moved == null
+          ? planned
+          : planned.add(moved.shiftAt(now));
       if (end == null || now.isBefore(end)) continue;
       if (view.isSettled(s.id) || next.isDone(s.id)) continue;
       next = next.setDone(s.id, true, at: end);
@@ -681,6 +695,80 @@ class RoutineService {
     return _writeActions(next, {
       'approved': {stepId: mark.toJson()},
     }, by);
+  }
+
+  /// The adjustment on [stepId] as this device knows it, or a fresh one.
+  static RoutineStepAdjustment _adjustmentOf(
+    String childProfileId,
+    DateTime day,
+    String stepId,
+    DateTime at,
+  ) =>
+      viewFromCache(childProfileId, day).adjustment(stepId) ??
+      RoutineStepAdjustment(changedAt: at);
+
+  Future<CloudSyncOutcome> _writeAdjustment(
+    String childProfileId,
+    DateTime day,
+    String stepId,
+    RoutineStepAdjustment next,
+    UserProfile by,
+  ) {
+    final actions =
+        _cachedActions(childProfileId, day).withAdjustment(stepId, next);
+    return _writeActions(actions, {
+      'adjustments': {stepId: next.toJson()},
+    }, by);
+  }
+
+  /// Stops [stepId]'s clock from an educator's device: the lock lifts, and
+  /// the time left is kept for when they resume it.
+  Future<CloudSyncOutcome> pauseStep({
+    required String childProfileId,
+    required DateTime day,
+    required String stepId,
+    required UserProfile by,
+    DateTime? at,
+  }) {
+    final when = at ?? DateTime.now();
+    final next = _adjustmentOf(childProfileId, day, stepId, when)
+        .paused(at: when, byProfileId: by.id, byName: by.name);
+    return _writeAdjustment(childProfileId, day, stepId, next, by);
+  }
+
+  /// Starts a paused step's clock again: the lock comes back for the time it
+  /// had left.
+  Future<CloudSyncOutcome> resumeStep({
+    required String childProfileId,
+    required DateTime day,
+    required String stepId,
+    required UserProfile by,
+    DateTime? at,
+  }) {
+    final when = at ?? DateTime.now();
+    final next = _adjustmentOf(childProfileId, day, stepId, when)
+        .resumed(at: when, byProfileId: by.id, byName: by.name);
+    return _writeAdjustment(childProfileId, day, stepId, next, by);
+  }
+
+  /// Gives [stepId] [minutes] more before its time ends.
+  Future<CloudSyncOutcome> addStepTime({
+    required String childProfileId,
+    required DateTime day,
+    required String stepId,
+    required int minutes,
+    required UserProfile by,
+    DateTime? at,
+  }) {
+    final when = at ?? DateTime.now();
+    final next = _adjustmentOf(childProfileId, day, stepId, when)
+        .withAddedMinutes(
+      minutes,
+      at: when,
+      byProfileId: by.id,
+      byName: by.name,
+    );
+    return _writeAdjustment(childProfileId, day, stepId, next, by);
   }
 
   /// Takes back the standing excuse on [stepId], wherever it was granted.

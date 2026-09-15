@@ -7,8 +7,10 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/routine_provider.dart';
 import '../../parent/services/child_unlock_override_service.dart';
 import '../models/routine_catalog.dart';
+import '../models/routine_day_state.dart';
 import '../models/routine_lock_status.dart';
 import '../services/routine_service.dart';
+import 'routine_lock_status_line.dart' show formatClockTime;
 import 'routine_sync_feedback.dart';
 
 /// How long "Unlock" pauses every lock on a learner's device from here.
@@ -176,13 +178,121 @@ class _RoutineStepActionBarState extends ConsumerState<RoutineStepActionBar> {
     }
   }
 
+  Future<void> _pause() => _run(() async {
+        final by = ref.read(profileProvider);
+        if (by == null) return null;
+        final left = widget.status.minutesLeft;
+        final ok = await confirmRoutineAction(
+          context,
+          filipino: l,
+          title: l
+              ? 'Pahintuin ang $_title ni ${widget.learnerName}?'
+              : 'Pause $_title for ${widget.learnerName}?',
+          body: l
+              ? 'Aalis ang lock sa device ni ${widget.learnerName} at hihinto '
+                  'ang orasan. Kapag ipagpatuloy, $left minuto ang natitira.'
+              : '${widget.learnerName}’s lock lifts and the clock stops. When '
+                  'you resume it, $left min will be left.',
+          confirm: l ? 'Pahintuin' : 'Pause',
+        );
+        if (!ok) return null;
+        return const RoutineService().pauseStep(
+          childProfileId: widget.childProfileId,
+          day: DateTime.now(),
+          stepId: widget.status.step.id,
+          by: by,
+        );
+      });
+
+  Future<void> _resume() => _run(() async {
+        final by = ref.read(profileProvider);
+        if (by == null) return null;
+        final left = widget.status.minutesLeft;
+        final ok = await confirmRoutineAction(
+          context,
+          filipino: l,
+          title: l
+              ? 'Ipagpatuloy ang $_title ni ${widget.learnerName}?'
+              : 'Resume $_title for ${widget.learnerName}?',
+          body: l
+              ? 'Babalik ang lock sa device ni ${widget.learnerName} nang '
+                  '$left minuto.'
+              : 'The lock comes back on ${widget.learnerName}’s device for '
+                  '$left min.',
+          confirm: l ? 'Ipagpatuloy' : 'Resume',
+        );
+        if (!ok) return null;
+        return const RoutineService().resumeStep(
+          childProfileId: widget.childProfileId,
+          day: DateTime.now(),
+          stepId: widget.status.step.id,
+          by: by,
+        );
+      });
+
+  /// Minutes that may still be added today, after what already was.
+  int get _roomToAdd => kRoutineMaxAddedMinutes - widget.status.addedMinutes;
+
+  Future<void> _addTime() => _run(() async {
+        final by = ref.read(profileProvider);
+        if (by == null) return null;
+        final end = widget.status.endsAt;
+        final choices = [
+          for (final m in kRoutineAddTimeChoices)
+            if (m <= _roomToAdd) m,
+        ];
+        final minutes = await showDialog<int>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(
+              l ? 'Magdagdag ng oras sa $_title?' : 'Add time to $_title?',
+            ),
+            content: Text(
+              widget.status.isPaused
+                  ? (l
+                      ? 'Mas matagal na mananatili ang lock kapag ipagpatuloy.'
+                      : 'The lock stays on longer once you resume it.')
+                  : (l
+                      ? 'Mas matagal na mananatili ang lock ni '
+                          '${widget.learnerName}. Kasalukuyang magtatapos sa '
+                          '${formatClockTime(end)}.'
+                      : '${widget.learnerName}’s lock stays on longer. It '
+                          'ends at ${formatClockTime(end)} now.'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l ? 'Kanselahin' : 'Cancel'),
+              ),
+              for (final m in choices)
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, m),
+                  child: Text(l ? '+$m minuto' : '+$m min'),
+                ),
+            ],
+          ),
+        );
+        if (minutes == null) return null;
+        return const RoutineService().addStepTime(
+          childProfileId: widget.childProfileId,
+          day: DateTime.now(),
+          stepId: widget.status.step.id,
+          minutes: minutes,
+          by: by,
+        );
+      });
+
   @override
   Widget build(BuildContext context) {
     // "Mark done" ends a step before its time is up, so it is offered only on
     // a step the educator set as "can be released early" — otherwise the
-    // learner waits until the time ends. Excuse and the 30-minute unlock stay
-    // on every step: they are for a day that went wrong, not for finishing.
-    final canReleaseEarly = widget.status.step.releaseEarly;
+    // learner waits until the time ends. Pause, more time and excuse stay on
+    // every step, and so does the 30-minute unlock while the lock is on: they
+    // are for a day that is not going to plan, not for finishing.
+    final paused = widget.status.isPaused;
+    final canReleaseEarly = widget.status.step.releaseEarly && !paused;
+    final canAdd = _roomToAdd >= kRoutineAddTimeChoices.first;
+    const compact = VisualDensity.compact;
     return Wrap(
       spacing: 8,
       runSpacing: 6,
@@ -195,27 +305,49 @@ class _RoutineStepActionBarState extends ConsumerState<RoutineStepActionBar> {
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.success,
               foregroundColor: Colors.white,
-              visualDensity: VisualDensity.compact,
+              visualDensity: compact,
             ),
           ),
+        if (paused)
+          FilledButton.icon(
+            onPressed: _busy ? null : _resume,
+            icon: const Icon(Icons.play_arrow_rounded, size: 18),
+            label: Text(l ? 'Ipagpatuloy' : 'Resume'),
+            style: FilledButton.styleFrom(visualDensity: compact),
+          )
+        else
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _pause,
+            icon: const Icon(Icons.pause_rounded, size: 18),
+            label: Text(l ? 'Pahintuin' : 'Pause'),
+            style: OutlinedButton.styleFrom(visualDensity: compact),
+          ),
+        OutlinedButton.icon(
+          onPressed: _busy || !canAdd ? null : _addTime,
+          icon: const Icon(Icons.more_time_rounded, size: 18),
+          label: Text(l ? 'Magdagdag ng oras' : 'Add time'),
+          style: OutlinedButton.styleFrom(visualDensity: compact),
+        ),
         OutlinedButton.icon(
           onPressed: _busy ? null : _excuse,
           icon: const Icon(Icons.pan_tool_alt_rounded, size: 18),
           label: Text(l ? 'Laktawan ngayon' : 'Excuse today'),
-          style: OutlinedButton.styleFrom(
-            visualDensity: VisualDensity.compact,
+          style: OutlinedButton.styleFrom(visualDensity: compact),
+        ),
+        if (!paused)
+          TextButton.icon(
+            onPressed: _busy ? null : _unlock,
+            icon: const Icon(Icons.lock_open_rounded, size: 18),
+            label: Text(l ? 'I-unlock 30 minuto' : 'Unlock 30 min'),
+            style: TextButton.styleFrom(visualDensity: compact),
           ),
-        ),
-        TextButton.icon(
-          onPressed: _busy ? null : _unlock,
-          icon: const Icon(Icons.lock_open_rounded, size: 18),
-          label: Text(l ? 'I-unlock 30 minuto' : 'Unlock 30 min'),
-          style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-        ),
       ],
     );
   }
 }
+
+/// The amounts "Add time" offers, smallest first.
+const List<int> kRoutineAddTimeChoices = [5, 10, 15];
 
 /// "Undo" beside a step an adult excused or marked done today.
 ///

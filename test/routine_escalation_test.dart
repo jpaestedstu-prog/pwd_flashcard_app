@@ -8,6 +8,20 @@ import 'package:pwdpwdpwd/features/routine/models/routine_models.dart';
 import 'package:pwdpwdpwd/features/routine/widgets/educator_routine_section.dart';
 import 'package:pwdpwdpwd/providers/routine_provider.dart';
 import 'package:pwdpwdpwd/providers/wall_clock_provider.dart';
+import 'package:pwdpwdpwd/data/models/models.dart';
+import 'package:pwdpwdpwd/providers/app_providers.dart';
+
+/// The educator looking at the dashboard — the section's routine-alerts
+/// control is theirs.
+class _Educator extends ProfileNotifier {
+  @override
+  UserProfile? build() => UserProfile(
+        id: 'rose',
+        name: 'Rose',
+        role: UserRole.teacher,
+        createdAt: DateTime(2026),
+      );
+}
 
 /// Warning before a routine step locks, and what the educator sees while it
 /// holds — the learner is told the lock is coming, and the educator is told
@@ -91,6 +105,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            profileProvider.overrideWith(_Educator.new),
             wallClockTickerProvider.overrideWith((ref) => Stream.value(now)),
             routineListProvider('ana').overrideWith(
               (ref) => Stream.value([
