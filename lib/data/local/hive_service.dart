@@ -294,6 +294,7 @@ class HiveService {
     await progressBox.delete(profileId);
     await progressBox.delete('achievements_$profileId');
     await removeMembershipsLocal(profileId);
+    await removeCachedDirectoryEntry(profileId);
   }
 
   /// Drops every class and family-group row on this device that names
@@ -2255,6 +2256,13 @@ class HiveService {
     Map<String, dynamic> json,
   ) async {
     await _dirCacheBox.put('by_id_$profileId', json);
+  }
+
+  /// Drops this device's cached directory entry for [profileId] — the
+  /// local half of removing a deleted profile's public handle.
+  static Future<void> removeCachedDirectoryEntry(String profileId) async {
+    if (!Hive.isBoxOpen(_friendDirectoryCacheBox)) return;
+    await _dirCacheBox.delete('by_id_$profileId');
   }
 
   static Map<String, dynamic>? getCachedDirectoryEntry(String profileId) {

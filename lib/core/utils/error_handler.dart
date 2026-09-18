@@ -52,6 +52,9 @@ class ErrorHandler {
     // lookups are deliberately NOT here: if someone searches for a username,
     // a failure is theirs to see.
     'ProfileDirectoryService.upsert',
+    // Tidy-up after a profile delete: the profile is already gone, and a
+    // failed handle removal is not something the user can act on.
+    'ProfileDirectoryService.remove',
     'ProfileDirectoryService._refreshCache',
     // Recoverable Flutter framework assertions (overflow, ListTile ink-hidden,
     // duplicate GlobalKey, hero conflicts, setState-during-build, …). Logged

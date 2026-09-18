@@ -22,6 +22,15 @@ void main() {
       );
     });
 
+    test('removing a deleted profile handle does not interrupt', () {
+      // The profile is already gone; a failed tidy-up is not the user's
+      // to see.
+      expect(
+        ErrorHandler.isSilentSource('ProfileDirectoryService.remove'),
+        isTrue,
+      );
+    });
+
     test('the directory cache top-up does not interrupt', () {
       // Its own doc comment promises it "never throws and never blocks the
       // caller" — routing it to the snackbar broke that promise.

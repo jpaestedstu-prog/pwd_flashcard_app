@@ -101,6 +101,51 @@ class ProfileDirectoryService {
     }
   }
 
+  /// Removes the public directory entry for [profileId], and this device's
+  /// cache of it.
+  ///
+  /// Called when a profile is deleted. Without it the handle outlives the
+  /// profile: the learner is gone from the device and from `profiles`, yet
+  /// searching their username in Add Friend still finds them, and every
+  /// lookup resolves to a profile that no longer exists.
+  ///
+  /// [username] is the handle the profile carried; an older row that never
+  /// stored one is found by the entry's own `profile_id` instead. **A doc is
+  /// only deleted while it still names this profile** — a handle somebody
+  /// else has since claimed belongs to them now, and the rules would refuse
+  /// the write anyway.
+  Future<void> remove({
+    required String profileId,
+    String? username,
+  }) async {
+    await HiveService.removeCachedDirectoryEntry(profileId);
+    if (!FirebaseService.isConfigured) return;
+    try {
+      final handle = username?.trim().toLowerCase();
+      if (handle != null && handle.isNotEmpty) {
+        final doc = await _col.doc(handle).get().timeout(_lookupTimeout);
+        if (doc.exists && doc.data()?['profile_id'] == profileId) {
+          await doc.reference.delete().timeout(_lookupTimeout);
+          return;
+        }
+      }
+      // No handle on the row, or it now belongs to someone else: remove
+      // whatever still points at this profile.
+      final snap = await _col
+          .where('profile_id', isEqualTo: profileId)
+          .limit(5)
+          .get()
+          .timeout(_lookupTimeout);
+      for (final d in snap.docs) {
+        await d.reference.delete().timeout(_lookupTimeout);
+      }
+    } catch (e, st) {
+      // Silent: the profile is already gone locally and in `profiles`, and
+      // nobody on this device can act on a failed tidy-up.
+      ErrorHandler.report(e, st, 'ProfileDirectoryService.remove');
+    }
+  }
+
   /// Resolve a username -> DirectoryEntry. Null if Firebase is offline
   /// or the handle isn't claimed.
   Future<DirectoryEntry?> lookupByUsername(String username) async {

@@ -13,7 +13,11 @@ import 'package:pwdpwdpwd/data/local/hive_service.dart';
 void main() {
   setUpAll(() async {
     Hive.init('./build/test_cache/profile_delete_memberships');
-    for (final name in const ['classroom_members', 'home_group_members']) {
+    for (final name in const [
+      'classroom_members',
+      'home_group_members',
+      'friend_directory_cache',
+    ]) {
       if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
     }
   });
@@ -40,6 +44,16 @@ void main() {
 
     expect(classes.keys.toSet(), {'class-1:ana'});
     expect(groups.keys.toSet(), {'home-1:notcopykid'});
+  });
+
+  test('the cached public handle goes with the profile', () async {
+    final cache = Hive.box('friend_directory_cache');
+    await cache.put('by_id_copykid', {'username': 'copykid-2497'});
+    await cache.put('by_id_ana', {'username': 'ana-1234'});
+
+    await HiveService.removeCachedDirectoryEntry('copykid');
+
+    expect(cache.keys.toSet(), {'by_id_ana'});
   });
 
   test('a profile in no group changes nothing', () async {

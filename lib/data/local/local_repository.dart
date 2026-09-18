@@ -156,8 +156,9 @@ class LocalRepository implements DataRepository {
     // Snapshot the profile so we can decide whether to push the remote
     // delete *before* we wipe it locally — guest profiles never reached
     // Firestore in the first place.
-    final wasGuest =
-        HiveService.getProfileById(profileId)?.isGuestPlayer ?? false;
+    // The handle is needed after the local wipe, so read the row first.
+    final profile = HiveService.getProfileById(profileId);
+    final wasGuest = profile?.isGuestPlayer ?? false;
     await HiveService.deleteProfile(profileId);
     // A deleted learner's alarms and reminders must not keep firing on this
     // device. Best-effort: the profile is gone either way.
@@ -168,6 +169,15 @@ class LocalRepository implements DataRepository {
     if (wasGuest) return;
     await _remoteWrite(
         'deleteProfile', () => _remote.deleteProfile(profileId));
+    // The public handle lives in its own document, keyed by username, so
+    // the profile cascade never touched it: a deleted learner stayed
+    // findable by username in messaging.
+    await _remoteWrite(
+        'profileDirectoryRemove',
+        () => ProfileDirectoryService.instance.remove(
+              profileId: profileId,
+              username: profile?.username,
+            ));
   }
 
   @override
