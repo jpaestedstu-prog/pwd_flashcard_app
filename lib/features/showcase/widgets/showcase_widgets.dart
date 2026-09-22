@@ -6,6 +6,8 @@ import '../../../widgets/rich_empty_states.dart';
 import '../../../data/models/enums.dart';
 import '../models/showcase_models.dart';
 import '../../../core/utils/reduced_motion.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// A card displaying a single showcase portfolio item with enhanced visuals:
 /// shimmer shine on header, glow for pinned items, mastery progress bar,
@@ -32,8 +34,8 @@ class ShowcaseCard extends StatelessWidget {
     return Semantics(
       button: true,
       label:
-          '${item.type.label}: ${item.title}. ${item.description}. '
-          '${item.isPinned ? "Pinned." : ""}',
+          '${item.type.labelOf(_t(context))}: ${item.title}. ${item.description}. '
+          '${item.isPinned ? _t(context).scPinned : ''}',
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
@@ -124,7 +126,7 @@ class ShowcaseCard extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  item.type.label,
+                                  item.type.labelOf(_t(context)),
                                   style: AppTypography.labelSmall.copyWith(
                                     color: typeColor,
                                     fontWeight: FontWeight.w700,
@@ -313,7 +315,7 @@ class ShowcaseCard extends StatelessWidget {
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: Chip(
                       label: Text(
-                        item.category!.label,
+                        item.category!.labelOf(_t(context)),
                         style: AppTypography.labelSmall.copyWith(
                           color: item.category!.darkColor,
                         ),
@@ -357,7 +359,9 @@ class ShowcaseCard extends StatelessWidget {
                                 : hc.textHint,
                           ),
                           visualDensity: VisualDensity.compact,
-                          tooltip: item.isPinned ? 'Unpin' : 'Pin to top',
+                          tooltip: item.isPinned
+                              ? _t(context).scUnpin
+                              : _t(context).scPinTop,
                         ),
                       if (onRemove != null)
                         IconButton(
@@ -368,7 +372,7 @@ class ShowcaseCard extends StatelessWidget {
                             color: hc.textHint,
                           ),
                           visualDensity: VisualDensity.compact,
-                          tooltip: 'Remove from showcase',
+                          tooltip: _t(context).scRemoveFrom,
                         ),
                     ],
                   ),
@@ -454,7 +458,7 @@ class PortfolioHeader extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Showcase your best moments!',
+                      _t(context).scShowcaseBest,
                       style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textOnPrimary.withValues(alpha: 0.85),
                       ),
@@ -469,25 +473,25 @@ class PortfolioHeader extends StatelessWidget {
             children: [
               _MiniStat(
                 icon: Icons.collections_bookmark_rounded,
-                label: 'Items',
+                label: _t(context).scStatItems,
                 value: '$totalItems',
               ),
               const SizedBox(width: 16),
               _MiniStat(
                 icon: Icons.push_pin_rounded,
-                label: 'Pinned',
+                label: _t(context).scStatPinned,
                 value: '$pinnedItems',
               ),
               const SizedBox(width: 16),
               _MiniStat(
                 icon: Icons.emoji_events_rounded,
-                label: 'Awards',
+                label: _t(context).scStatAwards,
                 value: '$achievementCount',
               ),
               const SizedBox(width: 16),
               _MiniStat(
                 icon: Icons.star_rounded,
-                label: 'Stars',
+                label: _t(context).stars,
                 value: '$starsEarned',
               ),
             ],
@@ -560,10 +564,10 @@ class ShowcaseEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichEmptyState(
       emoji: '🖼️',
-      title: 'Your Portfolio is Empty',
+      title: _t(context).scEmptyTitle,
       description:
-          'Start by auto-curating your best moments or add items manually as you learn!',
-      actionLabel: 'Auto-Curate My Portfolio',
+          _t(context).scEmptyBody,
+      actionLabel: _t(context).scEmptyAction,
       actionIcon: Icons.auto_awesome_rounded,
       onAction: onAutoPopulate,
       accentColor: const Color(0xFF7C4DFF),
@@ -595,7 +599,7 @@ class ShowcaseFilterChips extends StatelessWidget {
             padding: const EdgeInsets.only(right: 8),
             child: FilterChip(
               selected: selectedFilter == null,
-              label: const Text('All'),
+              label: Text(_t(context).all),
               onSelected: (_) => onFilterChanged(null),
               visualDensity: VisualDensity.compact,
             ),
@@ -606,7 +610,7 @@ class ShowcaseFilterChips extends StatelessWidget {
               child: FilterChip(
                 selected: selectedFilter == type,
                 label: Text(
-                    '${type.emoji} ${type.label} (${typeCounts[type] ?? 0})'),
+                    '${type.emoji} ${type.labelOf(_t(context))} (${typeCounts[type] ?? 0})'),
                 onSelected: (_) => onFilterChanged(
                     selectedFilter == type ? null : type),
                 selectedColor: type.color.withValues(alpha: 0.2),
@@ -619,3 +623,8 @@ class ShowcaseFilterChips extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

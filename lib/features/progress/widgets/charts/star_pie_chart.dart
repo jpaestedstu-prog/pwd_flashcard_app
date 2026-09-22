@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/app_localizations_en.dart';
 
 /// Pie / donut chart showing stars earned vs spent vs available.
 class StarPieChart extends StatelessWidget {
@@ -110,13 +111,13 @@ class StarPieChart extends StatelessWidget {
                     children: [
                       _LegendDot(
                         color: AppColors.warning,
-                        label: 'Available',
+                        label: _t(context).chartStarsAvailable,
                         value: '$available',
                       ),
                       const SizedBox(height: 8),
                       _LegendDot(
                         color: AppColors.error.withValues(alpha: 0.7),
-                        label: 'Spent',
+                        label: _t(context).chartStarsSpent,
                         value: '$spentStars',
                       ),
                       const Divider(height: 16),
@@ -173,3 +174,8 @@ class _LegendDot extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -144,7 +144,9 @@ class _AchievementToastWidgetState extends State<_AchievementToastWidget> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          a.title,
+                          a.titleOf(
+                            filipino: Localizations.localeOf(context).languageCode == 'fil',
+                          ),
                           style: AppTypography.labelLarge.copyWith(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -152,7 +154,9 @@ class _AchievementToastWidgetState extends State<_AchievementToastWidget> {
                           ),
                         ),
                         Text(
-                          a.description,
+                          a.descriptionOf(
+                            filipino: Localizations.localeOf(context).languageCode == 'fil',
+                          ),
                           style: AppTypography.labelSmall.copyWith(
                             color: HCColor.of(context).textSecondary,
                           ),

@@ -347,7 +347,7 @@ class _EducatorDashboardScreenState
                       child: WeeklyOverviewCard(
                         children: snapshot.children,
                         hc: hc,
-                        learnerNoun: _audience.learnerNoun,
+                        learnerNoun: _audience.learnerNounOf(filipino: l),
                       ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
                     ),
                   ),

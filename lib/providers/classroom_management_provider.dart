@@ -179,6 +179,31 @@ class ClassroomManagementNotifier
     await HiveService.cacheClassroom(updated);
   }
 
+  /// Turn retaking the pre-test / post-test on or off for [classroom].
+  ///
+  /// Written to the same document the learner's device already reads at join
+  /// time, so the rule reaches them without a new collection or a rules
+  /// deploy — the `classrooms` rules gate on `teacher_id`, not on field names.
+  Future<void> setClassRetakes(Classroom classroom, bool allowed) async {
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
+    if (allowed == classroom.allowAssessmentRetakes) return;
+    final updated = classroom.copyWith(
+      allowAssessmentRetakes: allowed,
+      updatedAt: DateTime.now(),
+    );
+    await FirebaseService.db
+        .collection('classrooms')
+        .doc(updated.id)
+        .set({
+      'allow_assessment_retakes': allowed,
+      'updated_at': updated.updatedAt.toIso8601String(),
+    }, SetOptions(merge: true));
+    await HiveService.cacheClassroom(updated);
+  }
+
   /// Delete [classroom] and all its memberships.
   Future<void> deleteClass(Classroom classroom) async {
     if (!FirebaseService.isConfigured) {

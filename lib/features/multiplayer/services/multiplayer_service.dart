@@ -7,6 +7,7 @@ import '../../../core/services/firebase_service.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../data/models/models.dart';
 import '../models/multiplayer_models.dart';
+import '../../../l10n/app_localizations.dart';
 
 const _uuid = Uuid();
 
@@ -334,6 +335,23 @@ class MultiplayerService {
 class MpActionException implements Exception {
   final String message;
   const MpActionException(this.message);
+
+  /// [message] in the reader's language. The service has no context, so it
+  /// throws English and the screen translates the ones it knows.
+  String localizedMessage(AppLocalizations? l10n) {
+    if (l10n == null) return message;
+    return switch (message) {
+      'This game already has another player.' => l10n.mpTaken,
+      'Online play needs an internet connection.' => l10n.mpNeedsInternet,
+      'Sign-in is still warming up. Try again in a moment.' => l10n.mpWarming,
+      'Network is slow. Check your connection and try again.' => l10n.mpSlow,
+      "Couldn't reach the game service. If this keeps happening, ask "
+              'your teacher to redeploy the app rules.' =>
+        l10n.mpDenied,
+      "Couldn't start the game. Try again in a moment." => l10n.mpStartFailed,
+      _ => message,
+    };
+  }
 
   @override
   String toString() => message;

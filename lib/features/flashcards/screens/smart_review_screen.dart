@@ -20,6 +20,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/utils/accessible_sizing.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Smart Review screen that uses spaced repetition to present
 /// the words the student struggles with most.
@@ -183,7 +184,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
         AppBar(
           leading: IconButton(
             icon: const Icon(Icons.close_rounded),
-            tooltip: 'Close',
+            tooltip: _t(context).close,
             onPressed: () => context.pop(),
           ),
           title: Text(
@@ -253,7 +254,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Text(
-                                        card.category.label,
+                                        card.category.labelOf(_t(context)),
                                         style: AppTypography.labelSmall
                                             .copyWith(
                                               color: card.category.darkColor,
@@ -283,7 +284,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                                     // English word
                                     Semantics(
                                       label:
-                                          'English word: ${card.wordEnglish}',
+                                          _t(context).srEnglishWord(card.wordEnglish),
                                       child: Text(
                                         card.wordEnglish,
                                         style: AppTypography.flashcardWord
@@ -318,7 +319,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                                             child: Column(
                                               children: [
                                                 Text(
-                                                  'Filipino',
+                                                  _t(context).filipino,
                                                   style: AppTypography
                                                       .labelSmall
                                                       .copyWith(
@@ -331,7 +332,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                                                 const SizedBox(height: 4),
                                                 Semantics(
                                                   label:
-                                                      'Filipino translation: ${card.wordFilipino}',
+                                                      _t(context).srFilipinoTranslation(card.wordFilipino),
                                                   child: Text(
                                                     card.wordFilipino,
                                                     style: AppTypography
@@ -493,8 +494,8 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
               const SizedBox(height: 8),
               Text(
                 pct >= 0.7
-                    ? 'Great recall! Keep it up!'
-                    : 'Keep practicing — you\'ll get there!',
+                    ? _t(context).srGreat
+                    : _t(context).srKeepPracticing,
                 style: AppTypography.bodyLarge.copyWith(
                   color: HCColor.of(context).textSecondary,
                 ),
@@ -535,19 +536,19 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _ResultStat(
-                      label: 'Correct',
+                      label: _t(context).sumCorrect,
                       value: '$_correctCount',
                       color: AppColors.success,
                     ),
                     Container(width: 1, height: 40, color: AppColors.border),
                     _ResultStat(
-                      label: 'Total',
+                      label: _t(context).total,
                       value: '$_totalAnswered',
                       color: AppColors.primary,
                     ),
                     Container(width: 1, height: 40, color: AppColors.border),
                     _ResultStat(
-                      label: 'Accuracy',
+                      label: _t(context).accuracy,
                       value: '${(pct * 100).round()}%',
                       color: pct >= 0.7 ? AppColors.success : AppColors.warning,
                     ),
@@ -643,3 +644,8 @@ class _ResultStat extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

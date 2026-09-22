@@ -147,7 +147,9 @@ class _AchievementUnlockedOverlayState
 
                 // Title
                 Text(
-                  achievement.title,
+                  achievement.titleOf(
+                    filipino: Localizations.localeOf(context).languageCode == 'fil',
+                  ),
                   style: AppTypography.headlineSmall.copyWith(
                     fontWeight: FontWeight.w800,
                     color: HCColor.of(context).textPrimary,
@@ -162,7 +164,9 @@ class _AchievementUnlockedOverlayState
 
                 // Description
                 Text(
-                  achievement.description,
+                  achievement.descriptionOf(
+                    filipino: Localizations.localeOf(context).languageCode == 'fil',
+                  ),
                   style: AppTypography.bodyMedium.copyWith(
                     color: HCColor.of(context).textSecondary,
                   ),

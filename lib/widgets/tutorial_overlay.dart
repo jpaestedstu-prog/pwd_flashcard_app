@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/enums.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// A step in the onboarding tutorial.
 class TutorialStep {
@@ -73,6 +75,64 @@ const List<TutorialStep> homeTutorialSteps = [
   ),
 ];
 
+/// [homeTutorialSteps] for a learner who picked Filipino. The first thing a
+/// new learner sees, so it cannot be the one English screen in the flow.
+const List<TutorialStep> homeTutorialStepsFilipino = [
+  TutorialStep(
+    title: 'Maligayang pagdating sa FlashLearn! 🎉',
+    description:
+        'Tinutulungan ka ng app na ito na matuto ng mga bagong salita sa '
+        'Ingles at Filipino gamit ang mga flashcard at masasayang laro. '
+        'Tara, maglibot tayo sandali!',
+    icon: Icons.waving_hand_rounded,
+    color: AppColors.primary,
+  ),
+  TutorialStep(
+    title: 'Mga Kategorya ng Flashcard 📚',
+    description:
+        'Tingnan ang mga kategorya ng salita — tulad ng Mga Hayop, Mga Kulay '
+        'at Hugis, Mga Numero, at Pamilya at Pagbati. '
+        'Pindutin ang kahit anong kategorya para magsimulang matuto!',
+    icon: Icons.category_rounded,
+    color: Color(0xFFFF9800),
+  ),
+  TutorialStep(
+    title: 'Masasayang Laro 🎮',
+    description:
+        'Sanayin ang mga salita sa iba’t ibang laro, tulad ng Word Match, '
+        'Spelling Bee at Memory Match. Pumili ng hirap at kategorya, '
+        'saka maglaro!',
+    icon: Icons.sports_esports_rounded,
+    color: Color(0xFF4CAF50),
+  ),
+  TutorialStep(
+    title: 'Tingnan ang Iyong Progreso 📊',
+    description:
+        'Makikita sa tab na Progreso ang iyong sunod-sunod na araw, mga '
+        'bituin, at mga salitang natutunan. Makakakuha ka ng mga badge '
+        'habang gumagaling ka!',
+    icon: Icons.emoji_events_rounded,
+    color: Color(0xFFF44336),
+  ),
+  TutorialStep(
+    title: 'Mga Setting ng Aksesibilidad ♿',
+    description:
+        'Kailangan mo ba ng mas malaking letra, mataas na contrast, o '
+        'walang animation? Buksan ang Mga Setting (icon na gear) para '
+        'iayon ang lahat sa iyong pangangailangan.',
+    icon: Icons.accessibility_new_rounded,
+    color: Color(0xFF9C27B0),
+  ),
+  TutorialStep(
+    title: 'Handa Ka Na! 🚀',
+    description:
+        'Magsimula sa pagpindot ng isang kategorya sa ibaba para matutunan '
+        'ang iyong mga unang salita. Magsaya at mag-ipon ng bituin!',
+    icon: Icons.rocket_launch_rounded,
+    color: AppColors.accent,
+  ),
+];
+
 /// Tutorial steps for teachers.
 const List<TutorialStep> teacherTutorialSteps = [
   TutorialStep(
@@ -123,6 +183,62 @@ const List<TutorialStep> teacherTutorialSteps = [
     description:
         'Explore the flashcard categories and games yourself, then '
         'guide your students through their learning journey!',
+    icon: Icons.rocket_launch_rounded,
+    color: AppColors.accent,
+  ),
+];
+
+/// [teacherTutorialSteps] in Filipino.
+const List<TutorialStep> teacherTutorialStepsFilipino = [
+  TutorialStep(
+    title: 'Maligayang pagdating, Guro! 📚',
+    description:
+        'Tinutulungan ng FlashLearn PWD ang iyong mga mag-aaral na matuto ng '
+        'mga salitang Ingles at Filipino gamit ang madaling-gamiting '
+        'flashcard at laro. Ipakikita namin ang mga gamit para sa guro!',
+    icon: Icons.waving_hand_rounded,
+    color: AppColors.primary,
+  ),
+  TutorialStep(
+    title: 'Dashboard ng Mag-aaral 📊',
+    description:
+        'I-tap ang icon ng dashboard sa home screen para makita ang '
+        'detalyadong progreso ng aktibong mag-aaral — kahusayan, hati ayon '
+        'sa kategorya, mahihinang bahagi, at mga kamakailang iskor.',
+    icon: Icons.dashboard_rounded,
+    color: Color(0xFFFF9800),
+  ),
+  TutorialStep(
+    title: 'Tingnan ang Lahat ng Mag-aaral 👥',
+    description:
+        'I-tap ang icon ng mga tao para makita ang lahat ng profile ng '
+        'mag-aaral. Paghambingin ang progreso at i-tap ang card para sa '
+        'detalye.',
+    icon: Icons.people_rounded,
+    color: Color(0xFF4CAF50),
+  ),
+  TutorialStep(
+    title: 'Pagbantay sa Klase 🏫',
+    description:
+        'Buksan ang Classroom View mula sa dashboard para makita agad kung '
+        'sino ang aktibo, ang kanilang ginagawa, katumpakan, at nakuhang '
+        'bituin. Nag-a-update tuwing 30 segundo.',
+    icon: Icons.class_rounded,
+    color: Color(0xFF2196F3),
+  ),
+  TutorialStep(
+    title: 'Mag-export ng Ulat 📄',
+    description:
+        'Gumawa ng ulat na PDF o CSV mula sa dashboard. Ibahagi ang '
+        'progreso sa mga magulang at administrador, o itago para sa IEP.',
+    icon: Icons.file_download_rounded,
+    color: Color(0xFF9C27B0),
+  ),
+  TutorialStep(
+    title: 'Handa Ka Na! 🚀',
+    description:
+        'Subukan mismo ang mga kategorya ng flashcard at mga laro, saka '
+        'gabayan ang iyong mga mag-aaral sa kanilang pag-aaral!',
     icon: Icons.rocket_launch_rounded,
     color: AppColors.accent,
   ),
@@ -183,15 +299,78 @@ const List<TutorialStep> parentTutorialSteps = [
   ),
 ];
 
+/// [parentTutorialSteps] in Filipino.
+const List<TutorialStep> parentTutorialStepsFilipino = [
+  TutorialStep(
+    title: 'Maligayang pagdating, Magulang! 👨‍👩‍👧',
+    description:
+        'Ang FlashLearn PWD ay app ng iyong anak para sa mga salitang Ingles '
+        'at Filipino. Ipakikita namin kung paano mo masusuportahan ang '
+        'kanyang pag-aaral!',
+    icon: Icons.waving_hand_rounded,
+    color: AppColors.primary,
+  ),
+  TutorialStep(
+    title: 'Dashboard ng Progreso 📊',
+    description:
+        'I-tap ang icon ng dashboard sa home screen para makita ang progreso '
+        'ng iyong anak — mga natutunang salita, nalarong laro, kalakasan, at '
+        'mga bahaging kailangan pang sanayin.',
+    icon: Icons.dashboard_rounded,
+    color: Color(0xFFFF9800),
+  ),
+  TutorialStep(
+    title: 'Subaybayan ang mga Parangal 🏆',
+    description:
+        'Pumunta sa Progreso para makita ang sunod-sunod na araw, bituin, at '
+        'mga badge. Ipagdiwang nang sama-sama ang bawat tagumpay!',
+    icon: Icons.emoji_events_rounded,
+    color: Color(0xFFF44336),
+  ),
+  TutorialStep(
+    title: 'Mga Flashcard at Laro 🎮',
+    description:
+        'Tingnan kasama ng iyong anak ang mga kategorya ng flashcard at mga '
+        'larong pang-aral. May Filipino Sign Language (FSL), text-to-speech, '
+        'at naaayos na setting ng aksesibilidad ang lahat ng nilalaman.',
+    icon: Icons.sports_esports_rounded,
+    color: Color(0xFF4CAF50),
+  ),
+  TutorialStep(
+    title: 'Mga Setting ng Aksesibilidad ♿',
+    description:
+        'Buksan ang Settings para ayusin ang laki ng letra, contrast, '
+        'animation, at audio ayon sa pangangailangan ng iyong anak. May mga '
+        'handang preset para sa karaniwang uri ng kapansanan.',
+    icon: Icons.accessibility_new_rounded,
+    color: Color(0xFF9C27B0),
+  ),
+  TutorialStep(
+    title: 'Magsimula Na Tayo! 🚀',
+    description:
+        'Samahan ang iyong anak at subukan ang isang kategorya ng flashcard. '
+        'Mas masaya ang pag-aaral kasama ang pamilya!',
+    icon: Icons.rocket_launch_rounded,
+    color: AppColors.accent,
+  ),
+];
+
 /// Returns the tutorial steps appropriate for the given [role].
-List<TutorialStep> tutorialStepsForRole(UserRole? role) {
+///
+/// [filipino] picks the Filipino copy. Only the learner Home mounts the
+/// tutorial today (educators land on `EducatorHomeScreen`), but every role
+/// has both languages so a new entry point can't bring English back.
+List<TutorialStep> tutorialStepsForRole(
+  UserRole? role, {
+  bool filipino = false,
+}) {
   switch (role) {
     case UserRole.teacher:
-      return teacherTutorialSteps;
+      return filipino ? teacherTutorialStepsFilipino : teacherTutorialSteps;
     case UserRole.parent:
-      return parentTutorialSteps;
+      return filipino ? parentTutorialStepsFilipino : parentTutorialSteps;
     default:
-      return homeTutorialSteps;
+      return filipino ? homeTutorialStepsFilipino : homeTutorialSteps;
   }
 }
 
@@ -238,6 +417,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   Widget build(BuildContext context) {
     final step = widget.steps[_currentStep];
     final isLast = _currentStep == widget.steps.length - 1;
+    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
 
     return Material(
       color: Colors.black.withValues(alpha: 0.7),
@@ -252,7 +432,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                 child: TextButton(
                   onPressed: _skip,
                   child: Text(
-                    'Skip',
+                    t.skip,
                     style: AppTypography.labelLarge.copyWith(
                       color: Colors.white70,
                     ),
@@ -318,7 +498,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                     shadowColor: step.color.withValues(alpha: 0.4),
                   ),
                   child: Text(
-                    isLast ? 'Let\'s Go! 🎉' : 'Next',
+                    isLast ? '${t.letsGo} 🎉' : t.next,
                     style: AppTypography.titleMedium.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,

@@ -7,6 +7,8 @@ import '../../../core/services/join_code_service.dart';
 import '../../../core/widgets/safe_scaffold.dart';
 import '../../../features/onboarding/screens/post_join_setup_screen.dart';
 import '../../../providers/home_group_join_provider.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Child-side screen: enter a 6-character home-group code.
 ///
@@ -58,7 +60,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
 
     return SafeScaffold(
       appBar: AppBar(
-        title: const Text('Join Home Group'),
+        title: Text(_t(context).joinGroupTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -72,7 +74,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.switch_account_rounded),
-            tooltip: 'Switch profile',
+            tooltip: _t(context).childSwitchProfile,
             onPressed: () => context.go('/profile'),
           ),
         ],
@@ -82,9 +84,9 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-                const Text(
-                  'Enter the code your parent or guardian shared.',
-                  style: TextStyle(fontSize: 16),
+                Text(
+                  _t(context).joinGroupIntro,
+                  style: const TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 24),
 
@@ -97,13 +99,13 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
                         RegExp(r'[A-Za-z0-9]')),
                     _UpperCaseFormatter(),
                   ],
-                  decoration: const InputDecoration(
-                    labelText: 'Home-group code',
+                  decoration: InputDecoration(
+                    labelText: _t(context).joinGroupCode,
                     hintText: 'ABC123',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) => (v == null || v.trim().length != 6)
-                      ? 'Code must be 6 characters'
+                      ? _t(context).joinCodeLength
                       : null,
                 ),
                 const SizedBox(height: 16),
@@ -117,7 +119,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
                       border: Border.all(color: Colors.red.shade200),
                     ),
                     child: Text(
-                      failure.message,
+                      _joinError(_t(context), failure.error),
                       style: TextStyle(color: Colors.red.shade900),
                     ),
                   ),
@@ -127,7 +129,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
-                      isLoading ? 'Checking…' : 'Join group',
+                      isLoading ? _t(context).joinChecking : _t(context).playerJoinGroup,
                       style: const TextStyle(fontSize: 16),
                     ),
                   ),
@@ -137,8 +139,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
                     child: Text(
-                      'Tip: ask your parent to check their internet '
-                      'connection, or try again in a moment.',
+                      _t(context).joinGroupTip,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -158,3 +159,16 @@ class _UpperCaseFormatter extends TextInputFormatter {
     return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// The failure in the reader's language. The provider's own message is
+/// written for developers (it names Firestore paths and deploy commands).
+String _joinError(AppLocalizations t, JoinCodeError error) => switch (error) {
+  JoinCodeError.notFound => t.jcNoGroup,
+  JoinCodeError.network => t.jcNetwork,
+  JoinCodeError.collision || JoinCodeError.unknown => t.jcUnknown,
+};

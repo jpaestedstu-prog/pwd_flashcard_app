@@ -20,6 +20,17 @@ class HomeGroup {
   /// mirroring [Classroom.accessibility]. Defaults to [DisabilityType.none]
   /// for legacy groups that predate this field.
   final DisabilityType accessibility;
+
+  /// Whether learners in this home group may sit the pre-test or post-test again
+  /// once they have completed it.
+  ///
+  /// Defaults to **false**, as on [Classroom.allowAssessmentRetakes]: every
+  /// home group is a study group, and a retaken pre-test no longer measures a
+  /// starting point. Documents written before the field existed read as false
+  /// too. A first sitting is never affected — it always comes from an
+  /// assignment — and a parent can still reopen the group from its menu.
+  final bool allowAssessmentRetakes;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -29,6 +40,7 @@ class HomeGroup {
     required this.name,
     required this.ownerProfileId,
     this.accessibility = DisabilityType.none,
+    this.allowAssessmentRetakes = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -39,6 +51,7 @@ class HomeGroup {
     String? name,
     String? ownerProfileId,
     DisabilityType? accessibility,
+    bool? allowAssessmentRetakes,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -48,6 +61,8 @@ class HomeGroup {
       name: name ?? this.name,
       ownerProfileId: ownerProfileId ?? this.ownerProfileId,
       accessibility: accessibility ?? this.accessibility,
+      allowAssessmentRetakes:
+          allowAssessmentRetakes ?? this.allowAssessmentRetakes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -60,6 +75,7 @@ class HomeGroup {
         'name': name,
         'owner_profile_id': ownerProfileId,
         'accessibility': accessibility.index,
+        'allow_assessment_retakes': allowAssessmentRetakes,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -73,6 +89,10 @@ class HomeGroup {
       accessibility: DisabilityType.values[
           ((json['accessibility'] as int?) ?? DisabilityType.none.index)
               .clamp(0, DisabilityType.values.length - 1)],
+      // Absent on documents written before the field existed → locked, like
+      // every new group — see [allowAssessmentRetakes].
+      allowAssessmentRetakes:
+          json['allow_assessment_retakes'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );

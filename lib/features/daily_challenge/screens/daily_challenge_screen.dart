@@ -6,6 +6,7 @@ import '../../../core/accessibility/tts_service.dart';
 import '../../../core/services/celebration_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/localized_date.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../../../data/local/daily_challenge.dart';
@@ -18,6 +19,8 @@ import '../../../widgets/accessible_celebration_overlay.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../core/widgets/reflow_row.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Full-screen Daily Mission — a bite-sized session of 3–5 quiz items
 /// (size configurable via [AppSettings.dailyMissionSize]) with calendar,
@@ -204,12 +207,12 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
 
   /// Short, kid-friendly explanation of the correct answer for the result
   /// panel. Prefers the card's definition, then its example, then a fallback.
-  String _explanationFor(Flashcard card) {
+  String _explanationFor(BuildContext context, Flashcard card) {
     final def = card.definition?.trim();
     if (def != null && def.isNotEmpty) return def;
     final ex = card.exampleSentence?.trim();
     if (ex != null && ex.isNotEmpty) return ex;
-    return '“${card.wordEnglish}” is “${card.wordFilipino}” in Filipino.';
+    return _t(context).dcExplain(card.wordEnglish, card.wordFilipino);
   }
 
   @override
@@ -221,7 +224,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
       backgroundColor: hc.background,
       appBar: AppBar(
         title: Text(
-          '🎯 Daily Mission',
+          _t(context).dcTitle,
           style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
         ),
         backgroundColor: Colors.transparent,
@@ -318,7 +321,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
   Widget _buildEmpty(BuildContext context) {
     final hc = HCColor.of(context);
     return Text(
-      'No words available for today’s mission yet.',
+      _t(context).dcNoWords,
       style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
     );
   }
@@ -343,7 +346,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '✨ Daily Mission',
+                  _t(context).dcChip,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.labelMedium.copyWith(
@@ -356,7 +359,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
             const Spacer(),
             Flexible(
               child: Text(
-                'Word ${_currentIndex + 1} of ${_missionWords.length}',
+                _t(context).dcWordNofM(_currentIndex + 1, _missionWords.length),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTypography.labelSmall.copyWith(
@@ -403,7 +406,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                       const SizedBox(width: 8),
                       Semantics(
                         button: true,
-                        label: 'Listen to English pronunciation',
+                        label: _t(context).dcListen,
                         child: GestureDetector(
                           onTap: _speakWord,
                           child: Icon(
@@ -438,7 +441,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
             Expanded(
               // Shares its row with the 50/50 helper button.
               child: FitText(
-                'What is this in Filipino?',
+                _t(context).homeWhatInFilipino,
                 style: AppTypography.titleSmall.copyWith(
                   color: hc.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -485,7 +488,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
               icon: Icon(
                 _isLastItem ? Icons.flag_rounded : Icons.arrow_forward_rounded,
               ),
-              label: Text(_isLastItem ? 'Finish Mission' : 'Next Word'),
+              label: Text(_isLastItem ? _t(context).dcFinish : _t(context).dcNextWord),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
@@ -568,7 +571,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _isCorrect ? 'Correct! +1 star ⭐' : 'Not quite!',
+                      _isCorrect ? _t(context).dcCorrect : _t(context).dcNotQuite,
                       style: AppTypography.titleSmall.copyWith(
                         color: _isCorrect ? AppColors.success : AppColors.error,
                         fontWeight: FontWeight.w700,
@@ -580,7 +583,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                         children: [
                           Flexible(
                             child: FitText(
-                              'The answer is: ${_word.wordFilipino}',
+                              _t(context).homeAnswerIs(_word.wordFilipino),
                               style: AppTypography.bodyMedium.copyWith(
                                 color: hc.textPrimary,
                                 fontWeight: FontWeight.w600,
@@ -621,7 +624,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _explanationFor(_word),
+                      _explanationFor(context, _word),
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                       ),
@@ -655,7 +658,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                allCorrect ? 'Perfect mission! 🎉' : 'Mission complete! ✨',
+                allCorrect ? _t(context).dcPerfect : _t(context).dcComplete,
                 style: AppTypography.titleMedium.copyWith(
                   color: AppColors.success,
                   fontWeight: FontWeight.w800,
@@ -666,13 +669,14 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          'You got $_correctCount of $total correct'
-          '${_starsEarned > 0 ? ' and earned $_starsEarned ⭐' : ''}.',
+          _starsEarned > 0
+              ? _t(context).dcYouGotStars(_correctCount, total, _starsEarned)
+              : _t(context).dcYouGot(_correctCount, total),
           style: AppTypography.bodyMedium.copyWith(color: hc.textPrimary),
         ),
         const SizedBox(height: 6),
         Text(
-          'Come back tomorrow for a new mission',
+          _t(context).dcComeBack,
           style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
         ),
       ],
@@ -694,7 +698,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Today's mission completed! ✨",
+                _t(context).dcTodayDone,
                 style: AppTypography.titleSmall.copyWith(
                   color: AppColors.success,
                   fontWeight: FontWeight.w700,
@@ -702,7 +706,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Come back tomorrow for a new mission',
+                _t(context).dcComeBack,
                 style: AppTypography.bodySmall.copyWith(
                   color: hc.textSecondary,
                 ),
@@ -728,7 +732,7 @@ class _FiftyFiftyButton extends StatelessWidget {
     final hc = HCColor.of(context);
     return Semantics(
       button: true,
-      label: 'Fifty-fifty hint, removes two wrong answers, $remaining left',
+      label: _t(context).dcFiftySemantics(remaining),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -769,19 +773,19 @@ class _StreakBanner extends StatelessWidget {
     String streakMessage;
     String streakEmoji;
     if (streak == 0) {
-      streakMessage = 'Start your streak today!';
+      streakMessage = _t(context).dcStreakStart;
       streakEmoji = '🌱';
     } else if (streak < 3) {
-      streakMessage = '$streak day streak — keep going!';
+      streakMessage = _t(context).dcStreakGoing(streak);
       streakEmoji = '🔥';
     } else if (streak < 7) {
-      streakMessage = '$streak day streak — amazing!';
+      streakMessage = _t(context).dcStreakAmazing(streak);
       streakEmoji = '🔥🔥';
     } else if (streak < 30) {
-      streakMessage = '$streak day streak — on fire!';
+      streakMessage = _t(context).dcStreakFire(streak);
       streakEmoji = '🔥🔥🔥';
     } else {
-      streakMessage = '$streak day streak — legendary!';
+      streakMessage = _t(context).dcStreakLegend(streak);
       streakEmoji = '👑🔥';
     }
 
@@ -833,7 +837,7 @@ class _StreakBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Complete the daily mission to extend your streak',
+                  _t(context).dcStreakHint,
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.textOnPrimary.withValues(alpha: 0.85),
                   ),
@@ -933,7 +937,7 @@ class _ChoiceButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: !disabled,
-      label: eliminated ? '$text, removed by hint' : text,
+      label: eliminated ? _t(context).dcRemovedByHint(text) : text,
       child: Opacity(
         opacity: eliminated ? 0.45 : 1,
         child: GestureDetector(
@@ -1015,22 +1019,6 @@ class _ChallengeCalendar extends StatelessWidget {
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
     final startWeekday = firstDay.weekday; // 1-7 (Mon-Sun)
 
-    const months = [
-      '',
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1051,14 +1039,14 @@ class _ChallengeCalendar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                  tooltip: 'Previous month',
+                  tooltip: _t(context).dcPrevMonth,
                   onPressed: onPreviousMonth,
                   icon: Icon(Icons.chevron_left_rounded, color: hc.textPrimary),
                 ),
               // FitText: made flexible it stopped overflowing but began
               // splitting the month name ("Septem / ber") instead.
               Flexible(child: FitText(
-                '${months[month.month]} ${month.year}',
+                LocalizedDate.monthYear(month, _t(context)),
                 maxLines: 1,
                 style: AppTypography.titleMedium.copyWith(
                   color: hc.textPrimary,
@@ -1066,7 +1054,7 @@ class _ChallengeCalendar extends StatelessWidget {
                 ),
               )),
               IconButton(
-                  tooltip: 'Next month',
+                  tooltip: _t(context).dcNextMonth,
                   onPressed: onNextMonth,
                   icon: Icon(
                     Icons.chevron_right_rounded,
@@ -1077,7 +1065,7 @@ class _ChallengeCalendar extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Row(
-            children: ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) {
+            children: LocalizedDate.weekdayInitials(_t(context)).map((d) {
               return Expanded(
                 child: Center(
                   child: Text(
@@ -1189,13 +1177,14 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
 
+    final t = _t(context);
     final badges = <({String emoji, String title})>[];
-    if (streak >= 3) badges.add((emoji: '🔥', title: '3-Day Streak'));
-    if (streak >= 7) badges.add((emoji: '⚡', title: 'Weekly Warrior'));
-    if (streak >= 30) badges.add((emoji: '👑', title: 'Monthly Master'));
-    if (totalCompleted >= 10) badges.add((emoji: '🌟', title: '10 Days Done'));
-    if (totalCompleted >= 50) badges.add((emoji: '💎', title: '50 Days Done'));
-    if (totalCompleted >= 100) badges.add((emoji: '🏅', title: 'Century Club'));
+    if (streak >= 3) badges.add((emoji: '🔥', title: t.dcBadge3Day));
+    if (streak >= 7) badges.add((emoji: '⚡', title: t.dcBadgeWeekly));
+    if (streak >= 30) badges.add((emoji: '👑', title: t.dcBadgeMonthly));
+    if (totalCompleted >= 10) badges.add((emoji: '🌟', title: t.dcBadge10));
+    if (totalCompleted >= 50) badges.add((emoji: '💎', title: t.dcBadge50));
+    if (totalCompleted >= 100) badges.add((emoji: '🏅', title: t.dcBadge100));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1204,24 +1193,24 @@ class _StatsRow extends StatelessWidget {
         // large text scale they do not, and shrinking them further was still
         // splitting "Curren / t Streak" -- so stack instead.
         ReflowRow(
-          labels: const ['Current Streak', 'Days Completed', 'Stars Earned'],
+          labels: [t.dcCurrentStreak, t.dcDaysCompleted, t.dcStarsEarned],
           children: [
             _StatCard(
               emoji: '🔥',
               value: '$streak',
-              label: 'Current Streak',
+              label: t.dcCurrentStreak,
               color: const Color(0xFFFF6B35),
             ),
             _StatCard(
               emoji: '📅',
               value: '$totalCompleted',
-              label: 'Days Completed',
+              label: t.dcDaysCompleted,
               color: AppColors.primary,
             ),
             _StatCard(
               emoji: '⭐',
               value: '${totalCompleted * 2}',
-              label: 'Stars Earned',
+              label: t.dcStarsEarned,
               color: AppColors.warning,
             ),
           ],
@@ -1229,7 +1218,7 @@ class _StatsRow extends StatelessWidget {
         if (badges.isNotEmpty) ...[
           const SizedBox(height: 20),
           Text(
-            'Badges Earned',
+            _t(context).dcBadgesEarned,
             style: AppTypography.titleSmall.copyWith(
               color: hc.textPrimary,
               fontWeight: FontWeight.w700,
@@ -1347,3 +1336,8 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

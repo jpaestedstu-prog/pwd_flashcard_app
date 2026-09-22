@@ -19,6 +19,7 @@ import '../widgets/charts/star_pie_chart.dart';
 import '../widgets/charts/study_time_chart.dart';
 import '../../../widgets/app_back_button.dart';
 import '../models/category_mastery.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Enhanced analytics dashboard with adaptive difficulty history,
 /// spaced repetition heatmap, and comprehensive learning insights.
@@ -36,9 +37,9 @@ class AdaptiveAnalyticsScreen extends ConsumerWidget {
       return Scaffold(
         body: RichEmptyState(
           emoji: '👤',
-          title: 'No Profile Selected',
-          description: 'Select a profile to view adaptive analytics.',
-          actionLabel: 'Go Back',
+          title: _t(context).lgNoProfile,
+          description: _t(context).aaSelectProfile,
+          actionLabel: _t(context).goBack,
           actionIcon: Icons.arrow_back_rounded,
           onAction: () => context.pop(),
         ),
@@ -337,7 +338,7 @@ class _SummaryBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Category Overview',
+            _t(context).aaCategoryOverview,
             style: AppTypography.labelMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: hc.textPrimary,
@@ -374,9 +375,9 @@ class _SummaryBar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _catLabel('🏆', '$masteredCats Mastered', hc.success),
-              _catLabel('📖', '$inProgressCats Learning', hc.warning),
-              _catLabel('🆕', '$notStartedCats New', AppColors.textHint),
+              _catLabel('🏆', _t(context).aaMastered(masteredCats), hc.success),
+              _catLabel('📖', _t(context).aaLearning(inProgressCats), hc.warning),
+              _catLabel('🆕', _t(context).aaNew(notStartedCats), AppColors.textHint),
             ],
           ),
         ],
@@ -435,7 +436,7 @@ class _SessionStatsCard extends StatelessWidget {
               Icon(Icons.insights_rounded, color: hc.info, size: 22),
               const SizedBox(width: 8),
               Text(
-                'Session Insights',
+                _t(context).aaSessionInsights,
                 style: AppTypography.labelMedium.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -449,21 +450,21 @@ class _SessionStatsCard extends StatelessWidget {
               _sessionStat(
                 Icons.av_timer_rounded,
                 '${avgMin.toStringAsFixed(1)}m',
-                'Avg Session',
+                _t(context).aaAvgSession,
                 hc.info,
               ),
               const SizedBox(width: 12),
               _sessionStat(
                 Icons.replay_rounded,
                 '$totalSess',
-                'Total Sessions',
+                _t(context).aaTotalSessions,
                 hc.accent,
               ),
               const SizedBox(width: 12),
               _sessionStat(
                 Icons.local_fire_department_rounded,
                 '$streakDays',
-                'Day Streak',
+                _t(context).pfDayStreak,
                 hc.warning,
               ),
             ],
@@ -505,3 +506,8 @@ class _SessionStatsCard extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -8,6 +8,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/local/local_repository.dart';
 import '../../../providers/app_providers.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Friendly, user-readable copy for a cloud-sync exception.
 ///
@@ -26,21 +28,14 @@ import '../../../providers/app_providers.dart';
   String body,
   String? underlying,
   String? profileId,
-}) cloudSyncErrorMessage(Object e) {
+}) cloudSyncErrorMessage(Object e, [AppLocalizations? l10n]) {
+  final t = l10n ?? AppLocalizationsEn();
   if (e is CloudAuthMissingException) {
     return (
       icon: Icons.cloud_off_rounded,
       color: Colors.orange.shade700,
-      title: 'Cloud sign-in not ready',
-      body:
-          'The app couldn\'t sign in anonymously, so Firestore is rejecting '
-          'writes. Common fixes:\n\n'
-          '1) Firebase Console → Authentication → Sign-in method → enable '
-          'Anonymous.\n'
-          '2) Deploy the security rules: '
-          '`firebase deploy --only firestore:rules`.\n'
-          '3) Connect the device to the internet for one launch so the '
-          'sign-in can complete.',
+      title: t.csxAuthTitle,
+      body: t.csxAuthBody,
       underlying: e.underlying,
       profileId: null,
     );
@@ -49,11 +44,8 @@ import '../../../providers/app_providers.dart';
     return (
       icon: Icons.lock_person_rounded,
       color: Colors.red.shade700,
-      title: 'Profile locked to another device',
-      body:
-          'This profile was created on a different device (or before the '
-          'app was reinstalled). Tap “Reset for this device” to claim it '
-          'for this anonymous sign-in, or sign in on the original device.',
+      title: t.csxLockedTitle,
+      body: t.csxLockedBody,
       underlying: 'profile=${e.profileId}',
       profileId: e.profileId,
     );
@@ -63,15 +55,8 @@ import '../../../providers/app_providers.dart';
       return (
         icon: Icons.gpp_bad_rounded,
         color: Colors.red.shade700,
-        title: 'Cloud setup incomplete',
-        body:
-            'Firestore rejected the request. Run through these steps once, '
-            'then try again:\n\n'
-            '1) Firebase Console → Authentication → Sign-in method → '
-            'enable Anonymous.\n'
-            '2) From the project root: '
-            '`firebase deploy --only firestore:rules`.\n'
-            '3) Pull the device online for at least one launch.',
+        title: t.csxSetupTitle,
+        body: t.csxSetupBody,
         underlying: '${e.code}: ${e.message}',
         profileId: null,
       );
@@ -80,21 +65,30 @@ import '../../../providers/app_providers.dart';
       return (
         icon: Icons.wifi_off_rounded,
         color: Colors.blueGrey.shade700,
-        title: 'Offline',
-        body:
-            'You\'re seeing your last saved data. New changes will sync '
-            'when this device is back online.',
+        title: t.csxOffline,
+        body: t.csxOfflineBody,
         underlying: e.message,
         profileId: null,
       );
     }
   }
+  // The class / home-group providers throw a plain Exception when Firebase
+  // never came up on this device.
+  if (e.toString().contains('Cloud sync not connected')) {
+    return (
+      icon: Icons.cloud_off_rounded,
+      color: Colors.blueGrey.shade700,
+      title: t.csxNotConnected,
+      body: t.csxNotConnectedBody,
+      underlying: e.toString(),
+      profileId: null,
+    );
+  }
   return (
     icon: Icons.error_outline_rounded,
     color: Colors.grey.shade800,
-    title: 'Something went wrong',
-    body: 'Try again. If this keeps happening, expand the details below '
-        'and share them with support.',
+    title: t.csxWrong,
+    body: t.csxWrongBody,
     underlying: e.toString(),
     profileId: null,
   );
@@ -118,7 +112,7 @@ class CloudSyncErrorView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final msg = cloudSyncErrorMessage(error);
+    final msg = cloudSyncErrorMessage(error, AppLocalizations.of(context));
     return _ErrorScaffold(
       icon: msg.icon,
       color: msg.color,
@@ -189,7 +183,7 @@ class _ErrorScaffold extends StatelessWidget {
               const SizedBox(height: 24),
               ExpansionTile(
                 title: Text(
-                  'Details',
+                  _t(context).csxDetails,
                   style: AppTypography.labelMedium.copyWith(
                     color: Colors.grey.shade700,
                   ),
@@ -250,7 +244,7 @@ class _RetryButtonState extends State<_RetryButton> {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : const Icon(Icons.refresh_rounded, size: 18),
-      label: Text(_busy ? 'Retrying…' : 'Retry'),
+      label: Text(_busy ? _t(context).csxRetrying : _t(context).lpRetry),
     );
   }
 }
@@ -302,13 +296,19 @@ class _ResetForThisDeviceButtonState
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile reset for this device.')),
+        SnackBar(content: Text(_t(context).csxReset)),
       );
       await widget.onDone();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Reset failed: $e')),
+        SnackBar(
+          content: Text(
+            _t(context).csxResetFailed(
+              cloudSyncErrorMessage(e, _t(context)).title,
+            ),
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -326,7 +326,12 @@ class _ResetForThisDeviceButtonState
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : const Icon(Icons.restart_alt_rounded, size: 18),
-      label: const Text('Reset for this device'),
+      label: Text(_t(context).csxResetButton),
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

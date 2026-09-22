@@ -3,6 +3,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../data/models/models.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/app_localizations_en.dart';
+import 'localized_date.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/achievements.dart';
 import '../../data/local/hive_service.dart';
@@ -12,6 +15,11 @@ import '../../features/progress/models/category_mastery.dart';
 /// Generates a shareable PDF progress report for teacher/parent use.
 class ReportGenerator {
   const ReportGenerator._();
+
+  /// The language of the report being built, set at the top of
+  /// [generateAndShare]. The report follows the app's language; without an
+  /// [AppLocalizations] it stays English.
+  static AppLocalizations _l = AppLocalizationsEn();
 
   /// Load NotoSans fonts that support Unicode.
   static Future<pw.ThemeData> _loadTheme() async {
@@ -27,7 +35,9 @@ class ReportGenerator {
     required UserProfile profile,
     required LearningProgress progress,
     required List<Flashcard> allCards,
+    AppLocalizations? l10n,
   }) async {
+    _l = l10n ?? AppLocalizationsEn();
     final theme = await _loadTheme();
     final pdf = pw.Document(theme: theme);
 
@@ -60,7 +70,7 @@ class ReportGenerator {
     final mastery = CategoryMastery.forProgress(progress, allCards);
     final categories = FlashcardCategory.values.map((cat) {
       final coverage = mastery[cat]?.coverage ?? 0.0;
-      return (cat.label, (coverage * 100).round());
+      return (cat.labelOf(_l), (coverage * 100).round());
     }).toList();
 
     // Recent game scores
@@ -91,7 +101,7 @@ class ReportGenerator {
           // ── Title ──
           pw.SizedBox(height: 8),
           pw.Text(
-            'Student Progress Report',
+            _l.prTitle,
             style: pw.TextStyle(
               fontSize: 22,
               fontWeight: pw.FontWeight.bold,
@@ -100,7 +110,7 @@ class ReportGenerator {
           ),
           pw.SizedBox(height: 4),
           pw.Text(
-            'Generated on ${DateTime.now().toString().split(' ').first}',
+            _l.wrGeneratedOn(LocalizedDate.monthDayYear(DateTime.now(), _l)),
             style: const pw.TextStyle(fontSize: 10, color: grey),
           ),
           pw.Divider(color: primary, thickness: 1.5),
@@ -111,21 +121,21 @@ class ReportGenerator {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               _metricBox(
-                'Words Learned',
+                _l.prWordsLearned,
                 '$masteredWords',
-                subtitle: 'of $totalWords',
+                subtitle: _l.prOfTotal(totalWords),
               ),
-              _metricBox('Mastery', '$masteryPct%'),
-              _metricBox('Stars', '$totalStars'),
-              _metricBox('Streak', '$streak days'),
-              _metricBox('Badges', '$unlockedCount/$totalAchievements'),
+              _metricBox(_l.mastery, '$masteryPct%'),
+              _metricBox(_l.stars, '$totalStars'),
+              _metricBox(_l.streak, _l.prStreakDays(streak)),
+              _metricBox(_l.badges, '$unlockedCount/$totalAchievements'),
             ],
           ),
           pw.SizedBox(height: 20),
 
           // ── Category Breakdown ──
           pw.Text(
-            'Category Breakdown',
+            _l.prCategoryBreakdown,
             style: pw.TextStyle(
               fontSize: 16,
               fontWeight: pw.FontWeight.bold,
@@ -186,7 +196,7 @@ class ReportGenerator {
 
           // ── Spaced Repetition Insights ──
           pw.Text(
-            'Learning Analysis',
+            _l.prLearningAnalysis,
             style: pw.TextStyle(
               fontSize: 16,
               fontWeight: pw.FontWeight.bold,
@@ -203,14 +213,14 @@ class ReportGenerator {
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
               children: [
-                _miniStat('Total Attempts', '${srSummary.totalAttempted}'),
-                _miniStat('Correct', '${srSummary.totalCorrect}'),
-                _miniStat('Struggling Words', '${srSummary.wordsStruggling}'),
+                _miniStat(_l.prTotalAttempts, '${srSummary.totalAttempted}'),
+                _miniStat(_l.sumCorrect, '${srSummary.totalCorrect}'),
+                _miniStat(_l.prStruggling, '${srSummary.wordsStruggling}'),
                 _miniStat(
-                  'Overall Accuracy',
+                  _l.prOverallAccuracy,
                   srSummary.totalAttempted > 0
                       ? '${(srSummary.totalCorrect / srSummary.totalAttempted * 100).round()}%'
-                      : 'N/A',
+                      : _l.prNotAvailable,
                 ),
               ],
             ),
@@ -220,7 +230,7 @@ class ReportGenerator {
           // Weak words table
           if (weakWords.isNotEmpty) ...[
             pw.Text(
-              'Words Needing Practice',
+              _l.prNeedPractice,
               style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 6),
@@ -238,11 +248,11 @@ class ReportGenerator {
                 vertical: 4,
               ),
               headers: [
-                'Word (EN)',
-                'Word (FIL)',
-                'Category',
-                'Accuracy',
-                'Attempts',
+                _l.prWordEn,
+                _l.prWordFil,
+                _l.wrCategory,
+                _l.accuracy,
+                _l.prAttempts,
               ],
               data: weakWords.take(10).map((item) {
                 final card = item.$1;
@@ -250,7 +260,7 @@ class ReportGenerator {
                 return [
                   card.wordEnglish,
                   card.wordFilipino,
-                  card.category.label,
+                  card.category.labelOf(_l),
                   '${(wa.accuracy * 100).round()}%',
                   '${wa.total}',
                 ];
@@ -262,7 +272,7 @@ class ReportGenerator {
           // ── Recent Activity ──
           if (recentScores.isNotEmpty) ...[
             pw.Text(
-              'Recent Game Activity',
+              _l.prRecentActivity,
               style: pw.TextStyle(
                 fontSize: 16,
                 fontWeight: pw.FontWeight.bold,
@@ -283,11 +293,11 @@ class ReportGenerator {
                 horizontal: 8,
                 vertical: 4,
               ),
-              headers: ['Game', 'Score', 'Percentage', 'Stars', 'Date'],
+              headers: [_l.wrGame, _l.wrScore, _l.prPercentage, _l.stars, _l.wrDate],
               data: recentScores.reversed.take(10).map((s) {
                 final pct = s.total > 0 ? (s.score / s.total * 100).round() : 0;
                 return [
-                  s.gameType.label,
+                  s.gameType.labelOf(_l),
                   '${s.score}/${s.total}',
                   '$pct%',
                   '${s.starsEarned}/3',
@@ -300,7 +310,7 @@ class ReportGenerator {
 
           // ── Recommendations ──
           pw.Text(
-            'Recommendations',
+            _l.recommendations,
             style: pw.TextStyle(
               fontSize: 16,
               fontWeight: pw.FontWeight.bold,
@@ -356,7 +366,7 @@ class ReportGenerator {
                   ),
                 ),
                 pw.Text(
-                  'Interactive Vocabulary Learning',
+                  _l.prTagline,
                   style: const pw.TextStyle(
                     fontSize: 8,
                     color: PdfColor.fromInt(0xFF757575),
@@ -374,7 +384,7 @@ class ReportGenerator {
               style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
             ),
             pw.Text(
-              profile.role.label,
+              profile.role.labelOf(_l),
               style: const pw.TextStyle(
                 fontSize: 9,
                 color: PdfColor.fromInt(0xFF757575),
@@ -391,14 +401,14 @@ class ReportGenerator {
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
         pw.Text(
-          'FlashLearn PWD - Thesis Capstone Project',
+          _l.prFooter,
           style: const pw.TextStyle(
             fontSize: 8,
             color: PdfColor.fromInt(0xFF9E9E9E),
           ),
         ),
         pw.Text(
-          'Page ${context.pageNumber} of ${context.pagesCount}',
+          _l.prPageOf(context.pageNumber, context.pagesCount),
           style: const pw.TextStyle(
             fontSize: 8,
             color: PdfColor.fromInt(0xFF9E9E9E),
@@ -476,9 +486,8 @@ class ReportGenerator {
     if (sorted.isNotEmpty && sorted.first.$2 < 50) {
       recs.add(
         _recommendation(
-          'Focus on ${sorted.first.$1}',
-          'This category has the lowest progress at ${sorted.first.$2}%. '
-              'Encourage the student to use flashcards and play games in this category.',
+          _l.prFocusOn(sorted.first.$1),
+          _l.prFocusOnBody(sorted.first.$2),
         ),
       );
     }
@@ -486,9 +495,8 @@ class ReportGenerator {
     if (weakCount > 3) {
       recs.add(
         _recommendation(
-          'Use Smart Review',
-          'There are $weakCount words the student struggles with. '
-              'The Smart Review feature uses spaced repetition to prioritize them.',
+          _l.prSmartReview,
+          _l.prSmartReviewBody(weakCount),
         ),
       );
     }
@@ -496,17 +504,15 @@ class ReportGenerator {
     if (streak < 3) {
       recs.add(
         _recommendation(
-          'Build Daily Habit',
-          'The current streak is $streak day${streak == 1 ? '' : 's'}. '
-              'Encourage daily practice to build consistency.',
+          _l.prHabit,
+          _l.prHabitBody(streak),
         ),
       );
     } else {
       recs.add(
         _recommendation(
-          'Great Consistency!',
-          'The student has a $streak-day streak. '
-              'Positive reinforcement will help maintain this habit.',
+          _l.prConsistency,
+          _l.prConsistencyBody(streak),
         ),
       );
     }
@@ -514,9 +520,8 @@ class ReportGenerator {
     if (sorted.isNotEmpty && sorted.last.$2 >= 70) {
       recs.add(
         _recommendation(
-          'Try Harder Difficulty',
-          '${sorted.last.$1} progress is at ${sorted.last.$2}%. '
-              'Consider increasing the game difficulty for extra challenge.',
+          _l.prHarder,
+          _l.prHarderBody(sorted.last.$1, sorted.last.$2),
         ),
       );
     }

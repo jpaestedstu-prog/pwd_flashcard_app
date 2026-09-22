@@ -4,6 +4,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../data/models/enums.dart';
 import '../../data/models/models.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/app_localizations_en.dart';
 import '../../data/local/seed_data.dart';
 
 /// Types of printable worksheets.
@@ -29,6 +31,22 @@ extension WorksheetTypeX on WorksheetType {
     WorksheetType.wordSearch => 'Find hidden vocabulary words in a letter grid',
   };
 
+  /// [label] in the app's language. [label] stays English for file names.
+  String labelOf(AppLocalizations l10n) => switch (this) {
+    WorksheetType.wordTracing => l10n.wsTracing,
+    WorksheetType.pictureMatching => l10n.wsMatching,
+    WorksheetType.fillInTheBlank => l10n.wsFill,
+    WorksheetType.wordSearch => l10n.wsSearch,
+  };
+
+  /// [description] in the app's language.
+  String descriptionOf(AppLocalizations l10n) => switch (this) {
+    WorksheetType.wordTracing => l10n.wsTracingDesc,
+    WorksheetType.pictureMatching => l10n.wsMatchingDesc,
+    WorksheetType.fillInTheBlank => l10n.wsFillDesc,
+    WorksheetType.wordSearch => l10n.wsSearchDesc,
+  };
+
   String get emoji => switch (this) {
     WorksheetType.wordTracing => '✏️',
     WorksheetType.pictureMatching => '🔗',
@@ -41,11 +59,18 @@ extension WorksheetTypeX on WorksheetType {
 class WorksheetService {
   WorksheetService._();
 
+  /// The language of the worksheet being built, set at the top of
+  /// [generate]. Instructions and headings follow the app's language; the
+  /// vocabulary itself is learning content and prints as it is.
+  static AppLocalizations _l = AppLocalizationsEn();
+
   static Future<Uint8List> generate({
     required WorksheetType type,
     required FlashcardCategory category,
     required GameDifficulty difficulty,
+    AppLocalizations? l10n,
   }) async {
+    _l = l10n ?? AppLocalizationsEn();
     final cards = SeedData.getByCategory(category);
     final numWords = switch (difficulty) {
       GameDifficulty.easy => 6,
@@ -74,12 +99,12 @@ class WorksheetService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(40),
-        header: (ctx) => _buildHeader('Word Tracing', category, difficulty),
+        header: (ctx) => _buildHeader(_l.wsTracing, category, difficulty),
         footer: (ctx) => _buildFooter(ctx),
         build: (ctx) => [
           pw.SizedBox(height: 10),
           pw.Text(
-            'Trace each word carefully. Practice writing both English and Filipino!',
+            _l.wsTraceInstr,
             style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
           ),
           pw.SizedBox(height: 20),
@@ -96,7 +121,7 @@ class WorksheetService {
                 children: [
                   pw.Row(
                     children: [
-                      pw.Text('English: ',
+                      pw.Text(_l.wsEnglishColon,
                           style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold, fontSize: 12)),
                       pw.Text(card.wordEnglish,
@@ -128,7 +153,7 @@ class WorksheetService {
                   pw.SizedBox(height: 10),
                   pw.Row(
                     children: [
-                      pw.Text('Filipino: ',
+                      pw.Text(_l.wsFilipinoColon,
                           style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold, fontSize: 12)),
                       pw.Text(card.wordFilipino,
@@ -178,12 +203,12 @@ class WorksheetService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(40),
-        header: (ctx) => _buildHeader('Picture/Word Matching', category, difficulty),
+        header: (ctx) => _buildHeader(_l.wsMatchingHeader, category, difficulty),
         footer: (ctx) => _buildFooter(ctx),
         build: (ctx) => [
           pw.SizedBox(height: 10),
           pw.Text(
-            'Draw a line from each English word on the left to its Filipino translation on the right.',
+            _l.wsMatchInstr,
             style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
           ),
           pw.SizedBox(height: 20),
@@ -195,7 +220,7 @@ class WorksheetService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('English',
+                    pw.Text(_l.wsEnglish,
                         style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold, fontSize: 14)),
                     pw.SizedBox(height: 12),
@@ -223,7 +248,7 @@ class WorksheetService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
-                    pw.Text('Filipino',
+                    pw.Text(_l.wsFilipino,
                         style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold, fontSize: 14)),
                     pw.SizedBox(height: 12),
@@ -248,7 +273,7 @@ class WorksheetService {
             ],
           ),
           pw.SizedBox(height: 30),
-          pw.Text('Answers: _______________________________________________',
+          pw.Text(_l.wsAnswers,
               style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey500)),
         ],
       ),
@@ -269,12 +294,12 @@ class WorksheetService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(40),
-        header: (ctx) => _buildHeader('Fill in the Blank', category, difficulty),
+        header: (ctx) => _buildHeader(_l.wsFill, category, difficulty),
         footer: (ctx) => _buildFooter(ctx),
         build: (ctx) => [
           pw.SizedBox(height: 10),
           pw.Text(
-            'Fill in each blank with the correct word from the word bank below.',
+            _l.wsFillInstr,
             style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
           ),
           pw.SizedBox(height: 16),
@@ -289,7 +314,7 @@ class WorksheetService {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Word Bank:',
+                pw.Text(_l.wsWordBank,
                     style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold, fontSize: 12)),
                 pw.SizedBox(height: 8),
@@ -338,7 +363,7 @@ class WorksheetService {
                     ),
                     pw.SizedBox(height: 4),
                     pw.Text(
-                      '   Filipino: ${card.wordFilipino}',
+                      '   ${_l.wsFilipinoColon}${card.wordFilipino}',
                       style: pw.TextStyle(
                           fontSize: 10,
                           color: PdfColors.grey600,
@@ -373,12 +398,12 @@ class WorksheetService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(40),
-        header: (ctx) => _buildHeader('Word Search', category, difficulty),
+        header: (ctx) => _buildHeader(_l.wsSearch, category, difficulty),
         footer: (ctx) => _buildFooter(ctx),
         build: (ctx) => [
           pw.SizedBox(height: 10),
           pw.Text(
-            'Find and circle all the hidden words in the grid below!',
+            _l.wsSearchInstr,
             style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
           ),
           pw.SizedBox(height: 16),
@@ -450,7 +475,7 @@ class WorksheetService {
               ),
               pw.SizedBox(height: 4),
               pw.Text(
-                'Category: ${category.label}  •  Difficulty: ${difficulty.label}',
+                _l.wsMeta(category.labelOf(_l), difficulty.labelOf(_l)),
                 style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
               ),
             ],
@@ -458,10 +483,10 @@ class WorksheetService {
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
-              pw.Text('Name: ____________________',
+              pw.Text(_l.wsName,
                   style: const pw.TextStyle(fontSize: 10)),
               pw.SizedBox(height: 4),
-              pw.Text('Date: ____________________',
+              pw.Text(_l.wsDate,
                   style: const pw.TextStyle(fontSize: 10)),
             ],
           ),
@@ -480,7 +505,7 @@ class WorksheetService {
         ),
       ),
       child: pw.Text(
-        'Page ${context.pageNumber} of ${context.pagesCount}  •  Generated by FlashLearn PWD',
+        _l.wsFooter(context.pageNumber, context.pagesCount),
         style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
       ),
     );

@@ -10,8 +10,15 @@ class AssessmentResultsNotifier extends StateNotifier<List<AssessmentResult>> {
   final String profileId;
   final AssessmentCloudService cloud;
 
+  /// Called when a result could not be uploaded — a test finished with no
+  /// signal. The provider wires it to a learner pull, which pushes whatever
+  /// the cloud is missing and, failing that, keeps retrying (see
+  /// `LearnerAssignmentSync`), so the educator gets the result once the
+  /// tablet is back online without the learner reopening the app.
+  final void Function()? onUploadMissed;
+
   AssessmentResultsNotifier(this.profileId,
-      {this.cloud = const AssessmentCloudService()})
+      {this.cloud = const AssessmentCloudService(), this.onUploadMissed})
       : super(AssessmentService.getResults(profileId));
 
   void refresh() {
@@ -19,8 +26,9 @@ class AssessmentResultsNotifier extends StateNotifier<List<AssessmentResult>> {
   }
 
   Future<void> saveResult(AssessmentResult result) async {
-    await cloud.saveResult(profileId, result);
+    final uploaded = await cloud.saveResult(profileId, result);
     state = AssessmentService.getResults(profileId);
+    if (!uploaded) onUploadMissed?.call();
   }
 
   List<AssessmentResult> getByType(AssessmentType type) {
@@ -56,7 +64,13 @@ final assessmentResultsProvider =
     StateNotifierProvider<AssessmentResultsNotifier, List<AssessmentResult>>(
         (ref) {
   final profile = ref.watch(profileProvider);
-  return AssessmentResultsNotifier(profile?.id ?? '');
+  final id = profile?.id ?? '';
+  return AssessmentResultsNotifier(
+    id,
+    onUploadMissed: id.isEmpty
+        ? null
+        : () => ref.invalidate(learnerAssignmentSyncProvider(id)),
+  );
 });
 
 // ─── Custom Assessments Provider ─────────────────────────
@@ -149,14 +163,13 @@ final assignmentsProvider =
 /// about. Watching it from a build method triggers exactly one round trip per
 /// profile per session and repaints whoever is watching when it lands.
 ///
-/// Resolves immediately to nothing when Firebase is unconfigured, so the
-/// offline-only and test paths are unaffected.
-final learnerAssignmentSyncProvider = FutureProvider.family<void, String>((
+/// Resolves immediately to true when Firebase is unconfigured, so the
+/// offline-only and test paths are unaffected. False means the pull failed;
+/// [LearnerAssignmentSync] retries it.
+final learnerAssignmentSyncProvider = FutureProvider.family<bool, String>((
   ref,
   profileId,
-) async {
-  await const AssessmentCloudService().hydrateLearner(profileId);
-});
+) => const AssessmentCloudService().hydrateLearner(profileId));
 
 /// The educator's mirror of [learnerAssignmentSyncProvider]: their templates,
 /// their assignments, and their assignees' results. Watched by the assessment

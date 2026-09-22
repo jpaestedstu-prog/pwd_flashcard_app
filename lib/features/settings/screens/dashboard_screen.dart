@@ -18,6 +18,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Dashboard for Parent/Teacher roles — provides an overview of the
 /// student's learning progress, weak areas, and recommendations.
@@ -104,7 +105,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
           actions: [
             IconButton(
-                tooltip: 'Export data as CSV spreadsheet',
+                tooltip: _t(context).dbExportCsv,
                 onPressed: profile != null
                     ? () {
                         CsvExportService.generateAndShare(
@@ -117,20 +118,21 @@ class DashboardScreen extends ConsumerWidget {
                 icon: const Icon(Icons.table_chart_rounded),
                 ),
             IconButton(
-                tooltip: 'Export progress report as PDF',
+                tooltip: _t(context).dbExportPdf,
                 onPressed: profile != null
                     ? () {
                         ReportGenerator.generateAndShare(
                           profile: profile,
                           progress: progress,
                           allCards: allCards,
+                          l10n: _t(context),
                         );
                       }
                     : null,
                 icon: const Icon(Icons.picture_as_pdf_rounded),
                 ),
             IconButton(
-                tooltip: 'Export research data for thesis analysis',
+                tooltip: _t(context).dbExportResearch,
                 onPressed: () => context.push('/research-export'),
                 icon: const Icon(Icons.science_rounded),
                 ),
@@ -153,21 +155,21 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     _MetricCard(
                       icon: Icons.star_rounded,
-                      label: 'Stars',
+                      label: _t(context).stars,
                       value: '$totalStars',
                       color: AppColors.warning,
                     ),
                     const SizedBox(width: 12),
                     _MetricCard(
                       icon: Icons.auto_stories_rounded,
-                      label: 'Words',
+                      label: _t(context).words,
                       value: '$masteredWords',
                       color: AppColors.secondary,
                     ),
                     const SizedBox(width: 12),
                     _MetricCard(
                       icon: Icons.emoji_events_rounded,
-                      label: 'Badges',
+                      label: _t(context).dbBadges,
                       value: '$unlockedCount/$totalAchievements',
                       color: AppColors.accent,
                     ),
@@ -180,7 +182,7 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 24),
 
             // ─── Overall Mastery ──────────────────
-            const _SectionTitle(title: 'Overall Mastery'),
+            _SectionTitle(title: _t(context).dbOverallMastery),
             const SizedBox(height: 12),
             _MasterySection(
               masteryPct: masteryPct,
@@ -191,7 +193,7 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 24),
 
             // ─── Category Breakdown ───────────────
-            const _SectionTitle(title: 'Category Breakdown'),
+            _SectionTitle(title: _t(context).dbCategoryBreakdown),
             const SizedBox(height: 12),
             ...FlashcardCategory.values.asMap().entries.map((entry) {
               final i = entry.key;
@@ -217,7 +219,7 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 24),
 
             // ─── Insights & Recommendations ───────
-            const _SectionTitle(title: 'Insights & Recommendations'),
+            _SectionTitle(title: _t(context).dbInsights),
             const SizedBox(height: 12),
             if (!hasAnyProgress)
               Container(
@@ -227,7 +229,7 @@ class DashboardScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  'No learning data yet. Once the student starts playing games and reviewing flashcards, insights will appear here.',
+                  _t(context).dbNoData,
                   style: AppTypography.bodyMedium.copyWith(
                     color: hc.textSecondary,
                   ),
@@ -237,42 +239,43 @@ class DashboardScreen extends ConsumerWidget {
               _InsightCard(
                 icon: Icons.trending_down_rounded,
                 iconColor: AppColors.error,
-                title: 'Needs Practice',
+                title: _t(context).dbNeedsPractice,
                 description: weakCategories
-                    .map((e) => '${e.$1.label} (${(e.$2 * 100).round()}%)')
+                    .map((e) => '${e.$1.labelOf(_t(context))} (${(e.$2 * 100).round()}%)')
                     .join(', '),
-                recommendation:
-                    'Focus on ${weakCategories.first.$1.label} flashcards and games.',
+                recommendation: _t(context).dbFocusOn(
+                  weakCategories.first.$1.labelOf(_t(context)),
+                ),
               ).animate().fadeIn(duration: 400.ms, delay: 500.ms),
               const SizedBox(height: 10),
               _InsightCard(
                 icon: Icons.trending_up_rounded,
                 iconColor: AppColors.success,
-                title: 'Doing Great',
+                title: _t(context).dbDoingGreat,
                 description: strongCategories
-                    .map((e) => '${e.$1.label} (${(e.$2 * 100).round()}%)')
+                    .map((e) => '${e.$1.labelOf(_t(context))} (${(e.$2 * 100).round()}%)')
                     .join(', '),
                 recommendation:
-                    'Keep it up! Consider trying harder difficulty levels.',
+                    _t(context).dbKeepItUp,
               ).animate().fadeIn(duration: 400.ms, delay: 600.ms),
               const SizedBox(height: 10),
               _InsightCard(
                 icon: Icons.lightbulb_rounded,
                 iconColor: AppColors.warning,
-                title: 'Engagement',
+                title: _t(context).dbEngagement,
                 description: streak > 0
-                    ? '$streak-day learning streak active!'
-                    : 'No active streak. Try daily practice.',
+                    ? _t(context).dbStreakActive(streak)
+                    : _t(context).dbNoStreak,
                 recommendation: streak >= 3
-                    ? 'Great consistency! The student is building a habit.'
-                    : 'Encourage the student to play at least once a day.',
+                    ? _t(context).dbConsistent
+                    : _t(context).dbEncourage,
               ).animate().fadeIn(duration: 400.ms, delay: 700.ms),
             ],
 
             const SizedBox(height: 24),
 
             // ─── Study Time Analytics ─────────────
-            const _SectionTitle(title: 'Study Time'),
+            _SectionTitle(title: _t(context).dbStudyTime),
             const SizedBox(height: 12),
             if (profile != null)
               _StudyTimeSection(
@@ -282,7 +285,7 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 24),
 
             // ─── Recent Activity ───────────────────
-            const _SectionTitle(title: 'Recent Activity'),
+            _SectionTitle(title: _t(context).dbRecentActivity),
             const SizedBox(height: 12),
             if (recentScores.isEmpty)
               Container(
@@ -292,7 +295,7 @@ class DashboardScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  'No game activity yet. Encourage the student to play games!',
+                  _t(context).dbNoGames,
                   style: AppTypography.bodyMedium.copyWith(
                     color: hc.textSecondary,
                   ),
@@ -380,7 +383,7 @@ class _ProfileBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Student Progress',
+                  _t(context).dbStudentProgress,
                   style: AppTypography.bodySmall.copyWith(
                     color: Colors.white.withValues(alpha: 0.8),
                   ),
@@ -522,7 +525,7 @@ class _MasterySection extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Mastery',
+                    _t(context).dbMastery,
                     style: AppTypography.labelSmall.copyWith(
                       color: HCColor.of(context).textSecondary,
                     ),
@@ -541,7 +544,7 @@ class _MasterySection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _MiniMetric(
-                    label: 'Recent Game Avg',
+                    label: _t(context).dbRecentAvg,
                     value: '${(recentAvgPct * 100).round()}%',
                     icon: Icons.trending_up_rounded,
                     color: recentAvgPct >= 0.7
@@ -552,8 +555,8 @@ class _MasterySection extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   _MiniMetric(
-                    label: 'Daily Challenge Streak',
-                    value: '$dailyStreak days',
+                    label: _t(context).dbDailyStreak,
+                    value: _t(context).dbDays(dailyStreak),
                     icon: Icons.local_fire_department_rounded,
                     color: dailyStreak >= 3
                         ? AppColors.success
@@ -666,7 +669,7 @@ class _CategoryBar extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      category.label,
+                      category.labelOf(_t(context)),
                       style: AppTypography.labelLarge.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -856,7 +859,7 @@ class _ActivityTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  gt.label,
+                  gt.labelOf(_t(context)),
                   style: AppTypography.labelLarge.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -936,19 +939,19 @@ class _StudyTimeSection extends StatelessWidget {
               _StudyMetric(
                 icon: Icons.timer_rounded,
                 value: '${totalMin}m',
-                label: 'Total Time',
+                label: _t(context).dbTotalTime,
                 color: AppColors.info,
               ),
               _StudyMetric(
                 icon: Icons.timelapse_rounded,
                 value: '${avgMin.toStringAsFixed(1)}m',
-                label: 'Avg Session',
+                label: _t(context).dbAvgSession,
                 color: AppColors.secondary,
               ),
               _StudyMetric(
                 icon: Icons.repeat_rounded,
                 value: '$totalSess',
-                label: 'Sessions',
+                label: _t(context).dbSessions,
                 color: AppColors.accent,
               ),
             ],
@@ -956,7 +959,7 @@ class _StudyTimeSection extends StatelessWidget {
           const SizedBox(height: 20),
           // Mini bar chart — last 7 days
           Text(
-            'Last 7 Days',
+            _t(context).dbLast7Days,
             style: AppTypography.labelMedium.copyWith(
               color: hc.textSecondary,
               fontWeight: FontWeight.w600,
@@ -1072,3 +1075,8 @@ class _StudyMetric extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

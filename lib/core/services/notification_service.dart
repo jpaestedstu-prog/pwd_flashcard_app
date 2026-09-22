@@ -1,7 +1,11 @@
+import 'dart:ui' show Locale;
+
 import 'device_timezone.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
+
+import '../../l10n/app_localizations.dart';
 
 /// Manages daily study-reminder notifications via flutter_local_notifications.
 ///
@@ -103,13 +107,18 @@ class NotificationService {
   /// Schedule a daily notification at the given [hour] and [minute].
   ///
   /// Cancels any previously scheduled daily reminder first.
+  ///
+  /// The wording is fixed when the reminder is scheduled, so it follows
+  /// [filipino] — see [relocalize] for a language change afterwards.
   static Future<void> scheduleDailyReminder({
     required int hour,
     required int minute,
-    String title = '📚 Time to Learn!',
-    String body = "Let's practice some new words today!",
+    bool filipino = false,
   }) async {
     await cancelDailyReminder();
+    final t = _strings(filipino);
+    final title = t.nsDailyTitle;
+    final body = t.nsDailyBody;
 
     final now = tz.TZDateTime.now(tz.local);
     var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
@@ -155,6 +164,39 @@ class NotificationService {
     }
   }
 
+  /// Re-issues whichever reminders are pending so their wording follows a
+  /// language change — a scheduled notification keeps the text it was
+  /// created with. Reminders that are off stay off.
+  static Future<void> relocalize({
+    required bool filipino,
+    required int hour,
+    required int minute,
+    required int Function() weakWordCount,
+  }) async {
+    final Set<int> pending;
+    try {
+      pending = {
+        for (final p in await _plugin.pendingNotificationRequests()) p.id,
+      };
+    } catch (_) {
+      return; // No notifications plugin here (tests, desktop).
+    }
+    if (pending.contains(_dailyReminderId)) {
+      await scheduleDailyReminder(hour: hour, minute: minute, filipino: filipino);
+    }
+    if (pending.contains(_vocabReviewId)) {
+      await scheduleVocabReviewReminder(
+        hour: hour,
+        minute: minute,
+        weakWordCount: weakWordCount(),
+        filipino: filipino,
+      );
+    }
+  }
+
+  static AppLocalizations _strings(bool filipino) =>
+      lookupAppLocalizations(Locale(filipino ? 'fil' : 'en'));
+
   /// Cancel the daily reminder.
   static Future<void> cancelDailyReminder() async {
     await _plugin.cancel(_dailyReminderId);
@@ -172,13 +214,14 @@ class NotificationService {
     required int hour,
     required int minute,
     required int weakWordCount,
+    bool filipino = false,
   }) async {
     await cancelVocabReviewReminder();
 
+    final t = _strings(filipino);
     final body = weakWordCount > 0
-        ? 'You have $weakWordCount word${weakWordCount == 1 ? '' : 's'} to review. '
-            "Let's strengthen your memory!"
-        : "Time to review your vocabulary and keep your streak going!";
+        ? t.nsReviewBody(weakWordCount)
+        : t.nsReviewNone;
 
     final now = tz.TZDateTime.now(tz.local);
     var scheduled = tz.TZDateTime(
@@ -209,7 +252,7 @@ class NotificationService {
 
     await _plugin.zonedSchedule(
       _vocabReviewId,
-      '🧠 Words Need Your Attention!',
+      t.nsReviewTitle,
       body,
       scheduled,
       details,

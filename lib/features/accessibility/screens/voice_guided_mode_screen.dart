@@ -8,6 +8,8 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/accessibility_visual_feedback.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Full voice-guided navigation mode with a step-by-step guided tour
 /// and auto-reading of screen elements.
@@ -28,6 +30,88 @@ class VoiceGuidedModeScreen extends ConsumerStatefulWidget {
 class _VoiceGuidedModeScreenState
     extends ConsumerState<VoiceGuidedModeScreen> {
   int _tourStep = -1; // -1 = not started
+
+  /// [_tourSteps] for the Filipino voice: the tour is spoken, so it has to be
+  /// in the language the learner hears everything else in.
+  static const _tourStepsFilipino = [
+    _TourStep(
+      title: 'Maligayang pagdating!',
+      description:
+          'Tutulungan ka ng gabay na ito na matutong gamitin ang app sa tulong ng boses. '
+          'Babasahin nang malakas ang bawat screen, button, at gawain.',
+      icon: Icons.record_voice_over_rounded,
+      voiceText:
+          'Maligayang pagdating sa gabay gamit ang boses! Tutulungan kitang matutong gamitin ang app. '
+          'Babasahin ko nang malakas ang bawat screen at button para sa iyo.',
+    ),
+    _TourStep(
+      title: 'Home',
+      description:
+          'Ang Home ang iyong panimulang screen. Makikita rito ang hamon ng araw, '
+          'mga kategorya ng salita, at mabilisang button para sa mga laro at flashcard.',
+      icon: Icons.home_rounded,
+      voiceText:
+          'Ang Home ang iyong panimulang screen. Dito mo makikita ang hamon ng araw, '
+          'mga kategorya ng salita, at mabilisang button para sa mga laro at flashcard.',
+      route: '/home',
+    ),
+    _TourStep(
+      title: 'Mga Flashcard',
+      description:
+          'Tingnan ang mga deck ng salita ayon sa kategorya. Pindutin ang isang deck para mag-aral. '
+          'Mag-swipe pakaliwa o pakanan para lumipat ng kard.',
+      icon: Icons.style_rounded,
+      voiceText:
+          'Sa Mga Flashcard, makikita mo ang mga deck ng salita ayon sa kategorya. '
+          'Pindutin ang isang deck para mag-aral. Mag-swipe pakaliwa o pakanan para lumipat ng kard.',
+      route: '/flashcards',
+    ),
+    _TourStep(
+      title: 'Mga Laro',
+      description:
+          'Magsanay ng mga salita sa masasayang laro tulad ng Word Match, Spelling Bee, '
+          'Memory Match, at iba pa. May 3 antas ng hirap ang bawat laro.',
+      icon: Icons.sports_esports_rounded,
+      voiceText:
+          'Sa Mga Laro, may masasayang gawain tulad ng Word Match, Spelling Bee, '
+          'Memory Match, at iba pa. May tatlong antas ng hirap ang bawat laro: madali, katamtaman, at mahirap.',
+      route: '/games',
+    ),
+    _TourStep(
+      title: 'Progreso',
+      description:
+          'Subaybayan ang iyong pag-aaral! Makikita ang mga salitang natutunan, bituing naipon, '
+          'mga nakamit, at mga tsart ng iyong pag-unlad.',
+      icon: Icons.insights_rounded,
+      voiceText:
+          'Ipinapakita ng Progreso ang iyong pag-aaral. Makikita mo ang mga salitang natutunan, '
+          'bituing naipon, mga nakamit, at mga tsart ng iyong pag-unlad.',
+      route: '/progress',
+    ),
+    _TourStep(
+      title: 'Mga Setting',
+      description:
+          'Iayos ang app ayon sa iyong pangangailangan. Baguhin ang laki ng letra, buksan ang mataas na contrast, '
+          'palitan ang wika, at iayos ang paggabay gamit ang boses.',
+      icon: Icons.settings_rounded,
+      voiceText:
+          'Sa Mga Setting, maiaayos mo ang app ayon sa iyong pangangailangan. Baguhin ang laki ng letra, '
+          'buksan ang mataas na contrast, palitan ang wika, at iayos ang paggabay gamit ang boses.',
+    ),
+    _TourStep(
+      title: 'Tapos na ang Paglilibot!',
+      description:
+          'Handa ka na! Babasahin ng paggabay gamit ang boses ang bawat screen na bubuksan mo '
+          'at bawat button na gagamitin mo. Maaari mong ulitin ang paglilibot anumang oras sa Mga Setting.',
+      icon: Icons.celebration_rounded,
+      voiceText:
+          'Natapos mo ang paglilibot! Babasahin na ng boses ang bawat screen at button para sa iyo. '
+          'Maaari mong ulitin ang paglilibot anumang oras sa Mga Setting.',
+    ),
+  ];
+
+  List<_TourStep> get _steps =>
+      ref.read(settingsProvider).locale == 'fil' ? _tourStepsFilipino : _tourSteps;
   bool _isSpeaking = false;
 
   static const _tourSteps = [
@@ -119,7 +203,7 @@ class _VoiceGuidedModeScreenState
       appBar: AppBar(
         leading: const AppBackButton(),
         title: Text(
-          'Voice-Guided Mode',
+          _t(context).vgTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -138,8 +222,9 @@ class _VoiceGuidedModeScreenState
               );
               if (!settings.voiceNavigation) {
                 // Just enabled — announce it
+                final message = _t(context).vgEnabled;
                 Future.delayed(const Duration(milliseconds: 300), () {
-                  voiceNav.announceAction('Voice navigation is now enabled.');
+                  voiceNav.announceAction(message);
                 });
               }
             },
@@ -164,7 +249,7 @@ class _VoiceGuidedModeScreenState
                     const SizedBox(width: 8),
                     Flexible(
                       child: FitText(
-                        'Voice Speed',
+                        _t(context).vgSpeed,
                         maxLines: 1,
                         style: AppTypography.labelMedium.copyWith(
                           fontWeight: FontWeight.w700,
@@ -195,9 +280,9 @@ class _VoiceGuidedModeScreenState
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Slow', style: AppTypography.labelSmall.copyWith(
+                    Text(_t(context).vgSlow, style: AppTypography.labelSmall.copyWith(
                       color: hc.textHint, fontSize: 10)),
-                    Text('Fast', style: AppTypography.labelSmall.copyWith(
+                    Text(_t(context).vgFast, style: AppTypography.labelSmall.copyWith(
                       color: hc.textHint, fontSize: 10)),
                   ],
                 ),
@@ -223,7 +308,7 @@ class _VoiceGuidedModeScreenState
                     Icon(Icons.translate_rounded, color: hc.secondary, size: 22),
                     const SizedBox(width: 8),
                     Text(
-                      'Voice Language',
+                      _t(context).vgLanguage,
                       style: AppTypography.labelMedium.copyWith(
                         fontWeight: FontWeight.w700,
                         color: hc.textPrimary,
@@ -279,7 +364,7 @@ class _VoiceGuidedModeScreenState
                 size: 22,
                 color: Colors.white,
               ),
-            label: Text(_isSpeaking ? 'Speaking...' : 'Test Voice'),
+            label: Text(_isSpeaking ? _t(context).vgSpeaking : _t(context).vgTest),
             style: ElevatedButton.styleFrom(
               backgroundColor: hc.secondary,
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -307,7 +392,7 @@ class _VoiceGuidedModeScreenState
                     Icon(Icons.tour_rounded, color: hc.accent, size: 22),
                     const SizedBox(width: 8),
                     Text(
-                      'Guided Tour',
+                      _t(context).vgTour,
                       style: AppTypography.labelMedium.copyWith(
                         fontWeight: FontWeight.w700,
                         color: hc.textPrimary,
@@ -326,8 +411,7 @@ class _VoiceGuidedModeScreenState
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Take a step-by-step tour of the entire app with '
-                  'voice narration for each screen.',
+                  _t(context).vgTourIntro,
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),
@@ -341,7 +425,7 @@ class _VoiceGuidedModeScreenState
                     child: ElevatedButton.icon(
                       onPressed: _startTour,
                       icon: const Icon(Icons.play_arrow_rounded),
-                      label: const Text('Start Tour'),
+                      label: Text(_t(context).vgStartTour),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: hc.accent,
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -354,7 +438,7 @@ class _VoiceGuidedModeScreenState
                 ] else ...[
                   // Current tour step
                   _TourStepCard(
-                    step: _tourSteps[_tourStep],
+                    step: _steps[_tourStep],
                     stepIndex: _tourStep,
                     totalSteps: _tourSteps.length,
                     hc: hc,
@@ -374,7 +458,7 @@ class _VoiceGuidedModeScreenState
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                            child: const Text('Previous'),
+                            child: Text(_t(context).vgPrevious),
                           ),
                         ),
                       if (_tourStep > 0) const SizedBox(width: 12),
@@ -392,8 +476,8 @@ class _VoiceGuidedModeScreenState
                           ),
                           child: Text(
                             _tourStep < _tourSteps.length - 1
-                                ? 'Next'
-                                : 'Finish Tour',
+                                ? _t(context).next
+                                : _t(context).vgFinish,
                           ),
                         ),
                       ),
@@ -422,7 +506,7 @@ class _VoiceGuidedModeScreenState
                     Icon(Icons.navigation_rounded, color: hc.info, size: 22),
                     const SizedBox(width: 8),
                     Text(
-                      'Quick Screen Announcements',
+                      _t(context).vgQuick,
                       style: AppTypography.labelMedium.copyWith(
                         fontWeight: FontWeight.w700,
                         color: hc.textPrimary,
@@ -432,7 +516,7 @@ class _VoiceGuidedModeScreenState
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Tap any button below to hear a description of that screen.',
+                  _t(context).vgQuickIntro,
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),
@@ -442,13 +526,13 @@ class _VoiceGuidedModeScreenState
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _QuickAnnounceChip(route: '/home', label: '🏠 Home', voiceNav: voiceNav),
-                    _QuickAnnounceChip(route: '/flashcards', label: '📚 Flashcards', voiceNav: voiceNav),
-                    _QuickAnnounceChip(route: '/games', label: '🎮 Games', voiceNav: voiceNav),
-                    _QuickAnnounceChip(route: '/progress', label: '📊 Progress', voiceNav: voiceNav),
-                    _QuickAnnounceChip(route: '/stories', label: '📖 Stories', voiceNav: voiceNav),
-                    _QuickAnnounceChip(route: '/shop', label: '⭐ Shop', voiceNav: voiceNav),
-                    _QuickAnnounceChip(route: '/settings', label: '⚙️ Settings', voiceNav: voiceNav),
+                    _QuickAnnounceChip(route: '/home', label: _t(context).vgChipHome, voiceNav: voiceNav),
+                    _QuickAnnounceChip(route: '/flashcards', label: _t(context).vgChipCards, voiceNav: voiceNav),
+                    _QuickAnnounceChip(route: '/games', label: _t(context).vgChipGames, voiceNav: voiceNav),
+                    _QuickAnnounceChip(route: '/progress', label: _t(context).vgChipProgress, voiceNav: voiceNav),
+                    _QuickAnnounceChip(route: '/stories', label: _t(context).vgChipStories, voiceNav: voiceNav),
+                    _QuickAnnounceChip(route: '/shop', label: _t(context).vgChipShop, voiceNav: voiceNav),
+                    _QuickAnnounceChip(route: '/settings', label: _t(context).vgChipSettings, voiceNav: voiceNav),
                   ],
                 ),
               ],
@@ -462,11 +546,11 @@ class _VoiceGuidedModeScreenState
   }
 
   String _speedLabel(double speed) {
-    if (speed <= 0.25) return 'Very Slow';
-    if (speed <= 0.4) return 'Slow';
-    if (speed <= 0.6) return 'Normal';
-    if (speed <= 0.8) return 'Fast';
-    return 'Very Fast';
+    if (speed <= 0.25) return _t(context).vgVerySlow;
+    if (speed <= 0.4) return _t(context).vgSlow;
+    if (speed <= 0.6) return _t(context).vgNormal;
+    if (speed <= 0.8) return _t(context).vgFast;
+    return _t(context).vgVeryFast;
   }
 
   void _startTour() {
@@ -498,12 +582,12 @@ class _VoiceGuidedModeScreenState
   void _endTour() {
     setState(() => _tourStep = -1);
     final voiceNav = ref.read(voiceNavigationProvider);
-    voiceNav.announceAction('Guided tour complete. You\'re all set!');
+    voiceNav.announceAction(_t(context).vgTourDone);
   }
 
   Future<void> _speakCurrentStep() async {
     if (_tourStep < 0 || _tourStep >= _tourSteps.length) return;
-    final step = _tourSteps[_tourStep];
+    final step = _steps[_tourStep];
     final voiceNav = ref.read(voiceNavigationProvider);
 
     setState(() => _isSpeaking = true);
@@ -567,7 +651,7 @@ class _VoiceToggleCard extends StatelessWidget {
                 // This card shares its row with a Switch, so the text
                 // column is narrow: "Na / vigation" and "announc / ements".
                 FitText(
-                  'Voice Navigation',
+                  _t(context).vgNav,
                   maxLines: 1,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w700,
@@ -577,8 +661,8 @@ class _VoiceToggleCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 FitText(
                   isEnabled
-                      ? 'Active — Screen changes and buttons are announced'
-                      : 'Tap the switch to enable voice announcements',
+                      ? _t(context).vgActive
+                      : _t(context).vgTapEnable,
                   maxLines: 3,
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
@@ -722,7 +806,7 @@ class _TourStepCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Speaking...',
+                            _t(context).vgSpeaking,
                             style: AppTypography.labelSmall.copyWith(
                               color: hc.accent,
                               fontSize: 10,
@@ -793,3 +877,8 @@ class _TourStep {
     this.route,
   });
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

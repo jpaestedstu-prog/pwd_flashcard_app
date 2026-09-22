@@ -8,6 +8,7 @@ import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/gaze_control/models/gaze_settings.dart';
 import 'package:pwdpwdpwd/features/gaze_control/providers/gaze_settings_provider.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
+import 'package:pwdpwdpwd/core/accessibility/learner_support.dart';
 
 /// Two ways in to hands-free control that did not exist before:
 ///
@@ -113,6 +114,24 @@ void main() {
       ]) {
         expect(AccessibilityPresets.enablesGazeControl(type), isFalse,
             reason: 'the front camera stays off for $type unless asked');
+      }
+    });
+
+    test('the learner-support default agrees with the category rule', () {
+      // The wizard no longer calls `enablesGazeControl` — it switches gaze on
+      // for whoever's *input method* is gaze, and that comes from
+      // `LearnerSupportCatalog.defaultsFor`. If those two ever disagree, a
+      // motor learner would be handed a tablet they cannot drive, so the two
+      // are pinned to each other here.
+      for (final type in DisabilityType.values) {
+        final defaultsToGaze = LearnerSupportCatalog.defaultsFor(
+          type,
+        ).contains(LearnerSupportOption.inputGaze);
+        expect(
+          defaultsToGaze,
+          AccessibilityPresets.enablesGazeControl(type),
+          reason: 'gaze default for $type drifted from the category rule',
+        );
       }
     });
 

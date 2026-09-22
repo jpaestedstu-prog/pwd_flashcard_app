@@ -5,7 +5,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/widgets/safe_scaffold.dart';
 import '../../../features/onboarding/screens/post_join_setup_screen.dart';
+import '../../../core/services/join_code_service.dart';
 import '../../../providers/join_code_provider.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Student-side screen: enter a 6-character classroom code.
 ///
@@ -59,7 +62,7 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
 
     return SafeScaffold(
       appBar: AppBar(
-        title: const Text('Join a Class'),
+        title: Text(_t(context).joinClassTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -76,9 +79,9 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-                const Text(
-                  'Enter the code your teacher gave you.',
-                  style: TextStyle(fontSize: 16),
+                Text(
+                  _t(context).joinClassIntro,
+                  style: const TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 24),
 
@@ -91,13 +94,13 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
                     FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
                     _UpperCaseFormatter(),
                   ],
-                  decoration: const InputDecoration(
-                    labelText: 'Class code',
+                  decoration: InputDecoration(
+                    labelText: _t(context).joinClassCode,
                     hintText: 'ABC123',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) => (v == null || v.trim().length != 6)
-                      ? 'Code must be 6 characters'
+                      ? _t(context).joinCodeLength
                       : null,
                 ),
                 const SizedBox(height: 16),
@@ -112,7 +115,7 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
                       border: Border.all(color: Colors.red.shade200),
                     ),
                     child: Text(
-                      failure.message,
+                      _joinError(_t(context), failure.error),
                       style: TextStyle(color: Colors.red.shade900),
                     ),
                   ),
@@ -123,7 +126,7 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
-                      isLoading ? 'Checking…' : 'Join class',
+                      isLoading ? _t(context).joinChecking : _t(context).playerJoinClass,
                       style: const TextStyle(fontSize: 16),
                     ),
                   ),
@@ -142,3 +145,16 @@ class _UpperCaseFormatter extends TextInputFormatter {
     return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// The failure in the reader's language. The provider's own message is
+/// written for developers (it names Firestore paths and deploy commands).
+String _joinError(AppLocalizations t, JoinCodeError error) => switch (error) {
+  JoinCodeError.notFound => t.jcNoClass,
+  JoinCodeError.network => t.jcNetwork,
+  JoinCodeError.collision || JoinCodeError.unknown => t.jcUnknown,
+};

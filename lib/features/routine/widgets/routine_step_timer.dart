@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// The countdown for one routine step — "brush for two minutes" as something
 /// the learner can watch rather than guess.
@@ -162,7 +164,7 @@ class RoutineStepTimerState extends State<RoutineStepTimer> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Timer',
+                  _t(context).rsTimer,
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hc.textPrimary,
@@ -242,3 +244,8 @@ class RoutineStepTimerState extends State<RoutineStepTimer> {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

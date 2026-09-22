@@ -15,6 +15,7 @@ import '../l10n/app_localizations.dart';
 import 'animated_dialogs.dart';
 import 'animated_score_reveal.dart';
 import 'tilt_3d.dart';
+import '../l10n/app_localizations_en.dart';
 
 // ─── Category Picker Bottom Sheet ───────────────────────
 
@@ -480,7 +481,7 @@ typedef GamePickerResult = ({GameDifficulty difficulty, bool timedMode});
 /// Shows a bottom sheet letting the user pick Easy / Medium / Hard / Auto
 /// and optionally enable timed mode.
 /// Returns the selected [GamePickerResult] or null if dismissed.
-/// Pass [profileId] to enable the adaptive "Auto" difficulty option.
+/// Pass [profileId] to enable the adaptive _t(context).gwAuto difficulty option.
 /// Set [showTimedToggle] false for activities that have no 60-second variant —
 /// the two FSL quiz modes play video, so a countdown would be racing the clips
 /// rather than the learner.
@@ -659,7 +660,7 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
               ),
             if (widget.showTimedToggle) const SizedBox(height: 16),
 
-            // Adaptive "Auto" difficulty card
+            // Adaptive _t(context).gwAuto difficulty card
             if (widget.profileId != null) ...[
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -863,14 +864,14 @@ class _DifficultyCardState extends State<_DifficultyCard> {
   }
 }
 
-/// The closing encouragement of the "Auto" card's explanation.
+/// The closing encouragement of the _t(context).gwAuto card's explanation.
 String _tierLine(AppLocalizations l10n, GameDifficulty tier) => switch (tier) {
   GameDifficulty.easy => l10n.suggestTierEasy,
   GameDifficulty.medium => l10n.suggestTierMedium,
   GameDifficulty.hard => l10n.suggestTierHard,
 };
 
-/// Adaptive "Auto" difficulty card that suggests a level based on the
+/// Adaptive _t(context).gwAuto difficulty card that suggests a level based on the
 /// student's recent performance in this specific game.
 class _AutoDifficultyCard extends StatelessWidget {
   final String profileId;
@@ -951,7 +952,7 @@ class _AutoDifficultyCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        'Auto',
+                        _t(context).gwAuto,
                         style: AppTypography.titleMedium.copyWith(
                           fontWeight: FontWeight.w800,
                           color: autoColor,
@@ -1242,7 +1243,7 @@ class StarRating extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '$stars out of $maxStars stars',
+      label: _t(context).gwStarsOf(stars, maxStars),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(maxStars, (index) {
@@ -1272,3 +1273,8 @@ class StarRating extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

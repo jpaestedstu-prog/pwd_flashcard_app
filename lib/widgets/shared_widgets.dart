@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 import 'animated_dialogs.dart';
 import 'depth_3d.dart';
 import 'tilt_3d.dart';
@@ -297,7 +299,11 @@ class SectionHeader extends StatelessWidget {
           if (onSeeAll != null)
             TextButton(
               onPressed: onSeeAll,
-              child: Text(actionLabel ?? 'See All'),
+              child: Text(
+                actionLabel ??
+                    (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                        .assessSeeAll,
+              ),
             ),
         ],
       ),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/localized_date.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// A visual calendar widget showing daily study activity.
 class StudyCalendarWidget extends StatefulWidget {
@@ -54,7 +57,7 @@ class _StudyCalendarWidgetState extends State<StudyCalendarWidget> {
               icon: Icon(Icons.chevron_left_rounded, color: hc.textPrimary),
             ),
             Text(
-              _monthLabel(_currentMonth),
+              LocalizedDate.monthYear(_currentMonth, _t(context)),
               style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w700,
                 color: hc.textPrimary,
@@ -80,7 +83,7 @@ class _StudyCalendarWidgetState extends State<StudyCalendarWidget> {
 
         // ─── Weekday Headers ────────────────────
         Row(
-          children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+          children: LocalizedDate.weekdayInitials(_t(context))
               .map((d) => Expanded(
                     child: Center(
                       child: Text(
@@ -131,13 +134,6 @@ class _StudyCalendarWidgetState extends State<StudyCalendarWidget> {
     );
   }
 
-  String _monthLabel(DateTime dt) {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
-    ];
-    return '${months[dt.month - 1]} ${dt.year}';
-  }
 }
 
 class _DayCell extends StatelessWidget {
@@ -174,7 +170,9 @@ class _DayCell extends StatelessWidget {
     }
 
     return Semantics(
-      label: 'Day $day${isCompleted ? ", studied" : ""}${isToday ? ", today" : ""}',
+      label: '${_t(context).calDaySemantics(day)}'
+          '${isCompleted ? _t(context).calStudied : ''}'
+          '${isToday ? _t(context).calToday : ''}',
       child: Container(
         decoration: BoxDecoration(
           color: bgColor,
@@ -216,12 +214,12 @@ class StreakMilestoneBadges extends StatelessWidget {
   const StreakMilestoneBadges({super.key, required this.bestStreak});
 
   static const _milestones = [
-    (days: 3, emoji: '🌟', label: '3 Days'),
-    (days: 7, emoji: '⭐', label: '1 Week'),
-    (days: 14, emoji: '🏆', label: '2 Weeks'),
-    (days: 30, emoji: '👑', label: '1 Month'),
-    (days: 60, emoji: '💎', label: '2 Months'),
-    (days: 100, emoji: '🎯', label: '100 Days'),
+    (days: 3, emoji: '🌟'),
+    (days: 7, emoji: '⭐'),
+    (days: 14, emoji: '🏆'),
+    (days: 30, emoji: '👑'),
+    (days: 60, emoji: '💎'),
+    (days: 100, emoji: '🎯'),
   ];
 
   @override
@@ -233,8 +231,11 @@ class StreakMilestoneBadges extends StatelessWidget {
       runSpacing: 10,
       children: _milestones.map((m) {
         final achieved = bestStreak >= m.days;
+        final label = _milestoneLabel(_t(context), m.days);
         return Semantics(
-          label: '${m.label} streak milestone${achieved ? ", achieved" : ", not yet achieved"}',
+          label: achieved
+              ? _t(context).calMilestoneAchieved(label)
+              : _t(context).calMilestoneNotYet(label),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
@@ -260,7 +261,7 @@ class StreakMilestoneBadges extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  m.label,
+                  label,
                   style: AppTypography.labelSmall.copyWith(
                     color: achieved ? AppColors.success : hc.textHint,
                     fontWeight: achieved ? FontWeight.w700 : FontWeight.w500,
@@ -279,3 +280,17 @@ class StreakMilestoneBadges extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+String _milestoneLabel(AppLocalizations t, int days) => switch (days) {
+  3 => t.calM3,
+  7 => t.calW1,
+  14 => t.calW2,
+  30 => t.calMo1,
+  60 => t.calMo2,
+  _ => t.calD100,
+};

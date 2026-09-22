@@ -3,9 +3,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/localized_date.dart';
 import '../models/alert_models.dart';
 import '../services/alert_service.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Screen for configuring alert preferences.
 ///
@@ -49,7 +52,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
         elevation: 0,
         leading: const AppBackButton(),
         title: Text(
-          'Alert Settings',
+          _t(context).asTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -64,14 +67,14 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
             hc: hc,
             child: SwitchListTile(
               title: Text(
-                'Enable Alerts',
+                _t(context).asEnable,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
                 ),
               ),
               subtitle: Text(
-                'Get notified about student activity',
+                _t(context).asEnableSub,
                 style: AppTypography.bodySmall
                     .copyWith(color: hc.textSecondary),
               ),
@@ -102,7 +105,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     child: Text(
-                      'Thresholds',
+                      _t(context).asThresholds,
                       style: AppTypography.titleSmall.copyWith(
                         fontWeight: FontWeight.w700,
                         color: hc.textPrimary,
@@ -120,7 +123,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Accuracy alert below',
+                            _t(context).asAccuracyBelow,
                             style: AppTypography.bodySmall
                                 .copyWith(color: hc.textPrimary),
                           ),
@@ -159,13 +162,13 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Inactivity alert after',
+                            _t(context).asInactivityAfter,
                             style: AppTypography.bodySmall
                                 .copyWith(color: hc.textPrimary),
                           ),
                         ),
                         Text(
-                          '${_config.inactivityDays} days',
+                          _t(context).asDays(_config.inactivityDays),
                           style: AppTypography.titleSmall.copyWith(
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
@@ -180,7 +183,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                     max: 14,
                     divisions: 13,
                     activeColor: AppColors.primary,
-                    label: '${_config.inactivityDays} days',
+                    label: _t(context).asDays(_config.inactivityDays),
                     onChanged: (val) => _saveConfig(
                         _config.copyWith(inactivityDays: val.round())),
                   ),
@@ -200,7 +203,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                     child: Text(
-                      'Alert Types',
+                      _t(context).asTypes,
                       style: AppTypography.titleSmall.copyWith(
                         fontWeight: FontWeight.w700,
                         color: hc.textPrimary,
@@ -217,7 +220,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                               style: const TextStyle(fontSize: 16)),
                           const SizedBox(width: 8),
                           Text(
-                            type.label,
+                            _alertTypeLabel(_t(context), type),
                             style: AppTypography.bodySmall.copyWith(
                               color: hc.textPrimary,
                               fontWeight: FontWeight.w600,
@@ -255,7 +258,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                     color: hc.textSecondary, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Recent Alerts (${_alerts.length})',
+                  _t(context).asRecent(_alerts.length),
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hc.textPrimary,
@@ -270,7 +273,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                       setState(() => _alerts = []);
                     },
                     child: Text(
-                      'Clear',
+                      _t(context).tcClear,
                       style: AppTypography.labelSmall
                           .copyWith(color: AppColors.error),
                     ),
@@ -291,7 +294,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                           size: 40, color: hc.textHint),
                       const SizedBox(height: 8),
                       Text(
-                        'No alerts yet',
+                        _t(context).asNone,
                         style: AppTypography.bodySmall
                             .copyWith(color: hc.textSecondary),
                       ),
@@ -401,7 +404,7 @@ class _AlertTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  alert.message,
+                  _alertMessage(_t(context), alert),
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textPrimary,
                     fontWeight:
@@ -410,7 +413,7 @@ class _AlertTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _formatTimestamp(alert.timestamp),
+                  _formatTimestamp(context, alert.timestamp),
                   style: AppTypography.labelSmall.copyWith(
                     color: hc.textHint,
                     fontSize: 10,
@@ -425,18 +428,47 @@ class _AlertTile extends StatelessWidget {
                   size: 20),
               color: hc.textSecondary,
               onPressed: onMarkRead,
-              tooltip: 'Mark as read',
+              tooltip: _t(context).alMarkRead,
             ),
         ],
       ),
     );
   }
 
-  String _formatTimestamp(DateTime t) {
+  String _formatTimestamp(BuildContext context, DateTime t) {
+    final l = _t(context);
     final diff = DateTime.now().difference(t);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${t.month}/${t.day}/${t.year}';
+    if (diff.inMinutes < 60) return l.asMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return l.asHoursAgo(diff.inHours);
+    if (diff.inDays < 7) return l.asDaysAgo(diff.inDays);
+    return LocalizedDate.monthDayYear(t, l);
   }
+}
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+String _alertTypeLabel(AppLocalizations t, AlertType type) => switch (type) {
+  AlertType.lowAccuracy => t.atLowAccuracy,
+  AlertType.streakBroken => t.atStreakBroken,
+  AlertType.inactivity => t.atInactivity,
+  AlertType.assignmentOverdue => t.atOverdue,
+  AlertType.achievementEarned => t.atAchievement,
+  AlertType.assessmentCompleted => t.atAssessment,
+};
+
+/// An alert's message in the reader's language. Alerts are stored with the
+/// English sentence [AlertService] wrote, so the numbers are read back out of
+/// it; anything that doesn't match shows as stored.
+String _alertMessage(AppLocalizations t, AlertEntry alert) {
+  final m = alert.message;
+  final low = RegExp(r"^(.+)'s accuracy is (\d+)% \(below (\d+)% threshold\)$").firstMatch(m);
+  if (low != null) return t.amLowAccuracy(low[1]!, low[2]!, low[3]!);
+  final idle = RegExp(r'^(.+) has been inactive for (\d+) days$').firstMatch(m);
+  if (idle != null) return t.amInactive(idle[1]!, idle[2]!);
+  final streak = RegExp(r"^(.+)'s streak was broken$").firstMatch(m);
+  if (streak != null) return t.amStreak(streak[1]!);
+  return m;
 }

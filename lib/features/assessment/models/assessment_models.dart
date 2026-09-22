@@ -1,4 +1,6 @@
+import '../../../core/accessibility/learner_support.dart';
 import '../../../data/models/enums.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Type of assessment
 enum AssessmentType {
@@ -23,6 +25,32 @@ extension AssessmentTypeX on AssessmentType {
     AssessmentType.custom => 'Teacher-created assessment',
   };
 
+  /// Localized [label], for every surface a learner or educator reads.
+  ///
+  /// Takes a **nullable** l10n and falls back to the English constant, like
+  /// `DisabilityTypeX.labelOf`: these strings appear inside semantics labels
+  /// on screens that build without the delegate in widget tests, and a `!`
+  /// there would turn a missing delegate into a crash rather than a word.
+  ///
+  /// [label] stays English because the research CSV exports print it — those
+  /// must read the same whoever generated them.
+  String labelOf(AppLocalizations? l10n) =>
+      l10n == null ? label : switch (this) {
+        AssessmentType.preTest => l10n.assessPreTest,
+        AssessmentType.postTest => l10n.assessPostTest,
+        AssessmentType.categoryMastery => l10n.assessCategoryMastery,
+        AssessmentType.custom => l10n.assessCustom,
+      };
+
+  /// Localized [description].
+  String descriptionOf(AppLocalizations? l10n) =>
+      l10n == null ? description : switch (this) {
+        AssessmentType.preTest => l10n.assessPreTestDesc,
+        AssessmentType.postTest => l10n.assessPostTestDesc,
+        AssessmentType.categoryMastery => l10n.assessCategoryMasteryDesc,
+        AssessmentType.custom => l10n.assessCustomDesc,
+      };
+
   String get emoji => switch (this) {
     AssessmentType.preTest => '📋',
     AssessmentType.postTest => '🎯',
@@ -37,7 +65,24 @@ enum QuestionFormat {
   fillInBlank,
   matchPairs,
   trueFalse,
+  // Appended last so every stored question keeps its index. Watch a sign,
+  // pick the word — the only item type that tests what the app teaches a
+  // Deaf learner, rather than testing their reading.
+  signVideo,
 }
+
+/// The formats a person may pick when authoring a question by hand.
+///
+/// [QuestionFormat.signVideo] is deliberately absent: it needs a flashcard
+/// that actually has a sign clip, which the builders do not ask for, so
+/// offering it would let an educator save an item that can never play.
+/// Sign items are generated (see `AssessmentService.buildSignQuestion`).
+const List<QuestionFormat> authorableQuestionFormats = [
+  QuestionFormat.multipleChoice,
+  QuestionFormat.fillInBlank,
+  QuestionFormat.matchPairs,
+  QuestionFormat.trueFalse,
+];
 
 extension QuestionFormatX on QuestionFormat {
   String get label => switch (this) {
@@ -45,7 +90,18 @@ extension QuestionFormatX on QuestionFormat {
     QuestionFormat.fillInBlank => 'Fill in the Blank',
     QuestionFormat.matchPairs => 'Match Pairs',
     QuestionFormat.trueFalse => 'True or False',
+    QuestionFormat.signVideo => 'Watch the Sign',
   };
+
+  /// Localized [label]. Nullable l10n, same reasoning as [AssessmentTypeX].
+  String labelOf(AppLocalizations? l10n) =>
+      l10n == null ? label : switch (this) {
+        QuestionFormat.multipleChoice => l10n.formatMultipleChoice,
+        QuestionFormat.fillInBlank => l10n.formatFillInBlank,
+        QuestionFormat.matchPairs => l10n.formatMatchPairs,
+        QuestionFormat.trueFalse => l10n.formatTrueFalse,
+        QuestionFormat.signVideo => l10n.formatSignVideo,
+      };
 }
 
 /// A single question in an assessment
@@ -59,6 +115,13 @@ class AssessmentQuestion {
   final String? imageAsset;
   final String? hint;
 
+  /// Flashcard id whose sign-language clip this item plays.
+  ///
+  /// Set only on [QuestionFormat.signVideo] items. The clip itself is
+  /// resolved at play time from that id — storing a URL would rot the moment
+  /// the media moved, and it has moved before.
+  final String? signCardId;
+
   const AssessmentQuestion({
     required this.id,
     required this.questionText,
@@ -68,6 +131,7 @@ class AssessmentQuestion {
     this.category,
     this.imageAsset,
     this.hint,
+    this.signCardId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -79,6 +143,7 @@ class AssessmentQuestion {
     'category': category?.index,
     'imageAsset': imageAsset,
     'hint': hint,
+    'signCardId': signCardId,
   };
 
   factory AssessmentQuestion.fromJson(Map<String, dynamic> json) {
@@ -97,6 +162,7 @@ class AssessmentQuestion {
           : null,
       imageAsset: json['imageAsset'] as String?,
       hint: json['hint'] as String?,
+      signCardId: json['signCardId'] as String?,
     );
   }
 }
@@ -213,6 +279,15 @@ class AssessmentResult {
   final List<FlashcardCategory> categories;
   final Map<String, double> categoryScores; // category label -> percentage
 
+  /// The supports that were in force while this sitting happened — a longer
+  /// clock, a shorter choice list.
+  ///
+  /// Recorded on the *result*, not just the profile, because a profile can be
+  /// edited afterwards and a score is only defensible alongside the conditions
+  /// it was earned under. Empty on results saved before this existed, which
+  /// reads correctly as "no accommodation recorded".
+  final Set<LearnerSupportOption> accommodations;
+
   const AssessmentResult({
     required this.id,
     required this.assessmentId,
@@ -225,6 +300,7 @@ class AssessmentResult {
     required this.durationSeconds,
     this.categories = const [],
     this.categoryScores = const {},
+    this.accommodations = const {},
   });
 
   double get percentage => totalQuestions > 0 ? score / totalQuestions : 0.0;
@@ -236,6 +312,18 @@ class AssessmentResult {
     if (pct >= 0.6) return 'Good';
     if (pct >= 0.4) return 'Needs Improvement';
     return 'Keep Practicing';
+  }
+
+  /// [grade] in the reader's language. [grade] itself stays English for the
+  /// CSV exports.
+  String gradeOf(AppLocalizations? l10n) {
+    if (l10n == null) return grade;
+    final pct = percentage;
+    if (pct >= 0.9) return l10n.gradeExcellent;
+    if (pct >= 0.75) return l10n.gradeVeryGood;
+    if (pct >= 0.6) return l10n.gradeGood;
+    if (pct >= 0.4) return l10n.gradeNeedsImprovement;
+    return l10n.gradeKeepPracticing;
   }
 
   String get gradeEmoji {
@@ -259,6 +347,7 @@ class AssessmentResult {
     'durationSeconds': durationSeconds,
     'categories': categories.map((c) => c.index).toList(),
     'categoryScores': categoryScores,
+    'accommodations': LearnerSupportCatalog.encode(accommodations),
   };
 
   factory AssessmentResult.fromJson(Map<String, dynamic> json) {
@@ -283,6 +372,8 @@ class AssessmentResult {
           .map((c) => FlashcardCategory.values[c])
           .toList(),
       categoryScores: Map<String, double>.from(json['categoryScores'] as Map? ?? {}),
+      accommodations:
+          LearnerSupportCatalog.decode(json['accommodations'] as List?),
     );
   }
 }
@@ -317,6 +408,18 @@ class LearningGainReport {
   }
 
   bool get hasImproved => improvement > 0;
+
+  /// [summary] in the reader's language. [summary] stays English for the
+  /// exports.
+  String summaryOf(AppLocalizations? l10n) {
+    if (l10n == null) return summary;
+    final pre = (preTestPercentage * 100).round();
+    final post = (postTestPercentage * 100).round();
+    final gain = (improvement * 100).round();
+    if (hasImproved) return l10n.gainImproved(pre, post, gain);
+    if (improvement == 0) return l10n.gainSame(pre);
+    return l10n.gainChanged(pre, post, gain);
+  }
 
   String get summary {
     final pre = (preTestPercentage * 100).round();

@@ -8,6 +8,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/models.dart';
 import 'media_sheet_layout.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// "Show Me" — opens a short looping clip of the vocabulary word in motion.
 /// Visual demonstrations are far clearer than written text, especially for
@@ -48,7 +49,7 @@ class ShowMeButton extends StatelessWidget {
     if (!ActionClipService.hasClip(card)) return const SizedBox.shrink();
     return Semantics(
       button: true,
-      label: 'Show me ${card.wordEnglish}',
+      label: _t(context).smSemantics(card.wordEnglish),
       child: Material(
         color: AppColors.secondary.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(24),
@@ -238,3 +239,8 @@ class _ShowMeSheetState extends State<_ShowMeSheet> {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

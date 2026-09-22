@@ -4,6 +4,8 @@ import '../core/services/xp_level_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../data/models/models.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 import 'app_card.dart';
 
 /// The learner's level, XP and progress towards the next level.
@@ -42,11 +44,22 @@ class XpLevelBar extends StatelessWidget {
     final into = XpService.xpIntoLevel(progress);
     final span = XpService.xpLevelSpan(progress);
     final toNext = XpService.xpToNextLevel(progress);
+    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
+    final filipino = t.localeName.startsWith('fil');
 
     return Semantics(
-      label:
-          'Level ${level.level} ${level.title}, $xp XP total, '
-          '${toNext != null ? '$toNext XP to level ${next!.level} ${next.title}' : 'Max level reached'}',
+      label: t.levelSemantics(
+        level.level,
+        level.titleOf(filipino: filipino),
+        xp,
+        toNext != null
+            ? t.homeXpToLevel(
+                toNext,
+                next!.level,
+                next.titleOf(filipino: filipino),
+              )
+            : t.homeMaxLevel,
+      ),
       // The Row below spells the same thing out in fragments; let the one
       // sentence above stand for the whole card.
       excludeSemantics: true,
@@ -83,7 +96,8 @@ class XpLevelBar extends StatelessWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              'Lv.${level.level} ${level.title}',
+                              'Lv.${level.level} '
+                              '${level.titleOf(filipino: filipino)}',
                               style: AppTypography.titleSmall.copyWith(
                                 fontWeight: FontWeight.w800,
                                 color: hc.textPrimary,
@@ -125,7 +139,11 @@ class XpLevelBar extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '$toNext XP to Lv.${next.level} ${next.title}',
+                      t.levelXpToShort(
+                        toNext,
+                        next.level,
+                        next.titleOf(filipino: filipino),
+                      ),
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                       ),

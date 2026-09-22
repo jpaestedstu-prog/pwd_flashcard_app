@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Shows a modal that lets a teacher / parent change the accessibility
 /// category for an existing class or home group.
@@ -64,7 +65,7 @@ class _AccessibilityCategoryDialogState
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Accessibility'),
+      title: Text(_tr(context).gmAccessibility),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -76,8 +77,7 @@ class _AccessibilityCategoryDialogState
             ),
             const SizedBox(height: 12),
             Text(
-              'Applies to learners who join from now on. Anyone already '
-              'enrolled keeps their current setup.',
+              _tr(context).acpApplies,
               style: AppTypography.bodySmall.copyWith(
                 color: Colors.grey.shade700,
               ),
@@ -88,13 +88,13 @@ class _AccessibilityCategoryDialogState
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(_tr(context).hubCancel),
         ),
         FilledButton(
           onPressed: _selected == widget.current
               ? null
               : () => Navigator.of(context).pop(_selected),
-          child: const Text('Save'),
+          child: Text(_tr(context).gmSave),
         ),
       ],
     );
@@ -134,7 +134,7 @@ class AccessibilityCategoryPicker extends StatelessWidget {
             const Icon(Icons.accessibility_new_rounded, size: 18),
             const SizedBox(width: 6),
             Text(
-              'Accessibility',
+              _tr(context).gmAccessibility,
               style: AppTypography.labelLarge.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -143,8 +143,7 @@ class AccessibilityCategoryPicker extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Students who join this code get this version of the app '
-          'automatically — no setup needed on their side.',
+          _tr(context).acpJoinersGet,
           style: AppTypography.bodySmall.copyWith(
             color: Colors.grey.shade700,
           ),
@@ -187,3 +186,6 @@ class AccessibilityCategoryPicker extends StatelessWidget {
     );
   }
 }
+
+AppLocalizations _tr(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

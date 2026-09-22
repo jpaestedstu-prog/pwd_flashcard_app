@@ -68,4 +68,27 @@ class AvatarOption {
     required this.label,
     required this.color,
   });
+
+  /// [label] in the reader's language — read out by screen readers.
+  String labelOf({required bool filipino}) =>
+      filipino ? (_avatarLabelFilipino[label] ?? label) : label;
 }
+
+const _avatarLabelFilipino = {
+  'Dog': 'Aso',
+  'Cat': 'Pusa',
+  'Bunny': 'Kuneho',
+  'Panda': 'Panda',
+  'Fox': 'Soro',
+  'Frog': 'Palaka',
+  'Butterfly': 'Paruparo',
+  'Turtle': 'Pagong',
+  'Lion': 'Leon',
+  'Penguin': 'Penguin',
+  'Owl': 'Kuwago',
+  'Star': 'Bituin',
+  'Male Teacher': 'Gurong Lalaki',
+  'Female Teacher': 'Gurong Babae',
+  'Father': 'Tatay',
+  'Mother': 'Nanay',
+};

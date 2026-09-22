@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/avatar_data.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/localized_date.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
@@ -17,6 +18,8 @@ import '../../../features/progress/widgets/shared/progress_section_header.dart';
 import '../../../features/progress/widgets/shared/progress_stat_grid.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../widgets/learner_support_picker.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Shows full profile information and learning progress for a student.
 ///
@@ -59,7 +62,7 @@ class StudentProfileDetailScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.palette_rounded),
-            tooltip: 'Customize progress',
+            tooltip: _t(context).cdsCustomize,
             onPressed: () => showProgressCustomizeSheet(
               context,
               selectedThemeId: theme.id,
@@ -72,7 +75,7 @@ class StudentProfileDetailScreen extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(Icons.edit_rounded),
-            tooltip: 'Edit Profile',
+            tooltip: _t(context).spdEditProfile,
             onPressed: () => context.push('/edit-profile'),
           ),
         ],
@@ -100,25 +103,25 @@ class StudentProfileDetailScreen extends ConsumerWidget {
                 ProgressStat(
                   icon: Icons.menu_book_rounded,
                   value: '${progress.wordsLearned}',
-                  label: 'Words',
+                  label: _t(context).words,
                   color: AppColors.primary,
                 ),
                 ProgressStat(
                   icon: Icons.local_fire_department_rounded,
                   value: '${progress.streakDays}',
-                  label: 'Streak',
+                  label: _t(context).streak,
                   color: AppColors.warning,
                 ),
                 ProgressStat(
                   icon: Icons.star_rounded,
                   value: '${progress.starBalance}',
-                  label: 'Stars',
+                  label: _t(context).stars,
                   color: AppColors.accent,
                 ),
                 ProgressStat(
                   icon: Icons.emoji_events_rounded,
                   value: '${achievements.length}',
-                  label: 'Badges',
+                  label: _t(context).badges,
                   color: const Color(0xFF7E57C2),
                 ),
               ],
@@ -130,7 +133,7 @@ class StudentProfileDetailScreen extends ConsumerWidget {
 
             // ── Category Progress ──
             if (progress.categoryProgress.isNotEmpty) ...[
-              const _SectionTitle(title: 'Category Progress'),
+              _SectionTitle(title: _t(context).spdCategoryProgress),
               const SizedBox(height: 8),
               _CategoryProgressSection(
                 categoryProgress: progress.categoryProgress,
@@ -146,7 +149,7 @@ class StudentProfileDetailScreen extends ConsumerWidget {
 
             // ── Recent Scores ──
             if (progress.recentScores.isNotEmpty) ...[
-              const _SectionTitle(title: 'Recent Game Scores'),
+              _SectionTitle(title: _t(context).spdRecentScores),
               const SizedBox(height: 8),
               _RecentScoresSection(
                 scores: progress.recentScores,
@@ -161,7 +164,7 @@ class StudentProfileDetailScreen extends ConsumerWidget {
 
             // ── Profile Details ──
             SizedBox(height: layout.sectionGap),
-            const _SectionTitle(title: 'Profile Details'),
+            _SectionTitle(title: _t(context).spdDetails),
             const SizedBox(height: 8),
             _ProfileDetailsSection(
               profile: profile,
@@ -253,7 +256,7 @@ class _ProfileHeader extends StatelessWidget {
               if (profile.gradeLevel != null)
                 _HeaderChip(
                   icon: Icons.school_rounded,
-                  label: profile.gradeLevel!.label,
+                  label: profile.gradeLevel!.labelOf(_t(context)),
                   color: accent,
                 ),
             ],
@@ -266,7 +269,7 @@ class _ProfileHeader extends StatelessWidget {
                 const Icon(Icons.lock_rounded, size: 14, color: AppColors.warning),
                 const SizedBox(width: 4),
                 Text(
-                  'PIN Protected',
+                  _t(context).spdPinProtected,
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.warning,
                     fontWeight: FontWeight.w600,
@@ -415,14 +418,17 @@ class _CategoryProgressSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Overall Mastery',
+                      _t(context).dbOverallMastery,
                       style: AppTypography.titleSmall.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${sorted.where((e) => e.value >= 0.9).length} of ${sorted.length} categories mastered',
+                      _t(context).spdMastered(
+                        sorted.where((e) => e.value >= 0.9).length,
+                        sorted.length,
+                      ),
                       style: AppTypography.bodySmall.copyWith(
                         color: HCColor.of(context).textSecondary,
                       ),
@@ -483,7 +489,7 @@ class _CategoryRow extends StatelessWidget {
     final catColor = category?.color ?? AppColors.primary;
     final catDarkColor = category?.darkColor ?? AppColors.primaryDark;
     final catIcon = category?.icon ?? Icons.category_rounded;
-    final displayName = category?.label ?? name;
+    final displayName = category?.labelOf(_t(context)) ?? name;
     final isMastered = progress >= 0.9;
 
     return Container(
@@ -690,13 +696,13 @@ class _ScoreRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                score.gameType.label,
+                score.gameType.labelOf(_t(context)),
                 style: AppTypography.bodyMedium.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
-                _formatDate(score.date),
+                _formatDate(context, score.date),
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.textHint,
                 ),
@@ -742,13 +748,8 @@ class _ScoreRow extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
-  }
+  String _formatDate(BuildContext context, DateTime date) =>
+      LocalizedDate.monthDayYear(date, _t(context));
 }
 
 // ─── Profile Details ─────────────────────────────────────
@@ -783,7 +784,7 @@ class _ProfileDetailsSection extends StatelessWidget {
         children: [
           _DetailRow(
             icon: Icons.person_rounded,
-            label: 'Role',
+            label: _t(context).epRole,
             value: profile.role.labelOf(AppLocalizations.of(context)),
             accent: accent,
           ),
@@ -791,8 +792,8 @@ class _ProfileDetailsSection extends StatelessWidget {
             const _DetailDivider(),
             _DetailRow(
               icon: Icons.calendar_today_rounded,
-              label: 'Birth Date',
-              value: _formatDate(profile.birthDate!),
+              label: _t(context).spdBirthDate,
+              value: _formatDate(context, profile.birthDate!),
               accent: accent,
             ),
           ],
@@ -800,7 +801,7 @@ class _ProfileDetailsSection extends StatelessWidget {
             const _DetailDivider(),
             _DetailRow(
               icon: Icons.group_rounded,
-              label: 'Section',
+              label: _t(context).sfSection,
               value: profile.section!,
               accent: accent,
             ),
@@ -809,9 +810,44 @@ class _ProfileDetailsSection extends StatelessWidget {
             const _DetailDivider(),
             _DetailRow(
               icon: profile.disabilityType.icon,
-              label: 'Accessibility',
+              label: _t(context).accessibility,
               value: profile.disabilityType.labelOf(AppLocalizations.of(context)),
               accent: accent,
+            ),
+          ],
+          // What this learner's category means *for them* — the sign system
+          // they use, how they drive the app, the accommodations they get.
+          // An educator planning a lesson needs this, and until now the only
+          // place it existed was the learner's own settings.
+          if (profile.role.isLearner) ...[
+            const _DetailDivider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              // The chips sit *below* the label rather than beside it. Sharing
+              // the row left "Audio first" about 90dp at a 2.0x font on a
+              // 360-wide phone, and a chip that narrow breaks inside the word
+              // — "Au / dio". Full width, they wrap between chips instead.
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.support_rounded, size: 18, color: accent),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _t(context).spdSupport,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: HCColor.of(context).textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  LearnerSupportChips(options: profile.supports),
+                ],
+              ),
             ),
           ],
           if (profile.tags.isNotEmpty) ...[
@@ -821,8 +857,8 @@ class _ProfileDetailsSection extends StatelessWidget {
           const _DetailDivider(),
           _DetailRow(
             icon: Icons.event_rounded,
-            label: 'Created',
-            value: _formatDate(profile.createdAt),
+            label: _t(context).spdCreated,
+            value: _formatDate(context, profile.createdAt),
             accent: accent,
           ),
         ],
@@ -830,13 +866,8 @@ class _ProfileDetailsSection extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
-  }
+  String _formatDate(BuildContext context, DateTime date) =>
+      LocalizedDate.monthDayYear(date, _t(context));
 }
 
 class _DetailRow extends StatelessWidget {
@@ -912,7 +943,7 @@ class _TagsRow extends StatelessWidget {
           Icon(Icons.label_rounded, size: 18, color: accent),
           const SizedBox(width: 10),
           Text(
-            'Tags',
+            _t(context).sfTags,
             style: AppTypography.bodyMedium.copyWith(
               color: HCColor.of(context).textSecondary,
             ),
@@ -944,3 +975,8 @@ class _TagsRow extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

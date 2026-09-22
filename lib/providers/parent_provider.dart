@@ -12,6 +12,7 @@ import '../core/services/streak_service.dart';
 import '../features/object_scan/services/object_scan_discovery_service.dart';
 import 'app_providers.dart';
 import 'wall_clock_provider.dart';
+import '../core/accessibility/learner_support.dart';
 
 // ─── Child Summary Model ───────────────────────────────
 
@@ -22,6 +23,12 @@ class ChildSummary {
   final String avatarEmoji;
   final int avatarIndex;
   final DisabilityType disabilityType;
+
+  /// The learner's configured supports — the sign system they use, how they
+  /// drive the app, the accommodations they get. Carried here so an educator
+  /// surface asks the same question the learner's own device does, rather than
+  /// inferring everything from [disabilityType] alone.
+  final Set<LearnerSupportOption> supportOptions;
 
   // Core stats
   final int wordsLearned;
@@ -70,6 +77,7 @@ class ChildSummary {
   final DateTime lastActivityDate;
 
   const ChildSummary({
+    this.supportOptions = const {},
     required this.profileId,
     required this.name,
     required this.avatarEmoji,
@@ -225,6 +233,7 @@ ParentDashboardSnapshot _buildSnapshot(
           avatarEmoji: AvatarData.getAvatar(profile.avatarIndex).emoji,
           avatarIndex: profile.avatarIndex,
           disabilityType: profile.disabilityType,
+          supportOptions: profile.supports,
           wordsLearned: progress.wordsLearned,
           totalStars: progress.totalStars,
           streakDays: progress.streakDays,

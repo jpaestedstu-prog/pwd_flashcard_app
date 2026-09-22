@@ -18,6 +18,8 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../core/utils/reduced_motion.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Turn-based multiplayer vocabulary quiz for two players on the same device.
 ///
@@ -37,8 +39,9 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
     with TickerProviderStateMixin, TimedGameMixin, GamePauseMixin {
   // Game state
   _GamePhase _phase = _GamePhase.setup;
-  final _player1Controller = TextEditingController(text: 'Player 1');
-  final _player2Controller = TextEditingController(text: 'Player 2');
+  final _player1Controller = TextEditingController();
+  final _player2Controller = TextEditingController();
+  bool _namesSeeded = false;
   int _roundsPerPlayer = 5;
 
   // In-game state
@@ -76,6 +79,17 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
       duration: const Duration(milliseconds: 600),
     );
     initPause();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Default names follow the app language; typed names are kept.
+    if (!_namesSeeded) {
+      _namesSeeded = true;
+      _player1Controller.text = _t(context).mqPlayerN(1);
+      _player2Controller.text = _t(context).mqPlayerN(2);
+    }
   }
 
   @override
@@ -210,7 +224,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                 const Spacer(),
                 Flexible(
                   child: FitText(
-                    'Multiplayer Quiz',
+                    _t(context).mqTitle,
                     maxLines: 1,
                     style: AppTypography.titleLarge.copyWith(
                       fontWeight: FontWeight.w800,
@@ -274,7 +288,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
               child: Column(
                 children: [
                   Text(
-                    'Rounds per Player',
+                    _t(context).mqRoundsPerPlayer,
                     style: AppTypography.labelMedium.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -320,7 +334,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                     onPressed: _startGame,
                     icon: const Icon(Icons.play_arrow_rounded, size: 28),
                     label: Text(
-                      'Start Battle!',
+                      _t(context).mqStart,
                       style: AppTypography.buttonText.copyWith(fontSize: 18),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -371,7 +385,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                   ),
               const SizedBox(height: 16),
               Text(
-                '$name\'s Turn!',
+                _t(context).mqTurn(name),
                 style: AppTypography.displayMedium.copyWith(
                   fontWeight: FontWeight.w900,
                   color: color,
@@ -379,7 +393,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
               ).animate().fadeIn(duration: 500.ms),
               const SizedBox(height: 8),
               Text(
-                'Round ${(_currentRound ~/ 2) + 1} of $_roundsPerPlayer',
+                _t(context).mqRound((_currentRound ~/ 2) + 1, _roundsPerPlayer),
                 style: AppTypography.titleMedium.copyWith(
                   color: HCColor.of(context).textSecondary,
                 ),
@@ -395,7 +409,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
-                      'Tap anywhere to start!',
+                      _t(context).mqTapStart,
                       style: AppTypography.titleMedium.copyWith(
                         color: color,
                         fontWeight: FontWeight.w700,
@@ -726,7 +740,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              isDraw ? 'It\'s a Draw!' : '$winnerName Wins!',
+              isDraw ? _t(context).mqDraw : '$winnerName Wins!',
               style: AppTypography.displayMedium.copyWith(
                 fontWeight: FontWeight.w900,
                 color: winnerColor,
@@ -785,7 +799,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                   child: ElevatedButton.icon(
                     onPressed: _rematch,
                     icon: const Icon(Icons.replay_rounded),
-                    label: const Text('Rematch!'),
+                    label: Text(_t(context).mqRematch),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -819,7 +833,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
     }
 
     if (pool.length < 4) {
-      AppSnackBar.warning(context, message: 'Not enough flashcards to play!');
+      AppSnackBar.warning(context, message: _t(context).mqNotEnough);
       return;
     }
 
@@ -862,8 +876,8 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
               ? card.wordEnglish
               : card.wordFilipino,
           promptLabel: questionType == _QuestionType.englishToFilipino
-              ? 'What is this in Filipino?'
-              : 'What is this in English?',
+              ? _t(context).homeWhatInFilipino
+              : _t(context).mqWhatInEnglish,
           subtitle: card.exampleSentence,
           options: options,
           correctIndex: options.indexOf(correctAnswer),
@@ -1160,7 +1174,7 @@ class _PlayerResultCard extends StatelessWidget {
               'Accuracy',
               '${total > 0 ? (correct / total * 100).toStringAsFixed(0) : 0}%',
             ),
-            _resultRow(context, '🔥', 'Best Streak', '$bestStreak'),
+            _resultRow(context, '🔥', _t(context).mqBestStreak, '$bestStreak'),
           ],
         ),
       ),
@@ -1223,3 +1237,8 @@ class _QuizQuestion {
     required this.correctIndex,
   });
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

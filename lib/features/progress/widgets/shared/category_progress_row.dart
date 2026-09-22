@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/app_localizations_en.dart';
 
 /// A single category's mastery row: icon chip + name + "mastered / total"
 /// count + a gradient progress bar.
@@ -37,8 +39,8 @@ class CategoryProgressRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = percent.clamp(0.0, 1.0);
     return Semantics(
-      label:
-          '$label category: $mastered of $total words mastered, ${(p * 100).round()} percent',
+      label: (AppLocalizations.of(context) ?? AppLocalizationsEn())
+          .progCategoryRowSemantics(label, mastered, total, (p * 100).round()),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(

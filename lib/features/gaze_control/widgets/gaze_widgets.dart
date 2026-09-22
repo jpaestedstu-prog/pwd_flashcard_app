@@ -1,5 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// One edge target: a depth-styled circle that brightens and fills a progress
 /// ring as the learner dwells on it. Shared by the full-screen preview
@@ -29,7 +31,7 @@ class GazeTarget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Gaze target: $label',
+      label: _t(context).gzTarget(label),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -144,3 +146,8 @@ class GazeCameraView extends StatelessWidget {
     return preview;
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

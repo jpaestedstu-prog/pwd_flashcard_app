@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../core/accessibility/learner_support.dart';
 import '../../../core/constants/avatar_data.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -8,6 +9,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/role_theme.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
+import 'learner_support_picker.dart';
 
 /// Shared profile-setup form used by both [RoleSetupScreen] (player / teacher /
 /// parent) and [PostJoinSetupScreen] (student / child after a join code).
@@ -35,6 +37,9 @@ class ProfileSetupForm extends StatelessWidget {
     this.computedAge,
     this.suggestedLevel,
     this.onPickBirthDate,
+    this.supportDisabilityType,
+    this.selectedSupports = const {},
+    this.onSupportsChanged,
   });
 
   final UserRole role;
@@ -43,6 +48,15 @@ class ProfileSetupForm extends StatelessWidget {
 
   final int selectedAvatarIndex;
   final ValueChanged<int> onAvatarSelected;
+
+  /// The accessibility category this learner's supports are being chosen for.
+  ///
+  /// Non-null only on the Student / Child join flow, where the category is
+  /// already settled by the class or home group being joined. Null hides the
+  /// block entirely — a Teacher, Parent or Player has no learner supports.
+  final DisabilityType? supportDisabilityType;
+  final Set<LearnerSupportOption> selectedSupports;
+  final ValueChanged<Set<LearnerSupportOption>>? onSupportsChanged;
 
   /// When true, the Age / Birth Date field (and live level suggestion) shows.
   /// Only learners who supply an age (student / child) set this.
@@ -160,7 +174,7 @@ class ProfileSetupForm extends StatelessWidget {
             return Semantics(
               button: true,
               selected: isSelected,
-              label: '${avatar.label} avatar${isSelected ? ", selected" : ""}',
+              label: AppLocalizations.of(context)?.epAvatarSemantics(avatar.labelOf(filipino: AppLocalizations.of(context)!.localeName.startsWith('fil'))) ?? '${avatar.label} avatar',
               child: GestureDetector(
                 onTap: () => onAvatarSelected(i),
                 child: AnimatedContainer(
@@ -197,6 +211,19 @@ class ProfileSetupForm extends StatelessWidget {
             );
           }).toList(),
         ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
+
+        // ─── Learner Support (Student / Child only) ────────
+        // The category came from the class or home group; this is the part
+        // that is about this learner rather than the group.
+        if (supportDisabilityType != null && onSupportsChanged != null) ...[
+          AppSpacing.gapXl,
+          LearnerSupportPicker(
+            disabilityType: supportDisabilityType!,
+            selected: selectedSupports,
+            onChanged: onSupportsChanged!,
+            dense: true,
+          ),
+        ],
 
         // ─── PIN Protection (optional) ─────────────────────
         AppSpacing.gapXl,

@@ -11,6 +11,8 @@ import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_settings_provider.dart';
 import '../services/gaze_detector.dart';
 import '../widgets/gaze_widgets.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Experimental **Gaze Control** preview — drive the app hands-free by moving
 /// your head toward one of four on-screen targets (dwell to select) or with a
@@ -83,18 +85,18 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen> {
     });
   }
 
-  static String _actionFor(GazeZone zone) {
+  String _actionFor(GazeZone zone) {
     switch (zone) {
       case GazeZone.left:
-        return '⬅  Previous';
+        return _t(context).gzPrevious;
       case GazeZone.right:
-        return 'Next  ➡';
+        return _t(context).gzNext;
       case GazeZone.up:
-        return '🔊  Hear Word';
+        return _t(context).gzHear;
       case GazeZone.down:
-        return '🔄  Flip Card';
+        return _t(context).gzFlip;
       case GazeZone.none:
-        return '✓  Select (blink)';
+        return _t(context).gzSelect;
     }
   }
 
@@ -147,9 +149,9 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen> {
                 color: Colors.black45,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Text(
-                '👁️  Gaze Control (Preview)',
-                style: TextStyle(
+              child: Text(
+                _t(context).gzPreview,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -175,7 +177,7 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen> {
             Align(
               alignment: Alignment.topCenter,
               child: GazeTarget(
-                label: 'Hear Word',
+                label: _t(context).gzHearWord,
                 icon: Icons.volume_up_rounded,
                 color: AppColors.info,
                 active: zone == GazeZone.up,
@@ -185,7 +187,7 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen> {
             Align(
               alignment: Alignment.bottomCenter,
               child: GazeTarget(
-                label: 'Flip Card',
+                label: _t(context).gzFlipCard,
                 icon: Icons.flip_rounded,
                 color: AppColors.accent,
                 active: zone == GazeZone.down,
@@ -195,7 +197,7 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: GazeTarget(
-                label: 'Previous',
+                label: _t(context).vgPrevious,
                 icon: Icons.arrow_back_rounded,
                 color: AppColors.secondary,
                 active: zone == GazeZone.left,
@@ -205,7 +207,7 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: GazeTarget(
-                label: 'Next',
+                label: _t(context).next,
                 icon: Icons.arrow_forward_rounded,
                 color: AppColors.success,
                 active: zone == GazeZone.right,
@@ -238,9 +240,9 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen> {
                 color: Colors.black54,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text(
-                '😊  Look at the screen',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+              child: Text(
+                _t(context).gzLook,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
     );
@@ -294,13 +296,13 @@ class _FallbackState extends StatelessWidget {
     final (emoji, message) = switch (status) {
       GazeStatus.noCamera => (
           '🚫',
-          'Gaze Control needs a front camera, which this device doesn\'t have.'
+          _t(context).gzNoCamera
         ),
       GazeStatus.permissionDenied => (
           '🙈',
-          'Camera access is needed to track your head. Enable it in Settings, then try again.'
+          _t(context).gzPermission
         ),
-      _ => ('😕', 'The camera couldn\'t start. Please try again.'),
+      _ => ('😕', _t(context).gzCameraFailed),
     };
     return Center(
       child: SingleChildScrollView(
@@ -320,7 +322,7 @@ class _FallbackState extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Try Again'),
+                label: Text(_t(context).gzTryAgain),
               ),
             ],
           ],
@@ -329,3 +331,8 @@ class _FallbackState extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

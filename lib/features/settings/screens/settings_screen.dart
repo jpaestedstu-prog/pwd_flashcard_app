@@ -16,6 +16,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../widgets/sync_status_widget.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/fullscreen_provider.dart';
 import '../../../widgets/profile_avatar.dart';
@@ -81,10 +82,11 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Semantics(
-                label:
-                    'Profile: ${profile?.name ?? 'No profile'}, '
-                    '${profile?.role.labelOf(l10n) ?? 'unknown role'}. '
-                    'Tap switch to change profile.',
+                label: (l10n ?? AppLocalizationsEn()).setProfileSemantics(
+                  profile?.name ?? (l10n ?? AppLocalizationsEn()).setNoProfile,
+                  profile?.role.labelOf(l10n) ??
+                      (l10n ?? AppLocalizationsEn()).setUnknownRole,
+                ),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -377,8 +379,8 @@ class SettingsScreen extends ConsumerWidget {
               if (settings.voiceNavigation)
                 _SettingsTile(
                   icon: Icons.headset_mic_rounded,
-                  title: 'Voice Guide & Tour',
-                  subtitle: 'Hear how each screen works',
+                  title: _t(context).setVoiceTour,
+                  subtitle: _t(context).setVoiceTourSub,
                   onTap: () => context.push('/voice-guided'),
                 ),
 
@@ -734,7 +736,7 @@ class SettingsScreen extends ConsumerWidget {
                           settings.reminderHour,
                           settings.reminderMinute,
                         )
-                      : 'Off',
+                      : _t(context).apOff,
                   onTap: () => ((v) async {
                       if (v) {
                         final granted =
@@ -746,6 +748,7 @@ class SettingsScreen extends ConsumerWidget {
                         await NotificationService.scheduleDailyReminder(
                           hour: settings.reminderHour,
                           minute: settings.reminderMinute,
+                          filipino: settings.locale == 'fil',
                         );
                       } else {
                         settingsNotifier.update(
@@ -769,6 +772,7 @@ class SettingsScreen extends ConsumerWidget {
                         await NotificationService.scheduleDailyReminder(
                           hour: settings.reminderHour,
                           minute: settings.reminderMinute,
+                          filipino: settings.locale == 'fil',
                         );
                       } else {
                         settingsNotifier.update(
@@ -807,6 +811,7 @@ class SettingsScreen extends ConsumerWidget {
                           await NotificationService.scheduleDailyReminder(
                             hour: picked.hour,
                             minute: picked.minute,
+                            filipino: settings.locale == 'fil',
                           );
                         }
                       },
@@ -835,6 +840,7 @@ class SettingsScreen extends ConsumerWidget {
                             enabled: v,
                             hour: settings.reminderHour,
                             minute: settings.reminderMinute,
+                            filipino: settings.locale == 'fil',
                           );
                         }
                       })(!(settings.vocabReviewEnabled)),
@@ -852,6 +858,7 @@ class SettingsScreen extends ConsumerWidget {
                             enabled: v,
                             hour: settings.reminderHour,
                             minute: settings.reminderMinute,
+                            filipino: settings.locale == 'fil',
                           );
                         }
                       },
@@ -958,7 +965,7 @@ class SettingsScreen extends ConsumerWidget {
                           AppSnackBar.success(
                             context,
                             message:
-                                'Tutorials will appear again on each screen!',
+                                _t(context).setTutorialsReset,
                           );
                         }
                       }
@@ -981,7 +988,7 @@ class SettingsScreen extends ConsumerWidget {
                     'FlashLearn PWD',
                 subtitle:
                     AppLocalizations.of(context)?.version ??
-                    'Version 1.0.0 • Thesis Capstone Project',
+                    'Version 1.1.0 • Thesis Capstone Project',
                 trailing: const SizedBox.shrink(),
               ),
 
@@ -1132,7 +1139,7 @@ Future<void> _showSetPinDialog(
   if (!context.mounted) return;
   AppSnackBar.success(
     context,
-    message: result.isEmpty ? 'PIN removed' : 'PIN set successfully!',
+    message: result.isEmpty ? _t(context).setPinRemoved : _t(context).setPinSet,
   );
   if (newRecoveryCode != null) {
     final code = newRecoveryCode;
@@ -1193,11 +1200,11 @@ class _SetPinDialogState extends State<_SetPinDialog> {
     final confirm = _confirmController.text.trim();
 
     if (pin.length != 4 || !RegExp(r'^\d{4}$').hasMatch(pin)) {
-      setState(() => _error = 'PIN must be exactly 4 digits');
+      setState(() => _error = _t(context).psPinLength);
       return;
     }
     if (pin != confirm) {
-      setState(() => _error = 'PINs do not match');
+      setState(() => _error = _t(context).epPinMismatch);
       return;
     }
     Navigator.of(context).pop(pin);
@@ -1225,9 +1232,9 @@ class _SetPinDialogState extends State<_SetPinDialog> {
             keyboardType: TextInputType.number,
             maxLength: 4,
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Enter PIN',
-              prefixIcon: Icon(Icons.lock_outline),
+            decoration: InputDecoration(
+              labelText: _t(context).setEnterPin,
+              prefixIcon: const Icon(Icons.lock_outline),
             ),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
@@ -1237,9 +1244,9 @@ class _SetPinDialogState extends State<_SetPinDialog> {
             keyboardType: TextInputType.number,
             maxLength: 4,
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Confirm PIN',
-              prefixIcon: Icon(Icons.lock_outline),
+            decoration: InputDecoration(
+              labelText: _t(context).epConfirmPin,
+              prefixIcon: const Icon(Icons.lock_outline),
             ),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
@@ -1259,9 +1266,9 @@ class _SetPinDialogState extends State<_SetPinDialog> {
         if (widget.hasExistingPin)
           TextButton(
             onPressed: () => Navigator.of(context).pop(''), // remove PIN
-            child: const Text(
-              'Remove PIN',
-              style: TextStyle(color: AppColors.error),
+            child: Text(
+              _t(context).epRemovePin,
+              style: const TextStyle(color: AppColors.error),
             ),
           ),
         TextButton(
@@ -1546,7 +1553,7 @@ class _TelemetryToggleState extends State<_TelemetryToggle> {
       semanticsValue: _enabled
           ? l10n?.settingResearchDataOnDesc ??
                       'Sending anonymous crash & usage data to the research team'
-          : 'No data leaves this device',
+          : _t(context).setNoDataLeaves,
       trailing: Switch.adaptive(
         value: _enabled,
         activeTrackColor: AppColors.primary,
@@ -1616,3 +1623,8 @@ class _SizePresetButton extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

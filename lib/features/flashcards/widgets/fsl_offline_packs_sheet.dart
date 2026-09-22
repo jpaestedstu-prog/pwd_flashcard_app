@@ -6,6 +6,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
 import '../providers/fsl_offline_packs.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Opens the "Offline Signs" manager — per-category download / clear for the
 /// FSL clips the dictionary plays.
@@ -96,7 +98,7 @@ class _FslOfflinePacksSheetState extends ConsumerState<FslOfflinePacksSheet> {
                       _summary(context, hc, state, notifier),
                       const SizedBox(height: 20),
                       Text(
-                        'By category',
+                        _t(context).opByCategory,
                         style: AppTypography.labelMedium.copyWith(
                           color: hc.textSecondary,
                           fontWeight: FontWeight.w700,
@@ -134,10 +136,10 @@ class _FslOfflinePacksSheetState extends ConsumerState<FslOfflinePacksSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Offline Signs', style: AppTypography.titleLarge),
+            Text(_t(context).opTitle, style: AppTypography.titleLarge),
             const SizedBox(height: 2),
             Text(
-              'Save sign videos to this device so they play without internet.',
+              _t(context).opIntro,
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),
           ],
@@ -169,7 +171,7 @@ class _FslOfflinePacksSheetState extends ConsumerState<FslOfflinePacksSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$ready of $total signs saved',
+            _t(context).opSavedOf(ready, total),
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -177,8 +179,8 @@ class _FslOfflinePacksSheetState extends ConsumerState<FslOfflinePacksSheet> {
           const SizedBox(height: 2),
           Text(
             state.totalBytes > 0
-                ? 'Using ${formatPackBytes(state.totalBytes)} on this device'
-                : 'Nothing saved yet',
+                ? _t(context).opUsing(formatPackBytes(state.totalBytes))
+                : _t(context).opNothing,
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 12),
@@ -190,7 +192,7 @@ class _FslOfflinePacksSheetState extends ConsumerState<FslOfflinePacksSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Saving “${state.label}”… ${state.done} of ${state.total}',
+              _t(context).opSaving(state.label, state.done, state.total),
               style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
             ),
             const SizedBox(height: 8),
@@ -199,7 +201,7 @@ class _FslOfflinePacksSheetState extends ConsumerState<FslOfflinePacksSheet> {
               child: OutlinedButton.icon(
                 onPressed: notifier.cancel,
                 icon: const Icon(Icons.stop_rounded),
-                label: const Text('Stop'),
+                label: Text(_t(context).opStop),
               ),
             ),
           ] else
@@ -215,15 +217,14 @@ class _FslOfflinePacksSheetState extends ConsumerState<FslOfflinePacksSheet> {
                   allDone ? Icons.check_circle_rounded : Icons.download_rounded,
                 ),
                 label: Text(
-                  allDone ? 'All signs saved' : 'Save all ${total - ready}',
+                  allDone ? _t(context).opAllSaved : _t(context).opSaveAll(total - ready),
                 ),
               ),
             ),
           if (state.failed > 0 && !state.isBusy) ...[
             const SizedBox(height: 8),
             Text(
-              "${state.failed} couldn't be saved — check the connection and "
-              'try again. Those words still work online.',
+              _t(context).opFailed(state.failed),
               style: AppTypography.labelSmall.copyWith(color: hc.warning),
             ),
           ],
@@ -268,7 +269,7 @@ class _CategoryRow extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  category.label,
+                  category.labelOf(_t(context)),
                   style: AppTypography.bodyMedium.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -276,10 +277,10 @@ class _CategoryRow extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   nothingToOffer
-                      ? 'No signs recorded yet'
+                      ? _t(context).opNoSigns
                       : busyHere
-                      ? 'Saving “${state.label}”… ${state.done} of ${state.total}'
-                      : '${coverage.ready} of ${coverage.downloadable} saved'
+                      ? _t(context).opSaving(state.label, state.done, state.total)
+                      : '${_t(context).opCatSaved(coverage.ready, coverage.downloadable)}'
                             '${coverage.bytes > 0 ? ' · ${formatPackBytes(coverage.bytes)}' : ''}',
                   style: AppTypography.labelSmall.copyWith(
                     color: coverage.isComplete && !busyHere
@@ -304,7 +305,7 @@ class _CategoryRow extends ConsumerWidget {
               IconButton(
                 onPressed: notifier.cancel,
                 icon: const Icon(Icons.stop_circle_rounded),
-                tooltip: 'Stop',
+                tooltip: _t(context).opStop,
                 color: hc.warning,
               )
             else ...[
@@ -314,7 +315,7 @@ class _CategoryRow extends ConsumerWidget {
                       ? null
                       : () => notifier.downloadCategory(category),
                   icon: const Icon(Icons.download_rounded),
-                  tooltip: 'Save ${category.label} offline',
+                  tooltip: _t(context).opSaveCat(category.labelOf(_t(context))),
                   color: AppColors.secondary,
                 ),
               if (!coverage.isEmpty)
@@ -323,7 +324,7 @@ class _CategoryRow extends ConsumerWidget {
                       ? null
                       : () => notifier.clearCategory(category),
                   icon: const Icon(Icons.delete_outline_rounded),
-                  tooltip: 'Remove ${category.label} downloads',
+                  tooltip: _t(context).opRemoveCat(category.labelOf(_t(context))),
                   color: hc.textSecondary,
                 ),
             ],
@@ -333,3 +334,8 @@ class _CategoryRow extends ConsumerWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

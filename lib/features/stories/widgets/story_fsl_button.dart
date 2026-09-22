@@ -5,6 +5,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/fsl_video_sheet.dart';
 import '../../../widgets/square_action_button.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// A self-contained "watch in Filipino Sign Language" control for the Stories
 /// feature.
@@ -25,7 +27,7 @@ import '../../../widgets/square_action_button.dart';
 ///     the Stories reader's bottom navigation bar beside Back / Next, matching
 ///     the Flashcards → Cards bottom-bar buttons. Takes precedence over
 ///     [compact].
-///   • [compact] = false → a labelled "Watch in FSL" chip, for a story page or
+///   • [compact] = false → a labelled _t(context).tcWatchFsl chip, for a story page or
 ///     a quiz question prompt.
 ///   • [compact] = true  → a single sign-language icon button, sized to sit at
 ///     the trailing edge of a quiz answer-option row without crowding it.
@@ -165,7 +167,7 @@ class _StoryFslButtonState extends State<StoryFslButton> {
                 )
               : Icon(Icons.sign_language_rounded, size: context.scaleIcon(22)),
           label: Text(
-            'Watch in FSL',
+            _t(context).tcWatchFsl,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTypography.titleMedium.copyWith(
@@ -192,3 +194,8 @@ class _StoryFslButtonState extends State<StoryFslButton> {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

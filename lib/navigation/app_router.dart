@@ -85,6 +85,7 @@ import '../features/assessment/screens/assessment_results_screen.dart';
 import '../features/assessment/screens/assessment_builder_screen.dart';
 import '../features/assessment/screens/assessment_assign_screen.dart';
 import '../features/assessment/screens/assignment_tracking_screen.dart';
+import '../features/assessment/screens/class_report_screen.dart';
 import '../features/assessment/models/assessment_models.dart';
 import '../features/assessment/services/assessment_service.dart';
 import '../features/showcase/screens/showcase_screen.dart';
@@ -154,6 +155,8 @@ import '../features/routine/providers/today_routine_provider.dart';
 import '../providers/lock_state_provider.dart';
 import 'app_page_transitions.dart';
 import 'bottom_nav_shell.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// Global navigator key so services (e.g. notifications) can navigate
 /// without a BuildContext.
@@ -261,6 +264,7 @@ const _playerBlockedRoutes = [
   '/multiplayer',
   '/live-session',
   '/assessment',
+  '/assessment/class-report',
   '/parent-teacher-notes',
   '/research-export',
   '/showcase/share',
@@ -276,14 +280,15 @@ const _playerBlockedRoutes = [
 /// Engagement tracker that acts as a NavigatorObserver.
 /// Automatically tracks screen visits and durations for research export.
 ///
-/// Attached for the Student role ONLY — by design, not an omission. The thesis
-/// study population is PWD students, and Research Export is correspondingly
-/// student-scoped (see ResearchExportService.generateAndShare), so capturing
-/// Child or Player engagement would only collect data the export never reads.
-/// Widening this is a methodology + consent decision, not a code change.
+/// Attached for every enrolled learner — a classroom Student and a
+/// home-group Child — which is the population Research Export writes (see
+/// ResearchExportService.researchPopulation). It used to be Students only, when
+/// the study population was students; Chapter IV now includes respondents from
+/// homes, who are the Child role. Player profiles stay out: they are never part
+/// of a class or home group, so never part of the study.
 final engagementTrackerProvider = Provider<EngagementTracker?>((ref) {
   final profile = ref.watch(profileProvider);
-  if (profile == null || profile.role != UserRole.student) return null;
+  if (profile == null || !profile.role.isEnrollableLearner) return null;
   final tracker = EngagementTracker(profileId: profile.id);
   ref.onDispose(() => tracker.flush());
   return tracker;
@@ -447,17 +452,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                       shape: BoxShape.circle,
                       color: colorScheme.errorContainer.withValues(alpha: 0.3),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Text(
                         '🗺️',
-                        style: TextStyle(fontSize: 48),
-                        semanticsLabel: 'Lost page illustration',
+                        style: const TextStyle(fontSize: 48),
+                        semanticsLabel: _t(context).nfIllustration,
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'Oops! Page not found',
+                    _t(context).nfTitle,
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: colorScheme.onSurface,
@@ -466,7 +471,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'It looks like this page has wandered off.\nLet\'s get you back on track!',
+                    _t(context).nfBody,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -475,11 +480,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                   const SizedBox(height: 32),
                   Semantics(
                     button: true,
-                    label: 'Go back to home screen',
+                    label: _t(context).nfGoHomeSem,
                     child: FilledButton.icon(
                       onPressed: () => GoRouter.of(context).go('/home'),
                       icon: const Icon(Icons.home_rounded),
-                      label: const Text('Go Home'),
+                      label: Text(_t(context).nfGoHome),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 32,
@@ -491,7 +496,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   const SizedBox(height: 12),
                   Semantics(
                     button: true,
-                    label: 'Go back to previous page',
+                    label: _t(context).nfGoBackSem,
                     child: TextButton.icon(
                       onPressed: () {
                         if (Navigator.of(context).canPop()) {
@@ -501,7 +506,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                         }
                       },
                       icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('Go Back'),
+                      label: Text(_t(context).goBack),
                     ),
                   ),
                 ],
@@ -1597,6 +1602,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const AssignmentTrackingScreen(),
         ),
       ),
+      // The educator's read of the whole class: gain by accessibility
+      // category, item analysis, and who retook which half. The screen turns
+      // a learner away itself, so it needs no redirect here.
+      GoRoute(
+        path: '/assessment/class-report',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const ClassReportScreen(),
+        ),
+      ),
       GoRoute(
         path: '/assessment/category/:categoryIndex',
         pageBuilder: (context, state) {
@@ -2115,3 +2130,8 @@ String? _parseFocusWord(GoRouterState state) {
   final raw = state.uri.queryParameters['word'];
   return (raw == null || raw.isEmpty) ? null : raw;
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -9,6 +9,8 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/constants/app_constants.dart';
 import '../core/utils/reduced_motion.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// Opens the FSL fullscreen video player as a fullscreen dialog.
 ///
@@ -360,7 +362,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                 color: Colors.white54, size: 56),
             const SizedBox(height: 12),
             Text(
-              'Unable to load video',
+              _t(context).fpLoadFailed,
               style: AppTypography.bodyLarge.copyWith(color: Colors.white70),
             ),
           ],
@@ -487,7 +489,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
         children: [
           // Close button
           IconButton(
-              tooltip: 'Close fullscreen video',
+              tooltip: _t(context).fpClose,
               onPressed: _close,
               icon: const Icon(Icons.close_rounded),
               color: Colors.white,
@@ -500,7 +502,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
           const Spacer(),
           // Captions toggle
           IconButton(
-              tooltip: _showSubtitles ? 'Hide captions' : 'Show captions',
+              tooltip: _showSubtitles ? _t(context).fpHideCaptions : _t(context).fpShowCaptions,
               onPressed: () {
                 HapticFeedback.selectionClick();
                 setState(() => _showSubtitles = !_showSubtitles);
@@ -521,7 +523,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
           const SizedBox(width: 4),
           // Speed / settings
           IconButton(
-              tooltip: 'Playback speed settings',
+              tooltip: _t(context).fpSpeedSettings,
               onPressed: () {
                 setState(() => _showSpeedPanel = !_showSpeedPanel);
                 _startHideControlsTimer();
@@ -552,7 +554,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
       onTap: _togglePlayPause,
       child: Semantics(
         button: true,
-        label: isPlaying ? 'Pause video' : 'Play video',
+        label: isPlaying ? _t(context).fpPause : _t(context).fpPlay,
         child: Container(
           width: 72,
           height: 72,
@@ -612,7 +614,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
               padding: const EdgeInsets.symmetric(horizontal: 3),
               child: Semantics(
                 button: true,
-                label: 'Set speed to ${speed}x',
+                label: _t(context).fpSetSpeed('$speed'),
                 child: GestureDetector(
                   onTap: () => _setSpeed(speed),
                   child: AnimatedContainer(
@@ -671,7 +673,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
             children: [
               // Replay
               IconButton(
-                  tooltip: 'Replay from beginning',
+                  tooltip: _t(context).fpReplay,
                   onPressed: _replay,
                   icon: const Icon(Icons.replay_rounded),
                   color: Colors.white,
@@ -683,7 +685,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                 ),
               // Play/pause (small, redundant — convenient in bottom bar)
               IconButton(
-                  tooltip: _controller.value.isPlaying ? 'Pause' : 'Play',
+                  tooltip: _controller.value.isPlaying ? _t(context).fpPauseShort : _t(context).fpPlayShort,
                   onPressed: _togglePlayPause,
                   icon: Icon(
                     _controller.value.isPlaying
@@ -711,7 +713,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
               Expanded(
                 child: Semantics(
                   slider: true,
-                  label: 'Video progress',
+                  label: _t(context).fpProgress,
                   value:
                       '${(progress * 100).round()}%',
                   child: SliderTheme(
@@ -785,3 +787,8 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

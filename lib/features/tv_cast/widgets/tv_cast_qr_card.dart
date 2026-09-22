@@ -6,6 +6,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/pro_surface.dart';
 import '../../../widgets/app_snack_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Renders the cast URL as a QR code, with a copy-to-clipboard chip and
 /// the plain text URL for hand-typing on TV remotes that can't scan.
@@ -60,7 +62,7 @@ class TvCastQrCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Open this on your TV',
+            _t(context).tqOpen,
             style: AppTypography.titleSmall.copyWith(
               fontWeight: FontWeight.w700,
               color: hc.textPrimary,
@@ -68,9 +70,7 @@ class TvCastQrCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'In the TV\'s own web browser, scan the code or type this URL '
-            '(don\'t mirror or cast your tablet — that keeps the sound on '
-            'the tablet):',
+            _t(context).tqHow,
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             textAlign: TextAlign.center,
           ),
@@ -83,7 +83,7 @@ class TvCastQrCard extends StatelessWidget {
               onTap: () async {
                 await Clipboard.setData(ClipboardData(text: url));
                 if (!context.mounted) return;
-                AppSnackBar.success(context, message: 'URL copied');
+                AppSnackBar.success(context, message: _t(context).tqCopied);
               },
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -142,7 +142,7 @@ class _CodeCallout extends StatelessWidget {
     return Column(
       children: [
         Text(
-          'Cast code',
+          _t(context).tqCode,
           style: AppTypography.labelMedium.copyWith(
             color: hc.textSecondary,
             fontWeight: FontWeight.w700,
@@ -151,7 +151,7 @@ class _CodeCallout extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Semantics(
-          label: 'Cast code ${code.split('').join(' ')}',
+          label: _t(context).tqCodeSemantics(code.split('').join(' ')),
           excludeSemantics: true,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
@@ -175,8 +175,7 @@ class _CodeCallout extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Only TVs opening this exact link can see the cast. '
-          'The code changes every time you start casting.',
+          _t(context).tqPrivate,
           style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           textAlign: TextAlign.center,
         ),
@@ -184,3 +183,8 @@ class _CodeCallout extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

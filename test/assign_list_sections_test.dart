@@ -95,6 +95,26 @@ void main() {
     await box.put('assessments_educator-2', [
       saved('a-only', 'Colours Check', DateTime(2026, 8, 20)).toJson(),
     ]);
+    // An educator who has already minted a class pre-test, so the post-test
+    // has something to mirror.
+    await box.put('assessments_educator-3', [
+      Assessment(
+        id: 'class-pre',
+        title: 'Pre-Test — All Categories',
+        type: AssessmentType.preTest,
+        questions: [
+          for (var i = 0; i < 15; i++)
+            AssessmentQuestion(
+              id: 'q_c$i',
+              questionText: 'Question $i',
+              correctAnswer: 'Aso',
+              choices: const ['Aso', 'Pusa'],
+            ),
+        ],
+        createdBy: 'educator-3',
+        createdAt: DateTime(2026, 9, 2),
+      ).toJson(),
+    ]);
   });
 
   tearDownAll(() async {
@@ -107,8 +127,11 @@ void main() {
   Future<void> pumpAssign(
     WidgetTester tester, {
     String profileId = educatorId,
+    bool emptyRoster = false,
+    Size size = const Size(1200, 1920),
+    double textScale = 1.0,
   }) async {
-    tester.view.physicalSize = const Size(1200, 1920);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.75;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -118,6 +141,7 @@ void main() {
         overrides: [
           profileProvider.overrideWith(() => _StubProfileNotifier(profileId)),
           allProfilesWithProgressProvider.overrideWithValue([
+            if (!emptyRoster)
             (
               UserProfile(
                 id: 's1',
@@ -132,12 +156,18 @@ void main() {
             ),
           ]),
         ],
-        child: const MaterialApp(
+        child: MaterialApp(
           debugShowCheckedModeBanner: false,
-          locale: Locale('en'),
+          locale: const Locale('en'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: AssessmentAssignScreen(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
+          home: const AssessmentAssignScreen(),
         ),
       ),
     );
@@ -190,5 +220,128 @@ void main() {
     expect(find.text('Quizzes'), findsNothing);
     expect(find.text('Saved assessments'), findsOneWidget);
     expect(find.text('Colours Check'), findsOneWidget);
+  });
+
+  // ─── The study instrument ────────────────────────────────
+
+  testWidgets('the study pre-test is always on offer', (tester) async {
+    // It is what the study procedure has an educator assign first, and it
+    // needs nothing built in advance — so it is there for an educator with no
+    // quizzes and no saved assessments at all.
+    await pumpAssign(tester, profileId: 'educator-2');
+
+    expect(find.text('Study pre-test & post-test'), findsOneWidget);
+    expect(find.text('Class Pre-Test'), findsOneWidget);
+  });
+
+  testWidgets('no post-test until there is a pre-test to mirror', (
+    tester,
+  ) async {
+    await pumpAssign(tester, profileId: 'educator-2');
+
+    expect(
+      find.text('Class Post-Test'),
+      findsNothing,
+      reason: 'a post-test with no pre-test behind it measures nothing',
+    );
+  });
+
+  testWidgets('once a class pre-test exists, its post-test is offered', (
+    tester,
+  ) async {
+    await pumpAssign(tester, profileId: 'educator-3');
+
+    expect(find.text('Class Post-Test'), findsOneWidget);
+    expect(find.textContaining('mirrors the pre-test each learner sat'), findsOneWidget);
+  });
+
+  testWidgets('the study instrument is listed before everything else', (
+    tester,
+  ) async {
+    await pumpAssign(tester);
+
+    final instrument = tester.getTopLeft(find.text('Class Pre-Test')).dy;
+    final quizzes = tester.getTopLeft(find.text('Quizzes')).dy;
+    expect(instrument, lessThan(quizzes));
+  });
+
+  // ─── An educator with nobody to assign to ────────────────
+
+  testWidgets('no learners yet says so, instead of an empty form', (
+    tester,
+  ) async {
+    await pumpAssign(tester, emptyRoster: true);
+
+    expect(find.text('No students yet'), findsOneWidget);
+  });
+
+  testWidgets('and fits on a small phone at the largest font', (
+    tester,
+  ) async {
+    // 360×640 dp at 2.0x: this state ran 53px off the bottom while it sat
+    // unreachable behind "No assessments yet".
+    await pumpAssign(
+      tester,
+      emptyRoster: true,
+      size: const Size(360, 640) * 1.75,
+      textScale: 2.0,
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('No students yet'), findsOneWidget);
+  });
+
+  group('which choices hand out a post-test', () {
+    // A saved class post-test used to be re-sent as-is, so every selected
+    // learner got that one form whichever pre-test they sat — the pairing the
+    // Class Post-Test tile does was skipped. Both routes now pair per learner.
+    Assessment stored(AssessmentType type) => Assessment(
+      id: 'saved-${type.name}',
+      title: '${type.name} — All Categories',
+      type: type,
+      questions: const [],
+      createdBy: 'educator-3',
+      createdAt: DateTime(2026, 9, 20),
+    );
+
+    test('the Class Post-Test tile does', () {
+      expect(
+        AssignableItem.instrument(
+          AssessmentType.postTest,
+          title: 'Class Post-Test',
+          questionCount: 15,
+        ).isPostTest,
+        isTrue,
+      );
+    });
+
+    test('a saved class post-test does too', () {
+      expect(
+        AssignableItem.fromAssessment(stored(AssessmentType.postTest))
+            .isPostTest,
+        isTrue,
+      );
+    });
+
+    test('pre-tests, custom checks and quizzes do not', () {
+      expect(
+        AssignableItem.instrument(
+          AssessmentType.preTest,
+          title: 'Class Pre-Test',
+          questionCount: 15,
+        ).isPostTest,
+        isFalse,
+      );
+      expect(
+        AssignableItem.fromAssessment(stored(AssessmentType.preTest))
+            .isPostTest,
+        isFalse,
+      );
+      expect(
+        AssignableItem.fromAssessment(stored(AssessmentType.custom))
+            .isPostTest,
+        isFalse,
+      );
+    });
   });
 }

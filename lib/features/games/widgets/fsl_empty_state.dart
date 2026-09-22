@@ -7,6 +7,7 @@ import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Friendly empty state shown when an FSL game can't run with the user's
 /// chosen categories — usually because that category doesn't have enough
@@ -76,7 +77,7 @@ class FslEmptyStateScaffold extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'FSL videos coming soon',
+                _t(context).feSoon,
                 style: AppTypography.titleLarge.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -84,8 +85,7 @@ class FslEmptyStateScaffold extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                "We're still recording sign-language videos for these "
-                'categories. Practice with the flashcards in the meantime!',
+                _t(context).feRecording,
                 style: AppTypography.bodyMedium.copyWith(
                   color: hc.textSecondary,
                 ),
@@ -94,7 +94,7 @@ class FslEmptyStateScaffold extends ConsumerWidget {
               if (readyCategories.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 Text(
-                  'Ready to practice now:',
+                  _t(context).feReady,
                   style: AppTypography.labelLarge.copyWith(
                     color: hc.textSecondary,
                     fontWeight: FontWeight.w700,
@@ -141,7 +141,7 @@ class FslEmptyStateScaffold extends ConsumerWidget {
               const SizedBox(height: 28),
               ElevatedButton(
                 onPressed: onClose,
-                child: const Text('Choose another category'),
+                child: Text(_t(context).feChooseAnother),
               ),
             ],
           ),
@@ -150,3 +150,8 @@ class FslEmptyStateScaffold extends ConsumerWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

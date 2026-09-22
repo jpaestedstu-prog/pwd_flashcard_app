@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +29,7 @@ void main() {
         overrides: [
           learnerAssignmentSyncProvider.overrideWith((ref, id) async {
             runs++;
+            return true;
           }),
         ],
         child: const MaterialApp(home: _FakeLearnerHome(profileId: learner)),
@@ -79,6 +82,7 @@ void main() {
     final overrides = [
       learnerAssignmentSyncProvider.overrideWith((ref, id) async {
         runs++;
+        return true;
       }),
     ];
     // The same ProviderScope throughout — Riverpod asserts the override count
@@ -116,6 +120,7 @@ void main() {
         overrides: [
           learnerAssignmentSyncProvider.overrideWith((ref, id) async {
             runs++;
+            return true;
           }),
         ],
         child: const MaterialApp(
@@ -133,6 +138,138 @@ void main() {
 
     expect(runs, 0);
   });
+
+  // ─── Recovery without leaving the app ────────────────────
+
+  group('a failed pull', () {
+    // On a slow classroom network the first pull can time out. It used to
+    // stay failed until the learner left and reopened the app, so the test
+    // their teacher had just assigned never appeared.
+    testWidgets('is retried by itself, and stops once it works', (
+      tester,
+    ) async {
+      final outcomes = [false, false, true];
+      var runs = 0;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            learnerAssignmentSyncProvider.overrideWith((ref, id) async {
+              return outcomes[runs++ < outcomes.length ? runs - 1 : 2];
+            }),
+          ],
+          child: MaterialApp(
+            home: _FakeLearnerHome(
+              profileId: learner,
+              watch: (_) => const Stream.empty(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(runs, 1);
+
+      await tester.pump(const Duration(seconds: 1));
+      expect(runs, 2, reason: 'retried after the first back-off');
+
+      await tester.pump(const Duration(seconds: 2));
+      expect(runs, 3, reason: 'retried again, waiting twice as long');
+
+      await tester.pump(const Duration(minutes: 5));
+      expect(runs, 3, reason: 'a pull that worked is not repeated');
+    });
+
+    testWidgets('never retries after it is gone', (tester) async {
+      var runs = 0;
+      final overrides = [
+        learnerAssignmentSyncProvider.overrideWith((ref, id) async {
+          runs++;
+          return false;
+        }),
+      ];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: overrides,
+          child: MaterialApp(
+            home: _FakeLearnerHome(
+              profileId: learner,
+              watch: (_) => const Stream.empty(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: overrides,
+          child: const MaterialApp(home: SizedBox.shrink()),
+        ),
+      );
+      await tester.pump(const Duration(minutes: 5));
+      expect(runs, 1);
+    });
+  });
+
+  group('work assigned while the app is open', () {
+    late StreamController<Set<String>> live;
+    setUp(() => live = StreamController<Set<String>>());
+    tearDown(() => live.close());
+
+    Future<int Function()> pumpLive(
+      WidgetTester tester, {
+      required Set<String> known,
+    }) async {
+      var runs = 0;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            learnerAssignmentSyncProvider.overrideWith((ref, id) async {
+              runs++;
+              return true;
+            }),
+          ],
+          child: MaterialApp(
+            home: _FakeLearnerHome(
+              profileId: learner,
+              watch: (_) => live.stream,
+              known: (_) => known,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      return () => runs;
+    }
+
+    testWidgets('a new assignment is pulled at once', (tester) async {
+      final runs = await pumpLive(tester, known: {'pre-1'});
+      expect(runs(), 1);
+
+      live.add({'pre-1', 'post-1'});
+      await tester.pump();
+      await tester.pump();
+      expect(
+        runs(),
+        2,
+        reason: 'the teacher pressed Assign; the learner never left the app',
+      );
+    });
+
+    testWidgets('nothing new costs nothing', (tester) async {
+      final runs = await pumpLive(tester, known: {'pre-1'});
+      live.add({'pre-1'});
+      await tester.pump();
+      await tester.pump();
+      expect(runs(), 1);
+    });
+
+    testWidgets('withdrawn work is noticed too', (tester) async {
+      final runs = await pumpLive(tester, known: {'pre-1', 'old-1'});
+      live.add({'pre-1'});
+      await tester.pump();
+      await tester.pump();
+      expect(runs(), 2);
+    });
+  });
 }
 
 /// Watches the sync provider the way the real learner homes do, and hosts the
@@ -140,12 +277,20 @@ void main() {
 /// an `if` in the home's own build, so the home is what has to rebuild.
 class _FakeLearnerHome extends ConsumerWidget {
   final String profileId;
+  final Stream<Set<String>> Function(String)? watch;
+  final Set<String>? Function(String)? known;
 
-  const _FakeLearnerHome({required this.profileId});
+  const _FakeLearnerHome({required this.profileId, this.watch, this.known});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(learnerAssignmentSyncProvider(profileId));
-    return LearnerAssignmentSync(profileId: profileId);
+    return LearnerAssignmentSync(
+      profileId: profileId,
+      watchAssignments: watch,
+      knownAssignmentIds: known,
+      firstRetry: const Duration(seconds: 1),
+      maxRetry: const Duration(seconds: 4),
+    );
   }
 }

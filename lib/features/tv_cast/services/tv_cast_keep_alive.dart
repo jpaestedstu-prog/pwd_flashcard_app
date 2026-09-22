@@ -29,17 +29,23 @@ class TvCastKeepAlive {
   static bool get isSupported => Platform.isAndroid;
 
   /// Starts (or refreshes) the ongoing notification. [code] is the cast
-  /// session code and [detail] the one-line status shown under the title.
-  static Future<void> start({required String code, required String detail}) =>
-      _invoke('start', code: code, detail: detail);
+  /// session code, [detail] the one-line status shown under the title, and
+  /// [title] the title in the app's language (empty keeps the English one).
+  static Future<void> start({
+    required String code,
+    required String detail,
+    String title = '',
+  }) =>
+      _invoke('start', code: code, detail: detail, title: title);
 
   /// Updates the existing notification in place — same call as [start] on the
   /// native side, kept separate so call sites read as what they mean.
   static Future<void> update({
     required String code,
     required String detail,
+    String title = '',
   }) =>
-      _invoke('update', code: code, detail: detail);
+      _invoke('update', code: code, detail: detail, title: title);
 
   /// Drops the notification and lets the process be reclaimed normally.
   static Future<void> stop() => _invoke('stop');
@@ -48,12 +54,14 @@ class TvCastKeepAlive {
     String method, {
     String code = '',
     String detail = '',
+    String title = '',
   }) async {
     if (!isSupported) return;
     try {
       await _channel.invokeMethod<bool>(method, {
         'code': code,
         'detail': detail,
+        'title': title,
       });
     } catch (e) {
       // Swallowed on purpose — see the class doc. Surfaced in debug builds

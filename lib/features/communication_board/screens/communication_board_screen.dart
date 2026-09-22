@@ -22,6 +22,8 @@ import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Wraps [index] into 0…count-1, handling negatives so a left move from the
 /// first tile lands on the last. Returns 0 for an empty set. Pure + testable.
@@ -176,7 +178,7 @@ class _CommunicationBoardScreenState
     return [
       GazeAction(
         zone: GazeZone.left,
-        label: 'Prev',
+        label: _t(context).tbPrev,
         icon: Icons.chevron_left_rounded,
         color: AppColors.secondary,
         enabled: hasTiles,
@@ -184,7 +186,7 @@ class _CommunicationBoardScreenState
       ),
       GazeAction(
         zone: GazeZone.right,
-        label: 'Next',
+        label: _t(context).next,
         icon: Icons.chevron_right_rounded,
         color: AppColors.secondary,
         enabled: hasTiles,
@@ -192,7 +194,7 @@ class _CommunicationBoardScreenState
       ),
       GazeAction(
         zone: GazeZone.up,
-        label: 'Speak',
+        label: _t(context).tbSpeak,
         icon: Icons.play_circle_filled_rounded,
         color: AppColors.success,
         enabled: _sentence.isNotEmpty,
@@ -200,7 +202,7 @@ class _CommunicationBoardScreenState
       ),
       GazeAction(
         zone: GazeZone.down,
-        label: 'Add',
+        label: _t(context).tbAdd,
         icon: Icons.add_circle_rounded,
         color: AppColors.primary,
         enabled: hasTiles,
@@ -218,7 +220,7 @@ class _CommunicationBoardScreenState
       // and nothing at all happens. Say why.
       ref.read(hapticServiceProvider).error();
       _announce(
-        'That is as long as a sentence can be. Speak it or clear it.',
+        _t(context).tbTooLong,
         warning: true,
       );
       return;
@@ -305,17 +307,18 @@ class _CommunicationBoardScreenState
     final id = SavedPhrase.idFor(_sentence);
     final alreadyPinned = _currentIsPinned(ref.read(boardPhrasesProvider));
 
+    final t = _t(context);
     ref.read(hapticServiceProvider).success();
     if (alreadyPinned) {
       await notifier.togglePinned(id);
-      _announce('Phrase unpinned.');
+      _announce(t.tbUnpinned);
       return;
     }
     // `savePinned`, not `record` + `togglePinned`: record deliberately refuses
     // a brand-new one-tile sentence, and going through it would have left the
     // learner with a "Phrase saved." that saved nothing.
     await notifier.savePinned(List.of(_sentence));
-    _announce('Phrase saved.');
+    _announce(t.tbSaved);
   }
 
   /// Open the builder for this profile's own board.
@@ -333,7 +336,7 @@ class _CommunicationBoardScreenState
     final allowed = await requireAdult(
       context,
       ref,
-      reason: 'to change this board',
+      reason: _t(context).tbChangeReason,
     );
     if (!allowed || !mounted) return;
     if (context.mounted) context.push('/communication-board/builder');
@@ -393,7 +396,7 @@ class _CommunicationBoardScreenState
           // used to be titled "Communication Board", so a learner arrived
           // somewhere apparently different from what they tapped.
           title: Text(
-            'Talk Board',
+            _t(context).tbTitle,
             style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
           ),
           backgroundColor: Colors.transparent,
@@ -405,12 +408,12 @@ class _CommunicationBoardScreenState
             Semantics(
               button: true,
               label: vocabulary.hasCustomTab
-                  ? 'Edit my board'
-                  : 'Build my board',
+                  ? _t(context).tbEditBoard
+                  : _t(context).tbBuildBoard,
               child: Tooltip(
                 message: vocabulary.hasCustomTab
-                    ? 'Edit my board'
-                    : 'Build my board',
+                    ? _t(context).tbEditBoard
+                    : _t(context).tbBuildBoard,
                 child: IconButton(
                   onPressed: _openBuilder,
                   icon: Icon(
@@ -424,11 +427,11 @@ class _CommunicationBoardScreenState
             // Language toggle
             Semantics(
               button: true,
-              label: _useFilipino ? 'Switch to English' : 'Switch to Filipino',
+              label: _useFilipino ? _t(context).tbToEnglish : _t(context).tbToFilipino,
               child: Tooltip(
                 message: _useFilipino
-                    ? 'Switch to English'
-                    : 'Switch to Filipino',
+                    ? _t(context).tbToEnglish
+                    : _t(context).tbToFilipino,
                 child: TextButton.icon(
                   onPressed: () => setState(() => _useFilipino = !_useFilipino),
                   icon: Icon(
@@ -671,8 +674,9 @@ class _PhraseStrip extends StatelessWidget {
 
           return Semantics(
             button: true,
-            label: '${phrase.pinned ? 'Saved phrase' : 'Recent phrase'}: '
-                '$label. Tap to say it.',
+            label: phrase.pinned
+                ? _t(context).tbSavedPhrase(label)
+                : _t(context).tbRecentPhrase(label),
             child: GestureDetector(
               onTap: () => onUse(phrase),
               child: Container(
@@ -777,7 +781,7 @@ class _SentenceStrip extends StatelessWidget {
             child: sentence.isEmpty
                 ? Center(
                     child: Text(
-                      'Tap tiles below to build a sentence',
+                      _t(context).tbHint,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.bodyMedium.copyWith(
@@ -832,7 +836,7 @@ class _SentenceStrip extends StatelessWidget {
               // Speak button
               Semantics(
                 button: true,
-                label: 'Speak sentence',
+                label: _t(context).tbSpeakSentence,
                 child: _CircleButton(
                   icon: isSpeaking
                       ? Icons.volume_up_rounded
@@ -850,8 +854,8 @@ class _SentenceStrip extends StatelessWidget {
                   Semantics(
                     button: true,
                     label: isPinned
-                        ? 'Remove this sentence from saved phrases'
-                        : 'Save this sentence',
+                        ? _t(context).tbUnsave
+                        : _t(context).tbSave,
                     child: _CircleButton(
                       icon: isPinned
                           ? Icons.star_rounded
@@ -865,7 +869,7 @@ class _SentenceStrip extends StatelessWidget {
                   // Backspace
                   Semantics(
                     button: true,
-                    label: 'Remove last tile',
+                    label: _t(context).tbRemoveLast,
                     child: _CircleButton(
                       icon: Icons.backspace_rounded,
                       color: AppColors.secondary,
@@ -876,7 +880,7 @@ class _SentenceStrip extends StatelessWidget {
                   const SizedBox(width: 4),
                   Semantics(
                     button: true,
-                    label: 'Clear all tiles',
+                    label: _t(context).tbClearAll,
                     child: _CircleButton(
                       icon: Icons.delete_sweep_rounded,
                       color: AppColors.error,
@@ -962,7 +966,7 @@ class _CategoryChip extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '$label category',
+      label: _t(context).tbCategory(label),
       selected: isActive,
       child: GestureDetector(
         onTap: onTap,
@@ -1043,7 +1047,7 @@ class _BoardTileWidget extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '$spoken. Tap to add, long press to hear.',
+      label: _t(context).tbTileSemantics(spoken),
       child: GestureDetector(
         onTap: onTap,
         onLongPress: onLongPress,
@@ -1123,3 +1127,8 @@ class _BoardTileWidget extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

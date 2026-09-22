@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Shown to a learner whose classroom or home-group membership was just
 /// deleted by the educator. The router pushes here from
@@ -58,16 +60,14 @@ class _MembershipRemovedScreenState extends State<MembershipRemovedScreen> {
 
   bool get _isClass => widget.fromKind == 'class';
 
-  String get _scopeLabel => _isClass ? 'class' : 'home group';
-
   String get _heading {
     final n = widget.fromName?.trim();
     if (n == null || n.isEmpty) {
       return _isClass
-          ? 'You\'ve been removed from your class.'
-          : 'You\'ve been removed from your home group.';
+          ? _t(context).mrClass
+          : _t(context).mrGroup;
     }
-    return 'You\'ve been removed from $n.';
+    return _t(context).mrFrom(n);
   }
 
   @override
@@ -92,7 +92,7 @@ class _MembershipRemovedScreenState extends State<MembershipRemovedScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Your progress is safe on this device. You can join a different $_scopeLabel using a new code.',
+                _isClass ? _t(context).mrSafeClass : _t(context).mrSafeGroup,
                 style: AppTypography.bodyMedium.copyWith(
                   color: HCColor.of(context).textSecondary,
                 ),
@@ -107,12 +107,12 @@ class _MembershipRemovedScreenState extends State<MembershipRemovedScreen> {
                     context.go('/profile');
                   },
                   icon: const Icon(Icons.arrow_forward_rounded),
-                  label: const Text('Continue'),
+                  label: Text(_t(context).continueButton),
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                'Returning to setup automatically…',
+                _t(context).mrReturning,
                 style: AppTypography.bodySmall.copyWith(
                   color: HCColor.of(context).textSecondary,
                 ),
@@ -125,3 +125,8 @@ class _MembershipRemovedScreenState extends State<MembershipRemovedScreen> {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

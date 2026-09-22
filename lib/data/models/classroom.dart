@@ -16,6 +16,19 @@ class Classroom {
   /// in a wizard. Defaults to [DisabilityType.none] for legacy classes that
   /// predate this field.
   final DisabilityType accessibility;
+
+  /// Whether learners in this class may sit the pre-test or post-test again
+  /// once they have completed it.
+  ///
+  /// Defaults to **false**: every class is a study group, and a learner who
+  /// retakes the pre-test after a fortnight of lessons is no longer measuring
+  /// their starting point — `getLatestPreTest` silently takes the newest
+  /// sitting. Documents written before the field existed read as false too,
+  /// so no group depends on somebody remembering to lock it. A first sitting
+  /// is never affected: that always comes from an assignment. An educator can
+  /// still reopen a group from its menu.
+  final bool allowAssessmentRetakes;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -25,6 +38,7 @@ class Classroom {
     required this.name,
     required this.teacherId,
     this.accessibility = DisabilityType.none,
+    this.allowAssessmentRetakes = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -35,6 +49,7 @@ class Classroom {
     String? name,
     String? teacherId,
     DisabilityType? accessibility,
+    bool? allowAssessmentRetakes,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -44,6 +59,8 @@ class Classroom {
       name: name ?? this.name,
       teacherId: teacherId ?? this.teacherId,
       accessibility: accessibility ?? this.accessibility,
+      allowAssessmentRetakes:
+          allowAssessmentRetakes ?? this.allowAssessmentRetakes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -56,6 +73,7 @@ class Classroom {
         'name': name,
         'teacher_id': teacherId,
         'accessibility': accessibility.index,
+        'allow_assessment_retakes': allowAssessmentRetakes,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -69,6 +87,10 @@ class Classroom {
       accessibility: DisabilityType.values[
           ((json['accessibility'] as int?) ?? DisabilityType.none.index)
               .clamp(0, DisabilityType.values.length - 1)],
+      // Absent on documents written before the field existed → locked, like
+      // every new group — see [allowAssessmentRetakes].
+      allowAssessmentRetakes:
+          json['allow_assessment_retakes'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );

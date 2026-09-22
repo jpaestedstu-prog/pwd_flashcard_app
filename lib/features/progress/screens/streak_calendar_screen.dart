@@ -11,6 +11,8 @@ import '../../../widgets/enhanced_streak_display.dart';
 import '../../../widgets/app_back_button.dart';
 import '../widgets/calendar_widget.dart';
 import '../../../core/widgets/reflow_row.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class StreakCalendarScreen extends ConsumerWidget {
   const StreakCalendarScreen({super.key});
@@ -66,7 +68,7 @@ class StreakCalendarScreen extends ConsumerWidget {
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Text(
-          'Streak Calendar',
+          _t(context).scTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -91,22 +93,26 @@ class StreakCalendarScreen extends ConsumerWidget {
 
             // ─── Stats Row ────────────────────────
             ReflowRow(
-              labels: const ['Best Streak', 'This Month', 'Total Active'],
+              labels: [
+                _t(context).scBestStreak,
+                _t(context).scThisMonth,
+                _t(context).scTotalActive,
+              ],
               children: [
                 _MiniStat(
-                  label: 'Best Streak',
-                  value: '$longestStreak days',
+                  label: _t(context).scBestStreak,
+                  value: _t(context).scDays(longestStreak),
                   icon: Icons.emoji_events_rounded,
                   color: AppColors.warning,
                 ),
                 _MiniStat(
-                  label: 'This Month',
-                  value: '$thisMonthActive days',
+                  label: _t(context).scThisMonth,
+                  value: _t(context).scDays(thisMonthActive),
                   icon: Icons.calendar_month_rounded,
                   color: AppColors.secondary,
                 ),
                 _MiniStat(
-                  label: 'Total Active',
+                  label: _t(context).scTotalActive,
                   value: '${allActivityDates.length}',
                   icon: Icons.bar_chart_rounded,
                   color: AppColors.success,
@@ -140,7 +146,7 @@ class StreakCalendarScreen extends ConsumerWidget {
 
             // ─── Milestones ───────────────────────
             Text(
-              'Streak Milestones',
+              _t(context).scMilestones,
               style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w700,
                 color: hc.textPrimary,
@@ -228,3 +234,8 @@ class _MiniStat extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

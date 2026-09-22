@@ -18,6 +18,8 @@ import '../../../widgets/rich_empty_states.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../../data/models/shop_data.dart';
 import '../../../core/utils/reduced_motion.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Membership-scoped leaderboard.
 ///
@@ -135,7 +137,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         !isEducator && (config == null || !config.visible);
 
     return _shell(
-      title: scope.displayName ?? 'Leaderboard',
+      title: scope.displayName ?? _t(context).lbTitle,
       child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(onlineLeaderboardProvider(scope));
@@ -210,14 +212,14 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                 ),
           ),
         if (entries.isEmpty)
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.only(top: 40),
+              padding: const EdgeInsets.only(top: 40),
               child: RichEmptyState(
                 emoji: '🏅',
-                title: 'No rankings yet',
+                title: _t(context).lbNoRankings,
                 description:
-                    'Complete activities and games to appear on the leaderboard!',
+                    _t(context).lbNoRankingsBody,
                 accentColor: AppColors.primary,
               ),
             ),
@@ -264,14 +266,14 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     if (isEducator && (config == null || !config.visible)) {
       notices.add(_noticeChip(
         icon: Icons.visibility_off_rounded,
-        text: 'Hidden from members — enable in Leaderboard settings',
+        text: _t(context).lbHidden,
         color: AppColors.warning,
       ));
     }
     if (config?.seasonStartAt != null) {
       notices.add(_noticeChip(
         icon: Icons.flag_rounded,
-        text: 'Season active — ranking recent activity',
+        text: _t(context).lbSeason,
         color: AppColors.info,
       ));
     }
@@ -351,12 +353,12 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     final isChild = profile.role == UserRole.child;
     return RichEmptyState(
       emoji: '🏅',
-      title: 'Join to see the leaderboard',
+      title: _t(context).lbJoinTitle,
       description: isChild
-          ? 'Join your family home group to see how you rank with everyone!'
-          : 'Join your class to see how you rank with your classmates!',
+          ? _t(context).lbJoinChild
+          : _t(context).lbJoinStudent,
       accentColor: AppColors.primary,
-      actionLabel: isChild ? 'Join a Home Group' : 'Join a Class',
+      actionLabel: isChild ? _t(context).lbJoinGroup : _t(context).joinClassTitle,
       actionIcon: Icons.group_add_rounded,
       onAction: () =>
           context.push(isChild ? '/join-home-group' : '/join-class'),
@@ -364,11 +366,10 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   }
 
   Widget _notEnabled() {
-    return const RichEmptyState(
+    return RichEmptyState(
       emoji: '⏳',
-      title: 'Leaderboard not enabled yet',
-      description:
-          'Your teacher or parent hasn\'t turned on the leaderboard for your group yet. Check back soon!',
+      title: _t(context).lbNotEnabled,
+      description: _t(context).lbNotEnabledBody,
       accentColor: AppColors.info,
     );
   }
@@ -376,12 +377,12 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   Widget _educatorNoScopes(bool isTeacher) {
     return RichEmptyState(
       emoji: '👩‍🏫',
-      title: isTeacher ? 'No classes yet' : 'No home groups yet',
+      title: isTeacher ? _t(context).lbNoClasses : _t(context).lbNoGroups,
       description: isTeacher
-          ? 'Create a class and invite students to start a leaderboard.'
-          : 'Create a home group and invite your children to start a leaderboard.',
+          ? _t(context).lbNoClassesBody
+          : _t(context).lbNoGroupsBody,
       accentColor: AppColors.primary,
-      actionLabel: isTeacher ? 'Manage Classes' : 'Manage Home Groups',
+      actionLabel: isTeacher ? _t(context).lbManageClasses : _t(context).lbManageGroups,
       actionIcon: Icons.settings_rounded,
       onAction: () => context.push(
           isTeacher ? '/classroom-manage' : '/home-group-manage'),
@@ -391,11 +392,10 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   Widget _errorState(LeaderboardScope scope) {
     return RichEmptyState(
       emoji: '⚠️',
-      title: 'Couldn\'t load the leaderboard',
-      description:
-          'Check your connection and try again. Your last-known rankings show when you\'re back online.',
+      title: _t(context).lbError,
+      description: _t(context).lbErrorBody,
       accentColor: AppColors.error,
-      actionLabel: 'Retry',
+      actionLabel: _t(context).lpRetry,
       actionIcon: Icons.refresh_rounded,
       onAction: () => ref.invalidate(onlineLeaderboardProvider(scope)),
     );
@@ -403,7 +403,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
 
   // ─── Scaffold shell ──────────────────────────────────────
 
-  Widget _shell({required Widget child, String title = 'Leaderboard'}) {
+  Widget _shell({required Widget child, String? title}) {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(fallbackRoute: '/progress'),
@@ -421,7 +421,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             ),
             const SizedBox(width: 10),
             Flexible(
-              child: Text(title,
+              child: Text(title ?? _t(context).lbTitle,
                   maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
@@ -440,20 +440,20 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         children: [
           Expanded(
             child: _ChipSelector<LeaderboardSort>(
-              label: 'Sort',
+              label: _t(context).lbSort,
               value: _sort,
               options: LeaderboardSort.values,
-              labelOf: (s) => s.label,
+              labelOf: (s) => _sortLabel(_t(context), s),
               onChanged: (v) => setState(() => _sort = v),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: _ChipSelector<LeaderboardPeriod>(
-              label: 'Period',
+              label: _t(context).lbPeriod,
               value: _period,
               options: LeaderboardPeriod.values,
-              labelOf: (p) => p.label,
+              labelOf: (p) => _periodLabel(_t(context), p),
               onChanged: (v) => setState(() => _period = v),
             ),
           ),
@@ -633,7 +633,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         LeaderboardSort.byStars => '⭐ ${entry.totalStars}',
         LeaderboardSort.byWords => '📖 ${entry.wordsLearned}',
         LeaderboardSort.byStreak => '🔥 ${entry.streakDays}d',
-        LeaderboardSort.byOverall => '${entry.rankScore} pts',
+        LeaderboardSort.byOverall => _t(context).lbPts(entry.rankScore),
       };
 }
 
@@ -888,7 +888,7 @@ class _LeaderboardTile extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          'You',
+                          _t(context).lbYou,
                           style: AppTypography.labelSmall.copyWith(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w700,
@@ -927,7 +927,7 @@ class _LeaderboardTile extends StatelessWidget {
               ),
             ),
             child: Text(
-              _sortStat(),
+              _sortStat(context),
               style: AppTypography.bodySmall.copyWith(
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
@@ -939,10 +939,28 @@ class _LeaderboardTile extends StatelessWidget {
     );
   }
 
-  String _sortStat() => switch (sortMode) {
+  String _sortStat(BuildContext context) => switch (sortMode) {
         LeaderboardSort.byStars => '${entry.totalStars} ⭐',
-        LeaderboardSort.byWords => '${entry.wordsLearned} words',
-        LeaderboardSort.byStreak => '${entry.streakDays} days',
-        LeaderboardSort.byOverall => '${entry.rankScore} pts',
+        LeaderboardSort.byWords => _t(context).lbWords(entry.wordsLearned),
+        LeaderboardSort.byStreak => _t(context).lbDays(entry.streakDays),
+        LeaderboardSort.byOverall => _t(context).lbPts(entry.rankScore),
       };
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+String _sortLabel(AppLocalizations t, LeaderboardSort s) => switch (s) {
+  LeaderboardSort.byStars => t.lbSortStars,
+  LeaderboardSort.byWords => t.lbSortWords,
+  LeaderboardSort.byStreak => t.lbSortStreak,
+  LeaderboardSort.byOverall => t.lbSortOverall,
+};
+
+String _periodLabel(AppLocalizations t, LeaderboardPeriod p) => switch (p) {
+  LeaderboardPeriod.allTime => t.lbAllTime,
+  LeaderboardPeriod.thisWeek => t.lbThisWeek,
+  LeaderboardPeriod.thisMonth => t.lbThisMonth,
+};

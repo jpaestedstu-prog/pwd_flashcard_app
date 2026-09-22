@@ -27,6 +27,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Reading-comprehension quiz — 3 multiple-choice questions per story.
 class StoryQuizScreen extends ConsumerStatefulWidget {
@@ -107,7 +108,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
     // Name the right answer when they missed it — the point of a comprehension
     // quiz is learning the answer, not being scored on it.
     final answer = _question!.optionsEn[_question!.correctIndex];
-    gamepadScreen.announce(correct ? 'Correct!' : 'Not quite. $answer.');
+    gamepadScreen.announce(correct ? _t(context).lsCorrect : _t(context).sqNotQuite(answer));
   }
 
   void _next() {
@@ -123,7 +124,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
       final next = _question;
       if (next != null) {
         gamepadScreen.announce(
-          'Question ${_currentQ + 1} of ${_story!.questions.length}. '
+          '${_t(context).sqQuestionNofM(_currentQ + 1, _story!.questions.length)}. '
           '${next.questionEn}',
         );
       }
@@ -241,15 +242,15 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
     // choices are withdrawn and replaced by the single way forward, so a
     // learner driving by ear is never left guessing what happens next.
     return GamepadScreenRegistrar(
-      title: 'Quiz: ${_story!.titleEn}',
+      title: _t(context).sqQuizTitle(_story!.titleEn),
       narration: [
-        'Question ${_currentQ + 1} of ${_story!.questions.length}.',
+        '${_t(context).sqQuestionNofM(_currentQ + 1, _story!.questions.length)}.',
         question.questionEn,
       ],
       items: _answered
           ? [
               GamepadItem(
-                label: _isLastQuestion ? 'See my score' : 'Next question',
+                label: _isLastQuestion ? _t(context).sqSeeScore : _t(context).sqNextQuestion,
                 onActivate: _next,
               ),
             ]
@@ -266,10 +267,10 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
         AppBar(
           leading: IconButton(
             icon: const Icon(Icons.close_rounded),
-            tooltip: 'Close',
+            tooltip: _t(context).close,
             onPressed: () => context.pop(),
           ),
-          title: Text('Quiz: ${_story!.titleEn}'),
+          title: Text(_t(context).sqQuizTitle(_story!.titleEn)),
         ),
       ),
       body: SafeArea(
@@ -287,7 +288,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                   // Progress (fixed at top)
                   Semantics(
                     label:
-                        'Question ${_currentQ + 1} of ${_story!.questions.length}',
+                        _t(context).sqQuestionNofM(_currentQ + 1, _story!.questions.length),
                     child: LinearProgressIndicator(
                       value: (_currentQ + 1) / _story!.questions.length,
                       backgroundColor: AppColors.border,
@@ -298,7 +299,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Question ${_currentQ + 1} of ${_story!.questions.length}',
+                    _t(context).sqQuestionNofM(_currentQ + 1, _story!.questions.length),
                     style: AppTypography.labelSmall.copyWith(
                       color: hc.textSecondary,
                     ),
@@ -625,9 +626,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                               children: [
                                                 if (ttsEnabled) ...[
                                                   _ChoiceListenButton(
-                                                    label: 'English',
+                                                    label: _t(context).sqEnglish,
                                                     semanticLabel:
-                                                        'Listen to this choice in English',
+                                                        _t(context).sqListenEn,
                                                     color: AppColors.info,
                                                     onTap: () => _speakLang(
                                                       question.optionsEn[idx],
@@ -635,9 +636,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                                     ),
                                                   ),
                                                   _ChoiceListenButton(
-                                                    label: 'Tagalog',
+                                                    label: _t(context).sqTagalog,
                                                     semanticLabel:
-                                                        'Listen to this choice in Tagalog',
+                                                        _t(context).sqListenTl,
                                                     color: AppColors.secondary,
                                                     onTap: () => _speakLang(
                                                       question.optionsFil[idx],
@@ -692,7 +693,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                 : Icons.arrow_forward_rounded,
                           ),
                           label: Text(
-                            _isLastQuestion ? 'See Results' : 'Next Question',
+                            _isLastQuestion ? _t(context).sqSeeResults : _t(context).sqNextQuestionCap,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -776,3 +777,8 @@ class _ChoiceListenButton extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

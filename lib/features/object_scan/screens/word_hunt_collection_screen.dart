@@ -20,6 +20,7 @@ import '../../../widgets/rich_empty_states.dart';
 import '../services/label_word_mapper.dart';
 import '../services/object_scan_discovery_service.dart';
 import '../widgets/discovered_word_sheet.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// "My Finds" — the payoff for Word Hunt: every word the learner has ever
 /// photographed, grouped by category, next to the ones still out there.
@@ -289,7 +290,9 @@ class _ProgressHeader extends StatelessWidget {
                     emoji: nextMilestone.emoji,
                     label: l10n.wordHuntNextBadge(
                       nextMilestone.finds - found,
-                      nextMilestone.title,
+                      nextMilestone.titleOf(
+                        filipino: l10n.localeName.startsWith('fil'),
+                      ),
                     ),
                     maxWidth: constraints.maxWidth,
                   ),
@@ -422,7 +425,7 @@ class _CategorySection extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  category.label,
+                  category.labelOf(_t(context)),
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hc.textPrimary,
@@ -469,7 +472,7 @@ class _CategorySection extends StatelessWidget {
             if (missing.length > maxTargetsShown) ...[
               const SizedBox(height: 6),
               Text(
-                '+${missing.length - maxTargetsShown} more',
+                _t(context).huntMore(missing.length - maxTargetsShown),
                 style: AppTypography.bodySmall.copyWith(
                   color: hc.textSecondary,
                 ),
@@ -629,3 +632,8 @@ class _WordTile extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

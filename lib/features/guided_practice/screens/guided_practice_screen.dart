@@ -14,6 +14,8 @@ import '../../../providers/app_providers.dart';
 import '../models/guided_practice_models.dart';
 import '../services/guided_practice_service.dart';
 import '../../../core/utils/accessible_sizing.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class GuidedPracticeScreen extends ConsumerStatefulWidget {
   final FlashcardCategory category;
@@ -147,7 +149,7 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
 
     if (_session == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Guided Practice')),
+        appBar: AppBar(title: Text(_t(context).homeGuidedPractice)),
         body: const ShimmerPageSkeleton(),
       );
     }
@@ -166,7 +168,7 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          isFilipino ? 'Guided Practice' : 'Guided Practice',
+          isFilipino ? _t(context).homeGuidedPractice : _t(context).homeGuidedPractice,
         ),
         centerTitle: true,
         elevation: 0,
@@ -731,3 +733,8 @@ class _CompletionScreen extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

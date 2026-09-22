@@ -45,8 +45,8 @@ void main() {
   });
 
   group('ResearchExportRows.assessmentResultRows', () {
-    test('header has 11 columns', () {
-      expect(ResearchExportRows.assessmentResultsHeader.split(',').length, 11);
+    test('header has 12 columns', () {
+      expect(ResearchExportRows.assessmentResultsHeader.split(',').length, 12);
     });
 
     test('attaches gain metrics only to the post-test row', () {
@@ -64,9 +64,9 @@ void main() {
       final preCells = rows[0].split(',');
       final postCells = rows[1].split(',');
 
-      // Every row: 11 columns, shared id/group/enabled prefix.
-      expect(preCells.length, 11);
-      expect(postCells.length, 11);
+      // Every row: 12 columns, shared id/group/enabled prefix.
+      expect(preCells.length, 12);
+      expect(postCells.length, 12);
       expect(preCells[0], 'S001');
       expect(preCells[1], 'treatment');
       expect(preCells[2], '1'); // experiment_enabled

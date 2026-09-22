@@ -22,6 +22,8 @@ import '../services/multiplayer_service.dart';
 import 'local_race_screen.dart';
 import 'online_race_screen.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// The "Play Together" lobby. Pick a game, then either invite a friend to play
 /// online or hand the tablet to a second player on the same device. Friends are
@@ -291,7 +293,12 @@ class _MultiplayerLobbyScreenState
         builder: (_) => OnlineRaceScreen(room: room, asHost: true),
       ));
     } on MpActionException catch (e) {
-      if (mounted) AppSnackBar.error(context, message: e.message);
+      if (mounted) {
+        AppSnackBar.error(
+          context,
+          message: e.localizedMessage(AppLocalizations.of(context)),
+        );
+      }
     }
   }
 
@@ -304,7 +311,7 @@ class _MultiplayerLobbyScreenState
   void _warnNotEnoughWords() {
     AppSnackBar.warning(context,
         message:
-            'Not enough words to play yet — add a few flashcards first!');
+            _t(context).mpNotEnough);
   }
 
   // ─── Build ─────────────────────────────────────────────
@@ -329,7 +336,7 @@ class _MultiplayerLobbyScreenState
       for (final r in _invites)
         [
           GazeDpadCell(
-            label: 'Play with ${r.hostName}',
+            label: _t(context).mpPlayWith(r.hostName),
             onActivate: () => _acceptInvite(r),
           ),
         ],
@@ -930,3 +937,8 @@ class _FriendPickerSheet extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

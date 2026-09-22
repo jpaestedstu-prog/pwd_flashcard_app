@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/gaze_settings.dart';
 import '../providers/gaze_settings_provider.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Configuration + launch screen for the Gaze (head + blink) accessibility
 /// control. Persists to [GazeSettings] and offers a "Try it now" button into
@@ -19,7 +21,7 @@ class GazeSettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('👁️  Gaze Control'),
+        title: Text(_t(context).gzsTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
@@ -31,22 +33,22 @@ class GazeSettingsScreen extends ConsumerWidget {
             value: settings.enabled,
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
-            title: const Text('Enable Gaze Control',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(_t(context).gzsEnable,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(settings.enabled
-                ? 'Head movements & blinks can drive the app'
-                : 'Off — touch only'),
+                ? _t(context).gzsOn
+                : _t(context).gpEnabledOff),
             onChanged: notifier.setEnabled,
           ),
 
           const SizedBox(height: 8),
           Semantics(
             button: true,
-            label: 'Try gaze control now',
+            label: _t(context).gzsTryNow,
             child: FilledButton.icon(
               onPressed: () => context.push('/gaze-control'),
               icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text('Try it now'),
+              label: Text(_t(context).gzsTryIt),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
                 backgroundColor: AppColors.primary,
@@ -55,67 +57,61 @@ class GazeSettingsScreen extends ConsumerWidget {
           ),
 
           const SizedBox(height: 24),
-          const _SectionHeader('Hands-free navigation'),
+          _SectionHeader(_t(context).gzsHandsFree),
           const _NavScopeHint(),
           _NavScopeOption(
             icon: Icons.space_dashboard_outlined,
-            title: 'Bottom nav only',
-            subtitle: 'The head D-pad moves the highlight across the bottom '
-                'tabs. Blink (or look up) to open.',
+            title: _t(context).gzsNavOnly,
+            subtitle: _t(context).gzsNavOnlySub,
             selected: settings.navScope == GazeNavScope.bottomNav,
             onTap: () => notifier.setNavScope(GazeNavScope.bottomNav),
           ),
           _NavScopeOption(
             icon: Icons.grid_view_rounded,
-            title: 'Bottom nav + feature tiles',
-            subtitle: 'Also reach the feature tiles on Home, Cards, Games, '
-                'Stories & Progress: look ◀ ▶ across a row, ▲ ▼ between rows, '
-                'and blink to open.',
+            title: _t(context).gzsNavTiles,
+            subtitle: _t(context).gzsNavTilesSub,
             selected: settings.navHomeTiles,
             onTap: () =>
                 notifier.setNavScope(GazeNavScope.bottomNavAndHomeTiles),
           ),
 
           const SizedBox(height: 24),
-          const _SectionHeader('Voice'),
+          _SectionHeader(_t(context).gzsVoice),
           SwitchListTile.adaptive(
             value: settings.voiceCommands,
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.mic_rounded),
-            title: const Text('Voice commands'),
-            subtitle: const Text(
-                'Say “left”, “right”, “up”, “down” to move the highlight, '
-                '"select" to open it — or a button\'s name ("next", "flip", '
-                '“games”), “scroll down”, “go back”.'),
+            title: Text(_t(context).gzsVoiceCommands),
+            subtitle: Text(_t(context).gzsVoiceSub),
             onChanged: notifier.setVoiceCommands,
           ),
 
           const SizedBox(height: 24),
-          const _SectionHeader('Tuning'),
+          _SectionHeader(_t(context).gzsTuning),
 
           _SliderTile(
             icon: Icons.speed_rounded,
-            title: 'Sensitivity',
-            valueLabel: _sensitivityLabel(settings.sensitivity),
+            title: _t(context).gzsSensitivity,
+            valueLabel: _sensitivityLabel(_t(context), settings.sensitivity),
             value: settings.sensitivity.toDouble(),
             min: GazeSettings.minSensitivity.toDouble(),
             max: GazeSettings.maxSensitivity.toDouble(),
             divisions: GazeSettings.maxSensitivity - GazeSettings.minSensitivity,
             onChanged: (v) => notifier.setSensitivity(v.round()),
-            help: 'Higher = a smaller head movement selects.',
+            help: _t(context).gzsSensitivityHelp,
           ),
 
           _SliderTile(
             icon: Icons.timer_rounded,
-            title: 'Hold time',
-            valueLabel: '${(settings.dwellMs / 1000).toStringAsFixed(1)}s',
+            title: _t(context).gzsHold,
+            valueLabel: _t(context).gzsSeconds((settings.dwellMs / 1000).toStringAsFixed(1)),
             value: settings.dwellMs.toDouble(),
             min: GazeSettings.minDwellMs.toDouble(),
             max: GazeSettings.maxDwellMs.toDouble(),
             divisions: (GazeSettings.maxDwellMs - GazeSettings.minDwellMs) ~/ 100,
             onChanged: (v) => notifier.setDwellMs((v / 100).round() * 100),
-            help: 'How long to look at a button before it activates.',
+            help: _t(context).gzsHoldHelp,
           ),
 
           SwitchListTile.adaptive(
@@ -123,41 +119,39 @@ class GazeSettingsScreen extends ConsumerWidget {
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.visibility_off_rounded),
-            title: const Text('Blink to confirm'),
-            subtitle: const Text('A long, deliberate blink acts as “select”'),
+            title: Text(_t(context).gzsBlink),
+            subtitle: Text(_t(context).gzsBlinkSub),
             onChanged: notifier.setBlinkEnabled,
           ),
 
           const SizedBox(height: 24),
-          const _SectionHeader('Scanning (no head movement)'),
+          _SectionHeader(_t(context).gzsScanning),
 
           SwitchListTile.adaptive(
             value: settings.scanMode,
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.repeat_rounded),
-            title: const Text('Scanning mode'),
-            subtitle: const Text(
-                'Buttons highlight one by one — blink to pick. For learners '
-                'who can\'t move their head.'),
+            title: Text(_t(context).gzsScanMode),
+            subtitle: Text(_t(context).gzsScanSub),
             onChanged: notifier.setScanMode,
           ),
           if (settings.scanMode)
             _SliderTile(
               icon: Icons.timelapse_rounded,
-              title: 'Scan speed',
-              valueLabel: '${(settings.scanStepMs / 1000).toStringAsFixed(1)}s',
+              title: _t(context).gzsScanSpeed,
+              valueLabel: _t(context).gzsSeconds((settings.scanStepMs / 1000).toStringAsFixed(1)),
               value: settings.scanStepMs.toDouble(),
               min: GazeSettings.minScanStepMs.toDouble(),
               max: GazeSettings.maxScanStepMs.toDouble(),
               divisions:
                   (GazeSettings.maxScanStepMs - GazeSettings.minScanStepMs) ~/ 250,
               onChanged: (v) => notifier.setScanStepMs((v / 250).round() * 250),
-              help: 'How long each button stays highlighted before moving on.',
+              help: _t(context).gzsScanHelp,
             ),
 
           const SizedBox(height: 24),
-          const _SectionHeader('Device calibration'),
+          _SectionHeader(_t(context).gzsCalibration),
           const _CalibrationHint(),
 
           SwitchListTile.adaptive(
@@ -165,8 +159,8 @@ class GazeSettingsScreen extends ConsumerWidget {
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.swap_horiz_rounded),
-            title: const Text('Mirror left / right'),
-            subtitle: const Text('Turn off if Left and Right feel swapped'),
+            title: Text(_t(context).gzsMirror),
+            subtitle: Text(_t(context).gzsMirrorSub),
             onChanged: notifier.setMirrorHorizontal,
           ),
 
@@ -175,8 +169,8 @@ class GazeSettingsScreen extends ConsumerWidget {
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.swap_vert_rounded),
-            title: const Text('Invert up / down'),
-            subtitle: const Text('Turn on if Up and Down feel swapped'),
+            title: Text(_t(context).gzsInvert),
+            subtitle: Text(_t(context).gzsInvertSub),
             onChanged: notifier.setInvertVertical,
           ),
         ],
@@ -184,18 +178,18 @@ class GazeSettingsScreen extends ConsumerWidget {
     );
   }
 
-  static String _sensitivityLabel(int s) {
+  static String _sensitivityLabel(AppLocalizations t, int s) {
     switch (s) {
       case 1:
-        return 'Lowest';
+        return t.gzsLowest;
       case 2:
-        return 'Low';
+        return t.gzsLow;
       case 3:
-        return 'Balanced';
+        return t.gzsBalanced;
       case 4:
-        return 'High';
+        return t.gzsHigh;
       default:
-        return 'Highest';
+        return t.gzsHighest;
     }
   }
 
@@ -221,11 +215,9 @@ class _IntroCard extends StatelessWidget {
           ),
         ],
       ),
-      child: const Text(
-        'Control the app hands-free. Move your head toward a button and hold '
-        'briefly to choose it, or blink to confirm. Everything runs on this '
-        'device — no internet needed.',
-        style: TextStyle(color: Colors.white, fontSize: 15, height: 1.35),
+      child: Text(
+        _t(context).gzsIntro,
+        style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.35),
       ),
     );
   }
@@ -236,12 +228,11 @@ class _NavScopeHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 8),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Text(
-        'Choose how far the hands-free D-pad reaches. Either way it stays off '
-        'until “Enable Gaze Control” is on, and touch always works.',
-        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        _t(context).gzsScopeHint,
+        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
       ),
     );
   }
@@ -340,13 +331,11 @@ class _CalibrationHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 8),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Text(
-        'These fix a device where the directions feel reversed. Tap “Try it '
-        'now” above, and if a movement picks the wrong side, toggle the '
-        'matching switch.',
-        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        _t(context).gzsCalibrationHint,
+        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
       ),
     );
   }
@@ -438,3 +427,8 @@ class _SliderTile extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

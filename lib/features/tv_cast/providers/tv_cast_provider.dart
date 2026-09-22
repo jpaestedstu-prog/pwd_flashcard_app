@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:ui' show Color;
+import 'dart:ui' show Color, Locale;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +16,7 @@ import '../../../data/local/seed_data.dart';
 import '../../../data/local/seed_stories.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/seasonal_event_provider.dart';
 import '../../live_session/models/live_session_models.dart';
@@ -243,9 +244,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       state = state.copyWith(
         clearListenUrl: true,
         isServerRunning: false,
-        startError:
-            'This tablet is not on Wi-Fi. The TV and the tablet have to be on '
-            'the same Wi-Fi network to cast — connect to Wi-Fi and try again.',
+        startError: _l10n.tcpNotOnWifi,
       );
       return;
     }
@@ -254,6 +253,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       getSession: () => state,
       onTvAudioReport: _onTvAudioReport,
       onRemoteAction: _onRemoteAction,
+      getUiLanguage: () => ref.read(settingsProvider).locale,
     );
     final port = await _server!.start();
     // The URL carries the session code the server just minted — the TV proves
@@ -310,6 +310,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       await TvCastKeepAlive.start(
         code: state.castCode ?? '',
         detail: _keepAliveDetail(),
+        title: _keepAliveTitle(),
       );
     }());
 
@@ -338,21 +339,32 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   /// One-line status for the ongoing notification, so a teacher glancing at
   /// the shade sees what the class is looking at without opening the app.
   String _keepAliveDetail() {
-    if (state.isAway) return 'Showing “the teacher is out” — tap to resume.';
+    final t = _l10n;
+    if (state.isAway) return t.tcpAway;
     final viewers = state.connectedViewers;
-    final who = viewers == 0
-        ? 'No TV connected yet'
-        : '$viewers ${viewers == 1 ? 'TV' : 'TVs'} watching';
+    final who = viewers == 0 ? t.tcpNoTv : t.tcpWatching(viewers);
     final what = switch (state.mode) {
-      CastMode.flashcards => 'Flashcards',
-      CastMode.fslVideo => 'FSL signs',
-      CastMode.story => 'Stories',
-      CastMode.progress => 'Progress',
-      CastMode.live => 'Live Activity',
-      CastMode.idle => 'Nothing selected',
+      CastMode.flashcards => t.tcFlashcards,
+      CastMode.fslVideo => t.tcFslSigns,
+      CastMode.story => t.tcStories,
+      CastMode.progress => t.tcProgress,
+      CastMode.live => t.tcLiveActivity,
+      CastMode.idle => t.tcpNothing,
     };
     return '$what · $who';
   }
+
+  /// The ongoing notification's title, in the app's language.
+  String _keepAliveTitle() {
+    final code = state.castCode ?? '';
+    return code.isEmpty ? _l10n.tcpCasting : _l10n.tcpCastingCode(code);
+  }
+
+  /// Strings for text that leaves the widget tree (the notification shade,
+  /// the start error) — the provider has no `BuildContext` to look them up.
+  AppLocalizations get _l10n => lookupAppLocalizations(
+    Locale(ref.read(settingsProvider).locale == 'fil' ? 'fil' : 'en'),
+  );
 
   /// Pushes the current mode / viewer count into the ongoing notification.
   /// No-op when no cast is running.
@@ -362,6 +374,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       TvCastKeepAlive.update(
         code: state.castCode ?? '',
         detail: _keepAliveDetail(),
+        title: _keepAliveTitle(),
       ),
     );
   }

@@ -12,6 +12,8 @@ import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/utils/accessible_sizing.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class CreateFlashcardScreen extends ConsumerStatefulWidget {
   final Flashcard? editCard;
@@ -76,7 +78,7 @@ class _CreateFlashcardScreenState
     }
 
     if (mounted) {
-      AppSnackBar.success(context, message: _isEditing ? 'Flashcard updated! ✏️' : 'Flashcard created! 🎉');
+      AppSnackBar.success(context, message: _isEditing ? _t(context).cfUpdated : _t(context).cfCreated);
       context.pop(true); // return true to signal a change was made
     }
   }
@@ -87,7 +89,7 @@ class _CreateFlashcardScreenState
     return SafeScaffold(
       appBar: AppBar(
         leading: const AppBackButton(fallbackRoute: '/flashcards'),
-        title: Text(_isEditing ? 'Edit Flashcard' : 'Create Flashcard'),
+        title: Text(_isEditing ? _t(context).cfEditTitle : _t(context).cfCreateTitle),
       ),
       body: Form(
         key: _formKey,
@@ -107,7 +109,7 @@ class _CreateFlashcardScreenState
               const SizedBox(height: 28),
 
               // Category selector
-              Text('Category', style: AppTypography.titleMedium),
+              Text(_t(context).cfCategory, style: AppTypography.titleMedium),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -115,7 +117,7 @@ class _CreateFlashcardScreenState
                 children: FlashcardCategory.values.map((cat) {
                   final isSelected = cat == _selectedCategory;
                   return ChoiceChip(
-                    label: Text(cat.label),
+                    label: Text(cat.labelOf(_t(context))),
                     avatar: Icon(cat.icon, size: 18, color: isSelected ? Colors.white : cat.color),
                     selected: isSelected,
                     selectedColor: cat.color,
@@ -133,18 +135,18 @@ class _CreateFlashcardScreenState
               const SizedBox(height: 24),
 
               // Word (English)
-              Text('Word (English)', style: AppTypography.titleMedium),
+              Text(_t(context).bbWordEn, style: AppTypography.titleMedium),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _wordEnController,
                 style: AppTypography.bodyLarge,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. Butterfly',
-                  prefixIcon: Icon(Icons.abc_rounded),
+                decoration: InputDecoration(
+                  hintText: _t(context).cfHintEn,
+                  prefixIcon: const Icon(Icons.abc_rounded),
                 ),
                 textCapitalization: TextCapitalization.words,
                 validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Enter a word' : null,
+                    v == null || v.trim().isEmpty ? _t(context).cfEnterWord : null,
                 onChanged: (_) => setState(() {}),
               )
                   .animate()
@@ -153,18 +155,18 @@ class _CreateFlashcardScreenState
               const SizedBox(height: 20),
 
               // Word (Filipino)
-              Text('Word (Filipino)', style: AppTypography.titleMedium),
+              Text(_t(context).cfWordFil, style: AppTypography.titleMedium),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _wordFlController,
                 style: AppTypography.bodyLarge,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. Paru-paro',
-                  prefixIcon: Icon(Icons.translate_rounded),
+                decoration: InputDecoration(
+                  hintText: _t(context).cfHintFil,
+                  prefixIcon: const Icon(Icons.translate_rounded),
                 ),
                 textCapitalization: TextCapitalization.words,
                 validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Enter a translation' : null,
+                    v == null || v.trim().isEmpty ? _t(context).cfEnterTranslation : null,
                 onChanged: (_) => setState(() {}),
               )
                   .animate()
@@ -173,15 +175,15 @@ class _CreateFlashcardScreenState
               const SizedBox(height: 20),
 
               // Example sentence
-              Text('Example Sentence (optional)',
+              Text(_t(context).cfExample,
                   style: AppTypography.titleMedium),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _exampleController,
                 style: AppTypography.bodyLarge,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. The butterfly is colorful.',
-                  prefixIcon: Icon(Icons.short_text_rounded),
+                decoration: InputDecoration(
+                  hintText: _t(context).cfExampleHint,
+                  prefixIcon: const Icon(Icons.short_text_rounded),
                 ),
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 2,
@@ -208,10 +210,10 @@ class _CreateFlashcardScreenState
                         )
                       : const Icon(Icons.check_rounded),
                   label: Text(_isSaving
-                      ? 'Saving...'
+                      ? _t(context).saving
                       : _isEditing
-                          ? 'Update Flashcard'
-                          : 'Create Flashcard'),
+                          ? _t(context).cfUpdate
+                          : _t(context).cfCreateTitle),
                 ),
               )
                   .animate()
@@ -261,7 +263,7 @@ class _PreviewCard extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'Preview',
+            _t(context).dtPreview,
             style: AppTypography.labelSmall.copyWith(
               color: Colors.white.withValues(alpha: 0.7),
             ),
@@ -270,7 +272,7 @@ class _PreviewCard extends StatelessWidget {
           Icon(category.icon, size: 48, color: Colors.white),
           const SizedBox(height: 12),
           Text(
-            wordEn.isEmpty ? 'Your Word' : wordEn,
+            wordEn.isEmpty ? _t(context).cfYourWord : wordEn,
             style: AppTypography.headlineMedium.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w800,
@@ -288,3 +290,8 @@ class _PreviewCard extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

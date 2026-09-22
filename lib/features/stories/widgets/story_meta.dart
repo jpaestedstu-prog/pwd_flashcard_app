@@ -1,4 +1,5 @@
 import '../../../data/local/seed_stories.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Difficulty level shown on story cover cards. Derived, not stored — so the
 /// 24 seed stories don't need editing.
@@ -9,6 +10,13 @@ extension StoryDifficultyLabel on StoryDifficulty {
         StoryDifficulty.easy => 'Easy',
         StoryDifficulty.medium => 'Medium',
         StoryDifficulty.hard => 'Hard',
+      };
+
+  /// [label] in the learner's language.
+  String labelOf(AppLocalizations l10n) => switch (this) {
+        StoryDifficulty.easy => l10n.easy,
+        StoryDifficulty.medium => l10n.medium,
+        StoryDifficulty.hard => l10n.hard,
       };
 }
 

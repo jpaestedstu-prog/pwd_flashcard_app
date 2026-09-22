@@ -13,6 +13,8 @@ import '../../../providers/parent_provider.dart';
 import '../../notifications/services/alert_service.dart';
 import '../../parent/models/educator_audience.dart';
 import '../models/teacher_analytics_models.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class TeacherAnalyticsScreen extends ConsumerWidget {
   const TeacherAnalyticsScreen({super.key});
@@ -248,7 +250,7 @@ class _OverviewCards extends StatelessWidget {
         ),
         ProStatTile(
           icon: Icons.trending_up_rounded,
-          label: 'Avg Accuracy',
+          label: _t(context).taAvgAccuracy,
           value: '${(accuracy * 100).round()}%',
           trend: accuracy >= 0.7 ? ProTrend.up : ProTrend.flat,
           accent: accuracy >= 0.7 ? AppColors.success : AppColors.warning,
@@ -674,3 +676,8 @@ class _StatChip extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

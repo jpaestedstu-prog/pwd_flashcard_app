@@ -14,6 +14,8 @@ import '../providers/quiz_builder_provider.dart';
 import '../services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class QuizBuilderScreen extends ConsumerStatefulWidget {
   const QuizBuilderScreen({super.key});
@@ -23,12 +25,24 @@ class QuizBuilderScreen extends ConsumerStatefulWidget {
 }
 
 class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
-  final _titleController = TextEditingController(text: 'My Quiz');
+  final _titleController = TextEditingController();
+  bool _titleSeeded = false;
   FlashcardCategory? _selectedCategory;
   GameDifficulty _difficulty = GameDifficulty.medium;
   final Set<String> _selectedCardIds = {};
   final Set<QuestionFormat> _selectedFormats = {QuestionFormat.multipleChoice};
   int? _timeLimit;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The starting name follows the app language; what a teacher types is
+    // kept exactly as typed.
+    if (!_titleSeeded) {
+      _titleSeeded = true;
+      _titleController.text = _t(context).qbMyQuiz;
+    }
+  }
 
   @override
   void dispose() {
@@ -51,7 +65,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
       appBar: AppBar(
         leading: const AppBackButton(fallbackRoute: '/assessment-hub'),
         title: Text(
-          'Quiz Builder',
+          _t(context).qbTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -60,7 +74,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
           TextButton.icon(
             onPressed: _selectedCardIds.length >= 3 ? _saveQuiz : null,
             icon: const Icon(Icons.check_rounded),
-            label: const Text('Save'),
+            label: Text(_t(context).gmSave),
           ),
         ],
       ),
@@ -77,7 +91,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                 color: hc.textPrimary,
               ),
               decoration: InputDecoration(
-                labelText: 'Quiz Title',
+                labelText: _t(context).qbQuizTitle,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -88,7 +102,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
 
             // ─── Difficulty ───────────────────────
             Text(
-              'Difficulty',
+              _t(context).abDifficulty,
               style: AppTypography.labelLarge.copyWith(
                 fontWeight: FontWeight.w700,
                 color: hc.textPrimary,
@@ -104,12 +118,12 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                         // `fittedStyle`, not `FitText`: a SegmentedButton
                         // measures its segments' intrinsic widths.
                         label: Text(
-                          d.label,
+                          d.labelOf(_t(context)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: fittedStyle(
                             context,
-                            d.label,
+                            d.labelOf(_t(context)),
                             Theme.of(context).textTheme.labelLarge,
                             longWord: 4,
                           ),
@@ -124,7 +138,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
 
             // ─── Question Formats ─────────────────
             Text(
-              'Question Types',
+              _t(context).qbQuestionTypes,
               style: AppTypography.labelLarge.copyWith(
                 fontWeight: FontWeight.w700,
                 color: hc.textPrimary,
@@ -134,9 +148,9 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
             Wrap(
               spacing: 8,
               runSpacing: 6,
-              children: QuestionFormat.values.map((fmt) {
+              children: authorableQuestionFormats.map((fmt) {
                 return FilterChip(
-                  label: Text(fmt.label),
+                  label: Text(fmt.labelOf(_t(context))),
                   selected: _selectedFormats.contains(fmt),
                   onSelected: (sel) {
                     setState(() {
@@ -154,7 +168,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
 
             // ─── Time Limit ───────────────────────
             Text(
-              'Time Limit (optional)',
+              _t(context).qbTimeLimit,
               style: AppTypography.labelLarge.copyWith(
                 fontWeight: FontWeight.w700,
                 color: hc.textPrimary,
@@ -165,7 +179,9 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
               spacing: 8,
               children: [null, 5, 10, 15, 20].map((mins) {
                 return ChoiceChip(
-                  label: Text(mins == null ? 'No limit' : '$mins min'),
+                  label: Text(mins == null
+                      ? _t(context).qbNoLimit
+                      : _t(context).abMinutes(mins)),
                   selected: _timeLimit == mins,
                   onSelected: (_) => setState(() => _timeLimit = mins),
                 );
@@ -175,7 +191,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
 
             // ─── Category Filter ──────────────────
             Text(
-              'Select Words (${_selectedCardIds.length} selected)',
+              _t(context).qbSelectWords(_selectedCardIds.length),
               style: AppTypography.labelLarge.copyWith(
                 fontWeight: FontWeight.w700,
                 color: hc.textPrimary,
@@ -190,7 +206,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: FilterChip(
-                      label: const Text('All'),
+                      label: Text(_t(context).all),
                       selected: _selectedCategory == null,
                       onSelected: (_) =>
                           setState(() => _selectedCategory = null),
@@ -199,7 +215,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                   ...FlashcardCategory.values.map((cat) => Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: FilterChip(
-                          label: Text(cat.label),
+                          label: Text(cat.labelOf(_t(context))),
                           selected: _selectedCategory == cat,
                           onSelected: (_) => setState(() =>
                               _selectedCategory =
@@ -221,8 +237,8 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                     onPressed: () => setState(() =>
                         _selectedCardIds
                             .addAll(filteredCards.map((c) => c.id))),
-                    child: const Text(
-                      'Select All',
+                    child: Text(
+                      _t(context).qbSelectAll,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -233,8 +249,8 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                     onPressed: () => setState(() =>
                         _selectedCardIds.removeWhere(
                             (id) => filteredCards.any((c) => c.id == id))),
-                    child: const Text(
-                      'Deselect All',
+                    child: Text(
+                      _t(context).qbDeselectAll,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -270,7 +286,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                     ),
                   ),
                   subtitle: FitText(
-                    card.category.label,
+                    card.category.labelOf(_t(context)),
                     maxLines: 1,
                     style: AppTypography.labelSmall.copyWith(
                       color: card.category.color,
@@ -294,7 +310,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Text(
-                  'Select at least 3 words to create a quiz',
+                  _t(context).qbAtLeast3,
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.error,
                   ),
@@ -308,7 +324,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
               const Divider(),
               const SizedBox(height: 12),
               Text(
-                'Saved Quizzes',
+                _t(context).qbSaved,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -329,9 +345,13 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                       ),
                     ),
                     subtitle: Text(
-                      '${quiz.flashcardIds.length} words • '
-                      '${quiz.difficulty.label} • '
-                      '${quiz.questionFormats.map((f) => f.label).join(', ')}',
+                      _t(context).qbSummary(
+                        quiz.flashcardIds.length,
+                        quiz.difficulty.labelOf(_t(context)),
+                        quiz.questionFormats
+                            .map((f) => f.labelOf(_t(context)))
+                            .join(', '),
+                      ),
                       style: AppTypography.labelSmall.copyWith(
                         color: hc.textSecondary,
                       ),
@@ -342,13 +362,13 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                         IconButton(
                           icon: const Icon(Icons.play_arrow_rounded,
                               color: AppColors.success),
-                          tooltip: 'Start Quiz',
+                          tooltip: _t(context).qbStart,
                           onPressed: () => _startQuiz(quiz),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline_rounded,
                               color: AppColors.error),
-                          tooltip: 'Delete',
+                          tooltip: _t(context).delete,
                           onPressed: () => _confirmDeleteQuiz(quiz),
                         ),
                       ],
@@ -387,8 +407,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
     if (clash) {
       AppSnackBar.warning(
         context,
-        message: 'You already have a quiz called “$title”. Give this one a '
-            'different name.',
+        message: _t(context).qbDuplicate(title),
       );
       return;
     }
@@ -407,12 +426,12 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
 
     ref.read(quizBuilderProvider.notifier).addQuiz(quiz);
 
-    AppSnackBar.success(context, message: 'Quiz “$title” saved!');
+    AppSnackBar.success(context, message: _t(context).qbSavedOne(title));
 
     // Reset selection
     setState(() {
       _selectedCardIds.clear();
-      _titleController.text = 'My Quiz';
+      _titleController.text = _t(context).qbMyQuiz;
     });
   }
 
@@ -428,7 +447,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
     );
 
     if (assessment.questions.isEmpty) {
-      AppSnackBar.warning(context, message: 'No valid cards found for this quiz');
+      AppSnackBar.warning(context, message: _t(context).qbNoCards);
       return;
     }
 
@@ -439,17 +458,17 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Quiz?'),
-        content: Text('Delete “${quiz.title}”?'),
+        title: Text(_t(context).qbDeleteTitle),
+        content: Text(_t(context).qbDeleteBody(quiz.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(_t(context).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Delete'),
+            child: Text(_t(context).delete),
           ),
         ],
       ),
@@ -459,3 +478,8 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
     }
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

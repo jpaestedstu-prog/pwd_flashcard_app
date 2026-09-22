@@ -9,6 +9,8 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../providers/app_providers.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// A multi-page onboarding walkthrough shown after profile creation.
 ///
@@ -34,6 +36,7 @@ class _OnboardingTutorialScreenState
   }
 
   List<_OnboardingPage> _buildPages(UserProfile profile) {
+    final t = _t(context);
     final avatar = AvatarData.getAvatar(profile.avatarIndex);
     // Student, Child, and Player all use the app as learners, so they get the
     // second-person ("you") walkthrough copy. Only Teacher / Parent get the
@@ -45,12 +48,12 @@ class _OnboardingTutorialScreenState
     return [
       // ─── Page 1: Welcome ──────────────────
       _OnboardingPage(
-        title: 'Welcome, ${profile.name}! 🎉',
+        title: t.obWelcome(profile.name),
         description: isLearner
-            ? 'You\'re all set up and ready to start learning! '
-                'Let\'s take a quick tour of everything you can do.'
-            : 'Your account is ready! Let\'s show you the key features '
-                'you\'ll use to ${profile.role == UserRole.teacher ? "guide your students" : "support your child's learning"}.',
+            ? t.obWelcomeLearner
+            : profile.role == UserRole.teacher
+            ? t.obWelcomeTeacher
+            : t.obWelcomeParent,
         emoji: avatar.emoji,
         emojiSize: 64,
         color: avatar.color,
@@ -58,63 +61,44 @@ class _OnboardingTutorialScreenState
 
       // ─── Page 2: Flashcards ───────────────
       _OnboardingPage(
-        title: 'Learn with Flashcards 📚',
-        description: isLearner
-            ? 'Browse vocabulary categories like Animals, Colors, Numbers, '
-                'and more. Each card has pictures, Filipino Sign Language, '
-                'and text-to-speech to help you learn.'
-            : 'Students learn vocabulary through interactive flashcards with '
-                'pictures, FSL support, and text-to-speech across multiple categories.',
+        title: t.obFlashTitle,
+        description: isLearner ? t.obFlashLearner : t.obFlashAdult,
         color: const Color(0xFFFF9800),
         icon: Icons.style_rounded,
       ),
 
       // ─── Page 3: Games ────────────────────
       _OnboardingPage(
-        title: 'Play Fun Games 🎮',
-        description: isLearner
-            ? 'Practice what you\'ve learned with Word Match, Spelling Bee, '
-                'Memory Match, Jigsaw Puzzle, and more! Earn stars ⭐ for '
-                'every game you play.'
-            : 'Students reinforce vocabulary through 10+ educational games '
-                'with adjustable difficulty and category filters.',
+        title: t.obGamesTitle,
+        description: isLearner ? t.obGamesLearner : t.obGamesAdult,
         color: const Color(0xFF4CAF50),
         icon: Icons.sports_esports_rounded,
       ),
 
       // ─── Page 4: Progress & Stars ─────────
       _OnboardingPage(
-        title: 'Track Your Progress ⭐',
-        description: isLearner
-            ? 'See your streak, stars, and words learned on your dashboard. '
-                'Unlock achievement badges and spend stars in the Star Shop '
-                'for cool avatars and themes!'
-            : 'Monitor learning progress with detailed dashboards showing '
-                'mastery rates, streaks, category breakdowns, and exportable reports.',
+        title: t.obProgressTitle,
+        description: isLearner ? t.obProgressLearner : t.obProgressAdult,
         color: const Color(0xFFF44336),
         icon: Icons.emoji_events_rounded,
       ),
 
       // ─── Page 5: Accessibility ────────────
-      const _OnboardingPage(
-        title: 'Made for Everyone ♿',
-        description:
-            'FlashLearn PWD is designed for learners with disabilities. '
-            'Adjust text size, contrast, animations, and audio in Settings '
-            'to match your needs. Presets are available for visual, hearing, '
-            'motor, and cognitive accessibility.',
-        color: Color(0xFF9C27B0),
+      _OnboardingPage(
+        title: t.obAccessTitle,
+        description: t.obAccessBody,
+        color: const Color(0xFF9C27B0),
         icon: Icons.accessibility_new_rounded,
       ),
 
       // ─── Page 6: Let's Go! ────────────────
       _OnboardingPage(
-        title: 'You\'re Ready! 🚀',
+        title: t.obReadyTitle,
         description: isLearner
-            ? 'Tap a category on the home screen to learn your first words, '
-                'or jump into a game to start earning stars. Have fun!'
-            : 'Explore the home screen to discover all available features. '
-                '${profile.role == UserRole.teacher ? "Use the dashboard to monitor student progress." : "Sit with your child and learn together!"}',
+            ? t.obReadyLearner
+            : profile.role == UserRole.teacher
+            ? t.obReadyTeacher
+            : t.obReadyParent,
         emoji: '🌟',
         emojiSize: 56,
         color: AppColors.accent,
@@ -182,7 +166,7 @@ class _OnboardingTutorialScreenState
                   child: TextButton(
                     onPressed: _complete,
                     child: Text(
-                      'Skip',
+                      _t(context).skip,
                       style: AppTypography.labelLarge.copyWith(
                         color: HCColor.of(context).textSecondary,
                       ),
@@ -296,7 +280,7 @@ class _OnboardingTutorialScreenState
                         elevation: 0,
                       ),
                       child: Text(
-                        isLast ? 'Let\'s Go! 🎉' : 'Next',
+                        isLast ? '${_t(context).letsGo} 🎉' : _t(context).next,
                         style: AppTypography.titleMedium.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
@@ -431,3 +415,8 @@ class _OnboardingPageWidget extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

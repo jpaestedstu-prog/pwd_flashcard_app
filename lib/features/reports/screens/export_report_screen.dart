@@ -10,18 +10,19 @@ import '../../../providers/firestore_stream_helpers.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../services/csv_report_service.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Pre-defined date ranges for the report. Custom ranges are out of
 /// scope for the first cut — IEP / classroom reporting almost always
 /// uses one of these three windows.
 enum _ReportRange {
-  week(Duration(days: 7), 'Last 7 days'),
-  month(Duration(days: 30), 'Last 30 days'),
-  quarter(Duration(days: 90), 'Last 90 days');
+  week(Duration(days: 7)),
+  month(Duration(days: 30)),
+  quarter(Duration(days: 90));
 
   final Duration duration;
-  final String label;
-  const _ReportRange(this.duration, this.label);
+  const _ReportRange(this.duration);
 }
 
 /// Generates a downloadable CSV snapshot of student progress for one of
@@ -52,7 +53,7 @@ class _ExportReportScreenState extends ConsumerState<ExportReportScreen> {
 
   Future<void> _export(List<Classroom> classrooms) async {
     if (_classroomId == null) {
-      AppSnackBar.error(context, message: 'Pick a classroom first.');
+      AppSnackBar.error(context, message: _t(context).erPickClass);
       return;
     }
     final classroom = classrooms.firstWhere(
@@ -76,12 +77,16 @@ class _ExportReportScreenState extends ConsumerState<ExportReportScreen> {
       if (!mounted) return;
       await Share.shareXFiles(
         [XFile(file.path)],
-        text: 'Progress report — ${classroom.name} (${_range.label})',
-        subject: 'Progress report — ${classroom.name}',
+        text: _t(context).erShareText(
+          classroom.name,
+          _rangeLabel(_t(context), _range),
+        ),
+        subject: _t(context).erShareSubject(classroom.name),
       );
     } catch (e) {
       if (!mounted) return;
-      AppSnackBar.error(context, message: 'Export failed: $e');
+      debugPrint('CSV export failed: $e');
+      AppSnackBar.error(context, message: _t(context).erFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -94,10 +99,10 @@ class _ExportReportScreenState extends ConsumerState<ExportReportScreen> {
       return Scaffold(
         appBar: AppBar(
           leading: const AppBackButton(),
-          title: const Text('Export Report'),
+          title: Text(_t(context).erTitleShort),
         ),
-        body: const Center(
-          child: Text('Sign in as a teacher to export reports.'),
+        body: Center(
+          child: Text(_t(context).erSignIn),
         ),
       );
     }
@@ -108,7 +113,7 @@ class _ExportReportScreenState extends ConsumerState<ExportReportScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: const Text('Export Progress Report'),
+        title: Text(_t(context).erTitle),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -123,7 +128,7 @@ class _ExportReportScreenState extends ConsumerState<ExportReportScreen> {
                   padding: EdgeInsets.all(20),
                   child: Center(child: CircularProgressIndicator()),
                 ),
-                error: (e, _) => Text('Could not load classrooms: $e'),
+                error: (e, _) => Text(_t(context).erLoadFailed),
                 data: (classrooms) {
                   if (classrooms.isEmpty) {
                     return Container(
@@ -133,8 +138,7 @@ class _ExportReportScreenState extends ConsumerState<ExportReportScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        'You don\'t have any classrooms yet. Create a '
-                        'classroom first to export progress reports.',
+                        _t(context).erNoClasses,
                         style: AppTypography.bodyMedium,
                       ),
                     );
@@ -168,16 +172,14 @@ class _Header extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Progress Report (CSV)',
+          _t(context).erHeading,
           style: AppTypography.headlineMedium.copyWith(
             fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 6),
         Text(
-          'Generate a spreadsheet of every student\'s progress in the '
-          'selected window. Use it for IEPs, parent updates, or '
-          'classroom records.',
+          _t(context).erIntro,
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.textSecondary,
           ),
@@ -211,7 +213,7 @@ class _Form extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Classroom', style: AppTypography.titleMedium),
+        Text(_t(context).erClassroom, style: AppTypography.titleMedium),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           initialValue: selectedClassroomId,
@@ -227,13 +229,13 @@ class _Form extends StatelessWidget {
           onChanged: busy ? null : onClassroomChanged,
         ),
         const SizedBox(height: 24),
-        Text('Date Range', style: AppTypography.titleMedium),
+        Text(_t(context).erDateRange, style: AppTypography.titleMedium),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           children: _ReportRange.values
               .map((r) => ChoiceChip(
-                    label: Text(r.label),
+                    label: Text(_rangeLabel(_t(context), r)),
                     selected: range == r,
                     onSelected: busy ? null : (_) => onRangeChanged(r),
                   ))
@@ -249,15 +251,14 @@ class _Form extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.download_rounded),
-          label: Text(busy ? 'Building CSV…' : 'Export & share CSV'),
+          label: Text(busy ? _t(context).erBuilding : _t(context).erExport),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
         ),
         const SizedBox(height: 12),
         Text(
-          'The file will open the device share sheet so you can email it, '
-          'save it to Drive, or upload it to your school portal.',
+          _t(context).erShareNote,
           style: AppTypography.bodySmall.copyWith(
             color: AppColors.textSecondary,
           ),
@@ -267,3 +268,14 @@ class _Form extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+String _rangeLabel(AppLocalizations t, _ReportRange r) => switch (r) {
+  _ReportRange.week => t.erLast7,
+  _ReportRange.month => t.erLast30,
+  _ReportRange.quarter => t.erLast90,
+};

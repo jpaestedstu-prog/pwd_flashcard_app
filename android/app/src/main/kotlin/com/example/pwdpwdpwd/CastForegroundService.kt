@@ -43,6 +43,9 @@ class CastForegroundService : Service() {
         const val EXTRA_CODE = "code"
         const val EXTRA_DETAIL = "detail"
 
+        /** The title in the app's language; empty falls back to English. */
+        const val EXTRA_TITLE = "title"
+
         private const val CHANNEL_ID = "tv_cast_session"
         private const val NOTIFICATION_ID = 4711
     }
@@ -59,7 +62,8 @@ class CastForegroundService : Service() {
             else -> {
                 val code = intent?.getStringExtra(EXTRA_CODE).orEmpty()
                 val detail = intent?.getStringExtra(EXTRA_DETAIL).orEmpty()
-                startForegroundCompat(buildNotification(code, detail))
+                val title = intent?.getStringExtra(EXTRA_TITLE).orEmpty()
+                startForegroundCompat(buildNotification(code, detail, title))
             }
         }
         // NOT sticky: if Android does kill the process, the Dart server died
@@ -90,7 +94,11 @@ class CastForegroundService : Service() {
         }
     }
 
-    private fun buildNotification(code: String, detail: String): Notification {
+    private fun buildNotification(
+        code: String,
+        detail: String,
+        localizedTitle: String,
+    ): Notification {
         ensureChannel()
 
         val open = Intent(this, MainActivity::class.java).apply {
@@ -103,10 +111,8 @@ class CastForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val title = if (code.isEmpty()) {
-            "Casting to TV"
-        } else {
-            "Casting to TV · code $code"
+        val title = localizedTitle.ifEmpty {
+            if (code.isEmpty()) "Casting to TV" else "Casting to TV · code $code"
         }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)

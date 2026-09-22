@@ -13,6 +13,26 @@ class PlayerLevel {
     required this.emoji,
     required this.xpRequired,
   });
+
+  /// [title] in Filipino. Level names are content, like the category names,
+  /// so the translation ships beside them rather than in the ARB.
+  String get titleFilipino => switch (level) {
+    1 => 'Baguhan',
+    2 => 'Manlalakbay',
+    3 => 'Mag-aaral',
+    4 => 'Masigasig',
+    5 => 'Iskolar',
+    6 => 'Dalubhasa',
+    7 => 'Kampeon',
+    8 => 'Maestro',
+    9 => 'Alamat',
+    10 => 'Gran Maestro',
+    _ => title,
+  };
+
+  /// [title] in the learner's language.
+  String titleOf({required bool filipino}) =>
+      filipino ? titleFilipino : title;
 }
 
 /// Computes XP and levels from a student's [LearningProgress].

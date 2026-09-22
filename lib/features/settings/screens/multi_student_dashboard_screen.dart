@@ -19,6 +19,7 @@ import '../../../providers/student_list_provider.dart';
 import '../../../widgets/student_filter_bar.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Multi-student dashboard for teachers and parents.
 ///
@@ -64,7 +65,7 @@ class MultiStudentDashboardScreen extends ConsumerWidget {
                 isLabelVisible: filter.activeFilterCount > 0,
                 child: IconButton(
                   icon: const Icon(Icons.filter_list_off_rounded),
-                  tooltip: 'Clear filters',
+                  tooltip: _t(context).msClearFilters,
                   onPressed: () =>
                       ref.read(studentFilterProvider.notifier).clearFilters(),
                 ),
@@ -164,10 +165,18 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             hasFilters
-                ? '$totalStudents total ${audience.learnerNounPlural} — try '
-                      'adjusting your filters.'
-                : '${audience.learnerNounPluralCap} will appear here once '
-                      'they create\na profile in the app.',
+                ? (filipino
+                      // A numeral takes the singular noun in Filipino.
+                      ? '$totalStudents ${audience.learnerNounOf(filipino: true)} lahat — '
+                            'subukang baguhin ang mga filter.'
+                      : '$totalStudents total ${audience.learnerNounPlural} — try '
+                            'adjusting your filters.')
+                : (filipino
+                      ? 'Lalabas dito ang '
+                            '${audience.learnerNounPluralOf(filipino: true)} kapag '
+                            'gumawa na sila\nng profile sa app.'
+                      : '${audience.learnerNounPluralCap} will appear here once '
+                            'they create\na profile in the app.'),
             style:
                 AppTypography.bodyMedium.copyWith(color: AppColors.textHint),
             textAlign: TextAlign.center,
@@ -223,8 +232,12 @@ class _StudentCard extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label:
-          '${profile.name}, ${progress.wordsLearned} words learned, ${progress.totalStars} stars, ${progress.streakDays} day streak',
+      label: _t(context).msCardSemantics(
+        profile.name,
+        progress.wordsLearned,
+        progress.totalStars,
+        progress.streakDays,
+      ),
       child: Card(
         elevation: 2,
         clipBehavior: Clip.antiAlias,
@@ -391,3 +404,8 @@ class _MiniStat extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

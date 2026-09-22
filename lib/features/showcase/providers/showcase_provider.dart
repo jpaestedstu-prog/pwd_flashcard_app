@@ -5,6 +5,8 @@ import '../../../data/models/achievements.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 import '../../../features/assessment/services/assessment_service.dart';
 import '../../../features/assessment/models/assessment_models.dart';
 import '../models/showcase_models.dart';
@@ -119,8 +121,16 @@ class ShowcaseNotifier extends StateNotifier<ShowcasePortfolio> {
     await addItem(item);
   }
 
-  /// Auto-curate: scan achievements, scores, mastery and add noteworthy items
-  Future<List<ShowcaseItem>> autoPopulate(LearningProgress progress) async {
+  /// Auto-curate: scan achievements, scores, mastery and add noteworthy items.
+  ///
+  /// Items are saved with their wording, so they are written in [l10n]'s
+  /// language — the one the learner is using when they curate.
+  Future<List<ShowcaseItem>> autoPopulate(
+    LearningProgress progress, {
+    AppLocalizations? l10n,
+  }) async {
+    final t = l10n ?? AppLocalizationsEn();
+    final fil = t.localeName.startsWith('fil');
     final existingIds = state.items.map((i) => i.achievementId ?? i.id).toSet();
     final newItems = <ShowcaseItem>[];
 
@@ -134,8 +144,8 @@ class ShowcaseNotifier extends StateNotifier<ShowcasePortfolio> {
       final item = ShowcaseItem(
         id: _uuid.v4(),
         type: ShowcaseItemType.achievement,
-        title: a.title,
-        description: a.description,
+        title: a.titleOf(filipino: fil),
+        description: a.descriptionOf(filipino: fil),
         earnedAt: DateTime.now(),
         achievementId: a.id,
       );
@@ -152,9 +162,8 @@ class ShowcaseNotifier extends StateNotifier<ShowcasePortfolio> {
         final item = ShowcaseItem(
           id: _uuid.v4(),
           type: ShowcaseItemType.highScore,
-          title: '${score.gameType.label} — $pct%',
-          description:
-              'Scored ${score.score}/${score.total} and earned ${score.starsEarned} stars!',
+          title: '${score.gameType.labelOf(t)} — $pct%',
+          description: t.scpScored(score.score, score.total, score.starsEarned),
           earnedAt: score.date,
           gameType: score.gameType,
           score: score.score,
@@ -174,9 +183,8 @@ class ShowcaseNotifier extends StateNotifier<ShowcasePortfolio> {
         final item = ShowcaseItem(
           id: 'mastery_${cat.name}',
           type: ShowcaseItemType.categoryMastery,
-          title: '${cat.label} Mastered!',
-          description:
-              'Achieved ${(mastery * 100).round()}% mastery in ${cat.label}',
+          title: t.scpMastered(cat.labelOf(t)),
+          description: t.scpMasteryDesc((mastery * 100).round(), cat.labelOf(t)),
           earnedAt: DateTime.now(),
           category: cat,
           masteryPercent: mastery,
@@ -195,9 +203,8 @@ class ShowcaseNotifier extends StateNotifier<ShowcasePortfolio> {
         final item = ShowcaseItem(
           id: 'streak_$milestone',
           type: ShowcaseItemType.streakMilestone,
-          title: '$milestone-Day Streak!',
-          description:
-              'Maintained a learning streak of $milestone days in a row!',
+          title: t.scpStreakTitle(milestone),
+          description: t.scpStreakDesc(milestone),
           earnedAt: DateTime.now(),
         );
         newItems.add(item);
@@ -214,9 +221,12 @@ class ShowcaseNotifier extends StateNotifier<ShowcasePortfolio> {
       final item = ShowcaseItem(
         id: key,
         type: ShowcaseItemType.assessmentResult,
-        title: '${result.type.label} — $pct%',
-        description:
-            'Scored ${result.score}/${result.totalQuestions} on ${result.type.label}',
+        title: '${result.type.labelOf(t)} — $pct%',
+        description: t.scpAssessDesc(
+          result.score,
+          result.totalQuestions,
+          result.type.labelOf(t),
+        ),
         earnedAt: result.completedAt,
         score: result.score,
         total: result.totalQuestions,

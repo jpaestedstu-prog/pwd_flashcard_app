@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../navigation/nav_extensions.dart';
+import '../l10n/app_localizations.dart';
 import 'app_icon_button.dart';
 
 /// Pops the nav stack when possible; falls back to [fallbackRoute] otherwise
@@ -13,14 +14,15 @@ import 'app_icon_button.dart';
 class AppBackButton extends StatelessWidget {
   final String fallbackRoute;
   final Future<bool> Function()? onBeforePop;
-  final String tooltip;
+  /// Defaults to "Go back" in the reader's language.
+  final String? tooltip;
   final Color? color;
 
   const AppBackButton({
     super.key,
     this.fallbackRoute = '/home',
     this.onBeforePop,
-    this.tooltip = 'Go back',
+    this.tooltip,
     this.color,
   });
 
@@ -36,7 +38,7 @@ class AppBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppIconButton(
       icon: Icons.arrow_back_rounded,
-      tooltip: tooltip,
+      tooltip: tooltip ?? AppLocalizations.of(context)?.navGoBack ?? 'Go back',
       color: color,
       onPressed: () => _handlePop(context),
     );

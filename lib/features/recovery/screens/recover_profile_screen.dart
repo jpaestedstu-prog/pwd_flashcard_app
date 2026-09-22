@@ -12,6 +12,8 @@ import '../../../data/remote/firestore_repository.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_snack_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Steps the redemption flow walks through. Surfaced as a progress
 /// indicator so the user understands what's happening across the
@@ -63,6 +65,7 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
   Future<void> _recover() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
+    final t = _t(context);
     setState(() {
       _step = _RedemptionStep.lookingUp;
       _error = null;
@@ -73,20 +76,17 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
     try {
       final record = await RecoveryCodeService.lookupCode(input);
       if (record == null) {
-        _fail("We couldn't find a profile for that code. Double-check "
-            'each letter and try again.');
+        _fail(t.rcNotFound);
         return;
       }
       if (record.isUsed) {
-        _fail('This recovery code has already been used. Generate a new '
-            'one from the original device, or contact your teacher.');
+        _fail(t.rcAlreadyUsed);
         return;
       }
 
       setState(() => _step = _RedemptionStep.verifying);
       if (!RecoveryCodeService.verify(input, record)) {
-        _fail("That code doesn't look right. Check for letters that "
-            'look similar (e.g. zero / O).');
+        _fail(t.rcInvalid);
         return;
       }
 
@@ -118,13 +118,13 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
       if (!mounted) return;
       AppSnackBar.success(
         context,
-        message: 'Welcome back, ${recoveredProfile.name}!',
+        message: t.rcWelcomeBack(recoveredProfile.name),
       );
       context.go('/home');
     } on RecoveryCodeException catch (e) {
-      _fail(e.message);
+      _fail(e.localizedMessage(t));
     } catch (e) {
-      _fail('Something went wrong while restoring your profile: $e');
+      _fail(t.rcRestoreFailed('$e'));
     }
   }
 
@@ -141,7 +141,7 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: const Text('Recover Profile'),
+        title: Text(_t(context).rcTitle),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -160,7 +160,7 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Letters only, any case. Dashes are optional.',
+                  _t(context).rcFormatHint,
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -181,7 +181,7 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
                       : const Icon(Icons.restore_rounded),
                   label: Text(_busy
                       ? _stepLabel(_step)
-                      : 'Restore my profile'),
+                      : _t(context).rcRestoreMine),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -195,8 +195,7 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      'Cloud sync is not connected on this device. Connect '
-                      'to the internet to recover a profile.',
+                      _t(context).rcNoCloud,
                       style: AppTypography.bodySmall,
                     ),
                   ),
@@ -211,17 +210,17 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
   String _stepLabel(_RedemptionStep step) {
     switch (step) {
       case _RedemptionStep.lookingUp:
-        return 'Looking up code…';
+        return _t(context).rcLookingUp;
       case _RedemptionStep.verifying:
-        return 'Verifying…';
+        return _t(context).rcVerifying;
       case _RedemptionStep.restoring:
-        return 'Restoring profile…';
+        return _t(context).rcRestoring;
       case _RedemptionStep.pullingProgress:
-        return 'Loading progress…';
+        return _t(context).rcLoadingProgress;
       case _RedemptionStep.done:
-        return 'Done!';
+        return _t(context).rcDone;
       case _RedemptionStep.idle:
-        return 'Restore my profile';
+        return _t(context).rcRestoreMine;
     }
   }
 }
@@ -248,7 +247,7 @@ class _Hero extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'Welcome back!',
+          _t(context).rcWelcome,
           style: AppTypography.headlineMedium.copyWith(
             fontWeight: FontWeight.w800,
           ),
@@ -256,8 +255,7 @@ class _Hero extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Enter the recovery code you saved from your previous device '
-          'to restore your profile and progress here.',
+          _t(context).rcIntro,
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.textSecondary,
           ),
@@ -314,10 +312,10 @@ class _CodeField extends StatelessWidget {
       ],
       validator: (value) {
         final input = (value ?? '').trim();
-        if (input.isEmpty) return 'Please enter your recovery code';
+        if (input.isEmpty) return _t(context).rcEnterCode;
         final normalised = RecoveryCodeService.normalise(input);
         if (normalised == null) {
-          return 'Codes are 10 letters/numbers (with optional dashes)';
+          return _t(context).rcCodeFormat;
         }
         return null;
       },
@@ -354,3 +352,8 @@ class _ErrorCard extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

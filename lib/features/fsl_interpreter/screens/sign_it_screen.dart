@@ -29,6 +29,8 @@ import '../../../navigation/nav_extensions.dart';
 import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Lifecycle of the front camera used for the practice mirror.
 enum _CamStatus { initializing, ready, noCamera, permissionDenied, failed }
@@ -433,8 +435,8 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
       // The next word is the whole instruction, and nothing else announces it.
       final next = _cards[_currentRound];
       gamepadScreen.announce(
-        'Round ${_currentRound + 1} of $_rounds. '
-        'Sign this word: ${next.wordEnglish}, ${next.wordFilipino}.',
+        '${_t(context).siRound(_currentRound + 1, _rounds)} '
+        '${_t(context).siSignThis(next.wordEnglish, next.wordFilipino)}',
       );
     } else {
       _saveProgress();
@@ -544,17 +546,17 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.close_rounded),
-            tooltip: 'Close',
+            tooltip: _t(context).close,
             onPressed: _exit,
           ),
-          title: const Text('Sign It!'),
+          title: Text(_t(context).siTitle),
         ),
         body: const ShimmerPageSkeleton(),
       );
     }
 
     if (_cards.isEmpty) {
-      return FslEmptyStateScaffold(title: 'Sign It!', onClose: _exit);
+      return FslEmptyStateScaffold(title: _t(context).siTitle, onClose: _exit);
     }
 
     if (_showResult) {
@@ -566,7 +568,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
               score: _gotItCount,
               total: _rounds,
               starsEarned: _starsEarned,
-              footnote: 'Self-assessed signs',
+              footnote: _t(context).siSelfAssessed,
               onPlayAgain: _restart,
               onExit: _exit,
             ),
@@ -582,32 +584,32 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     // them as "Unnamed item" and had no way to tell recording from replaying.
     // The word to sign is the narration, because it is the whole instruction.
     return GamepadScreenRegistrar(
-      title: 'Sign It!',
+      title: _t(context).siTitle,
       narration: [
-        'Round ${_currentRound + 1} of $_rounds.',
-        'Sign this word: ${card.wordEnglish}, ${card.wordFilipino}.',
+        _t(context).siRound(_currentRound + 1, _rounds),
+        _t(context).siSignThis(card.wordEnglish, card.wordFilipino),
       ],
       items: [
-        GamepadItem(label: 'Watch the sign again', onActivate: _replay),
+        GamepadItem(label: _t(context).siWatchAgain, onActivate: _replay),
         if (_recording)
-          GamepadItem(label: 'Stop recording', onActivate: _stopRecording)
+          GamepadItem(label: _t(context).siStopRec, onActivate: _stopRecording)
         else
           GamepadItem(
-            label: 'Record myself signing',
+            label: _t(context).siRecordMe,
             enabled: _camStatus == _CamStatus.ready,
             onActivate: _startRecording,
           ),
-        GamepadItem(label: 'I got it', onActivate: () => _confirm(true)),
-        GamepadItem(label: 'Not yet', onActivate: () => _confirm(false)),
+        GamepadItem(label: _t(context).siGotIt, onActivate: () => _confirm(true)),
+        GamepadItem(label: _t(context).lsNotYet, onActivate: () => _confirm(false)),
       ],
       child: Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
+          tooltip: _t(context).close,
           onPressed: _exit,
         ),
-        title: Text('Sign It!  •  ${_currentRound + 1}/$_rounds'),
+        title: Text(_t(context).siTitleRound(_currentRound + 1, _rounds)),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -704,7 +706,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
                     child: OutlinedButton.icon(
                       onPressed: () => _confirm(false),
                       icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Not yet'),
+                      label: Text(_t(context).lsNotYet),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
@@ -716,7 +718,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
                     child: FilledButton.icon(
                       onPressed: () => _confirm(true),
                       icon: const Icon(Icons.thumb_up_rounded),
-                      label: const Text('I got it!'),
+                      label: Text(_t(context).siGotItBang),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         backgroundColor: AppColors.success,
@@ -744,11 +746,11 @@ class _WordPrompt extends StatelessWidget {
     final hc = HCColor.of(context);
     return Semantics(
       header: true,
-      label: 'Sign this word: ${card.wordEnglish}, ${card.wordFilipino}',
+      label: _t(context).siSignThisLabel(card.wordEnglish, card.wordFilipino),
       child: Column(
         children: [
           Text(
-            'Watch, then sign it back!',
+            _t(context).siWatchThen,
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 2),
@@ -790,13 +792,13 @@ class _ReferencePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _PracticePanel(
-      label: 'Reference',
+      label: _t(context).siReference,
       icon: Icons.sign_language_rounded,
       accent: const Color(0xFF7C4DFF),
       footer: TextButton.icon(
         onPressed: ready ? onReplay : null,
         icon: const Icon(Icons.replay_rounded, size: 18),
-        label: const Text('Replay'),
+        label: Text(_t(context).replay),
         style: TextButton.styleFrom(foregroundColor: const Color(0xFF7C4DFF)),
       ),
       child: ready && controller != null
@@ -879,7 +881,7 @@ class _MirrorPanel extends StatelessWidget {
       footer = TextButton.icon(
         onPressed: onRecord,
         icon: const Icon(Icons.replay_rounded, size: 18),
-        label: const Text('Re-record'),
+        label: Text(_t(context).siReRecord),
         style: TextButton.styleFrom(foregroundColor: _accent),
       );
     } else if (liveReady) {
@@ -928,7 +930,7 @@ class _MirrorPanel extends StatelessWidget {
           ? FilledButton.icon(
               onPressed: onStop,
               icon: const Icon(Icons.stop_rounded, size: 18),
-              label: const Text('Stop'),
+              label: Text(_t(context).opStop),
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.redAccent,
                 visualDensity: VisualDensity.compact,
@@ -941,7 +943,7 @@ class _MirrorPanel extends StatelessWidget {
                 size: 16,
                 color: Colors.redAccent,
               ),
-              label: const Text('Record'),
+              label: Text(_t(context).siRecord),
               style: OutlinedButton.styleFrom(
                 foregroundColor: _accent,
                 visualDensity: VisualDensity.compact,
@@ -953,7 +955,7 @@ class _MirrorPanel extends StatelessWidget {
     }
 
     return _PracticePanel(
-      label: replaying ? 'Your take' : 'You',
+      label: replaying ? _t(context).siYourTake : _t(context).siYou,
       icon: Icons.videocam_rounded,
       accent: _accent,
       footer: footer,
@@ -979,15 +981,15 @@ class _CameraFallback extends StatelessWidget {
       ),
       _CamStatus.permissionDenied => (
         Icons.no_photography_rounded,
-        'Camera permission off.\nYou can still watch and practise!',
+        _t(context).siNoPermission,
       ),
       _CamStatus.noCamera => (
         Icons.videocam_off_rounded,
-        'No camera found.\nJust watch and practise the sign!',
+        _t(context).siNoCamera,
       ),
       _ => (
         Icons.videocam_off_rounded,
-        'Camera unavailable.\nJust watch and practise the sign!',
+        _t(context).siCameraOff,
       ),
     };
     return Container(
@@ -1088,3 +1090,8 @@ class _PracticePanel extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -11,6 +11,7 @@ import '../../routine/services/routine_native_alarms.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/reduced_motion.dart';
 import '../../../providers/app_providers.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -151,7 +152,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   children: [
                     // ─── Animated Logo/Icon ───────────────
                     Semantics(
-                      label: 'FlashLearn logo',
+                      label: _t(context).splashLogo,
                       child: Container(
                         width: 160,
                         height: 160,
@@ -400,3 +401,8 @@ class _LetterRevealText extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -21,6 +21,7 @@ import '../widgets/story_image_flip.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Paginated story reader with TTS and vocabulary highlights.
 class StoryReaderScreen extends ConsumerStatefulWidget {
@@ -112,7 +113,7 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     final story = _story;
     if (story == null) return;
     gamepadScreen.announce(
-      'Page ${_currentSentence + 1} of ${story.sentencesEn.length}. '
+      '${_t(context).srPageNofM(_currentSentence + 1, story.sentencesEn.length)}. '
       '${story.sentencesEn[_currentSentence]}',
     );
   }
@@ -188,19 +189,19 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     return GamepadScreenRegistrar(
       title: _story!.titleEn,
       narration: [
-        'Page ${_currentSentence + 1} of ${_story!.sentencesEn.length}.',
+        '${_t(context).srPageNofM(_currentSentence + 1, _story!.sentencesEn.length)}.',
         sentenceEn,
       ],
       items: [
         if (_currentSentence > 0)
           GamepadItem(
-            label: 'Previous page',
+            label: _t(context).srPrevPage,
             onActivate: _prevSentence,
           ),
         if (!_isLastSentence)
-          GamepadItem(label: 'Next page', onActivate: _nextSentence),
+          GamepadItem(label: _t(context).srNextPage, onActivate: _nextSentence),
         GamepadItem(
-          label: 'Read this page aloud',
+          label: _t(context).srReadPage,
           detail: sentenceEn,
           onActivate: () => _speakLang(sentenceEn, filipino: false),
         ),
@@ -210,7 +211,7 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
           onActivate: () => _speakLang(sentenceFil, filipino: true),
         ),
         if (_isLastSentence)
-          GamepadItem(label: 'Go to the quiz', onActivate: _goToQuiz),
+          GamepadItem(label: _t(context).srGoQuiz, onActivate: _goToQuiz),
       ],
       child: Scaffold(
       appBar: fullscreenBar(
@@ -218,7 +219,7 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
         AppBar(
           leading: AppIconButton(
             icon: Icons.close_rounded,
-            tooltip: 'Close',
+            tooltip: _t(context).close,
             onPressed: () => context.pop(),
           ),
           title: Text(_story!.titleEn),
@@ -302,7 +303,7 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
                               ),
                               const SizedBox(height: 10),
                               Text(
-                                'Page ${_currentSentence + 1} of ${_story!.sentencesEn.length}',
+                                _t(context).srPageNofM(_currentSentence + 1, _story!.sentencesEn.length),
                                 style: AppTypography.labelSmall.copyWith(
                                   color: hc.textSecondary,
                                 ),
@@ -612,3 +613,8 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

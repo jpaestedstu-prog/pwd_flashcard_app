@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../security/pin_auth_service.dart';
 import 'firebase_service.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/app_localizations_en.dart';
 
 /// Why a recovery-code operation failed. Mirrors the [JoinCodeError]
 /// shape so call sites can present consistent error UX.
@@ -36,6 +38,21 @@ class RecoveryCodeException implements Exception {
   final RecoveryCodeError error;
   final String message;
   const RecoveryCodeException(this.error, this.message);
+
+  /// What to show the person: [message] is written for developers (it names
+  /// Firestore paths and deploy commands), so the screen shows this instead.
+  String localizedMessage(AppLocalizations? l10n) {
+    final t = l10n ?? AppLocalizationsEn();
+    return switch (error) {
+      RecoveryCodeError.notFound => t.rcNotFound,
+      RecoveryCodeError.alreadyUsed => t.rcAlreadyUsed,
+      RecoveryCodeError.invalidCode => t.rcInvalid,
+      RecoveryCodeError.permissionDenied => t.rcDenied,
+      RecoveryCodeError.collision => t.rcCollision,
+      RecoveryCodeError.network => t.rcNetwork,
+      RecoveryCodeError.unknown => t.rcUnknown,
+    };
+  }
 
   @override
   String toString() => 'RecoveryCodeException($error): $message';

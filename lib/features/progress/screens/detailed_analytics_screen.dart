@@ -17,6 +17,8 @@ import '../widgets/charts/activity_heatmap.dart';
 import '../../../widgets/app_back_button.dart';
 import '../models/category_mastery.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Full-page analytics dashboard with interactive fl_chart visuals.
 class DetailedAnalyticsScreen extends ConsumerWidget {
@@ -31,9 +33,9 @@ class DetailedAnalyticsScreen extends ConsumerWidget {
       return Scaffold(
         body: RichEmptyState(
           emoji: '👤',
-          title: 'No Profile Selected',
-          description: 'Select a profile to view detailed analytics.',
-          actionLabel: 'Go Back',
+          title: _t(context).lgNoProfile,
+          description: _t(context).daSelectProfile,
+          actionLabel: _t(context).goBack,
           actionIcon: Icons.arrow_back_rounded,
           onAction: () => context.pop(),
         ),
@@ -66,7 +68,7 @@ class DetailedAnalyticsScreen extends ConsumerWidget {
           },
         ),
         title: Text(
-          'Detailed Analytics',
+          _t(context).daTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -80,28 +82,28 @@ class DetailedAnalyticsScreen extends ConsumerWidget {
             children: [
               _MiniStat(
                 icon: Icons.star_rounded,
-                label: 'Stars',
+                label: _t(context).stars,
                 value: '${progress.totalStars}',
                 color: AppColors.warning,
               ),
               const SizedBox(width: 8),
               _MiniStat(
                 icon: Icons.auto_stories_rounded,
-                label: 'Words',
+                label: _t(context).words,
                 value: '${progress.wordsLearned}',
                 color: AppColors.secondary,
               ),
               const SizedBox(width: 8),
               _MiniStat(
                 icon: Icons.timer_rounded,
-                label: 'Minutes',
+                label: _t(context).minutesStudied,
                 value: '$totalMin',
                 color: AppColors.info,
               ),
               const SizedBox(width: 8),
               _MiniStat(
                 icon: Icons.repeat_rounded,
-                label: 'Sessions',
+                label: _t(context).sessions,
                 value: '$totalSess',
                 color: AppColors.accent,
               ),
@@ -175,13 +177,13 @@ class DetailedAnalyticsScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Average Session',
+                        _t(context).daAvgSession,
                         style: AppTypography.labelMedium.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       Text(
-                        '${avgMin.toStringAsFixed(1)} minutes per session',
+                        _t(context).daMinutesPerSession(avgMin.toStringAsFixed(1)),
                         style: AppTypography.bodySmall.copyWith(
                           color: HCColor.of(context).textSecondary,
                         ),
@@ -256,3 +258,8 @@ class _MiniStat extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -11,6 +11,8 @@ import '../../../providers/app_providers.dart';
 import '../widgets/charts/activity_heatmap.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Full-screen timeline view for a single student.
 ///
@@ -52,7 +54,7 @@ class ProgressTimelineScreen extends ConsumerWidget {
           },
         ),
         title: Text(
-          '$profileName — Timeline',
+          _t(context).ptTitle(profileName),
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -148,25 +150,25 @@ class _SummaryRow extends StatelessWidget {
           _MiniStat(
             icon: Icons.school_rounded,
             value: '${progress.wordsLearned}',
-            label: 'Words',
+            label: _t(context).words,
             color: AppColors.primary,
           ),
           _MiniStat(
             icon: Icons.star_rounded,
             value: '${progress.totalStars}',
-            label: 'Stars',
+            label: _t(context).stars,
             color: AppColors.warning,
           ),
           _MiniStat(
             icon: Icons.local_fire_department_rounded,
             value: '${progress.streakDays}',
-            label: 'Streak',
+            label: _t(context).streak,
             color: AppColors.error,
           ),
           _MiniStat(
             icon: Icons.sports_esports_rounded,
             value: '${progress.effectiveGamesPlayed}',
-            label: 'Games',
+            label: _t(context).games,
             color: AppColors.info,
           ),
         ],
@@ -251,7 +253,7 @@ class _AccuracyTrendChart extends StatelessWidget {
     }
 
     if (spots.isEmpty) {
-      return _EmptyChartCard(title: 'Accuracy Trend 📊', hc: hc);
+      return _EmptyChartCard(title: _t(context).ptAccuracyTrend, hc: hc);
     }
 
     return Container(
@@ -265,7 +267,7 @@ class _AccuracyTrendChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Accuracy Trend 📊',
+            _t(context).ptAccuracyTrend,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: hc.textPrimary,
@@ -273,7 +275,7 @@ class _AccuracyTrendChart extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Average daily accuracy — last 30 days',
+            _t(context).ptAccuracySub,
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 20),
@@ -413,7 +415,7 @@ class _StudyTimeChart30 extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Study Time ⏱️',
+                      _t(context).ptStudyTime,
                       style: AppTypography.titleMedium.copyWith(
                         fontWeight: FontWeight.w700,
                         color: hc.textPrimary,
@@ -423,7 +425,7 @@ class _StudyTimeChart30 extends StatelessWidget {
                     // FitText: the axis caption sits above a fixed-width
                     // chart and split as "Minut / es".
                     FitText(
-                      'Minutes per day — last 30 days',
+                      _t(context).ptMinutesSub,
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                       ),
@@ -441,7 +443,7 @@ class _StudyTimeChart30 extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Avg: ${avgMinutes.round()} min/day',
+                  _t(context).ptAvgPerDay(avgMinutes.round()),
                   style: AppTypography.labelSmall.copyWith(
                     color: AppColors.success,
                     fontWeight: FontWeight.w700,
@@ -462,7 +464,7 @@ class _StudyTimeChart30 extends StatelessWidget {
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       return BarTooltipItem(
-                        '${rod.toY.round()} min',
+                        _t(context).abMinutes(rod.toY.round()),
                         AppTypography.labelSmall.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -574,7 +576,7 @@ class _CategoryProgressSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Category Progress 📚',
+            _t(context).ptCategoryProgress,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: hc.textPrimary,
@@ -667,7 +669,7 @@ class _EmptyChartCard extends StatelessWidget {
           Icon(Icons.bar_chart_rounded, size: 48, color: hc.textHint),
           const SizedBox(height: 8),
           Text(
-            'Not enough data yet',
+            _t(context).ptNotEnough,
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
         ],
@@ -675,3 +677,8 @@ class _EmptyChartCard extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

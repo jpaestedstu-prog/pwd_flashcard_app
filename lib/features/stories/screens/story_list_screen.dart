@@ -105,7 +105,7 @@ class StoryListScreen extends ConsumerWidget {
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text(category.label,
+                            child: Text(category.labelOf(AppLocalizations.of(context)!),
                                 style: AppTypography.titleMedium,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),

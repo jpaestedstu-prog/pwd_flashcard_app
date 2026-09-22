@@ -16,6 +16,8 @@ import '../providers/gamepad_settings_provider.dart';
 import '../providers/gamepad_status_provider.dart';
 import '../services/gamepad_announcer.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// A place to press every button and be told what it does, with nothing at
 /// stake.
@@ -169,7 +171,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('🎮  Practice')),
+      appBar: AppBar(title: Text(_t(context).gppTitle)),
       body: SafeArea(
         // Scrollable, but still an `Expanded` layout when there is room.
         //
@@ -202,8 +204,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'No controller connected. Switch it on and it will '
-                          'start responding here.',
+                          _t(context).gppNoController,
                           style: TextStyle(
                             color: theme.colorScheme.onErrorContainer,
                           ),
@@ -220,7 +221,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
                 child: Semantics(
                   liveRegion: true,
                   label: _last == null
-                      ? 'Press any button on the controller'
+                      ? _t(context).gppPressAny
                       : '${phrases.buttonName(_last!)}. $_lastAction',
                   excludeSemantics: true,
                   child: Container(
@@ -239,7 +240,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
                       children: [
                         Text(
                           _last == null
-                              ? 'Press any button'
+                              ? _t(context).gppPressAnyShort
                               : phrases.buttonName(_last!),
                           textAlign: TextAlign.center,
                           style: theme.textTheme.headlineMedium?.copyWith(
@@ -250,8 +251,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
                         const SizedBox(height: 10),
                         Text(
                           _last == null
-                              ? 'I will tell you what it does. Nothing else '
-                                  'will happen.'
+                              ? _t(context).gppWillTell
                               : _lastAction,
                           textAlign: TextAlign.center,
                           style: theme.textTheme.titleMedium,
@@ -267,7 +267,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Tried ${_tried.length} of ${_practiceable.length}',
+                      _t(context).gppTried(_tried.length, _practiceable.length),
                       style: theme.textTheme.labelLarge,
                     ),
                   ),
@@ -275,7 +275,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
                     TextButton.icon(
                       onPressed: () => setState(_tried.clear),
                       icon: const Icon(Icons.refresh_rounded, size: 18),
-                      label: const Text('Start over'),
+                      label: Text(_t(context).gppStartOver),
                     ),
                 ],
               ),
@@ -310,7 +310,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
 
               const SizedBox(height: 8),
               Text(
-                'Press L1 twice to leave.',
+                _t(context).gppLeave,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.hintColor,
@@ -382,3 +382,8 @@ class _ControlChip extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

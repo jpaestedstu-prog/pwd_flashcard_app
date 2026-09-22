@@ -6,6 +6,8 @@ import '../core/theme/app_colors.dart';
 import '../data/models/enums.dart';
 import '../providers/app_providers.dart';
 import '../core/utils/reduced_motion.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// The mascot's current emotional expression / action.
 enum MascotMood {
@@ -251,7 +253,7 @@ class _MascotBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Mascot buddy',
+      label: _t(context).mascotBuddy,
       child: Container(
         width: size,
         height: size,
@@ -519,3 +521,8 @@ class _MascotPainter extends CustomPainter {
   bool shouldRepaint(_MascotPainter oldDelegate) =>
       mood != oldDelegate.mood || blinkProgress != oldDelegate.blinkProgress;
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

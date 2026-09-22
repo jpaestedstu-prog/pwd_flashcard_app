@@ -9,6 +9,8 @@ import '../../../widgets/rich_empty_states.dart';
 import '../../../features/assessment/services/assessment_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/parent_provider.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Card that displays the learning gain (pre-test vs post-test) for a child.
 ///
@@ -57,7 +59,7 @@ class LearningGainCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Learning Gain',
+                  _t(context).lgcTitle,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hc.textPrimary,
@@ -89,7 +91,7 @@ class LearningGainCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            report.summary,
+            report.summaryOf(AppLocalizations.of(context)),
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
 
@@ -97,14 +99,14 @@ class LearningGainCard extends StatelessWidget {
 
           // ─── Before/After Bars ──────────
           _ComparisonBar(
-            label: 'Pre-Test',
+            label: _t(context).assessPreTest,
             value: prePercent,
             color: AppColors.info,
             hc: hc,
           ),
           const SizedBox(height: 8),
           _ComparisonBar(
-            label: 'Post-Test',
+            label: _t(context).assessPostTest,
             value: postPercent,
             color: AppColors.success,
             hc: hc,
@@ -114,7 +116,7 @@ class LearningGainCard extends StatelessWidget {
           if (gains.isNotEmpty) ...[
             const SizedBox(height: 20),
             Text(
-              'Per-Category Breakdown',
+              _t(context).lgcPerCategory,
               style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w700,
                 color: hc.textPrimary,
@@ -226,12 +228,12 @@ class LearningGainCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             // Legend
-            const Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _LegendDot(color: AppColors.info, label: 'Pre-Test'),
-                SizedBox(width: 16),
-                _LegendDot(color: AppColors.success, label: 'Post-Test'),
+                _LegendDot(color: AppColors.info, label: _t(context).assessPreTest),
+                const SizedBox(width: 16),
+                _LegendDot(color: AppColors.success, label: _t(context).assessPostTest),
               ],
             ),
           ],
@@ -374,8 +376,8 @@ class _NoDataCard extends ConsumerWidget {
                 'We’ll show how much $learnerPossessive has improved '
                 'overall and per category.';
       actionLabel = filipino
-          ? 'Simulan ang baseline test'
-          : 'Start baseline test';
+          ? 'Itakda ang pre-test'
+          : 'Assign the pre-test';
     } else if (hasPreTest && !hasPostTest) {
       title = filipino
           ? 'Tapos na ang baseline — magpatuloy sa pagsasanay!'
@@ -385,7 +387,9 @@ class _NoDataCard extends ConsumerWidget {
                 'para makita ang pag-unlad.'
           : 'Once $learnerPossessive has had time to learn, take the post-test '
                 'to see their improvement.';
-      actionLabel = filipino ? 'Kumuha ng post-test' : 'Take post-test';
+      actionLabel = filipino
+          ? 'Itakda ang post-test'
+          : 'Assign the post-test';
     } else {
       // hasPostTest && !hasPreTest — uncommon, but worth a clear nudge.
       title = filipino
@@ -396,7 +400,9 @@ class _NoDataCard extends ConsumerWidget {
                 'ng $learnerPossessive mula nang magsimula.'
           : 'A pre-test snapshot lets us measure how much $learnerPossessive '
                 'has gained since starting.';
-      actionLabel = filipino ? 'Kumuha ng pre-test' : 'Take pre-test';
+      actionLabel = filipino
+          ? 'Itakda ang pre-test'
+          : 'Assign the pre-test';
     }
 
     return ProPanel(
@@ -411,7 +417,7 @@ class _NoDataCard extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Learning Gain',
+                _t(context).lgcTitle,
                 style: AppTypography.titleMedium.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -427,11 +433,20 @@ class _NoDataCard extends ConsumerWidget {
             accentColor: AppColors.info,
             compact: true,
             actionLabel: actionLabel,
-            actionIcon: Icons.play_arrow_rounded,
-            onAction: () => context.push('/assessment'),
+            actionIcon: Icons.assignment_turned_in_rounded,
+            // This card sits in a sheet an educator opened *about a learner*,
+            // so the only useful action is to set the work — pushing the hub
+            // used to offer them their own copy of the test, which is exactly
+            // the confusion this feature is meant to end.
+            onAction: () => context.push('/assessment/assign'),
           ),
         ],
       ),
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/accessibility/accessibility_presets.dart';
+import '../../../core/accessibility/learner_support.dart';
 import '../../../core/constants/avatar_data.dart';
 import '../../../core/security/pin_credential_helper.dart';
 import '../../../core/theme/app_colors.dart';
@@ -14,6 +15,10 @@ import '../../../l10n/app_localizations.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_snack_bar.dart';
+import '../../gamepad/providers/gamepad_settings_provider.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../onboarding/widgets/learner_support_picker.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Screen for editing an existing user profile (name, avatar, disability type).
 ///
@@ -35,6 +40,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late DateTime? _selectedBirthDate;
   late List<String> _tags;
   late List<FlashcardCategory> _selectedInterests;
+
+  /// Supports for the category currently selected on this form — not
+  /// necessarily the saved one, since changing the category re-scopes them.
+  late Set<LearnerSupportOption> _selectedSupports;
   bool _hasChanged = false;
 
   // Premium avatar selection (null = using free avatar)
@@ -62,6 +71,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _tags = List<String>.from(profile?.tags ?? []);
     _selectedInterests =
         List<FlashcardCategory>.from(profile?.interests ?? const []);
+    // `supports` (not `supportOptions`) so a learner created before this
+    // existed opens the form on their category's defaults rather than blank.
+    _selectedSupports = profile?.supports ?? const {};
     _hasPinOriginal = profile?.hasPinProtection ?? false;
     _enablePin = _hasPinOriginal;
     // Check if a premium avatar is currently equipped
@@ -83,6 +95,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         _selectedBirthDate != profile.birthDate ||
         !_listEquals(_tags, profile.tags) ||
         !_interestsEqual(_selectedInterests, profile.interests) ||
+        !_supportsEqual(_selectedSupports, profile.supports) ||
         _enablePin != _hasPinOriginal ||
         _removingPin ||
         _selectedPremiumAvatarId != _originalPremiumAvatarId ||
@@ -97,6 +110,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
     return true;
   }
+
+  /// Order-independent comparison of the chosen learner supports.
+  bool _supportsEqual(
+    Set<LearnerSupportOption> a,
+    Set<LearnerSupportOption> b,
+  ) => a.length == b.length && a.containsAll(b);
 
   /// Order-independent comparison of selected interest categories.
   bool _interestsEqual(List<FlashcardCategory> a, List<FlashcardCategory> b) {
@@ -136,7 +155,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      AppSnackBar.warning(context, message: 'Please enter a name');
+      AppSnackBar.warning(context, message: _t(context).epEnterName);
       return;
     }
 
@@ -147,11 +166,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (_enablePin && !_hasPinOriginal) {
       if (_pinController.text.length != 4 ||
           !RegExp(r'^\d{4}$').hasMatch(_pinController.text)) {
-        AppSnackBar.error(context, message: 'PIN must be exactly 4 digits');
+        AppSnackBar.error(context, message: _t(context).psPinLength);
         return;
       }
       if (_pinController.text != _pinConfirmController.text) {
-        AppSnackBar.error(context, message: 'PINs do not match');
+        AppSnackBar.error(context, message: _t(context).epPinMismatch);
         return;
       }
     }
@@ -169,6 +188,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       birthDate: () => _selectedBirthDate,
       tags: _tags,
       interests: _selectedInterests,
+      // Re-scoped to whatever category is being saved, so switching a learner
+      // from (say) Hearing to Motor can never leave a sign system behind on a
+      // profile that no longer offers one. Educators carry none: the picker is
+      // not shown to them, and writing defaults they never saw would put a
+      // sign system on a teacher's profile.
+      supportOptions: profile.role.isLearner
+          ? LearnerSupportCatalog.normalize(
+              _selectedDisability,
+              _selectedSupports,
+            )
+          : const {},
     );
 
     // Apply PIN changes via the credential helper so plaintext is never
@@ -200,6 +230,31 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       }
     }
 
+    // Supports are granular, explicit answers — unlike the whole-category
+    // preset below they are applied straight away, without a dialog, because
+    // picking "Large print" and then being asked whether you meant it is a
+    // strange way to treat an accessibility choice.
+    final newSupports = updated.supports;
+    if (profile.role.isLearner &&
+        !_supportsEqual(newSupports, profile.supports)) {
+      ref
+          .read(settingsProvider.notifier)
+          .update(
+            AccessibilityPresets.applySupports(
+              ref.read(settingsProvider),
+              newSupports,
+            ),
+          );
+      switch (LearnerSupportCatalog.inputModeIn(newSupports)) {
+        case LearnerSupportOption.inputGaze:
+          ref.read(gazeSettingsProvider.notifier).setEnabled(true);
+        case LearnerSupportOption.inputSwitch:
+          ref.read(gamepadSettingsProvider.notifier).setEnabled(true);
+        default:
+          break;
+      }
+    }
+
     // If disability type changed, offer to re-apply presets
     if (disabilityChanged &&
         _selectedDisability != DisabilityType.none &&
@@ -214,7 +269,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
 
     if (mounted) {
-      AppSnackBar.success(context, message: 'Profile updated! \u2705');
+      AppSnackBar.success(context, message: _t(context).epUpdated);
       context.pop();
     }
   }
@@ -256,15 +311,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Apply Accessibility Presets?'),
+        title: Text(_t(context).epApplyPresetsTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Your disability type changed to '
-        '“${_selectedDisability.labelOf(AppLocalizations.of(context))}”. '
-              'Would you like to auto-configure accessibility settings?',
+              _t(context).epApplyPresetsBody(
+                _selectedDisability.labelOf(AppLocalizations.of(context)),
+              ),
               style: AppTypography.bodyMedium,
             ),
             if (changes.isNotEmpty) ...[
@@ -276,14 +331,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         Text(c.emoji, style: const TextStyle(fontSize: 16)),
                         const SizedBox(width: 8),
                         Flexible(
-                          child: Text('${c.name}: ',
+                          child: Text('${c.nameOf(AppLocalizations.of(context))}: ',
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: AppTypography.bodySmall
                                   .copyWith(fontWeight: FontWeight.w600)),
                         ),
                         Flexible(
-                          child: Text(c.value,
+                          child: Text(c.valueOf(AppLocalizations.of(context)),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: AppTypography.bodySmall),
@@ -297,11 +352,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Keep Current'),
+            child: Text(_t(context).epKeepCurrent),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Apply Presets'),
+            child: Text(_t(context).epApplyPresets),
           ),
         ],
       ),
@@ -318,12 +373,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final isLearner = profile?.role.isLearner ?? true;
     if (profile == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Edit Profile')),
+        appBar: AppBar(title: Text(_t(context).spdEditProfile)),
         body: RichEmptyState(
           emoji: '👤',
-          title: 'No Profile Selected',
-          description: 'Please select a profile to edit.',
-          actionLabel: 'Go Back',
+          title: _t(context).lgNoProfile,
+          description: _t(context).epNoProfileBody,
+          actionLabel: _t(context).lgGoBack,
           actionIcon: Icons.arrow_back_rounded,
           onAction: () => context.pop(),
         ),
@@ -332,13 +387,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Profile'),
+        title: Text(_t(context).spdEditProfile),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: FilledButton(
               onPressed: _hasChanged ? _save : null,
-              child: const Text('Save'),
+              child: Text(_t(context).gmSave),
             ),
           ),
         ],
@@ -375,7 +430,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 }).animate().scale(duration: 300.ms, curve: Curves.easeOut),
                 const SizedBox(height: 8),
                 Text(
-                  'Tap below to change avatar',
+                  _t(context).epTapAvatar,
                   style: AppTypography.bodySmall
                       .copyWith(color: hc.textSecondary),
                 ),
@@ -404,7 +459,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   _onChanged();
                 },
                 child: Semantics(
-                  label: '${av.label} avatar${isSelected ? ', selected' : ''}',
+                  label: '${_t(context).epAvatarSemantics(av.labelOf(filipino: _t(context).localeName.startsWith('fil')))}'
+                      '${isSelected ? _t(context).epSelectedSuffix : ''}',
                   button: true,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -434,12 +490,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
           // ─── Premium Avatars (learners only) ───
           if (isLearner) ...[
-          Text('Premium Avatars',
+          Text(_t(context).epPremium,
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text(
-            'Earn stars in games to unlock special avatars!',
+            _t(context).epEarnStars,
             style:
                 AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
@@ -469,12 +525,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       : () {
                           AppSnackBar.info(
                             context,
-                            message: '${item.emoji} ${item.name} costs ${item.cost} \u2b50 \u2014 visit the Star Shop!',
+                            message: _t(context).epCosts(
+                              item.emoji,
+                              item.localizedName(_t(context).localeName.startsWith('fil')),
+                              item.cost,
+                            ),
                           );
                         },
                   child: Semantics(
                     label:
-                        '${item.name} premium avatar${owned ? (isSelected ? ", selected" : ", owned") : ", locked, ${item.cost} stars"}',
+                        '${_t(context).epPremiumSemantics(item.localizedName(_t(context).localeName.startsWith('fil')))}'
+                        '${owned ? (isSelected ? _t(context).epSelectedSuffix : _t(context).epOwnedSuffix) : _t(context).epLockedSuffix(item.cost)}',
                     button: true,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
@@ -543,7 +604,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ],
 
           // ─── Name Field ───────────────────
-          Text('Name',
+          Text(_t(context).epName,
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
@@ -551,7 +612,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             controller: _nameController,
             textCapitalization: TextCapitalization.words,
             decoration: InputDecoration(
-              hintText: 'Enter your name',
+              hintText: _t(context).epEnterYourName,
               prefixIcon: const Icon(Icons.person_rounded),
               border:
                   OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
@@ -565,7 +626,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
           // ─── Learning Level (learners only, read-only) ───
           if (isLearner) ...[
-            Text('Learning Level',
+            Text(_t(context).epLearningLevel,
                 style: AppTypography.titleSmall
                     .copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
@@ -587,13 +648,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(level.label,
+                          Text(level.labelOf(_t(context)),
                               style: AppTypography.bodyMedium
                                   .copyWith(fontWeight: FontWeight.w700)),
                           Text(
                             profile.hasLearningLevelOverride
-                                ? 'Set by your teacher'
-                                : level.description,
+                                ? _t(context).epSetByTeacher
+                                : level.descriptionOf(_t(context)),
                             style: AppTypography.bodySmall
                                 .copyWith(color: hc.textSecondary),
                           ),
@@ -610,7 +671,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           // ─── School info (learners only) ───
           if (isLearner) ...[
           // ─── Grade Level ──────────────────
-          Text('Grade Level',
+          Text(_t(context).epGradeLevel,
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
@@ -620,7 +681,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             isExpanded: true,
             initialValue: _selectedGradeLevel,
             decoration: InputDecoration(
-              hintText: 'Select grade level',
+              hintText: _t(context).epSelectGrade,
               prefixIcon: const Icon(Icons.school_rounded),
               border:
                   OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
@@ -628,12 +689,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               fillColor: hc.surface,
             ),
             items: [
-              const DropdownMenuItem<GradeLevel?>(
-                child: Text('Not set'),
+              DropdownMenuItem<GradeLevel?>(
+                child: Text(_t(context).epNotSet),
               ),
               ...GradeLevel.values.map((g) => DropdownMenuItem(
                     value: g,
-                    child: Text(g.label),
+                    child: Text(g.labelOf(_t(context))),
                   )),
             ],
             onChanged: (value) {
@@ -645,7 +706,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 20),
 
           // ─── Section ──────────────────────
-          Text('Section / Class',
+          Text(_t(context).epSection,
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
@@ -653,7 +714,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             controller: _sectionController,
             textCapitalization: TextCapitalization.words,
             decoration: InputDecoration(
-              hintText: 'e.g., Section A, Rose',
+              hintText: _t(context).epSectionHint,
               prefixIcon: const Icon(Icons.group_rounded),
               border:
                   OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
@@ -666,7 +727,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 20),
 
           // ─── Birth Date ───────────────────
-          Text('Birth Date',
+          Text(_t(context).spdBirthDate,
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
@@ -697,8 +758,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   Flexible(child: Text(
                     _selectedBirthDate != null
                         ? '${_selectedBirthDate!.month}/${_selectedBirthDate!.day}/${_selectedBirthDate!.year}'
-                          '  (Age: ${_ageFrom(_selectedBirthDate!)})'
-                        : 'Not set',
+                          '  ${_t(context).epAge(_ageFrom(_selectedBirthDate!))}'
+                        : _t(context).epNotSet,
                     style: AppTypography.bodyMedium.copyWith(
                       color: _selectedBirthDate != null
                           ? hc.textPrimary
@@ -725,12 +786,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 20),
 
           // ─── Tags ─────────────────────────
-          Text('Tags',
+          Text(_t(context).epTags,
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text(
-            'Add custom labels to organize students',
+            _t(context).epTagsHelp,
             style:
                 AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
@@ -741,7 +802,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 child: TextField(
                   controller: _tagController,
                   decoration: InputDecoration(
-                    hintText: 'Add a tag...',
+                    hintText: _t(context).epAddTag,
                     prefixIcon: const Icon(Icons.label_rounded),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16)),
@@ -783,12 +844,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
           // ─── Learning Interests (learners only) ───
           if (isLearner) ...[
-            Text('Learning Interests',
+            Text(_t(context).epInterests,
                 style: AppTypography.titleSmall
                     .copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             Text(
-              'Pick favourite topics to personalise lessons',
+              _t(context).epInterestsHelp,
               style:
                   AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),
@@ -810,7 +871,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     _onChanged();
                   },
                   child: Semantics(
-                    label: '${cat.label}${selected ? ', selected' : ''}',
+                    label: '${cat.labelOf(_t(context))}'
+                        '${selected ? _t(context).epSelectedSuffix : ''}',
                     button: true,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
@@ -836,7 +898,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   overflow: TextOverflow.ellipsis,
 )),
                           const SizedBox(width: 6),
-                          Text(cat.label,
+                          Text(cat.labelOf(_t(context)),
                               style: AppTypography.bodySmall.copyWith(
                                 fontWeight: selected
                                     ? FontWeight.w700
@@ -853,12 +915,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ],
 
           // ─── Disability Type ──────────────
-          Text('Accessibility Profile',
+          Text(_t(context).epAccessProfile,
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text(
-            'Changing this will offer to auto-configure accessibility settings',
+            _t(context).epAccessHelp,
             style:
                 AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
@@ -869,7 +931,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   type: dt,
                   isSelected: dt == _selectedDisability,
                   onTap: () {
-                    setState(() => _selectedDisability = dt);
+                    setState(() {
+                      _selectedDisability = dt;
+                      // The supports on offer change with the category, so
+                      // re-scope immediately: the picker below must never be
+                      // showing a Deaf learner's sign system under Motor.
+                      _selectedSupports = LearnerSupportCatalog.normalize(
+                        dt,
+                        _selectedSupports,
+                      );
+                    });
                     _onChanged();
                   },
                 ),
@@ -877,15 +948,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
           const SizedBox(height: 20),
 
+          // ─── Learner Support (learners only) ───
+          if (isLearner) ...[
+            LearnerSupportPicker(
+              disabilityType: _selectedDisability,
+              selected: _selectedSupports,
+              onChanged: (next) {
+                setState(() => _selectedSupports = next);
+                _onChanged();
+              },
+            ),
+            const SizedBox(height: 4),
+          ],
+
           // ─── PIN Protection ───────────────
-          Text('PIN Protection',
+          Text(_t(context).epPinProtection,
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text(
             _hasPinOriginal
-                ? 'This profile is PIN-protected'
-                : 'Add a 4-digit PIN to protect this profile',
+                ? _t(context).epIsProtected
+                : _t(context).epAddPin,
             style:
                 AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
@@ -898,7 +982,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 _onChanged();
               },
               icon: const Icon(Icons.lock_open_rounded),
-              label: const Text('Remove PIN'),
+              label: Text(_t(context).epRemovePin),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.error,
                 side: const BorderSide(color: AppColors.error),
@@ -910,15 +994,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 const Icon(Icons.info_outline_rounded, size: 18,
                     color: AppColors.warning),
                 const SizedBox(width: 8),
-                const Expanded(
-                  child: Text('PIN will be removed when you save'),
+                Expanded(
+                  child: Text(_t(context).epPinRemovedOnSave),
                 ),
                 TextButton(
                   onPressed: () {
                     setState(() => _removingPin = false);
                     _onChanged();
                   },
-                  child: const Text('Cancel'),
+                  child: Text(_t(context).cancel),
                 ),
               ],
             )
@@ -935,7 +1019,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 });
                 _onChanged();
               },
-              title: Text('Enable PIN lock',
+              title: Text(_t(context).epEnablePin,
                   style: AppTypography.bodyMedium),
               secondary: Icon(
                 _enablePin
@@ -953,7 +1037,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 maxLength: 4,
                 obscureText: true,
                 decoration: InputDecoration(
-                  hintText: 'Enter 4-digit PIN',
+                  hintText: _t(context).epEnterPin,
                   prefixIcon: const Icon(Icons.pin_rounded),
                   counterText: '',
                   border: OutlineInputBorder(
@@ -970,7 +1054,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 maxLength: 4,
                 obscureText: true,
                 decoration: InputDecoration(
-                  hintText: 'Confirm PIN',
+                  hintText: _t(context).epConfirmPin,
                   prefixIcon: const Icon(Icons.pin_rounded),
                   counterText: '',
                   border: OutlineInputBorder(
@@ -1003,7 +1087,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Role',
+                      Text(_t(context).epRole,
                           style: AppTypography.labelSmall
                               .copyWith(color: hc.textSecondary)),
                       Text(profile.role.labelOf(AppLocalizations.of(context)),
@@ -1012,7 +1096,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ],
                   ),
                 ),
-                Text('Cannot be changed',
+                Text(_t(context).epCannotChange,
                     style: AppTypography.labelSmall
                         .copyWith(color: hc.textSecondary)),
               ],
@@ -1044,7 +1128,7 @@ class _DisabilityTile extends StatelessWidget {
       onTap: onTap,
       child: Semantics(
         label: '${type.labelOf(AppLocalizations.of(context))}'
-            '${isSelected ? ', selected' : ''}',
+            '${isSelected ? _t(context).epSelectedSuffix : ''}',
         button: true,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -1085,3 +1169,8 @@ class _DisabilityTile extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

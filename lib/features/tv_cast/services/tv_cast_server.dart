@@ -39,6 +39,7 @@ class TvCastServer {
     required this.getSession,
     this.onTvAudioReport,
     this.onRemoteAction,
+    this.getUiLanguage,
   });
 
   /// Alphabet for the session code: uppercase + digits with the characters
@@ -72,6 +73,13 @@ class TvCastServer {
   /// Decoupled like [getSession] so the server doesn't reach into the notifier.
   /// Actions are the literal strings `next`, `prev`, `playpause`.
   final void Function(String action)? onRemoteAction;
+
+  /// The app's language code (`en` / `fil`), read per request like
+  /// [getSession]. It picks the language of the TV's own captions ("The End",
+  /// "Time's up!") — lesson words keep following the "Language on TV" setting.
+  final String Function()? getUiLanguage;
+
+  String get _ui => getUiLanguage?.call() == 'fil' ? 'fil' : 'en';
 
   HttpServer? _httpServer;
   int? _boundPort;
@@ -254,12 +262,29 @@ class TvCastServer {
       return Response.notFound('${assetPath.split('/').last} missing');
     }
     return Response.ok(
-      _withBasePath(raw),
+      _localizeShell(_withBasePath(raw)),
       headers: {
         HttpHeaders.contentTypeHeader: 'text/html; charset=utf-8',
         HttpHeaders.cacheControlHeader: 'no-store',
       },
     );
+  }
+
+  /// The two bundled pages carry one English line each, shown before the
+  /// first state poll. Swapped here so a Filipino app's TV never flashes
+  /// English while it connects.
+  String _localizeShell(String html) {
+    if (_ui != 'fil') return html;
+    return html
+        .replaceAll('<html lang="en">', '<html lang="fil">')
+        .replaceAll(
+          'Waiting for the teacher to start casting&hellip;',
+          'Hinihintay magsimulang mag-cast ang guro&hellip;',
+        )
+        .replaceAll(
+          "This TV is ready. Pick what to cast on the teacher's phone.",
+          'Handa na ang TV na ito. Piliin sa phone ng guro ang ika-cast.',
+        );
   }
 
   /// Rewrites `"/style.css"` / `"/app.js"` to sit under [basePath] and exposes
@@ -351,6 +376,7 @@ class TvCastServer {
   /// the plain session JSON so the TV can render in a single round-trip.
   Map<String, dynamic> _enrichState(TvCastSession session) {
     final map = session.toApiJson();
+    map['ui'] = _ui;
     final cat = session.category;
 
     if ((session.mode == CastMode.flashcards ||
@@ -880,7 +906,8 @@ class TvCastServer {
   /// identical for both so it never confirms whether a code was close, and
   /// deliberately 404 so it leaks no structure.
   Response _rejectResponse() {
-    const body = '<!doctype html><html lang="en"><head>'
+    final fil = _ui == 'fil';
+    final body = '<!doctype html><html lang="${fil ? 'fil' : 'en'}"><head>'
         '<meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         '<title>FlashLearn TV</title>'
@@ -892,7 +919,7 @@ class TvCastServer {
         '.e{font-size:12vh;line-height:1;margin-bottom:2vh}</style>'
         '</head><body><div class="w"><div class="e">📺</div>'
         '<h1>FlashLearn TV</h1>'
-        '<p>Ask your teacher for the cast link shown on their screen.</p>'
+        '<p>${fil ? 'Hingin sa guro ang link ng cast na nasa screen niya.' : 'Ask your teacher for the cast link shown on their screen.'}</p>'
         '</div></body></html>';
     return Response.notFound(
       body,

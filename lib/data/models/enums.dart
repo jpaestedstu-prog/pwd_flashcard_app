@@ -121,9 +121,10 @@ extension DisabilityTypeX on DisabilityType {
   /// screens that build without one in widget tests, and a `!` there would turn
   /// a missing delegate into a crash rather than an English word.
   ///
-  /// [label] stays as the English constant because the CSV and PDF exports
+  /// [label] stays as the English constant because the research CSV exports
   /// print it: those are research artefacts that must read the same whoever
-  /// generated them, so they are deliberately *not* localized.
+  /// generated them, so they are deliberately *not* localized. (The PDFs a
+  /// parent or teacher reads follow the app's language and call [labelOf].)
   String labelOf(AppLocalizations? l10n) => l10n == null ? label : switch (this) {
     DisabilityType.visual => l10n.disabilityVisual,
     DisabilityType.hearing => l10n.disabilityHearing,
@@ -202,7 +203,7 @@ extension UserRoleX on UserRole {
 
   /// Localized role name, for every surface a person reads.
   ///
-  /// [label] stays English for the CSV and PDF exports — see [DisabilityTypeX.labelOf].
+  /// [label] stays English for the CSV exports — see [DisabilityTypeX.labelOf].
   String labelOf(AppLocalizations? l10n) => l10n == null ? label : switch (this) {
     UserRole.student => l10n.roleNameStudent,
     UserRole.teacher => l10n.roleNameTeacher,
@@ -252,6 +253,22 @@ extension UserRoleX on UserRole {
 }
 
 extension LearningLevelX on LearningLevel {
+  /// [label] in the reader's language.
+  String labelOf(AppLocalizations l10n) => switch (this) {
+    LearningLevel.beginner => l10n.lvlBeginner,
+    LearningLevel.elementary => l10n.lvlElementary,
+    LearningLevel.intermediate => l10n.lvlIntermediate,
+    LearningLevel.advanced => l10n.lvlAdvanced,
+  };
+
+  /// [description] in the reader's language.
+  String descriptionOf(AppLocalizations l10n) => switch (this) {
+    LearningLevel.beginner => l10n.lvlBeginnerDesc,
+    LearningLevel.elementary => l10n.lvlElementaryDesc,
+    LearningLevel.intermediate => l10n.lvlIntermediateDesc,
+    LearningLevel.advanced => l10n.lvlAdvancedDesc,
+  };
+
   String get label => switch (this) {
     LearningLevel.beginner => 'Beginner',
     LearningLevel.elementary => 'Elementary',
@@ -395,7 +412,7 @@ extension FlashcardCategoryX on FlashcardCategory {
 }
 
 extension GameDifficultyX on GameDifficulty {
-  /// English name. The source of truth for CSV / PDF exports and research
+  /// English name. The source of truth for CSV exports and research
   /// data, which stay English on purpose so one dataset reads the same
   /// whatever language the learner's tablet is set to. Anything a *learner*
   /// reads should call [labelOf] instead.
@@ -603,6 +620,19 @@ extension GradeLevelX on GradeLevel {
     GradeLevel.college => 'College',
   };
 
+  /// [label] in the reader's language.
+  String labelOf(AppLocalizations l10n) => switch (this) {
+    GradeLevel.kinder => l10n.sfKinder,
+    GradeLevel.grade1 => l10n.sfGradeN(1),
+    GradeLevel.grade2 => l10n.sfGradeN(2),
+    GradeLevel.grade3 => l10n.sfGradeN(3),
+    GradeLevel.grade4 => l10n.sfGradeN(4),
+    GradeLevel.grade5 => l10n.sfGradeN(5),
+    GradeLevel.grade6 => l10n.sfGradeN(6),
+    GradeLevel.highSchool => l10n.sfHighSchool,
+    GradeLevel.college => l10n.sfCollege,
+  };
+
   int get sortOrder => index;
 }
 
@@ -686,6 +716,13 @@ enum SignVerification {
 }
 
 extension SignMasteryX on SignMastery {
+  /// [label] in the reader's language.
+  String labelOf(AppLocalizations l10n) => switch (this) {
+    SignMastery.notSet => l10n.signNotSet,
+    SignMastery.learning => l10n.signLearning,
+    SignMastery.canSign => l10n.signCanSign,
+  };
+
   String get label => switch (this) {
     SignMastery.notSet => 'Not set',
     SignMastery.learning => 'Learning',
@@ -701,6 +738,13 @@ extension SignMasteryX on SignMastery {
 }
 
 extension SignVerificationX on SignVerification {
+  /// [label] in the reader's language.
+  String labelOf(AppLocalizations l10n) => switch (this) {
+    SignVerification.unreviewed => l10n.signUnreviewed,
+    SignVerification.confirmed => l10n.signConfirmed,
+    SignVerification.notConfirmed => l10n.signNeedsPractice,
+  };
+
   String get label => switch (this) {
     SignVerification.unreviewed => 'Not checked yet',
     SignVerification.confirmed => 'Confirmed',

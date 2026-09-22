@@ -13,6 +13,8 @@ import '../../../providers/parent_provider.dart';
 import '../../parent/models/educator_audience.dart';
 import '../models/teacher_analytics_models.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Screen for teachers to compare 2–3 students side by side across
 /// key metrics: words learned, accuracy, streak, stars, categories.
@@ -126,7 +128,7 @@ class _StudentComparisonScreenState
                       padding: const EdgeInsets.all(32),
                       child: Center(
                         child: Text(
-                          'Select at least 2 students to compare',
+                          _t(context).scmpSelect2,
                           style: AppTypography.bodyMedium.copyWith(
                             color: hc.textSecondary,
                           ),
@@ -144,7 +146,7 @@ class _StudentComparisonScreenState
                               size: 56, color: hc.textHint),
                           const SizedBox(height: 12),
                           Text(
-                            'Select 2–3 students above to compare',
+                            _t(context).scmpSelect23,
                             style: AppTypography.bodyMedium.copyWith(
                               color: hc.textSecondary,
                             ),
@@ -363,12 +365,12 @@ class _MetricsComparisonCard extends StatelessWidget {
     // genuine comparison visual, so they stay as-is (the single-value pro tiles
     // don't apply here).
     return ProPanel(
-      title: 'Key Metrics',
+      title: _t(context).scmpKeyMetrics,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _MetricRow(
-            metric: 'Words Learned',
+            metric: _t(context).wrWordsLearned,
             icon: Icons.school_rounded,
             values: students.map((s) => s.wordsLearned.toDouble()).toList(),
             names: students.map((s) => s.name).toList(),
@@ -378,7 +380,7 @@ class _MetricsComparisonCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _MetricRow(
-            metric: 'Accuracy',
+            metric: _t(context).accuracy,
             icon: Icons.percent_rounded,
             values: students
                 .map((s) => s.averageAccuracy * 100)
@@ -390,7 +392,7 @@ class _MetricsComparisonCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _MetricRow(
-            metric: 'Streak (days)',
+            metric: _t(context).scmpStreakDays,
             icon: Icons.local_fire_department_rounded,
             values:
                 students.map((s) => s.streakDays.toDouble()).toList(),
@@ -401,7 +403,7 @@ class _MetricsComparisonCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _MetricRow(
-            metric: 'Stars Earned',
+            metric: _t(context).scmpStarsEarned,
             icon: Icons.star_rounded,
             values:
                 students.map((s) => s.totalStars.toDouble()).toList(),
@@ -412,7 +414,7 @@ class _MetricsComparisonCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _MetricRow(
-            metric: 'Games Played',
+            metric: _t(context).wrGamesPlayed,
             icon: Icons.sports_esports_rounded,
             values:
                 students.map((s) => s.gamesPlayed.toDouble()).toList(),
@@ -560,7 +562,7 @@ class _CategoryComparisonChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Category Comparison',
+            _t(context).scmpCategoryComparison,
             style: AppTypography.titleSmall.copyWith(
               fontWeight: FontWeight.w700,
               color: hc.textPrimary,
@@ -579,7 +581,8 @@ class _CategoryComparisonChart extends StatelessWidget {
                       final cat = sortedCats[group.x];
                       final studentName = students[rodIndex].name;
                       return BarTooltipItem(
-                        '$studentName\n$cat: ${rod.toY.round()}%',
+                        '$studentName\n'
+                        '${_categoryName(_t(context), cat)}: ${rod.toY.round()}%',
                         AppTypography.labelSmall.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -704,7 +707,7 @@ class _StrengthsWeaknessTable extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Strengths & Weaknesses',
+            _t(context).scmpStrengths,
             style: AppTypography.titleSmall.copyWith(
               fontWeight: FontWeight.w700,
               color: hc.textPrimary,
@@ -749,7 +752,7 @@ class _StrengthsWeaknessTable extends StatelessWidget {
                                   size: 12,
                                   color: AppColors.success),
                               Text(
-                                ' ${s.strongestCategory}',
+                                ' ${_categoryName(_t(context), s.strongestCategory!)}',
                                 style: AppTypography.bodySmall.copyWith(
                                   color: AppColors.success,
                                   fontSize: 11,
@@ -764,7 +767,7 @@ class _StrengthsWeaknessTable extends StatelessWidget {
                                   size: 12,
                                   color: AppColors.error),
                               Text(
-                                ' ${s.weakestCategory}',
+                                ' ${_categoryName(_t(context), s.weakestCategory!)}',
                                 style: AppTypography.bodySmall.copyWith(
                                   color: AppColors.error,
                                   fontSize: 11,
@@ -831,4 +834,17 @@ Color _colorForIndex(int index) {
     AppColors.accent,
   ];
   return colors[index % colors.length];
+}
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// A category stored by its English name, shown in the reader's language.
+String _categoryName(AppLocalizations t, String stored) {
+  for (final c in FlashcardCategory.values) {
+    if (c.label == stored || c.name == stored) return c.labelOf(t);
+  }
+  return stored;
 }

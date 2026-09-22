@@ -11,6 +11,8 @@ import '../../../data/models/enums.dart';
 import '../providers/hard_words_provider.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class HardWordsScreen extends ConsumerWidget {
   const HardWordsScreen({super.key});
@@ -28,7 +30,7 @@ class HardWordsScreen extends ConsumerWidget {
         AppBar(
           leading: const AppBackButton(),
           title: Text(
-            'Hard Words',
+            _t(context).homeHardWords,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -38,7 +40,7 @@ class HardWordsScreen extends ConsumerWidget {
               TextButton.icon(
                 onPressed: () => context.push('/smart-review'),
                 icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text('Practice'),
+                label: Text(_t(context).hwPractice),
               ),
           ],
         ),
@@ -52,19 +54,19 @@ class HardWordsScreen extends ConsumerWidget {
               builder: (context, constraints) {
                 final chips = <Widget>[
                   _StatChip(
-                    label: 'Struggling',
+                    label: _t(context).hwStruggling,
                     value: '${summary.wordsStruggling}',
                     color: AppColors.error,
                     icon: Icons.warning_amber_rounded,
                   ),
                   _StatChip(
-                    label: 'Attempted',
+                    label: _t(context).hwAttempted,
                     value: '${summary.totalAttempted}',
                     color: AppColors.secondary,
                     icon: Icons.quiz_rounded,
                   ),
                   _StatChip(
-                    label: 'Correct',
+                    label: _t(context).sumCorrect,
                     value: '${summary.totalCorrect}',
                     color: AppColors.success,
                     icon: Icons.check_circle_rounded,
@@ -200,12 +202,10 @@ class _StatChip extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const RichEmptyState(
+    return RichEmptyState(
       emoji: '🎉',
-      title: 'No hard words!',
-      description:
-          'You\'re doing great! Keep playing games '
-          'and words you struggle with will appear here.',
+      title: _t(context).hwEmptyTitle,
+      description: _t(context).hwEmptyBody,
       accentColor: AppColors.success,
     );
   }
@@ -237,11 +237,13 @@ class _HardWordCard extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label:
-          '${card.wordEnglish}, '
-          '${card.wordFilipino}. '
-          'Accuracy: $pct percent. '
-          '${accuracy.correct} correct out of ${accuracy.total} attempts.',
+      label: _t(context).hwCardSemantics(
+        card.wordEnglish,
+        card.wordFilipino,
+        pct,
+        accuracy.correct,
+        accuracy.total,
+      ),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -348,3 +350,8 @@ class _HardWordCard extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -29,6 +29,45 @@ class LessonStep {
     this.gameDifficulty,
     this.minScoreThreshold = 0.0,
   });
+
+  /// [title] in the learner's language. Path content is seed data, like the
+  /// category names, so the Filipino ships beside it. Game steps keep the
+  /// game's own name, as the Games tab does.
+  String titleOf({required bool filipino}) {
+    if (!filipino) return title;
+    return switch (type) {
+      LessonStepType.flashcards => 'Aralin ang mga Salita',
+      LessonStepType.story => 'Basahin ang Kwento',
+      LessonStepType.quiz => 'Mabilis na Pagsusulit',
+      LessonStepType.smartReview => 'Kabisaduhin Mo!',
+      LessonStepType.game => title,
+    };
+  }
+
+  /// [description] in the learner's language.
+  String descriptionOf({required bool filipino}) {
+    if (!filipino) return description;
+    final pct = (minScoreThreshold * 100).round();
+    final name = category.labelFilipino;
+    return switch (type) {
+      LessonStepType.flashcards =>
+        'Pag-aralan ang lahat ng flashcard sa $name. Baligtarin ang bawat '
+            'kard at pakinggan ang bigkas.',
+      LessonStepType.game when gameType == GameType.spellingBee =>
+        'Ayusin ang mga letra para mabuo ang bawat salita. Kumuha ng hindi '
+            'bababa sa $pct% para pumasa!',
+      LessonStepType.game =>
+        'Itugma ang bawat salita sa larawan nito. Kumuha ng hindi bababa sa '
+            '$pct% para magpatuloy!',
+      LessonStepType.quiz =>
+        'Sagutin ang mga tanong sa flashcard quiz para subukin ang iyong '
+            'kaalaman. Layunin ang $pct%!',
+      LessonStepType.smartReview =>
+        'Tapusin ang isang smart review para tumatak ito sa iyong isip. '
+            'Kumuha ng $pct% para ma-master ang landas na ito!',
+      LessonStepType.story => description,
+    };
+  }
 }
 
 /// Type of activity in a lesson step.
@@ -68,7 +107,32 @@ class LearningPath {
   });
 
   int get totalSteps => steps.length;
+
+  /// [title] in the learner's language (see [LessonStep.titleOf]).
+  String titleOf({required bool filipino}) =>
+      filipino ? (_pathTitleFilipino[id] ?? title) : title;
+
+  /// [description] in the learner's language.
+  String descriptionOf({required bool filipino}) => filipino
+      ? 'Aralin nang hakbang-hakbang ang mga salita sa '
+            '${category.labelFilipino}!'
+      : description;
 }
+
+const _pathTitleFilipino = {
+  'path_animals': 'Mga Kaibigang Hayop',
+  'path_colors_shapes': 'Mga Kulay at Hugis',
+  'path_numbers': 'Mundo ng mga Numero',
+  'path_body_parts': 'Ang Aking Katawan',
+  'path_food_drinks': 'Masarap na Pagkain',
+  'path_family_greetings': 'Pamilya at Pagbati',
+  'path_clothing': 'Pagbibihis',
+  'path_weather': 'Bantay-Panahon',
+  'path_classroom': 'Sa Paaralan',
+  'path_transportation': 'Sa Daan',
+  'path_emotions': 'Ang Nararamdaman Ko',
+  'path_days_time': 'Araw at Oras',
+};
 
 /// Tracks the student's progress within a specific learning path.
 class LearningPathProgress {

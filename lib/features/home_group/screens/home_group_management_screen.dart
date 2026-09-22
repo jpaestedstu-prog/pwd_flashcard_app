@@ -9,6 +9,8 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/home_group_provider.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../../classroom/widgets/group_management_view.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Parent screen: create, rename, regenerate or delete home groups, and
 /// manage each group's roster.
@@ -25,7 +27,7 @@ class HomeGroupManagementScreen extends ConsumerWidget {
     if (profile == null) {
       return Scaffold(
         body: Center(
-          child: Text('No active profile.', style: AppTypography.bodyMedium),
+          child: Text(_t(context).mpNoProfile, style: AppTypography.bodyMedium),
         ),
       );
     }
@@ -41,6 +43,9 @@ class _HomeGroupDelegate extends GroupManagementDelegate {
   final String parentProfileId;
 
   const _HomeGroupDelegate({required this.parentProfileId});
+
+  @override
+  String get audience => 'parent';
 
   @override
   String get screenTitle => 'Home Groups';
@@ -147,6 +152,13 @@ class _HomeGroupDelegate extends GroupManagementDelegate {
   ) => _notifier(ref).setGroupAccessibility(_group(group), accessibility);
 
   @override
+  Future<void> setAllowRetakes(
+    WidgetRef ref,
+    ManagedGroup group,
+    bool allowed,
+  ) => _notifier(ref).setGroupRetakes(_group(group), allowed);
+
+  @override
   Future<void> regenerateCode(WidgetRef ref, ManagedGroup group) async {
     await _notifier(ref).regenerateCode(_group(group));
   }
@@ -177,3 +189,8 @@ class _HomeGroupDelegate extends GroupManagementDelegate {
     List<String> profileIds,
   ) => _notifier(ref).removeChildren(_group(group), profileIds);
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

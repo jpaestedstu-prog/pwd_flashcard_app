@@ -30,6 +30,8 @@ import '../../../providers/pin_unlock_grace_provider.dart';
 import '../../../providers/unlocking_educators_provider.dart';
 import '../../../widgets/fsl_fullscreen_player.dart';
 import '../services/child_unlock_override_service.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Grace window granted on a successful PIN / recovery-code entry. The
 /// underlying time-limit/alarm/schedule rule may still be active, so
@@ -168,7 +170,7 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
       } else {
         setState(() {
           _error =
-              'Too many attempts. Try again in ${_formatRemaining(remaining)}.';
+              _t(context).tuTooMany(_formatRemaining(remaining));
         });
       }
     });
@@ -300,7 +302,7 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
         ),
         const SizedBox(height: 16),
         Text(
-          reason?.title ?? 'Locked',
+          reason == null ? _t(context).locked : _reasonTitle(_t(context), reason),
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
             fontSize:
@@ -318,17 +320,17 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
           scale: _presentation.messageScale,
           announce: _presentation.announce,
         ),
-        if (reason?.subtitle != null) ...[
+        if (reason != null && _reasonSubtitle(_t(context), reason) != null) ...[
           const SizedBox(height: 8),
           Text(
-            reason!.subtitle!,
+            _reasonSubtitle(_t(context), reason)!,
             style: Theme.of(context).textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),
         ],
         const SizedBox(height: 4),
         Text(
-          'Active profile: ${profile.name}',
+          _t(context).tuActiveProfile(profile.name),
           style: Theme.of(context).textTheme.labelSmall,
           textAlign: TextAlign.center,
         ),
@@ -493,12 +495,12 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
     if (_cooldownRemaining != null) {
       setState(
         () => _error =
-            'Too many attempts. Try again in ${_formatRemaining(_cooldownRemaining!)}.',
+            _t(context).tuTooMany(_formatRemaining(_cooldownRemaining!)),
       );
       return;
     }
     if (pin.length < 4) {
-      setState(() => _error = 'Enter a 4-digit PIN.');
+      setState(() => _error = _t(context).tuEnterPin);
       return;
     }
     setState(() {
@@ -538,8 +540,8 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
       }
       setState(() {
         _error = cooldown > Duration.zero
-            ? 'Too many attempts. Try again in ${_formatRemaining(cooldown)}.'
-            : 'Incorrect PIN. Ask your parent or teacher.';
+            ? _t(context).tuTooMany(_formatRemaining(cooldown))
+            : _t(context).tuWrongPin;
       });
       _pinController.clear();
     }
@@ -567,32 +569,31 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
     final code = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Use recovery code'),
+        title: Text(_t(context).tuUseRecovery),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Enter the recovery code printed when this profile\'s PIN '
-              'was set. Codes are case-insensitive.',
-              style: TextStyle(fontSize: 12),
+            Text(
+              _t(context).tuRecoveryBody,
+              style: const TextStyle(fontSize: 12),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'Recovery code'),
+              decoration: InputDecoration(labelText: _t(context).tuRecoveryCode),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(_t(context).cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Verify'),
+            child: Text(_t(context).tuVerify),
           ),
         ],
       ),
@@ -612,7 +613,7 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
       _grantPinUnlockGrace(childProfileId, matched);
       GoRouter.of(context).go('/home');
     } else {
-      setState(() => _error = 'Recovery code did not match.');
+      setState(() => _error = _t(context).tuRecoveryMismatch);
     }
   }
 
@@ -767,7 +768,7 @@ class _HandoffFlipCardState extends ConsumerState<_HandoffFlipCard> {
 
   /// What the back face is, in words — used in the prompt and the
   /// screen-reader label so they can't drift from each other.
-  String get _clipNoun => _isFsl ? 'sign-language video' : 'alarm';
+  String get _clipNoun => _isFsl ? _t(context).tuSignVideo : _t(context).tuAlarm;
 
   @override
   void initState() {
@@ -955,10 +956,10 @@ class _HandoffFlipCardState extends ConsumerState<_HandoffFlipCard> {
     if (!_canFlip) return widget.caption;
     if (_showVideo) {
       return _isFsl
-          ? 'Sign-language video. Tap to see the picture.'
-          : 'Alarm clock animation. Tap to see the picture.';
+          ? _t(context).tuSignVideoTap
+          : _t(context).tuAlarmTap;
     }
-    return '${widget.caption} Tap to see the $_clipNoun.';
+    return _t(context).tuTapToSeeClip(widget.caption, _clipNoun);
   }
 
   Widget _face({required bool video, required double maxHeight}) {
@@ -1025,7 +1026,7 @@ class _HandoffFlipCardState extends ConsumerState<_HandoffFlipCard> {
         color: scheme.primary,
       ),
       label: Text(
-        _showVideo ? 'Tap to see the picture' : 'Tap to see the $_clipNoun',
+        _showVideo ? _t(context).tuTapPicture : _t(context).tuTapClip(_clipNoun),
       ),
     );
   }
@@ -1043,7 +1044,7 @@ class _HandoffFlipCardState extends ConsumerState<_HandoffFlipCard> {
     return TextButton.icon(
       onPressed: _openFullscreen,
       icon: const Icon(Icons.fullscreen_rounded),
-      label: const Text('Watch in full screen'),
+      label: Text(_t(context).tuFullScreen),
     );
   }
 
@@ -1090,7 +1091,7 @@ class _PinForm extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Enter parent / teacher PIN to continue',
+          _t(context).tuEnterAdultPin,
           style: Theme.of(context).textTheme.bodyMedium,
           textAlign: TextAlign.center,
         ),
@@ -1133,7 +1134,7 @@ class _PinForm extends StatelessWidget {
         ),
         TextButton(
           onPressed: onForgot,
-          child: const Text('Forgot PIN? Use recovery code'),
+          child: Text(_t(context).tuForgotPin),
         ),
       ],
     );
@@ -1179,7 +1180,7 @@ class _SwitchAccountBar extends StatelessWidget {
           ),
           onPressed: onPressed,
           icon: const Icon(Icons.switch_account_rounded),
-          label: const Text('Switch account'),
+          label: Text(_t(context).tuSwitchAccount),
         ),
       ),
     );
@@ -1194,8 +1195,7 @@ class _SwitchAccountNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      'Switching accounts does not unlock this profile — it stays locked '
-      'until an adult enters the PIN.',
+      _t(context).tuSwitchNote,
       style: Theme.of(context).textTheme.labelSmall,
       textAlign: TextAlign.center,
     );
@@ -1207,16 +1207,14 @@ class _NoEducatorsHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.all(16),
+    return Padding(
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Icon(Icons.info_outline_rounded, size: 32),
-          SizedBox(height: 8),
+          const Icon(Icons.info_outline_rounded, size: 32),
+          const SizedBox(height: 8),
           Text(
-            'No parent or teacher is linked to this device yet, so the '
-            'lock cannot be dismissed here. Ask the device owner to '
-            'sign in once.',
+            _t(context).tuNoAdult,
             textAlign: TextAlign.center,
           ),
         ],
@@ -1224,3 +1222,33 @@ class _NoEducatorsHint extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// [LockReason.title] in the learner's language. The enforcer stays free of
+/// Flutter (it runs in the router redirect and in plain unit tests), so the
+/// wording is chosen here, where the lock is drawn.
+String _reasonTitle(AppLocalizations t, LockReason reason) => switch (reason) {
+  TimeLimitReached() => t.lrTimeUp,
+  OutsideSchedule() => t.lrOutsideHours,
+  AlarmTriggered(:final alarm) =>
+    alarm.label.isEmpty ? t.lrAlarm : alarm.label,
+  RoutineStepDue(:final step) =>
+    step.title.isEmpty ? t.lrRoutineTime : step.title,
+};
+
+/// [LockReason.subtitle] in the learner's language.
+String? _reasonSubtitle(AppLocalizations t, LockReason reason) =>
+    switch (reason) {
+      TimeLimitReached(:final minutesUsed, :final dailyLimitMinutes) =>
+        t.lrUsed(minutesUsed, dailyLimitMinutes),
+      OutsideSchedule(:final allowedStartHour, :final allowedEndHour) =>
+        t.lrAllowed(_hour(allowedStartHour), _hour(allowedEndHour)),
+      AlarmTriggered() => t.lrTakeBreak,
+      RoutineStepDue() => t.lrFinishThis,
+    };
+
+String _hour(int h) => '${h.toString().padLeft(2, '0')}:00';

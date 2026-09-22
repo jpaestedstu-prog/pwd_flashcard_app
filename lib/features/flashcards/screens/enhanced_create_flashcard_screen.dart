@@ -16,6 +16,8 @@ import '../../../data/local/hive_service.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/utils/accessible_sizing.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Enhanced flashcard creator with image attachment and voice recording.
 ///
@@ -113,7 +115,7 @@ class _EnhancedCreateFlashcardScreenState
   // ─── Voice Dictation ───────────────────────────────
   Future<void> _startDictation(_DictationTarget target) async {
     if (!_speechAvailable) {
-      AppSnackBar.warning(context, message: 'Speech recognition not available on this device.');
+      AppSnackBar.warning(context, message: _t(context).cfNoSpeech);
       return;
     }
 
@@ -176,7 +178,7 @@ class _EnhancedCreateFlashcardScreenState
     if (mounted) {
       AppSnackBar.success(
         context,
-        message: _isEditing ? 'Flashcard updated! \u270f\ufe0f' : 'Flashcard created! \ud83c\udf89',
+        message: _isEditing ? _t(context).cfUpdated : _t(context).cfCreated,
       );
       context.pop(true);
     }
@@ -191,7 +193,7 @@ class _EnhancedCreateFlashcardScreenState
       appBar: AppBar(
         leading: const AppBackButton(fallbackRoute: '/flashcards'),
         title: Text(
-          _isEditing ? 'Edit Flashcard' : 'Create Flashcard',
+          _isEditing ? _t(context).cfEditTitle : _t(context).cfCreateTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -203,7 +205,7 @@ class _EnhancedCreateFlashcardScreenState
               child: Chip(
                 avatar: Icon(Icons.mic, size: 16, color: hc.success),
                 label: Text(
-                  'Voice Ready',
+                  _t(context).cfVoiceReady,
                   style: AppTypography.labelSmall.copyWith(
                     color: hc.success,
                     fontSize: 10,
@@ -233,7 +235,7 @@ class _EnhancedCreateFlashcardScreenState
               const SizedBox(height: 24),
 
               // ─── Image Section ────────────────────
-              _SectionLabel(label: 'Image', icon: Icons.image_rounded, hc: hc),
+              _SectionLabel(label: _t(context).cfImage, icon: Icons.image_rounded, hc: hc),
               const SizedBox(height: 8),
               _ImagePickerArea(
                 imagePath: _imagePath,
@@ -246,7 +248,7 @@ class _EnhancedCreateFlashcardScreenState
 
               // ─── Category Selector ────────────────
               _SectionLabel(
-                  label: 'Category', icon: Icons.category_rounded, hc: hc),
+                  label: _t(context).cfCategory, icon: Icons.category_rounded, hc: hc),
               const SizedBox(height: 8),
               SizedBox(
                 height: 42,
@@ -257,7 +259,7 @@ class _EnhancedCreateFlashcardScreenState
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
-                        label: Text(cat.label),
+                        label: Text(cat.labelOf(_t(context))),
                         avatar: Icon(cat.icon,
                             size: 16,
                             color: isSelected ? Colors.white : cat.color),
@@ -282,8 +284,8 @@ class _EnhancedCreateFlashcardScreenState
 
               // ─── English Word ─────────────────────
               _VoiceTextField(
-                label: 'Word (English)',
-                hint: 'e.g. Butterfly',
+                label: _t(context).bbWordEn,
+                hint: _t(context).cfHintEn,
                 icon: Icons.abc_rounded,
                 controller: _wordEnController,
                 hc: hc,
@@ -295,15 +297,15 @@ class _EnhancedCreateFlashcardScreenState
                         : _startDictation(_DictationTarget.english),
                 onChanged: () => setState(() {}),
                 validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Enter a word' : null,
+                    v == null || v.trim().isEmpty ? _t(context).cfEnterWord : null,
               ).animate(delay: 150.ms).fadeIn(duration: 400.ms),
 
               const SizedBox(height: 16),
 
               // ─── Filipino Word ────────────────────
               _VoiceTextField(
-                label: 'Word (Filipino)',
-                hint: 'e.g. Paru-paro',
+                label: _t(context).cfWordFil,
+                hint: _t(context).cfHintFil,
                 icon: Icons.translate_rounded,
                 controller: _wordFlController,
                 hc: hc,
@@ -316,7 +318,7 @@ class _EnhancedCreateFlashcardScreenState
                 onChanged: () => setState(() {}),
                 validator: (v) =>
                     v == null || v.trim().isEmpty
-                        ? 'Enter a translation'
+                        ? _t(context).cfEnterTranslation
                         : null,
               ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
 
@@ -324,8 +326,8 @@ class _EnhancedCreateFlashcardScreenState
 
               // ─── Example Sentence ─────────────────
               _VoiceTextField(
-                label: 'Example Sentence (optional)',
-                hint: 'e.g. The butterfly is colorful.',
+                label: _t(context).cfExample,
+                hint: _t(context).cfExampleHint,
                 icon: Icons.short_text_rounded,
                 controller: _exampleController,
                 hc: hc,
@@ -359,10 +361,10 @@ class _EnhancedCreateFlashcardScreenState
                       : const Icon(Icons.check_rounded),
                   label: Text(
                     _isSaving
-                        ? 'Saving...'
+                        ? _t(context).saving
                         : _isEditing
-                            ? 'Update Flashcard'
-                            : 'Create Flashcard',
+                            ? _t(context).cfUpdate
+                            : _t(context).cfCreateTitle,
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.w700),
                   ),
@@ -448,7 +450,7 @@ class _ImagePickerArea extends StatelessWidget {
               width: double.infinity,
               height: 160,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => _placeholder(),
+              errorBuilder: (context, error, stackTrace) => _placeholder(context),
             ),
           ),
           Positioned(
@@ -468,11 +470,11 @@ class _ImagePickerArea extends StatelessWidget {
 
     return GestureDetector(
       onTap: onPick,
-      child: _placeholder(),
+      child: _placeholder(context),
     );
   }
 
-  Widget _placeholder() {
+  Widget _placeholder(BuildContext context) {
     return Container(
       width: double.infinity,
       height: 120,
@@ -490,7 +492,7 @@ class _ImagePickerArea extends StatelessWidget {
           Icon(Icons.add_photo_alternate_rounded, size: 36, color: hc.primary),
           const SizedBox(height: 6),
           Text(
-            'Tap to add an image',
+            _t(context).cfTapImage,
             style: AppTypography.labelSmall.copyWith(
               color: hc.primary,
               fontWeight: FontWeight.w600,
@@ -569,7 +571,7 @@ class _VoiceTextField extends StatelessWidget {
           controller: controller,
           style: AppTypography.bodyLarge.copyWith(color: hc.textPrimary),
           decoration: InputDecoration(
-            hintText: isListening ? 'Listening…' : hint,
+            hintText: isListening ? _t(context).cfListening : hint,
             hintStyle: TextStyle(
               color: isListening ? hc.error : hc.textHint,
               fontStyle: isListening ? FontStyle.italic : FontStyle.normal,
@@ -639,7 +641,7 @@ class _MicButton extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              isListening ? 'Stop' : 'Dictate',
+              isListening ? _t(context).opStop : _t(context).cfDictate,
               style: AppTypography.labelSmall.copyWith(
                 fontWeight: FontWeight.w700,
                 color: isListening ? hc.error : hc.primary,
@@ -713,7 +715,7 @@ class _EnhancedPreviewCard extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  'Preview',
+                  _t(context).dtPreview,
                   style: AppTypography.labelSmall.copyWith(
                     color: Colors.white.withValues(alpha: 0.7),
                   ),
@@ -724,7 +726,7 @@ class _EnhancedPreviewCard extends StatelessWidget {
                   const SizedBox(height: 8),
                 ],
                 Text(
-                  wordEn.isEmpty ? 'Your Word' : wordEn,
+                  wordEn.isEmpty ? _t(context).cfYourWord : wordEn,
                   style: AppTypography.headlineMedium.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -745,3 +747,8 @@ class _EnhancedPreviewCard extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -10,6 +10,8 @@ import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/local/profile_export_service.dart';
 import '../../../providers/app_providers.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Screen for importing and exporting individual student profiles.
 class ProfileImportExportScreen extends ConsumerStatefulWidget {
@@ -49,11 +51,15 @@ class _ProfileImportExportScreenState
     try {
       await ProfileExportService.exportProfile(profile);
       if (mounted) {
-        AppSnackBar.success(context, message: '${profile.name} exported successfully');
+        AppSnackBar.success(context, message: _t(context).ieExported(profile.name));
       }
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context, message: 'Export failed: $e');
+        debugPrint('Profile export failed: $e');
+        AppSnackBar.error(
+          context,
+          message: _t(context).ieExportFailed(_t(context).csxWrong),
+        );
       }
     } finally {
       if (mounted) setState(() => _exporting = false);
@@ -66,9 +72,15 @@ class _ProfileImportExportScreenState
       final result = await ProfileExportService.importProfile();
       if (mounted) {
         if (result.success) {
-          AppSnackBar.success(context, message: result.message);
+          AppSnackBar.success(
+            context,
+            message: _importMessage(_t(context), result.message),
+          );
         } else {
-          AppSnackBar.error(context, message: result.message);
+          AppSnackBar.error(
+            context,
+            message: _importMessage(_t(context), result.message),
+          );
         }
         if (result.success) {
           ref.invalidate(allProfilesWithProgressProvider);
@@ -77,7 +89,11 @@ class _ProfileImportExportScreenState
       }
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context, message: 'Import failed: $e');
+        debugPrint('Profile import failed: $e');
+        AppSnackBar.error(
+          context,
+          message: _t(context).ieImportFailed(_t(context).csxWrong),
+        );
       }
     } finally {
       if (mounted) setState(() => _importing = false);
@@ -90,7 +106,7 @@ class _ProfileImportExportScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Import / Export'),
+        title: Text(_t(context).splImportExport),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -98,10 +114,10 @@ class _ProfileImportExportScreenState
           // ─── Import Section ──────────────
           _ActionCard(
             icon: Icons.file_download_rounded,
-            title: 'Import Student Profile',
+            title: _t(context).ieImportTitle,
             description:
-                'Restore a student profile from a JSON file exported by another device.',
-            buttonLabel: _importing ? 'Importing…' : 'Choose File',
+                _t(context).ieImportSub,
+            buttonLabel: _importing ? _t(context).ieImporting : _t(context).ieChooseFile,
             buttonIcon: Icons.folder_open_rounded,
             color: AppColors.primary,
             onPressed: _importing ? null : _importProfile,
@@ -113,14 +129,14 @@ class _ProfileImportExportScreenState
 
           // ─── Export Section ─────────────
           Text(
-            'Export a Student',
+            _t(context).ieExportStudent,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Tap a student below to export their profile, progress, and achievements as a JSON file.',
+            _t(context).ieExportSub,
             style: AppTypography.bodySmall.copyWith(
               color: hc.textSecondary,
             ),
@@ -144,7 +160,7 @@ class _ProfileImportExportScreenState
                       color: AppColors.textHint.withValues(alpha: 0.5)),
                   const SizedBox(height: 12),
                   Text(
-                    'No student profiles to export',
+                    _t(context).ieNoStudents,
                     style: AppTypography.bodyMedium.copyWith(
                       color: AppColors.textHint,
                     ),
@@ -332,7 +348,7 @@ class _ExportProfileCard extends StatelessWidget {
                   children: [
                     if (profile.age != null)
                       Text(
-                        '${profile.age} yrs',
+                        _t(context).profileAgeYrs(profile.age!),
                         style: AppTypography.bodySmall.copyWith(
                           color: AppColors.textHint,
                         ),
@@ -360,7 +376,7 @@ class _ExportProfileCard extends StatelessWidget {
           FilledButton.tonalIcon(
             onPressed: exporting ? null : onExport,
             icon: const Icon(Icons.file_upload_rounded, size: 18),
-            label: const Text('Export'),
+            label: Text(_t(context).ieExport),
             style: FilledButton.styleFrom(
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -373,4 +389,23 @@ class _ExportProfileCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// The import result is written in English by [ProfileExportService]; this
+/// shows it in the reader's language.
+String _importMessage(AppLocalizations t, String m) {
+  final imported = RegExp(r'^Successfully imported “(.*)”$').firstMatch(m);
+  if (imported != null) return t.ieImported(imported[1]!);
+  if (m == 'No file selected') return t.ieNoFile;
+  if (m == 'Could not read file') return t.ieCantRead;
+  if (m == 'Invalid file format') return t.ieBadFormat;
+  if (m.startsWith('This file does not contain')) return t.ieNotProfile;
+  if (m.startsWith('A profile with this ID already exists')) return t.ieExists;
+  if (m.startsWith('Error reading file')) return t.ieReadFailed;
+  return m;
 }

@@ -7,6 +7,7 @@ import '../../core/utils/error_handler.dart';
 import '../models/enums.dart';
 import '../models/models.dart';
 import 'hive_service.dart';
+import '../../core/accessibility/learner_support.dart';
 
 /// Handles exporting and importing individual student profiles as JSON files.
 ///
@@ -184,6 +185,7 @@ class ProfileExportService {
     'birthDate': p.birthDate?.toIso8601String(),
     'tags': p.tags,
     'interests': p.interests.map((c) => c.index).toList(),
+    'supportOptions': LearnerSupportCatalog.encode(p.supportOptions),
   };
 
   static UserProfile _profileFromMap(Map<String, dynamic> m) {
@@ -205,6 +207,8 @@ class ProfileExportService {
           ? DisabilityType.values[disabilityIndex]
           : DisabilityType.none,
       pin: m['pin'] as String?,
+      supportOptions:
+          LearnerSupportCatalog.decode(m['supportOptions'] as List?),
       gradeLevel:
           (gradeLevelIndex != null &&
               gradeLevelIndex >= 0 &&

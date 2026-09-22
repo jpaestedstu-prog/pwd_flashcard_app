@@ -10,6 +10,8 @@ import '../../../data/models/learning_path.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_back_button.dart';
 import '../widgets/winding_trail.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Top-level "learning world": every learning path is a region on one big
 /// winding trail. Completed regions show a check, the next region to tackle
@@ -58,7 +60,7 @@ class LearningWorldScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(fallbackRoute: '/learning-paths'),
-        title: const Text('Adventure Map 🗺️'),
+        title: Text(_t(context).lpAdventureMap),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -104,17 +106,17 @@ class LearningWorldScreen extends ConsumerWidget {
     }
 
     final String? pill = switch (state) {
-      TrailNodeState.done => 'DONE',
+      TrailNodeState.done => _t(context).lpPillDone,
       TrailNodeState.current =>
-        completedSteps > 0 ? '$completedSteps/$total' : 'START',
-      TrailNodeState.available => 'ENTER',
+        completedSteps > 0 ? '$completedSteps/$total' : _t(context).lpPillStart,
+      TrailNodeState.available => _t(context).lpPillEnter,
       TrailNodeState.locked => null,
     };
 
     return TrailNode(
       state: state,
       emoji: path.emoji,
-      label: path.title,
+      label: path.titleOf(filipino: _t(context).localeName.startsWith('fil')),
       accent: path.category.color,
       pillText: pill,
       onTap: state == TrailNodeState.locked
@@ -161,8 +163,8 @@ class _WorldHeader extends StatelessWidget {
               children: [
                 Text(
                   completedRegions >= totalRegions && totalRegions > 0
-                      ? 'You mastered the whole world!'
-                      : 'Explore every region to become a champion',
+                      ? _t(context).lpWorldMastered
+                      : _t(context).lpWorldExplore,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.labelLarge.copyWith(
@@ -196,3 +198,8 @@ class _WorldHeader extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

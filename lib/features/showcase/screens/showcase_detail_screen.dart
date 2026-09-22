@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
+import '../../../core/utils/localized_date.dart';
 import '../models/showcase_models.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Detail view for a single showcase portfolio item
 class ShowcaseDetailScreen extends ConsumerWidget {
@@ -72,7 +75,7 @@ class ShowcaseDetailScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          item.type.label,
+                          item.type.labelOf(_t(context)),
                           style: AppTypography.labelMedium.copyWith(
                             color: AppColors.textOnPrimary,
                             fontWeight: FontWeight.w700,
@@ -108,7 +111,7 @@ class ShowcaseDetailScreen extends ConsumerWidget {
                               size: 20, color: item.type.color),
                           const SizedBox(width: 8),
                           Text(
-                            'Description',
+                            _t(context).pfDescription,
                             style: AppTypography.titleSmall.copyWith(
                               fontWeight: FontWeight.w700,
                               color: hc.textPrimary,
@@ -151,7 +154,7 @@ class ShowcaseDetailScreen extends ConsumerWidget {
                               size: 20, color: item.type.color),
                           const SizedBox(width: 8),
                           Text(
-                            'Details',
+                            _t(context).sdDetails,
                             style: AppTypography.titleSmall.copyWith(
                               fontWeight: FontWeight.w700,
                               color: hc.textPrimary,
@@ -162,22 +165,25 @@ class ShowcaseDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
                       _DetailRow(
                         icon: Icons.category_rounded,
-                        label: 'Type',
-                        value: item.type.label,
+                        label: _t(context).pfType,
+                        value: item.type.labelOf(_t(context)),
                         color: item.type.color,
                         hc: hc,
                       ),
                       _DetailRow(
                         icon: Icons.calendar_today_rounded,
-                        label: 'Earned',
-                        value: _formatDateLong(item.earnedAt),
+                        label: _t(context).sdEarned,
+                        value: LocalizedDate.monthDayYearLong(
+                          item.earnedAt,
+                          _t(context),
+                        ),
                         color: hc.info,
                         hc: hc,
                       ),
                       if (item.score != null && item.total != null)
                         _DetailRow(
                           icon: Icons.score_rounded,
-                          label: 'Score',
+                          label: _t(context).score,
                           value: '${item.score}/${item.total}',
                           color: AppColors.warning,
                           hc: hc,
@@ -185,7 +191,7 @@ class ShowcaseDetailScreen extends ConsumerWidget {
                       if (item.masteryPercent != null)
                         _DetailRow(
                           icon: Icons.percent_rounded,
-                          label: 'Mastery',
+                          label: _t(context).mastery,
                           value:
                               '${(item.masteryPercent! * 100).round()}%',
                           color: _masteryColor(item.masteryPercent!),
@@ -194,23 +200,23 @@ class ShowcaseDetailScreen extends ConsumerWidget {
                       if (item.category != null)
                         _DetailRow(
                           icon: item.category!.icon,
-                          label: 'Category',
-                          value: item.category!.label,
+                          label: _t(context).cfCategory,
+                          value: item.category!.labelOf(_t(context)),
                           color: item.category!.darkColor,
                           hc: hc,
                         ),
                       if (item.gameType != null)
                         _DetailRow(
                           icon: item.gameType!.icon,
-                          label: 'Game',
-                          value: item.gameType!.label,
+                          label: _t(context).wrGame,
+                          value: item.gameType!.labelOf(_t(context)),
                           color: item.gameType!.color,
                           hc: hc,
                         ),
                       _DetailRow(
                         icon: Icons.push_pin_rounded,
-                        label: 'Pinned',
-                        value: item.isPinned ? 'Yes' : 'No',
+                        label: _t(context).scStatPinned,
+                        value: item.isPinned ? _t(context).sdYes : _t(context).sdNo,
                         color: item.isPinned
                             ? item.type.color
                             : hc.textHint,
@@ -245,7 +251,7 @@ class ShowcaseDetailScreen extends ConsumerWidget {
                                 style: TextStyle(fontSize: 20)),
                             const SizedBox(width: 8),
                             Text(
-                              'Personal Note',
+                              _t(context).sdPersonalNote,
                               style: AppTypography.titleSmall.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: hc.textPrimary,
@@ -286,13 +292,6 @@ class ShowcaseDetailScreen extends ConsumerWidget {
     return AppColors.error;
   }
 
-  String _formatDateLong(DateTime date) {
-    final months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
-  }
 }
 
 class _DetailRow extends StatelessWidget {
@@ -354,3 +353,8 @@ class _DetailRow extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

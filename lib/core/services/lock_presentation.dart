@@ -1,5 +1,7 @@
 import '../../data/models/enums.dart';
 import '../../data/models/models.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/app_localizations_en.dart';
 
 /// How the "Time's up" lock announces itself to one learner.
 ///
@@ -342,30 +344,28 @@ class LockPresentation {
   /// One-line, educator-facing summary of what the child will actually
   /// experience. Rendered on the Time Limits screen so a parent/teacher
   /// can see the per-profile behaviour without reading this file.
-  List<String> get educatorSummary {
+  List<String> get educatorSummary => educatorSummaryOf(null);
+
+  /// [educatorSummary] in [l10n]'s language (English when null).
+  List<String> educatorSummaryOf(AppLocalizations? l10n) {
+    final t = l10n ?? AppLocalizationsEn();
     return [
-      'Advance warning banner',
+      t.lockSumBanner,
       if (playAlarmSound)
-        alarmRepeats > 1
-            ? 'Alarm chime ×$alarmRepeats'
-            : 'One gentle alarm chime',
+        alarmRepeats > 1 ? t.lockSumChimes(alarmRepeats) : t.lockSumOneChime,
       if (speakMessage)
-        repeatSpokenMessage ? 'Spoken message (said twice)' : 'Spoken message',
+        repeatSpokenMessage ? t.lockSumSpokenTwice : t.lockSumSpoken,
       // Shown for every profile — see `_HandoffFlipCard`.
-      'Picture of who to hand it to',
+      t.lockSumPicture,
       if (clip == LockClipKind.fsl)
-        clipFirst
-            ? 'FSL video first (tap to flip to the picture)'
-            : 'FSL video on the back of the picture',
+        clipFirst ? t.lockSumFslFirst : t.lockSumFslBack,
       if (clip == LockClipKind.alarm)
-        clipFirst
-            ? 'Alarm animation first (tap to flip to the picture)'
-            : 'Alarm animation on the back of the picture (tap to flip)',
-      if (visualAlert) 'Pulsing visual alert',
-      if (haptics) 'Vibration cue',
-      if (announce) 'Screen-reader announcement',
-      if (simplifiedWording) 'Short, simple wording',
-      'Large “Switch account” button',
+        clipFirst ? t.lockSumAlarmFirst : t.lockSumAlarmBack,
+      if (visualAlert) t.lockSumVisual,
+      if (haptics) t.lockSumVibration,
+      if (announce) t.lockSumReader,
+      if (simplifiedWording) t.lockSumSimple,
+      t.lockSumSwitch,
     ];
   }
 }
@@ -408,25 +408,15 @@ class LockPolicyDefaults {
 
   /// Human-readable rationale shown next to the "Apply" button so the
   /// educator understands what they're accepting.
-  static String rationaleFor(DisabilityType type) => switch (type) {
-    DisabilityType.visual =>
-      'Shorter day and frequent breaks — audio-led learning takes longer '
-          'per item and reduces eye strain.',
-    DisabilityType.hearing =>
-      'Standard session length; the hand-off is delivered as an FSL video '
-          'and a large caption instead of speech.',
-    DisabilityType.motor =>
-      'Shorter day and frequent breaks — sustained tapping and holding is '
-          'tiring. All lock buttons are extra large.',
-    DisabilityType.cognitive =>
-      'Short, predictable sessions with a fixed daily window. The lock '
-          'uses one chime and one short sentence.',
-    DisabilityType.multiple =>
-      'The most supportive settings of every profile combined: short '
-          'sessions, simple wording, the spoken message said twice, and '
-          'large buttons.',
-    DisabilityType.none =>
-      'Standard session length with an alarm and a spoken hand-off '
-          'message.',
-  };
+  static String rationaleFor(DisabilityType type, [AppLocalizations? l10n]) {
+    final t = l10n ?? AppLocalizationsEn();
+    return switch (type) {
+      DisabilityType.visual => t.lockWhyVisual,
+      DisabilityType.hearing => t.lockWhyHearing,
+      DisabilityType.motor => t.lockWhyMotor,
+      DisabilityType.cognitive => t.lockWhyCognitive,
+      DisabilityType.multiple => t.lockWhyMultiple,
+      DisabilityType.none => t.lockWhyNone,
+    };
+  }
 }

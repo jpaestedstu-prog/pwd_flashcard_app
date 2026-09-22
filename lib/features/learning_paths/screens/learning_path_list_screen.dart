@@ -8,6 +8,8 @@ import '../../../data/local/learning_path_data.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_back_button.dart';
 import '../widgets/path_card.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class LearningPathListScreen extends ConsumerWidget {
   const LearningPathListScreen({super.key});
@@ -21,11 +23,11 @@ class LearningPathListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: const Text('Learning Paths'),
+        title: Text(_t(context).lpTitle),
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: 'Adventure map',
+            tooltip: _t(context).lpMapTooltip,
             icon: const Icon(Icons.map_rounded),
             onPressed: () => context.push('/learning-world'),
           ),
@@ -42,7 +44,7 @@ class LearningPathListScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Your Learning Journey 🗺️',
+                      _t(context).lpJourney,
                       style: AppTypography.headlineMedium.copyWith(
                         fontWeight: FontWeight.w800,
                         color: HCColor.of(context).textPrimary,
@@ -50,8 +52,7 @@ class LearningPathListScreen extends ConsumerWidget {
                     ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.05, end: 0),
                     const SizedBox(height: 6),
                     Text(
-                      'Complete each path to unlock the next one. '
-                      'Master all 12 categories to become a vocabulary champion!',
+                      _t(context).lpIntro,
                       style: AppTypography.bodyMedium.copyWith(
                         color: HCColor.of(context).textSecondary,
                       ),
@@ -164,7 +165,7 @@ class _OverallProgressBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$completedCount / $totalCount paths completed',
+                  _t(context).lpPathsCompleted(completedCount, totalCount),
                   style: AppTypography.labelLarge.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -214,3 +215,8 @@ class _OverallProgressBar extends StatelessWidget {
     ).animate().fadeIn(duration: 400.ms, delay: 200.ms);
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

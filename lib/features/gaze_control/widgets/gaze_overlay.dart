@@ -4,6 +4,8 @@ import '../controllers/gaze_controller.dart';
 import '../models/gaze_action.dart';
 import '../models/gaze_models.dart';
 import 'gaze_widgets.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Additive, **non-interactive** gaze overlay shared by every `GazeScope`.
 ///
@@ -38,33 +40,35 @@ class GazeOverlay extends StatelessWidget {
         animation: controller,
         builder: (context, _) {
           if (controller.status != GazeStatus.ready) {
-            return SafeArea(child: _statusChip(controller.status));
+            return SafeArea(child: _statusChip(context, controller.status));
           }
-          return SafeArea(child: _content(faceVisible: controller.faceVisible));
+          return SafeArea(
+            child: _content(context, faceVisible: controller.faceVisible),
+          );
         },
       ),
     );
   }
 
-  Widget _content({required bool faceVisible}) {
+  Widget _content(BuildContext context, {required bool faceVisible}) {
     return Stack(
       children: [
         for (var i = 0; i < actions.length; i++)
           _positioned(actions[i], _targetFor(actions[i], i)),
         if (controller.cameraController != null)
           Positioned(top: 6, right: 8, child: _cameraPip()),
-        ?_hint(faceVisible),
+        ?_hint(context, faceVisible),
       ],
     );
   }
 
   /// The contextual hint, or null when there's nothing to say.
-  Widget? _hint(bool faceVisible) {
+  Widget? _hint(BuildContext context, bool faceVisible) {
     final String text;
     if (!faceVisible) {
-      text = '😊  Look at the screen';
+      text = _t(context).gzLook;
     } else if (_scanning) {
-      text = '😉  Blink to choose';
+      text = _t(context).gzBlink;
     } else {
       return null;
     }
@@ -148,13 +152,13 @@ class GazeOverlay extends StatelessWidget {
     );
   }
 
-  Widget _statusChip(GazeStatus status) {
+  Widget _statusChip(BuildContext context, GazeStatus status) {
     final (icon, text) = switch (status) {
-      GazeStatus.initializing => (Icons.hourglass_top_rounded, 'Starting gaze…'),
-      GazeStatus.noCamera => (Icons.videocam_off_rounded, 'Gaze: no front camera'),
+      GazeStatus.initializing => (Icons.hourglass_top_rounded, _t(context).viewerGazeStarting),
+      GazeStatus.noCamera => (Icons.videocam_off_rounded, _t(context).gzStatusNoCamera),
       GazeStatus.permissionDenied =>
-        (Icons.lock_rounded, 'Gaze: camera permission needed'),
-      _ => (Icons.error_outline_rounded, 'Gaze unavailable'),
+        (Icons.lock_rounded, _t(context).gzStatusPermission),
+      _ => (Icons.error_outline_rounded, _t(context).gzUnavailable),
     };
     return Align(
       alignment: const Alignment(0, -0.7),
@@ -177,3 +181,8 @@ class GazeOverlay extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

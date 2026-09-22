@@ -10,6 +10,8 @@ import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../models/category_mastery.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class CertificateScreen extends ConsumerWidget {
   const CertificateScreen({super.key});
@@ -37,9 +39,11 @@ class CertificateScreen extends ConsumerWidget {
       final catMastery = mastery[cat];
       if (catMastery != null && catMastery.isMastered) {
         certificates.add(_CertificateItem(
-          title: '${cat.label} Mastery',
-          subtitle:
-              '${catMastery.wordsLearned}/${catMastery.totalWords} words learned',
+          title: _t(context).certCategoryTitle(cat.labelOf(_t(context))),
+          subtitle: _t(context).certWordsLearned(
+            catMastery.wordsLearned,
+            catMastery.totalWords,
+          ),
           emoji: '🏆',
           color: cat.color,
           onGenerate: () => CertificateService.categoryMastery(
@@ -47,6 +51,7 @@ class CertificateScreen extends ConsumerWidget {
             category: cat,
             wordsLearned: catMastery.wordsLearned,
             totalWords: catMastery.totalWords,
+            l10n: _t(context),
           ),
         ));
       }
@@ -64,13 +69,14 @@ class CertificateScreen extends ConsumerWidget {
     for (final days in milestones) {
       if (bestStreak >= days) {
         certificates.add(_CertificateItem(
-          title: '$days-Day Streak',
-          subtitle: 'Consistent study dedication',
+          title: _t(context).certStreakTitle(days),
+          subtitle: _t(context).certStreakSub,
           emoji: '🔥',
           color: const Color(0xFFFF5722),
           onGenerate: () => CertificateService.streakMilestone(
             studentName: studentName,
             streakDays: days,
+            l10n: _t(context),
           ),
         ));
       }
@@ -79,8 +85,11 @@ class CertificateScreen extends ConsumerWidget {
     // Overall progress certificate (if learned 50+ words)
     if (progress.wordsLearned >= 50) {
       certificates.add(_CertificateItem(
-        title: 'Learning Excellence',
-        subtitle: '${progress.wordsLearned} words, ${progress.totalStars} stars',
+        title: _t(context).certExcellence,
+        subtitle: _t(context).certWordsStars(
+          progress.wordsLearned,
+          progress.totalStars,
+        ),
         emoji: '⭐',
         color: AppColors.warning,
         onGenerate: () => CertificateService.overallProgress(
@@ -90,6 +99,7 @@ class CertificateScreen extends ConsumerWidget {
           // The best streak reached, for the same reason as the milestone
           // certificates above — a printed award should not shrink.
           streakDays: bestStreak,
+          l10n: _t(context),
         ),
       ));
     }
@@ -101,7 +111,7 @@ class CertificateScreen extends ConsumerWidget {
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Text(
-          'My Certificates',
+          _t(context).certTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -117,16 +127,14 @@ class CertificateScreen extends ConsumerWidget {
                       size: 64, color: hc.textHint),
                   const SizedBox(height: 16),
                   Text(
-                    'No certificates yet',
+                    _t(context).certEmpty,
                     style: AppTypography.titleSmall.copyWith(
                       color: hc.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Keep learning to earn certificates!\n'
-                    'Master a category (80%+), build a 7-day streak,\n'
-                    'or learn 50+ words.',
+                    _t(context).certEmptyHint,
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textHint,
                     ),
@@ -194,8 +202,7 @@ class _CertificateCardState extends State<_CertificateCard> {
 
     return Semantics(
       button: true,
-      label: 'Certificate: ${widget.item.title}. ${widget.item.subtitle}. '
-          'Tap to preview and share.',
+      label: _t(context).certSemantics(widget.item.title, widget.item.subtitle),
       child: GestureDetector(
         onTap: _isGenerating ? null : _generateAndShare,
         child: Container(
@@ -277,13 +284,21 @@ class _CertificateCardState extends State<_CertificateCard> {
       if (!mounted) return;
       await Printing.layoutPdf(
         onLayout: (_) async => pdfBytes as dynamic,
-        name: 'Certificate - ${widget.item.title}',
+        name: _t(context).certFileName(widget.item.title),
       );
     } catch (e) {
       if (!mounted) return;
-      AppSnackBar.error(context, message: 'Failed to generate certificate: $e');
+      AppSnackBar.error(
+        context,
+        message: _t(context).certFailed('$e'),
+      );
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

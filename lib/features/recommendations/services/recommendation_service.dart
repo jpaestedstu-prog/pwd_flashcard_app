@@ -389,7 +389,7 @@ class RecommendationService {
   ) {
     final prog = pathProgress[path.id];
     if (prog == null) {
-      return 'Simulan ang ${path.title} learning path — '
+      return 'Simulan ang ${path.titleOf(filipino: true)} learning path — '
           '${path.totalSteps} hakbang para ma-master ang '
           '${path.category.labelFilipino}!';
     }

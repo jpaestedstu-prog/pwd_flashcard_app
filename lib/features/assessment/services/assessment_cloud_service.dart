@@ -209,17 +209,23 @@ class AssessmentCloudService {
     }
   }
 
-  Future<void> saveResult(String learnerId, AssessmentResult result) async {
+  /// Saves [result] on the device, then uploads it. Returns false when the
+  /// upload did not go through (the result is safe locally either way), so
+  /// the caller can make sure it is pushed once the connection returns —
+  /// see [AssessmentResultsNotifier.saveResult].
+  Future<bool> saveResult(String learnerId, AssessmentResult result) async {
     await AssessmentService.saveResult(learnerId, result);
-    if (!_enabled) return;
+    if (!_enabled) return true;
     try {
       await _db
           .collection(resultsCollection)
           .doc(result.id)
           .set({...result.toJson(), 'owner_uid': FirebaseService.currentUid})
           .timeout(remoteTimeout);
+      return true;
     } catch (e, s) {
       _log('saveResult', e, s);
+      return false;
     }
   }
 
@@ -292,8 +298,13 @@ class AssessmentCloudService {
 
   /// Pull the work assigned to this learner from any educator, plus the
   /// templates those assignments point at, so the hub can open them.
-  Future<void> hydrateLearner(String learnerId) async {
-    if (!_enabled || learnerId.isEmpty) return;
+  ///
+  /// Returns false when the pull failed — a timeout on a slow classroom
+  /// network is the usual case — so [LearnerAssignmentSync] can try again
+  /// rather than leave assigned work invisible until the app is reopened.
+  /// True when it completed, or when there is nothing to pull from.
+  Future<bool> hydrateLearner(String learnerId) async {
+    if (!_enabled || learnerId.isEmpty) return true;
     try {
       final snap = await _db
           .collection(assignmentsCollection)
@@ -342,9 +353,27 @@ class AssessmentCloudService {
       // for good and their educator's tracking row never left Pending.
       final cloudResultIds = await _pullResultsFor({learnerId});
       await _pushMissingResults(learnerId, knownResultIds: cloudResultIds);
+      return true;
     } catch (e, s) {
       _log('hydrateLearner', e, s);
+      return false;
     }
+  }
+
+  /// The ids of every assignment naming [learnerId], live.
+  ///
+  /// A Firestore listener rather than a poll: it costs one read per document
+  /// that actually changes, it reconnects by itself when a classroom network
+  /// drops and comes back, and it tells a learner's tablet about new work the
+  /// moment the teacher presses Assign — without the learner having to leave
+  /// and reopen the app. Empty (never emits) without Firebase.
+  Stream<Set<String>> watchLearnerAssignmentIds(String learnerId) {
+    if (!_enabled || learnerId.isEmpty) return const Stream.empty();
+    return _db
+        .collection(assignmentsCollection)
+        .where('studentIds', arrayContains: learnerId)
+        .snapshots()
+        .map((snap) => {for (final d in snap.docs) d.id});
   }
 
   // ─── Internals ──────────────────────────────────────────

@@ -2,13 +2,21 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import '../../../core/utils/localized_date.dart';
 import '../../../data/models/enums.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 import '../../../providers/parent_provider.dart';
 
 /// Generates a professional PDF weekly progress report for a child.
 class ReportGenerator {
   ReportGenerator._();
+
+  /// The language of the report being built, set at the top of each public
+  /// generate call. The report follows the app's language (the caller
+  /// passes its [AppLocalizations]); without one it stays English.
+  static AppLocalizations _l = AppLocalizationsEn();
 
   /// Load NotoSans fonts that support Unicode.
   ///
@@ -30,7 +38,11 @@ class ReportGenerator {
   }
 
   /// Generate a full weekly progress report PDF for one child.
-  static Future<Uint8List> generateWeeklyReport(ChildSummary child) async {
+  static Future<Uint8List> generateWeeklyReport(
+    ChildSummary child, {
+    AppLocalizations? l10n,
+  }) async {
+    _l = l10n ?? AppLocalizationsEn();
     final theme = await _loadTheme();
     final pdf = pw.Document(theme: theme);
     final now = DateTime.now();
@@ -52,37 +64,37 @@ class ReportGenerator {
           pw.SizedBox(height: 20),
 
           // ─── Overview Stats ─────────────────────
-          _buildSectionTitle('Weekly Overview', headerColor),
+          _buildSectionTitle(_l.wrOverview, headerColor),
           pw.SizedBox(height: 10),
           _buildStatsGrid(child, accentColor, warningColor, successColor),
           pw.SizedBox(height: 20),
 
           // ─── Study Time Breakdown ───────────────
-          _buildSectionTitle('Daily Study Time', headerColor),
+          _buildSectionTitle(_l.wrDailyTime, headerColor),
           pw.SizedBox(height: 10),
           _buildStudyTimeTable(child),
           pw.SizedBox(height: 20),
 
           // ─── Category Progress ──────────────────
-          _buildSectionTitle('Category Mastery', headerColor),
+          _buildSectionTitle(_l.wrCategoryMastery, headerColor),
           pw.SizedBox(height: 10),
           _buildCategoryTable(child),
           pw.SizedBox(height: 20),
 
           // ─── Recent Game Scores ─────────────────
-          _buildSectionTitle('Recent Game Scores', headerColor),
+          _buildSectionTitle(_l.wrRecentScores, headerColor),
           pw.SizedBox(height: 10),
           _buildGameScoresTable(child),
           pw.SizedBox(height: 20),
 
           // ─── Strengths & Areas to Improve ───────
-          _buildSectionTitle('Insights & Recommendations', headerColor),
+          _buildSectionTitle(_l.wrInsights, headerColor),
           pw.SizedBox(height: 10),
           _buildInsights(child, successColor, warningColor),
           pw.SizedBox(height: 20),
 
           // ─── Week over Week Trend ───────────────
-          _buildSectionTitle('Week-over-Week Trend', headerColor),
+          _buildSectionTitle(_l.wrTrend, headerColor),
           pw.SizedBox(height: 10),
           _buildWeekTrend(child, accentColor),
         ],
@@ -94,7 +106,10 @@ class ReportGenerator {
 
   /// Generate a multi-child family summary PDF.
   static Future<Uint8List> generateFamilyReport(
-      List<ChildSummary> children) async {
+    List<ChildSummary> children, {
+    AppLocalizations? l10n,
+  }) async {
+    _l = l10n ?? AppLocalizationsEn();
     final theme = await _loadTheme();
     final pdf = pw.Document(theme: theme);
     final now = DateTime.now();
@@ -118,7 +133,7 @@ class ReportGenerator {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text(
-                    'Family Progress Report',
+                    _l.wrFamilyTitle,
                     style: pw.TextStyle(
                       fontSize: 24,
                       fontWeight: pw.FontWeight.bold,
@@ -127,7 +142,7 @@ class ReportGenerator {
                   ),
                   pw.SizedBox(height: 4),
                   pw.Text(
-                    'Generated on ${_formatDate(now)}',
+                    _l.wrGeneratedOn(_formatDate(now)),
                     style: const pw.TextStyle(
                       fontSize: 11,
                       color: PdfColors.white,
@@ -199,7 +214,7 @@ class ReportGenerator {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  'Weekly Progress Report',
+                  _l.wrWeeklyTitle,
                   style: pw.TextStyle(
                     fontSize: 24,
                     fontWeight: pw.FontWeight.bold,
@@ -241,7 +256,7 @@ class ReportGenerator {
                     fontWeight: pw.FontWeight.bold,
                   ),
                 ),
-                pw.Text('day streak', style: const pw.TextStyle(fontSize: 9)),
+                pw.Text(_l.wrDayStreak, style: const pw.TextStyle(fontSize: 9)),
               ],
             ),
           ),
@@ -255,7 +270,7 @@ class ReportGenerator {
       alignment: pw.Alignment.centerRight,
       margin: const pw.EdgeInsets.only(top: 10),
       child: pw.Text(
-        'Generated by MagAral - Page ${context.pageNumber} of ${context.pagesCount}',
+        _l.wrFooter(context.pageNumber, context.pagesCount),
         style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
       ),
     );
@@ -271,15 +286,15 @@ class ReportGenerator {
   ) {
     return pw.Row(
       children: [
-        _statBox('${child.totalStars}', 'Total Stars', warning),
+        _statBox('${child.totalStars}', _l.wrTotalStars, warning),
         pw.SizedBox(width: 8),
-        _statBox('${child.wordsLearned}', 'Words Learned', accent),
+        _statBox('${child.wordsLearned}', _l.wrWordsLearned, accent),
         pw.SizedBox(width: 8),
-        _statBox('${child.gamesPlayed}', 'Games Played', success),
+        _statBox('${child.gamesPlayed}', _l.wrGamesPlayed, success),
         pw.SizedBox(width: 8),
         _statBox(
           '${child.studyMinutesThisWeek}m',
-          'Study Time',
+          _l.wrStudyTime,
           PdfColor.fromHex('#64B5F6'),
         ),
       ],
@@ -323,11 +338,13 @@ class ReportGenerator {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        pw.Text('${child.totalStars} stars'),
-        pw.Text('${child.wordsLearned} words'),
-        pw.Text('${child.gamesPlayed} games'),
-        pw.Text('${child.studyMinutesThisWeek}m this week'),
-        pw.Text('${(child.averageAccuracy * 100).toStringAsFixed(0)}% accuracy'),
+        pw.Text(_l.wrStars(child.totalStars)),
+        pw.Text(_l.wrWords(child.wordsLearned)),
+        pw.Text(_l.wrGames(child.gamesPlayed)),
+        pw.Text(_l.wrMinutesThisWeek(child.studyMinutesThisWeek)),
+        pw.Text(
+          _l.wrAccuracyPct((child.averageAccuracy * 100).toStringAsFixed(0)),
+        ),
       ],
     );
   }
@@ -349,9 +366,9 @@ class ReportGenerator {
         pw.TableRow(
           decoration: pw.BoxDecoration(color: PdfColor.fromHex('#F5F0FF')),
           children: [
-            _tableHeader('Date'),
-            _tableHeader('Minutes'),
-            _tableHeader('Visual'),
+            _tableHeader(_l.wrDate),
+            _tableHeader(_l.wrMinutes),
+            _tableHeader(_l.wrVisual),
           ],
         ),
         ...days.map((entry) {
@@ -395,9 +412,9 @@ class ReportGenerator {
         pw.TableRow(
           decoration: pw.BoxDecoration(color: PdfColor.fromHex('#F5F0FF')),
           children: [
-            _tableHeader('Category'),
-            _tableHeader('Progress'),
-            _tableHeader('Mastery Bar'),
+            _tableHeader(_l.wrCategory),
+            _tableHeader(_l.wrProgress),
+            _tableHeader(_l.wrMasteryBar),
           ],
         ),
         ...categories.map((cat) {
@@ -412,7 +429,7 @@ class ReportGenerator {
 
           return pw.TableRow(
             children: [
-              _tableCell(cat.label),
+              _tableCell(cat.labelOf(_l)),
               _tableCell('$percentage%'),
               pw.Padding(
                 padding: const pw.EdgeInsets.all(6),
@@ -450,7 +467,7 @@ class ReportGenerator {
     final scores = child.recentScores.take(10).toList();
     if (scores.isEmpty) {
       return pw.Text(
-        'No recent game scores this week.',
+        _l.wrNoScores,
         style: const pw.TextStyle(color: PdfColors.grey500),
       );
     }
@@ -468,17 +485,17 @@ class ReportGenerator {
         pw.TableRow(
           decoration: pw.BoxDecoration(color: PdfColor.fromHex('#F5F0FF')),
           children: [
-            _tableHeader('Game'),
-            _tableHeader('Date'),
-            _tableHeader('Score'),
-            _tableHeader('Stars'),
-            _tableHeader('Duration'),
+            _tableHeader(_l.wrGame),
+            _tableHeader(_l.wrDate),
+            _tableHeader(_l.wrScore),
+            _tableHeader(_l.wrStarsCol),
+            _tableHeader(_l.wrDuration),
           ],
         ),
         ...scores.map((s) {
           return pw.TableRow(
             children: [
-              _tableCell(s.gameType.label),
+              _tableCell(s.gameType.labelOf(_l)),
               _tableCell(_formatDate(s.date)),
               _tableCell('${s.score}/${s.total}'),
               _tableCell('${s.starsEarned}/3'),
@@ -504,8 +521,8 @@ class ReportGenerator {
     // Strongest category
     if (child.strongestCategory != null) {
       insights.add(_insightRow(
-        'Strongest area: ${child.strongestCategory}',
-        'Keep up the excellent work in this category!',
+        _l.wrStrongest(_categoryName(child.strongestCategory!)),
+        _l.wrStrongestSub,
         success,
       ));
     }
@@ -513,8 +530,8 @@ class ReportGenerator {
     // Weakest category
     if (child.weakestCategory != null) {
       insights.add(_insightRow(
-        'Needs practice: ${child.weakestCategory}',
-        'Focus on this category for improvement.',
+        _l.wrWeakest(_categoryName(child.weakestCategory!)),
+        _l.wrWeakestSub,
         warning,
       ));
     }
@@ -522,8 +539,10 @@ class ReportGenerator {
     // Unexplored categories
     if (child.unexploredCategories.isNotEmpty) {
       insights.add(_insightRow(
-        'Not yet explored: ${child.unexploredCategories.take(3).join(", ")}',
-        'Try introducing these categories this week.',
+        _l.wrUnexplored(
+          child.unexploredCategories.take(3).map(_categoryName).join(', '),
+        ),
+        _l.wrUnexploredSub,
         PdfColor.fromHex('#64B5F6'),
       ));
     }
@@ -531,14 +550,14 @@ class ReportGenerator {
     // Accuracy
     if (child.averageAccuracy >= 0.8) {
       insights.add(_insightRow(
-        'Accuracy: ${(child.averageAccuracy * 100).toStringAsFixed(0)}%',
-        'Outstanding accuracy! Consider increasing difficulty.',
+        _l.wrAccuracy((child.averageAccuracy * 100).toStringAsFixed(0)),
+        _l.wrAccuracyHigh,
         success,
       ));
     } else if (child.averageAccuracy < 0.5 && child.gamesPlayed > 0) {
       insights.add(_insightRow(
-        'Accuracy: ${(child.averageAccuracy * 100).toStringAsFixed(0)}%',
-        'Extra review sessions may help improve scores.',
+        _l.wrAccuracy((child.averageAccuracy * 100).toStringAsFixed(0)),
+        _l.wrAccuracyLow,
         warning,
       ));
     }
@@ -546,8 +565,8 @@ class ReportGenerator {
     // Session frequency
     if (child.totalSessions < 3) {
       insights.add(_insightRow(
-        'Low session count: ${child.totalSessions} sessions this month',
-        'Try to have at least 3-4 learning sessions per week.',
+        _l.wrLowSessions(child.totalSessions),
+        _l.wrLowSessionsSub,
         warning,
       ));
     }
@@ -555,14 +574,16 @@ class ReportGenerator {
     // Mastered categories count
     if (child.masteredCategories > 0) {
       insights.add(_insightRow(
-        '${child.masteredCategories} categories mastered (>=80%)',
-        'Great progress! ${12 - child.masteredCategories} more to go.',
+        _l.wrMastered(child.masteredCategories),
+        _l.wrMasteredSub(
+          FlashcardCategory.values.length - child.masteredCategories,
+        ),
         success,
       ));
     }
 
     if (insights.isEmpty) {
-      insights.add(pw.Text('Start learning to see personalized insights!'));
+      insights.add(pw.Text(_l.wrStartLearning));
     }
 
     return pw.Column(children: insights);
@@ -640,8 +661,8 @@ class ReportGenerator {
               children: [
                 pw.Text(
                   isUp
-                      ? 'Study time increased compared to last week!'
-                      : 'Study time decreased compared to last week.',
+                      ? _l.wrTimeUp
+                      : _l.wrTimeDown,
                   style: pw.TextStyle(
                     fontSize: 11,
                     fontWeight: pw.FontWeight.bold,
@@ -649,7 +670,10 @@ class ReportGenerator {
                 ),
                 pw.SizedBox(height: 2),
                 pw.Text(
-                  'This week: ${child.studyMinutesThisWeek}min | Last week: ${child.studyMinutesLastWeek}min',
+                  _l.wrThisLast(
+                    child.studyMinutesThisWeek,
+                    child.studyMinutesLastWeek,
+                  ),
                   style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
                 ),
               ],
@@ -702,19 +726,23 @@ class ReportGenerator {
 
   // ─── Date Formatting ─────────────────────────────────
 
-  static String _formatDate(DateTime date) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  static String _formatDate(DateTime date) =>
+      LocalizedDate.monthDayYear(date, _l);
+
+  /// A category's name in the report's language. The summary carries the
+  /// English label (it is also the key of `categoryProgress`).
+  static String _categoryName(String label) {
+    for (final c in FlashcardCategory.values) {
+      if (c.label == label) return c.labelOf(_l);
+    }
+    return label;
   }
 
   static String _formatDateKey(String dateKey) {
     try {
       final date = DateTime.parse(dateKey);
-      const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      return '${weekdays[date.weekday - 1]}, ${_formatDate(date)}';
+      return '${LocalizedDate.weekdayShort(date.weekday, _l)}, '
+          '${_formatDate(date)}';
     } catch (_) {
       return dateKey;
     }

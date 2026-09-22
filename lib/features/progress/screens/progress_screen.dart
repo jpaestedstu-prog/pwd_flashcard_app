@@ -149,7 +149,7 @@ class ProgressScreen extends ConsumerWidget {
       final sentences = <String>[
         l10n.spokenProgressSummary(
           level.level,
-          level.title,
+          level.titleOf(filipino: l10n.localeName.startsWith('fil')),
           masteredWords,
           totalStars,
           streak,
@@ -348,9 +348,11 @@ class ProgressScreen extends ConsumerWidget {
 
                   // ─── Overall Mastery ─────────────
                   Semantics(
-                        label:
-                            'Overall mastery: ${(masteryPct * 100).round()} percent. '
-                            '$masteredWords out of $totalWords words learned.',
+                        label: l10n.progMasterySemantics(
+                          (masteryPct * 100).round(),
+                          masteredWords,
+                          totalWords,
+                        ),
                         child: Center(
                           child: Builder(
                             builder: (context) {
@@ -589,7 +591,7 @@ class ProgressScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
 
                   gazeButton(
-                    'Certificates',
+                    l10n.certificates,
                     () => context.push('/certificates'),
                     OutlinedButton.icon(
                           onPressed: () => context.push('/certificates'),
@@ -636,7 +638,7 @@ class ProgressScreen extends ConsumerWidget {
                           padding: const EdgeInsets.only(bottom: 14),
                           child: CategoryProgressRow(
                             icon: cat.icon,
-                            label: cat.label,
+                            label: cat.labelOf(l10n),
                             color: cat.color,
                             mastered: catMastery.wordsLearned,
                             total: catMastery.totalWords,
@@ -908,7 +910,7 @@ class _StarGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayCount = totalStars > 20 ? totalStars : 20;
     return Semantics(
-      label: '$totalStars stars earned',
+      label: AppLocalizations.of(context)!.progStarsEarned(totalStars),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -916,7 +918,7 @@ class _StarGrid extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
-                '⭐ $totalStars stars collected!',
+                AppLocalizations.of(context)!.progStarsCollected(totalStars),
                 style: AppTypography.labelLarge.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.warning,
@@ -954,14 +956,22 @@ class _AchievementRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final filipino = AppLocalizations.of(
+      context,
+    )!.localeName.startsWith('fil');
     return Wrap(
       spacing: 12,
       runSpacing: 12,
       children: achievements.map((a) {
         final unlocked = unlockedIds.contains(a.id);
         return Semantics(
-          label:
-              '${a.title} achievement${unlocked ? ', unlocked' : ', locked'}',
+          label: unlocked
+              ? AppLocalizations.of(context)!.progAchievementUnlocked(
+                  a.titleOf(filipino: filipino),
+                )
+              : AppLocalizations.of(context)!.progAchievementLocked(
+                  a.titleOf(filipino: filipino),
+                ),
           child: Column(
             children: [
               Container(
@@ -997,7 +1007,7 @@ class _AchievementRow extends StatelessWidget {
                 // 2-line title doesn't clip at large scales.
                 width: context.scaleIcon(64).clamp(64.0, 96.0),
                 child: Text(
-                  a.title,
+                  a.titleOf(filipino: filipino),
                   style: AppTypography.labelSmall.copyWith(
                     color: unlocked
                         ? HCColor.of(context).textPrimary
@@ -1023,14 +1033,14 @@ class _RecentGameTile extends StatelessWidget {
   final GameScore score;
   const _RecentGameTile({required this.score});
 
-  String _formatDate(DateTime d) {
+  String _formatDate(AppLocalizations t, DateTime d) {
     final now = DateTime.now();
     final diff = now.difference(d);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    if (diff.inMinutes < 1) return t.progJustNow;
+    if (diff.inHours < 1) return t.gmMinutesAgo(diff.inMinutes);
+    if (diff.inDays < 1) return t.gmHoursAgo(diff.inHours);
+    if (diff.inDays == 1) return t.progYesterday;
+    if (diff.inDays < 7) return t.gmDaysAgo(diff.inDays);
     return '${d.month}/${d.day}';
   }
 
@@ -1038,11 +1048,16 @@ class _RecentGameTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = score.total > 0 ? score.score / score.total : 0.0;
     final gt = score.gameType;
+    final t = AppLocalizations.of(context)!;
     return Semantics(
-      label:
-          '${gt.label}: ${score.score} of ${score.total}, '
-          '${(pct * 100).round()} percent, '
-          '${score.starsEarned} stars, ${_formatDate(score.date)}',
+      label: t.progGameSemantics(
+        gt.labelOf(t),
+        score.score,
+        score.total,
+        (pct * 100).round(),
+        score.starsEarned,
+        _formatDate(t, score.date),
+      ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
@@ -1080,7 +1095,7 @@ class _RecentGameTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    gt.label,
+                    gt.labelOf(t),
                     style: AppTypography.labelLarge.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -1088,7 +1103,7 @@ class _RecentGameTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     '${score.score}/${score.total}  •  ${(pct * 100).round()}%'
-                    '  •  ${_formatDate(score.date)}',
+                    '  •  ${_formatDate(t, score.date)}',
                     style: AppTypography.labelSmall.copyWith(
                       color: HCColor.of(context).textSecondary,
                     ),

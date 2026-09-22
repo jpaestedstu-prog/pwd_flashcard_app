@@ -9,11 +9,12 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/sticker_provider.dart';
 import '../../../core/widgets/hub_scaffold.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 import '../../../widgets/accessibility_quick_sheet.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../../widgets/xp_level_bar.dart';
 import '../../assessment/providers/assessment_provider.dart';
-import '../../assessment/widgets/learner_assignment_sync.dart';
 import '../../assessment/widgets/pending_assignments_banner.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
 import '../../../providers/tile_grid_active_provider.dart';
@@ -48,6 +49,7 @@ class ChildHomeScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final pad = context.pagePadding;
+    final t = _t(context);
     // Two big tiles per row on phones/small tablets; three or four on
     // large tablets where there's room.
     final columns = context.screenWidth >= 900
@@ -130,7 +132,7 @@ class ChildHomeScreen extends ConsumerWidget {
             (
               tile: const AccessibilityQuickButton(),
               cell: GazeTileCell(
-                label: 'Accessibility',
+                label: t.accessibility,
                 onActivate: () => showAccessibilityQuickSheet(context),
               ),
             ),
@@ -151,12 +153,12 @@ class ChildHomeScreen extends ConsumerWidget {
       expand: false,
       entries: [
         (
-          tile: TodayDayPane(onOpen: openMyDay),
-          cell: GazeTileCell(label: 'My Day', onActivate: openMyDay),
+          tile: TodayDayPane(onOpen: openMyDay, title: t.homeMyDay),
+          cell: GazeTileCell(label: t.homeMyDay, onActivate: openMyDay),
         ),
         (
-          tile: TodayMoodPane(onOpen: openMood, title: 'My Feelings'),
-          cell: GazeTileCell(label: 'My Feelings', onActivate: openMood),
+          tile: TodayMoodPane(onOpen: openMood, title: t.childMyFeelings),
+          cell: GazeTileCell(label: t.childMyFeelings, onActivate: openMood),
         ),
       ],
     );
@@ -189,7 +191,7 @@ class ChildHomeScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Hi, ${profile?.name ?? "Friend"}!',
+                          t.childGreeting(profile?.name ?? t.childFriend),
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -197,7 +199,7 @@ class ChildHomeScreen extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          'What do you want to do today?',
+                          t.childWhatToDo,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: colors.onSurfaceVariant,
                           ),
@@ -258,12 +260,8 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
           ),
 
-          // Re-pulls assigned work on resume so the banner below can appear
-          // without a restart. Invisible.
-          if (profile != null)
-            SliverToBoxAdapter(
-              child: LearnerAssignmentSync(profileId: profile.id),
-            ),
+          // New work is kept current by [LearnerAssignmentSync] in the
+          // navigation shell.
 
           // ─── Pending assignments ─────────────────
           // Same shared widget the Student home shows, so the two homes can
@@ -283,7 +281,7 @@ class ChildHomeScreen extends ConsumerWidget {
                             profileId: profile?.id,
                           ),
                           cell: GazeTileCell(
-                            label: 'Assignments',
+                            label: t.homeAssignments,
                             onActivate: () => context.push('/assessment'),
                           ),
                         ),
@@ -296,11 +294,11 @@ class ChildHomeScreen extends ConsumerWidget {
           // ─── Section: Play & Learn (core hub) ────
           // Mirrors the Student home's core tiles: Games, Cards, Stories,
           // FSL (policy-gated), practice, and Progress.
-          const _ChildSectionHeader(emoji: '🎮', title: 'Play & Learn'),
+          _ChildSectionHeader(emoji: '🎮', title: t.homePlayAndLearn),
           grid([
             entry(
               emoji: '🎮',
-              label: 'Games',
+              label: t.games,
               gradient: const [
                 AppColors.playerAccent,
                 AppColors.playerAccentLight,
@@ -309,7 +307,7 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
             entry(
               emoji: '🔤',
-              label: 'Cards',
+              label: t.eduCards,
               gradient: const [
                 AppColors.bannerLearningStart,
                 AppColors.bannerLearningEnd,
@@ -318,7 +316,7 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
             entry(
               emoji: '📖',
-              label: 'Stories',
+              label: t.homeStories,
               gradient: const [
                 AppColors.bannerStickerStart,
                 AppColors.bannerStickerEnd,
@@ -328,7 +326,7 @@ class ChildHomeScreen extends ConsumerWidget {
             if (showFsl) ...[
               entry(
                 emoji: '🤟',
-                label: 'Sign Language',
+                label: t.signLanguage,
                 gradient: const [
                   AppColors.bannerFslStart,
                   AppColors.bannerFslEnd,
@@ -341,7 +339,7 @@ class ChildHomeScreen extends ConsumerWidget {
               // profile could not reach the dictionary at all.
               entry(
                 emoji: '📖',
-                label: 'Sign Dictionary',
+                label: t.childSignDictionary,
                 gradient: const [
                   AppColors.bannerFslEnd,
                   AppColors.bannerFslStart,
@@ -351,7 +349,7 @@ class ChildHomeScreen extends ConsumerWidget {
             ],
             entry(
               emoji: '🧠',
-              label: 'Practice Words',
+              label: t.childPracticeWords,
               gradient: const [
                 AppColors.bannerSmartReviewStart,
                 AppColors.bannerSmartReviewEnd,
@@ -360,7 +358,7 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
             entry(
               emoji: '🏆',
-              label: 'My Progress',
+              label: t.childMyProgress,
               gradient: const [
                 AppColors.bannerLearningGainStart,
                 AppColors.bannerLearningGainEnd,
@@ -370,11 +368,11 @@ class ChildHomeScreen extends ConsumerWidget {
           ]),
 
           // ─── Section: Explore & Create ───────────
-          const _ChildSectionHeader(emoji: '🗺️', title: 'Explore & Create'),
+          _ChildSectionHeader(emoji: '🗺️', title: t.childExplore),
           grid([
             entry(
               emoji: '🗺️',
-              label: 'Adventure Map',
+              label: t.childAdventureMap,
               gradient: const [
                 AppColors.bannerRecommendStart,
                 AppColors.bannerRecommendEnd,
@@ -383,7 +381,7 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
             entry(
               emoji: '✍️',
-              label: 'Practice With Me',
+              label: t.childPracticeWithMe,
               gradient: const [
                 AppColors.bannerGuidedStart,
                 AppColors.bannerGuidedEnd,
@@ -392,7 +390,7 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
             entry(
               emoji: '📷',
-              label: 'Word Hunt',
+              label: t.wordHuntTitle,
               gradient: const [
                 AppColors.bannerWordHuntStart,
                 AppColors.bannerWordHuntEnd,
@@ -401,7 +399,7 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
             entry(
               emoji: '💬',
-              label: 'Talk Board',
+              label: t.tbTitle,
               gradient: const [
                 AppColors.bannerCommBoardStart,
                 AppColors.bannerCommBoardEnd,
@@ -413,7 +411,7 @@ class ChildHomeScreen extends ConsumerWidget {
             // way in was the small expand icon inside the floating panel.
             entry(
               emoji: '🧸',
-              label: 'Buddy',
+              label: t.childBuddy,
               gradient: const [
                 AppColors.bannerAiTutorStart,
                 AppColors.bannerAiTutorEnd,
@@ -423,11 +421,11 @@ class ChildHomeScreen extends ConsumerWidget {
           ]),
 
           // ─── Section: Friends ────────────────────
-          const _ChildSectionHeader(emoji: '🧑‍🤝‍🧑', title: 'Friends'),
+          _ChildSectionHeader(emoji: '🧑‍🤝‍🧑', title: t.childFriends),
           grid([
             entry(
               emoji: '🧑‍🤝‍🧑',
-              label: 'Play Together',
+              label: t.playTogether,
               gradient: const [
                 AppColors.bannerPeerStart,
                 AppColors.bannerPeerEnd,
@@ -441,7 +439,7 @@ class ChildHomeScreen extends ConsumerWidget {
             // accessibility category exactly as it does for a Student.
             entry(
               emoji: '🤝',
-              label: 'Peer Collab',
+              label: t.homePeerCollab,
               gradient: const [
                 AppColors.bannerPeerStart,
                 AppColors.bannerPeerEnd,
@@ -450,7 +448,7 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
             entry(
               emoji: '💌',
-              label: 'Messages',
+              label: t.eduMessages,
               gradient: const [
                 AppColors.bannerMessagingStart,
                 AppColors.bannerMessagingEnd,
@@ -463,7 +461,7 @@ class ChildHomeScreen extends ConsumerWidget {
             // parent and teacher have written about them.
             entry(
               emoji: '📝',
-              label: 'My Notes',
+              label: t.homeMyNotes,
               gradient: const [
                 AppColors.bannerRecommendStart,
                 AppColors.bannerRecommendEnd,
@@ -473,7 +471,7 @@ class ChildHomeScreen extends ConsumerWidget {
           ]),
 
           // ─── Section: Rewards & Feelings ─────────
-          const _ChildSectionHeader(emoji: '⭐', title: 'Rewards & Feelings'),
+          _ChildSectionHeader(emoji: '⭐', title: t.childRewards),
           grid([
             // The Player Profile — the learner's level, stats and rewards in
             // one place. The Student / Player home reaches it from a banner;
@@ -481,7 +479,7 @@ class ChildHomeScreen extends ConsumerWidget {
             // as far as they could look at their own progress.
             entry(
               emoji: '🎮',
-              label: 'My Player Card',
+              label: t.childPlayerCard,
               gradient: const [
                 AppColors.playerAccent,
                 AppColors.playerAccentPurpleLight,
@@ -490,7 +488,7 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
             entry(
               emoji: '⭐',
-              label: 'Stickers',
+              label: t.childStickers,
               gradient: const [
                 AppColors.bannerStickerStart,
                 AppColors.bannerStickerEnd,
@@ -500,7 +498,7 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
             entry(
               emoji: '🙂',
-              label: 'How was it?',
+              label: t.homeHowWasIt,
               gradient: const [
                 AppColors.bannerLearningStart,
                 AppColors.bannerLearningEnd,
@@ -509,7 +507,7 @@ class ChildHomeScreen extends ConsumerWidget {
             ),
             entry(
               emoji: '📓',
-              label: 'My Notebook',
+              label: t.homeMyNotebook,
               gradient: const [
                 AppColors.bannerNotebookStart,
                 AppColors.bannerNotebookEnd,
@@ -538,10 +536,10 @@ class ChildHomeScreen extends ConsumerWidget {
                               Icons.swap_horiz_rounded,
                               size: 18,
                             ),
-                            label: const Text('Switch profile'),
+                            label: Text(t.childSwitchProfile),
                           ),
                           cell: GazeTileCell(
-                            label: 'Switch profile',
+                            label: t.childSwitchProfile,
                             onActivate: () => context.push('/profile-switcher'),
                           ),
                         ),
@@ -576,9 +574,7 @@ class _KidStatsStrip extends StatelessWidget {
     final hc = HCColor.of(context);
     final onGrad = hc.textOnPrimary;
     return Semantics(
-      label:
-          'My day: $streak day streak, $words words learned, '
-          '$stars stars earned',
+      label: _t(context).childStatsSemantics(streak, words, stars),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
@@ -590,21 +586,21 @@ class _KidStatsStrip extends StatelessWidget {
             _KidStat(
               emoji: '🔥',
               value: '$streak',
-              label: 'Streak',
+              label: _t(context).streak,
               color: onGrad,
             ),
             _divider(onGrad),
             _KidStat(
               emoji: '📚',
               value: '$words',
-              label: 'Words',
+              label: _t(context).words,
               color: onGrad,
             ),
             _divider(onGrad),
             _KidStat(
               emoji: '⭐',
               value: '$stars',
-              label: 'Stars',
+              label: _t(context).stars,
               color: onGrad,
             ),
           ],
@@ -705,3 +701,8 @@ class _ChildSectionHeader extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

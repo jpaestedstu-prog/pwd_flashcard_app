@@ -13,6 +13,8 @@ import '../models/break_time_models.dart';
 import '../widgets/breathing_break.dart';
 import '../widgets/bubble_pop_break.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Full-screen "I Need a Break" experience.
 ///
@@ -201,7 +203,7 @@ class _TopBar extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Take a Break',
+              _t(context).btTitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTypography.titleLarge.copyWith(
@@ -216,7 +218,7 @@ class _TopBar extends StatelessWidget {
           ],
           IconButton(
             onPressed: onClose,
-            tooltip: 'Back to lesson',
+            tooltip: _t(context).btBack,
             icon: Icon(Icons.close_rounded, color: hc.textPrimary),
             style: IconButton.styleFrom(
               backgroundColor: hc.primary.withValues(alpha: 0.12),
@@ -299,7 +301,7 @@ class _ChooserView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Pick what feels good. You can go back to your lesson anytime.',
+            _t(context).btPick,
             textAlign: TextAlign.center,
             style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
           ),
@@ -384,7 +386,8 @@ class _ActivityChooserCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '${activity.label}. ${activity.description}',
+      label: '${_activityLabel(_t(context), activity)}. '
+          '${_activityDescription(_t(context), activity)}',
       child: Material(
         color: hc.surface,
         borderRadius: BorderRadius.circular(22),
@@ -432,12 +435,12 @@ class _ActivityChooserCard extends StatelessWidget {
                       // where a LayoutBuilder cannot report intrinsics and the
                       // layout asserts.
                       Text(
-                        activity.label,
+                        _activityLabel(_t(context), activity),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: fittedStyle(
                           context,
-                          activity.label,
+                          _activityLabel(_t(context), activity),
                           AppTypography.titleLarge.copyWith(
                             fontWeight: FontWeight.w800,
                             color: hc.textPrimary,
@@ -447,7 +450,7 @@ class _ActivityChooserCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        activity.description,
+                        _activityDescription(_t(context), activity),
                         style: AppTypography.bodyMedium.copyWith(
                           color: hc.textSecondary,
                         ),
@@ -512,7 +515,7 @@ class _ActivityView extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: onBack,
             icon: const Icon(Icons.arrow_back_rounded),
-            label: const Text('Back to lesson'),
+            label: Text(_t(context).btBack),
             style: OutlinedButton.styleFrom(
               foregroundColor: hc.primary,
               side: BorderSide(color: hc.primary.withValues(alpha: 0.5)),
@@ -571,7 +574,7 @@ class _ReturnPrompt extends StatelessWidget {
                     const Text('🌿', style: TextStyle(fontSize: 48)),
                     const SizedBox(height: 12),
                     Text(
-                      'Feeling calmer?',
+                      _t(context).btCalmer,
                       textAlign: TextAlign.center,
                       style: AppTypography.headlineSmall.copyWith(
                         fontWeight: FontWeight.w800,
@@ -592,7 +595,7 @@ class _ReturnPrompt extends StatelessWidget {
                       child: FilledButton.icon(
                         onPressed: onBack,
                         icon: const Icon(Icons.arrow_back_rounded),
-                        label: const Text('Back to lesson'),
+                        label: Text(_t(context).btBack),
                         style: FilledButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
@@ -604,7 +607,7 @@ class _ReturnPrompt extends StatelessWidget {
                       child: TextButton.icon(
                         onPressed: onStay,
                         icon: const Icon(Icons.spa_rounded),
-                        label: const Text('Stay a little longer'),
+                        label: Text(_t(context).btStay),
                       ),
                     ),
                     // Offered, never asked. This card already asks whether
@@ -617,7 +620,7 @@ class _ReturnPrompt extends StatelessWidget {
                       child: TextButton.icon(
                         onPressed: onCheckIn,
                         icon: const Icon(Icons.favorite_border_rounded),
-                        label: const Text('How are you feeling?'),
+                        label: Text(_t(context).btHowFeel),
                       ),
                     ),
                   ],
@@ -630,3 +633,18 @@ class _ReturnPrompt extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+String _activityLabel(AppLocalizations t, BreakActivity a) => switch (a) {
+  BreakActivity.breathing => t.btBreathe,
+  BreakActivity.bubbles => t.btBubbles,
+};
+
+String _activityDescription(AppLocalizations t, BreakActivity a) => switch (a) {
+  BreakActivity.breathing => t.btBreatheSub,
+  BreakActivity.bubbles => t.btBubblesSub,
+};

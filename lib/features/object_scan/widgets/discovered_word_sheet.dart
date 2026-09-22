@@ -12,6 +12,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/fsl_fullscreen_player.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Bottom sheet shown when a Word Hunt detection is tapped: the word in
 /// English + Filipino with its meaning, plus one-tap bridges into the
@@ -292,7 +293,11 @@ class _BadgeUnlockedChip extends StatelessWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              '${badge.title} unlocked!',
+              _t(context).dwsUnlocked(
+                badge.titleOf(
+                  filipino: Localizations.localeOf(context).languageCode == 'fil',
+                ),
+              ),
               style: TextStyle(fontWeight: FontWeight.bold, color: badge.color),
               maxLines: 2,
               textAlign: TextAlign.center,
@@ -381,3 +386,8 @@ class _SheetAction extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

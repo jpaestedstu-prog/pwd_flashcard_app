@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../data/models/enums.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 import 'depth_3d.dart';
 import 'tilt_3d.dart';
 
@@ -39,12 +41,15 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
     // grid via Depth3D) so the card stays rich and readable rather than fading
     // to a washed-out pastel.
     final deep = widget.category.darkColor;
+    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
 
     return Semantics(
       button: true,
-      label:
-          '${widget.category.label} flashcards, ${widget.wordCount} words, '
-          '${(widget.progress * 100).round()} percent progress',
+      label: t.catCardSemantics(
+        widget.category.labelOf(t),
+        widget.wordCount,
+        (widget.progress * 100).round(),
+      ),
       child: GestureDetector(
         onTap: widget.onTap,
         onTapDown: (_) => setState(() => _pressed = true),
@@ -137,7 +142,7 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
                                   child: FittedBox(
                                     fit: BoxFit.scaleDown,
                                     child: Text(
-                                      widget.category.label,
+                                      widget.category.labelOf(t),
                                       style: AppTypography.titleMedium.copyWith(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
@@ -180,7 +185,7 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
                                     const SizedBox(width: 4),
                                     Flexible(
                                       child: Text(
-                                        '${widget.wordCount} words',
+                                        t.catCardWords(widget.wordCount),
                                         style: AppTypography.labelSmall.copyWith(
                                           color: Colors.white.withValues(
                                             alpha: 0.9,

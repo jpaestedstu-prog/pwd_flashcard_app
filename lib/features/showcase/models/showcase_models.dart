@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/enums.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// The type of showcase item in the student's portfolio
 enum ShowcaseItemType {
@@ -22,6 +23,17 @@ extension ShowcaseItemTypeX on ShowcaseItemType {
     ShowcaseItemType.streakMilestone => 'Streak Milestone',
     ShowcaseItemType.assessmentResult => 'Assessment',
     ShowcaseItemType.customNote => 'Note',
+  };
+
+  /// [label] in the app's language.
+  String labelOf(AppLocalizations t) => switch (this) {
+    ShowcaseItemType.achievement => t.scTypeAchievement,
+    ShowcaseItemType.highScore => t.scTypeHighScore,
+    ShowcaseItemType.categoryMastery => t.scTypeMastery,
+    ShowcaseItemType.learningPathComplete => t.scTypePath,
+    ShowcaseItemType.streakMilestone => t.scTypeStreak,
+    ShowcaseItemType.assessmentResult => t.scTypeAssessment,
+    ShowcaseItemType.customNote => t.scTypeNote,
   };
 
   String get emoji => switch (this) {

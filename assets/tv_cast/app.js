@@ -19,6 +19,97 @@
   // — and its tests — don't have to know about the code).
   var BASE = (typeof window !== 'undefined' && window.CAST_BASE) || '';
 
+  // Captions the TV draws itself (not lesson content), in the language of the
+  // teacher's app. The phone sends it as `ui` on every state poll; lesson
+  // words and stories keep following the "Language on TV" setting instead.
+  var uiLang = 'en';
+  var UI = {
+    en: {
+      soundHint: '🔊 Press OK on the remote (or tap) to turn on sound',
+      watchSignSpeak: 'Watch the sign, then pick the word.',
+      whichPicture: 'Which word matches the picture?',
+      trueOrFalse: 'True, or false?',
+      pickOnPhone: 'Pick what to cast on the teacher’s phone.',
+      teacherOut: 'The teacher is out',
+      backSoon: 'Back soon — please wait.',
+      reconnecting: 'Oops, the teacher is connecting…',
+      sameWifi: 'Make sure the teacher’s device is on the same Wi-Fi.',
+      loading: 'Loading…',
+      loadingSign: 'Loading sign…',
+      noFslFor: 'No FSL video available for',
+      loadingWord: 'Loading',
+      loadingSignFor: 'Loading sign for',
+      theEnd: 'The End',
+      pageRead: 'page read',
+      pagesRead: 'pages read',
+      classWins: 'Our Class Wins 🎉',
+      noStudentData: 'No student data yet.',
+      wordsTogether: 'words learned together',
+      starsEarned: 'stars earned',
+      learningToday: 'learning today',
+      dayBestStreak: 'day best streak',
+      words: 'words',
+      dayStreak: 'day streak',
+      leaderboard: 'Class Leaderboard',
+      scoreboard: 'Scoreboard',
+      liveActivity: 'Live Activity',
+      getReady: 'Get ready for the next question!',
+      answered: 'answered',
+      question: 'Question',
+      watchSignPick: 'Watch the sign — pick the word on your device',
+      trueWord: 'True',
+      falseWord: 'False',
+      raisedHands: '✋ Raised hands',
+      timesUp: 'Time’s up!',
+      paused: 'paused',
+      page: 'Page'
+    },
+    fil: {
+      soundHint: '🔊 Pindutin ang OK sa remote (o i-tap) para bumukas ang tunog',
+      watchSignSpeak: 'Panoorin ang senyas, saka piliin ang salita.',
+      whichPicture: 'Aling salita ang tugma sa larawan?',
+      trueOrFalse: 'Tama, o mali?',
+      pickOnPhone: 'Piliin sa phone ng guro ang ika-cast.',
+      teacherOut: 'Wala ang guro',
+      backSoon: 'Babalik agad — maghintay lang.',
+      reconnecting: 'Naku, kumokonekta pa ang guro…',
+      sameWifi: 'Tiyaking nasa parehong Wi-Fi ang device ng guro.',
+      loading: 'Nilo-load…',
+      loadingSign: 'Nilo-load ang senyas…',
+      noFslFor: 'Walang video ng FSL para sa',
+      loadingWord: 'Nilo-load ang',
+      loadingSignFor: 'Nilo-load ang senyas para sa',
+      theEnd: 'Wakas',
+      pageRead: 'pahinang nabasa',
+      pagesRead: 'pahinang nabasa',
+      classWins: 'Tagumpay ng Ating Klase 🎉',
+      noStudentData: 'Wala pang datos ng mag-aaral.',
+      wordsTogether: 'salitang natutunan nang sama-sama',
+      starsEarned: 'bituing nakuha',
+      learningToday: 'nag-aaral ngayon',
+      dayBestStreak: 'pinakamahabang sunod-sunod na araw',
+      words: 'salita',
+      dayStreak: 'araw na sunod-sunod',
+      leaderboard: 'Leaderboard ng Klase',
+      scoreboard: 'Scoreboard',
+      liveActivity: 'Live na Gawain',
+      getReady: 'Humanda sa susunod na tanong!',
+      answered: 'ang sumagot',
+      question: 'Tanong',
+      watchSignPick: 'Panoorin ang senyas — piliin ang salita sa device mo',
+      trueWord: 'Tama',
+      falseWord: 'Mali',
+      raisedHands: '✋ Mga nagtaas ng kamay',
+      timesUp: 'Tapos na ang oras!',
+      paused: 'naka-pause',
+      page: 'Pahina'
+    }
+  };
+  function T(key) {
+    var table = UI[uiLang] || UI.en;
+    return table[key] !== undefined ? table[key] : UI.en[key];
+  }
+
   var stage = document.getElementById('stage');
   var pill = document.getElementById('footer-pill');
   var hint = document.getElementById('sound-hint');
@@ -51,7 +142,7 @@
 
   function showSoundHint() {
     if (hint) {
-      hint.innerHTML = '🔊 Press OK on the remote (or tap) to turn on sound';
+      hint.innerHTML = escapeHtml(T('soundHint'));
       hint.className = 'sound-hint';
     }
   }
@@ -96,14 +187,14 @@
   function liveSpeechText(a) {
     var parts = [];
     if (a.type === 'fslSign') {
-      parts.push('Watch the sign, then pick the word.');
+      parts.push(T('watchSignSpeak'));
     } else if (a.type === 'pictureChoice') {
-      parts.push('Which word matches the picture?');
+      parts.push(T('whichPicture'));
     } else if (a.prompt) {
       parts.push(a.prompt);
     }
     if (a.isTrueFalse) {
-      parts.push('True, or false?');
+      parts.push(T('trueOrFalse'));
     } else if (a.options && a.options.length) {
       for (var i = 0; i < a.options.length; i++) {
         parts.push(String.fromCharCode(65 + i) + '. ' + a.options[i]);
@@ -143,9 +234,10 @@
       // low-vision learner to work from. Keyed on the activity id so the
       // answered-count ticking up doesn't re-read it.
       var la = state.live.activity;
-      en = liveSpeechText(la);
+      var liveText = liveSpeechText(la);
+      if (uiLang === 'fil') fil = liveText; else en = liveText;
       key = 'l:' + (la.id || la.prompt || '');
-      if (!en) {
+      if (!liveText) {
         window.speechSynthesis.cancel();
         lastSpokenKey = null;
         return;
@@ -161,8 +253,10 @@
     lastSpokenKey = key;
     // The language filter governs speech as well as display — hearing a
     // language the TV isn't showing is worse than silence.
-    if (state.lang === 'en') fil = '';
-    else if (state.lang === 'fil') en = '';
+    if (state.mode !== 'live') {
+      if (state.lang === 'en') fil = '';
+      else if (state.lang === 'fil') en = '';
+    }
     speakSequence(en, fil);
     if (!ttsUnlocked) showSoundHint();
   }
@@ -239,7 +333,7 @@
       '<div class="splash">' +
       '<div class="splash-emoji">📺</div>' +
       '<h1>FlashLearn TV</h1>' +
-      '<p>Pick what to cast on the teacher\'s phone.</p>' +
+      '<p>' + escapeHtml(T('pickOnPhone')) + '</p>' +
       '</div>'
     );
     lastVideoUrl = null;
@@ -256,8 +350,8 @@
     setStage(
       '<div class="splash away">' +
       '<div class="splash-emoji">☕</div>' +
-      '<h1>The teacher is out</h1>' +
-      '<p>Back soon — please wait.</p>' +
+      '<h1>' + escapeHtml(T('teacherOut')) + '</h1>' +
+      '<p>' + escapeHtml(T('backSoon')) + '</p>' +
       '</div>'
     );
     lastVideoUrl = null;
@@ -274,8 +368,8 @@
     setStage(
       '<div class="splash reconnect">' +
       '<div class="splash-emoji pulse">📡</div>' +
-      '<h1>Oops, the teacher is connecting…</h1>' +
-      '<p>Make sure the teacher\'s device is on the same Wi-Fi.</p>' +
+      '<h1>' + escapeHtml(T('reconnecting')) + '</h1>' +
+      '<p>' + escapeHtml(T('sameWifi')) + '</p>' +
       '</div>'
     );
     if (pill) { pill.className = 'footer-pill hidden'; pill.innerHTML = ''; }
@@ -515,7 +609,7 @@
       'controls preload="auto" src="' + escapeHtml(clip.url) + '"></video>' +
       '<div class="fsl-loading" id="fsl-loading">' +
       '<div class="spinner"></div>' +
-      '<div class="fsl-loading-text">Loading…</div>' +
+      '<div class="fsl-loading-text">' + escapeHtml(T('loading')) + '</div>' +
       '</div>' +
       '</div>' +
       caption +
@@ -537,7 +631,7 @@
         '<div class="fsl-wrap">' +
         '<div class="fsl-missing">' +
         '<span class="emoji">' + escapeHtml(slide.emoji) + '</span>' +
-        'No FSL video available for "' + escapeHtml(slide.wordEn) + '"' +
+        escapeHtml(T('noFslFor')) + ' "' + escapeHtml(slide.wordEn) + '"' +
         '</div>' +
         '</div>'
       );
@@ -564,7 +658,7 @@
         'controls preload="auto" src="' + escapeHtml(video.url) + '"></video>' +
         '<div class="fsl-loading" id="fsl-loading">' +
         '<div class="spinner"></div>' +
-        '<div class="fsl-loading-text">Loading sign…</div>' +
+        '<div class="fsl-loading-text">' + escapeHtml(T('loadingSign')) + '</div>' +
         '</div>' +
         '</div>' +
         caption +
@@ -599,7 +693,7 @@
         '<div class="fsl-wrap">' +
         '<div class="fsl-missing">' +
         '<span class="emoji">' + escapeHtml(slide.emoji) + '</span>' +
-        'Loading "' + escapeHtml(slide.wordEn) + '"…' +
+        escapeHtml(T('loadingWord')) + ' "' + escapeHtml(slide.wordEn) + '"…' +
         '</div>' +
         '</div>'
       );
@@ -620,7 +714,7 @@
     setStage(
       '<div class="story-end">' +
       '<div class="se-emoji">🎉</div>' +
-      '<h1 class="se-title">The End</h1>' +
+      '<h1 class="se-title">' + escapeHtml(T('theEnd')) + '</h1>' +
       (story.titleEn
         ? '<div class="se-story">' + escapeHtml(story.titleEn) +
           (story.titleFil
@@ -630,7 +724,7 @@
         : '') +
       (pages
         ? '<div class="se-pages">' + pages +
-          (pages === 1 ? ' page read' : ' pages read') + '</div>'
+          ' ' + escapeHtml(pages === 1 ? T('pageRead') : T('pagesRead')) + '</div>'
         : '') +
       '</div>'
     );
@@ -800,7 +894,7 @@
       'controls preload="auto" src="' + escapeHtml(video.url) + '"></video>' +
       '<div class="fsl-loading" id="fsl-loading">' +
       '<div class="spinner"></div>' +
-      '<div class="fsl-loading-text">Loading sign…</div>' +
+      '<div class="fsl-loading-text">' + escapeHtml(T('loadingSign')) + '</div>' +
       '</div>' +
       '</div>' +
       caption +
@@ -831,7 +925,7 @@
         '<div class="fsl-wrap">' +
         '<div class="fsl-missing">' +
         '<span class="emoji">' + escapeHtml(story.emoji) + '</span>' +
-        'Loading sign for "' + escapeHtml(story.titleEn) + '"…' +
+        escapeHtml(T('loadingSignFor')) + ' "' + escapeHtml(story.titleEn) + '"…' +
         '</div>' +
         '</div>'
       );
@@ -854,10 +948,10 @@
   function renderClassWins(state) {
     var s = state.classSummary || {};
     var rows = s.rows || [];
-    var html = '<div class="board wins"><h2>Our Class Wins 🎉</h2>';
+    var html = '<div class="board wins"><h2>' + escapeHtml(T('classWins')) + '</h2>';
 
     if (!rows.length) {
-      html += '<div class="empty">No student data yet.</div></div>';
+      html += '<div class="empty">' + escapeHtml(T('noStudentData')) + '</div></div>';
       setStage(html);
       lastVideoUrl = null;
       return;
@@ -866,13 +960,13 @@
     html +=
       '<div class="wins-totals">' +
       '<div class="wins-stat"><span class="v">' + (s.words || 0) + '</span>' +
-      'words learned together</div>' +
+      escapeHtml(T('wordsTogether')) + '</div>' +
       '<div class="wins-stat"><span class="v">' + (s.stars || 0) + '</span>' +
-      'stars earned</div>' +
+      escapeHtml(T('starsEarned')) + '</div>' +
       '<div class="wins-stat"><span class="v">' + (s.activeToday || 0) + ' / ' +
-      (s.learners || 0) + '</span>learning today</div>' +
+      (s.learners || 0) + '</span>' + escapeHtml(T('learningToday')) + '</div>' +
       '<div class="wins-stat"><span class="v">' + (s.bestStreak || 0) + '</span>' +
-      'day best streak</div>' +
+      escapeHtml(T('dayBestStreak')) + '</div>' +
       '</div>';
 
     html += '<div class="wins-grid">';
@@ -882,7 +976,7 @@
         '<div class="wins-card">' +
         '<div class="wins-name">' + escapeHtml(r.name) + '</div>' +
         '<div class="wins-line">' +
-        '<span>' + r.words + ' words</span>' +
+        '<span>' + r.words + ' ' + escapeHtml(T('words')) + '</span>' +
         '<span>' + r.streak + '🔥</span>' +
         '<span>' + r.stars + '⭐</span>' +
         '</div>' +
@@ -896,9 +990,9 @@
 
   function renderLeaderboard(state) {
     var rows = state.progress || [];
-    var html = '<div class="board"><h2>Class Leaderboard</h2>';
+    var html = '<div class="board"><h2>' + escapeHtml(T('leaderboard')) + '</h2>';
     if (rows.length === 0) {
-      html += '<div class="empty">No student data yet.</div>';
+      html += '<div class="empty">' + escapeHtml(T('noStudentData')) + '</div>';
     } else {
       for (var i = 0; i < rows.length; i++) {
         var r = rows[i];
@@ -910,8 +1004,8 @@
           '<div class="row">' +
           '<div class="' + rankCls + '">#' + r.rank + '</div>' +
           '<div class="name">' + escapeHtml(r.name) + '</div>' +
-          '<div class="stat"><span class="v">' + r.words + '</span>words</div>' +
-          '<div class="stat"><span class="v">' + r.streak + '</span>day streak</div>' +
+          '<div class="stat"><span class="v">' + r.words + '</span>' + escapeHtml(T('words')) + '</div>' +
+          '<div class="stat"><span class="v">' + r.streak + '</span>' + escapeHtml(T('dayStreak')) + '</div>' +
           '<div class="stat"><span class="v">' + r.stars + '</span>⭐</div>' +
           '</div>';
       }
@@ -929,7 +1023,7 @@
   function liveBoardHtml(live) {
     var board = live.board || [];
     if (!board.length) return '';
-    var html = '<div class="live-board"><h2>Scoreboard</h2>';
+    var html = '<div class="live-board"><h2>' + escapeHtml(T('scoreboard')) + '</h2>';
     for (var j = 0; j < board.length && j < 6; j++) {
       var r = board[j];
       html +=
@@ -953,8 +1047,8 @@
         '<div class="live">' +
         '<div class="live-wait">' +
         '<div class="splash-emoji">🎮</div>' +
-        '<h1>Live Activity</h1>' +
-        '<p>Get ready for the next question!</p>' +
+        '<h1>' + escapeHtml(T('liveActivity')) + '</h1>' +
+        '<p>' + escapeHtml(T('getReady')) + '</p>' +
         '</div>' +
         liveBoardHtml(live) +
         '</div>'
@@ -971,7 +1065,7 @@
     if (key === lastLiveKey) {
       var respEl = document.getElementById('live-responded');
       if (respEl) {
-        respEl.innerHTML = (live.responded || 0) + ' answered';
+        respEl.innerHTML = (live.responded || 0) + ' ' + escapeHtml(T('answered'));
       }
       var boardEl = document.getElementById('live-board-slot');
       if (boardEl) {
@@ -984,7 +1078,7 @@
     var html = '<div class="live">';
     if (a.questionNumber && a.totalQuestions) {
       html +=
-        '<div class="live-qnum">Question ' + a.questionNumber + ' / ' +
+        '<div class="live-qnum">' + escapeHtml(T('question')) + ' ' + a.questionNumber + ' / ' +
         a.totalQuestions + '</div>';
     }
 
@@ -1009,20 +1103,20 @@
         '<video autoplay muted loop playsinline webkit-playsinline ' +
         'preload="auto" src="' + escapeHtml(signUrl) + '"></video>' +
         '</div>' +
-        '<div class="live-sub">Watch the sign — pick the word on your device</div>';
+        '<div class="live-sub">' + escapeHtml(T('watchSignPick')) + '</div>';
     } else if (photoUrl) {
       html +=
         '<div class="live-media">' +
         '<img src="' + escapeHtml(photoUrl) + '" alt="">' +
         '</div>' +
-        '<div class="live-sub">Which word matches the picture?</div>';
+        '<div class="live-sub">' + escapeHtml(T('whichPicture')) + '</div>';
     } else if (a.type === 'pictureChoice' || a.type === 'fslSign') {
       html += '<div class="live-emoji">' + escapeHtml(a.emoji || '❓') + '</div>';
       html +=
         '<div class="live-sub">' +
         (a.type === 'fslSign'
-          ? 'Watch the sign — pick the word on your device'
-          : 'Which word matches the picture?') +
+          ? escapeHtml(T('watchSignPick'))
+          : escapeHtml(T('whichPicture'))) +
         '</div>';
     } else if (a.prompt) {
       html += '<h1 class="live-prompt">' + escapeHtml(a.prompt) + '</h1>';
@@ -1031,8 +1125,8 @@
     if (a.isTrueFalse) {
       html +=
         '<div class="live-options">' +
-        '<div class="live-opt">✔ True</div>' +
-        '<div class="live-opt">✘ False</div>' +
+        '<div class="live-opt">✔ ' + escapeHtml(T('trueWord')) + '</div>' +
+        '<div class="live-opt">✘ ' + escapeHtml(T('falseWord')) + '</div>' +
         '</div>';
     } else if (a.options && a.options.length) {
       html += '<div class="live-options">';
@@ -1046,7 +1140,7 @@
     }
     html +=
       '<div class="live-responded" id="live-responded">' +
-      (live.responded || 0) + ' answered</div>';
+      (live.responded || 0) + ' ' + escapeHtml(T('answered')) + '</div>';
     html += '<div id="live-board-slot">' + liveBoardHtml(live) + '</div>';
     html += '</div>';
 
@@ -1095,7 +1189,7 @@
       el.innerHTML = '';
       return;
     }
-    var inner = '<span class="hand-title">✋ Raised hands</span>';
+    var inner = '<span class="hand-title">' + escapeHtml(T('raisedHands')) + '</span>';
     for (var i = 0; i < hands.length; i++) {
       inner += '<span class="hand-chip">' + escapeHtml(hands[i]) + '</span>';
     }
@@ -1179,15 +1273,16 @@
     if (timerPaused) cls += ' paused';
     el.className = cls;
     el.innerHTML =
-      '<span class="lt-clock">' + (done ? "Time's up!" : formatClock(timerLocalLeft)) + '</span>' +
+      '<span class="lt-clock">' + (done ? escapeHtml(T('timesUp')) : formatClock(timerLocalLeft)) + '</span>' +
       (timerLabel ? '<span class="lt-label">' + escapeHtml(timerLabel) + '</span>' : '') +
-      (timerPaused && !done ? '<span class="lt-label">paused</span>' : '');
+      (timerPaused && !done ? '<span class="lt-label">' + escapeHtml(T('paused')) + '</span>' : '');
 
     if (done && !timerFinishedShown) {
       timerFinishedShown = true;
       // Speak it once, if the TV is the audio target and speech is allowed.
       if (lastState && lastState.ttsOnTv && ttsSupported()) {
-        speakSequence("Time's up!", '');
+        if (uiLang === 'fil') speakSequence('', T('timesUp'));
+        else speakSequence(T('timesUp'), '');
       }
     }
   }
@@ -1197,10 +1292,10 @@
     if (state.slide && typeof state.slide.index === 'number') {
       bits.push((state.slide.index + 1) + ' / ' + state.slide.total);
     } else if (state.story && typeof state.story.pageIndex === 'number') {
-      bits.push('Page ' + (state.story.pageIndex + 1) + ' / ' + state.story.totalPages);
+      bits.push(escapeHtml(T('page')) + ' ' + (state.story.pageIndex + 1) + ' / ' + state.story.totalPages);
     }
     if (state.isPaused) {
-      bits.push('<span class="paused">⏸ paused</span>');
+      bits.push('<span class="paused">⏸ ' + escapeHtml(T('paused')) + '</span>');
     }
     if (bits.length === 0) {
       pill.className = 'footer-pill hidden';
@@ -1377,6 +1472,11 @@
       // repaint to replace the "connecting" overlay with the live content.
       if (reconnecting) {
         reconnecting = false;
+        lastRev = -1;
+      }
+      var nextUi = state.ui === 'fil' ? 'fil' : 'en';
+      if (nextUi !== uiLang) {
+        uiLang = nextUi;
         lastRev = -1;
       }
       if (state.rev === lastRev) return;

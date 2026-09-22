@@ -82,6 +82,61 @@ const List<GamepadGuideGroup> kGamepadGuide = [
   ]),
 ];
 
+/// [kGamepadGuide] in Filipino — the same controls in the same order, so the
+/// page a Filipino learner reads matches what the controller does.
+const List<GamepadGuideGroup> kGamepadGuideFilipino = [
+  GamepadGuideGroup('Paggalaw', [
+    GamepadGuideEntry(
+      'D-pad ◀ / ▶',
+      'Lumipat ng section. Nagtatanong muna ang app bago lumipat — “Gusto mo '
+          'bang pumunta sa section ng Mga Kard?”',
+    ),
+    GamepadGuideEntry(
+      'D-pad ▲ / ▼',
+      'Lumipat sa mga item sa kasalukuyang screen, isa-isa, ayon sa '
+          'pagkakasunod. Binabasa ang bawat isa kasama ang puwesto nito.',
+    ),
+    GamepadGuideEntry(
+      'Kaliwang joystick',
+      'Tulad ng D-pad — itulak pakaliwa o pakanan para sa section, pataas o '
+          'pababa para sa item.',
+    ),
+  ]),
+  GamepadGuideGroup('Mga button sa harap', [
+    GamepadGuideEntry('X (kaliwa)', 'Nakaraang section — tulad ng D-pad ◀'),
+    GamepadGuideEntry('B (kanan)', 'Susunod na section — tulad ng D-pad ▶'),
+    GamepadGuideEntry('Y (taas)', 'Nakaraang item — tulad ng D-pad ▲'),
+    GamepadGuideEntry('A (baba)', 'Susunod na item — tulad ng D-pad ▼'),
+    GamepadGuideEntry(
+      'A at B habang may tanong',
+      'Ang A ay oo, ang B ay hindi. Sinasabi ito nang malakas sa bawat tanong, '
+          'kaya hindi ito nakagugulat.',
+    ),
+  ]),
+  GamepadGuideGroup('Pagpili at pag-alis', [
+    GamepadGuideEntry('R1', 'Buksan ang item na kinalalagyan mo'),
+    GamepadGuideEntry('L1', 'Bumalik, o isara ang nakabukas'),
+  ]),
+  GamepadGuideGroup('Pakikinig', [
+    GamepadGuideEntry('R2', 'Basahin ang buong screen — lahat ng item dito'),
+    GamepadGuideEntry('L2', 'Ulitin ang huling sinabi'),
+    GamepadGuideEntry('Start', 'Nasaan ako? — ang section at ang item'),
+    GamepadGuideEntry('Select', 'Sabihin ang gabay na ito sa mga button'),
+    GamepadGuideEntry(
+      'Pindot sa kanang joystick',
+      'Tumigil sa pagsasalita — pinuputol ang mahabang anunsyo',
+    ),
+  ]),
+  GamepadGuideGroup('Mas mabilis na paggalaw', [
+    GamepadGuideEntry('Kanang joystick ▲ / ▼', 'Mag-scroll sa pahina'),
+    GamepadGuideEntry(
+      'Kanang joystick ◀ / ▶',
+      'Tumalon sa una o huling item sa screen',
+    ),
+    GamepadGuideEntry('Pindot sa kaliwang joystick', 'Dumiretso sa Home'),
+  ]),
+];
+
 /// The button guide, rendered as a readable page.
 ///
 /// Every row is a [Semantics] pair so a learner using TalkBack alongside the
@@ -95,7 +150,10 @@ class GamepadGuide extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final group in kGamepadGuide) ...[
+        for (final group
+            in Localizations.localeOf(context).languageCode == 'fil'
+                ? kGamepadGuideFilipino
+                : kGamepadGuide) ...[
           Padding(
             padding: const EdgeInsets.only(top: 14, bottom: 8),
             child: Text(

@@ -14,6 +14,8 @@ import '../../../providers/parent_provider.dart';
 import '../../../providers/app_providers.dart';
 import '../services/report_generator.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Screen for generating, previewing and sharing weekly progress reports.
 ///
@@ -48,7 +50,7 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
           },
         ),
         title: Text(
-          'Weekly Reports',
+          _t(context).wrsTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -60,7 +62,7 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
               onPressed: _isGenerating ? null : () => _generateFamilyReport(snapshot.children),
               icon: Icon(Icons.family_restroom_rounded, color: hc.primary),
               label: Text(
-                'Family Report',
+                _t(context).wrsFamily,
                 style: TextStyle(color: hc.primary),
               ),
             ),
@@ -80,12 +82,12 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
           Icon(Icons.assignment_outlined, size: 80, color: hc.textHint),
           const SizedBox(height: 16),
           Text(
-            'No student profiles found',
+            _t(context).wrsNoStudents,
             style: AppTypography.titleMedium.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 8),
           Text(
-            'Create a student profile to generate reports.',
+            _t(context).wrsNoStudentsBody,
             style: AppTypography.bodyMedium.copyWith(color: hc.textHint),
           ),
         ],
@@ -143,7 +145,7 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Progress Reports',
+                      _t(context).wrsHeading,
                       style: AppTypography.titleMedium.copyWith(
                         fontWeight: FontWeight.w700,
                         color: hc.textPrimary,
@@ -151,8 +153,7 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Generate professional PDF reports showing weekly stats, '
-                      'category mastery, game scores, and personalized insights.',
+                      _t(context).wrsIntro,
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                       ),
@@ -168,7 +169,7 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
 
         // ─── Section Title ──────────────────────
         Text(
-          'Select a child to generate report',
+          _t(context).wrsSelectChild,
           style: AppTypography.labelMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textSecondary,
@@ -206,17 +207,21 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
   Future<void> _generateReport(ChildSummary child) async {
     setState(() => _isGenerating = true);
     try {
-      final pdfBytes = await ReportGenerator.generateWeeklyReport(child);
+      final pdfBytes = await ReportGenerator.generateWeeklyReport(
+        child,
+        l10n: _t(context),
+      );
       if (!mounted) return;
       await sharePdfBytes(
         context,
         pdfBytes,
         filename: 'weekly_report_${_safeFileName(child.name)}.pdf',
-        subject: 'Weekly Progress Report \u2014 ${child.name}',
+        subject: _t(context).wrsSubject(child.name),
       );
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context, message: 'Failed to generate report: $e');
+        debugPrint('Weekly report failed: $e');
+        AppSnackBar.error(context, message: _t(context).wrsFailedGenerate);
       }
     } finally {
       if (mounted) setState(() => _isGenerating = false);
@@ -226,7 +231,10 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
   Future<void> _previewReport(ChildSummary child) async {
     setState(() => _isGenerating = true);
     try {
-      final pdfBytes = await ReportGenerator.generateWeeklyReport(child);
+      final pdfBytes = await ReportGenerator.generateWeeklyReport(
+        child,
+        l10n: _t(context),
+      );
       if (!mounted) return;
 
       // Reset loading state before pushing preview route
@@ -236,15 +244,16 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
         MaterialPageRoute(
           builder: (_) => ReportPreviewScreen(
             pdfBytes: pdfBytes,
-            title: 'Report Preview \u2014 ${child.name}',
+            title: _t(context).wrsPreviewTitle(child.name),
             filename: 'weekly_report_${_safeFileName(child.name)}.pdf',
-            shareSubject: 'Weekly Progress Report \u2014 ${child.name}',
+            shareSubject: _t(context).wrsSubject(child.name),
           ),
         ),
       );
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context, message: 'Failed to preview report: $e');
+        debugPrint('Weekly report preview failed: $e');
+        AppSnackBar.error(context, message: _t(context).wrsFailedPreview);
       }
     } finally {
       if (mounted) setState(() => _isGenerating = false);
@@ -254,17 +263,21 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
   Future<void> _generateFamilyReport(List<ChildSummary> children) async {
     setState(() => _isGenerating = true);
     try {
-      final pdfBytes = await ReportGenerator.generateFamilyReport(children);
+      final pdfBytes = await ReportGenerator.generateFamilyReport(
+        children,
+        l10n: _t(context),
+      );
       if (!mounted) return;
       await sharePdfBytes(
         context,
         pdfBytes,
         filename: 'family_progress_report.pdf',
-        subject: 'Family Progress Report',
+        subject: _t(context).wrFamilyTitle,
       );
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context, message: 'Failed to generate report: $e');
+        debugPrint('Weekly report failed: $e');
+        AppSnackBar.error(context, message: _t(context).wrsFailedGenerate);
       }
     } finally {
       if (mounted) setState(() => _isGenerating = false);
@@ -358,7 +371,7 @@ class ReportPreviewScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            tooltip: 'Share PDF',
+            tooltip: _t(context).wrsSharePdf,
             icon: const Icon(Icons.share_rounded),
             onPressed: () => sharePdfBytes(
               context,
@@ -409,14 +422,13 @@ class _PreviewErrorFallback extends StatelessWidget {
             Icon(Icons.picture_as_pdf_rounded, size: 72, color: hc.textHint),
             const SizedBox(height: 16),
             Text(
-              'On-screen preview isn\'t available on this device.',
+              _t(context).wrsNoPreview,
               textAlign: TextAlign.center,
               style: AppTypography.titleSmall.copyWith(color: hc.textSecondary),
             ),
             const SizedBox(height: 8),
             Text(
-              'The report was generated successfully \u2014 tap below to open, '
-              'save, or send it as a PDF.',
+              _t(context).wrsNoPreviewBody,
               textAlign: TextAlign.center,
               style: AppTypography.bodyMedium.copyWith(color: hc.textHint),
             ),
@@ -424,7 +436,7 @@ class _PreviewErrorFallback extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onShare,
               icon: const Icon(Icons.share_rounded),
-              label: const Text('Share PDF'),
+              label: Text(_t(context).wrsSharePdf),
             ),
           ],
         ),
@@ -545,7 +557,7 @@ class _ChildReportCard extends StatelessWidget {
                           ),
                           _ReportStatChip(
                             icon: Icons.local_fire_department_rounded,
-                            text: '${child.streakDays}d',
+                            text: _t(context).wrsStreakDays(child.streakDays),
                             color: AppColors.error,
                           ),
                         ],
@@ -588,7 +600,7 @@ class _ChildReportCard extends StatelessWidget {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.preview_rounded, size: 18),
-                      label: const Text('Preview'),
+                      label: Text(_t(context).dtPreview),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -609,7 +621,7 @@ class _ChildReportCard extends StatelessWidget {
                                   strokeWidth: 2, color: Colors.white),
                             )
                           : const Icon(Icons.share_rounded, size: 18),
-                      label: const Text('Share PDF'),
+                      label: Text(_t(context).wrsSharePdf),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -665,3 +677,8 @@ class _ReportStatChip extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

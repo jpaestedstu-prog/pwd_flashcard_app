@@ -16,6 +16,8 @@ import '../providers/custom_board_provider.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Builds the **active profile's** own Talk Board tab.
 ///
@@ -87,11 +89,11 @@ class _BoardTemplateBuilderScreenState
 
   void _addSeedTile(BoardTile tile) {
     if (_tiles.length >= _maxTiles) {
-      AppSnackBar.warning(context, message: 'Maximum $_maxTiles tiles reached');
+      AppSnackBar.warning(context, message: _t(context).bbMax(_maxTiles));
       return;
     }
     if (_tiles.any((t) => t.id == tile.id)) {
-      AppSnackBar.info(context, message: 'Tile already added');
+      AppSnackBar.info(context, message: _t(context).bbAlready);
       return;
     }
     ref.read(hapticServiceProvider).lightTap();
@@ -144,7 +146,7 @@ class _BoardTemplateBuilderScreenState
 
   Future<void> _createCustomTile() async {
     if (_tiles.length >= _maxTiles) {
-      AppSnackBar.warning(context, message: 'Maximum $_maxTiles tiles reached');
+      AppSnackBar.warning(context, message: _t(context).bbMax(_maxTiles));
       return;
     }
     final tile = await showDialog<BoardTile>(
@@ -158,7 +160,7 @@ class _BoardTemplateBuilderScreenState
       _tiles.add(tile);
       _markDirty();
     });
-    AppSnackBar.success(context, message: '“${tile.label}” added to the board');
+    AppSnackBar.success(context, message: _t(context).bbAdded(tile.label));
   }
 
   Future<void> _editCustomTile(int index) async {
@@ -182,7 +184,7 @@ class _BoardTemplateBuilderScreenState
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      AppSnackBar.warning(context, message: 'Please give the board a name');
+      AppSnackBar.warning(context, message: _t(context).bbNeedName);
       return;
     }
 
@@ -208,9 +210,8 @@ class _BoardTemplateBuilderScreenState
       message: _tiles.isEmpty
           // Saving an empty board is a legitimate way to remove the tab, so
           // say what actually happened rather than claiming a save of nothing.
-          ? 'Board cleared — the tab is hidden on Talk Board'
-          : '“$name” saved with ${_tiles.length} '
-                'tile${_tiles.length == 1 ? '' : 's'}',
+          ? _t(context).bbCleared
+          : _t(context).bbSaved(name, _tiles.length),
     );
     context.popOrGo('/communication-board');
   }
@@ -221,18 +222,18 @@ class _BoardTemplateBuilderScreenState
     final discard = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Discard changes?'),
-        content: const Text(
-          'This board has changes that have not been saved yet.',
+        title: Text(_t(context).bbDiscardTitle),
+        content: Text(
+          _t(context).bbDiscardBody,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Keep editing'),
+            child: Text(_t(context).bbKeepEditing),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Discard'),
+            child: Text(_t(context).abDiscard),
           ),
         ],
       ),
@@ -265,7 +266,7 @@ class _BoardTemplateBuilderScreenState
         backgroundColor: hc.background,
         appBar: AppBar(
           title: Text(
-            'My Board',
+            _t(context).bbMyBoard,
             style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
           ),
           backgroundColor: Colors.transparent,
@@ -281,12 +282,12 @@ class _BoardTemplateBuilderScreenState
                 color: hc.primary,
               ),
               onPressed: () => setState(() => _editMode = !_editMode),
-              tooltip: _editMode ? 'Done editing' : 'Reorder/remove tiles',
+              tooltip: _editMode ? _t(context).bbDoneEditing : _t(context).bbReorder,
             ),
             IconButton(
               icon: Icon(Icons.play_arrow_rounded, color: hc.primary),
               onPressed: _isPreviewing || _tiles.isEmpty ? null : _previewBoard,
-              tooltip: 'Preview with speech',
+              tooltip: _t(context).bbPreview,
             ),
           ],
         ),
@@ -338,7 +339,7 @@ class _BoardTemplateBuilderScreenState
                             onChanged: (_) => _markDirty(),
                             decoration: InputDecoration(
                               // It becomes the tab label on Talk Board, so say so.
-                              labelText: 'Board name (shown as the tab)',
+                              labelText: _t(context).bbNameField,
                               prefixIcon: const Icon(Icons.label_rounded),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
@@ -389,7 +390,7 @@ class _BoardTemplateBuilderScreenState
                                           const SizedBox(height: 8),
                                         ],
                                         Text(
-                                          'Tap tiles below, or make your own word',
+                                          _t(context).bbTapBelow,
                                           style: AppTypography.bodyMedium
                                               .copyWith(
                                                 color: hc.textSecondary,
@@ -426,7 +427,7 @@ class _BoardTemplateBuilderScreenState
                                         title: Text(tile.label),
                                         subtitle: Text(
                                           tile.isCustom
-                                              ? '${tile.labelFil} · my word'
+                                              ? _t(context).bbMyWord(tile.labelFil)
                                               : tile.labelFil,
                                         ),
                                         // Only authored tiles are editable; a seed
@@ -439,7 +440,7 @@ class _BoardTemplateBuilderScreenState
                                             Icons.remove_circle_rounded,
                                             color: AppColors.error,
                                           ),
-                                          tooltip: 'Remove ${tile.label}',
+                                          tooltip: _t(context).bbRemove(tile.label),
                                           onPressed: () => _removeTile(index),
                                         ),
                                       ),
@@ -494,7 +495,7 @@ class _BoardTemplateBuilderScreenState
                               // phone, and the counter is the half that can shorten.
                               Expanded(
                                 child: Text(
-                                  '${_tiles.length} / $_maxTiles tiles',
+                                  _t(context).bbCount(_tiles.length, _maxTiles),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.labelSmall.copyWith(
@@ -516,7 +517,7 @@ class _BoardTemplateBuilderScreenState
                                         icon: const Icon(
                                           Icons.clear_all_rounded,
                                         ),
-                                        tooltip: 'Clear all tiles',
+                                        tooltip: _t(context).tbClearAll,
                                         visualDensity: VisualDensity.compact,
                                       )
                                     : TextButton.icon(
@@ -528,8 +529,8 @@ class _BoardTemplateBuilderScreenState
                                           Icons.clear_all_rounded,
                                           size: 18,
                                         ),
-                                        label: const Text(
-                                          'Clear All',
+                                        label: Text(
+                                          _t(context).bbClearAll,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -542,7 +543,7 @@ class _BoardTemplateBuilderScreenState
                                   icon: const Icon(
                                     Icons.add_circle_outline_rounded,
                                   ),
-                                  tooltip: 'Make my own word',
+                                  tooltip: _t(context).bbMakeWord,
                                   visualDensity: VisualDensity.compact,
                                 ),
                             ],
@@ -567,14 +568,14 @@ class _BoardTemplateBuilderScreenState
                                 // Hand-built instead of OutlinedButton.icon: that packs
                                 // icon and label into a Row with no give, and at 2.0x
                                 // on a 360 dp phone the label ran 99 px off the right.
-                                child: const Row(
+                                child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.add_circle_outline_rounded),
-                                    SizedBox(width: 8),
+                                    const Icon(Icons.add_circle_outline_rounded),
+                                    const SizedBox(width: 8),
                                     Flexible(
                                       child: Text(
-                                        'Make my own word',
+                                        _t(context).bbMakeWord,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -605,7 +606,9 @@ class _BoardTemplateBuilderScreenState
                       final isActive = cat == _browseCategory;
                       return ChoiceChip(
                         selected: isActive,
-                        label: Text('${cat.emoji} ${cat.label}'),
+                        label: Text(
+                          '${cat.emoji} ${Localizations.localeOf(context).languageCode == 'fil' ? cat.labelFil : cat.label}',
+                        ),
                         onSelected: (_) =>
                             setState(() => _browseCategory = cat),
                         selectedColor: AppColors.primary.withValues(
@@ -642,7 +645,8 @@ class _BoardTemplateBuilderScreenState
                         return Semantics(
                               button: !isAdded,
                               label:
-                                  '${tile.label}, ${tile.labelFil}${isAdded ? ', already added' : ', tap to add'}',
+                                  '${tile.label}, ${tile.labelFil}, '
+                                  '${isAdded ? _t(context).bbAlreadyAdded : _t(context).bbTapToAdd}',
                               child: GestureDetector(
                                 onTap: isAdded
                                     ? null
@@ -737,7 +741,7 @@ class _BoardTemplateBuilderScreenState
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _save,
           icon: const Icon(Icons.save_rounded),
-          label: const Text('Save Board'),
+          label: Text(_t(context).bbSaveBoard),
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
         ),
@@ -785,6 +789,7 @@ class _CustomTileDialogState extends State<_CustomTileDialog> {
       label: _label.text,
       labelFil: _labelFil.text,
       emoji: _emoji,
+      filipino: Localizations.localeOf(context).languageCode == 'fil',
     );
     if (error != null) {
       setState(() => _error = error);
@@ -805,7 +810,7 @@ class _CustomTileDialogState extends State<_CustomTileDialog> {
     final hc = HCColor.of(context);
 
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Make my own word' : 'Edit word'),
+      title: Text(widget.existing == null ? _t(context).bbMakeWord : _t(context).bbEditWord),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
@@ -818,9 +823,9 @@ class _CustomTileDialogState extends State<_CustomTileDialog> {
                 autofocus: true,
                 maxLength: kMaxCustomTileLabel,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Word (English)',
-                  hintText: 'e.g. Ate Maria',
+                decoration: InputDecoration(
+                  labelText: _t(context).bbWordEn,
+                  hintText: _t(context).bbWordEnHint,
                 ),
                 onChanged: (_) {
                   if (_error != null) setState(() => _error = null);
@@ -830,13 +835,13 @@ class _CustomTileDialogState extends State<_CustomTileDialog> {
                 controller: _labelFil,
                 maxLength: kMaxCustomTileLabel,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Word (Filipino) — optional',
-                  hintText: 'Leave blank to reuse the English word',
+                decoration: InputDecoration(
+                  labelText: _t(context).bbWordFil,
+                  hintText: _t(context).bbWordFilHint,
                 ),
               ),
               const SizedBox(height: 8),
-              Text('Picture', style: AppTypography.labelMedium),
+              Text(_t(context).bbPicture, style: AppTypography.labelMedium),
               const SizedBox(height: 8),
               // A fixed palette, not a system emoji keyboard: it renders the
               // same on every device and an adult can scan it in one look.
@@ -855,7 +860,7 @@ class _CustomTileDialogState extends State<_CustomTileDialog> {
                     return Semantics(
                       button: true,
                       selected: selected,
-                      label: 'Picture ${index + 1}',
+                      label: _t(context).bbPictureN(index + 1),
                       child: GestureDetector(
                         onTap: () => setState(() => _emoji = e),
                         child: Container(
@@ -897,13 +902,18 @@ class _CustomTileDialogState extends State<_CustomTileDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(_t(context).cancel),
         ),
         FilledButton(
           onPressed: _submit,
-          child: Text(widget.existing == null ? 'Add' : 'Save'),
+          child: Text(widget.existing == null ? _t(context).tbAdd : _t(context).gmSave),
         ),
       ],
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

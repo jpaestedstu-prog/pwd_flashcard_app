@@ -7,6 +7,7 @@ import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../models/assessment_models.dart';
+import '../models/post_test_readiness.dart';
 import '../models/custom_quiz_models.dart';
 
 /// Service that manages assessment persistence and question generation.
@@ -244,6 +245,142 @@ class AssessmentService {
     return results.first;
   }
 
+  /// Whether [profileId] has studied long enough for a post-test to measure
+  /// anything, and what is still outstanding if not.
+  ///
+  /// Reads only what the learner's own device already holds — their pre-test,
+  /// their session log, and any post-test an educator has set them — so it
+  /// needs no new sync and gives the same answer offline.
+  static PostTestReadiness getPostTestReadiness(
+    String profileId, {
+    DateTime? now,
+  }) {
+    final pre = getLatestPreTest(profileId);
+    if (pre == null) {
+      return const PostTestReadiness(gate: PostTestGate.noPreTest);
+    }
+
+    final studyDates = <DateTime>[];
+    try {
+      for (final session in HiveService.getSessionLogs(profileId)) {
+        final raw = session['date'];
+        final parsed = raw is String ? DateTime.tryParse(raw) : null;
+        if (parsed != null) studyDates.add(parsed);
+      }
+    } catch (_) {
+      // Sessions box not open (widget tests) — fall back to the time rule
+      // alone rather than pretending nobody has studied.
+    }
+
+    return PostTestReadiness.evaluate(
+      preTestAt: pre.completedAt,
+      studyDates: studyDates,
+      now: now ?? DateTime.now(),
+      assignedByEducator: hasAssignedPostTest(profileId),
+    );
+  }
+
+  /// Whether [profile] may sit a pre-test / post-test they have already
+  /// finished.
+  ///
+  /// The policy lives on the class or home group rather than the profile: it
+  /// is a decision about how the *instrument* is being used, and an educator
+  /// makes it once for everyone they teach. Locked unless the group says
+  /// otherwise — including a group this device has not cached and a learner
+  /// with no group. That can never keep anyone from a *first* sitting: those
+  /// come from an assignment, which this policy does not touch.
+  static bool retakesAllowed(UserProfile? profile) {
+    if (profile == null) return false;
+    try {
+      final classroomId = profile.classroomId;
+      if (classroomId != null) {
+        final classroom = HiveService.getCachedClassroom(classroomId);
+        if (classroom != null) return classroom.allowAssessmentRetakes;
+      }
+      final groupId = profile.homeGroupId;
+      if (groupId != null) {
+        final group = HiveService.getCachedHomeGroup(groupId);
+        if (group != null) return group.allowAssessmentRetakes;
+      }
+    } catch (_) {
+      // Group boxes not open (widget tests) — the same locked default.
+    }
+    return false;
+  }
+
+  /// Question id → the text as it was asked, gathered from every assessment
+  /// this device can still resolve.
+  ///
+  /// Item analysis reads back `QuestionAnswer` rows, which carry an id and
+  /// nothing a person could read. Educator-built assessments are stored under
+  /// their creator's key and auto-generated pre-tests keep a saved template,
+  /// so between them most ids resolve. A post-test built as a parallel form is
+  /// not stored — but it reuses its pre-test's question ids exactly, which is
+  /// why those items still come out with wording.
+  static Map<String, String> questionPrompts() {
+    final prompts = <String, String>{};
+    void take(Assessment a) {
+      for (final q in a.questions) {
+        // Every sign item is asked the same way, so on its own the prompt
+        // gave the Class Report rows of identical "Watch the sign" items.
+        // The educator needs to know *which* sign was hard. Curly quotes: a
+        // straight one blanks the row's whole semantics label.
+        prompts.putIfAbsent(
+          q.id,
+          () => q.format == QuestionFormat.signVideo
+              ? '${q.questionText} (“${q.correctAnswer}”)'
+              : q.questionText,
+        );
+      }
+    }
+
+    for (final key in _box.keys.toList()) {
+      final name = key.toString();
+      final raw = _box.get(key);
+      try {
+        if (name.startsWith('assessments_') && raw is List) {
+          for (final entry in raw) {
+            if (entry is! Map) continue;
+            take(Assessment.fromJson(Map<String, dynamic>.from(entry)));
+          }
+        } else if (name.startsWith(_preTestTemplatePrefix) && raw is Map) {
+          take(Assessment.fromJson(Map<String, dynamic>.from(raw)));
+        }
+      } catch (_) {
+        // One unreadable record must not cost the whole vocabulary.
+      }
+    }
+    return prompts;
+  }
+
+  /// Every sitting of [type] for [profileId], newest first.
+  ///
+  /// The learning gain is measured from the *newest* pre-test and post-test,
+  /// which is invisible when only one score is ever shown. Callers that
+  /// display this should say which row counts.
+  static List<AssessmentResult> getAttempts(
+    String profileId,
+    AssessmentType type,
+  ) {
+    final attempts = getResultsByType(profileId, type)
+      ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
+    return attempts;
+  }
+
+  /// Whether an educator has set this learner a post-test that is still open.
+  ///
+  /// This is the override on the wait: a teacher who assigns one has decided
+  /// the teaching is done, and nothing here should argue with them.
+  static bool hasAssignedPostTest(String profileId) {
+    try {
+      return getOpenableAssignments(
+        profileId,
+      ).any((w) => w.assessment.type == AssessmentType.postTest);
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Compare pre-test vs post-test
   static LearningGainReport? getLearningGainReport(String profileId) {
     final pre = getLatestPreTest(profileId);
@@ -314,12 +451,20 @@ class AssessmentService {
     List<FlashcardCategory> categories = const [],
     GameDifficulty difficulty = GameDifficulty.medium,
     int questionCount = 15,
+    List<Flashcard> signCards = const [],
+    String createdBy = 'system',
   }) {
     // Post-test: replay the student's completed pre-test as a parallel form.
     if (type == AssessmentType.postTest) {
       final pre = getLatestPreTest(profileId);
-      final template =
-          pre != null ? getPreTestTemplate(pre.assessmentId) : null;
+      // A pre-test the learner generated keeps a dedicated template; one an
+      // educator assigned lives under the educator's key, where the assignment
+      // sync filed it. Missing the second made a learner's post-test after an
+      // assigned pre-test a fresh random sample — a different test entirely.
+      final template = pre != null
+          ? (getPreTestTemplate(pre.assessmentId) ??
+                findAssessmentById(pre.assessmentId))
+          : null;
       if (template != null) {
         return _buildParallelForm(template);
       }
@@ -338,11 +483,14 @@ class AssessmentService {
         .take(min(questionCount, allCards.length))
         .toList();
 
-    final questions = <AssessmentQuestion>[];
+    var questions = <AssessmentQuestion>[];
     for (final card in selectedCards) {
       final format = _randomFormat(difficulty, rng);
       questions.add(_generateQuestion(card, allCards, format, rng));
     }
+    // For a learner who signs, part of the instrument is in their language.
+    // The caller decides whether that applies — see the content policy.
+    questions = withSignItems(questions, signCards, rng);
 
     final assessment = Assessment(
       id: _uuid.v4(),
@@ -354,7 +502,7 @@ class AssessmentService {
       categories: cats,
       difficulty: difficulty,
       timeLimitMinutes: difficulty == GameDifficulty.hard ? 10 : null,
-      createdBy: 'system',
+      createdBy: createdBy,
       createdAt: DateTime.now(),
     );
 
@@ -366,12 +514,94 @@ class AssessmentService {
     return assessment;
   }
 
+  /// Share of a standard assessment given over to sign items when the learner
+  /// signs and clips are available. A third: enough for the score to move on
+  /// signing ability, not so much that the test stops covering vocabulary.
+  static const double signItemShare = 1 / 3;
+
+  /// One "watch the sign, pick the word" item.
+  ///
+  /// The prompt is the clip; the choices are English words. Deliberately
+  /// *receptive* — it asks whether the learner understood a sign, which the
+  /// app can mark. Whether they can produce one is a judgement only a person
+  /// can make, and that already lives in the FSL self-assessment and an
+  /// educator's sign check.
+  ///
+  /// The id is prefixed `sign_` rather than `q_` so item analysis never
+  /// averages a sign item together with the reading item about the same word.
+  static AssessmentQuestion buildSignQuestion(
+    Flashcard card,
+    List<Flashcard> pool,
+    Random rng, {
+    int choiceCount = 4,
+  }) {
+    // Same-category distractors first. Seen on the tablet: a "Days & Time"
+    // sign offered Nose, Rainbow, Three and Saturday — one day of the week
+    // among three unrelated words, so the item could be answered without
+    // understanding the sign at all. Words from the same category are the
+    // confusions a learner actually has to rule out. Other categories only top
+    // the list up when this one has too few clips.
+    final others = pool
+        .where((c) => c.id != card.id && c.wordEnglish != card.wordEnglish)
+        .toList()
+      ..shuffle(rng);
+    final sameCategory = others.where((c) => c.category == card.category);
+    final otherCategory = others.where((c) => c.category != card.category);
+    final distractors = <String>{};
+    for (final c in [...sameCategory, ...otherCategory]) {
+      if (distractors.length >= choiceCount - 1) break;
+      distractors.add(c.wordEnglish);
+    }
+    final choices = <String>[card.wordEnglish, ...distractors]..shuffle(rng);
+
+    return AssessmentQuestion(
+      id: 'sign_${card.id}',
+      questionText: 'Watch the sign. Which word is it?',
+      correctAnswer: card.wordEnglish,
+      choices: choices,
+      format: QuestionFormat.signVideo,
+      category: card.category,
+      signCardId: card.id,
+    );
+  }
+
+  /// Swap a share of [questions] for sign items drawn from [signCards].
+  ///
+  /// Replaces rather than appends, so a learner who signs sits an instrument
+  /// of the same length as everyone else's — a longer test for Deaf learners
+  /// would be its own unfairness. Returns [questions] untouched when there are
+  /// no clips to draw on.
+  static List<AssessmentQuestion> withSignItems(
+    List<AssessmentQuestion> questions,
+    List<Flashcard> signCards,
+    Random rng, {
+    double share = signItemShare,
+  }) {
+    if (signCards.isEmpty || questions.isEmpty) return questions;
+    final wanted = min(
+      (questions.length * share).round(),
+      signCards.length,
+    );
+    if (wanted <= 0) return questions;
+
+    final picked = (List.of(signCards)..shuffle(rng)).take(wanted).toList();
+    final out = List.of(questions);
+    for (var i = 0; i < picked.length; i++) {
+      out[i] = buildSignQuestion(picked[i], signCards, rng);
+    }
+    out.shuffle(rng);
+    return out;
+  }
+
   /// Builds a post-test that is a parallel form of [preTemplate]: the exact
   /// same items (question ids, prompts, correct answers, distractors) with the
   /// question order and each question's choice order re-randomized to blunt
   /// rote recall. Keeping question ids lets pre/post items be matched 1:1 for
   /// later item analysis.
-  static Assessment _buildParallelForm(Assessment preTemplate) {
+  static Assessment _buildParallelForm(
+    Assessment preTemplate, {
+    String createdBy = 'system',
+  }) {
     final rng = Random();
     final questions = preTemplate.questions
         .map((q) => AssessmentQuestion(
@@ -383,6 +613,7 @@ class AssessmentService {
               category: q.category,
               imageAsset: q.imageAsset,
               hint: q.hint,
+              signCardId: q.signCardId,
             ))
         .toList()
       ..shuffle(rng);
@@ -398,9 +629,101 @@ class AssessmentService {
       categories: cats,
       difficulty: preTemplate.difficulty,
       timeLimitMinutes: preTemplate.timeLimitMinutes,
-      createdBy: 'system',
+      createdBy: createdBy,
       createdAt: DateTime.now(),
     );
+  }
+
+  // ─── The class instrument ──────────────────────────────
+
+  /// One pre-test for a whole group of learners, minted by their educator.
+  ///
+  /// The study procedure has the teacher or parent *assign* the pre-test and,
+  /// after the study period, the post-test. Until this existed they could not:
+  /// the assign screen only offered custom assessments, which are typed
+  /// `custom` and so never counted as a pre-test anywhere — not in the
+  /// learning gain, the Class Report or the research export. A teacher
+  /// following the written procedure collected no gain data at all.
+  ///
+  /// Common to everyone it is assigned to, rather than a random sample per
+  /// learner, so item analysis compares the same questions across the class.
+  /// [signCards] should be non-empty only when *every* learner sitting it
+  /// signs — the caller decides; see [signCardsForGroup].
+  static Assessment createClassPreTest({
+    required String educatorId,
+    List<Flashcard> signCards = const [],
+  }) => generateStandardAssessment(
+    profileId: educatorId,
+    type: AssessmentType.preTest,
+    signCards: signCards,
+    createdBy: educatorId,
+  );
+
+  /// The post-test for [classPreTest]: its parallel form, same items with the
+  /// order and choices re-shuffled, so the gain compares like with like.
+  static Assessment createClassPostTest(Assessment classPreTest) =>
+      _buildParallelForm(classPreTest, createdBy: classPreTest.createdBy);
+
+  /// The most recent class pre-test [educatorId] has minted, if any. It is
+  /// what a learner who sat none of this educator's class pre-tests gets a
+  /// post-test against — see [classPostTestPlan].
+  static Assessment? latestClassPreTest(String educatorId) {
+    final minted = getAssessments(educatorId)
+        .where((a) => a.type == AssessmentType.preTest)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return minted.isEmpty ? null : minted.first;
+  }
+
+  /// Which class pre-test each of [learnerIds] gets a post-test against:
+  /// the one of [educatorId]'s class pre-tests that learner actually sat
+  /// (their latest, if several), grouped so each group gets one post-test.
+  ///
+  /// The post-test used to mirror the educator's *newest* class pre-test for
+  /// everyone. A teacher with two classes mints two pre-tests, so the first
+  /// class got a post-test built from the second class's items — a different
+  /// sample of words, which makes the pre/post gain meaningless. A learner who
+  /// sat none of them falls back to the newest; nobody is placed when there is
+  /// no class pre-test at all.
+  static List<({Assessment pre, List<String> learners})> classPostTestPlan(
+    String educatorId,
+    Iterable<String> learnerIds,
+  ) {
+    final minted = {
+      for (final a in getAssessments(educatorId))
+        if (a.type == AssessmentType.preTest) a.id: a,
+    };
+    final fallback = latestClassPreTest(educatorId);
+    final groups = <String, List<String>>{};
+    for (final learner in learnerIds) {
+      final sat =
+          getResultsByType(learner, AssessmentType.preTest)
+              .where((r) => minted.containsKey(r.assessmentId))
+              .toList()
+            ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
+      final preId = sat.isNotEmpty ? sat.first.assessmentId : fallback?.id;
+      if (preId == null) continue;
+      groups.putIfAbsent(preId, () => []).add(learner);
+    }
+    return [
+      for (final e in groups.entries) (pre: minted[e.key]!, learners: e.value),
+    ];
+  }
+
+  /// Sign cards to put in a common instrument for [learners] — all of them,
+  /// or none.
+  ///
+  /// One test, one set of items: a sign item is only fair when everyone
+  /// sitting it signs. A mixed group gets a reading-only test, which is what
+  /// it had before. [showsFsl] is the content-policy question for one learner.
+  static List<Flashcard> signCardsForGroup<T>(
+    Iterable<T> learners,
+    bool Function(T learner) showsFsl,
+    List<Flashcard> available,
+  ) {
+    final list = learners.toList();
+    if (list.isEmpty || available.isEmpty) return const [];
+    return list.every(showsFsl) ? available : const [];
   }
 
   /// Generate a category mastery assessment
@@ -431,6 +754,50 @@ class AssessmentService {
       createdBy: 'system',
       createdAt: DateTime.now(),
     );
+  }
+
+  // ─── Accommodations ────────────────────────────────────
+
+  /// Narrow every multiple-choice item to at most [maxChoices] options,
+  /// always keeping the correct answer.
+  ///
+  /// Backs the "fewer answer choices" support: a learner who cannot hold four
+  /// options in mind at once is being tested on working memory rather than on
+  /// vocabulary. Applied when the test is *presented*, not when it is
+  /// generated, so one stored instrument still serves a whole class and the
+  /// educator's item analysis lines up across learners.
+  ///
+  /// Only multiple-choice items are touched. True/false already has two, and
+  /// fill-in-the-blank has no choices to narrow.
+  static List<AssessmentQuestion> limitChoices(
+    List<AssessmentQuestion> questions,
+    int maxChoices, {
+    Random? random,
+  }) {
+    if (maxChoices < 2) return questions;
+    final rng = random ?? Random();
+    return questions.map((q) {
+      final narrowable =
+          q.format == QuestionFormat.multipleChoice ||
+          q.format == QuestionFormat.signVideo;
+      if (!narrowable) return q;
+      if (q.choices.length <= maxChoices) return q;
+      final wrong = q.choices.where((c) => c != q.correctAnswer).toList()
+        ..shuffle(rng);
+      final kept = [q.correctAnswer, ...wrong.take(maxChoices - 1)]
+        ..shuffle(rng);
+      return AssessmentQuestion(
+        id: q.id,
+        questionText: q.questionText,
+        correctAnswer: q.correctAnswer,
+        choices: kept,
+        format: q.format,
+        category: q.category,
+        imageAsset: q.imageAsset,
+        hint: q.hint,
+        signCardId: q.signCardId,
+      );
+    }).toList();
   }
 
   // ─── Custom Quiz Materialisation ───────────────────────
@@ -509,6 +876,10 @@ class AssessmentService {
     }
 
     switch (format) {
+      // A sign item cannot be built from a quiz recipe — the Quiz Builder
+      // picks flashcards, not clips, and not every card has one. Falling back
+      // to multiple choice is the only honest answer.
+      case QuestionFormat.signVideo:
       case QuestionFormat.multipleChoice:
         return AssessmentQuestion(
           id: 'q_${card.id}',
@@ -591,6 +962,9 @@ class AssessmentService {
     Random rng,
   ) {
     switch (format) {
+      // Sign items are generated from the clips that exist, not from a random
+      // format roll — see [buildSignQuestion].
+      case QuestionFormat.signVideo:
       case QuestionFormat.multipleChoice:
         return _generateMultipleChoice(card, allCards, rng);
       case QuestionFormat.trueFalse:

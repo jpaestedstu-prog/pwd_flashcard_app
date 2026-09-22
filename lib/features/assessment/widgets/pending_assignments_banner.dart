@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../widgets/shared_widgets.dart';
 import '../services/assessment_service.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// "You have N assessments to complete" — the only place a learner finds out
 /// an educator set them work.
@@ -37,17 +39,17 @@ class PendingAssignmentsBanner extends StatelessWidget {
 
     final count = pending.length;
     final hasOverdue = pending.any((a) => a.isOverdue);
+    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
 
     return FeatureBanner(
       emoji: hasOverdue ? '⚠️' : '📋',
-      title: hasOverdue ? 'Overdue Assignments' : 'Pending Assignments',
-      subtitle: 'You have $count assessment${count > 1 ? 's' : ''} to complete',
+      title: hasOverdue ? t.bannerOverdue : t.bannerPending,
+      subtitle: t.bannerSubtitle(count),
       gradientColors: hasOverdue
           ? const [AppColors.error, AppColors.sectionAssessment]
           : const [AppColors.info, AppColors.sectionLearning],
       onTap: () => context.push('/assessment'),
-      semanticLabel:
-          '$count pending assessment${count > 1 ? 's' : ''} assigned to you',
+      semanticLabel: t.bannerSemantics(count),
     );
   }
 }

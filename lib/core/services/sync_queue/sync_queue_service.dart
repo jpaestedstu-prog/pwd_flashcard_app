@@ -11,6 +11,7 @@ import '../../../data/local/local_repository.dart';
 import '../../../data/remote/firestore_repository.dart';
 import 'sync_queue_models.dart';
 import 'sync_queue_storage.dart';
+import '../../accessibility/learner_support.dart';
 
 /// Processes the persistent sync queue, pushing queued operations to
 /// Firestore with exponential back-off retry.
@@ -256,6 +257,8 @@ class SyncQueueService {
           : const [],
       classroomId: p['classroomId'] as String?,
       isGuestPlayer: p['isGuestPlayer'] as bool? ?? false,
+      supportOptions:
+          LearnerSupportCatalog.decode(p['supportOptions'] as List?),
     );
   }
 

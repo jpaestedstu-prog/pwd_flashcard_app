@@ -300,7 +300,11 @@ class _SeasonalBanner extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        event.name,
+                        event.nameOf(
+                          filipino: Localizations.localeOf(context)
+                                  .languageCode ==
+                              'fil',
+                        ),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -309,7 +313,11 @@ class _SeasonalBanner extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        event.description,
+                        event.descriptionOf(
+                          filipino: Localizations.localeOf(context)
+                                  .languageCode ==
+                              'fil',
+                        ),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 12,

@@ -5,6 +5,8 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/connectivity_state.dart';
 import '../core/utils/reduced_motion.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// Compact connectivity status indicator for app bars and headers.
 ///
@@ -80,7 +82,7 @@ class _ConnectivityIndicatorState extends State<ConnectivityIndicator>
 
     if (!_isOffline && widget.showWhenOnline) {
       return Tooltip(
-        message: 'Online',
+        message: _t(context).ciOnline,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Icon(
@@ -94,7 +96,7 @@ class _ConnectivityIndicatorState extends State<ConnectivityIndicator>
 
     // Offline state — pulsing icon
     return Tooltip(
-      message: 'No internet — your work is saved locally',
+      message: _t(context).ciOffline,
       child: AnimatedBuilder(
         animation: _pulseController,
         builder: (context, child) {
@@ -121,7 +123,7 @@ class _ConnectivityIndicatorState extends State<ConnectivityIndicator>
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'Offline',
+                  _t(context).csxOffline,
                   style: AppTypography.labelSmall.copyWith(
                     color: AppColors.warning,
                     fontWeight: FontWeight.w700,
@@ -135,3 +137,8 @@ class _ConnectivityIndicatorState extends State<ConnectivityIndicator>
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

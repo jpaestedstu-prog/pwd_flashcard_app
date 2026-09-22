@@ -11,6 +11,8 @@ import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_back_button.dart';
 import '../lesson_step_launcher.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Detail screen for a single learning path showing all steps.
 class LessonScreen extends ConsumerWidget {
@@ -45,13 +47,18 @@ class LessonScreen extends ConsumerWidget {
           children: [
             Text(path.emoji, style: const TextStyle(fontSize: 24)),
             const SizedBox(width: 8),
-            Flexible(child: Text(path.title, overflow: TextOverflow.ellipsis)),
+            Flexible(
+              child: Text(
+                path.titleOf(filipino: _t(context).localeName.startsWith('fil')),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: 'Adventure trail',
+            tooltip: _t(context).lpTrailTooltip,
             icon: const Icon(Icons.route_rounded),
             onPressed: () => context.push('/learning-paths/${path.id}/trail'),
           ),
@@ -121,7 +128,7 @@ class LessonScreen extends ConsumerWidget {
                       const Text('🎉', style: TextStyle(fontSize: 48)),
                       const SizedBox(height: 8),
                       Text(
-                        'Path Mastered!',
+                        _t(context).lpMastered,
                         style: AppTypography.titleLarge.copyWith(
                           color: AppColors.textOnPrimary,
                           fontWeight: FontWeight.w800,
@@ -129,7 +136,9 @@ class LessonScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'You\'ve completed all steps in ${path.title}!',
+                        _t(context).lpCompletedAll(
+                          path.titleOf(filipino: _t(context).localeName.startsWith('fil')),
+                        ),
                         style: AppTypography.bodyMedium.copyWith(
                           color: AppColors.textOnPrimary.withValues(alpha: 0.9),
                         ),
@@ -190,14 +199,14 @@ class _PathHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      path.title,
+                      path.titleOf(filipino: _t(context).localeName.startsWith('fil')),
                       style: AppTypography.headlineSmall.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${path.category.label} vocabulary',
+                      _t(context).lpVocabulary(path.category.labelOf(_t(context))),
                       style: AppTypography.bodyMedium.copyWith(
                         color: HCColor.of(context).textSecondary,
                       ),
@@ -373,7 +382,7 @@ class _StepTile extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            step.title,
+                            step.titleOf(filipino: _t(context).localeName.startsWith('fil')),
                             style: AppTypography.titleSmall.copyWith(
                               fontWeight: FontWeight.w700,
                               color: isLocked
@@ -402,7 +411,7 @@ class _StepTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      step.description,
+                      step.descriptionOf(filipino: _t(context).localeName.startsWith('fil')),
                       style: AppTypography.bodySmall.copyWith(
                         color: HCColor.of(context).textSecondary,
                         fontSize: 12,
@@ -416,7 +425,7 @@ class _StepTile extends StatelessWidget {
                           onPressed: onStart,
                           icon: const Icon(Icons.play_arrow_rounded, size: 20),
                           label: Text(
-                            isCompleted ? 'Retry' : 'Start',
+                            isCompleted ? _t(context).lpRetry : _t(context).lpStart,
                             style: AppTypography.labelLarge.copyWith(
                               color: AppColors.textOnPrimary,
                               fontWeight: FontWeight.w700,
@@ -441,7 +450,7 @@ class _StepTile extends StatelessWidget {
                               size: 14, color: HCColor.of(context).textHint),
                           const SizedBox(width: 4),
                           Flexible(child: Text(
-                            'Complete the previous step first',
+                            _t(context).lpPrevFirst,
                             style: AppTypography.bodySmall.copyWith(
                               color: HCColor.of(context).textHint,
                               fontSize: 11,
@@ -464,3 +473,8 @@ class _StepTile extends StatelessWidget {
 
   Color _scoreColor(double score) => scoreColor(score);
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

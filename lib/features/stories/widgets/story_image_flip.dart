@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../../core/services/story_image_service.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/local/seed_stories.dart' show StoryImagePair;
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// A tap-to-flip story illustration that switches between a **cartoon** picture
 /// and the matching **real-life** photograph, with a smooth 3D flip — the same
@@ -63,9 +65,12 @@ class StoryImageFlip extends StatefulWidget {
   });
 
   /// The caption shown for the current face.
-  static String tapHint({required bool showingReal}) => showingReal
-      ? 'Tap to see the cartoon picture.'
-      : 'Tap to see the real picture.';
+  static String tapHint({required bool showingReal, AppLocalizations? l10n}) =>
+      l10n == null
+          ? (showingReal
+                ? 'Tap to see the cartoon picture.'
+                : 'Tap to see the real picture.')
+          : (showingReal ? l10n.fiTapCartoon : l10n.fiTapReal);
 
   @override
   State<StoryImageFlip> createState() => _StoryImageFlipState();
@@ -177,10 +182,10 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
             button: true,
             image: true,
             label: _showReal
-                ? 'Real-life picture of $_subject'
-                      ' Tap to see the cartoon picture.'
-                : 'Cartoon picture of $_subject'
-                      ' Tap to see the real picture.',
+                ? '${_t(context).fiRealLifeOf(_subject)}'
+                      ' ${_t(context).fiTapCartoon}'
+                : '${_t(context).fiCartoonOf(_subject)}'
+                      ' ${_t(context).fiTapReal}',
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _toggle,
@@ -333,7 +338,10 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              StoryImageFlip.tapHint(showingReal: _showReal),
+              StoryImageFlip.tapHint(
+                showingReal: _showReal,
+                l10n: _t(context),
+              ),
               style:
                   (widget.compact
                           ? AppTypography.labelLarge
@@ -352,3 +360,8 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

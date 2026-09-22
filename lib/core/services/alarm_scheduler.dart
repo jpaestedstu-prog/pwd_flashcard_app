@@ -1,6 +1,7 @@
 import 'device_timezone.dart';
 import 'notification_schedule_mode.dart';
 import 'dart:async';
+import 'dart:ui' show Locale;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -10,6 +11,7 @@ import '../../data/local/hive_service.dart';
 import '../../data/models/alarm_action.dart';
 import '../../data/models/child_alarm.dart';
 import '../../features/parent/services/child_alarm_service.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Bridges [ChildAlarm] data to the OS-level `flutter_local_notifications`
 /// plugin so alarms set by a parent on one device fire on the child's
@@ -275,15 +277,22 @@ class AlarmScheduler {
 
   static String _titleFor(ChildAlarm a) {
     if (a.label.isNotEmpty) return '⏰ ${a.label}';
-    return '⏰ Alarm';
+    return _strings().asAlarm;
   }
 
   static String _bodyFor(ChildAlarm a) {
+    final t = _strings();
     return switch (a.action) {
-      AlarmAction.notifyOnly => 'Time to take a moment.',
-      AlarmAction.lockScreen => 'Time to wrap up — tap to view.',
-      AlarmAction.endSession => 'Time to take a break.',
+      AlarmAction.notifyOnly => t.asMoment,
+      AlarmAction.lockScreen => t.asWrapUp,
+      AlarmAction.endSession => t.lrTakeBreak,
     };
+  }
+
+  /// The learner's own language — the alarm is theirs, whoever set it.
+  static AppLocalizations _strings() {
+    final locale = HiveService.getSettings(profileId: _profileId).locale;
+    return lookupAppLocalizations(Locale(locale == 'fil' ? 'fil' : 'en'));
   }
 
   /// Computes the next [tz.TZDateTime] in the local timezone matching

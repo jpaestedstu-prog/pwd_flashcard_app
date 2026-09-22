@@ -16,6 +16,8 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/experiment_provider.dart';
 import '../../../features/experiment/models/experiment_models.dart';
 import '../../gaze_control/widgets/gaze_dpad_scope.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Learner-facing gamification summary — the "Player Profile" — showing the
 /// level, every gamification metric, and the shortcuts to the reward screens.
@@ -53,8 +55,8 @@ class GamificationDashboardScreen extends ConsumerWidget {
 
     if (profile == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Dashboard')),
-        body: const Center(child: Text('No profile')),
+        appBar: AppBar(title: Text(_t(context).dashboard)),
+        body: Center(child: Text(_t(context).setNoProfile)),
       );
     }
 
@@ -436,7 +438,7 @@ class GamificationDashboardScreen extends ConsumerWidget {
       actions.add(
         _ActionItem(
           icon: Icons.today_rounded,
-          label: 'Daily Challenge',
+          label: isFilipino ? 'Hamon ng Araw' : 'Daily Challenge',
           route: '/daily-challenge',
           color: hc.statSuccess,
         ),
@@ -796,3 +798,8 @@ class _ActionItem {
   void open(BuildContext context) =>
       useGo ? context.go(route) : context.push(route);
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

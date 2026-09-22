@@ -49,6 +49,9 @@ class _FakeResults extends StateNotifier<List<AssessmentResult>>
   AssessmentCloudService get cloud => const AssessmentCloudService();
 
   @override
+  void Function()? get onUploadMissed => null;
+
+  @override
   Future<void> saveResult(AssessmentResult result) async {
     state = [...state, result];
   }

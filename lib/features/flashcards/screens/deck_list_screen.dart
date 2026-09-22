@@ -85,7 +85,7 @@ class DeckListScreen extends ConsumerWidget {
                             children: [
                               _ActionChip(
                                 icon: Icons.auto_awesome_rounded,
-                                label: 'Browse templates',
+                                label: AppLocalizations.of(context)!.deckBrowseTemplates,
                                 onTap: () =>
                                     context.push('/flashcards/templates'),
                               ),
@@ -191,7 +191,7 @@ class DeckListScreen extends ConsumerWidget {
                                         end: const Offset(1.0, 1.0),
                                       ),
                               cell: GazeTileCell(
-                                label: category.label,
+                                label: category.labelOf(AppLocalizations.of(context)!),
                                 onActivate: () => context.push(
                                   '/flashcards/viewer/${category.index}',
                                 ),
@@ -261,10 +261,11 @@ class _DeckCardState extends State<_DeckCard> {
 
     return Semantics(
       button: true,
-      label:
-          '${widget.category.label} deck. '
-          '${widget.cardCount} cards. '
-          '${(widget.progress * 100).round()} percent complete.',
+      label: AppLocalizations.of(context)!.deckSemantics(
+        widget.category.labelOf(AppLocalizations.of(context)!),
+        widget.cardCount,
+        (widget.progress * 100).round(),
+      ),
       child: GestureDetector(
         onTap: widget.onTap,
         onTapDown: (_) => _setPressed(true),
@@ -352,7 +353,7 @@ class _DeckCardState extends State<_DeckCard> {
                                   child: FittedBox(
                                     fit: BoxFit.scaleDown,
                                     child: Text(
-                                      widget.category.label,
+                                      widget.category.labelOf(AppLocalizations.of(context)!),
                                       style: AppTypography.titleLarge.copyWith(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
@@ -421,7 +422,9 @@ class _DeckCardState extends State<_DeckCard> {
                                           const SizedBox(width: 4),
                                           Flexible(
                                             child: Text(
-                                              '${widget.cardCount} cards',
+                                              AppLocalizations.of(context)!.eduDeckCards(
+                                                widget.cardCount,
+                                              ),
                                               style: AppTypography.labelSmall
                                                   .copyWith(
                                                     color: Colors.white
@@ -608,7 +611,7 @@ class _ActionChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '$label custom flashcards',
+      label: AppLocalizations.of(context)!.deckChipSemantics(label),
       child: ActionChip(
         avatar: Icon(
           icon,

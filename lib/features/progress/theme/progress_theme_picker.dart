@@ -6,6 +6,8 @@ import 'progress_layout.dart';
 import 'progress_layout_registry.dart';
 import 'progress_theme.dart';
 import 'progress_theme_registry.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Opens the combined "Customize Progress" bottom sheet: pick a color **skin**
 /// and a layout **template** in one place. Selections apply live (the sheet
@@ -60,18 +62,18 @@ Future<void> showProgressCustomizeSheet(
                         ),
                       ),
                     ),
-                    Text('Customize Progress',
+                    Text(_t(context).ptpTitle,
                         style: AppTypography.titleLarge
                             .copyWith(color: hc.textPrimary)),
                     const SizedBox(height: 4),
-                    Text('Pick a look and a layout for the Progress page',
+                    Text(_t(context).ptpIntro,
                         style: AppTypography.bodySmall
                             .copyWith(color: hc.textSecondary)),
                     const SizedBox(height: 20),
 
                     // ─── Theme (skin) ───────────────────────
-                    const _SectionLabel(
-                        icon: Icons.palette_rounded, text: 'Theme'),
+                    _SectionLabel(
+                        icon: Icons.palette_rounded, text: _t(context).ptpTheme),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 12,
@@ -91,9 +93,9 @@ Future<void> showProgressCustomizeSheet(
                     const SizedBox(height: 24),
 
                     // ─── Layout (template) ──────────────────
-                    const _SectionLabel(
+                    _SectionLabel(
                         icon: Icons.dashboard_customize_rounded,
-                        text: 'Layout'),
+                        text: _t(context).ptpLayout),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 12,
@@ -290,3 +292,8 @@ class _LayoutSwatch extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

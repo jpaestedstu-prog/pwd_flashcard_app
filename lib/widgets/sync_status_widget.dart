@@ -7,6 +7,8 @@ import '../../core/services/sync_queue/sync_queue_models.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../providers/app_providers.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// Tracks the current sync state for UI display.
 enum SyncStatus { idle, syncing, success, error, offline }
@@ -84,8 +86,8 @@ class SyncStatusWidget extends ConsumerWidget {
     if (!FirebaseService.isConfigured) {
       return _buildTile(context,
         icon: Icons.cloud_off_rounded,
-        label: 'Cloud Sync',
-        subtitle: 'Not configured',
+        label: _t(context).ssCloudSync,
+        subtitle: _t(context).ssNotConfigured,
         iconColor: AppColors.textHint,
       );
     }
@@ -94,8 +96,8 @@ class SyncStatusWidget extends ConsumerWidget {
     if (queueStatus.isSyncing) {
       return _buildTile(context,
         icon: Icons.cloud_sync_rounded,
-        label: 'Syncingâ€¦',
-        subtitle: _pendingSubtitle(queueStatus),
+        label: _t(context).ssSyncing,
+        subtitle: _pendingSubtitle(context, queueStatus),
         iconColor: AppColors.info,
         trailing: const SizedBox(
           width: 18,
@@ -108,9 +110,9 @@ class SyncStatusWidget extends ConsumerWidget {
     if (queueStatus.failedCount > 0) {
       return _buildTile(context,
         icon: Icons.cloud_off_rounded,
-        label: 'Sync Issue',
+        label: _t(context).ssIssue,
         subtitle:
-            '${queueStatus.failedCount} failed â€” tap to retry',
+            _t(context).ssFailedRetry(queueStatus.failedCount),
         iconColor: AppColors.error,
         onTap: () => ref.read(syncQueueStatusProvider.notifier).retryFailed(),
       );
@@ -119,7 +121,7 @@ class SyncStatusWidget extends ConsumerWidget {
     if (queueStatus.pendingCount > 0) {
       return _buildTile(context,
         icon: Icons.cloud_upload_rounded,
-        label: 'Pending Sync',
+        label: _t(context).ssPending,
         subtitle:
             '${queueStatus.pendingCount} change${queueStatus.pendingCount == 1 ? '' : 's'} waiting',
         iconColor: AppColors.warning,
@@ -132,16 +134,16 @@ class SyncStatusWidget extends ConsumerWidget {
       case SyncStatus.idle:
         return _buildTile(context,
           icon: Icons.cloud_done_rounded,
-          label: 'Cloud Sync',
-          subtitle: _lastSyncSubtitle(queueStatus),
+          label: _t(context).ssCloudSync,
+          subtitle: _lastSyncSubtitle(context, queueStatus),
           iconColor: AppColors.secondary,
           onTap: () => ref.read(syncStatusProvider.notifier).sync(),
         );
       case SyncStatus.syncing:
         return _buildTile(context,
           icon: Icons.cloud_sync_rounded,
-          label: 'Syncingâ€¦',
-          subtitle: 'Uploading data',
+          label: _t(context).ssSyncing,
+          subtitle: _t(context).ssUploading,
           iconColor: AppColors.info,
           trailing: const SizedBox(
             width: 18,
@@ -152,44 +154,44 @@ class SyncStatusWidget extends ConsumerWidget {
       case SyncStatus.success:
         return _buildTile(context,
           icon: Icons.cloud_done_rounded,
-          label: 'Synced!',
-          subtitle: 'All data uploaded',
+          label: _t(context).ssSynced,
+          subtitle: _t(context).ssAllUploaded,
           iconColor: AppColors.success,
         );
       case SyncStatus.error:
         return _buildTile(context,
           icon: Icons.cloud_off_rounded,
-          label: 'Sync Failed',
-          subtitle: 'Tap to retry',
+          label: _t(context).ssFailed,
+          subtitle: _t(context).ssTapRetry,
           iconColor: AppColors.error,
           onTap: () => ref.read(syncStatusProvider.notifier).sync(),
         );
       case SyncStatus.offline:
         return _buildTile(context,
           icon: Icons.cloud_off_rounded,
-          label: 'Offline',
-          subtitle: 'Will sync when online',
+          label: _t(context).csxOffline,
+          subtitle: _t(context).ssWhenOnline,
           iconColor: AppColors.textHint,
         );
     }
   }
 
-  String _pendingSubtitle(SyncQueueStatus q) {
+  String _pendingSubtitle(BuildContext context, SyncQueueStatus q) {
     if (q.pendingCount > 0) {
-      return 'Uploading ${q.pendingCount} change${q.pendingCount == 1 ? '' : 's'}';
+      return _t(context).ssUploadingN(q.pendingCount);
     }
-    return 'Uploading data';
+    return _t(context).ssUploading;
   }
 
-  String _lastSyncSubtitle(SyncQueueStatus q) {
+  String _lastSyncSubtitle(BuildContext context, SyncQueueStatus q) {
     if (q.lastSyncAt != null) {
       final diff = DateTime.now().difference(q.lastSyncAt!);
-      if (diff.inMinutes < 1) return 'Synced just now';
-      if (diff.inMinutes < 60) return 'Synced ${diff.inMinutes}m ago';
-      if (diff.inHours < 24) return 'Synced ${diff.inHours}h ago';
-      return 'Synced ${diff.inDays}d ago';
+      if (diff.inMinutes < 1) return _t(context).ssJustNow;
+      if (diff.inMinutes < 60) return _t(context).ssMinutes(diff.inMinutes);
+      if (diff.inHours < 24) return _t(context).ssHours(diff.inHours);
+      return _t(context).ssDays(diff.inDays);
     }
-    return 'Tap to sync now';
+    return _t(context).ssTapSync;
   }
 
   Widget _buildTile(
@@ -222,3 +224,8 @@ class SyncStatusWidget extends ConsumerWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

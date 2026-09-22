@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/accessibility/accessibility_presets.dart';
+import '../../../core/accessibility/learner_support.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -10,9 +11,12 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../providers/app_providers.dart';
+import '../../gamepad/providers/gamepad_settings_provider.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../../core/utils/accessible_sizing.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../widgets/learner_support_picker.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// A 3-step accessibility setup wizard shown after profile creation.
 ///
@@ -36,6 +40,10 @@ class _AccessibilitySetupScreenState
     extends ConsumerState<AccessibilitySetupScreen> {
   int _currentStep = 0;
   DisabilityType? _selectedType;
+
+  /// Supports for [_selectedType]. Re-scoped whenever the category changes, so
+  /// the step-2 picker never offers a choice the chosen category does not have.
+  Set<LearnerSupportOption> _supports = const {};
   final PageController _pageController = PageController();
 
   @override
@@ -75,7 +83,10 @@ class _AccessibilitySetupScreenState
     if (_isEducatorSetup) {
       // Educator created a student — update the student profile in Hive
       // without touching the active logged-in educator profile.
-      final updated = widget.studentProfile!.copyWith(disabilityType: type);
+      final updated = widget.studentProfile!.copyWith(
+        disabilityType: type,
+        supportOptions: LearnerSupportCatalog.normalize(type, _supports),
+      );
       await HiveService.saveProfile(updated);
       if (!mounted) return;
       ref.invalidate(allProfilesWithProgressProvider);
@@ -83,6 +94,24 @@ class _AccessibilitySetupScreenState
       // just like after a normal profile creation.
       await ref.read(profileProvider.notifier).setProfile(updated);
       if (!mounted) return;
+      // Settings, gaze and the gamepad are all keyed on the active profile,
+      // so this has to come *after* the switch — the educator picked the
+      // student's input method and it has to be live on the student's first
+      // screen, not stored and ignored.
+      _applyInputMode(updated.supports);
+      if (type != DisabilityType.none) {
+        ref
+            .read(settingsProvider.notifier)
+            .update(
+              AccessibilityPresets.applySupports(
+                AccessibilityPresets.presetFor(
+                  type,
+                  current: ref.read(settingsProvider),
+                ),
+                updated.supports,
+              ),
+            );
+      }
       // Show onboarding tutorial for first-time students
       final seen = HiveService.hasSeenTutorial(updated.id);
       context.go(seen ? '/home' : '/onboarding-tutorial');
@@ -90,6 +119,7 @@ class _AccessibilitySetupScreenState
     }
 
     final profile = ref.read(profileProvider);
+    final supports = LearnerSupportCatalog.normalize(type, _supports);
 
     // Apply accessibility preset to settings
     if (type != DisabilityType.none) {
@@ -98,19 +128,31 @@ class _AccessibilitySetupScreenState
         type,
         current: currentSettings,
       );
-      ref.read(settingsProvider.notifier).update(preset);
-      // Gaze Control lives in its own provider, so the preset can't carry it.
-      // For the categories whose barrier is reaching the screen at all, turn
-      // hands-free control on here — the learner has just confirmed it in the
-      // preview list, and it is saved against their profile alone.
-      if (AccessibilityPresets.enablesGazeControl(type)) {
-        ref.read(gazeSettingsProvider.notifier).setEnabled(true);
-      }
+      // The learner's own answers go on top of the category preset — large
+      // print rather than speech, a silent screen rather than chimes — so the
+      // choices they just made are live before the first screen renders.
+      ref
+          .read(settingsProvider.notifier)
+          .update(AccessibilityPresets.applySupports(preset, supports));
+      // Gaze Control and the gamepad live in their own per-profile providers,
+      // so the preset can't carry them. Which one to switch on is now the
+      // learner's own answer rather than a blanket rule for the category: the
+      // motor default is still hands-free gaze, exactly as
+      // `AccessibilityPresets.enablesGazeControl` used to force, but a learner
+      // who says they use touch or a switch is no longer overruled.
+      _applyInputMode(supports);
     }
 
     // Update profile with disability type
     if (profile != null) {
-      final updatedProfile = profile.copyWith(disabilityType: type);
+      final updatedProfile = profile.copyWith(
+        disabilityType: type,
+        // Only learners carry supports; on a Teacher / Parent / Player profile
+        // the catalogue offers nothing and this normalises to empty.
+        supportOptions: profile.role.isLearner
+            ? LearnerSupportCatalog.normalize(type, _supports)
+            : const {},
+      );
       await ref.read(profileProvider.notifier).setProfile(updatedProfile);
     }
 
@@ -118,6 +160,20 @@ class _AccessibilitySetupScreenState
       final pid = ref.read(profileProvider)?.id ?? '';
       final seen = HiveService.hasSeenTutorial(pid);
       context.go(seen ? '/home' : '/onboarding-tutorial');
+    }
+  }
+
+  /// Switches on the hands-free control the learner's chosen input method
+  /// needs. Only ever turns something *on*: a learner who picks touch keeps
+  /// whatever they already had rather than having gaze silently revoked.
+  void _applyInputMode(Set<LearnerSupportOption> supports) {
+    switch (LearnerSupportCatalog.inputModeIn(supports)) {
+      case LearnerSupportOption.inputGaze:
+        ref.read(gazeSettingsProvider.notifier).setEnabled(true);
+      case LearnerSupportOption.inputSwitch:
+        ref.read(gamepadSettingsProvider.notifier).setEnabled(true);
+      default:
+        break;
     }
   }
 
@@ -154,7 +210,7 @@ class _AccessibilitySetupScreenState
                       IconButton(
                         onPressed: _prevStep,
                         icon: const Icon(Icons.arrow_back_rounded),
-                        tooltip: 'Go back',
+                        tooltip: _t(context).navGoBack,
                       )
                     else
                       const SizedBox(width: 48),
@@ -243,7 +299,7 @@ class _AccessibilitySetupScreenState
           const SizedBox(height: 8),
 
           Text(
-            'We\'ll optimize the app for your needs.\nSelect the option that best describes you:',
+            _t(context).asOptimize,
             textAlign: TextAlign.center,
             style: AppTypography.bodyLarge.copyWith(
               color: HCColor.of(context).textSecondary,
@@ -262,7 +318,10 @@ class _AccessibilitySetupScreenState
                   child: _DisabilityCard(
                     type: type,
                     isSelected: isSelected,
-                    onTap: () => setState(() => _selectedType = type),
+                    onTap: () => setState(() {
+                      _selectedType = type;
+                      _supports = LearnerSupportCatalog.defaultsFor(type);
+                    }),
                   ),
                 )
                 .animate()
@@ -325,7 +384,7 @@ class _AccessibilitySetupScreenState
 
           Text(
             type == DisabilityType.none
-                ? 'No special settings needed!\nYou\'re all set with the defaults.'
+                ? _t(context).asNoSpecial
                 : 'We\'ll apply these settings for ${type.labelOf(AppLocalizations.of(context))}:',
             textAlign: TextAlign.center,
             style: AppTypography.bodyLarge.copyWith(
@@ -375,19 +434,19 @@ class _AccessibilitySetupScreenState
           // reduced motion — since they're useful well beyond the
           // disability presets and otherwise easy to miss.
           if (type == DisabilityType.none) ...[
-            const _OptionalComfortTipsCard(
+            _OptionalComfortTipsCard(
                   tips: [
                     _ComfortTip(
                       emoji: '📝',
-                      title: 'Dyslexia-friendly',
+                      title: _t(context).apDyslexia,
                       subtitle:
-                          'Cream background, Lexend font, wider letter spacing — easier reading for everyone.',
+                          _t(context).asDyslexiaSub,
                     ),
                     _ComfortTip(
                       emoji: '🎬',
-                      title: 'Reduced Motion',
+                      title: _t(context).apReducedMotion,
                       subtitle:
-                          'Less animation, instant page transitions — good for motion sensitivity or older devices.',
+                          _t(context).asMotionSub,
                     ),
                   ],
                 )
@@ -431,7 +490,7 @@ class _AccessibilitySetupScreenState
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        change.name,
+                                        change.nameOf(AppLocalizations.of(context)),
                                         style: AppTypography.labelLarge
                                             .copyWith(
                                               fontWeight: FontWeight.w600,
@@ -439,7 +498,7 @@ class _AccessibilitySetupScreenState
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        change.value,
+                                        change.valueOf(AppLocalizations.of(context)),
                                         style: AppTypography.bodySmall.copyWith(
                                           color: HCColor.of(
                                             context,
@@ -473,10 +532,21 @@ class _AccessibilitySetupScreenState
             ),
           ],
 
+          const SizedBox(height: 20),
+
+          // The preset above is what this *category* gets. This is the part
+          // that is about the individual — which sign system they use, how
+          // they drive the app, what they need in a test.
+          LearnerSupportPicker(
+            disabilityType: type,
+            selected: _supports,
+            onChanged: (next) => setState(() => _supports = next),
+          ).animate().fadeIn(duration: 400.ms, delay: 500.ms),
+
           const SizedBox(height: 16),
 
           Text(
-            'You can change these anytime in Settings ⚙️',
+            _t(context).asChangeLater,
             style: AppTypography.bodySmall.copyWith(
               color: HCColor.of(context).textSecondary,
               fontStyle: FontStyle.italic,
@@ -551,7 +621,7 @@ class _AccessibilitySetupScreenState
             const SizedBox(height: 28),
 
             Text(
-              'You\'re All Set! 🎉',
+              _t(context).asAllSet,
               style: AppTypography.displaySmall.copyWith(
                 color: AppColors.primaryDark,
                 fontWeight: FontWeight.w800,
@@ -571,8 +641,9 @@ class _AccessibilitySetupScreenState
 
             if (type != DisabilityType.none) ...[
               Text(
-                'Your app has been optimized for\n'
-            '${type.labelOf(AppLocalizations.of(context)).toLowerCase()}.',
+                _t(context).asOptimizedFor(
+                  type.labelOf(AppLocalizations.of(context)).toLowerCase(),
+                ),
                 textAlign: TextAlign.center,
                 style: AppTypography.bodyLarge.copyWith(
                   color: HCColor.of(context).textSecondary,
@@ -580,7 +651,7 @@ class _AccessibilitySetupScreenState
               ).animate().fadeIn(duration: 500.ms, delay: 600.ms),
             ] else ...[
               Text(
-                'Standard settings are ready to go.',
+                _t(context).asStandardReady,
                 textAlign: TextAlign.center,
                 style: AppTypography.bodyLarge.copyWith(
                   color: HCColor.of(context).textSecondary,
@@ -608,7 +679,7 @@ class _AccessibilitySetupScreenState
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      'You can adjust all settings anytime\nfrom the Settings page.',
+                      _t(context).asAdjustLater,
                       style: AppTypography.bodySmall.copyWith(
                         color: HCColor.of(context).textSecondary,
                       ),
@@ -633,7 +704,7 @@ class _AccessibilitySetupScreenState
                     ),
                     label: Text(
                       _isEducatorSetup
-                          ? 'Save & Finish'
+                          ? _t(context).asSaveFinish
                           : AppLocalizations.of(context)!.letsStartLearning,
                     ),
                     style: ElevatedButton.styleFrom(
@@ -832,7 +903,7 @@ class _OptionalComfortTipsCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Comfort tweaks you can try later',
+                _t(context).asComfort,
                 style: AppTypography.labelLarge.copyWith(
                   color: AppColors.primaryDark,
                   fontWeight: FontWeight.w700,
@@ -887,3 +958,8 @@ class _ComfortTipRow extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

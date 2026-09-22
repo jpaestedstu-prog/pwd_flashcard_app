@@ -23,15 +23,14 @@ import '../gaze_control/widgets/hands_free_pause_notice.dart';
 Future<void> openWordHunt(BuildContext context, WidgetRef ref) async {
   final gaze = ref.read(gazeSettingsProvider);
   if (gaze.enabled) {
-    final reason = AppLocalizations.of(context)!.wordHuntCameraBusyReason;
+    final l10n = AppLocalizations.of(context)!;
+    final reason = l10n.wordHuntCameraBusyReason;
     final proceed = await confirmHandsFreePause(
       context,
-      activityName: 'Word Hunt',
+      activityName: l10n.wordHuntTitle,
       voiceAvailable: gaze.voiceCommands,
       reason: reason,
-      voiceHint:
-          'You can say “take a photo” to shoot, a word\'s name to open '
-          'it, and “go back” to leave.',
+      voiceHint: l10n.hfHuntVoice,
     );
     if (!proceed || !context.mounted) return;
   }

@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/error_handler.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// A widget that catches errors in its child widget tree and displays
 /// a friendly fallback UI instead of a red error screen.
@@ -44,7 +46,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  error.userMessage,
+                  _userMessage(_t(context), error),
                   style: const TextStyle(color: AppColors.textOnPrimary),
                 ),
               ),
@@ -117,7 +119,7 @@ class _FriendlyErrorWidget extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Oops! Something went wrong',
+              _t(context).ebTitle,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -127,8 +129,7 @@ class _FriendlyErrorWidget extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'This part of the app ran into a problem.\n'
-              'Try going back or restarting the app.',
+              _t(context).ebBody,
               style: TextStyle(
                 fontSize: 13,
                 color: HCColor.of(context).textSecondary,
@@ -140,4 +141,20 @@ class _FriendlyErrorWidget extends StatelessWidget {
       ),
     );
   }
+}
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// [AppError.userMessage] in the reader's language (same rules).
+String _userMessage(AppLocalizations t, AppError error) {
+  final m = error.message;
+  if (m.contains('SocketException') || m.contains('NetworkException')) {
+    return t.ehNetwork;
+  }
+  if (m.contains('FormatException')) return t.ehFormat;
+  if (m.contains('TimeoutException')) return t.ehTimeout;
+  return t.ehGeneric;
 }

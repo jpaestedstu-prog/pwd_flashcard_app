@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/localized_date.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_typography.dart';
@@ -8,6 +9,9 @@ import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/child_alarm_provider.dart';
 import '../services/child_alarm_service.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
+import '../../classroom/widgets/cloud_sync_error_view.dart';
 
 /// Per-child alarm list — list, add, edit, delete. Reachable from the
 /// per-member popups in classroom and home-group management screens.
@@ -33,24 +37,26 @@ class ChildAlarmsScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add_alarm_rounded),
-        label: const Text('New alarm'),
+        label: Text(_t(context).alNew),
         onPressed: () => _openEditor(context, ref, null),
       ),
       body: alarmsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load: $e')),
+        error: (e, _) => Center(child: Text(_t(context).alLoadError(
+          cloudSyncErrorMessage(e, _t(context)).title,
+        ))),
         data: (alarms) {
           if (alarms.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(32),
+                padding: const EdgeInsets.all(32),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.alarm_off_rounded, size: 56),
-                    SizedBox(height: 12),
+                    const Icon(Icons.alarm_off_rounded, size: 56),
+                    const SizedBox(height: 12),
                     Text(
-                      'No alarms set yet.\nTap “New alarm” to create one.',
+                      _t(context).alNone,
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -94,18 +100,18 @@ class ChildAlarmsScreen extends ConsumerWidget {
                   return await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: Text('Delete “${a.label}”?'),
+                          title: Text(_t(context).alDeleteTitle(a.label)),
                           actions: [
                             TextButton(
                               onPressed: () =>
                                   Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
+                              child: Text(_t(context).cancel),
                             ),
                             FilledButton(
                               style: FilledButton.styleFrom(
                                   backgroundColor: Colors.red),
                               onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Delete'),
+                              child: Text(_t(context).delete),
                             ),
                           ],
                         ),
@@ -126,7 +132,7 @@ class ChildAlarmsScreen extends ConsumerWidget {
                           : Colors.grey,
                     ),
                     title: Text(a.label.isEmpty ? 'Alarm' : a.label),
-                    subtitle: Text(_subtitleFor(a)),
+                    subtitle: Text(_subtitleFor(context, a)),
                     trailing: Switch(
                       value: a.enabled,
                       onChanged: (v) async {
@@ -145,26 +151,21 @@ class ChildAlarmsScreen extends ConsumerWidget {
     );
   }
 
-  String _subtitleFor(ChildAlarm a) {
+  String _subtitleFor(BuildContext context, ChildAlarm a) {
     final time =
         '${a.hour.toString().padLeft(2, "0")}:${a.minute.toString().padLeft(2, "0")}';
     final days = a.daysOfWeek.isEmpty
-        ? 'Every day'
+        ? _t(context).alEveryDay
         : (a.daysOfWeek.toList()..sort())
-            .map(_dayLabel)
+            .map((d) => LocalizedDate.weekdayShort(d, _t(context)))
             .join(', ');
     final action = switch (a.action) {
-      AlarmAction.notifyOnly => 'Notify only',
-      AlarmAction.lockScreen => 'Lock screen',
-      AlarmAction.endSession => 'End session',
+      AlarmAction.notifyOnly => _t(context).alNotifyOnly,
+      AlarmAction.lockScreen => _t(context).alLockScreen,
+      AlarmAction.endSession => _t(context).alEndSession,
     };
     return '$time · $days · $action';
   }
-
-  String _dayLabel(int isoDay) =>
-      const {1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun'}[
-              isoDay] ??
-          '?';
 
   /// Compact relative-time formatter for the "Last synced" line.
   /// Inline because nothing else in this screen reaches into the
@@ -196,7 +197,9 @@ class ChildAlarmsScreen extends ConsumerWidget {
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not save: $e')),
+        SnackBar(content: Text(_t(context).alSaveError(
+          cloudSyncErrorMessage(e, _t(context)).title,
+        ))),
       );
     }
   }
@@ -250,7 +253,7 @@ class _AlarmEditorDialogState extends State<_AlarmEditorDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.existing == null ? 'New alarm' : 'Edit alarm'),
+      title: Text(widget.existing == null ? _t(context).alNew : _t(context).alEdit),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -258,16 +261,16 @@ class _AlarmEditorDialogState extends State<_AlarmEditorDialog> {
           children: [
             TextField(
               controller: _label,
-              decoration: const InputDecoration(
-                labelText: 'Label',
-                hintText: 'e.g. Bedtime, Homework time',
+              decoration: InputDecoration(
+                labelText: _t(context).alLabel,
+                hintText: _t(context).alLabelHint,
               ),
               textCapitalization: TextCapitalization.sentences,
             ),
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Time'),
+              title: Text(_t(context).alTime),
               trailing: TextButton(
                 onPressed: _pickTime,
                 child: Text(
@@ -277,7 +280,7 @@ class _AlarmEditorDialogState extends State<_AlarmEditorDialog> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text('Repeat on'),
+            Text(_t(context).alRepeat),
             const SizedBox(height: 4),
             Wrap(
               spacing: 6,
@@ -310,37 +313,37 @@ class _AlarmEditorDialogState extends State<_AlarmEditorDialog> {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'No days selected → fires every day',
+                  _t(context).alNoDays,
                   style: AppTypography.labelSmall,
                 ),
               ),
             const SizedBox(height: 12),
-            const Text('When alarm fires'),
+            Text(_t(context).alWhen),
             DropdownButton<AlarmAction>(
               value: _action,
               isExpanded: true,
               onChanged: (v) {
                 if (v != null) setState(() => _action = v);
               },
-              items: const [
+              items: [
                 DropdownMenuItem(
                   value: AlarmAction.notifyOnly,
-                  child: Text('Notify only'),
+                  child: Text(_t(context).alNotifyOnly),
                 ),
                 DropdownMenuItem(
                   value: AlarmAction.lockScreen,
-                  child: Text('Lock screen (parent PIN to unlock)'),
+                  child: Text(_t(context).alLockPin),
                 ),
                 DropdownMenuItem(
                   value: AlarmAction.endSession,
-                  child: Text('End session and return home'),
+                  child: Text(_t(context).alEndHome),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Enabled'),
+              title: Text(_t(context).alEnabled),
               value: _enabled,
               onChanged: (v) => setState(() => _enabled = v),
             ),
@@ -350,11 +353,11 @@ class _AlarmEditorDialogState extends State<_AlarmEditorDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(_t(context).cancel),
         ),
         FilledButton(
           onPressed: _commit,
-          child: const Text('Save'),
+          child: Text(_t(context).gmSave),
         ),
       ],
     );
@@ -392,3 +395,8 @@ class _AlarmEditorDialogState extends State<_AlarmEditorDialog> {
     Navigator.pop(context, result);
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

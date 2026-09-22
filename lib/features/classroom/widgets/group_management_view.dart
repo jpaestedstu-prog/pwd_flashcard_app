@@ -20,6 +20,8 @@ import 'accessibility_category_picker.dart';
 import 'cloud_aware_text_dialog.dart';
 import 'cloud_retry_banner.dart';
 import 'cloud_sync_error_view.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// A class or a home group, flattened so the shared management view never
 /// has to know which Firestore collection the row came from.
@@ -31,6 +33,9 @@ class ManagedGroup {
   final String code;
   final String name;
   final DisabilityType accessibility;
+
+  /// Whether learners here may sit the pre-test / post-test again.
+  final bool allowRetakes;
   final Object source;
 
   const ManagedGroup({
@@ -38,6 +43,7 @@ class ManagedGroup {
     required this.code,
     required this.name,
     required this.accessibility,
+    this.allowRetakes = true,
     required this.source,
   });
 }
@@ -65,6 +71,11 @@ abstract class GroupManagementDelegate {
   const GroupManagementDelegate();
 
   // ─── Copy & identity ──────────────────────────────────
+  /// `'teacher'` or `'parent'` — picks the whole sentence each string needs,
+  /// in either language. The English nouns below stay for data, never for a
+  /// sentence a person reads (see the `gm*` ARB keys).
+  String get audience;
+
   String get screenTitle;
 
   /// Lowercase singular, used inside sentences: "New class", "Delete class".
@@ -115,6 +126,11 @@ abstract class GroupManagementDelegate {
     ManagedGroup group,
     DisabilityType accessibility,
   );
+  Future<void> setAllowRetakes(
+    WidgetRef ref,
+    ManagedGroup group,
+    bool allowed,
+  );
   Future<void> regenerateCode(WidgetRef ref, ManagedGroup group);
   Future<void> deleteGroup(WidgetRef ref, ManagedGroup group);
   Future<void> renameMember(
@@ -162,7 +178,7 @@ class GroupManagementView extends ConsumerWidget {
           elevation: 0,
           leading: const AppBackButton(),
           title: Text(
-            delegate.screenTitle,
+            _tr(context).gmScreenTitle(delegate.audience),
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: hc.textPrimary,
@@ -171,12 +187,12 @@ class GroupManagementView extends ConsumerWidget {
           actions: [
             IconButton(
               icon: Icon(Icons.refresh_rounded, color: hc.textSecondary),
-              tooltip: 'Refresh',
+              tooltip: _tr(context).gmRefresh,
               onPressed: () => delegate.refresh(ref),
             ),
             IconButton(
               icon: Icon(Icons.add_rounded, color: hc.textSecondary),
-              tooltip: 'New ${delegate.groupNoun}',
+              tooltip: _tr(context).gmNewGroup(delegate.audience),
               onPressed: () => _showCreateDialog(context, ref),
             ),
           ],
@@ -186,7 +202,7 @@ class GroupManagementView extends ConsumerWidget {
         // 360dp-wide screen.
         floatingActionButton: FloatingActionButton(
           onPressed: () => _showCreateDialog(context, ref),
-          tooltip: 'New ${delegate.groupNoun}',
+          tooltip: _tr(context).gmNewGroup(delegate.audience),
           child: const Icon(Icons.add_rounded),
         ),
         body: Column(
@@ -234,12 +250,9 @@ class GroupManagementView extends ConsumerWidget {
           constraints: BoxConstraints(minHeight: constraints.maxHeight),
           child: RichEmptyState(
             emoji: delegate.emptyEmoji,
-            title: 'No ${delegate.groupNounPlural} yet',
-            description:
-                'Create a ${delegate.groupNoun}, then share the join code '
-                'so your ${delegate.memberNounPlural} can join from their '
-                'own devices.',
-            actionLabel: 'Create ${delegate.groupNoun}',
+            title: _tr(context).gmEmptyTitle(delegate.audience),
+            description: _tr(context).gmEmptyBody(delegate.audience),
+            actionLabel: _tr(context).gmCreateGroup(delegate.audience),
             actionIcon: Icons.add_rounded,
             accentColor: delegate.accent,
             onAction: () => _showCreateDialog(context, ref),
@@ -252,18 +265,18 @@ class GroupManagementView extends ConsumerWidget {
   Future<void> _showCreateDialog(BuildContext context, WidgetRef ref) async {
     final created = await CloudAwareTextDialog.show(
       context: context,
-      title: 'New ${delegate.groupNoun}',
-      inputLabel: '${_capitalise(delegate.groupNoun)} name',
-      inputHint: delegate.createHint,
-      submitLabel: 'Create',
-      emptyError: '${_capitalise(delegate.groupNoun)} name is required',
+      title: _tr(context).gmNewGroup(delegate.audience),
+      inputLabel: _tr(context).gmGroupName(delegate.audience),
+      inputHint: _tr(context).gmCreateHint(delegate.audience),
+      submitLabel: _tr(context).gmCreate,
+      emptyError: _tr(context).gmNameRequired(delegate.audience),
       initialAccessibility: DisabilityType.none,
       onSubmitWithAccessibility: (name, accessibility) =>
           delegate.createGroup(ref, name, accessibility),
     );
     if (created == true && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${_capitalise(delegate.groupNoun)} created.')),
+        SnackBar(content: Text(_tr(context).gmCreated(delegate.audience))),
       );
     }
   }
@@ -302,33 +315,34 @@ class _SummaryPanel extends ConsumerWidget {
     }
 
     return ProPanel(
-      title: 'Overview',
+      title: _tr(context).gmOverview,
       subtitle:
-          '${groups.length} ${groups.length == 1 ? delegate.groupNoun : delegate.groupNounPlural} '
-          '· ${loading ? '…' : members} '
-          '${members == 1 ? delegate.memberNoun : delegate.memberNounPlural}',
+          '${_tr(context).gmGroupCount(delegate.audience, groups.length)} '
+          '· ${loading ? '…' : _tr(context).gmMemberCount(delegate.audience, members)}',
       trailing: Icon(delegate.groupIcon, color: hc.primary),
       child: ProStatGrid(
         tiles: [
           ProStatTile(
             icon: delegate.groupIcon,
-            label: delegate.groupNounPlural,
+            label: _tr(context).gmGroupsLabel(delegate.audience),
             value: '${groups.length}',
-            caption: 'active',
+            caption: _tr(context).gmActive,
             accent: delegate.accent,
           ),
           ProStatTile(
             icon: delegate.memberIcon,
-            label: delegate.memberNounPlural,
+            label: _tr(context).gmMembersLabel(delegate.audience),
             value: loading ? '…' : '$members',
-            caption: 'enrolled',
+            caption: _tr(context).gmEnrolled,
             accent: AppColors.sectionLearning,
           ),
           ProStatTile(
             icon: Icons.schedule_rounded,
-            label: 'Newest join',
-            value: newestJoin == null ? '—' : _timeAgo(newestJoin),
-            caption: newestJoin == null ? 'no joins yet' : 'most recent',
+            label: _tr(context).gmNewestJoin,
+            value: newestJoin == null ? '—' : _timeAgo(_tr(context), newestJoin),
+            caption: newestJoin == null
+                ? _tr(context).gmNoJoins
+                : _tr(context).gmMostRecent,
             accent: AppColors.info,
           ),
         ],
@@ -446,8 +460,10 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
               const SizedBox(height: 2),
               Text(
                 memberCount == null
-                    ? 'Loading roster…'
-                    : '$memberCount ${memberCount == 1 ? _delegate.memberNoun : _delegate.memberNounPlural}',
+                    ? _tr(context).gmLoadingRoster
+                    : _tr(
+                        context,
+                      ).gmMemberCount(_delegate.audience, memberCount),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTypography.labelSmall.copyWith(
@@ -458,28 +474,47 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
           ),
         ),
         PopupMenuButton<String>(
-          tooltip: '${_capitalise(_delegate.groupNoun)} actions',
+          tooltip: _tr(context).gmGroupActions(_delegate.audience),
           icon: Icon(Icons.more_vert_rounded, color: hc.textSecondary),
           onSelected: _handleGroupAction,
           itemBuilder: (_) => [
-            _menuItem('rename', Icons.edit_rounded, 'Rename'),
+            _menuItem('rename', Icons.edit_rounded, _tr(context).gmRename),
             _menuItem(
               'accessibility',
               Icons.accessibility_new_rounded,
-              'Accessibility',
+              _tr(context).gmAccessibility,
             ),
-            _menuItem('regen', Icons.refresh_rounded, 'New join code'),
-            _menuItem('leaderboard', Icons.leaderboard_rounded, 'Leaderboard'),
+            _menuItem(
+              'regen',
+              Icons.refresh_rounded,
+              _tr(context).gmNewJoinCode,
+            ),
+            _menuItem(
+              'leaderboard',
+              Icons.leaderboard_rounded,
+              _tr(context).gmLeaderboard,
+            ),
+            _menuItem(
+              'retakes',
+              _group.allowRetakes
+                  ? Icons.lock_open_rounded
+                  : Icons.lock_rounded,
+              _group.allowRetakes
+                  ? _tr(context).gmLockRetakes
+                  : _tr(context).gmAllowRetakes,
+            ),
             _menuItem(
               'delete',
               Icons.delete_outline_rounded,
-              'Delete ${_delegate.groupNoun}',
+              _tr(context).gmDeleteGroup(_delegate.audience),
               color: AppColors.error,
             ),
           ],
         ),
         IconButton(
-          tooltip: _expanded ? 'Hide roster' : 'Show roster',
+          tooltip: _expanded
+              ? _tr(context).gmHideRoster
+              : _tr(context).gmShowRoster,
           icon: Icon(
             _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
             color: hc.textSecondary,
@@ -515,12 +550,12 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
           ),
         ),
         IconButton(
-          tooltip: 'Copy code',
+          tooltip: _tr(context).gmCopyCode,
           icon: const Icon(Icons.copy_rounded, size: 20),
           onPressed: _copyCode,
         ),
         IconButton(
-          tooltip: 'Share code',
+          tooltip: _tr(context).gmShareCode,
           icon: const Icon(Icons.ios_share_rounded, size: 20),
           onPressed: _shareCode,
         ),
@@ -543,7 +578,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
       error: (e, _) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Text(
-          'Roster error: $e',
+          _tr(context).gmRosterError(_reason(context, e)),
           style: AppTypography.bodySmall.copyWith(color: AppColors.error),
         ),
       ),
@@ -561,8 +596,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'No ${_delegate.memberNounPlural} have joined yet — '
-                    'share the code above.',
+                    _tr(context).gmNoMembers(_delegate.audience),
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textSecondary,
                     ),
@@ -598,14 +632,14 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                   runSpacing: 4,
                   children: [
                     Text(
-                      '${_selected.length} selected',
+                      _tr(context).gmSelected(_selected.length),
                       style: AppTypography.labelMedium.copyWith(
                         color: hc.textPrimary,
                       ),
                     ),
                     TextButton(
                       onPressed: _clearSelection,
-                      child: const Text('Cancel'),
+                      child: Text(_tr(context).hubCancel),
                     ),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
@@ -613,7 +647,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                       ),
                       onPressed: _bulkRemove,
                       icon: const Icon(Icons.delete_rounded, size: 16),
-                      label: Text('Remove (${_selected.length})'),
+                      label: Text(_tr(context).gmRemoveCount(_selected.length)),
                     ),
                   ],
                 ),
@@ -625,6 +659,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                 accent: hc.primary,
                 memberNoun: _delegate.memberNoun,
                 groupNoun: _delegate.groupNoun,
+                audience: _delegate.audience,
                 // The group's audience, forwarded so the Routine editor can
                 // suggest templates and preview the learner's own view without
                 // a second lookup.
@@ -659,8 +694,62 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
           '?kind=${_delegate.leaderboardKind}'
           '&name=${Uri.encodeQueryComponent(_group.name)}',
         );
+      case 'retakes':
+        await _toggleRetakes();
       case 'delete':
         await _deleteGroup();
+    }
+  }
+
+  /// Flip whether learners may sit the pre-test / post-test again.
+  ///
+  /// Confirmed both ways: locking takes something away from every learner in
+  /// the group at once, and unlocking quietly re-opens an instrument the
+  /// educator may have closed on purpose.
+  Future<void> _toggleRetakes() async {
+    final locking = _group.allowRetakes;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          locking ? _tr(context).gmLockTitle : _tr(context).gmAllowTitle,
+        ),
+        content: Text(
+          locking
+              ? _tr(context).gmLockBody(_group.name)
+              : _tr(context).gmAllowBody(_group.name),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(_tr(context).hubCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(locking ? _tr(context).gmLock : _tr(context).gmAllow),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await _delegate.setAllowRetakes(ref, _group, !locking);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            locking
+                ? _tr(context).gmRetakesLocked
+                : _tr(context).gmRetakesAllowed,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_tr(context).gmCouldNotSave(_reason(context, e)))));
     }
   }
 
@@ -669,38 +758,41 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('Copied ${_group.code}')));
+    ).showSnackBar(SnackBar(content: Text(_tr(context).gmCopied(_group.code))));
   }
 
   Future<void> _shareCode() async {
     try {
       await Share.share(
-        'Join “${_group.name}” on FlashLearn PWD with code ${_group.code}. '
-        '${_delegate.shareBlurb}',
-        subject: 'FlashLearn PWD join code',
+        _tr(context).gmShareText(
+          _group.name,
+          _group.code,
+          _tr(context).gmShareBlurb(_delegate.audience),
+        ),
+        subject: _tr(context).gmShareSubject,
       );
     } on Exception catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not share: $e')));
+      ).showSnackBar(SnackBar(content: Text(_tr(context).gmCouldNotShare(_reason(context, e)))));
     }
   }
 
   Future<void> _renameGroup() async {
     final renamed = await CloudAwareTextDialog.show(
       context: context,
-      title: 'Rename ${_delegate.groupNoun}',
-      inputLabel: '${_capitalise(_delegate.groupNoun)} name',
+      title: _tr(context).gmRenameGroup(_delegate.audience),
+      inputLabel: _tr(context).gmGroupName(_delegate.audience),
       inputHint: '',
-      submitLabel: 'Save',
-      emptyError: '${_capitalise(_delegate.groupNoun)} name is required',
+      submitLabel: _tr(context).gmSave,
+      emptyError: _tr(context).gmNameRequired(_delegate.audience),
       initialValue: _group.name,
       onSubmit: (name) => _delegate.renameGroup(ref, _group, name),
     );
     if (renamed == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${_capitalise(_delegate.groupNoun)} renamed.')),
+        SnackBar(content: Text(_tr(context).gmRenamed(_delegate.audience))),
       );
     }
   }
@@ -715,13 +807,19 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
       await _delegate.setAccessibility(ref, _group, picked);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Accessibility set to ${picked.label}.')),
+        SnackBar(
+          content: Text(
+            _tr(
+              context,
+            ).gmAccessibilitySet(picked.labelOf(AppLocalizations.of(context))),
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not update: $e')));
+      ).showSnackBar(SnackBar(content: Text(_tr(context).gmCouldNotUpdate(_reason(context, e)))));
     }
   }
 
@@ -729,20 +827,16 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Reset join code?'),
-        content: Text(
-          'A new code will be generated. '
-          '${_capitalise(_delegate.memberNounPlural)} who already joined stay '
-          'enrolled, but the old code stops working.',
-        ),
+        title: Text(_tr(context).gmResetTitle),
+        content: Text(_tr(context).gmResetBody(_delegate.audience)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(_tr(context).hubCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Reset'),
+            child: Text(_tr(context).gmReset),
           ),
         ],
       ),
@@ -753,12 +847,14 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('New code generated.')));
+      ).showSnackBar(SnackBar(content: Text(_tr(context).gmNewCodeGenerated)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not regenerate: $e')));
+      ).showSnackBar(
+        SnackBar(content: Text(_tr(context).gmCouldNotRegenerate(_reason(context, e)))),
+      );
     }
   }
 
@@ -766,20 +862,17 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete ${_group.name}?'),
-        content: Text(
-          'All ${_delegate.memberNounPlural} will be unenrolled. Their '
-          'profiles and progress stay on their own devices.',
-        ),
+        title: Text(_tr(context).gmDeleteTitle(_group.name)),
+        content: Text(_tr(context).gmDeleteBody(_delegate.audience)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(_tr(context).hubCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
+            child: Text(_tr(context).hubDelete),
           ),
         ],
       ),
@@ -791,7 +884,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not delete: $e')));
+      ).showSnackBar(SnackBar(content: Text(_tr(context).gmCouldNotDelete(_reason(context, e)))));
     }
   }
 
@@ -800,22 +893,20 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
   Future<void> _renameMember(ManagedMember m) async {
     final renamed = await CloudAwareTextDialog.show(
       context: context,
-      title: 'Rename in roster',
-      inputLabel: 'Display name in this ${_delegate.groupNoun}',
+      title: _tr(context).gmRenameInRoster,
+      inputLabel: _tr(context).gmDisplayNameIn(_delegate.audience),
       inputHint: '',
-      submitLabel: 'Save',
-      emptyError: 'Display name is required',
+      submitLabel: _tr(context).gmSave,
+      emptyError: _tr(context).gmDisplayNameRequired,
       initialValue: m.displayName,
-      helperText:
-          'This will rename the ${_delegate.memberNoun} in your roster and '
-          'on their device.',
+      helperText: _tr(context).gmRenameMemberNote(_delegate.audience),
       onSubmit: (name) =>
           _delegate.renameMember(ref, _group, m.profileId, name),
     );
     if (renamed == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${_capitalise(_delegate.memberNoun)} renamed.'),
+          content: Text(_tr(context).gmMemberRenamed(_delegate.audience)),
         ),
       );
     }
@@ -840,7 +931,10 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${m.displayName} unlocked for ${_formatUnlockDuration(picked)}.',
+            _tr(context).gmUnlockedFor(
+              m.displayName,
+              _formatUnlockDuration(_tr(context), picked),
+            ),
           ),
         ),
       );
@@ -848,7 +942,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not unlock: $e')));
+      ).showSnackBar(SnackBar(content: Text(_tr(context).gmCouldNotUnlock(_reason(context, e)))));
     }
   }
 
@@ -856,20 +950,17 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Remove ${m.displayName}?'),
-        content: Text(
-          "They'll be unenrolled from this ${_delegate.groupNoun}. Their "
-          'profile and progress are kept on their device.',
-        ),
+        title: Text(_tr(context).gmRemoveTitle(m.displayName)),
+        content: Text(_tr(context).gmRemoveBody(_delegate.audience)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(_tr(context).hubCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove'),
+            child: Text(_tr(context).gmRemove),
           ),
         ],
       ),
@@ -882,30 +973,26 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not remove: $e')));
+      ).showSnackBar(SnackBar(content: Text(_tr(context).gmCouldNotRemove(_reason(context, e)))));
     }
   }
 
   Future<void> _bulkRemove() async {
     final n = _selected.length;
-    final noun = n == 1 ? _delegate.memberNoun : _delegate.memberNounPlural;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Remove $n $noun?'),
-        content: Text(
-          'Their profiles and progress are kept on their devices; they just '
-          'lose this ${_delegate.groupNoun} linkage.',
-        ),
+        title: Text(_tr(context).gmRemoveManyTitle(_delegate.audience, n)),
+        content: Text(_tr(context).gmRemoveManyBody(_delegate.audience)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(_tr(context).hubCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove'),
+            child: Text(_tr(context).gmRemove),
           ),
         ],
       ),
@@ -919,7 +1006,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not remove: $e')));
+      ).showSnackBar(SnackBar(content: Text(_tr(context).gmCouldNotRemove(_reason(context, e)))));
     }
   }
 }
@@ -932,6 +1019,9 @@ class _MemberRow extends StatelessWidget {
   final Color accent;
   final String memberNoun;
   final String groupNoun;
+
+  /// `'teacher'` or `'parent'` — see [GroupManagementDelegate.audience].
+  final String audience;
 
   /// Accessibility audience of the group this member is in. Passed through to
   /// the Routine editor, which shapes its template suggestions and its
@@ -952,6 +1042,7 @@ class _MemberRow extends StatelessWidget {
     required this.accent,
     required this.memberNoun,
     required this.groupNoun,
+    required this.audience,
     required this.accessibility,
     required this.selected,
     required this.selectionMode,
@@ -996,7 +1087,10 @@ class _MemberRow extends StatelessWidget {
         ),
       ),
       subtitle: Text(
-        'Joined ${_formatDate(member.joinedAt)} · ${_timeAgo(member.joinedAt)}',
+        _tr(context).gmJoined(
+          _formatDate(member.joinedAt),
+          _timeAgo(_tr(context), member.joinedAt),
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
@@ -1004,7 +1098,7 @@ class _MemberRow extends StatelessWidget {
       trailing: selectionMode
           ? Checkbox(value: selected, onChanged: (_) => onTapInSelection())
           : PopupMenuButton<String>(
-              tooltip: '${_capitalise(memberNoun)} actions',
+              tooltip: _tr(context).gmMemberActions(audience),
               icon: Icon(Icons.more_horiz_rounded, color: hc.textSecondary),
               onSelected: (action) {
                 switch (action) {
@@ -1043,20 +1137,40 @@ class _MemberRow extends StatelessWidget {
                 }
               },
               itemBuilder: (_) => [
-                _menuItem('rename', Icons.edit_rounded, 'Rename'),
-                _menuItem('progress', Icons.timeline_rounded, 'View progress'),
-                _menuItem('notes', Icons.sticky_note_2_rounded, 'Notes'),
-                _menuItem('time_limits', Icons.timer_rounded, 'Time limits'),
-                _menuItem('alarms', Icons.alarm_rounded, 'Alarms'),
+                _menuItem('rename', Icons.edit_rounded, _tr(context).gmRename),
+                _menuItem(
+                  'progress',
+                  Icons.timeline_rounded,
+                  _tr(context).gmViewProgress,
+                ),
+                _menuItem(
+                  'notes',
+                  Icons.sticky_note_2_rounded,
+                  _tr(context).gmNotes,
+                ),
+                _menuItem(
+                  'time_limits',
+                  Icons.timer_rounded,
+                  _tr(context).gmTimeLimits,
+                ),
+                _menuItem('alarms', Icons.alarm_rounded, _tr(context).gmAlarms),
                 // Daily routine — the visual schedule this learner follows.
                 // Sits beside Alarms because the two are the same kind of
                 // thing to an educator: what happens, and when.
-                _menuItem('routine', Icons.event_note_rounded, 'Routine'),
-                _menuItem('unlock', Icons.lock_open_rounded, 'Unlock screen'),
+                _menuItem(
+                  'routine',
+                  Icons.event_note_rounded,
+                  _tr(context).gmRoutine,
+                ),
+                _menuItem(
+                  'unlock',
+                  Icons.lock_open_rounded,
+                  _tr(context).gmUnlockScreen,
+                ),
                 _menuItem(
                   'remove',
                   Icons.person_remove_rounded,
-                  'Remove from $groupNoun',
+                  _tr(context).gmRemoveFrom(audience),
                   color: AppColors.error,
                 ),
               ],
@@ -1098,52 +1212,53 @@ Future<Duration?> _pickUnlockDuration(BuildContext context, String memberName) {
   return showDialog<Duration>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text('Unlock $memberName'),
-      content: const Text(
-        'How long should the lock screen stay off? The screen will lock '
-        'again automatically when this window expires.',
-      ),
+      title: Text(_tr(context).gmUnlockTitle(memberName)),
+      content: Text(_tr(context).gmUnlockBody),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
-          child: const Text('Cancel'),
+          child: Text(_tr(context).hubCancel),
         ),
         TextButton(
           onPressed: () => Navigator.pop(ctx, const Duration(minutes: 15)),
-          child: const Text('15 min'),
+          child: Text(_tr(context).gm15min),
         ),
         TextButton(
           onPressed: () => Navigator.pop(ctx, const Duration(minutes: 30)),
-          child: const Text('30 min'),
+          child: Text(_tr(context).gm30min),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(ctx, const Duration(minutes: 60)),
-          child: const Text('1 hour'),
+          child: Text(_tr(context).gm1hour),
         ),
       ],
     ),
   );
 }
 
-String _formatUnlockDuration(Duration d) {
-  if (d.inHours >= 1) {
-    final h = d.inHours;
-    return h == 1 ? '1 hour' : '$h hours';
-  }
-  return '${d.inMinutes} minutes';
+String _formatUnlockDuration(AppLocalizations t, Duration d) {
+  if (d.inHours >= 1) return t.gmHours(d.inHours);
+  return t.gmMinutes(d.inMinutes);
 }
 
 String _formatDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-String _timeAgo(DateTime dt) {
+String _timeAgo(AppLocalizations t, DateTime dt) {
   final diff = DateTime.now().difference(dt);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  if (diff.inDays < 7) return '${diff.inDays}d ago';
-  return '${(diff.inDays / 7).floor()}w ago';
+  if (diff.inMinutes < 1) return t.gmJustNow;
+  if (diff.inMinutes < 60) return t.gmMinutesAgo(diff.inMinutes);
+  if (diff.inHours < 24) return t.gmHoursAgo(diff.inHours);
+  if (diff.inDays < 7) return t.gmDaysAgo(diff.inDays);
+  return t.gmWeeksAgo((diff.inDays / 7).floor());
 }
 
-String _capitalise(String s) =>
-    s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+/// This file's strings: English when no delegate is present, which is how
+/// widget tests build these screens.
+AppLocalizations _tr(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// A short, translated reason for [e] — never the raw exception text, which
+/// is English and meant for developers.
+String _reason(BuildContext context, Object e) =>
+    cloudSyncErrorMessage(e, AppLocalizations.of(context)).title;

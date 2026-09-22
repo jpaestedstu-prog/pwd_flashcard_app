@@ -124,7 +124,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                             // Settings gear (top-right). Switching profiles now lives
                             // inside Settings, matching the Student/Child surfaces.
                             IconButton(
-                                    tooltip: 'Open settings',
+                                    tooltip: _t(context).openSettings,
                                     onPressed: () => context.push('/settings'),
                                     icon: const Icon(Icons.settings_rounded),
                                     iconSize: 28,
@@ -198,7 +198,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                         child: Row(
                           children: [
                             Text(
-                              'Cards',
+                              _t(context).eduCards,
                               style: AppTypography.titleMedium.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: hc.textPrimary,
@@ -208,7 +208,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                             TextButton(
                               onPressed: () => context.push('/flashcards'),
                               child: Text(
-                                'View All',
+                                _t(context).homeViewAll,
                                 style: AppTypography.labelMedium.copyWith(
                                   color: hc.primary,
                                 ),
@@ -264,8 +264,8 @@ class EducatorHomeScreen extends ConsumerWidget {
                                   Expanded(
                                     child: Text(
                                       isParent
-                                          ? 'Your Children'
-                                          : 'Recent Students',
+                                          ? _t(context).yourChildren
+                                          : _t(context).eduRecentStudents,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: AppTypography.titleMedium.copyWith(
@@ -278,7 +278,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                                     onPressed: () =>
                                         context.go('/multi-dashboard'),
                                     child: Text(
-                                      'View All',
+                                      _t(context).homeViewAll,
                                       style: AppTypography.labelMedium.copyWith(
                                         color: hc.primary,
                                       ),
@@ -601,10 +601,43 @@ class _QuickActions extends ConsumerWidget {
             ),
             ProActionTile(
               compact: true,
+              icon: Icons.insights_rounded,
+              label: t.eduClassReport,
+              accent: AppColors.sectionAssessment,
+              onTap: () => context.push('/assessment/class-report'),
+            ),
+            ProActionTile(
+              compact: true,
               icon: Icons.family_restroom_rounded,
               label: t.eduManageGroups,
               accent: AppColors.sectionCommunication,
               onTap: () => context.push('/home-group-manage'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        // The study has parents answer the SUS and have home learners' data
+        // exported, and neither had a way in: the whole Research group lived
+        // on the teacher's home only. Experiment Setup stays teacher-side —
+        // the study runs no control groups, so a parent has nothing to set.
+        _GroupLabel(text: t.eduResearch, color: hc.textSecondary),
+        const SizedBox(height: 8),
+        ProActionGrid(
+          compact: true,
+          tiles: [
+            ProActionTile(
+              compact: true,
+              icon: Icons.poll_rounded,
+              label: t.eduSusSurvey,
+              accent: AppColors.sectionCommunication,
+              onTap: () => context.push('/survey-results'),
+            ),
+            ProActionTile(
+              compact: true,
+              icon: Icons.file_download_rounded,
+              label: t.eduResearchExport,
+              accent: AppColors.primaryDark,
+              onTap: () => context.push('/research-export'),
             ),
           ],
         ),
@@ -732,6 +765,13 @@ class _QuickActions extends ConsumerWidget {
               label: t.eduTrackProgress,
               accent: AppColors.info,
               onTap: () => context.push('/assessment/tracking'),
+            ),
+            ProActionTile(
+              compact: true,
+              icon: Icons.insights_rounded,
+              label: t.eduClassReport,
+              accent: AppColors.sectionAssessment,
+              onTap: () => context.push('/assessment/class-report'),
             ),
             ProActionTile(
               compact: true,
@@ -893,12 +933,12 @@ class _StudentCard extends StatelessWidget {
     required this.onTap,
   });
 
-  String _timeAgo(DateTime dt) {
+  String _timeAgo(AppLocalizations t, DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${(diff.inDays / 7).floor()}w ago';
+    if (diff.inMinutes < 60) return t.gmMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return t.gmHoursAgo(diff.inHours);
+    if (diff.inDays < 7) return t.gmDaysAgo(diff.inDays);
+    return t.gmWeeksAgo((diff.inDays / 7).floor());
   }
 
   @override
@@ -952,7 +992,7 @@ class _StudentCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$wordsLearned words  •  🔥 $streak streak  •  ⭐ $stars',
+                  _t(context).eduStudentStats(wordsLearned, streak, stars),
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),
@@ -962,7 +1002,7 @@ class _StudentCard extends StatelessWidget {
             ),
           ),
           Text(
-            _timeAgo(lastActive),
+            _timeAgo(_t(context), lastActive),
             style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(width: 4),
@@ -1042,7 +1082,10 @@ class _DeckTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '${category.label} deck, $cardCount cards',
+      label: _t(context).eduDeckSemantics(
+        category.labelOf(_t(context)),
+        cardCount,
+      ),
       child: SizedBox(
         width: 128,
         child: Card(
@@ -1085,7 +1128,7 @@ class _DeckTile extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          category.label,
+                          category.labelOf(_t(context)),
                           style: AppTypography.labelLarge.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
@@ -1095,7 +1138,7 @@ class _DeckTile extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '$cardCount cards',
+                          _t(context).eduDeckCards(cardCount),
                           style: AppTypography.labelSmall.copyWith(
                             color: Colors.white.withValues(alpha: 0.85),
                             fontWeight: FontWeight.w500,

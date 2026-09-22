@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart' show AppColors;
 import '../../../core/theme/app_typography.dart' show AppTypography;
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Warns before entering an activity that **takes the camera away from Gaze
 /// Control**, and asks the learner to confirm.
@@ -29,13 +31,11 @@ Future<bool> confirmHandsFreePause(
 
   /// Why this activity needs the camera to itself. Defaults to Sign It's
   /// reason, the original caller.
-  String reason =
-      'This activity records you signing, so it needs the camera '
-      'to itself. Head control will pause while it is open.',
+  String? reason,
 
   /// What voice can still do inside, shown when [voiceAvailable]. Defaults to
   /// the bare minimum every such screen offers: a spoken way out.
-  String voiceHint = 'You can still say “go back” to leave at any time.',
+  String? voiceHint,
 }) async {
   final confirmed = await showDialog<bool>(
     context: context,
@@ -46,7 +46,7 @@ Future<bool> confirmHandsFreePause(
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '$activityName uses the camera',
+              _t(context).hfUsesCamera(activityName),
               style: AppTypography.titleLarge,
             ),
           ),
@@ -56,14 +56,12 @@ Future<bool> confirmHandsFreePause(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(reason, style: AppTypography.bodyLarge),
+          Text(reason ?? _t(context).hfReasonSign, style: AppTypography.bodyLarge),
           const SizedBox(height: 12),
           Text(
             voiceAvailable
-                ? voiceHint
-                : 'To leave, use the Back button at the top — or turn on Voice '
-                      'commands in Settings → Accessibility → Gaze Control first, '
-                      'so you can say “go back”.',
+                ? (voiceHint ?? _t(context).hfVoiceHint)
+                : _t(context).hfNoVoice,
             style: AppTypography.bodyMedium.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -73,14 +71,19 @@ Future<bool> confirmHandsFreePause(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Not now'),
+          child: Text(_t(context).hfNotNow),
         ),
         ElevatedButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Open anyway'),
+          child: Text(_t(context).hfOpenAnyway),
         ),
       ],
     ),
   );
   return confirmed ?? false;
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

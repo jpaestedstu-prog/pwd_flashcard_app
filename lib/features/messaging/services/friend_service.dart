@@ -570,6 +570,34 @@ class FriendActionException implements Exception {
   final String message;
   const FriendActionException(this.message);
 
+  /// [message] in the learner's language.
+  String messageOf({required bool filipino}) =>
+      filipino ? (_friendErrorFilipino[message] ?? message) : message;
+
   @override
   String toString() => message;
 }
+
+const _friendErrorFilipino = {
+  'Cloud sync is not configured on this device.':
+      'Hindi naka-set up ang cloud sync sa device na ito.',
+  'Sign-in is still warming up. Try again in a moment.':
+      'Naghahanda pa ang pag-sign in. Subukan ulit mamaya.',
+  'Enter a username or profile ID.': 'Maglagay ng username o profile ID.',
+  'No user with that username or ID. Make sure they have opened '
+          'Messages on their device at least once.':
+      'Walang user na may ganiyang username o ID. Tiyaking nabuksan na nila '
+          'ang Mga Mensahe sa kanilang device kahit isang beses.',
+  "You can't add yourself.": 'Hindi mo maidadagdag ang sarili mo.',
+  "You're already friends.": 'Magkaibigan na kayo.',
+  "You already asked them. They haven't answered yet.":
+      'Naipadala mo na ang hiling. Hindi pa sila sumasagot.',
+  'Network is slow. Check your connection and try again.':
+      'Mabagal ang network. Suriin ang koneksyon at subukan ulit.',
+  "Couldn't reach the friend service. If this keeps happening, "
+          'ask your teacher to redeploy the app rules.':
+      'Hindi maabot ang serbisyo ng pakikipagkaibigan. Kung maulit ito, '
+          'sabihin sa guro mo.',
+  "Couldn't send the request. Try again in a moment.":
+      'Hindi maipadala ang hiling. Subukan ulit mamaya.',
+};

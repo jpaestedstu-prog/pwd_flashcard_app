@@ -168,6 +168,30 @@ class HomeGroupManagementNotifier
     await HiveService.cacheHomeGroup(updated);
   }
 
+  /// Turn retaking the pre-test / post-test on or off for [group].
+  ///
+  /// Mirrors `setClassRetakes`: same field, same document the child's device
+  /// already caches at join time.
+  Future<void> setGroupRetakes(HomeGroup group, bool allowed) async {
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
+    if (allowed == group.allowAssessmentRetakes) return;
+    final updated = group.copyWith(
+      allowAssessmentRetakes: allowed,
+      updatedAt: DateTime.now(),
+    );
+    await FirebaseService.db
+        .collection('home_groups')
+        .doc(updated.id)
+        .set({
+      'allow_assessment_retakes': allowed,
+      'updated_at': updated.updatedAt.toIso8601String(),
+    }, SetOptions(merge: true));
+    await HiveService.cacheHomeGroup(updated);
+  }
+
   /// Delete [group] and all its memberships.
   Future<void> deleteGroup(HomeGroup group) async {
     if (!FirebaseService.isConfigured) {

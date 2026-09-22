@@ -10,6 +10,8 @@ import '../../../data/models/enums.dart';
 import '../models/notebook_models.dart';
 import '../providers/notebook_provider.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class NotebookScreen extends ConsumerStatefulWidget {
   const NotebookScreen({super.key});
@@ -155,7 +157,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
                 ...FlashcardCategory.values.map((cat) => Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
-                        label: Text(cat.label),
+                        label: Text(cat.labelOf(_t(context))),
                         avatar: Icon(cat.icon, size: 16),
                         selected: _selectedCategory == cat,
                         onSelected: (_) =>
@@ -300,8 +302,8 @@ class _NoteCard extends StatelessWidget {
     return Semantics(
       button: true,
       label: isFilipino
-          ? 'Tala: ${note.title}. ${note.isVoiceNote ? "Voice note. " : ""}'
-              '${note.category != null ? "Kategorya: ${note.category!.label}. " : ""}'
+          ? 'Tala: ${note.title}. ${note.isVoiceNote ? "Tala sa boses. " : ""}'
+              '${note.category != null ? "Kategorya: ${note.category!.labelFilipino}. " : ""}'
               'Huling binago ${_formatDate(note.updatedAt, true)}.'
           : 'Note: ${note.title}. ${note.isVoiceNote ? "Voice note. " : ""}'
               '${note.category != null ? "Category: ${note.category!.label}. " : ""}'
@@ -364,7 +366,7 @@ class _NoteCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        note.category!.label,
+                        note.category!.labelOf(_t(context)),
                         style: AppTypography.labelSmall.copyWith(
                           color: catColor,
                           fontWeight: FontWeight.w600,
@@ -454,3 +456,8 @@ class _NoteCard extends StatelessWidget {
     return '${date.month}/${date.day}/${date.year}';
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

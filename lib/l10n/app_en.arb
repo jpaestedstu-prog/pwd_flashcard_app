@@ -186,7 +186,7 @@
   "openDashboard": "Open progress dashboard",
   "openSettings": "Open settings",
   "openShop": "Open star shop",
-  "version": "Version 1.0.0 • Thesis Capstone Project",
+  "version": "Version 1.1.0 • Thesis Capstone Project",
   "flashLearnPwd": "FlashLearn PWD",
   "animals": "Animals",
   "colorsAndShapes": "Colors & Shapes",
@@ -1906,5 +1906,6355 @@
   "eduResearchExport": "Research Export",
   "eduDashboardCtaSub": "Detailed insights, alerts, and recommendations",
   "eduNoChildrenDesc": "Create a home group, then share the code with your child to join.",
-  "eduNoStudentsDesc": "Create a class, then share the code with your students to join."
+  "eduNoStudentsDesc": "Create a class, then share the code with your students to join.",
+  "assessPreTest": "Pre-Test",
+  "assessPostTest": "Post-Test",
+  "assessCategoryMastery": "Category Mastery",
+  "assessCustom": "Custom Assessment",
+  "assessPreTestDesc": "Measure your starting knowledge before learning",
+  "assessPostTestDesc": "See how much you've improved after learning",
+  "assessCategoryMasteryDesc": "Test your mastery of a specific category",
+  "assessCustomDesc": "Teacher-created assessment",
+  "formatMultipleChoice": "Multiple Choice",
+  "formatFillInBlank": "Fill in the Blank",
+  "formatMatchPairs": "Match Pairs",
+  "formatTrueFalse": "True or False",
+  "formatSignVideo": "Watch the Sign",
+  "signQuestionPrompt": "Watch the sign. Which word is it?",
+  "assessCenterTitle": "Assessment Center",
+  "assessCenterLearnerSub": "Measure your learning progress",
+  "assessCenterEducatorSub": "Build, assign and track your learners' tests",
+  "assessPrePostSection": "Pre-Test & Post-Test",
+  "assessPrePostLearnerBlurb": "Take a pre-test before studying, then a post-test after — see your growth!",
+  "assessPrePostEducatorBlurb": "Your learners sit these. Assign the pre-test first, then the post-test after the lessons — the gain appears here.",
+  "assessMasterySection": "Category Mastery Tests",
+  "assessMasteryBlurb": "Test your knowledge in specific vocabulary categories",
+  "assessAssignedToYou": "Assigned to You",
+  "assessRecentResults": "Recent Results",
+  "assessSeeAll": "See All",
+  "assessClassReport": "Class report",
+  "assessYourAttempts": "Your attempts",
+  "assessAttemptCounts": "Counts",
+  "assessAttemptsOne": "1 attempt",
+  "assessAttemptsMany": "{count} attempts",
+  "@assessAttemptsMany": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "assessNoLearnersYet": "No learners yet",
+  "assessNoLearnersDesc": "Share a class or home-group code, then assign the pre-test.",
+  "assessNeedPreTestFirst": "Complete a Pre-Test first",
+  "assessKeepStudying": "Keep studying",
+  "assessKeepStudyingFor": "Keep studying — {what}",
+  "@assessKeepStudyingFor": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "assessMoreDays": "{count} more days",
+  "@assessMoreDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "assessOneMoreDay": "1 more day",
+  "assessMoreStudyDays": "{count} more study days",
+  "@assessMoreStudyDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "assessOneMoreStudyDay": "1 more study day",
+  "assessAndJoin": "{a} and {b}",
+  "@assessAndJoin": {
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      }
+    }
+  },
+  "assessRetakeLocked": "Already done — ask your teacher to reopen it",
+  "assessReadyForPost": "Ready for post-test",
+  "assessPostAssigned": "Post-test assigned",
+  "assessPreOutstanding": "Pre-test outstanding",
+  "assessPostIn": "Pre-test done · post-test suggested after {wait}",
+  "assessPreFromEducator": "Your teacher or parent will give you this test",
+  "assessPostFromEducator": "Your teacher or parent will open this after your lessons",
+  "assessClipsPreparing": "Getting the sign videos ready…",
+  "assessClipsMissingTitle": "The sign videos need the internet",
+  "assessClipsMissingBody": "This test has sign-language videos that are not on this tablet yet. Connect to Wi‑Fi, then try again. The test has not started.",
+  "assessClipsTryAgain": "Try again",
+  "assessClipsGoBack": "Go back",
+  "@assessPostIn": {
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "eduClassReport": "Class Report",
+  "supportSectionTitle": "Learner Support",
+  "supportSectionBlurb": "How {category} works for this learner. These can be changed any time.",
+  "@supportSectionBlurb": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "supportGroupCommunication": "Communication & language",
+  "supportGroupCommunicationDesc": "How this learner takes in language. Pick one.",
+  "supportGroupHearingExtras": "Hearing supports",
+  "supportGroupVisualAccess": "Reading the screen",
+  "supportGroupVisualAccessDesc": "How this learner gets at what is on screen. Pick one.",
+  "supportGroupVisualExtras": "Vision supports",
+  "supportGroupInput": "Controlling the app",
+  "supportGroupInputDesc": "How this learner moves around the app. Pick one.",
+  "supportGroupMotorExtras": "Movement supports",
+  "supportGroupThinking": "Learning support",
+  "supportGroupThinkingDesc": "How instructions should reach this learner. Pick one.",
+  "supportGroupCognitiveExtras": "Understanding supports",
+  "supportGroupOther": "Other supports",
+  "supportGroupOptional": "Optional supports",
+  "supportGroupExtrasDesc": "Add anything else that helps.",
+  "supportGroupNoneDesc": "Nothing here is required.",
+  "supportSignFsl": "Filipino Sign Language (FSL)",
+  "supportSignFslDesc": "Signs used in Filipino Deaf schools. The app’s sign clips are in FSL.",
+  "supportSignAsl": "American Sign Language (ASL)",
+  "supportSignAslDesc": "Signs used in American Deaf communities.",
+  "supportSignSee": "Signing Exact English (SEE)",
+  "supportSignSeeDesc": "Signs that follow English word order, sign for sign.",
+  "supportCuedSpeech": "Cued Speech",
+  "supportCuedSpeechDesc": "Hand shapes near the mouth that make speech sounds visible.",
+  "supportOralLipReading": "Speech & Lip Reading",
+  "supportOralLipReadingDesc": "Learns by watching the mouth and using any remaining hearing.",
+  "supportWrittenCaptions": "Written words only",
+  "supportWrittenCaptionsDesc": "Reads text instead of signing. Sign clips stay hidden.",
+  "supportCaptionsAlwaysOn": "Captions always on",
+  "supportCaptionsAlwaysOnDesc": "Every video and story shows its text. Noted on the profile for the teaching team.",
+  "supportVisualAlerts": "Flash instead of sound",
+  "supportVisualAlertsDesc": "Screen flashes and badges stand in for chimes.",
+  "supportAudioFirst": "Listen first (screen reader)",
+  "supportAudioFirstDesc": "Everything is spoken; the screen is the second channel.",
+  "supportLargePrint": "Large print",
+  "supportLargePrintDesc": "Very large type, few items per screen.",
+  "supportSpokenAnswerChoices": "Read the choices aloud",
+  "supportSpokenAnswerChoicesDesc": "Each answer choice is spoken before the learner picks.",
+  "supportInputTouch": "Touch",
+  "supportInputTouchDesc": "Taps the screen as usual.",
+  "supportInputGaze": "Eye gaze (hands-free)",
+  "supportInputGazeDesc": "Controls the app by looking at it.",
+  "supportInputSwitch": "Switch or gamepad",
+  "supportInputSwitchDesc": "Uses a Bluetooth gamepad or switch instead of touch.",
+  "supportSimplifiedLanguage": "Simple words",
+  "supportSimplifiedLanguageDesc": "Short sentences and everyday words.",
+  "supportPicturePrompts": "Picture support",
+  "supportPicturePromptsDesc": "A picture goes with every instruction. Noted on the profile for the teaching team.",
+  "supportStepByStep": "One step at a time",
+  "supportStepByStepDesc": "One instruction at a time, with a clear next step.",
+  "supportRepeatInstructions": "Repeat instructions",
+  "supportRepeatInstructionsDesc": "Instructions can be replayed as often as needed. Noted on the profile for the teaching team.",
+  "supportFewerChoices": "Fewer answer choices",
+  "supportFewerChoicesDesc": "Questions offer two choices instead of four.",
+  "supportExtendedTestTime": "Extra time on tests",
+  "supportExtendedTestTimeDesc": "Timed assessments give this learner half again as long.",
+  "reportForEducatorsTitle": "For teachers and parents",
+  "reportForEducatorsDesc": "This report reads a whole class at once. Your own results live in the Assessment Center.",
+  "reportCheckNewResults": "Check for new results",
+  "reportNoLearnersDesc": "Share a class or home-group code, then assign the pre-test. The report fills in as results come back.",
+  "reportAssignWork": "Assign work",
+  "reportGainSection": "Learning gain by accessibility",
+  "reportGainSectionDesc": "Averages over the learners who have finished both halves. Anyone still missing one is counted separately.",
+  "reportGainNone": "No learner has finished both halves yet, so there is nothing to average. Assign the pre-test first.",
+  "reportItemsSection": "Hardest items",
+  "reportItemsSectionDesc": "Every question the class has answered, hardest first. “Split the class” with a low separation usually means the wording, not the word.",
+  "reportItemsNone": "No answers recorded yet. This fills in as your learners finish assessments.",
+  "reportAttemptsSection": "Attempts",
+  "reportAttemptsSectionDesc": "The most recent sitting of each half is the one a learning gain is measured from.",
+  "reportMetricPre": "Pre",
+  "reportMetricPost": "Post",
+  "reportMetricGain": "Gain",
+  "reportMetricNormalized": "Normalized",
+  "reportMetricMeasured": "Measured",
+  "reportMetricWaiting": "Still waiting",
+  "reportMetricMedian": "Median",
+  "reportMetricSeparation": "Separation",
+  "reportMetricOftenAnswered": "Often answered",
+  "reportAttemptNone": "none",
+  "reportAttemptEarlier": "(+{count} earlier)",
+  "@reportAttemptEarlier": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reportDifficultyEasy": "Easy for the class",
+  "reportDifficultyMost": "Most got it",
+  "reportDifficultySplit": "Split the class",
+  "reportDifficultyHard": "Hard",
+  "reportDifficultyNobody": "Almost nobody",
+  "reportNeedsReview": "Your strongest learners did no better on this one — worth rereading the wording.",
+  "reportGainSemantics": "{category}. {count, plural, =1{1 learner measured} other{{count} learners measured}}. Mean pre-test {pre} percent, post-test {post} percent, gain {gain} percent.",
+  "@reportGainSemantics": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "pre": {
+        "type": "int"
+      },
+      "post": {
+        "type": "int"
+      },
+      "gain": {
+        "type": "int"
+      }
+    }
+  },
+  "reportGainNoneSemantics": "{category}. No learner has finished both halves yet. {count} waiting.",
+  "@reportGainNoneSemantics": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reportItemCorrectSemantics": "{correct} of {attempts} correct, {percent} percent",
+  "@reportItemCorrectSemantics": {
+    "placeholders": {
+      "correct": {
+        "type": "int"
+      },
+      "attempts": {
+        "type": "int"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "reportItemWrongSemantics": "Most common wrong answer, {answer}",
+  "@reportItemWrongSemantics": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "reportItemReviewSemantics": "This item may need rewording",
+  "rxTitle": "Research Data Export",
+  "rxHeader": "Thesis Research Export",
+  "rxIntro": "Export anonymized data for the learners you tick below. Names are replaced with IDs that stay the same in every export, so files from several devices can be merged.",
+  "rxParticipants": "Participants",
+  "rxParticipantsHint": "Only ticked learners are exported. Your own classes and home groups are ticked for you.",
+  "rxSelectedCount": "{selected} of {total} selected",
+  "@rxSelectedCount": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "rxTickAll": "Tick all",
+  "rxUntickAll": "Untick all",
+  "rxYourGroups": "In your classes and home groups",
+  "rxOtherLearners": "Other learners on this tablet",
+  "rxOtherLearnersHint": "Not in your classes or home groups — left out unless you tick them.",
+  "rxDataAvailable": "Data Available",
+  "rxLearners": "Learners",
+  "rxGameScores": "Game scores",
+  "rxSessions": "Sessions logged",
+  "rxAssessmentResults": "Assessment results",
+  "rxMoodEntries": "Mood entries",
+  "rxGainReports": "Learning gain reports",
+  "rxFilesIncluded": "Files Included",
+  "rxFileStudentsOverview": "Demographics & aggregate stats per student",
+  "rxFileLearningCurves": "Game scores over time (for trend analysis)",
+  "rxFileSessionPatterns": "Session logs with day-of-week patterns",
+  "rxFileCategoryMastery": "Per-category mastery % for each student",
+  "rxFileWordAccuracy": "Spaced-repetition per-word accuracy data",
+  "rxFileAssessmentResults": "Pre/post test scores & learning gains",
+  "rxFileMoodData": "Mood check-ins correlated with activities",
+  "rxFileAdaptiveDifficulty": "Difficulty adjustments & accuracy over time",
+  "rxFileSummaryStats": "High-level aggregates for quick reference",
+  "rxExportButton": "{count, plural, =1{Export Research Data (1 learner)} other{Export Research Data ({count} learners)}}",
+  "@rxExportButton": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rxGenerating": "Generating…",
+  "rxNobodyTicked": "Tick at least one learner to export.",
+  "rxNoLearners": "No learner profiles yet. Learners appear here once they join your class or home group.",
+  "rxExported": "Research data exported successfully!",
+  "rxExportFailed": "Export failed: {error}",
+  "@rxExportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "qpFilipinoWordFor": "What is the Filipino word for “{word}”?",
+  "@qpFilipinoWordFor": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "qpEnglishWordFor": "What is the English word for “{word}”?",
+  "@qpEnglishWordFor": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "qpFillBlank": "Fill in the blank: The Filipino translation of “{word}” is _____.",
+  "@qpFillBlank": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "qpTrueFalse": "True or False: “{english}” is “{shown}” in Filipino.",
+  "@qpTrueFalse": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "shown": {
+        "type": "String"
+      }
+    }
+  },
+  "qpInFilipinoIs": "“{english}” in Filipino is “{shown}”",
+  "@qpInFilipinoIs": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "shown": {
+        "type": "String"
+      }
+    }
+  },
+  "qpMatch": "Match: “{word}” → ?",
+  "@qpMatch": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "qpTypeFilipino": "Type the Filipino word for “{word}”:",
+  "@qpTypeFilipino": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "qpTypeEnglish": "Type the English word for “{word}”:",
+  "@qpTypeEnglish": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "qpTrue": "True",
+  "qpFalse": "False",
+  "testQuitTooltip": "Quit assessment",
+  "testQuitTitle": "Quit Assessment?",
+  "testQuitBody": "Your progress will be lost. Are you sure you want to quit?",
+  "testQuitContinue": "Continue",
+  "testQuitConfirm": "Quit",
+  "testQuestionOf": "Question {current} of {total}",
+  "@testQuestionOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "testProgressSemantics": "Progress: {percent} percent complete",
+  "@testProgressSemantics": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "testShowHint": "Show Hint",
+  "testHideHint": "Hide Hint",
+  "testFinish": "Finish Assessment",
+  "testNext": "Next Question",
+  "testTypeHere": "Type your answer here...",
+  "testSubmit": "Submit Answer",
+  "testHintAnswer": "Correct answer: {answer}",
+  "@testHintAnswer": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "testCorrect": "Correct!",
+  "testNotQuite": "Not quite right",
+  "testTheAnswerIs": "The correct answer is: {answer}",
+  "@testTheAnswerIs": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "testMinutesLeft": "{minutes, plural, =1{1 minute remaining} other{{minutes} minutes remaining}}",
+  "@testMinutesLeft": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "testSecondsLeft": "{seconds, plural, =1{1 second remaining} other{{seconds} seconds remaining}}",
+  "@testSecondsLeft": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "gradeExcellent": "Excellent",
+  "gradeVeryGood": "Very Good",
+  "gradeGood": "Good",
+  "gradeNeedsImprovement": "Needs Improvement",
+  "gradeKeepPracticing": "Keep Practicing",
+  "supportShortLipReading": "Lip reading",
+  "supportShortWritten": "Written",
+  "supportShortAudioFirst": "Audio first",
+  "supportShortGaze": "Gaze",
+  "supportShortTouch": "Touch",
+  "sumComplete": "{type} Complete!",
+  "@sumComplete": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "sumTime": "Time",
+  "sumCorrect": "Correct",
+  "sumWrong": "Wrong",
+  "sumCategoryBreakdown": "Category Breakdown",
+  "sumQuestionReview": "Question Review",
+  "sumBackToHub": "Back to Hub",
+  "sumViewAnalytics": "View Analytics",
+  "sumCategorySemantics": "{category}: {percent} percent",
+  "@sumCategorySemantics": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "resTitle": "Assessment Analytics",
+  "resCompletedCount": "{count, plural, =1{1 assessment completed} other{{count} assessments completed}}",
+  "@resCompletedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resEmpty": "No assessments completed yet",
+  "resTakeOne": "Take an Assessment",
+  "resTrend": "Score Trend Over Time",
+  "resCategoryMastery": "Category Mastery",
+  "resHistory": "Assessment History",
+  "resLearningGain": "Learning Gain",
+  "resPerCategoryGains": "Per-Category Gains",
+  "resAvgScore": "Avg Score",
+  "resAssessments": "Assessments",
+  "resTotalTime": "Total Time",
+  "resNeedTwo": "Complete 2+ assessments to see trends",
+  "resHistoryLine": "{date} • {count, plural, =1{1 question} other{{count} questions}} • {duration}",
+  "@resHistoryLine": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "resAttemptSemantics": "{percent} percent on {date}",
+  "@resAttemptSemantics": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "resAttemptCountsSemantics": "This is the attempt your learning gain uses",
+  "resSatWith": "Sat with {supports}",
+  "@resSatWith": {
+    "placeholders": {
+      "supports": {
+        "type": "String"
+      }
+    }
+  },
+  "gainImproved": "Score improved from {pre}% to {post}% (+{gain}%)",
+  "@gainImproved": {
+    "placeholders": {
+      "pre": {
+        "type": "int"
+      },
+      "post": {
+        "type": "int"
+      },
+      "gain": {
+        "type": "int"
+      }
+    }
+  },
+  "gainSame": "Score remained at {pre}%",
+  "@gainSame": {
+    "placeholders": {
+      "pre": {
+        "type": "int"
+      }
+    }
+  },
+  "gainChanged": "Score changed from {pre}% to {post}% ({gain}%)",
+  "@gainChanged": {
+    "placeholders": {
+      "pre": {
+        "type": "int"
+      },
+      "post": {
+        "type": "int"
+      },
+      "gain": {
+        "type": "int"
+      }
+    }
+  },
+  "hubResultsTooltip": "View assessment results and analytics",
+  "hubCreate": "Create",
+  "hubAssign": "Assign",
+  "hubTrack": "Track",
+  "hubQuizBuilder": "Quiz Builder",
+  "hubQuizBuilderDesc": "Create custom quizzes from any flashcards",
+  "hubCustomAssessments": "Custom Assessments",
+  "hubCreateCustomTooltip": "Create a new custom assessment",
+  "hubNoCustom": "No custom assessments yet",
+  "hubNoCustomHint": "Tap + to create one for your students",
+  "hubViewAllResults": "View all results",
+  "hubGainSemantics": "Learning gain report. {summary}",
+  "@hubGainSemantics": {
+    "placeholders": {
+      "summary": {
+        "type": "String"
+      }
+    }
+  },
+  "hubGainTitle": "Learning Gain Report",
+  "hubCardLockedSemantics": "{type}. Locked. {reason}",
+  "@hubCardLockedSemantics": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "hubCardDoneSemantics": "{type}. Completed. Latest score {percent} percent. Tap to retake.",
+  "@hubCardDoneSemantics": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "hubCardNewSemantics": "{type}. Not yet taken. Tap to start.",
+  "@hubCardNewSemantics": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "hubBest": "Best: {percent}%",
+  "@hubBest": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "hubTapToStart": "Tap to start",
+  "hubMasteryTriedSemantics": "{category} mastery test. Best score: {percent} percent, {count, plural, =1{1 attempt} other{{count} attempts}}. Tap to start.",
+  "@hubMasteryTriedSemantics": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubMasteryNewSemantics": "{category} mastery test. Not attempted yet. Tap to start.",
+  "@hubMasteryNewSemantics": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "hubNotTested": "Not tested",
+  "hubQuestionCount": "{count, plural, =1{1 question} other{{count} questions}}",
+  "@hubQuestionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubOverdue": "Overdue",
+  "hubDue": "Due {date}",
+  "@hubDue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "hubCustomTileSemantics": "{title}. {questions}. Tap to take.",
+  "@hubCustomTileSemantics": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "questions": {
+        "type": "String"
+      }
+    }
+  },
+  "hubDeleteTitle": "Delete Assessment?",
+  "hubDeleteBody": "Are you sure you want to delete “{title}”? This cannot be undone.",
+  "@hubDeleteBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "hubCancel": "Cancel",
+  "hubDelete": "Delete",
+  "hubResultSemantics": "{type}. Score: {percent} percent. {grade}. Completed {date}.",
+  "@hubResultSemantics": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      },
+      "grade": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "hubNoLearners": "No learners yet",
+  "hubNoLearnersHint": "Share a class or home-group code, then assign the pre-test.",
+  "hubGain": "Gain {gain}",
+  "@hubGain": {
+    "placeholders": {
+      "gain": {
+        "type": "String"
+      }
+    }
+  },
+  "hubLearnerRowSemantics": "{name}. {status}. Tap to open their profile.",
+  "@hubLearnerRowSemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "hubPre": "Pre",
+  "hubPost": "Post",
+  "bannerOverdue": "Overdue Assignments",
+  "bannerPending": "Pending Assignments",
+  "bannerSubtitle": "{count, plural, =1{You have 1 assessment to complete} other{You have {count} assessments to complete}}",
+  "@bannerSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bannerSemantics": "{count, plural, =1{1 pending assessment assigned to you} other{{count} pending assessments assigned to you}}",
+  "@bannerSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "titleAllCategories": "All Categories",
+  "titleMastery": "{category} Mastery Test",
+  "@titleMastery": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "asgPreFirst": "Assign a pre-test first — the post-test mirrors it.",
+  "asgQuizEmpty": "That quiz has no cards left to ask about.",
+  "asgAssigned": "{count, plural, =1{Assessment assigned to 1 learner!} other{Assessment assigned to {count} learners!}}",
+  "@asgAssigned": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "asgLocalOnly": "{count, plural, =1{Saved for 1 learner on this device — not sent yet. It will upload when syncing is working.} other{Saved for {count} learners on this device — not sent yet. It will upload when syncing is working.}}",
+  "@asgLocalOnly": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "asgNotOwner": "Saved on this device only. This profile was restored on another device, so that one now handles syncing. Restore it back here to send work to your learners.",
+  "asgClassPre": "Class Pre-Test",
+  "asgClassPost": "Class Post-Test",
+  "asgTitle": "Assign Assessment",
+  "asgStudyLabel": "Study pre-test & post-test",
+  "asgStudyCaption": "The same questions for everyone you select. Assign the post-test when the study period ends.",
+  "asgQuizzes": "Quizzes",
+  "asgQuizzesCaption": "Makes a fresh test each time you assign it",
+  "asgSaved": "Saved assessments",
+  "asgSavedCaption": "A fixed set of questions",
+  "asgSelectStudents": "Select Students ({selected}/{total})",
+  "@asgSelectStudents": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "asgSelectAll": "Select All",
+  "asgDeselectAll": "Deselect All",
+  "asgDeadline": "Deadline (optional)",
+  "asgSetDeadline": "Set Deadline",
+  "asgRemoveDeadline": "Remove deadline",
+  "asgInstructions": "Instructions (optional)",
+  "asgInstructionsHint": "Add instructions for students...",
+  "asgAssigning": "Assigning...",
+  "asgMadeFresh": "made fresh when you assign",
+  "asgMirrors": "mirrors the pre-test each learner sat",
+  "asgNoChildren": "No children yet",
+  "asgNoStudents": "No students yet",
+  "asgShareHomeHint": "Share your home group code so your child can join, then assign them work here.",
+  "asgShareClassHint": "Share your class code so students can join, then assign them work here.",
+  "asgShareGroupCode": "Share Group Code",
+  "asgShareClassCode": "Share Class Code",
+  "trkTitle": "Assignment Tracking",
+  "trkRefresh": "Check for new results",
+  "trkDeleteTitle": "Delete Assignment?",
+  "trkDeleteBody": "This will remove the assignment. Student results will be kept.",
+  "trkNotOwner": "Removed here only. This profile was restored on another device, so that one now handles syncing — your learners still have this assignment.",
+  "trkDue": "Due: {date}",
+  "@trkDue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "trkEmpty": "No assignments yet",
+  "trkEmptyHint": "Assign assessments to students and track their progress here.",
+  "gmScreenTitle": "{audience, select, parent{Home Groups} other{Manage Classes}}",
+  "@gmScreenTitle": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmCreateHint": "{audience, select, parent{e.g. The Santos Family} other{e.g. Grade 3 - Math}}",
+  "@gmCreateHint": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmShareBlurb": "{audience, select, parent{Open the app, tap “Join a home group”, and enter the code.} other{Open the app, tap “Join a class”, and enter the code.}}",
+  "@gmShareBlurb": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmRefresh": "Refresh",
+  "gmNewGroup": "{audience, select, parent{New home group} other{New class}}",
+  "@gmNewGroup": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmEmptyTitle": "{audience, select, parent{No home groups yet} other{No classes yet}}",
+  "@gmEmptyTitle": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmEmptyBody": "{audience, select, parent{Create a home group, then share the join code so your children can join from their own devices.} other{Create a class, then share the join code so your students can join from their own devices.}}",
+  "@gmEmptyBody": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmCreateGroup": "{audience, select, parent{Create home group} other{Create class}}",
+  "@gmCreateGroup": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmGroupName": "{audience, select, parent{Home group name} other{Class name}}",
+  "@gmGroupName": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmCreate": "Create",
+  "gmNameRequired": "{audience, select, parent{Home group name is required} other{Class name is required}}",
+  "@gmNameRequired": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmCreated": "{audience, select, parent{Home group created.} other{Class created.}}",
+  "@gmCreated": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmOverview": "Overview",
+  "gmGroupCount": "{audience, select, parent{{count, plural, =1{1 home group} other{{count} home groups}}} other{{count, plural, =1{1 class} other{{count} classes}}}}",
+  "@gmGroupCount": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gmMemberCount": "{audience, select, parent{{count, plural, =1{1 child} other{{count} children}}} other{{count, plural, =1{1 student} other{{count} students}}}}",
+  "@gmMemberCount": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gmGroupsLabel": "{audience, select, parent{home groups} other{classes}}",
+  "@gmGroupsLabel": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmMembersLabel": "{audience, select, parent{children} other{students}}",
+  "@gmMembersLabel": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmActive": "active",
+  "gmEnrolled": "enrolled",
+  "gmNewestJoin": "Newest join",
+  "gmNoJoins": "no joins yet",
+  "gmMostRecent": "most recent",
+  "gmLoadingRoster": "Loading roster…",
+  "gmGroupActions": "{audience, select, parent{Home group actions} other{Class actions}}",
+  "@gmGroupActions": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmRename": "Rename",
+  "gmAccessibility": "Accessibility",
+  "gmNewJoinCode": "New join code",
+  "gmLeaderboard": "Leaderboard",
+  "gmLockRetakes": "Lock test retakes",
+  "gmAllowRetakes": "Allow test retakes",
+  "gmDeleteGroup": "{audience, select, parent{Delete home group} other{Delete class}}",
+  "@gmDeleteGroup": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmHideRoster": "Hide roster",
+  "gmShowRoster": "Show roster",
+  "gmCopyCode": "Copy code",
+  "gmShareCode": "Share code",
+  "gmRosterError": "Roster error: {error}",
+  "@gmRosterError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gmNoMembers": "{audience, select, parent{No children have joined yet — share the code above.} other{No students have joined yet — share the code above.}}",
+  "@gmNoMembers": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmSelected": "{count} selected",
+  "@gmSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gmRemoveCount": "Remove ({count})",
+  "@gmRemoveCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gmLockTitle": "Lock test retakes?",
+  "gmAllowTitle": "Allow test retakes?",
+  "gmLockBody": "Learners in “{name}” will not be able to sit the pre-test or post-test again once they have finished it. Assessments you assign are unaffected.",
+  "@gmLockBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gmAllowBody": "Learners in “{name}” will be able to sit the pre-test or post-test again. The most recent sitting is the one their learning gain is measured from.",
+  "@gmAllowBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gmLock": "Lock",
+  "gmAllow": "Allow",
+  "gmRetakesLocked": "Test retakes locked.",
+  "gmRetakesAllowed": "Test retakes allowed.",
+  "gmCouldNotSave": "Could not save: {error}",
+  "@gmCouldNotSave": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gmCopied": "Copied {code}",
+  "@gmCopied": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "gmShareText": "Join “{name}” on FlashLearn PWD with code {code}. {blurb}",
+  "@gmShareText": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "code": {
+        "type": "String"
+      },
+      "blurb": {
+        "type": "String"
+      }
+    }
+  },
+  "gmShareSubject": "FlashLearn PWD join code",
+  "gmCouldNotShare": "Could not share: {error}",
+  "@gmCouldNotShare": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gmRenameGroup": "{audience, select, parent{Rename home group} other{Rename class}}",
+  "@gmRenameGroup": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmSave": "Save",
+  "gmRenamed": "{audience, select, parent{Home group renamed.} other{Class renamed.}}",
+  "@gmRenamed": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmAccessibilitySet": "Accessibility set to {type}.",
+  "@gmAccessibilitySet": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "gmCouldNotUpdate": "Could not update: {error}",
+  "@gmCouldNotUpdate": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gmResetTitle": "Reset join code?",
+  "gmResetBody": "{audience, select, parent{A new code will be generated. Children who already joined stay enrolled, but the old code stops working.} other{A new code will be generated. Students who already joined stay enrolled, but the old code stops working.}}",
+  "@gmResetBody": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmReset": "Reset",
+  "gmNewCodeGenerated": "New code generated.",
+  "gmCouldNotRegenerate": "Could not regenerate: {error}",
+  "@gmCouldNotRegenerate": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gmDeleteTitle": "Delete {name}?",
+  "@gmDeleteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gmDeleteBody": "{audience, select, parent{All children will be unenrolled. Their profiles and progress stay on their own devices.} other{All students will be unenrolled. Their profiles and progress stay on their own devices.}}",
+  "@gmDeleteBody": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmCouldNotDelete": "Could not delete: {error}",
+  "@gmCouldNotDelete": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gmRenameInRoster": "Rename in roster",
+  "gmDisplayNameIn": "{audience, select, parent{Display name in this home group} other{Display name in this class}}",
+  "@gmDisplayNameIn": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmDisplayNameRequired": "Display name is required",
+  "gmRenameMemberNote": "{audience, select, parent{This will rename the child in your roster and on their device.} other{This will rename the student in your roster and on their device.}}",
+  "@gmRenameMemberNote": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmMemberRenamed": "{audience, select, parent{Child renamed.} other{Student renamed.}}",
+  "@gmMemberRenamed": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmUnlockedFor": "{name} unlocked for {duration}.",
+  "@gmUnlockedFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "gmCouldNotUnlock": "Could not unlock: {error}",
+  "@gmCouldNotUnlock": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gmRemoveTitle": "Remove {name}?",
+  "@gmRemoveTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gmRemoveBody": "{audience, select, parent{They'll be unenrolled from this home group. Their profile and progress are kept on their device.} other{They'll be unenrolled from this class. Their profile and progress are kept on their device.}}",
+  "@gmRemoveBody": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmRemove": "Remove",
+  "gmCouldNotRemove": "Could not remove: {error}",
+  "@gmCouldNotRemove": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gmRemoveManyTitle": "{audience, select, parent{{count, plural, =1{Remove 1 child?} other{Remove {count} children?}}} other{{count, plural, =1{Remove 1 student?} other{Remove {count} students?}}}}",
+  "@gmRemoveManyTitle": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gmRemoveManyBody": "{audience, select, parent{Their profiles and progress are kept on their devices; they just lose this home group linkage.} other{Their profiles and progress are kept on their devices; they just lose this class linkage.}}",
+  "@gmRemoveManyBody": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmMemberActions": "{audience, select, parent{Child actions} other{Student actions}}",
+  "@gmMemberActions": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmViewProgress": "View progress",
+  "gmNotes": "Notes",
+  "gmTimeLimits": "Time limits",
+  "gmAlarms": "Alarms",
+  "gmRoutine": "Routine",
+  "gmUnlockScreen": "Unlock screen",
+  "gmRemoveFrom": "{audience, select, parent{Remove from home group} other{Remove from class}}",
+  "@gmRemoveFrom": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "gmJoined": "Joined {date} · {ago}",
+  "@gmJoined": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "gmUnlockTitle": "Unlock {name}",
+  "@gmUnlockTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gmUnlockBody": "How long should the lock screen stay off? The screen will lock again automatically when this window expires.",
+  "gm15min": "15 min",
+  "gm30min": "30 min",
+  "gm1hour": "1 hour",
+  "gmHours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@gmHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gmMinutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "@gmMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gmJustNow": "just now",
+  "gmMinutesAgo": "{count}m ago",
+  "@gmMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gmHoursAgo": "{count}h ago",
+  "@gmHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gmDaysAgo": "{count}d ago",
+  "@gmDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gmWeeksAgo": "{count}w ago",
+  "@gmWeeksAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "acpApplies": "Applies to learners who join from now on. Anyone already enrolled keeps their current setup.",
+  "acpJoinersGet": "Students who join this code get this version of the app automatically — no setup needed on their side.",
+  "clipFailedSemantics": "This sign could not be loaded. Answer from what you know, or skip the question.",
+  "clipSemantics": "A sign-language clip. It repeats on its own; double tap to play it again.",
+  "clipReplay": "Play the sign again",
+  "clipFailedTitle": "This sign would not load",
+  "clipFailedBody": "Connect to the internet and try again, or answer from what you already know.",
+  "navGoBack": "Go back",
+  "offlineBanner": "You’re offline — everything still works!",
+  "homePlayerProfile": "Player Profile",
+  "homeMyDay": "My Day",
+  "homeMoodCheckIn": "Mood Check-In",
+  "homeDailyChallenge": "Daily Challenge",
+  "homeAssignments": "Assignments",
+  "homePlayAndLearn": "Play & Learn",
+  "homeGamesSub": "Play & learn",
+  "homeWordsSub": "Flashcards",
+  "homeStories": "Stories",
+  "homeStoriesSub": "Read & answer",
+  "homeFslSub": "Sign language",
+  "homeToPractice": "{count} to practice",
+  "@homeToPractice": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeReviewSub": "Review words",
+  "homeProgressSub": "Your journey",
+  "homeLearningStudy": "Learning & Study",
+  "homeLearningPaths": "Learning Paths",
+  "homeGuidedPractice": "Guided Practice",
+  "homeHardWords": "Hard Words",
+  "homeWhatToStudy": "What to Study",
+  "homeAssessmentProgress": "Assessment & Progress",
+  "homeLearningGains": "Learning Gains",
+  "homeMyPortfolio": "My Portfolio",
+  "homeMyGoals": "My Goals",
+  "homeHowWasIt": "How was it?",
+  "homeCommunication": "Communication & Language",
+  "homeFslDictionary": "FSL Dictionary",
+  "homeSocial": "Social & Collaboration",
+  "homeJoinAClass": "Join a class",
+  "homeJoinTheClass": "Join the class",
+  "homeLiveClassBody": "Answer live questions for stars and raise your hand for help.",
+  "homeLiveClassSemantics": "Join the live class activity and raise your hand.",
+  "homeHaveClassCode": "Have a class code?",
+  "homeJoinClassBody": "Join a class to save your progress and let your teacher follow along.",
+  "homeJoinClassSemantics": "Have a class code? Join a class to save your progress.",
+  "homePeerCollab": "Peer Collab",
+  "homeMyNotes": "My Notes",
+  "homeWellbeing": "Personal & Wellbeing",
+  "homeStickerAlbum": "Sticker Album",
+  "homeMyNotebook": "My Notebook",
+  "homeStatsSemantics": "Stats: {streak} day streak, {words} words learned, {balance} stars to spend out of {total} earned",
+  "@homeStatsSemantics": {
+    "placeholders": {
+      "streak": {
+        "type": "int"
+      },
+      "words": {
+        "type": "int"
+      },
+      "balance": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "homeDailyReward": "Daily Reward",
+  "homeDailyRewardTitle": "Daily Reward!",
+  "homeDayNumber": "Day {day}",
+  "@homeDayNumber": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "homeDayShort": "D{day}",
+  "@homeDayShort": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "homeYouEarnedStars": "{count, plural, =1{You earned 1 star.} other{You earned {count} stars.}}",
+  "@homeYouEarnedStars": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeComeBackTomorrow": "Come back tomorrow for more!",
+  "homeCollect": "Collect",
+  "homeCollectStar": "Collect! 🌟",
+  "homeDailyChallengeChip": "🏆 Daily Challenge",
+  "homeDayStreak": "{count, plural, =1{1 day streak} other{{count} day streak}}",
+  "@homeDayStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOpenDailyChallenge": "View full daily challenge with calendar and stats",
+  "homeViewAll": "View All",
+  "homeWhatInFilipino": "What is this in Filipino?",
+  "homeCorrectBonus": "Correct! +2 bonus stars ⭐",
+  "homeAnswerIs": "The answer is: {word}",
+  "@homeAnswerIs": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "homeChallengeComplete": "Challenge Complete! ✨",
+  "homeAnswerWas": "The answer was: {word}",
+  "@homeAnswerWas": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "homeLevelSemantics": "Player Profile. Level {level} {title}, {xp} XP total, {next}. Opens your stats, rewards and achievements.",
+  "@homeLevelSemantics": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "title": {
+        "type": "String"
+      },
+      "xp": {
+        "type": "int"
+      },
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "homeXpToLevel": "{xp} XP to level {level} {title}",
+  "@homeXpToLevel": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      },
+      "level": {
+        "type": "int"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "homeMaxLevel": "max level reached",
+  "childGreeting": "Hi, {name}!",
+  "@childGreeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "childFriend": "Friend",
+  "childWhatToDo": "What do you want to do today?",
+  "childMyFeelings": "My Feelings",
+  "childSignDictionary": "Sign Dictionary",
+  "childPracticeWords": "Practice Words",
+  "childMyProgress": "My Progress",
+  "childExplore": "Explore & Create",
+  "childAdventureMap": "Adventure Map",
+  "childPracticeWithMe": "Practice With Me",
+  "childBuddy": "Buddy",
+  "childFriends": "Friends",
+  "childRewards": "Rewards & Feelings",
+  "childPlayerCard": "My Player Card",
+  "childStickers": "Stickers",
+  "childSwitchProfile": "Switch profile",
+  "childStatsSemantics": "My day: {streak} day streak, {words} words learned, {stars} stars earned",
+  "@childStatsSemantics": {
+    "placeholders": {
+      "streak": {
+        "type": "int"
+      },
+      "words": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "eduRecentStudents": "Recent Students",
+  "eduStudentStats": "{words} words  •  🔥 {streak} streak  •  ⭐ {stars}",
+  "@eduStudentStats": {
+    "placeholders": {
+      "words": {
+        "type": "int"
+      },
+      "streak": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "eduDeckSemantics": "{category} deck, {count} cards",
+  "@eduDeckSemantics": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eduDeckCards": "{count} cards",
+  "@eduDeckCards": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catCardSemantics": "{category} flashcards, {count} words, {percent} percent progress",
+  "@catCardSemantics": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "catCardWords": "{count} words",
+  "@catCardWords": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playerFallbackName": "Player",
+  "playerModeNote": "You’re in Player mode. Your fun stays on this device.",
+  "playerStartLearning": "Start Learning",
+  "playerBrowseFlashcards": "Browse flashcards",
+  "playerSaveStars": "Save your stars across devices",
+  "playerSaveBody": "Join a class or home group to back up your progress and learn with others.",
+  "playerJoinClass": "Join class",
+  "playerJoinGroup": "Join group",
+  "levelSemantics": "Level {level} {title}, {xp} XP total, {next}",
+  "@levelSemantics": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "title": {
+        "type": "String"
+      },
+      "xp": {
+        "type": "int"
+      },
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "levelXpToShort": "{xp} XP to Lv.{level} {title}",
+  "@levelXpToShort": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      },
+      "level": {
+        "type": "int"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "levelUpTitle": "LEVEL UP!",
+  "levelReached": "You’ve reached Level {level}!",
+  "@levelReached": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "levelTapAnywhere": "Tap anywhere to continue",
+  "deckBrowseTemplates": "Browse templates",
+  "deckSemantics": "{category} deck. {count} cards. {percent} percent complete.",
+  "@deckSemantics": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "deckChipSemantics": "{label} custom flashcards",
+  "@deckChipSemantics": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "viewerNofM": "{index} of {total}.",
+  "@viewerNofM": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "viewerDeleteConfirm": "Are you sure you want to delete “{word}”? This cannot be undone.",
+  "@viewerDeleteConfirm": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "viewerShowMe": "Show Me",
+  "viewerExamples": "Examples",
+  "viewerWriteNote": "Write a note about this word",
+  "viewerPauseAuto": "Pause auto-play",
+  "viewerStartAuto": "Start auto-play",
+  "viewerFlippedSemantics": "{english} in Filipino is {filipino}. Tap to flip back.",
+  "@viewerFlippedSemantics": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "filipino": {
+        "type": "String"
+      }
+    }
+  },
+  "viewerFrontSemantics": "{english}, {category} category. Tap to see details.",
+  "@viewerFrontSemantics": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "viewerButton": "{label} button",
+  "@viewerButton": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "viewerGazeStarting": "Starting gaze…",
+  "viewerGazeLook": "Look at the screen",
+  "viewerGazeChoose": "Look ◀ ▶ to choose · blink to open",
+  "progMasterySemantics": "Overall mastery: {percent} percent. {mastered} out of {total} words learned.",
+  "@progMasterySemantics": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "mastered": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "progStarsEarned": "{count} stars earned",
+  "@progStarsEarned": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "progStarsCollected": "⭐ {count} stars collected!",
+  "@progStarsCollected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "progAchievementUnlocked": "{title} achievement, unlocked",
+  "@progAchievementUnlocked": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "progAchievementLocked": "{title} achievement, locked",
+  "@progAchievementLocked": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "progJustNow": "Just now",
+  "progYesterday": "Yesterday",
+  "progGameSemantics": "{game}: {score} of {total}, {percent} percent, {stars} stars, {when}",
+  "@progGameSemantics": {
+    "placeholders": {
+      "game": {
+        "type": "String"
+      },
+      "score": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "percent": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      },
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "progCategoryRowSemantics": "{category} category: {mastered} of {total} words mastered, {percent} percent",
+  "@progCategoryRowSemantics": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "mastered": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "dcExplain": "“{english}” is “{filipino}” in Filipino.",
+  "@dcExplain": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "filipino": {
+        "type": "String"
+      }
+    }
+  },
+  "dcTitle": "🎯 Daily Mission",
+  "dcChip": "✨ Daily Mission",
+  "dcNoWords": "No words available for today’s mission yet.",
+  "dcWordNofM": "Word {index} of {total}",
+  "@dcWordNofM": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "dcListen": "Listen to English pronunciation",
+  "dcFinish": "Finish Mission",
+  "dcNextWord": "Next Word",
+  "dcCorrect": "Correct! +1 star ⭐",
+  "dcNotQuite": "Not quite!",
+  "dcPerfect": "Perfect mission! 🎉",
+  "dcComplete": "Mission complete! ✨",
+  "dcYouGot": "You got {correct} of {total} correct.",
+  "@dcYouGot": {
+    "placeholders": {
+      "correct": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "dcYouGotStars": "You got {correct} of {total} correct and earned {stars} ⭐.",
+  "@dcYouGotStars": {
+    "placeholders": {
+      "correct": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "dcComeBack": "Come back tomorrow for a new mission",
+  "dcTodayDone": "Today’s mission completed! ✨",
+  "dcFiftySemantics": "Fifty-fifty hint, removes two wrong answers, {remaining} left",
+  "@dcFiftySemantics": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "dcStreakStart": "Start your streak today!",
+  "dcStreakGoing": "{streak} day streak — keep going!",
+  "@dcStreakGoing": {
+    "placeholders": {
+      "streak": {
+        "type": "int"
+      }
+    }
+  },
+  "dcStreakAmazing": "{streak} day streak — amazing!",
+  "@dcStreakAmazing": {
+    "placeholders": {
+      "streak": {
+        "type": "int"
+      }
+    }
+  },
+  "dcStreakFire": "{streak} day streak — on fire!",
+  "@dcStreakFire": {
+    "placeholders": {
+      "streak": {
+        "type": "int"
+      }
+    }
+  },
+  "dcStreakLegend": "{streak} day streak — legendary!",
+  "@dcStreakLegend": {
+    "placeholders": {
+      "streak": {
+        "type": "int"
+      }
+    }
+  },
+  "dcStreakHint": "Complete the daily mission to extend your streak",
+  "dcRemovedByHint": "{text}, removed by hint",
+  "@dcRemovedByHint": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "dcPrevMonth": "Previous month",
+  "dcNextMonth": "Next month",
+  "dcCurrentStreak": "Current Streak",
+  "dcDaysCompleted": "Days Completed",
+  "dcStarsEarned": "Stars Earned",
+  "dcBadgesEarned": "Badges Earned",
+  "dcBadge3Day": "3-Day Streak",
+  "dcBadgeWeekly": "Weekly Warrior",
+  "dcBadgeMonthly": "Monthly Master",
+  "dcBadge10": "10 Days Done",
+  "dcBadge50": "50 Days Done",
+  "dcBadge100": "Century Club",
+  "fslOfflineSigns": "Offline signs",
+  "fslHasSign": "Has sign",
+  "fslMySigns": "My Signs · {count}",
+  "@fslMySigns": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fslICanSign": "I can sign · {count}",
+  "@fslICanSign": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fslWordCount": "{count, plural, =1{1 word} other{{count} words}}",
+  "@fslWordCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fslWatchedOf": "{watched} of {total} signs watched",
+  "@fslWatchedOf": {
+    "placeholders": {
+      "watched": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "fslWatchSemantics": "{english}, {filipino}. Watch the sign.",
+  "@fslWatchSemantics": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "filipino": {
+        "type": "String"
+      }
+    }
+  },
+  "fslWatchedSemantics": "{english}, {filipino}. Already watched. Watch the sign.",
+  "@fslWatchedSemantics": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "filipino": {
+        "type": "String"
+      }
+    }
+  },
+  "fslNoVideoSemantics": "{english}, {filipino}. No sign video yet.",
+  "@fslNoVideoSemantics": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "filipino": {
+        "type": "String"
+      }
+    }
+  },
+  "fslRemoveMySigns": "Remove {word} from My Signs",
+  "@fslRemoveMySigns": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "fslAddMySigns": "Add {word} to My Signs",
+  "@fslAddMySigns": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "lpAdventureMap": "Adventure Map 🗺️",
+  "lpPillDone": "DONE",
+  "lpPillStart": "START",
+  "lpPillEnter": "ENTER",
+  "lpPillReplay": "REPLAY",
+  "lpWorldMastered": "You mastered the whole world!",
+  "lpWorldExplore": "Explore every region to become a champion",
+  "lpTitle": "Learning Paths",
+  "lpMapTooltip": "Adventure map",
+  "lpJourney": "Your Learning Journey 🗺️",
+  "lpIntro": "Complete each path to unlock the next one. Master all 12 categories to become a vocabulary champion!",
+  "lpPathsCompleted": "{done} / {total} paths completed",
+  "@lpPathsCompleted": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "lpTrailTooltip": "Adventure trail",
+  "lpMastered": "Path Mastered!",
+  "lpCompletedAll": "You’ve completed all steps in {path}!",
+  "@lpCompletedAll": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "lpVocabulary": "{category} vocabulary",
+  "@lpVocabulary": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "lpRetry": "Retry",
+  "lpStart": "Start",
+  "lpPrevFirst": "Complete the previous step first",
+  "lpAdventureDone": "Adventure complete!",
+  "lpClimb": "Climb the trail to master every step",
+  "lpCardSemantics": "{path} learning path. {done} of {total} steps completed.",
+  "@lpCardSemantics": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "lpCardLocked": "Locked. Complete the previous path to unlock.",
+  "lpNodeCompleted": "Completed",
+  "lpNodeCurrent": "Current",
+  "lpNodeAvailable": "Available",
+  "lpNodeLocked": "Locked",
+  "srEnglishWord": "English word: {word}",
+  "@srEnglishWord": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "srFilipinoTranslation": "Filipino translation: {word}",
+  "@srFilipinoTranslation": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "srGreat": "Great recall! Keep it up!",
+  "srKeepPracticing": "Keep practicing — you’ll get there!",
+  "hwPractice": "Practice",
+  "hwStruggling": "Struggling",
+  "hwAttempted": "Attempted",
+  "hwEmptyTitle": "No hard words!",
+  "hwEmptyBody": "You’re doing great! Keep playing games and words you struggle with will appear here.",
+  "hwCardSemantics": "{english}, {filipino}. Accuracy: {percent} percent. {correct} correct out of {total} attempts.",
+  "@hwCardSemantics": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "filipino": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      },
+      "correct": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "joinClassTitle": "Join a Class",
+  "joinClassIntro": "Enter the code your teacher gave you.",
+  "joinClassCode": "Class code",
+  "joinCodeLength": "Code must be 6 characters",
+  "joinChecking": "Checking…",
+  "joinGroupTitle": "Join Home Group",
+  "joinGroupIntro": "Enter the code your parent or guardian shared.",
+  "joinGroupCode": "Home-group code",
+  "joinGroupTip": "Tip: ask your parent to check their internet connection, or try again in a moment.",
+  "scTitle": "Streak Calendar",
+  "scBestStreak": "Best Streak",
+  "scThisMonth": "This Month",
+  "scTotalActive": "Total Active",
+  "scDays": "{count, plural, =1{1 day} other{{count} days}}",
+  "@scDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scMilestones": "Streak Milestones",
+  "calDaySemantics": "Day {day}",
+  "@calDaySemantics": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "calStudied": ", studied",
+  "calToday": ", today",
+  "calM3": "3 Days",
+  "calW1": "1 Week",
+  "calW2": "2 Weeks",
+  "calMo1": "1 Month",
+  "calMo2": "2 Months",
+  "calD100": "100 Days",
+  "calMilestoneAchieved": "{label} streak milestone, achieved",
+  "@calMilestoneAchieved": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "calMilestoneNotYet": "{label} streak milestone, not yet achieved",
+  "@calMilestoneNotYet": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "sdToMilestone": "{count, plural, =1{1 day to {milestone}-day milestone} other{{count} days to {milestone}-day milestone}}",
+  "@sdToMilestone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "milestone": {
+        "type": "int"
+      }
+    }
+  },
+  "sdBest": "Best: {days} days",
+  "@sdBest": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "sdTierStarting": "Just Starting",
+  "sdTierBuilding": "Building Up",
+  "sdTierFire": "On Fire!",
+  "sdTierBlazing": "Blazing",
+  "sdTierChampion": "Streak Champion",
+  "certCategoryTitle": "{category} Mastery",
+  "@certCategoryTitle": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "certWordsLearned": "{learned}/{total} words learned",
+  "@certWordsLearned": {
+    "placeholders": {
+      "learned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "certStreakTitle": "{days}-Day Streak",
+  "@certStreakTitle": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "certStreakSub": "Consistent study dedication",
+  "certExcellence": "Learning Excellence",
+  "certWordsStars": "{words} words, {stars} stars",
+  "@certWordsStars": {
+    "placeholders": {
+      "words": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "certTitle": "My Certificates",
+  "certEmpty": "No certificates yet",
+  "certEmptyHint": "Keep learning to earn certificates!\nMaster a category (80%+), build a 7-day streak,\nor learn 50+ words.",
+  "certSemantics": "Certificate: {title}. {subtitle}. Tap to preview and share.",
+  "@certSemantics": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "subtitle": {
+        "type": "String"
+      }
+    }
+  },
+  "certFileName": "Certificate - {title}",
+  "@certFileName": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "certFailed": "Failed to generate certificate: {error}",
+  "@certFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "huntMore": "+{count} more",
+  "@huntMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsTitle": "My Goals",
+  "goalsActive": "Active Goals",
+  "goalsNone": "No goals yet",
+  "goalsNoneHint": "Set a learning goal to stay motivated!",
+  "goalsCompleted": "Completed ({count})",
+  "@goalsCompleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsExpired": "Expired ({count})",
+  "@goalsExpired": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsNew": "New Goal",
+  "goalsTracker": "Goal Tracker",
+  "goalsSummary": "{active} active · {completed} completed",
+  "@goalsSummary": {
+    "placeholders": {
+      "active": {
+        "type": "int"
+      },
+      "completed": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsTypeWords": "Words Learned",
+  "goalsTypeGames": "Games Completed",
+  "goalsTypeMastery": "Category Mastery",
+  "goalsTypeStreak": "Streak Days",
+  "goalsTypeStars": "Stars Earned",
+  "goalsExpiredShort": "Expired",
+  "goalsDueToday": "Due today",
+  "goalsDueTomorrow": "Due tomorrow",
+  "goalsDueIn": "Due in {days} days",
+  "@goalsDueIn": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsACategory": "a category",
+  "goalsLearnN": "Learn {n} words",
+  "@goalsLearnN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsCompleteN": "Complete {n} games",
+  "@goalsCompleteN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsMasteryN": "Reach {n}% mastery in {category}",
+  "@goalsMasteryN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "goalsStreakN": "Maintain a {n}-day streak",
+  "@goalsStreakN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsStarsN": "Earn {n} stars",
+  "@goalsStarsN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsSetNew": "Set a New Goal",
+  "goalsWhat": "What do you want to achieve?",
+  "goalsWhichCategory": "Which category?",
+  "goalsTarget": "Target",
+  "goalsDeadline": "Set a deadline",
+  "goalsDaysShort": "{days}d",
+  "@goalsDaysShort": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsCreate": "Create Goal",
+  "lgNoProfile": "No Profile Selected",
+  "lgNoProfileBody": "Select a profile to view learning gain data.",
+  "lgGoBack": "Go Back",
+  "lgEducatorTitle": "Learning gains belong to your learners",
+  "lgEducatorBody": "You assign the pre-test and post-test; the gain is theirs. Open Assessment Tracking to see who has sat which half.",
+  "lgOpenTracking": "Open tracking",
+  "lgTakeTest": "Take Test",
+  "lgNoData": "No Learning Data Yet",
+  "lgNoDataBody": "Take a Pre-Test first to establish your baseline, then take a Post-Test after learning to see your improvement!",
+  "lgTakePre": "Take Pre-Test",
+  "lgReadyPost": "Ready for your Post-Test?",
+  "lgReadyPostBody": "You’ve completed your Pre-Test! Take the Post-Test to see how much you’ve learned.",
+  "lgTakePost": "Take Post-Test",
+  "lgAverageScores": "Average Scores",
+  "lgRecent": "Recent Assessments",
+  "lgTotal": "{count} total",
+  "@lgTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lgFocusOn": "Focus on {category}",
+  "@lgFocusOn": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "lgFocusBody": "Your weakest category at {percent}%. Try reviewing flashcards and playing games in this category.",
+  "@lgFocusBody": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "lgPracticeMore": "Practice More",
+  "lgPracticeMoreBody": "Try reviewing flashcards and playing games before retaking the post-test.",
+  "lgExcellent": "Excellent Performance!",
+  "lgExcellentBody": "You’re doing amazing! Try harder difficulty levels to keep challenging yourself.",
+  "lgBestAt": "Best at {category}",
+  "@lgBestAt": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "lgBestBody": "Your strongest category at {percent}%! Great job!",
+  "@lgBestBody": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "lgMostImproved": "Most Improved: {category}",
+  "@lgMostImproved": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "lgImprovedBy": "Improved by {percent}% — keep it up!",
+  "@lgImprovedBy": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "lgRecommendations": "Recommendations",
+  "lgNoCategoryData": "No category data available",
+  "lgScoreByCategory": "Score by Category",
+  "lgPreShort": "Pre",
+  "lgPostShort": "Post",
+  "lgGreatImprovement": "Great Improvement!",
+  "lgKeepPracticing": "Keep Practicing!",
+  "lgCategoryBreakdown": "Category Breakdown",
+  "lgTrend": "Score Trend Over Time",
+  "lgPreTests": "Pre-Tests",
+  "lgPostTests": "Post-Tests",
+  "scPortfolio": "My Portfolio",
+  "scSharePortfolio": "Share Portfolio",
+  "scAutoCurate": "Auto-curate portfolio",
+  "scItems": "{count, plural, =1{1 item} other{{count} items}}",
+  "@scItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scAddNote": "Add Note",
+  "scAdded": "{count, plural, =1{Added 1 new item to your portfolio!} other{Added {count} new items to your portfolio!}}",
+  "@scAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scUpToDate": "Portfolio is already up to date!",
+  "scRemoveTitle": "Remove from Portfolio?",
+  "scRemoveBody": "Remove “{title}” from your showcase? You can always add it back later.",
+  "@scRemoveBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "scAddANote": "Add a Note",
+  "scNoteTitle": "Title",
+  "scNoteTitleHint": "e.g., “My Favorite Game”",
+  "scNote": "Note",
+  "scNoteHint": "Write about your learning journey...",
+  "scAdd": "Add",
+  "scTypeAchievement": "Achievement",
+  "scTypeHighScore": "High Score",
+  "scTypeMastery": "Category Mastery",
+  "scTypePath": "Learning Path",
+  "scTypeStreak": "Streak Milestone",
+  "scTypeAssessment": "Assessment",
+  "scTypeNote": "Note",
+  "scPinned": "Pinned.",
+  "scUnpin": "Unpin",
+  "scPinTop": "Pin to top",
+  "scRemoveFrom": "Remove from showcase",
+  "scShowcaseBest": "Showcase your best moments!",
+  "scStatItems": "Items",
+  "scStatPinned": "Pinned",
+  "scStatAwards": "Awards",
+  "scEmptyTitle": "Your Portfolio is Empty",
+  "scEmptyBody": "Start by auto-curating your best moments or add items manually as you learn!",
+  "scEmptyAction": "Auto-Curate My Portfolio",
+  "scPdfTitle": "Portfolio Summary PDF",
+  "scItemsFor": "{count} items • {name}",
+  "@scItemsFor": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "scShareHint": "Share with your teacher or parent to show your progress!",
+  "wodLearned": "Word learned! {emoji}",
+  "@wodLearned": {
+    "placeholders": {
+      "emoji": {
+        "type": "String"
+      }
+    }
+  },
+  "tbPrev": "Prev",
+  "tbSpeak": "Speak",
+  "tbAdd": "Add",
+  "tbTooLong": "That is as long as a sentence can be. Speak it or clear it.",
+  "tbUnpinned": "Phrase unpinned.",
+  "tbSaved": "Phrase saved.",
+  "tbChangeReason": "to change this board",
+  "tbTitle": "Talk Board",
+  "tbEditBoard": "Edit my board",
+  "tbBuildBoard": "Build my board",
+  "tbToEnglish": "Switch to English",
+  "tbToFilipino": "Switch to Filipino",
+  "tbSavedPhrase": "Saved phrase: {phrase}. Tap to say it.",
+  "@tbSavedPhrase": {
+    "placeholders": {
+      "phrase": {
+        "type": "String"
+      }
+    }
+  },
+  "tbRecentPhrase": "Recent phrase: {phrase}. Tap to say it.",
+  "@tbRecentPhrase": {
+    "placeholders": {
+      "phrase": {
+        "type": "String"
+      }
+    }
+  },
+  "tbHint": "Tap tiles below to build a sentence",
+  "tbSpeakSentence": "Speak sentence",
+  "tbUnsave": "Remove this sentence from saved phrases",
+  "tbSave": "Save this sentence",
+  "tbRemoveLast": "Remove last tile",
+  "tbClearAll": "Clear all tiles",
+  "tbCategory": "{label} category",
+  "@tbCategory": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "tbTileSemantics": "{spoken}. Tap to add, long press to hear.",
+  "@tbTileSemantics": {
+    "placeholders": {
+      "spoken": {
+        "type": "String"
+      }
+    }
+  },
+  "agTooMany": "Too many tries. Wait {time}.",
+  "@agTooMany": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "agEnterPin": "Enter the 4-digit PIN.",
+  "agPinMismatch": "That PIN did not match. Ask your parent or teacher.",
+  "agNewQuestion": "Not quite. Here is a new question.",
+  "agMinutes": "{n} min",
+  "@agMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agSeconds": "{n} s",
+  "@agSeconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agTitle": "Ask an adult",
+  "agPinNeeded": "A parent or teacher PIN is needed {reason}.",
+  "@agPinNeeded": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "agAnswerThis": "Answer this {reason}.",
+  "@agAnswerThis": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "agTimes": "What is {a} times {b}?",
+  "@agTimes": {
+    "placeholders": {
+      "a": {
+        "type": "int"
+      },
+      "b": {
+        "type": "int"
+      }
+    }
+  },
+  "agAnswer": "Answer",
+  "agEndEarly": "to end {title} early",
+  "@agEndEarly": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "lbTitle": "Leaderboard",
+  "lbNoRankings": "No rankings yet",
+  "lbNoRankingsBody": "Complete activities and games to appear on the leaderboard!",
+  "lbHidden": "Hidden from members — enable in Leaderboard settings",
+  "lbSeason": "Season active — ranking recent activity",
+  "lbJoinTitle": "Join to see the leaderboard",
+  "lbJoinChild": "Join your family home group to see how you rank with everyone!",
+  "lbJoinStudent": "Join your class to see how you rank with your classmates!",
+  "lbJoinGroup": "Join a Home Group",
+  "lbNotEnabled": "Leaderboard not enabled yet",
+  "lbNotEnabledBody": "Your teacher or parent hasn’t turned on the leaderboard for your group yet. Check back soon!",
+  "lbNoClasses": "No classes yet",
+  "lbNoGroups": "No home groups yet",
+  "lbNoClassesBody": "Create a class and invite students to start a leaderboard.",
+  "lbNoGroupsBody": "Create a home group and invite your children to start a leaderboard.",
+  "lbManageClasses": "Manage Classes",
+  "lbManageGroups": "Manage Home Groups",
+  "lbError": "Couldn’t load the leaderboard",
+  "lbErrorBody": "Check your connection and try again. Your last-known rankings show when you’re back online.",
+  "lbSort": "Sort",
+  "lbPeriod": "Period",
+  "lbYou": "You",
+  "lbSortStars": "Stars",
+  "lbSortWords": "Words Learned",
+  "lbSortStreak": "Streak",
+  "lbSortOverall": "Overall",
+  "lbAllTime": "All Time",
+  "lbThisWeek": "This Week",
+  "lbThisMonth": "This Month",
+  "lbWords": "{count} words",
+  "@lbWords": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lbDays": "{count} days",
+  "@lbDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lbPts": "{count} pts",
+  "@lbPts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "setProfileSemantics": "Profile: {name}, {role}. Tap switch to change profile.",
+  "@setProfileSemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "setNoProfile": "No profile",
+  "setUnknownRole": "unknown role",
+  "dbExportCsv": "Export data as CSV spreadsheet",
+  "dbExportPdf": "Export progress report as PDF",
+  "dbExportResearch": "Export research data for thesis analysis",
+  "dbBadges": "Badges",
+  "dbOverallMastery": "Overall Mastery",
+  "dbCategoryBreakdown": "Category Breakdown",
+  "dbInsights": "Insights & Recommendations",
+  "dbNoData": "No learning data yet. Once the student starts playing games and reviewing flashcards, insights will appear here.",
+  "dbNeedsPractice": "Needs Practice",
+  "dbFocusOn": "Focus on {category} flashcards and games.",
+  "@dbFocusOn": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "dbDoingGreat": "Doing Great",
+  "dbKeepItUp": "Keep it up! Consider trying harder difficulty levels.",
+  "dbEngagement": "Engagement",
+  "dbStreakActive": "{streak}-day learning streak active!",
+  "@dbStreakActive": {
+    "placeholders": {
+      "streak": {
+        "type": "int"
+      }
+    }
+  },
+  "dbNoStreak": "No active streak. Try daily practice.",
+  "dbConsistent": "Great consistency! The student is building a habit.",
+  "dbEncourage": "Encourage the student to play at least once a day.",
+  "dbStudyTime": "Study Time",
+  "dbRecentActivity": "Recent Activity",
+  "dbNoGames": "No game activity yet. Encourage the student to play games!",
+  "dbStudentProgress": "Student Progress",
+  "dbMastery": "Mastery",
+  "dbRecentAvg": "Recent Game Avg",
+  "dbDailyStreak": "Daily Challenge Streak",
+  "dbDays": "{count} days",
+  "@dbDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dbTotalTime": "Total Time",
+  "dbAvgSession": "Avg Session",
+  "dbSessions": "Sessions",
+  "dbLast7Days": "Last 7 Days",
+  "sfSearch": "Search students...",
+  "sfGrade": "Grade",
+  "sfSection": "Section",
+  "sfResults": "{count} results",
+  "@sfResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sfClearAll": "Clear all",
+  "sfTags": "Tags",
+  "sfTagsN": "Tags ({count})",
+  "@sfTagsN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sfKinder": "Kinder",
+  "sfGradeN": "Grade {n}",
+  "@sfGradeN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "sfHighSchool": "High School",
+  "sfCollege": "College",
+  "sfActAll": "All",
+  "sfActToday": "Active Today",
+  "sfActWeek": "Active This Week",
+  "sfActInactive": "Inactive 7+ Days",
+  "sfSortName": "Name",
+  "sfSortGrade": "Grade Level",
+  "sfSortWords": "Words Learned",
+  "sfSortStreak": "Streak",
+  "sfSortStars": "Stars",
+  "sfSortLastActive": "Last Active",
+  "sfSortAccuracy": "Accuracy",
+  "sfSortJoined": "Date Joined",
+  "msClearFilters": "Clear filters",
+  "msCardSemantics": "{name}, {words} words learned, {stars} stars, {streak} day streak",
+  "@msCardSemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "words": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      },
+      "streak": {
+        "type": "int"
+      }
+    }
+  },
+  "cdExportCsv": "Export CSV report",
+  "cdRefresh": "Refresh",
+  "cdLoadError": "Could not load dashboard:\n{error}",
+  "@cdLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cdLastUpdated": "Last updated: {time}",
+  "@cdLastUpdated": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "cdNoStudents": "No student profiles found",
+  "cdNoStudentsBody": "Create student profiles to see them here.\nEach student will appear with their progress.",
+  "splDeleteTitle": "Delete Profile?",
+  "splDeleteBody": "Are you sure you want to delete “{name}”? This will permanently remove all progress data for this student.",
+  "@splDeleteBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "splDeleteEducator": " Any classes they own will no longer have a teacher managing them.",
+  "splDeleted": "{name} deleted",
+  "@splDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "splManageProfiles": "Manage Profiles",
+  "splStudentProfiles": "Student Profiles",
+  "splImportExport": "Import / Export",
+  "splLoadError": "Could not load students:\n{error}",
+  "@splLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "splNoOthers": "No other profiles on this device",
+  "splNoStudents": "No student profiles yet",
+  "splNoStudentsBody": "Students appear here after joining your class with a code.",
+  "splShareCode": "Share Class Code",
+  "splAge": "{age} yrs old",
+  "@splAge": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "splNoAge": "No age or level set",
+  "storyLocked": "{title} — locked",
+  "@storyLocked": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "storyTapToRead": "{title} — tap to read",
+  "@storyTapToRead": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "storyReadSuffix": ", read",
+  "storyRead": "Read",
+  "fiPictureClue": "Picture clue",
+  "fiTapCartoon": "Tap to see the cartoon picture.",
+  "fiTapReal": "Tap to see the real picture.",
+  "fiRealOf": "Real picture of {word}.",
+  "@fiRealOf": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "fiRealLifeOf": "Real-life picture of {word}",
+  "@fiRealLifeOf": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "fiCartoonOf": "Cartoon picture of {word}",
+  "@fiCartoonOf": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "mascotBuddy": "Mascot buddy",
+  "profileAgeYrs": "{age} yrs",
+  "@profileAgeYrs": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "scpScored": "Scored {score}/{total} and earned {stars} stars!",
+  "@scpScored": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "scpMastered": "{category} Mastered!",
+  "@scpMastered": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "scpMasteryDesc": "Achieved {percent}% mastery in {category}",
+  "@scpMasteryDesc": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "scpStreakTitle": "{days}-Day Streak!",
+  "@scpStreakTitle": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "scpStreakDesc": "Maintained a learning streak of {days} days in a row!",
+  "@scpStreakDesc": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "scpAssessDesc": "Scored {score}/{total} on {test}",
+  "@scpAssessDesc": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "test": {
+        "type": "String"
+      }
+    }
+  },
+  "lvlBeginner": "Beginner",
+  "lvlElementary": "Elementary",
+  "lvlIntermediate": "Intermediate",
+  "lvlAdvanced": "Advanced",
+  "lvlBeginnerDesc": "Just starting out — simple words and short sessions.",
+  "lvlElementaryDesc": "Building vocabulary — slightly longer lessons.",
+  "lvlIntermediateDesc": "Comfortable with most lessons — full-length games.",
+  "lvlAdvancedDesc": "Ready for harder challenges and complex stories.",
+  "signNotSet": "Not set",
+  "signLearning": "Learning",
+  "signCanSign": "I can sign this",
+  "signUnreviewed": "Not checked yet",
+  "signConfirmed": "Confirmed",
+  "signNeedsPractice": "Needs practice",
+  "lockSumBanner": "Advance warning banner",
+  "lockSumChimes": "Alarm chime ×{count}",
+  "@lockSumChimes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lockSumOneChime": "One gentle alarm chime",
+  "lockSumSpokenTwice": "Spoken message (said twice)",
+  "lockSumSpoken": "Spoken message",
+  "lockSumPicture": "Picture of who to hand it to",
+  "lockSumFslFirst": "FSL video first (tap to flip to the picture)",
+  "lockSumFslBack": "FSL video on the back of the picture",
+  "lockSumAlarmFirst": "Alarm animation first (tap to flip to the picture)",
+  "lockSumAlarmBack": "Alarm animation on the back of the picture (tap to flip)",
+  "lockSumVisual": "Pulsing visual alert",
+  "lockSumVibration": "Vibration cue",
+  "lockSumReader": "Screen-reader announcement",
+  "lockSumSimple": "Short, simple wording",
+  "lockSumSwitch": "Large “Switch account” button",
+  "lockWhyVisual": "Shorter day and frequent breaks — audio-led learning takes longer per item and reduces eye strain.",
+  "lockWhyHearing": "Standard session length; the hand-off is delivered as an FSL video and a large caption instead of speech.",
+  "lockWhyMotor": "Shorter day and frequent breaks — sustained tapping and holding is tiring. All lock buttons are extra large.",
+  "lockWhyCognitive": "Short, predictable sessions with a fixed daily window. The lock uses one chime and one short sentence.",
+  "lockWhyMultiple": "The most supportive settings of every profile combined: short sessions, simple wording, the spoken message said twice, and large buttons.",
+  "lockWhyNone": "Standard session length with an alarm and a spoken hand-off message.",
+  "tlTitle": "Time limits",
+  "tlTitleFor": "Time limits — {name}",
+  "@tlTitleFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tlSave": "Save",
+  "tlLoadError": "Could not load: {error}",
+  "@tlLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "tlDaily": "Daily time limit",
+  "tlMinPerDay": "{minutes} min per day",
+  "@tlMinPerDay": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "tlNoLimit": "No limit",
+  "tlMinutesPerDay": "{minutes} minutes per day",
+  "@tlMinutesPerDay": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "tlSchedule": "Allowed schedule",
+  "tlRestrict": "Restrict by time of day",
+  "tlAnyTime": "Any time",
+  "tlStart": "Allowed start",
+  "tlEnd": "Allowed end",
+  "tlWhenUp": "When time is up",
+  "tlWhenUpBody": "The child hears an alarm, then a message telling them who to hand the device to.",
+  "tlWarn": "Warn before the lock",
+  "tlWarnOn": "A banner {minutes} minutes before, so they can finish what they are doing.",
+  "@tlWarnOn": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "tlWarnOff": "The lock screen will be the first warning.",
+  "tlNotice": "{minutes} minutes of notice",
+  "@tlNotice": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "tlAlarm": "Play an alarm sound",
+  "tlAlarmBody": "Also alerts the adult in the room, so it stays on for learners who are deaf or hard of hearing.",
+  "tlSpeak": "Speak the message out loud",
+  "tlSpeakOn": "Spoken after the alarm.",
+  "tlSpeakOff": "This learner’s profile does not use speech — the message is shown as a large caption instead.",
+  "tlLockIntro": "When a limit is reached, the child sees a “Time’s up” lock screen that requires your PIN to dismiss. They keep all progress, and a “Switch account” button lets someone else use the device without unlocking this profile.",
+  "tlApplied": "Applied the recommended settings for {profile}. Tap Save to confirm.",
+  "@tlApplied": {
+    "placeholders": {
+      "profile": {
+        "type": "String"
+      }
+    }
+  },
+  "tlSaveError": "Could not save: {error}",
+  "@tlSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "tlNotCached": "This learner’s profile isn’t cached on this device yet, so the accessibility-specific guidance is hidden. Every setting below still applies.",
+  "tlAtLock": "At lock time this learner gets:",
+  "tlUseRecommended": "Use recommended ({minutes} min/day)",
+  "@tlUseRecommended": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "tlCallYou": "What should the child call you?",
+  "tlCallHint": "e.g. Teacher Ana, Dad, Lola",
+  "tlBlankDefault": "Leave blank to use the default.",
+  "tlBlankAvatar": "Leave blank to use “{honorific}”, taken from the avatar on your profile.",
+  "@tlBlankAvatar": {
+    "placeholders": {
+      "honorific": {
+        "type": "String"
+      }
+    }
+  },
+  "tlWillHear": "The child will hear",
+  "tlFslUrl": "Sign-language (FSL) video URL",
+  "tlFslBlank": "Leave blank to use the built-in FSL clip for whoever the child hands the device to (Ma’am / Sir / Mommy / Daddy). Shown on the lock screen for learners who are deaf or hard of hearing; downloaded once, then plays offline.",
+  "tlFslSet": "Shown on the lock screen for learners who are deaf or hard of hearing. The clip is downloaded once and then plays offline.",
+  "tlFslUnused": "This learner’s profile does not show the FSL video, so this is stored but unused unless their profile changes.",
+  "tlNoClip": "No clip set. The lock screen will show the written message only until a URL is added here.",
+  "tlEveryDay": "Schedule applies every day",
+  "tlSelectedDays": "Schedule applies only on selected days",
+  "tuTooMany": "Too many attempts. Try again in {time}.",
+  "@tuTooMany": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "tuActiveProfile": "Active profile: {name}",
+  "@tuActiveProfile": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tuEnterPin": "Enter a 4-digit PIN.",
+  "tuWrongPin": "Incorrect PIN. Ask your parent or teacher.",
+  "tuUseRecovery": "Use recovery code",
+  "tuRecoveryBody": "Enter the recovery code printed when this profile’s PIN was set. Codes are case-insensitive.",
+  "tuRecoveryCode": "Recovery code",
+  "tuRecoveryMismatch": "Recovery code did not match.",
+  "tuSignVideo": "sign-language video",
+  "tuAlarm": "alarm",
+  "tuSignVideoTap": "Sign-language video. Tap to see the picture.",
+  "tuAlarmTap": "Alarm clock animation. Tap to see the picture.",
+  "tuTapToSeeClip": "{caption} Tap to see the {clip}.",
+  "@tuTapToSeeClip": {
+    "placeholders": {
+      "caption": {
+        "type": "String"
+      },
+      "clip": {
+        "type": "String"
+      }
+    }
+  },
+  "tuTapPicture": "Tap to see the picture",
+  "tuTapClip": "Tap to see the {clip}",
+  "@tuTapClip": {
+    "placeholders": {
+      "clip": {
+        "type": "String"
+      }
+    }
+  },
+  "tuFullScreen": "Watch in full screen",
+  "tuEnterAdultPin": "Enter parent / teacher PIN to continue",
+  "tuForgotPin": "Forgot PIN? Use recovery code",
+  "tuSwitchNote": "Switching accounts does not unlock this profile — it stays locked until an adult enters the PIN.",
+  "tuNoAdult": "No parent or teacher is linked to this device yet, so the lock cannot be dismissed here. Ask the device owner to sign in once.",
+  "alNew": "New alarm",
+  "alLoadError": "Could not load: {error}",
+  "@alLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "alNone": "No alarms set yet.\nTap “New alarm” to create one.",
+  "alEveryDay": "Every day",
+  "alNotifyOnly": "Notify only",
+  "alLockScreen": "Lock screen",
+  "alEndSession": "End session",
+  "alSaveError": "Could not save: {error}",
+  "@alSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "alEdit": "Edit alarm",
+  "alLabelHint": "e.g. Bedtime, Homework time",
+  "alTime": "Time",
+  "alRepeat": "Repeat on",
+  "alNoDays": "No days selected → fires every day",
+  "alWhen": "When alarm fires",
+  "alLockPin": "Lock screen (parent PIN to unlock)",
+  "alEndHome": "End session and return home",
+  "scTitleCheck": "Sign Check",
+  "scNoClaims": "{name} has not marked any signs yet. Claims appear here after they use “I can sign this” in the dictionary or finish a Sign It round.",
+  "@scNoClaims": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "scHowTo": "Watch the reference clip, ask {name} to sign it, then record what you saw. Confirming is what earns them the sign.",
+  "@scHowTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "scToCheck": "{count} to check",
+  "@scToCheck": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scOnlyUnchecked": "Only ones I haven’t checked",
+  "scNothingLeft": "Nothing left to check. Nice work.",
+  "scSaysCan": "Says: “I can sign this”",
+  "scSaysNotYet": "Says: “Not yet”",
+  "scWatchRef": "Watch the reference sign",
+  "scConfirm": "Confirm",
+  "cdsCustomize": "Customize progress",
+  "cdsActiveToday": "Active today",
+  "cdsLastActive": "Last active {when}",
+  "@cdsLastActive": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "cdsStreak": "{days} day streak",
+  "@cdsStreak": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "cdsRecentGames": "Recent Games",
+  "cdsSignCheck": "Sign Check · {count} to review",
+  "@cdsSignCheck": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cdsDailyRoutine": "Daily Routine",
+  "cdsFullDashboard": "View Full Dashboard",
+  "cdsToday": "today",
+  "cdsYesterday": "yesterday",
+  "cdsDaysAgo": "{count} days ago",
+  "@cdsDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cdsWeeksAgo": "{count} weeks ago",
+  "@cdsWeeksAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cdsQuickStats": "Quick Stats",
+  "cdsOfTotal": "of {total} total",
+  "@cdsOfTotal": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "cdsAvailable": "available",
+  "cdsSignsWatched": "Signs Watched",
+  "cdsOfSigns": "of {total} signs",
+  "@cdsOfSigns": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "cdsFslClips": "FSL clips",
+  "cdsGreat": "Great!",
+  "cdsGoodProgress": "Good progress",
+  "cdsCategories": "Categories",
+  "cdsMasteredPct": "mastered (≥80%)",
+  "cdsThisWeek": "this week",
+  "cdsGamesPlayed": "Games Played",
+  "cdsSessions": "{count} sessions",
+  "@cdsSessions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cdsHuntFinds": "Word Hunt Finds",
+  "cdsHuntStreak": "{days}-day streak",
+  "@cdsHuntStreak": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "cdsWithCamera": "with the camera",
+  "cdsStrengths": "Strengths & Areas to Improve",
+  "cdsStrongest": "Strongest: {category}",
+  "@cdsStrongest": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "cdsPctMastery": "{percent}% mastery",
+  "@cdsPctMastery": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "cdsNeedsWork": "Needs work: {category}",
+  "@cdsNeedsWork": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "cdsPctMasteryMore": "{percent}% mastery — encourage more practice here",
+  "@cdsPctMasteryMore": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "cdsUnexplored": "{count} categories unexplored",
+  "@cdsUnexplored": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cdsJustStarting": "Just getting started!",
+  "cdsEncourage": "Encourage {name} to try some flashcards or games.",
+  "@cdsEncourage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pcSaved": "Parental controls saved! ✅",
+  "pcTitle": "Parental Controls",
+  "pcIntro": "Set restrictions to manage how students use the app. These controls apply to all student profiles on this device.",
+  "pcDaily": "Daily Time Limit",
+  "pcEnableLimit": "Enable Time Limit",
+  "pcMinutesPerDay": "{minutes} minutes per day",
+  "@pcMinutesPerDay": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "pcNoRestriction": "No time restriction",
+  "pcMin": "{minutes} min",
+  "@pcMin": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "pc15": "15 min",
+  "pc3h": "3 hours",
+  "pcSchedule": "Usage Schedule",
+  "pcEnableSchedule": "Enable Schedule",
+  "pcAllowed": "Allowed: {start} – {end}",
+  "@pcAllowed": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "pcNoTimeOfDay": "No time-of-day restriction",
+  "pcStart": "Start",
+  "pcEnd": "End",
+  "pcFeatures": "Feature Restrictions",
+  "pcBlockShop": "Block Star Shop",
+  "pcBlockShopSub": "Prevent students from spending stars",
+  "pcBlockMulti": "Block Multiplayer",
+  "pcBlockMultiSub": "Disable multiplayer quiz mode",
+  "pcBlockMsg": "Block Messaging",
+  "pcBlockMsgSub": "Disable in-app messaging",
+  "pcBlockedGames": "Blocked Games",
+  "pcBlockedGamesSub": "Select games to hide from students",
+  "pcBlockedCats": "Blocked Categories",
+  "pcBlockedCatsSub": "Select categories to hide from flashcards & games",
+  "pcReset": "Reset All Controls",
+  "pcVeryShort": "Very Short",
+  "pcShort": "Short",
+  "pcModerate": "Moderate",
+  "pcStandard": "Standard",
+  "pcExtended": "Extended",
+  "lgcTitle": "Learning Gain",
+  "woStudyMinutes": "Study minutes",
+  "apAdaptive": "Adaptive Difficulty",
+  "apDyslexia": "Dyslexia-friendly",
+  "apFslVideos": "FSL Videos",
+  "apFontSize": "Font Size",
+  "apGaze": "Gaze Control",
+  "apHighContrast": "High Contrast",
+  "apReducedMotion": "Reduced Motion",
+  "apSoundEffects": "Sound Effects",
+  "apTts": "Text-to-Speech",
+  "apVoiceNav": "Voice Navigation",
+  "apOn": "On",
+  "apOff": "Off",
+  "apPrioritized": "Prioritized",
+  "apXl130": "Extra Large (130%)",
+  "apXl140": "Extra Large (140%)",
+  "apLarge120": "Large (120%)",
+  "apHandsFree": "On (hands-free)",
+  "apSlow": "On (Slow)",
+  "apVerySlow": "On (Very Slow)",
+  "obWelcome": "Welcome, {name}! 🎉",
+  "@obWelcome": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "obWelcomeLearner": "You’re all set up and ready to start learning! Let’s take a quick tour of everything you can do.",
+  "obWelcomeTeacher": "Your account is ready! Let’s show you the key features you’ll use to guide your students.",
+  "obWelcomeParent": "Your account is ready! Let’s show you the key features you’ll use to support your child’s learning.",
+  "obFlashTitle": "Learn with Flashcards 📚",
+  "obFlashLearner": "Browse vocabulary categories like Animals, Colors, Numbers, and more. Each card has pictures, Filipino Sign Language, and text-to-speech to help you learn.",
+  "obFlashAdult": "Students learn vocabulary through interactive flashcards with pictures, FSL support, and text-to-speech across multiple categories.",
+  "obGamesTitle": "Play Fun Games 🎮",
+  "obGamesLearner": "Practice what you’ve learned with Word Match, Spelling Bee, Memory Match, Jigsaw Puzzle, and more! Earn stars ⭐ for every game you play.",
+  "obGamesAdult": "Students reinforce vocabulary through 10+ educational games with adjustable difficulty and category filters.",
+  "obProgressTitle": "Track Your Progress ⭐",
+  "obProgressLearner": "See your streak, stars, and words learned on your dashboard. Unlock achievement badges and spend stars in the Star Shop for cool avatars and themes!",
+  "obProgressAdult": "Monitor learning progress with detailed dashboards showing mastery rates, streaks, category breakdowns, and exportable reports.",
+  "obAccessTitle": "Made for Everyone ♿",
+  "obAccessBody": "FlashLearn PWD is designed for learners with disabilities. Adjust text size, contrast, animations, and audio in Settings to match your needs. Presets are available for visual, hearing, motor, and cognitive accessibility.",
+  "obReadyTitle": "You’re Ready! 🚀",
+  "obReadyLearner": "Tap a category on the home screen to learn your first words, or jump into a game to start earning stars. Have fun!",
+  "obReadyTeacher": "Explore the home screen to discover all available features. Use the dashboard to monitor student progress.",
+  "obReadyParent": "Explore the home screen to discover all available features. Sit with your child and learn together!",
+  "asOptimize": "We’ll optimize the app for your needs.\nSelect the option that best describes you:",
+  "asNoSpecial": "No special settings needed!\nYou’re all set with the defaults.",
+  "asDyslexiaSub": "Cream background, Lexend font, wider letter spacing — easier reading for everyone.",
+  "asMotionSub": "Less animation, instant page transitions — good for motion sensitivity or older devices.",
+  "asChangeLater": "You can change these anytime in Settings ⚙️",
+  "asAllSet": "You’re All Set! 🎉",
+  "asOptimizedFor": "Your app has been optimized for\n{type}.",
+  "@asOptimizedFor": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "asStandardReady": "Standard settings are ready to go.",
+  "asAdjustLater": "You can adjust all settings anytime\nfrom the Settings page.",
+  "asSaveFinish": "Save & Finish",
+  "asComfort": "Comfort tweaks you can try later",
+  "mrClass": "You’ve been removed from your class.",
+  "mrGroup": "You’ve been removed from your home group.",
+  "mrFrom": "You’ve been removed from {name}.",
+  "@mrFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mrSafeClass": "Your progress is safe on this device. You can join a different class using a new code.",
+  "mrSafeGroup": "Your progress is safe on this device. You can join a different home group using a new code.",
+  "mrReturning": "Returning to setup automatically…",
+  "spdCategoryProgress": "Category Progress",
+  "spdRecentScores": "Recent Game Scores",
+  "spdDetails": "Profile Details",
+  "spdPinProtected": "PIN Protected",
+  "spdMastered": "{mastered} of {total} categories mastered",
+  "@spdMastered": {
+    "placeholders": {
+      "mastered": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "spdBirthDate": "Birth Date",
+  "spdEditProfile": "Edit Profile",
+  "psAddNew": "Add New Profile",
+  "psPinLength": "PIN must be exactly 4 digits",
+  "epEnterName": "Please enter a name",
+  "epPinMismatch": "PINs do not match",
+  "epUpdated": "Profile updated! ✅",
+  "epApplyPresetsTitle": "Apply Accessibility Presets?",
+  "epApplyPresetsBody": "Your disability type changed to “{type}”. Would you like to auto-configure accessibility settings?",
+  "@epApplyPresetsBody": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "epKeepCurrent": "Keep Current",
+  "epApplyPresets": "Apply Presets",
+  "epNoProfileBody": "Please select a profile to edit.",
+  "epTapAvatar": "Tap below to change avatar",
+  "epAvatarSemantics": "{name} avatar",
+  "@epAvatarSemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epSelectedSuffix": ", selected",
+  "epPremium": "Premium Avatars",
+  "epEarnStars": "Earn stars in games to unlock special avatars!",
+  "epCosts": "{emoji} {name} costs {cost} ⭐ — visit the Star Shop!",
+  "@epCosts": {
+    "placeholders": {
+      "emoji": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "cost": {
+        "type": "int"
+      }
+    }
+  },
+  "epPremiumSemantics": "{name} premium avatar",
+  "@epPremiumSemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epOwnedSuffix": ", owned",
+  "epLockedSuffix": ", locked, {cost} stars",
+  "@epLockedSuffix": {
+    "placeholders": {
+      "cost": {
+        "type": "int"
+      }
+    }
+  },
+  "epName": "Name",
+  "epEnterYourName": "Enter your name",
+  "epLearningLevel": "Learning Level",
+  "epSetByTeacher": "Set by your teacher",
+  "epGradeLevel": "Grade Level",
+  "epSelectGrade": "Select grade level",
+  "epNotSet": "Not set",
+  "epSection": "Section / Class",
+  "epSectionHint": "e.g., Section A, Rose",
+  "epAge": "(Age: {age})",
+  "@epAge": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "epTags": "Tags",
+  "epTagsHelp": "Add custom labels to organize students",
+  "epAddTag": "Add a tag...",
+  "epInterests": "Learning Interests",
+  "epInterestsHelp": "Pick favourite topics to personalise lessons",
+  "epAccessProfile": "Accessibility Profile",
+  "epAccessHelp": "Changing this will offer to auto-configure accessibility settings",
+  "epPinProtection": "PIN Protection",
+  "epIsProtected": "This profile is PIN-protected",
+  "epAddPin": "Add a 4-digit PIN to protect this profile",
+  "epRemovePin": "Remove PIN",
+  "epPinRemovedOnSave": "PIN will be removed when you save",
+  "epEnablePin": "Enable PIN lock",
+  "epEnterPin": "Enter 4-digit PIN",
+  "epConfirmPin": "Confirm PIN",
+  "epRole": "Role",
+  "epCannotChange": "Cannot be changed",
+  "setVoiceTour": "Voice Guide & Tour",
+  "setVoiceTourSub": "Hear how each screen works",
+  "setTutorialsReset": "Tutorials will appear again on each screen!",
+  "setPinRemoved": "PIN removed",
+  "setPinSet": "PIN set successfully!",
+  "setEnterPin": "Enter PIN",
+  "setNoDataLeaves": "No data leaves this device",
+  "brTitle": "Backup & Restore",
+  "brKeepSafe": "Keep Your Data Safe",
+  "brIntro": "Back up all profiles, progress, achievements, shop purchases, settings, and custom flashcards. Restore on any device.",
+  "brLastBackup": "Last backup: {when}",
+  "@brLastBackup": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "brCreate": "Create Backup",
+  "brCreateSub": "Export all app data as a .flashlearn file",
+  "brCreating": "Creating…",
+  "brBackUpNow": "Back Up Now",
+  "brRestoreFrom": "Restore from Backup",
+  "brRestoreSub": "Import a .flashlearn file to restore all data",
+  "brRestoring": "Restoring…",
+  "brRestore": "Restore",
+  "brIncluded": "WHAT’S INCLUDED",
+  "brProfiles": "All student profiles",
+  "brProgress": "Progress & achievements",
+  "brStars": "Stars & shop purchases",
+  "brCustomCards": "Custom flashcards",
+  "brSettings": "App settings & accessibility",
+  "brAnalytics": "Session analytics",
+  "brSpaced": "Spaced repetition data",
+  "brWarning": "Restoring a backup will replace all current data. Consider creating a backup first before restoring.",
+  "brCreated": "Backup created successfully!",
+  "brCreateFailed": "Failed to create backup.",
+  "brRestoreTitle": "Restore Backup?",
+  "brRestoreBody": "This will replace ALL current data with the backup data. This action cannot be undone.\n\nMake sure to create a backup of your current data first.",
+  "ieExported": "{name} exported successfully",
+  "@ieExported": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "ieExportFailed": "Export failed: {error}",
+  "@ieExportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "ieImportFailed": "Import failed: {error}",
+  "@ieImportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "ieImportTitle": "Import Student Profile",
+  "ieImportSub": "Restore a student profile from a JSON file exported by another device.",
+  "ieImporting": "Importing…",
+  "ieChooseFile": "Choose File",
+  "ieExportStudent": "Export a Student",
+  "ieExportSub": "Tap a student below to export their profile, progress, and achievements as a JSON file.",
+  "ieNoStudents": "No student profiles to export",
+  "ieExport": "Export",
+  "baEnterEmail": "Enter an email",
+  "baValidEmail": "Enter a valid email address",
+  "baPwLength": "Password must be at least 8 characters",
+  "baPwMismatch": "Passwords do not match",
+  "baEmailInUse": "That email already has an account. Choose “I already have an account” instead.",
+  "baWeakPw": "That password is too easy to guess. Use 8+ characters.",
+  "baBadEmail": "That doesn’t look like a valid email address.",
+  "baWrongCreds": "Email or password is incorrect.",
+  "baDisabled": "That account has been disabled.",
+  "baOffline": "No internet connection. Try again when you’re online.",
+  "baTooMany": "Too many tries. Wait a minute and try again.",
+  "baLinkedElsewhere": "This device is already linked to a different account.",
+  "baSignInFailed": "Sign-in failed ({code}).",
+  "@baSignInFailed": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "baLinked": "Account linked! Your data is now backed up to {email}.",
+  "@baLinked": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "baSignedInNone": "Signed in. No backup data was found for this account.",
+  "baSignedInRestored": "{count, plural, =1{Signed in. Restored 1 profile from the cloud.} other{Signed in. Restored {count} profiles from the cloud.}}",
+  "@baSignedInRestored": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "baEnterEmailFirst": "Enter your email above before requesting a reset.",
+  "baResetSent": "Password reset email sent to {email}.",
+  "@baResetSent": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "baSignOutTitle": "Sign out of linked account?",
+  "baSignOutBody": "The app will keep working offline, but new cloud writes will use a fresh anonymous session. Your local profiles stay on this device — they are not deleted.",
+  "baSignOut": "Sign out",
+  "baSignedOut": "Signed out.",
+  "baTitle": "Backup & Link Account",
+  "baActive": "Backup is active",
+  "baNone": "No backup yet",
+  "baLinkedTo": "Linked to {email}. Sign in with this email on a new device to restore your profiles and progress.",
+  "@baLinkedTo": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "baUnknownEmail": "(unknown email)",
+  "baLocalOnly": "Your data is stored on this device only. Link an email below so you can recover everything if the device is lost or reset.",
+  "baSignInRestore": "Sign in to restore",
+  "baCreateBackup": "Create a backup",
+  "baUseOther": "Use the email and password you set on your other device.",
+  "baPickCreds": "Pick an email and password to back up this device. No verification email required.",
+  "baEmail": "Email",
+  "baPassword": "Password",
+  "baHidePw": "Hide password",
+  "baShowPw": "Show password",
+  "baConfirmPw": "Confirm password",
+  "baSignInRestoreBtn": "Sign in & restore",
+  "baLinkDevice": "Link this device",
+  "baCreateOne": "Don’t have an account yet? Create one",
+  "baHaveOne": "I already have an account — sign in",
+  "baForgot": "Forgot password? Send reset email",
+  "baSendReset": "Send password reset email",
+  "baSignOutLinked": "Sign out of linked account",
+  "rcNotFound": "We couldn’t find a profile for that code. Double-check each letter and try again.",
+  "rcAlreadyUsed": "This recovery code has already been used. Generate a new one from the original device, or contact your teacher.",
+  "rcInvalid": "That code doesn’t look right. Check for letters that look similar (e.g. zero / O).",
+  "rcDenied": "The cloud refused this request. Ask your teacher to check the app’s cloud setup.",
+  "rcCollision": "Could not make a unique code. Please try again.",
+  "rcNetwork": "Could not reach the cloud. Check the internet connection and try again.",
+  "rcUnknown": "Something went wrong. Please try again.",
+  "rcWelcomeBack": "Welcome back, {name}!",
+  "@rcWelcomeBack": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "rcRestoreFailed": "Something went wrong while restoring your profile: {error}",
+  "@rcRestoreFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "rcTitle": "Recover Profile",
+  "rcFormatHint": "Letters only, any case. Dashes are optional.",
+  "rcRestoreMine": "Restore my profile",
+  "rcNoCloud": "Cloud sync is not connected on this device. Connect to the internet to recover a profile.",
+  "rcLookingUp": "Looking up code…",
+  "rcVerifying": "Verifying…",
+  "rcRestoring": "Restoring profile…",
+  "rcLoadingProgress": "Loading progress…",
+  "rcDone": "Done!",
+  "rcWelcome": "Welcome back!",
+  "rcIntro": "Enter the recovery code you saved from your previous device to restore your profile and progress here.",
+  "rcEnterCode": "Please enter your recovery code",
+  "rcCodeFormat": "Codes are 10 letters/numbers (with optional dashes)",
+  "rcCreated": "Recovery code created. Save it somewhere safe.",
+  "rcBackupTitle": "Backup & Recovery",
+  "rcSelectProfile": "Select a profile first to view its recovery code.",
+  "rcExplain": "A recovery code lets {name} restore their profile and progress on a new device if this one is lost or replaced.",
+  "@rcExplain": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "rcNoneYet": "No recovery code yet",
+  "rcGenerateNow": "Generate a one-time code now. Write it down or take a photo — you’ll need it to restore this profile on another device.",
+  "rcGenerating": "Generating…",
+  "rcGenerate": "Generate recovery code",
+  "rcCodeCreated": "Code created!",
+  "rcYourCode": "Your recovery code",
+  "rcCopied": "Recovery code copied to clipboard",
+  "rcCopy": "Copy to clipboard",
+  "rcSaveWarning": "Save this code somewhere safe. If you lose it AND lose access to this device, the profile cannot be recovered.",
+  "rcRegenerating": "Regenerating…",
+  "rcNewCode": "Generate a new code",
+  "rcRevokes": "Regenerating revokes the previous code.",
+  "jcNoClass": "No class found with that code. Check the code with your teacher.",
+  "jcNoGroup": "No home group found with that code. Check the code with your parent.",
+  "jcNetwork": "Couldn’t check the code. Make sure the tablet is online, then try again.",
+  "jcUnknown": "Something went wrong while joining. Please try again.",
+  "csxAuthTitle": "Cloud sign-in not ready",
+  "csxAuthBody": "The app couldn’t sign in anonymously, so Firestore is rejecting writes. Common fixes:\n\n1) Firebase Console → Authentication → Sign-in method → enable Anonymous.\n2) Deploy the security rules: `firebase deploy --only firestore:rules`.\n3) Connect the device to the internet for one launch so the sign-in can complete.",
+  "csxLockedTitle": "Profile locked to another device",
+  "csxLockedBody": "This profile was created on a different device (or before the app was reinstalled). Tap “Reset for this device” to claim it for this anonymous sign-in, or sign in on the original device.",
+  "csxSetupTitle": "Cloud setup incomplete",
+  "csxSetupBody": "Firestore rejected the request. Run through these steps once, then try again:\n\n1) Firebase Console → Authentication → Sign-in method → enable Anonymous.\n2) From the project root: `firebase deploy --only firestore:rules`.\n3) Pull the device online for at least one launch.",
+  "csxOffline": "Offline",
+  "csxOfflineBody": "You’re seeing your last saved data. New changes will sync when this device is back online.",
+  "csxWrong": "Something went wrong",
+  "csxWrongBody": "Try again. If this keeps happening, expand the details below and share them with support.",
+  "csxDetails": "Details",
+  "csxRetrying": "Retrying…",
+  "csxReset": "Profile reset for this device.",
+  "csxResetFailed": "Reset failed: {error}",
+  "@csxResetFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "csxResetButton": "Reset for this device",
+  "ssCloudSync": "Cloud Sync",
+  "ssNotConfigured": "Not configured",
+  "ssIssue": "Sync Issue",
+  "ssFailedRetry": "{count} failed — tap to retry",
+  "@ssFailedRetry": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ssPending": "Pending Sync",
+  "ssAllUploaded": "All data uploaded",
+  "ssFailed": "Sync Failed",
+  "ssTapRetry": "Tap to retry",
+  "ssWhenOnline": "Will sync when online",
+  "ssTapSync": "Tap to sync now",
+  "crbOff": "Cloud sync OFF — local-only mode.",
+  "crbBody": "Codes you create here can’t be joined from other devices. {reason}",
+  "@crbBody": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "ssUploadingN": "{count, plural, =1{Uploading 1 change} other{Uploading {count} changes}}",
+  "@ssUploadingN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ssUploading": "Uploading data",
+  "ssJustNow": "Synced just now",
+  "ssMinutes": "Synced {count}m ago",
+  "@ssMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ssHours": "Synced {count}h ago",
+  "@ssHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ssDays": "Synced {count}d ago",
+  "@ssDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vgTitle": "Voice-Guided Mode",
+  "vgEnabled": "Voice navigation is now enabled.",
+  "vgSpeed": "Voice Speed",
+  "vgSlow": "Slow",
+  "vgFast": "Fast",
+  "vgLanguage": "Voice Language",
+  "vgSpeaking": "Speaking...",
+  "vgTest": "Test Voice",
+  "vgTour": "Guided Tour",
+  "vgTourIntro": "Take a step-by-step tour of the entire app with voice narration for each screen.",
+  "vgStartTour": "Start Tour",
+  "vgPrevious": "Previous",
+  "vgFinish": "Finish Tour",
+  "vgQuick": "Quick Screen Announcements",
+  "vgQuickIntro": "Tap any button below to hear a description of that screen.",
+  "vgVerySlow": "Very Slow",
+  "vgNormal": "Normal",
+  "vgVeryFast": "Very Fast",
+  "vgTourDone": "Guided tour complete. You’re all set!",
+  "vgNav": "Voice Navigation",
+  "vgActive": "Active — Screen changes and buttons are announced",
+  "vgTapEnable": "Tap the switch to enable voice announcements",
+  "vgChipHome": "🏠 Home",
+  "vgChipCards": "📚 Flashcards",
+  "vgChipGames": "🎮 Games",
+  "vgChipProgress": "📊 Progress",
+  "vgChipStories": "📖 Stories",
+  "vgChipShop": "⭐ Shop",
+  "vgChipSettings": "⚙️ Settings",
+  "gpTitle": "🎮  Game Controller",
+  "gpPractise": "Practise the controller",
+  "gpPractiseButtons": "Practise the buttons",
+  "gpPractiseHelp": "Press anything and hear what it does. Nothing in the app moves while practising.",
+  "gpEnable": "Enable controller",
+  "gpEnabledOn": "A paired controller can drive the app",
+  "gpEnabledOff": "Off — touch only",
+  "gpSpeech": "Speech",
+  "gpSay": "Say what is happening",
+  "gpSayHelp": "Announces each section, each item and every question. Leave this on for a learner who cannot see the screen.",
+  "gpSpeed": "Speech speed",
+  "gpSpeedHelp": "Experienced listeners often want this faster than it starts. It sets the speaking speed for the whole app, so stories and vocabulary read at the same pace.",
+  "gpReadItem": "Read each item",
+  "gpReadItemHelp": "Says the name and position — “Games, 3 of 8” — as the cursor lands on it.",
+  "gpMoving": "Moving between sections",
+  "gpAsk": "Ask before switching",
+  "gpAskHelp": "Left and right ask “Do you want to go to the Cards section?” — A for yes, B for no. Turn off to switch straight away.",
+  "gpComfort": "Comfort",
+  "gpVibrate": "Vibrate on each press",
+  "gpVibrateHelp": "A silent confirmation that the press registered, even while a previous sentence is still finishing.",
+  "gpDedupe": "Ignore repeat presses within",
+  "gpMs": "{ms} ms",
+  "@gpMs": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "gpDedupeHelp": "Raise this for a learner whose grip produces extra presses. Lower it if deliberate quick presses are being missed.",
+  "gpHold": "Hold to keep moving",
+  "gpHoldHelp": "Holding up or down keeps stepping through items, instead of one press per step. Opening, going back and switching section never repeat.",
+  "gpWait": "Wait before repeating",
+  "gpWaitHelp": "Long enough that an ordinary press never starts a repeat.",
+  "gpRepeat": "Repeat every",
+  "gpRepeatHelp": "Slow enough that each item is still announced in full.",
+  "gpSwap": "Swap A and B",
+  "gpSwapHelp": "Only if “yes” and “no” come out backwards — some controllers label the bottom button B rather than A.",
+  "gpGuide": "Button guide",
+  "gpGuideHelp": "The learner can hear this list at any time by pressing Select.",
+  "gpVerySlow": "Very slow",
+  "gpVeryFast": "Very fast",
+  "gpConnectedTo": "Controller connected: {name}",
+  "@gpConnectedTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gpNoController": "No controller connected",
+  "gpConnected": "Controller connected",
+  "gpNone": "No controller",
+  "gpPair": "Pair one in Android Settings → Bluetooth, then come back here.",
+  "gppTitle": "🎮  Practice",
+  "gppNoController": "No controller connected. Switch it on and it will start responding here.",
+  "gppPressAny": "Press any button on the controller",
+  "gppPressAnyShort": "Press any button",
+  "gppWillTell": "I will tell you what it does. Nothing else will happen.",
+  "gppTried": "Tried {tried} of {total}",
+  "@gppTried": {
+    "placeholders": {
+      "tried": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "gppStartOver": "Start over",
+  "gppLeave": "Press L1 twice to leave.",
+  "hfReasonSign": "This activity records you signing, so it needs the camera to itself. Head control will pause while it is open.",
+  "hfVoiceHint": "You can still say “go back” to leave at any time.",
+  "hfUsesCamera": "{activity} uses the camera",
+  "@hfUsesCamera": {
+    "placeholders": {
+      "activity": {
+        "type": "String"
+      }
+    }
+  },
+  "hfNoVoice": "To leave, use the Back button at the top — or turn on Voice commands in Settings → Accessibility → Gaze Control first, so you can say “go back”.",
+  "hfNotNow": "Not now",
+  "hfOpenAnyway": "Open anyway",
+  "hfHuntVoice": "You can say “take a photo” to shoot, a word’s name to open it, and “go back” to leave.",
+  "gzPrevious": "⬅  Previous",
+  "gzNext": "Next  ➡",
+  "gzHear": "🔊  Hear Word",
+  "gzFlip": "🔄  Flip Card",
+  "gzSelect": "✓  Select (blink)",
+  "gzPreview": "👁️  Gaze Control (Preview)",
+  "gzHearWord": "Hear Word",
+  "gzFlipCard": "Flip Card",
+  "gzLook": "😊  Look at the screen",
+  "gzNoCamera": "Gaze Control needs a front camera, which this device doesn’t have.",
+  "gzPermission": "Camera access is needed to track your head. Enable it in Settings, then try again.",
+  "gzCameraFailed": "The camera couldn’t start. Please try again.",
+  "gzTryAgain": "Try Again",
+  "gzBlink": "😉  Blink to choose",
+  "gzStatusNoCamera": "Gaze: no front camera",
+  "gzStatusPermission": "Gaze: camera permission needed",
+  "gzUnavailable": "Gaze unavailable",
+  "gzsTitle": "👁️  Gaze Control",
+  "gzsEnable": "Enable Gaze Control",
+  "gzsOn": "Head movements & blinks can drive the app",
+  "gzsTryNow": "Try gaze control now",
+  "gzsTryIt": "Try it now",
+  "gzsHandsFree": "Hands-free navigation",
+  "gzsNavOnly": "Bottom nav only",
+  "gzsNavOnlySub": "The head D-pad moves the highlight across the bottom tabs. Blink (or look up) to open.",
+  "gzsNavTiles": "Bottom nav + feature tiles",
+  "gzsNavTilesSub": "Also reach the feature tiles on Home, Cards, Games, Stories & Progress: look ◀ ▶ across a row, ▲ ▼ between rows, and blink to open.",
+  "gzsVoice": "Voice",
+  "gzsVoiceCommands": "Voice commands",
+  "gzsVoiceSub": "Say “left”, “right”, “up”, “down” to move the highlight, “select” to open it — or a button’s name (“next”, “flip”, “games”), “scroll down”, “go back”.",
+  "gzsTuning": "Tuning",
+  "gzsSensitivity": "Sensitivity",
+  "gzsSensitivityHelp": "Higher = a smaller head movement selects.",
+  "gzsHold": "Hold time",
+  "gzsSeconds": "{seconds}s",
+  "@gzsSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "gzsHoldHelp": "How long to look at a button before it activates.",
+  "gzsBlink": "Blink to confirm",
+  "gzsBlinkSub": "A long, deliberate blink acts as “select”",
+  "gzsScanning": "Scanning (no head movement)",
+  "gzsScanMode": "Scanning mode",
+  "gzsScanSub": "Buttons highlight one by one — blink to pick. For learners who can’t move their head.",
+  "gzsScanSpeed": "Scan speed",
+  "gzsScanHelp": "How long each button stays highlighted before moving on.",
+  "gzsCalibration": "Device calibration",
+  "gzsMirror": "Mirror left / right",
+  "gzsMirrorSub": "Turn off if Left and Right feel swapped",
+  "gzsInvert": "Invert up / down",
+  "gzsInvertSub": "Turn on if Up and Down feel swapped",
+  "gzsLowest": "Lowest",
+  "gzsLow": "Low",
+  "gzsBalanced": "Balanced",
+  "gzsHigh": "High",
+  "gzsHighest": "Highest",
+  "gzsIntro": "Control the app hands-free. Move your head toward a button and hold briefly to choose it, or blink to confirm. Everything runs on this device — no internet needed.",
+  "gzsScopeHint": "Choose how far the hands-free D-pad reaches. Either way it stays off until “Enable Gaze Control” is on, and touch always works.",
+  "gzsCalibrationHint": "These fix a device where the directions feel reversed. Tap “Try it now” above, and if a movement picks the wrong side, toggle the matching switch.",
+  "lsNoProfile": "No profile selected",
+  "lsLiveSession": "Live Session",
+  "lsJoinClass": "Join the Class",
+  "lsHostTitle": "Host live games & quizzes from TV Cast",
+  "lsHostBody": "Open TV Cast, start casting, then choose “Live Activity” to build questions, set star scoring, and see raised hands and the scoreboard on the TV.",
+  "lsOpenCast": "Open TV Cast",
+  "lsJoinFirst": "Join a class first",
+  "lsChildJoin": "Ask your parent for the home-group code, then join from Settings to take part in live activities.",
+  "lsStudentJoin": "You are not in a classroom yet. Tap “Join a class” to take part in live activities.",
+  "lsConnect": "Connect to the internet",
+  "lsConnectBody": "Live activities need a connection so you can join your class in real time. Connect to Wi-Fi or mobile data and reopen this screen.",
+  "lsNoActivity": "No live activity yet. Your teacher will start one soon.",
+  "lsGetReady": "Get ready! Waiting for the next question…",
+  "lsHandRaised": "Hand raised. Your teacher can see your name.",
+  "lsHandLowered": "Hand lowered.",
+  "lsCorrectStars": "Correct! You earned {count} stars.",
+  "@lsCorrectStars": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lsCorrect": "Correct!",
+  "lsGoodTry": "Good try. Wait for the next question.",
+  "lsFirstCorrect": "First correct answer! Bonus {count} stars.",
+  "@lsFirstCorrect": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lsGotIt": "I got it! ✋",
+  "lsNotYet": "Not yet",
+  "lsGotItShort": "Got it!",
+  "lsQuestionNofM": "Question {number} of {total}",
+  "@lsQuestionNofM": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "lsWatchSign": "Watch the sign on the TV, then choose the matching word.",
+  "lsWhichPicture": "Which word matches the picture?",
+  "lsCorrectAnswer": ", correct answer",
+  "lsYourWrong": ", your answer, incorrect",
+  "lsCorrectStarsEmoji": "Correct! You earned {count} ⭐",
+  "@lsCorrectStarsEmoji": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lsCorrectEmoji": "Correct! 🎉",
+  "lsKeepGoing": "Good try! Keep going 💪",
+  "lsLowerYourHand": "Lower your hand",
+  "lsRaiseForHelp": "Raise your hand to ask your teacher for help",
+  "lsLowerHand": "Lower hand",
+  "lsRaiseHand": "Raise hand",
+  "mpTaken": "This game already has another player.",
+  "mpNeedsInternet": "Online play needs an internet connection.",
+  "mpWarming": "Sign-in is still warming up. Try again in a moment.",
+  "mpSlow": "Network is slow. Check your connection and try again.",
+  "mpDenied": "Couldn’t reach the game service. If this keeps happening, ask your teacher to redeploy the app rules.",
+  "mpStartFailed": "Couldn’t start the game. Try again in a moment.",
+  "mpStart": "Start",
+  "mpChoose": "Choose",
+  "mpDone": "Done",
+  "mpNotEnough": "Not enough words to play yet — add a few flashcards first!",
+  "mpNoProfile": "No active profile.",
+  "mpPlayWith": "Play with {name}",
+  "@mpPlayWith": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mqTitle": "Multiplayer Quiz",
+  "mqStart": "Start Battle!",
+  "mqTurn": "{name}’s Turn!",
+  "@mqTurn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mqRound": "Round {round} of {total}",
+  "@mqRound": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "mqTapStart": "Tap anywhere to start!",
+  "mqDraw": "It’s a Draw!",
+  "mqNotEnough": "Not enough flashcards to play!",
+  "mqBestStreak": "Best Streak",
+  "mpWhichWord": "Which word is this?",
+  "mqWhatInEnglish": "What is this in English?",
+  "siRound": "Round {round} of {total}.",
+  "@siRound": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "siSignThis": "Sign this word: {english}, {filipino}.",
+  "@siSignThis": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "filipino": {
+        "type": "String"
+      }
+    }
+  },
+  "siTitle": "Sign It!",
+  "siSelfAssessed": "Self-assessed signs",
+  "siWatchAgain": "Watch the sign again",
+  "siGotIt": "I got it",
+  "siGotItBang": "I got it!",
+  "siTitleRound": "Sign It!  •  {round}/{total}",
+  "@siTitleRound": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "siWatchThen": "Watch, then sign it back!",
+  "siYourTake": "Your take",
+  "siYou": "You",
+  "siNoPermission": "Camera permission off.\nYou can still watch and practise!",
+  "siNoCamera": "No camera found.\nJust watch and practise the sign!",
+  "siCameraOff": "Camera unavailable.\nJust watch and practise the sign!",
+  "fvNeedsInternet": "The sign for “{word}” needs the internet to load the first time. Connect and try again — after that it works offline.",
+  "@fvNeedsInternet": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "fvNoVideo": "No FSL video available yet for “{word}”.",
+  "@fvNoVideo": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "fvCanYou": "Can you sign this?",
+  "fvTeacherConfirmed": "Your teacher confirmed this sign",
+  "fvKeepPractising": "Your teacher says keep practising this one",
+  "fpLoadFailed": "Unable to load video",
+  "fpClose": "Close fullscreen video",
+  "fpHideCaptions": "Hide captions",
+  "fpShowCaptions": "Show captions",
+  "fpSpeedSettings": "Playback speed settings",
+  "fpPause": "Pause video",
+  "fpPlay": "Play video",
+  "fpSetSpeed": "Set speed to {speed}x",
+  "@fpSetSpeed": {
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      }
+    }
+  },
+  "fpReplay": "Replay from beginning",
+  "fpPauseShort": "Pause",
+  "fpPlayShort": "Play",
+  "fpProgress": "Video progress",
+  "opByCategory": "By category",
+  "opTitle": "Offline Signs",
+  "opIntro": "Save sign videos to this device so they play without internet.",
+  "opSavedOf": "{ready} of {total} signs saved",
+  "@opSavedOf": {
+    "placeholders": {
+      "ready": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "opUsing": "Using {size} on this device",
+  "@opUsing": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "opNothing": "Nothing saved yet",
+  "opSaving": "Saving “{label}”… {done} of {total}",
+  "@opSaving": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "opStop": "Stop",
+  "opAllSaved": "All signs saved",
+  "opSaveAll": "Save all {count}",
+  "@opSaveAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "opFailed": "{count} couldn’t be saved — check the connection and try again. Those words still work online.",
+  "@opFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "opNoSigns": "No signs recorded yet",
+  "opCatSaved": "{ready} of {total} saved",
+  "@opCatSaved": {
+    "placeholders": {
+      "ready": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "opSaveCat": "Save {category} offline",
+  "@opSaveCat": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "opRemoveCat": "Remove {category} downloads",
+  "@opRemoveCat": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "feSoon": "FSL videos coming soon",
+  "feRecording": "We’re still recording sign-language videos for these categories. Practice with the flashcards in the meantime!",
+  "feReady": "Ready to practice now:",
+  "feChooseAnother": "Choose another category",
+  "siStopRec": "Stop recording",
+  "siRecordMe": "Record myself signing",
+  "siSignThisLabel": "Sign this word: {english}, {filipino}",
+  "@siSignThisLabel": {
+    "placeholders": {
+      "english": {
+        "type": "String"
+      },
+      "filipino": {
+        "type": "String"
+      }
+    }
+  },
+  "siReference": "Reference",
+  "siRecord": "Record",
+  "aqOptions": "Accessibility options",
+  "aqIntro": "Make the app easier to see, hear, and use.",
+  "aqTextSize": "Text Size",
+  "aqHcSub": "Bolder colors and outlines",
+  "aqEasyRead": "Easy-Read Font",
+  "aqEasyReadSub": "Friendlier spacing for reading",
+  "aqReadAloud": "Read Aloud",
+  "aqReadAloudSub": "Speak words and buttons",
+  "aqReduceMotion": "Reduce Motion",
+  "aqReduceMotionSub": "Calmer, simpler animations",
+  "aqTextSizeLabel": "Text size {label}",
+  "@aqTextSizeLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "btTitle": "Take a Break",
+  "btBack": "Back to lesson",
+  "btPick": "Pick what feels good. You can go back to your lesson anytime.",
+  "btCalmer": "Feeling calmer?",
+  "btStay": "Stay a little longer",
+  "btHowFeel": "How are you feeling?",
+  "btBreathe": "Breathe",
+  "btBubbles": "Pop Bubbles",
+  "btBreatheSub": "Slow, calming breaths",
+  "btBubblesSub": "Gently pop the bubbles",
+  "sqSeeScore": "See my score",
+  "sqNextQuestion": "Next question",
+  "sqListenEn": "Listen to this choice in English",
+  "sqListenTl": "Listen to this choice in Tagalog",
+  "sqSeeResults": "See Results",
+  "sqNextQuestionCap": "Next Question",
+  "sqNotQuite": "Not quite. {answer}.",
+  "@sqNotQuite": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "sqQuestionNofM": "Question {number} of {total}",
+  "@sqQuestionNofM": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "srNextPage": "Next page",
+  "srReadPage": "Read this page aloud",
+  "srGoQuiz": "Go to the quiz",
+  "srPageNofM": "Page {number} of {total}",
+  "@srPageNofM": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "abCreate": "Create Assessment",
+  "abDetails": "Assessment Details",
+  "abTitleField": "Assessment Title",
+  "abTitleRequired": "Title is required",
+  "abDescription": "Description (optional)",
+  "abDifficulty": "Difficulty",
+  "abTimeLimit": "Time Limit",
+  "abMinutes": "{minutes} min",
+  "@abMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "abQuestionsCount": "Questions ({count})",
+  "@abQuestionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "abNoQuestions": "No Questions Yet",
+  "abNoQuestionsBody": "Add your first question to build the assessment.",
+  "abAddFirst": "Add First Question",
+  "abAddQuestion": "Add Question",
+  "abNeedOne": "Add at least one question",
+  "abCustomDesc": "Custom teacher assessment",
+  "abSaved": "Assessment “{title}” saved!",
+  "@abSaved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "abDiscardTitle": "Discard Assessment?",
+  "abDiscardBody": "You have unsaved questions. Are you sure you want to go back?",
+  "abKeepEditing": "Keep Editing",
+  "abDiscard": "Discard",
+  "abAnswer": "Answer: {answer}",
+  "@abAnswer": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "abChoices": "Choices: {choices}",
+  "@abChoices": {
+    "placeholders": {
+      "choices": {
+        "type": "String"
+      }
+    }
+  },
+  "abEditQuestion": "Edit Question",
+  "abQuestionType": "Question Type",
+  "abQuestionText": "Question Text *",
+  "abCorrectAnswer": "Correct Answer *",
+  "abChoicesTitle": "Choices",
+  "abChoiceN": "Choice {letter}",
+  "@abChoiceN": {
+    "placeholders": {
+      "letter": {
+        "type": "String"
+      }
+    }
+  },
+  "abAddChoice": "Add Choice",
+  "abCategory": "Category (optional)",
+  "abHint": "Hint (optional)",
+  "abUpdateQuestion": "Update Question",
+  "abTextRequired": "Question text and answer are required",
+  "abAnswerInChoices": "Correct answer must match one of the choices",
+  "qbTitle": "Quiz Builder",
+  "qbMyQuiz": "My Quiz",
+  "qbQuizTitle": "Quiz Title",
+  "qbQuestionTypes": "Question Types",
+  "qbTimeLimit": "Time Limit (optional)",
+  "qbNoLimit": "No limit",
+  "qbSelectWords": "Select Words ({count} selected)",
+  "@qbSelectWords": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qbSelectAll": "Select All",
+  "qbDeselectAll": "Deselect All",
+  "qbAtLeast3": "Select at least 3 words to create a quiz",
+  "qbSaved": "Saved Quizzes",
+  "qbSummary": "{count} words • {difficulty} • {formats}",
+  "@qbSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "difficulty": {
+        "type": "String"
+      },
+      "formats": {
+        "type": "String"
+      }
+    }
+  },
+  "qbStart": "Start Quiz",
+  "qbDuplicate": "You already have a quiz called “{title}”. Give this one a different name.",
+  "@qbDuplicate": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "qbSavedOne": "Quiz “{title}” saved!",
+  "@qbSavedOne": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "qbNoCards": "No valid cards found for this quiz",
+  "qbDeleteTitle": "Delete Quiz?",
+  "qbDeleteBody": "Delete “{title}”?",
+  "@qbDeleteBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "bbMax": "Maximum {count} tiles reached",
+  "@bbMax": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bbAlready": "Tile already added",
+  "bbAdded": "“{label}” added to the board",
+  "@bbAdded": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "bbNeedName": "Please give the board a name",
+  "bbCleared": "Board cleared — the tab is hidden on Talk Board",
+  "bbSaved": "“{name}” saved with {count, plural, =1{1 tile} other{{count} tiles}}",
+  "@bbSaved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bbDiscardTitle": "Discard changes?",
+  "bbDiscardBody": "This board has changes that have not been saved yet.",
+  "bbKeepEditing": "Keep editing",
+  "bbMyBoard": "My Board",
+  "bbDoneEditing": "Done editing",
+  "bbReorder": "Reorder/remove tiles",
+  "bbPreview": "Preview with speech",
+  "bbNameField": "Board name (shown as the tab)",
+  "bbTapBelow": "Tap tiles below, or make your own word",
+  "bbMyWord": "{word} · my word",
+  "@bbMyWord": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "bbRemove": "Remove {label}",
+  "@bbRemove": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "bbCount": "{count} / {max} tiles",
+  "@bbCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "bbClearAll": "Clear All",
+  "bbMakeWord": "Make my own word",
+  "bbAlreadyAdded": "already added",
+  "bbTapToAdd": "tap to add",
+  "bbSaveBoard": "Save Board",
+  "bbEditWord": "Edit word",
+  "bbWordEn": "Word (English)",
+  "bbWordEnHint": "e.g. Ate Maria",
+  "bbWordFil": "Word (Filipino) — optional",
+  "bbWordFilHint": "Leave blank to reuse the English word",
+  "bbPicture": "Picture",
+  "bbPictureN": "Picture {number}",
+  "@bbPictureN": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "cfUpdated": "Flashcard updated! ✏️",
+  "cfCreated": "Flashcard created! 🎉",
+  "cfEditTitle": "Edit Flashcard",
+  "cfCreateTitle": "Create Flashcard",
+  "cfCategory": "Category",
+  "cfWordFil": "Word (Filipino)",
+  "cfHintEn": "e.g. Butterfly",
+  "cfHintFil": "e.g. Paru-paro",
+  "cfEnterWord": "Enter a word",
+  "cfEnterTranslation": "Enter a translation",
+  "cfExample": "Example Sentence (optional)",
+  "cfExampleHint": "e.g. The butterfly is colorful.",
+  "cfUpdate": "Update Flashcard",
+  "cfYourWord": "Your Word",
+  "cfNoSpeech": "Speech recognition not available on this device.",
+  "cfVoiceReady": "Voice Ready",
+  "cfImage": "Image",
+  "cfTapImage": "Tap to add an image",
+  "cfListening": "Listening…",
+  "cfDictate": "Dictate",
+  "dtAdded": "Added {count} cards from {name}",
+  "@dtAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dtFailed": "Could not add template",
+  "dtTitle": "Deck Templates",
+  "dtHeading": "Pre-built decks for quick setup",
+  "dtIntro": "Tap “Use this deck” to copy these bilingual cards into your custom deck.",
+  "dtCards": "{count} cards",
+  "@dtCards": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dtPreview": "Preview",
+  "dtUseDeck": "Use deck",
+  "dtAdding": "Adding…",
+  "dtUseThis": "Use this deck ({count} cards)",
+  "@dtUseThis": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "awWhatTitle": "What does “PWD” mean?",
+  "awWhatBody": "PWD stands for Persons with Disabilities — people who have a long-term physical, sensory, cognitive, or learning condition. Disability is a natural part of human diversity. Use person-first language: say “a person with a disability,” not “a disabled person.” Every learner deserves the same respect and the same chance to learn.",
+  "awKindsTitle": "Common kinds of disability",
+  "awRespectTitle": "Interacting respectfully",
+  "awRespect1": "Speak directly to the person, not to their companion or interpreter.",
+  "awRespect2": "Ask before you help — don’t assume someone needs it.",
+  "awRespect3": "Be patient and give people time to respond.",
+  "awRespect4": "Keep language simple and clear; avoid labels and pity.",
+  "awRespect5": "A wheelchair, cane, or guide is personal space — don’t touch it without permission.",
+  "awCommTitle": "Communicating accessibly",
+  "awCommBody": "Many Deaf and hard-of-hearing Filipinos communicate through Filipino Sign Language (FSL) — a complete language with its own grammar. Captions, plain text, pictures, and sign-language video all make information reach more people. This app teaches vocabulary alongside FSL clips so signing learners are included from the start.",
+  "awHelpsTitle": "How FlashLearn PWD helps",
+  "awHelps1": "High-contrast and dyslexia-friendly themes for easier reading.",
+  "awHelps2": "Adjustable font size, reduced motion, and text-to-speech.",
+  "awHelps3": "Filipino Sign Language videos in flashcards and stories.",
+  "awHelps4": "Hands-free gaze control — move your head or blink to select.",
+  "wrOverview": "Weekly Overview",
+  "wrDailyTime": "Daily Study Time",
+  "wrCategoryMastery": "Category Mastery",
+  "wrRecentScores": "Recent Game Scores",
+  "wrInsights": "Insights & Recommendations",
+  "wrTrend": "Week-over-Week Trend",
+  "wrFamilyTitle": "Family Progress Report",
+  "wrGeneratedOn": "Generated on {date}",
+  "@wrGeneratedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "wrWeeklyTitle": "Weekly Progress Report",
+  "wrDayStreak": "day streak",
+  "wrFooter": "Generated by FlashLearn PWD - Page {page} of {pages}",
+  "@wrFooter": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "pages": {
+        "type": "int"
+      }
+    }
+  },
+  "wrTotalStars": "Total Stars",
+  "wrWordsLearned": "Words Learned",
+  "wrGamesPlayed": "Games Played",
+  "wrStudyTime": "Study Time",
+  "wrStars": "{count} stars",
+  "@wrStars": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wrWords": "{count} words",
+  "@wrWords": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wrGames": "{count} games",
+  "@wrGames": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wrMinutesThisWeek": "{minutes}m this week",
+  "@wrMinutesThisWeek": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "wrAccuracyPct": "{percent}% accuracy",
+  "@wrAccuracyPct": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "wrDate": "Date",
+  "wrMinutes": "Minutes",
+  "wrVisual": "Visual",
+  "wrCategory": "Category",
+  "wrProgress": "Progress",
+  "wrMasteryBar": "Mastery Bar",
+  "wrNoScores": "No recent game scores this week.",
+  "wrGame": "Game",
+  "wrScore": "Score",
+  "wrStarsCol": "Stars",
+  "wrDuration": "Duration",
+  "wrStrongest": "Strongest area: {category}",
+  "@wrStrongest": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "wrStrongestSub": "Keep up the excellent work in this category!",
+  "wrWeakest": "Needs practice: {category}",
+  "@wrWeakest": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "wrWeakestSub": "Focus on this category for improvement.",
+  "wrUnexplored": "Not yet explored: {categories}",
+  "@wrUnexplored": {
+    "placeholders": {
+      "categories": {
+        "type": "String"
+      }
+    }
+  },
+  "wrUnexploredSub": "Try introducing these categories this week.",
+  "wrAccuracy": "Accuracy: {percent}%",
+  "@wrAccuracy": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "wrAccuracyHigh": "Outstanding accuracy! Consider increasing difficulty.",
+  "wrAccuracyLow": "Extra review sessions may help improve scores.",
+  "wrLowSessions": "Low session count: {count} sessions this month",
+  "@wrLowSessions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wrLowSessionsSub": "Try to have at least 3-4 learning sessions per week.",
+  "wrMastered": "{count} categories mastered (>=80%)",
+  "@wrMastered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wrMasteredSub": "Great progress! {count} more to go.",
+  "@wrMasteredSub": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wrStartLearning": "Start learning to see personalized insights!",
+  "wrTimeUp": "Study time increased compared to last week!",
+  "wrTimeDown": "Study time decreased compared to last week.",
+  "wrThisLast": "This week: {thisWeek}min | Last week: {lastWeek}min",
+  "@wrThisLast": {
+    "placeholders": {
+      "thisWeek": {
+        "type": "int"
+      },
+      "lastWeek": {
+        "type": "int"
+      }
+    }
+  },
+  "wrsTitle": "Weekly Reports",
+  "wrsFamily": "Family Report",
+  "wrsNoStudents": "No student profiles found",
+  "wrsNoStudentsBody": "Create a student profile to generate reports.",
+  "wrsHeading": "Progress Reports",
+  "wrsIntro": "Generate professional PDF reports showing weekly stats, category mastery, game scores, and personalized insights.",
+  "wrsSelectChild": "Select a child to generate report",
+  "wrsSubject": "Weekly Progress Report — {name}",
+  "@wrsSubject": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "wrsFailedGenerate": "Could not make the report. Please try again.",
+  "wrsFailedPreview": "Could not show the report. Please try again.",
+  "wrsPreviewTitle": "Report Preview — {name}",
+  "@wrsPreviewTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "wrsSharePdf": "Share PDF",
+  "wrsNoPreview": "On-screen preview isn’t available on this device.",
+  "wrsNoPreviewBody": "The report was generated successfully — tap below to open, save, or send it as a PDF.",
+  "wrsStreakDays": "{count}d",
+  "@wrsStreakDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prTitle": "Student Progress Report",
+  "prWordsLearned": "Words Learned",
+  "prOfTotal": "of {total}",
+  "@prOfTotal": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "prStreakDays": "{count} days",
+  "@prStreakDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prCategoryBreakdown": "Category Breakdown",
+  "prLearningAnalysis": "Learning Analysis",
+  "prTotalAttempts": "Total Attempts",
+  "prStruggling": "Struggling Words",
+  "prOverallAccuracy": "Overall Accuracy",
+  "prNotAvailable": "N/A",
+  "prNeedPractice": "Words Needing Practice",
+  "prWordEn": "Word (EN)",
+  "prWordFil": "Word (FIL)",
+  "prAttempts": "Attempts",
+  "prRecentActivity": "Recent Game Activity",
+  "prPercentage": "Percentage",
+  "prTagline": "Interactive Vocabulary Learning",
+  "prFooter": "FlashLearn PWD - Thesis Capstone Project",
+  "prPageOf": "Page {page} of {pages}",
+  "@prPageOf": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "pages": {
+        "type": "int"
+      }
+    }
+  },
+  "prFocusOn": "Focus on {category}",
+  "@prFocusOn": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "prFocusOnBody": "This category has the lowest progress at {percent}%. Encourage the student to use flashcards and play games in this category.",
+  "@prFocusOnBody": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "prSmartReview": "Use Smart Review",
+  "prSmartReviewBody": "There are {count} words the student struggles with. The Smart Review feature uses spaced repetition to prioritize them.",
+  "@prSmartReviewBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prHabit": "Build Daily Habit",
+  "prHabitBody": "The current streak is {count, plural, =1{1 day} other{{count} days}}. Encourage daily practice to build consistency.",
+  "@prHabitBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prConsistency": "Great Consistency!",
+  "prConsistencyBody": "The student has a {count}-day streak. Positive reinforcement will help maintain this habit.",
+  "@prConsistencyBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prHarder": "Try Harder Difficulty",
+  "prHarderBody": "{category} progress is at {percent}%. Consider increasing the game difficulty for extra challenge.",
+  "@prHarderBody": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "erLast7": "Last 7 days",
+  "erLast30": "Last 30 days",
+  "erLast90": "Last 90 days",
+  "erPickClass": "Pick a classroom first.",
+  "erShareText": "Progress report — {classroom} ({range})",
+  "@erShareText": {
+    "placeholders": {
+      "classroom": {
+        "type": "String"
+      },
+      "range": {
+        "type": "String"
+      }
+    }
+  },
+  "erShareSubject": "Progress report — {classroom}",
+  "@erShareSubject": {
+    "placeholders": {
+      "classroom": {
+        "type": "String"
+      }
+    }
+  },
+  "erFailed": "Export failed. Please try again.",
+  "erTitleShort": "Export Report",
+  "erSignIn": "Sign in as a teacher to export reports.",
+  "erTitle": "Export Progress Report",
+  "erLoadFailed": "Could not load classrooms. Please try again.",
+  "erNoClasses": "You don’t have any classrooms yet. Create a classroom first to export progress reports.",
+  "erHeading": "Progress Report (CSV)",
+  "erIntro": "Generate a spreadsheet of every student’s progress in the selected window. Use it for IEPs, parent updates, or classroom records.",
+  "erClassroom": "Classroom",
+  "erDateRange": "Date Range",
+  "erBuilding": "Building CSV…",
+  "erExport": "Export & share CSV",
+  "erShareNote": "The file will open the device share sheet so you can email it, save it to Drive, or upload it to your school portal.",
+  "cePdfTitle": "CERTIFICATE OF ACHIEVEMENT",
+  "cePdfPresented": "This certificate is proudly presented to",
+  "cePdfFor": "For {achievement}",
+  "@cePdfFor": {
+    "placeholders": {
+      "achievement": {
+        "type": "String"
+      }
+    }
+  },
+  "cePdfDate": "Date: {date}",
+  "@cePdfDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "ceTypeAssessment": "Assessment Completion",
+  "ceTypeStreak": "Streak Milestone",
+  "ceTypeOverall": "Overall Progress",
+  "ceCatTitle": "{category} Category Mastery",
+  "@ceCatTitle": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "ceCatDetail": "Successfully learned {learned} out of {total} words in the {category} vocabulary category.",
+  "@ceCatDetail": {
+    "placeholders": {
+      "learned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "ceStreakTitle": "{days}-Day Learning Streak",
+  "@ceStreakTitle": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "ceStreakDetail": "Demonstrated outstanding dedication by maintaining a {days}-day consecutive study streak.",
+  "@ceStreakDetail": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "ceOverallDetail": "Learned {words} words, earned {stars} stars, and maintained a {days}-day streak.",
+  "@ceOverallDetail": {
+    "placeholders": {
+      "words": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "wsTracing": "Word Tracing",
+  "wsMatching": "Picture Matching",
+  "wsMatchingHeader": "Picture/Word Matching",
+  "wsFill": "Fill in the Blank",
+  "wsSearch": "Word Search",
+  "wsTracingDesc": "Trace English and Filipino words with dotted letters",
+  "wsMatchingDesc": "Draw lines to match words with their translations",
+  "wsFillDesc": "Complete sentences with the correct vocabulary word",
+  "wsSearchDesc": "Find hidden vocabulary words in a letter grid",
+  "wsTraceInstr": "Trace each word carefully. Practice writing both English and Filipino!",
+  "wsEnglishColon": "English: ",
+  "wsFilipinoColon": "Filipino: ",
+  "wsMatchInstr": "Draw a line from each English word on the left to its Filipino translation on the right.",
+  "wsEnglish": "English",
+  "wsFilipino": "Filipino",
+  "wsAnswers": "Answers: _______________________________________________",
+  "wsFillInstr": "Fill in each blank with the correct word from the word bank below.",
+  "wsWordBank": "Word Bank:",
+  "wsSearchInstr": "Find and circle all the hidden words in the grid below!",
+  "wsMeta": "Category: {category}  •  Difficulty: {difficulty}",
+  "@wsMeta": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "difficulty": {
+        "type": "String"
+      }
+    }
+  },
+  "wsName": "Name: ____________________",
+  "wsDate": "Date: ____________________",
+  "wsFooter": "Page {page} of {pages}  •  Generated by FlashLearn PWD",
+  "@wsFooter": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "pages": {
+        "type": "int"
+      }
+    }
+  },
+  "wscTitle": "Printable Worksheets",
+  "wscIntro": "Create practice worksheets your students can print and use offline!",
+  "wscType": "Worksheet Type",
+  "wscGenerating": "Generating...",
+  "wscPreviewPrint": "Preview & Print",
+  "wscWords": "{count} words",
+  "@wscWords": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pfTitle": "{name}’s Learning Portfolio",
+  "@pfTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pfOverview": "Overview",
+  "pfDayStreak": "Day Streak",
+  "pfItems": "Portfolio Items",
+  "pfPinned": "Pinned Highlights",
+  "pfAllItems": "All Portfolio Items",
+  "pfType": "Type",
+  "pfItemTitle": "Title",
+  "pfDescription": "Description",
+  "pfSummaryByType": "Summary by Type",
+  "sdDetails": "Details",
+  "sdEarned": "Earned",
+  "sdYes": "Yes",
+  "sdNo": "No",
+  "sdPersonalNote": "Personal Note",
+  "bpSemantics": "Pop the bubbles. This is just for fun — there is no score.",
+  "crbReconnected": "Cloud sync reconnected.",
+  "lwDismiss": "Dismiss",
+  "egSemantics": "See example photos of {word}",
+  "@egSemantics": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "smSemantics": "Show me {word}",
+  "@smSemantics": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "siReRecord": "Re-record",
+  "mqPlayerN": "Player {number}",
+  "@mqPlayerN": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "mqRematch": "Rematch!",
+  "mpRematch": "Rematch",
+  "gzTarget": "Gaze target: {label}",
+  "@gzTarget": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "frRequests": "Friend requests",
+  "alMarkRead": "Mark as read",
+  "exSaved": "Experiment settings saved!",
+  "exGroup": "{label} group",
+  "@exGroup": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "alDeleteTitle": "Delete “{label}”?",
+  "@alDeleteTitle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "alLabel": "Label",
+  "alEnabled": "Enabled",
+  "tlEnforce": "Enforce a daily limit",
+  "tlSaved": "Saved.",
+  "pcSaveFailed": "Couldn’t save parental controls. Please try again.",
+  "tuVerify": "Verify",
+  "tuSwitchAccount": "Switch account",
+  "woAvgPer": "Avg/{noun}",
+  "@woAvgPer": {
+    "placeholders": {
+      "noun": {
+        "type": "String"
+      }
+    }
+  },
+  "aaSelectProfile": "Select a profile to view adaptive analytics.",
+  "daSelectProfile": "Select a profile to view detailed analytics.",
+  "lcTitle": "Leaderboard Settings",
+  "lcVisibility": "Visibility",
+  "lcShow": "Show leaderboard to members",
+  "lcRankBy": "Rank by",
+  "lcPeriod": "Time period",
+  "lcNewSeason": "Start new season",
+  "lcClearSeason": "Clear season",
+  "lcHide": "Hide members",
+  "lcNoMembers": "No members have joined yet.",
+  "ptAccuracyTrend": "Accuracy Trend 📊",
+  "ptpTitle": "Customize Progress",
+  "ptpIntro": "Pick a look and a layout for the Progress page",
+  "ptpTheme": "Theme",
+  "ptpLayout": "Layout",
+  "sqQuizTitle": "Quiz: {title}",
+  "@sqQuizTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "sqEnglish": "English",
+  "sqTagalog": "Tagalog",
+  "srPrevPage": "Previous page",
+  "scmpKeyMetrics": "Key Metrics",
+  "taAvgAccuracy": "Avg Accuracy",
+  "nfIllustration": "Lost page illustration",
+  "nfTitle": "Oops! Page not found",
+  "nfBody": "It looks like this page has wandered off.\nLet’s get you back on track!",
+  "nfGoHomeSem": "Go back to home screen",
+  "nfGoHome": "Go Home",
+  "nfGoBackSem": "Go back to previous page",
+  "ciOnline": "Online",
+  "ciOffline": "No internet — your work is saved locally",
+  "spdCreated": "Created",
+  "ssSyncing": "Syncing…",
+  "ssSynced": "Synced!",
+  "splashLogo": "FlashLearn logo",
+  "ctDark": "Dark",
+  "ctLight": "Light",
+  "ctClassroom": "Classroom",
+  "ctPlayful": "Playful",
+  "ctCalm": "Calm / Focus",
+  "ctSeasonal": "Seasonal",
+  "ctHighContrast": "High contrast",
+  "ctDyslexia": "Dyslexia-friendly",
+  "ctDarkDesc": "High-legibility dark — the classic look.",
+  "ctLightDesc": "Bright and clean for well-lit rooms.",
+  "ctClassroomDesc": "Crisp and neutral — maximum readability.",
+  "ctPlayfulDesc": "Vibrant and rounded, with big emoji for kids.",
+  "ctCalmDesc": "Soft, low-stimulation, calm pacing (no animation).",
+  "ctSeasonalDesc": "Festive accents that follow the season.",
+  "ctHighContrastDesc": "Black/white/yellow for low vision.",
+  "ctDyslexiaDesc": "Lexend on cream, with looser spacing.",
+  "ctSizeNormal": "Normal",
+  "ctSizeLarge": "Large",
+  "ctSizeXl": "Extra large",
+  "ctLangBoth": "Both",
+  "ctLeaderboard": "Leaderboard",
+  "ctClassWins": "Class wins",
+  "ctLeaderboardDesc": "Top 10 by stars, ranked.",
+  "ctClassWinsDesc": "What the class did together, then everyone A–Z — no ranking.",
+  "tcWifiLost": "Wi-Fi disconnected — the TV can’t reach this cast. Reconnect to the same Wi-Fi to continue.",
+  "tcNetChanged": "You’re on a different network now — the TV can’t reach this cast. Reconnect to the original Wi-Fi, or tap Restart for a new code.",
+  "tcRestart": "Restart",
+  "tcNoWifi": "Wi-Fi not detected. Connect to the same network as your TV.",
+  "tcStopTitle": "Stop casting?",
+  "tcStopBody": "This ends the current cast and disconnects any TVs. You can start again anytime.",
+  "tcStopped": "Casting stopped",
+  "tcTitle": "TV Cast",
+  "tcTeacherBack": "Teacher is back (resume cast)",
+  "tcTeacherOut": "Show “Teacher is out” on TV",
+  "tcStopCasting": "Stop casting",
+  "tcWhatToCast": "What to cast",
+  "tcSwitchesNow": "The TV switches the moment you tap.",
+  "tcNowShowing": "Now showing on TV",
+  "tcPacing": "Pacing",
+  "tcPlayback": "Playback",
+  "tcStepLesson": "Step the lesson from here.",
+  "tcReplayAudio": "Replay audio",
+  "tcDisplayStyle": "TV display style",
+  "tcDisplayStyleSub": "How the lesson looks on the big screen.",
+  "tcLessonTimer": "Lesson timer",
+  "tcReadability": "Readability on TV",
+  "tcShowOnTv": "Show on TV",
+  "tcShowOnTvSub": "Optional name shown in the corner of the TV.",
+  "tcAudio": "Audio",
+  "tcFullscreen": "Fullscreen",
+  "tcTvRemote": "TV remote",
+  "tcAnyTv": "Cast to any TV",
+  "tcAnyTvBody": "Works on any TV with a web browser — Samsung, LG, Sony, Fire TV, Chromecast with Google TV, smart projectors, or any laptop plugged into HDMI. You open the link in the TV’s own browser — this is not the same as mirroring or casting your tablet, so sound comes from the TV.",
+  "tcStarting": "Starting…",
+  "tcStart": "Start Casting",
+  "tcWaitingTv": "Waiting for TV to connect…",
+  "tcTeacherOutNote": "The TV is showing “The teacher is out”. Tap the walk icon to resume casting.",
+  "tcFlashcards": "Flashcards",
+  "tcFlashcardsSub": "Word, picture & photo",
+  "tcFsl": "FSL",
+  "tcFslSub": "Sign-language clips",
+  "tcStories": "Stories",
+  "tcStoriesSub": "Read page by page",
+  "tcLiveActivity": "Live Activity",
+  "tcLiveActivitySub": "Quiz the whole room",
+  "tcProgress": "Progress",
+  "tcProgressSub": "Class wins & stars",
+  "tcStory": "Story",
+  "tcPickAbove": "Pick what to cast above. The TV will switch instantly.",
+  "tcTextSize": "Text size on TV",
+  "tcTextSizeNote": "Makes the word, story line, sign caption and answer choices bigger — for learners reading from the back, or with low vision.",
+  "tcLanguage": "Language on TV",
+  "tcBothLangs": "The TV shows and speaks both languages.",
+  "tcReadyOffline": "Ready to cast offline",
+  "tcPrepare": "Prepare for casting",
+  "tcStopDownloading": "Stop downloading",
+  "tcCheckAgain": "Check again",
+  "tcFsOnNote": "The TV fills the whole screen and auto-resizes to fit any TV — Smart TV, Chromecast / Google TV, Fire TV, projector or HDMI laptop. On some TVs, press OK on the remote once to finish filling the screen.",
+  "tcFsOffNote": "The TV keeps the browser bars. Turn on to fill the whole screen.",
+  "tcFsOnTv": "Fullscreen on TV",
+  "tcBigPicNa": "Works with Flashcards, FSL Videos and Stories. Pick one of those to use it — a live activity needs its answer choices on screen.",
+  "tcBigPicOn": "The picture, GIF or sign video fills the TV. The whole picture stays in view (never cropped) and the word stays underneath; the category badge and example sentence are hidden to make room.",
+  "tcBigPicOff": "The picture sits inside the card. Turn on to fill the TV with it — easier to see from the back of the room, or for a learner with low vision.",
+  "tcBigPic": "Fullscreen picture & video",
+  "tcRecent": "Recent casts",
+  "tcClear": "Clear",
+  "tcClearTitle": "Clear cast history?",
+  "tcClearBody": "This removes the record of your past casts from this device. It does not affect any student data.",
+  "tcEarlier": "Earlier",
+  "tcLive": "Live",
+  "tcUnderMinute": "<1 min",
+  "tcFslSigns": "FSL signs",
+  "tcLessonCast": "Lesson cast",
+  "tcTimerNote": "Show a countdown in the corner of the TV — for transitions, quiet reading, or “five more minutes”. The lesson keeps playing underneath it.",
+  "tcResumeTimer": "Resume timer",
+  "tcPauseTimer": "Pause timer",
+  "tcClearTimer": "Clear timer",
+  "tcTimesUpNote": "The TV is showing “Time’s up!”. Clear it, or start another.",
+  "tcTimerShowing": "Showing on the TV, over the lesson.",
+  "tcRemoteLabel": "Control from the TV remote",
+  "tcRemoteOn": "Press ◀ or ▶ on the TV remote to move between cards, signs or story pages, and play/pause to hold. Handy when you’re at the board and the tablet is on your desk. (OK still just turns on the TV’s sound.)",
+  "tcRemoteOff": "The TV remote can’t change the lesson. Turn on if you want to step through from the board — or leave off for a screen left unattended.",
+  "tcTrouble": "Having trouble?",
+  "tcTipSameWifi": "Both phone and TV must be on the SAME Wi-Fi network.",
+  "tcTipApIsolation": "If you’re on a school or guest Wi-Fi, “AP isolation” may block phone-to-TV traffic. Try a regular home network.",
+  "tcTipSamsung": "Samsung TV: open the “Internet” app, type the URL.",
+  "tcTipLg": "LG TV: open “Web Browser” from the home dashboard.",
+  "tcTipFire": "Fire TV: install Silk Browser (free), then open URL.",
+  "tcTipChromecast": "Chromecast with Google TV: open Chrome from the apps list, type the URL.",
+  "tcTipApple": "Apple TV: AirPlay-mirror a laptop browser showing the URL.",
+  "tcTipFullscreen": "Not filling the whole TV? Make sure “Fullscreen on TV” is on above. On some TVs (e.g. Chromecast / Google TV) press OK on the remote once to finish filling the screen.",
+  "tcTipLeave": "You can leave this screen — the cast keeps running. A “Casting to TV” bar stays at the bottom of the app so you can pause or skip from anywhere, and tapping it brings you back here.",
+  "tcTipPrivate": "Only TVs that open your exact cast link (it ends in your cast code) can see the lesson. Starting a new cast makes a new code and retires the old link.",
+  "tcTipQuiet": "Too quiet? The app already speaks at maximum — raise the TV’s volume (or the phone’s, if sound plays from the phone).",
+  "tcNameHint": "e.g. Ms. Cruz — Grade 2 (optional)",
+  "tcAutoAdvance": "Auto-advance",
+  "tcTapOnlyOn": "The TV shows the emoji; use the Flip button to reveal the real photo (and flip back). Works on any TV.",
+  "tcTapOnlyOff": "The TV shows the emoji only — the photo is hidden.",
+  "tcTapOnly": "Tap Only",
+  "tcShowEmoji": "Show emoji",
+  "tcFlipPhoto": "Flip to photo",
+  "tcPhotoShowing": "The TV is showing the real photo. Tap to flip back to the emoji.",
+  "tcHideClip": "Hide clip",
+  "tcShowMe": "Show Me",
+  "tcClipPlaying": "Playing the clip on the TV. Tap to go back to the card.",
+  "tcFlipAnim": "Tap to Flip Animation (Cartoon ↔ Picture)",
+  "tcPictureShowing": "The TV is showing the real picture. Tap to flip back to the cartoon.",
+  "tcCartoonShowing": "The TV is showing the cartoon. Tap to flip to the real picture on the TV.",
+  "tcHideFsl": "Hide FSL",
+  "tcWatchFsl": "Watch in FSL",
+  "tcFslPlaying": "Playing the sign-language video on the TV. Tap to go back to the story.",
+  "tcReadyToPlay": "Ready to play",
+  "tcPreparingVideo": "Preparing video…",
+  "tcTvSpeaks": "The TV speaks each word and story page (English + Filipino).",
+  "tcPhoneReads": "This phone reads each word / story page aloud.",
+  "tcTurnOnTts": "Turn on Text-to-Speech in Settings to hear this.",
+  "tcSpeakWords": "Speak words & narrate",
+  "tcPlaySoundOn": "Play sound on",
+  "tcThisPhone": "This phone",
+  "tcPhoneSound": "Plays from this phone (or a phone-connected speaker).",
+  "tcTvVolume": "Words play at full volume on the TV — raise the TV’s own volume so every student, including those who need it louder, can hear clearly.",
+  "tcPhoneVolume": "Words play at full volume — use this phone’s volume buttons to make them louder.",
+  "tcVideoSound": "Play TV video sound",
+  "tcVideoSoundNote": "Off by default so signs stay muted (Deaf-friendly). Turn on for signs that include a spoken voiceover. May not work on older TVs.",
+  "tcWaitingATv": "Waiting for a TV to connect…",
+  "tcTvPlaying": "The TV is playing the sound.",
+  "tcPressOk": "Press OK on the TV remote once to turn on its sound.",
+  "tcTvCantSpeak": "This TV can’t speak words. Tap “This phone” to hear narration here instead.",
+  "tcTvGettingReady": "Getting the TV ready… if it stays silent, press OK on the TV remote once.",
+  "tcLoadingSigns": "Loading signs…",
+  "tcNoFsl": "No FSL videos in this category yet.",
+  "tcTapSign": "Tap a sign to show it now",
+  "tcPickCategory": "Pick a category to start.",
+  "tcNoWords": "No words in this category.",
+  "tcPickStory": "Pick a story.",
+  "tcFinished": "Finished — the TV is showing “The End”. Back re-reads the last page.",
+  "tcNoLeaderboard": "Leaderboard — no student data yet.",
+  "tcLiveWaiting": "Live activity — waiting for a question.",
+  "tcNothingCast": "Nothing is being cast.",
+  "tcTimesUp": "Time’s up",
+  "tcStartFailed": "Could not start the cast. Please try again.",
+  "tcReplayPage": "Hear the current page again on this phone.",
+  "tcReplayWord": "Hear the current word again on this phone.",
+  "tcViewers": "{count, plural, =1{1 viewer connected} other{{count} viewers connected}}",
+  "@tcViewers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tcOneLang": "The TV shows and speaks {language} only — the other language is hidden, not removed, so you can switch back mid-lesson.",
+  "@tcOneLang": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "tcDownloading": "Downloading {done} of {total}",
+  "@tcDownloading": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "tcDownloadAll": "Download every sign, clip and picture in {target} now, so the TV never waits mid-lesson — and the cast keeps working if the Wi-Fi drops.",
+  "@tcDownloadAll": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "tcPrepareTarget": "Prepare {target}",
+  "@tcPrepareTarget": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "tcNothingToDownload": "Nothing to download for {target} — it casts from the app.",
+  "@tcNothingToDownload": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "tcSomeFailed": "{ready} of {total} ready. {failed} couldn’t be downloaded — those will load during the lesson if the network is up.",
+  "@tcSomeFailed": {
+    "placeholders": {
+      "ready": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "tcAllReady": "All {total} items are on this device. {target} will cast instantly, even with no internet.",
+  "@tcAllReady": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "tcUpdatesItself": "{description} Updates by itself as your class works.",
+  "@tcUpdatesItself": {
+    "placeholders": {
+      "description": {
+        "type": "String"
+      }
+    }
+  },
+  "tcOlderCasts": "{count, plural, =1{1 older cast kept (90 days).} other{{count} older casts kept (90 days).}}",
+  "@tcOlderCasts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tcToday": "Today, {time}",
+  "@tcToday": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "tcYesterday": "Yesterday, {time}",
+  "@tcYesterday": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "tcCards": "{count} cards",
+  "@tcCards": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tcPages": "{count} pages",
+  "@tcPages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tcQsAnswers": "{questions} Qs · {answers} answers",
+  "@tcQsAnswers": {
+    "placeholders": {
+      "questions": {
+        "type": "int"
+      },
+      "answers": {
+        "type": "int"
+      }
+    }
+  },
+  "tcSeconds": "{count} sec",
+  "@tcSeconds": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tcHoursMinutes": "{hours} hr {minutes} min",
+  "@tcHoursMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "tcOfCasting": "{duration} of casting",
+  "@tcOfCasting": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "tcCardsSigns": "{count} cards / signs shown",
+  "@tcCardsSigns": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tcStoryPages": "{count} story pages",
+  "@tcStoryPages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tcLiveQs": "{questions} live questions · {answers} answers",
+  "@tcLiveQs": {
+    "placeholders": {
+      "questions": {
+        "type": "int"
+      },
+      "answers": {
+        "type": "int"
+      }
+    }
+  },
+  "tcTvsAtOnce": "{count, plural, =1{1 TV at once} other{{count} TVs at once}}",
+  "@tcTvsAtOnce": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tcAdvanceOn": "Moves to the next {noun} on its own every few seconds.",
+  "@tcAdvanceOn": {
+    "placeholders": {
+      "noun": {
+        "type": "String"
+      }
+    }
+  },
+  "tcAdvanceOff": "Stays on each {noun} until you tap Next.",
+  "@tcAdvanceOff": {
+    "placeholders": {
+      "noun": {
+        "type": "String"
+      }
+    }
+  },
+  "tcNounPage": "page",
+  "tcNounSign": "sign",
+  "tcNounCard": "card",
+  "tcFlipWord": "Flip “{word}” on the TV to its real photo.",
+  "@tcFlipWord": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "tcPlayClip": "Play a short clip of “{word}” in motion on the TV.",
+  "@tcPlayClip": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "tcPlayPageFsl": "Play page {number} in Filipino Sign Language on the TV.",
+  "@tcPlayPageFsl": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "tcPageOf": "Page {number} / {total}",
+  "@tcPageOf": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "tcLeaderboardTop": "{count, plural, =1{Leaderboard — top 1 student.} other{Leaderboard — top {count} students.}}",
+  "@tcLeaderboardTop": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tcLiveAnswered": "Live activity — {count} answered.",
+  "@tcLiveAnswered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tcpNotOnWifi": "This tablet is not on Wi-Fi. The TV and the tablet have to be on the same Wi-Fi network to cast — connect to Wi-Fi and try again.",
+  "tcpAway": "Showing “the teacher is out” — tap to resume.",
+  "tcpNoTv": "No TV connected yet",
+  "tcpWatching": "{count, plural, =1{1 TV watching} other{{count} TVs watching}}",
+  "@tcpWatching": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tcpNothing": "Nothing selected",
+  "tcpCasting": "Casting to TV",
+  "tcpCastingCode": "Casting to TV · code {code}",
+  "@tcpCastingCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "cspSemantics": "{count, plural, =1{Casting to TV. {mode}. 1 viewer connected.} other{Casting to TV. {mode}. {count} viewers connected.}}",
+  "@cspSemantics": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cspTeacherOut": "Casting — teacher is out",
+  "cspWatching": "{mode} · {count} watching",
+  "@cspWatching": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cspPrev": "Previous on TV",
+  "cspResume": "Resume cast",
+  "cspPause": "Pause cast",
+  "cspNext": "Next on TV",
+  "tqOpen": "Open this on your TV",
+  "tqHow": "In the TV’s own web browser, scan the code or type this URL (don’t mirror or cast your tablet — that keeps the sound on the tablet):",
+  "tqCopied": "URL copied",
+  "tqCode": "Cast code",
+  "tqCodeSemantics": "Cast code {code}",
+  "@tqCodeSemantics": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "tqPrivate": "Only TVs opening this exact link can see the cast. The code changes every time you start casting.",
+  "trPrevious": "Previous",
+  "trPlay": "Play",
+  "trPause": "Pause",
+  "tlpNeedsNet": "Live games & quizzes need an internet connection so learner devices can join in real time. Connect to Wi-Fi or mobile data (it stays on the free plan) and try again.",
+  "tlpNoGroup": "Create a home group first (Manage Family), then your child can join the live activity from their own device.",
+  "tlpNoClass": "Create a classroom first (Manage Classes), then your students can join the live activity from their own devices.",
+  "tlpStartTitle": "Start a live activity",
+  "tlpStartBody": "Learners in the chosen class join from their own device, answer on screen, and earn stars. Their raised hands show on the TV.",
+  "tlpHost": "Class / group to host",
+  "tlpStartSem": "Start live activity session",
+  "tlpStart": "Start live session",
+  "tlpStartFailed": "Could not start the live session. Check your connection.",
+  "tlpTip": "Tip: the question, raised hands, and scoreboard all show on the TV. Learners answer on their own devices.",
+  "tlpSent": "Question sent to learners & TV",
+  "tlpRunning": "Live session running",
+  "tlpAnswered": "{count} answered the current question",
+  "@tlpAnswered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpEndSem": "End live session",
+  "tlpEnd": "End",
+  "tlpScoring": "Star scoring",
+  "tlpBase": "Base {stars}★",
+  "@tlpBase": {
+    "placeholders": {
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpSpeed": " • speed +{stars}",
+  "@tlpSpeed": {
+    "placeholders": {
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpFirst": " • first +{stars}",
+  "@tlpFirst": {
+    "placeholders": {
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpCap": " • cap {stars}",
+  "@tlpCap": {
+    "placeholders": {
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpPerCorrect": "Stars per correct answer",
+  "tlpSpeedBonus": "Speed bonus (extra for fast answers)",
+  "tlpSpeedWindow": "Speed window (seconds)",
+  "tlpFirstBonus": "First-correct bonus",
+  "tlpSessionCap": "Session star cap (0 = no cap)",
+  "tlpDecrease": "Decrease {label}",
+  "@tlpDecrease": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "tlpIncrease": "Increase {label}",
+  "@tlpIncrease": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "tlpNoQuestion": "No question on screen. Build & push one below.",
+  "tlpMc": "Multiple choice: {prompt}",
+  "@tlpMc": {
+    "placeholders": {
+      "prompt": {
+        "type": "String"
+      }
+    }
+  },
+  "tlpTf": "True or False: {prompt}",
+  "@tlpTf": {
+    "placeholders": {
+      "prompt": {
+        "type": "String"
+      }
+    }
+  },
+  "tlpPictureN": "Picture choice ({count} options)",
+  "@tlpPictureN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpFslSelf": "FSL sign — self check",
+  "tlpFslN": "FSL sign ({count} options)",
+  "@tlpFslN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpFlashcard": "Flashcard",
+  "tlpHands": "Raised hands",
+  "tlpHandsN": "Raised hands ({count})",
+  "@tlpHandsN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpNoHands": "No one is asking for help right now.",
+  "tlpHandSem": "{name} raised their hand. Activate to clear.",
+  "@tlpHandSem": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tlpHandled": "Mark handled",
+  "tlpSend": "Send a question",
+  "tlpBuildPush": "Build & push question",
+  "tlpNewQuiz": "New quiz",
+  "tlpSavedQuizzes": "Saved quizzes",
+  "tlpQuestionsN": "{count} questions",
+  "@tlpQuestionsN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpRunQuiz": "Run this quiz",
+  "tlpDeleteQuiz": "Delete quiz",
+  "tlpRunningSet": "Running “{title}” — question {number} of {total}",
+  "@tlpRunningSet": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "number": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpScoreboard": "Live scoreboard",
+  "tlpNoAnswers": "No answers yet.",
+  "tlpNewQuestion": "New question",
+  "tlpPushTv": "Push to TV",
+  "tlpPicture": "Picture",
+  "tlpMcLabel": "Multiple choice",
+  "tlpTfLabel": "True / False",
+  "tlpFslSign": "FSL sign",
+  "tlpQuestion": "Question",
+  "tlpOptionsHint": "Answer options (tap ✓ to mark the correct one)",
+  "tlpMarkCorrect": "Mark option {number} correct",
+  "@tlpMarkCorrect": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpOption": "Option {number}",
+  "@tlpOption": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "tlpOptional": " (optional)",
+  "tlpStatement": "Statement",
+  "tlpTrue": "True",
+  "tlpFalse": "False",
+  "tlpAutoOptions": "Learners pick the matching word from 4 options (auto-generated).",
+  "tlpSelfCheck": "Self-check (learner taps “I got it”)",
+  "tlpSelfCheckNote": "No options — the learner judges their own sign.",
+  "tlpPickOptions": "Learners pick the matching word from options.",
+  "tlpNeedOptions": "Add a question and at least two options, and mark the correct one.",
+  "tlpNeedStatement": "Type a statement.",
+  "tlpNeedCard": "Pick a flashcard first.",
+  "tlpUnsupported": "Unsupported.",
+  "tlpQuizTitle": "Quiz title",
+  "tlpNoQuestions": "No questions yet. Add your first below.",
+  "tlpAddQuestion": "Add question",
+  "tlpSaveQuiz": "Save quiz",
+  "tlpTfShort": "T/F: {prompt}",
+  "@tlpTfShort": {
+    "placeholders": {
+      "prompt": {
+        "type": "String"
+      }
+    }
+  },
+  "tlpPictureChoice": "Picture choice",
+  "tlpFslSelfShort": "FSL self-check",
+  "tlpNoFslCat": "No FSL signs in this category yet — try another.",
+  "lrTimeUp": "Time’s up for today",
+  "lrUsed": "You’ve used {used} of {limit} minutes.",
+  "@lrUsed": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "lrOutsideHours": "Outside study hours",
+  "lrAllowed": "Allowed: {start} – {end}.",
+  "@lrAllowed": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "lrAlarm": "Alarm",
+  "lrTakeBreak": "Time to take a break.",
+  "lrRoutineTime": "Routine time",
+  "lrFinishThis": "Finish this to carry on.",
+  "nsDailyTitle": "📚 Time to Learn!",
+  "nsDailyBody": "Let’s practice some new words today!",
+  "nsReviewTitle": "🧠 Words Need Your Attention!",
+  "nsReviewBody": "{count, plural, =1{You have 1 word to review. Let’s strengthen your memory!} other{You have {count} words to review. Let’s strengthen your memory!}}",
+  "@nsReviewBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nsReviewNone": "Time to review your vocabulary and keep your streak going!",
+  "asAlarm": "⏰ Alarm",
+  "asMoment": "Time to take a moment.",
+  "asWrapUp": "Time to wrap up — tap to view.",
+  "asTitle": "Alert Settings",
+  "asEnable": "Enable Alerts",
+  "asEnableSub": "Get notified about student activity",
+  "asThresholds": "Thresholds",
+  "asAccuracyBelow": "Accuracy alert below",
+  "asInactivityAfter": "Inactivity alert after",
+  "asDays": "{count, plural, =1{1 day} other{{count} days}}",
+  "@asDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "asTypes": "Alert Types",
+  "asRecent": "Recent Alerts ({count})",
+  "@asRecent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "asNone": "No alerts yet",
+  "asMinutesAgo": "{count}m ago",
+  "@asMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "asHoursAgo": "{count}h ago",
+  "@asHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "asDaysAgo": "{count}d ago",
+  "@asDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "atLowAccuracy": "Low Accuracy",
+  "atStreakBroken": "Streak Broken",
+  "atInactivity": "Inactivity",
+  "atOverdue": "Assignment Overdue",
+  "atAchievement": "Achievement Earned",
+  "atAssessment": "Assessment Completed",
+  "amLowAccuracy": "{name}’s accuracy is {accuracy}% (below {threshold}% threshold)",
+  "@amLowAccuracy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "accuracy": {
+        "type": "String"
+      },
+      "threshold": {
+        "type": "String"
+      }
+    }
+  },
+  "amInactive": "{name} has been inactive for {days} days",
+  "@amInactive": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "amStreak": "{name}’s streak was broken",
+  "@amStreak": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "daTitle": "Detailed Analytics",
+  "daAvgSession": "Average Session",
+  "daMinutesPerSession": "{minutes} minutes per session",
+  "@daMinutesPerSession": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "aaCategoryOverview": "Category Overview",
+  "aaMastered": "{count} Mastered",
+  "@aaMastered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aaLearning": "{count} Learning",
+  "@aaLearning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aaNew": "{count} New",
+  "@aaNew": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aaSessionInsights": "Session Insights",
+  "aaAvgSession": "Avg Session",
+  "aaTotalSessions": "Total Sessions",
+  "ptTitle": "{name} — Timeline",
+  "@ptTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "ptAccuracySub": "Average daily accuracy — last 30 days",
+  "ptStudyTime": "Study Time ⏱️",
+  "ptMinutesSub": "Minutes per day — last 30 days",
+  "ptAvgPerDay": "Avg: {minutes} min/day",
+  "@ptAvgPerDay": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "ptCategoryProgress": "Category Progress 📚",
+  "ptNotEnough": "Not enough data yet",
+  "scmpSelect2": "Select at least 2 students to compare",
+  "scmpSelect23": "Select 2–3 students above to compare",
+  "scmpStreakDays": "Streak (days)",
+  "scmpStarsEarned": "Stars Earned",
+  "scmpCategoryComparison": "Category Comparison",
+  "scmpStrengths": "Strengths & Weaknesses",
+  "cmSignIn": "Please sign in to manage classes.",
+  "mqRoundsPerPlayer": "Rounds per Player",
+  "gzFocusHint": "Look ◀ ▶ ▲ ▼ to move · blink to press",
+  "spdSupport": "Support",
+  "lgcPerCategory": "Per-Category Breakdown",
+  "rsTimer": "Timer",
+  "ebTitle": "Oops! Something went wrong",
+  "ebBody": "This part of the app ran into a problem.\nTry going back or restarting the app.",
+  "gwAuto": "Auto",
+  "gwStarsOf": "{stars} out of {max} stars",
+  "@gwStarsOf": {
+    "placeholders": {
+      "stars": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "cdPlaying": "Playing Games",
+  "cdReviewing": "Reviewing Flashcards",
+  "cdStudying": "Studying",
+  "brRestored": "Backup restored successfully!",
+  "brNoFile": "No file selected.",
+  "brCantRead": "Could not read the file.",
+  "brPickFailed": "Could not open the file picker. Please try again.",
+  "brCorrupt": "Invalid backup file. The file may be corrupted.",
+  "brBadFormat": "Invalid backup format. Could not read the data.",
+  "brNewer": "This backup was made with a newer version of FlashLearn PWD. Please update the app first.",
+  "brNoData": "Invalid backup structure. No data found.",
+  "brRestoreFailed": "Could not restore the backup. Please try again.",
+  "csxNotConnected": "Cloud sync isn’t connected",
+  "csxNotConnectedBody": "Restart the app. If it still isn’t connected, check this device’s internet.",
+  "ieImported": "Successfully imported “{name}”",
+  "@ieImported": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "ieNoFile": "No file selected",
+  "ieCantRead": "Could not read the file",
+  "ieBadFormat": "Invalid file format",
+  "ieNotProfile": "This file does not contain a valid student profile",
+  "ieExists": "A profile with this ID already exists. Delete it first or export from a different device.",
+  "ieReadFailed": "Could not read the file. Please try again.",
+  "ehNetwork": "Network error. Please check your connection.",
+  "ehFormat": "Data format error. Some data may be corrupted.",
+  "ehTimeout": "Operation timed out. Please try again.",
+  "ehGeneric": "Something went wrong. The app will continue working.",
+  "dwsUnlocked": "{badge} unlocked!",
+  "@dwsUnlocked": {
+    "placeholders": {
+      "badge": {
+        "type": "String"
+      }
+    }
+  }
 }

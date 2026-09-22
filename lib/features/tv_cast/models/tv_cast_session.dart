@@ -1,4 +1,5 @@
 import '../../../data/models/enums.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../live_session/models/live_session_models.dart';
 
 /// What the TV is currently showing.
@@ -54,6 +55,30 @@ extension CastThemeX on CastTheme {
     CastTheme.highContrast => 'Black/white/yellow for low vision.',
     CastTheme.dyslexia => 'Lexend on cream, with looser spacing.',
   };
+
+  /// [label] in the app's language.
+  String labelOf(AppLocalizations t) => switch (this) {
+    CastTheme.dark => t.ctDark,
+    CastTheme.light => t.ctLight,
+    CastTheme.classroom => t.ctClassroom,
+    CastTheme.playful => t.ctPlayful,
+    CastTheme.calm => t.ctCalm,
+    CastTheme.seasonal => t.ctSeasonal,
+    CastTheme.highContrast => t.ctHighContrast,
+    CastTheme.dyslexia => t.ctDyslexia,
+  };
+
+  /// [description] in the app's language.
+  String descriptionOf(AppLocalizations t) => switch (this) {
+    CastTheme.dark => t.ctDarkDesc,
+    CastTheme.light => t.ctLightDesc,
+    CastTheme.classroom => t.ctClassroomDesc,
+    CastTheme.playful => t.ctPlayfulDesc,
+    CastTheme.calm => t.ctCalmDesc,
+    CastTheme.seasonal => t.ctSeasonalDesc,
+    CastTheme.highContrast => t.ctHighContrastDesc,
+    CastTheme.dyslexia => t.ctDyslexiaDesc,
+  };
 }
 
 /// Where Flashcards / Stories speech is produced. `tv` makes the TV browser
@@ -87,6 +112,13 @@ extension CastTextSizeX on CastTextSize {
     CastTextSize.extraLarge => 'Extra large',
   };
 
+  /// [label] in the app's language.
+  String labelOf(AppLocalizations t) => switch (this) {
+    CastTextSize.normal => t.ctSizeNormal,
+    CastTextSize.large => t.ctSizeLarge,
+    CastTextSize.extraLarge => t.ctSizeXl,
+  };
+
   /// Sent to the TV, which maps it to a `body.text-<name>` class.
   String get wireName => switch (this) {
     CastTextSize.normal => 'normal',
@@ -108,6 +140,13 @@ extension CastLanguageX on CastLanguage {
     CastLanguage.both => 'Both',
     CastLanguage.english => 'English',
     CastLanguage.filipino => 'Filipino',
+  };
+
+  /// [label] in the app's language.
+  String labelOf(AppLocalizations t) => switch (this) {
+    CastLanguage.both => t.ctLangBoth,
+    CastLanguage.english => t.sqEnglish,
+    CastLanguage.filipino => t.wsFilipino,
   };
 
   /// Sent to the TV, which maps it to a `body.lang-<name>` class and uses it
@@ -232,6 +271,18 @@ extension CastProgressViewX on CastProgressView {
     CastProgressView.leaderboard => 'Top 10 by stars, ranked.',
     CastProgressView.classWins =>
       'What the class did together, then everyone A–Z — no ranking.',
+  };
+
+  /// [label] in the app's language.
+  String labelOf(AppLocalizations t) => switch (this) {
+    CastProgressView.leaderboard => t.ctLeaderboard,
+    CastProgressView.classWins => t.ctClassWins,
+  };
+
+  /// [description] in the app's language.
+  String descriptionOf(AppLocalizations t) => switch (this) {
+    CastProgressView.leaderboard => t.ctLeaderboardDesc,
+    CastProgressView.classWins => t.ctClassWinsDesc,
   };
 }
 

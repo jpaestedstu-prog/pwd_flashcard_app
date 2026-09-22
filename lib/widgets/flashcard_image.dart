@@ -8,6 +8,8 @@ import '../core/theme/app_typography.dart';
 import '../data/local/seed_data.dart';
 import '../data/models/enums.dart';
 import '../data/models/models.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// A reusable widget that renders a visual representation of a flashcard.
 ///
@@ -103,9 +105,12 @@ class FlashcardImage extends StatefulWidget {
 
   /// The instruction shown in [interactive] mode for the current face. Worded
   /// to match the Stories tap-to-flip pictures so both features read the same.
-  static String tapHint({required bool showingPhoto}) => showingPhoto
-      ? 'Tap to see the cartoon picture.'
-      : 'Tap to see the real picture.';
+  static String tapHint({required bool showingPhoto, AppLocalizations? l10n}) =>
+      l10n == null
+          ? (showingPhoto
+                ? 'Tap to see the cartoon picture.'
+                : 'Tap to see the real picture.')
+          : (showingPhoto ? l10n.fiTapCartoon : l10n.fiTapReal);
 
   @override
   State<FlashcardImage> createState() => _FlashcardImageState();
@@ -147,7 +152,7 @@ class _FlashcardImageState extends State<FlashcardImage> {
   /// only on a warm cache.
   String get _label => widget.revealsAnswer
       ? '${widget.card.wordEnglish}, ${widget.card.wordFilipino}'
-      : FlashcardImage.answerSafeLabel;
+      : _t(context).fiPictureClue;
 
   @override
   void initState() {
@@ -239,12 +244,12 @@ class _FlashcardImageState extends State<FlashcardImage> {
             button: true,
             label: widget.revealsAnswer
                 ? (_showPhoto
-                      ? 'Real picture of ${widget.card.wordEnglish}. '
-                            'Tap to see the cartoon picture.'
-                      : 'Cartoon picture of ${widget.card.wordEnglish}. '
-                            'Tap to see the real picture.')
-                : '${FlashcardImage.answerSafeLabel}. '
-                      '${FlashcardImage.tapHint(showingPhoto: _showPhoto)}',
+                      ? '${_t(context).fiRealOf(widget.card.wordEnglish)} '
+                            '${_t(context).fiTapCartoon}'
+                      : '${_t(context).fiCartoonOf(widget.card.wordEnglish)}. '
+                            '${_t(context).fiTapReal}')
+                : '${_t(context).fiPictureClue}. '
+                      '${FlashcardImage.tapHint(showingPhoto: _showPhoto, l10n: _t(context))}',
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _toggle,
@@ -336,7 +341,10 @@ class _FlashcardImageState extends State<FlashcardImage> {
           // FittedBox (unbounded width), where a flex child would throw. The
           // FittedBox scales the whole pill to fit instead.
           Text(
-            FlashcardImage.tapHint(showingPhoto: _showPhoto),
+            FlashcardImage.tapHint(
+              showingPhoto: _showPhoto,
+              l10n: _t(context),
+            ),
             style: AppTypography.titleSmall.copyWith(
               color: AppColors.primaryDark,
               fontWeight: FontWeight.w700,
@@ -602,3 +610,8 @@ class FlashcardEmoji extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

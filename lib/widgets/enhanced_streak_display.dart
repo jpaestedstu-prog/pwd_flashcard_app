@@ -5,6 +5,8 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/reduced_motion.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  Enhanced Streak Display
@@ -102,7 +104,7 @@ class EnhancedStreakHero extends StatelessWidget {
           const SizedBox(height: 2),
 
           Text(
-            'Day Streak',
+            _t(context).dayStreak,
             style: AppTypography.titleSmall.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
               fontWeight: FontWeight.w600,
@@ -127,7 +129,7 @@ class EnhancedStreakHero extends StatelessWidget {
                 Text(tier.emoji, style: const TextStyle(fontSize: 16)),
                 const SizedBox(width: 6),
                 Text(
-                  tier.label,
+                  tier.labelOf(_t(context)),
                   style: AppTypography.labelMedium.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -142,7 +144,7 @@ class EnhancedStreakHero extends StatelessWidget {
           if (nextMilestone > 0) ...[
             const SizedBox(height: 10),
             Text(
-              '${nextMilestone - streakDays} day${nextMilestone - streakDays == 1 ? '' : 's'} to $nextMilestone-day milestone',
+              _t(context).sdToMilestone(nextMilestone - streakDays, nextMilestone),
               style: AppTypography.labelSmall.copyWith(
                 color: Colors.white.withValues(alpha: 0.7),
                 fontWeight: FontWeight.w500,
@@ -163,7 +165,7 @@ class EnhancedStreakHero extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'Best: $longestStreak days',
+                  _t(context).sdBest(longestStreak!),
                   style: AppTypography.labelSmall.copyWith(
                     color: Colors.white.withValues(alpha: 0.6),
                   ),
@@ -199,6 +201,15 @@ class _StreakTier {
     required this.gradientColors,
     required this.minDays,
   });
+
+  /// [label] in the learner's language.
+  String labelOf(AppLocalizations t) => switch (minDays) {
+    0 => t.sdTierStarting,
+    3 => t.sdTierBuilding,
+    7 => t.sdTierFire,
+    14 => t.sdTierBlazing,
+    _ => t.sdTierChampion,
+  };
 
   static _StreakTier forDays(int days) {
     if (days >= 30) return champion;
@@ -573,3 +584,8 @@ class _AnimatedStreakIconState extends State<AnimatedStreakIcon>
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

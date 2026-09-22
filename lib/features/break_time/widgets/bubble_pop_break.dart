@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// A gentle, **no-fail** bubble-popping field for the "I Need a Break" screen.
 ///
@@ -158,7 +160,7 @@ class _BubblePopBreakState extends State<BubblePopBreak>
         _size = Size(constraints.maxWidth, constraints.maxHeight);
         final t = _elapsed;
         return Semantics(
-          label: 'Pop the bubbles. This is just for fun — there is no score.',
+          label: _t(context).bpSemantics,
           child: RepaintBoundary(
             child: ClipRect(
               child: SizedBox.expand(
@@ -246,3 +248,8 @@ class _BubbleVisual extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

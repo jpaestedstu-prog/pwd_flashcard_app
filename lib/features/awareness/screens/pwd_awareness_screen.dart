@@ -52,27 +52,21 @@ class PwdAwarenessScreen extends StatelessWidget {
               AppSpacing.gapXl,
 
               // ─── What is a PWD? ─────────────────────
-              const _Section(
+              _Section(
                 index: 0,
                 icon: Icons.diversity_3_rounded,
                 color: AppColors.primary,
-                title: 'What does “PWD” mean?',
-                body:
-                    'PWD stands for Persons with Disabilities — people who have '
-                    'a long-term physical, sensory, cognitive, or learning '
-                    'condition. Disability is a natural part of human '
-                    'diversity. Use person-first language: say “a person with '
-                    'a disability,” not “a disabled person.” Every learner '
-                    'deserves the same respect and the same chance to learn.',
+                title: l10n.awWhatTitle,
+                body: l10n.awWhatBody,
               ),
 
               AppSpacing.gapLg,
 
               // ─── Types of disability ────────────────
-              const _SectionHeader(
+              _SectionHeader(
                 icon: Icons.category_rounded,
                 color: AppColors.secondary,
-                title: 'Common kinds of disability',
+                title: l10n.awKindsTitle,
               ),
               AppSpacing.gapSm,
               ...DisabilityType.values
@@ -96,19 +90,17 @@ class PwdAwarenessScreen extends StatelessWidget {
               AppSpacing.gapLg,
 
               // ─── Respectful interaction ─────────────
-              const _Section(
+              _Section(
                 index: 1,
                 icon: Icons.volunteer_activism_rounded,
                 color: AppColors.accent,
-                title: 'Interacting respectfully',
+                title: l10n.awRespectTitle,
                 bullets: [
-                  'Speak directly to the person, not to their companion or '
-                      'interpreter.',
-                  'Ask before you help — don\'t assume someone needs it.',
-                  'Be patient and give people time to respond.',
-                  'Keep language simple and clear; avoid labels and pity.',
-                  'A wheelchair, cane, or guide is personal space — don\'t '
-                      'touch it without permission.',
+                  l10n.awRespect1,
+                  l10n.awRespect2,
+                  l10n.awRespect3,
+                  l10n.awRespect4,
+                  l10n.awRespect5,
                 ],
               ),
 
@@ -119,31 +111,23 @@ class PwdAwarenessScreen extends StatelessWidget {
                 index: 2,
                 icon: Icons.sign_language_rounded,
                 color: DisabilityType.hearing.color,
-                title: 'Communicating accessibly',
-                body:
-                    'Many Deaf and hard-of-hearing Filipinos communicate '
-                    'through Filipino Sign Language (FSL) — a complete language '
-                    'with its own grammar. Captions, plain text, pictures, and '
-                    'sign-language video all make information reach more '
-                    'people. This app teaches vocabulary alongside FSL clips '
-                    'so signing learners are included from the start.',
+                title: l10n.awCommTitle,
+                body: l10n.awCommBody,
               ),
 
               AppSpacing.gapLg,
 
               // ─── How the app helps ──────────────────
-              const _Section(
+              _Section(
                 index: 3,
                 icon: Icons.accessibility_new_rounded,
                 color: AppColors.primary,
-                title: 'How FlashLearn PWD helps',
+                title: l10n.awHelpsTitle,
                 bullets: [
-                  'High-contrast and dyslexia-friendly themes for easier '
-                      'reading.',
-                  'Adjustable font size, reduced motion, and text-to-speech.',
-                  'Filipino Sign Language videos in flashcards and stories.',
-                  'Hands-free gaze control — move your head or blink to '
-                      'select.',
+                  l10n.awHelps1,
+                  l10n.awHelps2,
+                  l10n.awHelps3,
+                  l10n.awHelps4,
                 ],
               ),
             ],

@@ -60,8 +60,13 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
     ref.read(hapticServiceProvider).success();
 
     if (mounted) {
-      AppSnackBar.success(context,
-          message: 'Survey submitted! Thank you for your feedback.');
+      final filipino = ref.read(settingsProvider).locale == 'fil';
+      AppSnackBar.success(
+        context,
+        message: filipino
+            ? 'Naisumite ang sarbey! Salamat sa iyong feedback.'
+            : 'Survey submitted! Thank you for your feedback.',
+      );
       context.pop(result);
     }
   }

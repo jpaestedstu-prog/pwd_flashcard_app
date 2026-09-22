@@ -1,5 +1,7 @@
 import '../../data/models/enums.dart';
+import 'learner_support.dart';
 import '../../data/models/models.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Maps each [DisabilityType] to an optimized [AppSettings] preset.
 ///
@@ -83,6 +85,51 @@ class AccessibilityPresets {
     };
   }
 
+  /// Layer a learner's own supports on top of the category preset.
+  ///
+  /// The preset answers "what does this category need?"; this answers "and
+  /// what did *this* learner ask for?". Only ever applied straight after
+  /// [presetFor], so the learner's answer wins where the two disagree.
+  ///
+  /// Deliberately narrow. Every support listed here changes something a person
+  /// can see; the rest are recorded on the profile for the teaching team and
+  /// say so in their own description, rather than pretending to be switches.
+  static AppSettings applySupports(
+    AppSettings settings,
+    Iterable<LearnerSupportOption> supports,
+  ) {
+    var next = settings;
+    for (final support in supports) {
+      next = switch (support) {
+        // Blind / very low vision: the screen is the second channel.
+        LearnerSupportOption.audioFirst => next.copyWith(
+          ttsEnabled: true,
+          voiceNavigation: true,
+        ),
+        // Usable vision, but only at size — and then TTS is a distraction
+        // rather than the main road in, so it is left as the preset had it.
+        LearnerSupportOption.largePrint => next.copyWith(
+          fontScale: next.fontScale < 1.6 ? 1.6 : next.fontScale,
+        ),
+        LearnerSupportOption.spokenAnswerChoices =>
+          next.copyWith(ttsEnabled: true),
+        // A chime this learner cannot hear is not feedback; the visual
+        // channel has to carry it alone.
+        LearnerSupportOption.visualAlerts => next.copyWith(soundEffects: false),
+        // Fewer things at once, and slow enough to follow.
+        LearnerSupportOption.stepByStep => next.copyWith(
+          slowMotionEnabled: true,
+          dailyMissionSize: 3,
+        ),
+        LearnerSupportOption.simplifiedLanguage => next.copyWith(
+          learningAssistEnabled: true,
+        ),
+        _ => next,
+      };
+    }
+    return next;
+  }
+
   /// Returns a human-readable list of settings that will be changed
   /// when applying the preset for [type].
   static List<SettingChange> changeSummary(DisabilityType type) {
@@ -147,4 +194,39 @@ class SettingChange {
   final String emoji;
 
   const SettingChange(this.name, this.value, this.emoji);
+
+  /// [name] in the reader's language. The list stays in English as data.
+  String nameOf(AppLocalizations? l10n) {
+    if (l10n == null) return name;
+    return switch (name) {
+      'Adaptive Difficulty' => l10n.apAdaptive,
+      'Dyslexia-friendly' => l10n.apDyslexia,
+      'FSL Videos' => l10n.apFslVideos,
+      'Font Size' => l10n.apFontSize,
+      'Gaze Control' => l10n.apGaze,
+      'High Contrast' => l10n.apHighContrast,
+      'Reduced Motion' => l10n.apReducedMotion,
+      'Sound Effects' => l10n.apSoundEffects,
+      'Text-to-Speech' => l10n.apTts,
+      'Voice Navigation' => l10n.apVoiceNav,
+      _ => name,
+    };
+  }
+
+  /// [value] in the reader's language.
+  String valueOf(AppLocalizations? l10n) {
+    if (l10n == null) return value;
+    return switch (value) {
+      'On' => l10n.apOn,
+      'Off' => l10n.apOff,
+      'Prioritized' => l10n.apPrioritized,
+      'Extra Large (130%)' => l10n.apXl130,
+      'Extra Large (140%)' => l10n.apXl140,
+      'Large (120%)' => l10n.apLarge120,
+      'On (hands-free)' => l10n.apHandsFree,
+      'On (Slow)' => l10n.apSlow,
+      'On (Very Slow)' => l10n.apVerySlow,
+      _ => value,
+    };
+  }
 }

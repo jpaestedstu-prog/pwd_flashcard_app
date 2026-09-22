@@ -18,6 +18,7 @@ import '../../../features/gaze_control/providers/gaze_settings_provider.dart';
 import '../../../features/gaze_control/widgets/gaze_dpad_scope.dart';
 import '../../../providers/app_providers.dart';
 import '../../../core/utils/accessible_sizing.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Screen shown when multiple profiles exist on the device.
 /// Allows switching between profiles. If a profile has a PIN,
@@ -96,7 +97,7 @@ class _ProfileSwitcherScreenState extends ConsumerState<ProfileSwitcherScreen> {
         ],
       [
         GazeDpadCell(
-          label: 'Add New Profile',
+          label: _t(context).psAddNew,
           onActivate: () => context.go('/profile'),
         ),
       ],
@@ -310,7 +311,7 @@ class _ProfileCard extends StatelessWidget {
                           if (profile.age != null)
                             _InfoChip(
                               icon: Icons.cake_rounded,
-                              label: '${profile.age} yrs',
+                              label: _t(context).profileAgeYrs(profile.age!),
                             ),
                           if (profile.gradeLevel != null)
                             _InfoChip(
@@ -544,7 +545,7 @@ class _PinEntryDialogState extends State<_PinEntryDialog> {
 
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(_t(context).cancel),
             ),
           ],
         ),
@@ -694,7 +695,7 @@ class _RecoveryCodeSheetState extends State<_RecoveryCodeSheet> {
   Future<void> _applyNewPin() async {
     final pin = _newPinController.text.trim();
     if (pin.length != 4 || !RegExp(r'^\d{4}$').hasMatch(pin)) {
-      setState(() => _error = 'PIN must be exactly 4 digits');
+      setState(() => _error = _t(context).psPinLength);
       return;
     }
     final result = PinCredentialHelper.applyPin(widget.profile, pin);
@@ -761,14 +762,14 @@ class _RecoveryCodeSheetState extends State<_RecoveryCodeSheet> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
+                  child: Text(_t(context).cancel),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: _verifyingCode
                       ? null
                       : (_codeOk ? _applyNewPin : _verifyCode),
-                  child: Text(_codeOk ? 'Save' : 'Continue'),
+                  child: Text(_codeOk ? _t(context).gmSave : _t(context).continueButton),
                 ),
               ],
             ),
@@ -903,12 +904,12 @@ class _EducatorOverrideSheetState extends State<_EducatorOverrideSheet> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
+                  child: Text(_t(context).cancel),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: _educators.isEmpty ? null : _confirm,
-                  child: const Text('Confirm'),
+                  child: Text(_t(context).scConfirm),
                 ),
               ],
             ),
@@ -987,3 +988,8 @@ class _InfoChip extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

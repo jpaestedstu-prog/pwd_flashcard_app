@@ -9,6 +9,8 @@ import '../../../navigation/app_router.dart';
 import '../../../providers/app_providers.dart';
 import '../models/tv_cast_session.dart';
 import '../providers/tv_cast_provider.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Mounts the floating "still casting" pill above every screen.
 ///
@@ -119,9 +121,10 @@ class _Pill extends ConsumerWidget {
         color: Colors.transparent,
         child: Semantics(
           container: true,
-          label: 'Casting to TV. ${_modeLabel(state)}. '
-              '${state.connectedViewers} '
-              '${state.connectedViewers == 1 ? 'viewer' : 'viewers'} connected.',
+          label: _t(context).cspSemantics(
+            _modeLabel(context, state),
+            state.connectedViewers,
+          ),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: AppColors.primary,
@@ -155,8 +158,8 @@ class _Pill extends ConsumerWidget {
                               children: [
                                 Text(
                                   state.isAway
-                                      ? 'Casting — teacher is out'
-                                      : 'Casting to TV',
+                                      ? _t(context).cspTeacherOut
+                                      : _t(context).tcpCasting,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.labelMedium.copyWith(
@@ -165,8 +168,10 @@ class _Pill extends ConsumerWidget {
                                   ),
                                 ),
                                 Text(
-                                  '${_modeLabel(state)} · '
-                                  '${state.connectedViewers} watching',
+                                  _t(context).cspWatching(
+                                    _modeLabel(context, state),
+                                    state.connectedViewers,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.bodySmall.copyWith(
@@ -184,19 +189,19 @@ class _Pill extends ConsumerWidget {
                 if (steppable) ...[
                   _PillButton(
                     icon: Icons.skip_previous_rounded,
-                    label: 'Previous on TV',
+                    label: _t(context).cspPrev,
                     onTap: notifier.prev,
                   ),
                   _PillButton(
                     icon: state.isPaused
                         ? Icons.play_arrow_rounded
                         : Icons.pause_rounded,
-                    label: state.isPaused ? 'Resume cast' : 'Pause cast',
+                    label: state.isPaused ? _t(context).cspResume : _t(context).cspPause,
                     onTap: notifier.togglePause,
                   ),
                   _PillButton(
                     icon: Icons.skip_next_rounded,
-                    label: 'Next on TV',
+                    label: _t(context).cspNext,
                     onTap: notifier.next,
                   ),
                 ],
@@ -209,13 +214,14 @@ class _Pill extends ConsumerWidget {
     );
   }
 
-  String _modeLabel(TvCastSession state) => switch (state.mode) {
-        CastMode.flashcards => 'Flashcards',
-        CastMode.fslVideo => 'FSL signs',
-        CastMode.story => 'Stories',
-        CastMode.progress => 'Progress',
-        CastMode.live => 'Live Activity',
-        CastMode.idle => 'Nothing selected',
+  String _modeLabel(BuildContext context, TvCastSession state) =>
+      switch (state.mode) {
+        CastMode.flashcards => _t(context).tcFlashcards,
+        CastMode.fslVideo => _t(context).tcFslSigns,
+        CastMode.story => _t(context).tcStories,
+        CastMode.progress => _t(context).tcProgress,
+        CastMode.live => _t(context).tcLiveActivity,
+        CastMode.idle => _t(context).tcpNothing,
       };
 }
 
@@ -290,3 +296,8 @@ class _PillButton extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

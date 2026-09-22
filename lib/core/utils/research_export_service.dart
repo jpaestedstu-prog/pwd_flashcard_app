@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../data/models/models.dart';
@@ -17,6 +19,7 @@ import '../../features/experiment/services/experiment_service.dart';
 import '../services/adaptive_difficulty_service.dart';
 import '../services/engagement_tracker.dart';
 import 'research_export_rows.dart';
+import '../accessibility/learner_support.dart';
 
 /// Generates anonymized, cross-student research data exports for thesis
 /// analysis. Unlike [CsvExportService] (single-student), this aggregates
@@ -42,21 +45,120 @@ import 'research_export_rows.dart';
 class ResearchExportService {
   const ResearchExportService._();
 
-  /// Generate all research CSV files and share as a bundle.
-  static Future<void> generateAndShare() async {
-    final profiles = HiveService.getAllProfilesWithProgress();
-    // Research data is intentionally scoped to the Student role only — the
-    // study population for this thesis is PWD *students*. Child (family-group)
-    // and Player profiles are deliberately excluded from the dataset, so the
-    // engagement tracker is likewise only attached for Students (see
-    // engagementTrackerProvider in navigation/app_router.dart). This is by
-    // design, not an omission; widening the population is a methodology +
-    // consent decision, not a code change.
-    final students = profiles
-        .where((p) => p.$1.role == UserRole.student)
-        .toList();
+  /// Who the research dataset covers.
+  ///
+  /// Every enrolled learner — a classroom **Student** and a home-group
+  /// **Child** alike. The export used to take Students only, on the grounds
+  /// that the study population was students; Chapter IV now names respondents
+  /// "from selected schools, special education centers, and homes", and
+  /// Chapter V has a parent create a home group for the learner to join.
+  /// Home-group learners are the Child role, so every home respondent's
+  /// pre-test and post-test was being silently left out of the dataset.
+  ///
+  /// [local] is this device's profiles. [roster] is the educator's
+  /// Firestore-backed roster: a learner who uses a different tablet has no
+  /// local profile row here, but their assessment results *are* pulled onto
+  /// this device by the educator sync — without the roster their outcome data
+  /// sat on the device with nothing to export it under. A learner present in
+  /// both keeps the local row, which is the fresher of the two.
+  static List<(UserProfile, LearningProgress)> researchPopulation(
+    List<(UserProfile, LearningProgress)> local, {
+    List<(UserProfile, LearningProgress)> roster = const [],
+  }) {
+    final out = <(UserProfile, LearningProgress)>[];
+    final seen = <String>{};
+    for (final pair in [...local, ...roster]) {
+      final profile = pair.$1;
+      if (!profile.role.isEnrollableLearner || profile.isGuestPlayer) continue;
+      if (seen.add(profile.id)) out.add(pair);
+    }
+    return out;
+  }
 
-    if (students.isEmpty) return;
+  /// Who is ticked on the export screen before the educator changes anything:
+  /// the learners in *their own* classes and home groups — [rosterIds] from
+  /// the cloud roster, plus any local profile whose class or home group is in
+  /// [groupIds] (so a teacher offline still gets their class).
+  ///
+  /// A shared tablet also holds other classes' learners, practice profiles
+  /// and last term's pupils. The export used to take all of them, and there
+  /// was no way to tell them apart once anonymised; now they are listed but
+  /// left unticked, and only ticked learners are written.
+  static Set<String> defaultParticipants(
+    List<(UserProfile, LearningProgress)> population, {
+    Set<String> rosterIds = const {},
+    Set<String> groupIds = const {},
+  }) => {
+    for (final (profile, _) in population)
+      if (rosterIds.contains(profile.id) ||
+          (profile.classroomId != null &&
+              groupIds.contains(profile.classroomId)) ||
+          (profile.homeGroupId != null &&
+              groupIds.contains(profile.homeGroupId)))
+        profile.id,
+  };
+
+  /// A stable anonymous id for [profileId]: `S-` for a learner, `T-` for an
+  /// educator, then eight hex digits of its SHA-256.
+  ///
+  /// The ids used to be positional — S001, S002 in the order profiles sat on
+  /// the exporting device. A study needs more than one export (teachers and
+  /// parents answer the SUS on their own devices), and positional ids make a
+  /// merged dataset wrong: one device's S001 is another device's S003. A hash
+  /// of the profile id gives the same learner the same id in every export,
+  /// from every device, and still names nobody.
+  static String anonymousId(String profileId, {bool learner = true}) {
+    final digest = sha256.convert(utf8.encode(profileId)).toString();
+    return '${learner ? 'S' : 'T'}-${digest.substring(0, 8).toUpperCase()}';
+  }
+
+  /// Every export file, by name, for [learners]. Split out of
+  /// [generateAndShare] so the dataset can be checked without a filesystem or
+  /// a share sheet.
+  @visibleForTesting
+  static Map<String, String> buildFiles(
+    List<(UserProfile, LearningProgress)> learners,
+  ) {
+    final idMap = {
+      for (final (profile, _) in learners) profile.id: anonymousId(profile.id),
+    };
+    return {
+      'students_overview.csv': _buildStudentsOverview(learners, idMap),
+      'learning_curves.csv': _buildLearningCurves(learners, idMap),
+      'session_patterns.csv': _buildSessionPatterns(learners, idMap),
+      'category_mastery.csv': _buildCategoryMastery(learners, idMap),
+      'word_accuracy.csv': _buildWordAccuracy(learners, idMap),
+      'assessment_results.csv': _buildAssessmentResults(learners, idMap),
+      'item_responses.csv': _buildItemResponses(learners, idMap),
+      'mood_data.csv': _buildMoodData(learners, idMap),
+      'adaptive_difficulty.csv': _buildAdaptiveDifficulty(learners, idMap),
+      'sus_survey_results.csv': _buildSusSurveyResults(learners, idMap),
+      'student_experience.csv': _buildStudentExperience(learners, idMap),
+      'experiment_groups.csv': _buildExperimentGroups(learners, idMap),
+      'engagement_metrics.csv': _buildEngagementMetrics(learners, idMap),
+      'fsl_engagement.csv': _buildFslEngagement(learners, idMap),
+      'fsl_mastery.csv': _buildFslMastery(learners, idMap),
+      'summary_stats.json': _buildSummaryJson(learners, idMap),
+    };
+  }
+
+  /// Generate all research CSV files and share as a bundle.
+  ///
+  /// Pass the educator's [roster] so learners on other devices are included
+  /// — see [researchPopulation] — and [onlyIds] to write just the learners
+  /// the educator ticked (see [defaultParticipants]).
+  static Future<void> generateAndShare({
+    List<(UserProfile, LearningProgress)> roster = const [],
+    Set<String>? onlyIds,
+  }) async {
+    final learners = [
+      for (final pair in researchPopulation(
+        HiveService.getAllProfilesWithProgress(),
+        roster: roster,
+      ))
+        if (onlyIds == null || onlyIds.contains(pair.$1.id)) pair,
+    ];
+    if (learners.isEmpty) return;
 
     final dir = await getTemporaryDirectory();
     final dateStr = DateTime.now().toString().split(' ').first;
@@ -66,142 +168,10 @@ class ResearchExportService {
     }
     await exportDir.create(recursive: true);
 
-    // Build anonymized ID mapping: profileId → "S001", "S002", ...
-    final idMap = <String, String>{};
-    for (var i = 0; i < students.length; i++) {
-      idMap[students[i].$1.id] = 'S${(i + 1).toString().padLeft(3, '0')}';
-    }
-
-    // Generate all CSV files in parallel
-    final files = <XFile>[];
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'students_overview.csv',
-        _buildStudentsOverview(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'learning_curves.csv',
-        _buildLearningCurves(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'session_patterns.csv',
-        _buildSessionPatterns(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'category_mastery.csv',
-        _buildCategoryMastery(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'word_accuracy.csv',
-        _buildWordAccuracy(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'assessment_results.csv',
-        _buildAssessmentResults(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'item_responses.csv',
-        _buildItemResponses(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'mood_data.csv',
-        _buildMoodData(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'adaptive_difficulty.csv',
-        _buildAdaptiveDifficulty(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'sus_survey_results.csv',
-        _buildSusSurveyResults(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'student_experience.csv',
-        _buildStudentExperience(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'experiment_groups.csv',
-        _buildExperimentGroups(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'engagement_metrics.csv',
-        _buildEngagementMetrics(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'fsl_engagement.csv',
-        _buildFslEngagement(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'fsl_mastery.csv',
-        _buildFslMastery(students, idMap),
-      ),
-    );
-
-    files.add(
-      await _writeFile(
-        exportDir,
-        'summary_stats.json',
-        _buildSummaryJson(students, idMap),
-      ),
-    );
+    final files = <XFile>[
+      for (final entry in buildFiles(learners).entries)
+        await _writeFile(exportDir, entry.key, entry.value),
+    ];
 
     await Share.shareXFiles(
       files,
@@ -217,7 +187,15 @@ class ResearchExportService {
   ) {
     final buf = StringBuffer();
     buf.writeln(
-      'student_id,disability_type,grade_level,age,'
+      // learner_role separates school respondents (student) from home ones
+      // (child) now that both are in the dataset.
+      'student_id,learner_role,disability_type,'
+      // The category alone cannot separate a Deaf learner who signs from one
+      // who reads, and the study compares exactly those learners. English
+      // enum ids, like every other cell here, so the file reads the same
+      // whoever exported it.
+      'communication_mode,support_options,'
+      'grade_level,age,'
       'words_learned,total_stars,streak_days,games_played,'
       'avg_accuracy,study_minutes_total,days_active,'
       'achievements_unlocked,categories_explored,'
@@ -235,10 +213,14 @@ class ResearchExportService {
         0,
         (sum, s) => sum + (((s['durationSeconds'] as int?) ?? 0) ~/ 60),
       );
-      final uniqueDays = sessions
-          .map((s) => (s['date'] as String? ?? '').split(' ').first)
-          .toSet()
-          .length;
+      // Calendar days, not sessions. Session dates are ISO-8601
+      // ("2026-09-21T15:40:28"), so the old split on a space kept the whole
+      // timestamp and every session counted as its own "day".
+      final uniqueDays = {
+        for (final s in sessions)
+          if (DateTime.tryParse(s['date'] as String? ?? '') case final d?)
+            DateTime(d.year, d.month, d.day),
+      }.length;
       final achievements = HiveService.getUnlockedAchievements(
         profile.id,
       ).length;
@@ -253,7 +235,10 @@ class ResearchExportService {
 
       buf.writeln(
         '$sid,'
+        '${profile.role.name},'
         '${profile.disabilityType.name},'
+        '${profile.communicationMode?.name ?? ""},'
+        '${_esc(LearnerSupportCatalog.encode(profile.supports).join(" "))},'
         '${profile.gradeLevel?.name ?? "unknown"},'
         '${profile.age ?? ""},'
         '${progress.wordsLearned},'
@@ -557,13 +542,14 @@ class ResearchExportService {
     // (teachers/parents) gets a T-id. respondent_role lets you filter.
     final roleById = <String, String>{};
     final anonById = <String, String>{...idMap};
-    var t = 0;
     for (final (profile, _) in HiveService.getAllProfilesWithProgress()) {
       roleById[profile.id] = profile.role.name;
-      anonById.putIfAbsent(profile.id, () {
-        t += 1;
-        return 'T${t.toString().padLeft(3, '0')}';
-      });
+      // Stable for the same reason as learner ids: a teacher's SUS and a
+      // parent's come from different devices and are merged afterwards.
+      anonById.putIfAbsent(
+        profile.id,
+        () => anonymousId(profile.id, learner: false),
+      );
     }
 
     // Group SUS submissions by respondent.

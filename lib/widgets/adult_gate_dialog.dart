@@ -14,6 +14,8 @@ import '../data/models/models.dart';
 import '../providers/adult_gate_grace_provider.dart';
 import '../providers/app_providers.dart';
 import '../providers/unlocking_educators_provider.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// Asks whoever is holding the device to prove they are the adult, then
 /// returns whether they did.
@@ -134,14 +136,17 @@ class _AdultGateDialogState extends State<AdultGateDialog> {
   void _submitPin() {
     final remaining = _cooldownRemaining;
     if (remaining != null) {
-      setState(() => _error =
-          'Too many tries. Wait ${_formatRemaining(remaining)}.');
+      setState(
+        () => _error = _t(context).agTooMany(
+          _formatRemaining(_t(context), remaining),
+        ),
+      );
       return;
     }
 
     final pin = _controller.text.trim();
     if (pin.length < 4) {
-      setState(() => _error = 'Enter the 4-digit PIN.');
+      setState(() => _error = _t(context).agEnterPin);
       return;
     }
 
@@ -162,9 +167,9 @@ class _AdultGateDialogState extends State<AdultGateDialog> {
     setState(() {
       if (cooldown > Duration.zero) {
         _cooldownEndsAt = DateTime.now().add(cooldown);
-        _error = 'Too many tries. Wait ${_formatRemaining(cooldown)}.';
+        _error = _t(context).agTooMany(_formatRemaining(_t(context), cooldown));
       } else {
-        _error = 'That PIN did not match. Ask your parent or teacher.';
+        _error = _t(context).agPinMismatch;
       }
       _controller.clear();
     });
@@ -179,14 +184,14 @@ class _AdultGateDialogState extends State<AdultGateDialog> {
       // A fresh question rather than a retry of the same one: guessing at a
       // moving target is not worth a learner's patience.
       _challenge = AdultMathChallenge.random(widget.random);
-      _error = 'Not quite. Here is a new question.';
+      _error = _t(context).agNewQuestion;
       _controller.clear();
     });
   }
 
-  static String _formatRemaining(Duration d) {
-    if (d.inMinutes >= 1) return '${d.inMinutes} min';
-    return '${d.inSeconds} s';
+  static String _formatRemaining(AppLocalizations t, Duration d) {
+    if (d.inMinutes >= 1) return t.agMinutes(d.inMinutes);
+    return t.agSeconds(d.inSeconds);
   }
 
   @override
@@ -194,7 +199,7 @@ class _AdultGateDialogState extends State<AdultGateDialog> {
     final hc = HCColor.of(context);
 
     return AlertDialog(
-      title: const Text('Ask an adult'),
+      title: Text(_t(context).agTitle),
       content: SizedBox(
         width: 400,
         child: SingleChildScrollView(
@@ -204,8 +209,8 @@ class _AdultGateDialogState extends State<AdultGateDialog> {
             children: [
               Text(
                 _isPin
-                    ? 'A parent or teacher PIN is needed ${widget.reason}.'
-                    : 'Answer this ${widget.reason}.',
+                    ? _t(context).agPinNeeded(widget.reason)
+                    : _t(context).agAnswerThis(widget.reason),
                 style: AppTypography.bodyMedium.copyWith(
                   color: hc.textSecondary,
                 ),
@@ -215,7 +220,7 @@ class _AdultGateDialogState extends State<AdultGateDialog> {
                 Semantics(
                   // Read as words: a screen reader says "4 times 9" rather
                   // than spelling out the symbol.
-                  label: 'What is ${_challenge.a} times ${_challenge.b}?',
+                  label: _t(context).agTimes(_challenge.a, _challenge.b),
                   child: ExcludeSemantics(
                     child: Text(
                       '${_challenge.question} = ?',
@@ -237,7 +242,7 @@ class _AdultGateDialogState extends State<AdultGateDialog> {
                 maxLength: 4,
                 onSubmitted: (_) => _submit(),
                 decoration: InputDecoration(
-                  labelText: _isPin ? 'PIN' : 'Answer',
+                  labelText: _isPin ? 'PIN' : _t(context).agAnswer,
                   counterText: '',
                 ),
               ),
@@ -256,13 +261,18 @@ class _AdultGateDialogState extends State<AdultGateDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
+          child: Text(_t(context).cancel),
         ),
         FilledButton(
           onPressed: _submit,
-          child: const Text('Continue'),
+          child: Text(_t(context).continueButton),
         ),
       ],
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -3,15 +3,20 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/enums.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../core/utils/score_utils.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/app_providers.dart';
+import '../../../core/utils/localized_date.dart';
 import '../../assessment/models/assessment_models.dart';
+import '../../assessment/models/question_prompt.dart';
 import '../../assessment/providers/assessment_provider.dart';
 import '../../assessment/services/assessment_service.dart';
 import '../widgets/learning_gain_widgets.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Dashboard visualizing pre-test vs post-test learning gains
 class LearningGainScreen extends ConsumerWidget {
@@ -26,11 +31,41 @@ class LearningGainScreen extends ConsumerWidget {
       return Scaffold(
         body: RichEmptyState(
           emoji: '👤',
-          title: 'No Profile Selected',
-          description: 'Select a profile to view learning gain data.',
-          actionLabel: 'Go Back',
+          title: _t(context).lgNoProfile,
+          description: _t(context).lgNoProfileBody,
+          actionLabel: _t(context).lgGoBack,
           actionIcon: Icons.arrow_back_rounded,
           onAction: () => context.pop(),
+        ),
+      );
+    }
+
+    // This dashboard charts the active profile's own pre/post scores, which an
+    // educator does not have and should not be invited to create. There is no
+    // tile into here from an educator home, but voice navigation can still say
+    // "learning gains", so send them to the roster view of the same data.
+    if (profile.role.isEducator) {
+      return Scaffold(
+        backgroundColor: hc.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: const AppBackButton(),
+          title: Text(
+            _t(context).homeLearningGains,
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: hc.textPrimary,
+            ),
+          ),
+        ),
+        body: RichEmptyState(
+          emoji: '📊',
+          title: _t(context).lgEducatorTitle,
+          description: _t(context).lgEducatorBody,
+          actionLabel: _t(context).lgOpenTracking,
+          actionIcon: Icons.track_changes_rounded,
+          onAction: () => context.push('/assessment/tracking'),
         ),
       );
     }
@@ -60,7 +95,7 @@ class LearningGainScreen extends ConsumerWidget {
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Text(
-          'Learning Gains',
+          _t(context).homeLearningGains,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -70,7 +105,7 @@ class LearningGainScreen extends ConsumerWidget {
           TextButton.icon(
             onPressed: () => context.push('/assessment'),
             icon: const Icon(Icons.assignment_rounded, size: 18),
-            label: const Text('Take Test'),
+            label: Text(_t(context).lgTakeTest),
           ),
         ],
       ),
@@ -177,11 +212,9 @@ class _NoDataState extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichEmptyState(
       emoji: '📊',
-      title: 'No Learning Data Yet',
-      description:
-          'Take a Pre-Test first to establish your baseline, '
-          'then take a Post-Test after learning to see your improvement!',
-      actionLabel: 'Take Pre-Test',
+      title: _t(context).lgNoData,
+      description: _t(context).lgNoDataBody,
+      actionLabel: _t(context).lgTakePre,
       actionIcon: Icons.assignment_rounded,
       onAction: onTakeTest,
       accentColor: AppColors.info,
@@ -225,7 +258,7 @@ class _PostTestPrompt extends StatelessWidget {
           const Text('🎯', style: TextStyle(fontSize: 48)),
           const SizedBox(height: 12),
           Text(
-            'Ready for your Post-Test?',
+            _t(context).lgReadyPost,
             style: AppTypography.titleMedium.copyWith(
               color: AppColors.textOnPrimary,
               fontWeight: FontWeight.w800,
@@ -233,7 +266,7 @@ class _PostTestPrompt extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'You\'ve completed your Pre-Test! Take the Post-Test to see how much you\'ve learned.',
+            _t(context).lgReadyPostBody,
             style: AppTypography.bodySmall.copyWith(
               color: AppColors.textOnPrimary.withValues(alpha: 0.9),
             ),
@@ -251,7 +284,7 @@ class _PostTestPrompt extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            child: const Text('Take Post-Test'),
+            child: Text(_t(context).lgTakePost),
           ),
         ],
       ),
@@ -284,7 +317,7 @@ class _AverageScoresCard extends StatelessWidget {
               Icon(Icons.analytics_rounded, size: 22, color: hc.primary),
               const SizedBox(width: 8),
               Text(
-                'Average Scores',
+                _t(context).lgAverageScores,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -323,7 +356,7 @@ class _AverageScoresCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        e.key.label,
+                        e.key.labelOf(_t(context)),
                         style: AppTypography.labelSmall.copyWith(
                           color: hc.textSecondary,
                           fontSize: 10,
@@ -379,7 +412,7 @@ class _AssessmentHistoryCard extends StatelessWidget {
               Icon(Icons.history_rounded, size: 22, color: hc.primary),
               const SizedBox(width: 8),
               Text(
-                'Recent Assessments',
+                _t(context).lgRecent,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -387,7 +420,7 @@ class _AssessmentHistoryCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${results.length} total',
+                _t(context).lgTotal(results.length),
                 style: AppTypography.labelSmall.copyWith(
                   color: hc.textHint,
                 ),
@@ -410,14 +443,14 @@ class _AssessmentHistoryCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          r.type.label,
+                          r.type.labelOf(_t(context)),
                           style: AppTypography.bodySmall.copyWith(
                             color: hc.textPrimary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         Text(
-                          _fmtDate(r.completedAt),
+                          LocalizedDate.monthDayYear(r.completedAt, _t(context)),
                           style: AppTypography.labelSmall.copyWith(
                             color: hc.textHint,
                             fontSize: 10,
@@ -457,13 +490,6 @@ class _AssessmentHistoryCard extends StatelessWidget {
 
   Color _scoreColor(int pct) => scoreColorFromPercent(pct);
 
-  String _fmtDate(DateTime d) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${months[d.month - 1]} ${d.day}, ${d.year}';
-  }
 }
 
 // ─── Recommendations Card ───────────────────────────────
@@ -482,35 +508,34 @@ class _RecommendationsCard extends StatelessWidget {
     final strongest = gains.entries.toList()
       ..sort((a, b) => b.value.post.compareTo(a.value.post));
 
+    final t = _t(context);
+    String cat(String stored) => QuestionPrompt.categoryName(stored, t);
     final recommendations = <_Recommendation>[];
 
     // Identify areas needing improvement
     if (weakest.isNotEmpty && weakest.first.value.post < 0.6) {
       recommendations.add(_Recommendation(
         icon: Icons.school_rounded,
-        title: 'Focus on ${weakest.first.key}',
-        description:
-            'Your weakest category at ${(weakest.first.value.post * 100).round()}%. Try reviewing flashcards and playing games in this category.',
+        title: t.lgFocusOn(cat(weakest.first.key)),
+        description: t.lgFocusBody((weakest.first.value.post * 100).round()),
         color: AppColors.warning,
       ));
     }
 
     if (!report.hasImproved) {
-      recommendations.add(const _Recommendation(
+      recommendations.add(_Recommendation(
         icon: Icons.replay_rounded,
-        title: 'Practice More',
-        description:
-            'Try reviewing flashcards and playing games before retaking the post-test.',
+        title: t.lgPracticeMore,
+        description: t.lgPracticeMoreBody,
         color: AppColors.info,
       ));
     }
 
     if (report.postTestPercentage >= 0.9) {
-      recommendations.add(const _Recommendation(
+      recommendations.add(_Recommendation(
         icon: Icons.emoji_events_rounded,
-        title: 'Excellent Performance!',
-        description:
-            'You\'re doing amazing! Try harder difficulty levels to keep challenging yourself.',
+        title: t.lgExcellent,
+        description: t.lgExcellentBody,
         color: AppColors.success,
       ));
     }
@@ -518,9 +543,8 @@ class _RecommendationsCard extends StatelessWidget {
     if (strongest.isNotEmpty && strongest.first.value.post >= 0.8) {
       recommendations.add(_Recommendation(
         icon: Icons.star_rounded,
-        title: 'Best at ${strongest.first.key}',
-        description:
-            'Your strongest category at ${(strongest.first.value.post * 100).round()}%! Great job!',
+        title: t.lgBestAt(cat(strongest.first.key)),
+        description: t.lgBestBody((strongest.first.value.post * 100).round()),
         color: AppColors.success,
       ));
     }
@@ -531,9 +555,8 @@ class _RecommendationsCard extends StatelessWidget {
     if (mostImproved.isNotEmpty && mostImproved.first.value.gain > 0) {
       recommendations.add(_Recommendation(
         icon: Icons.trending_up_rounded,
-        title: 'Most Improved: ${mostImproved.first.key}',
-        description:
-            'Improved by ${(mostImproved.first.value.gain * 100).round()}% — keep it up!',
+        title: t.lgMostImproved(cat(mostImproved.first.key)),
+        description: t.lgImprovedBy((mostImproved.first.value.gain * 100).round()),
         color: AppColors.accent,
       ));
     }
@@ -553,7 +576,7 @@ class _RecommendationsCard extends StatelessWidget {
               const Icon(Icons.lightbulb_rounded, size: 22, color: AppColors.warning),
               const SizedBox(width: 8),
               Text(
-                'Recommendations',
+                _t(context).lgRecommendations,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -627,3 +650,8 @@ class _Recommendation {
     required this.color,
   });
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

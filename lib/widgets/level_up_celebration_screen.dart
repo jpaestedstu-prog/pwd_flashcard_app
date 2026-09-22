@@ -9,6 +9,8 @@ import '../core/services/xp_level_service.dart';
 import 'tilt_3d.dart';
 import 'animated_gradient_background.dart';
 import '../core/utils/reduced_motion.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// A full-screen celebration overlay that displays when the user levels up.
 ///
@@ -175,6 +177,8 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
     _glowController.syncMotionLoop(reduced, reverse: true);
 
     final lvl = widget.newLevel;
+    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
+    final filipino = t.localeName.startsWith('fil');
     final color = _levelColor;
 
     return GestureDetector(
@@ -246,7 +250,7 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
                           Opacity(
                             opacity: _titleOpacity.value,
                             child: Text(
-                              'LEVEL UP!',
+                              t.levelUpTitle,
                               style: AppTypography.displaySmall.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w900,
@@ -352,7 +356,7 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
                             child: Column(
                               children: [
                                 Text(
-                                  lvl.title,
+                                  lvl.titleOf(filipino: filipino),
                                   style:
                                       AppTypography.headlineMedium.copyWith(
                                     color: Colors.white,
@@ -361,7 +365,7 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'You\'ve reached Level ${lvl.level}!',
+                                  t.levelReached(lvl.level),
                                   style: AppTypography.bodyLarge.copyWith(
                                     color: Colors.white
                                         .withValues(alpha: 0.85),
@@ -379,7 +383,7 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
                             child: FilledButton.icon(
                               onPressed: widget.onDismiss,
                               icon: const Icon(Icons.arrow_forward_rounded),
-                              label: const Text('Continue'),
+                              label: Text(t.continueButton),
                               style: FilledButton.styleFrom(
                                 backgroundColor:
                                     Colors.white.withValues(alpha: 0.25),
@@ -434,7 +438,7 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
                 child: Opacity(
                   opacity: _buttonOpacity.value,
                   child: Text(
-                    'Tap anywhere to continue',
+                    t.levelTapAnywhere,
                     textAlign: TextAlign.center,
                     style: AppTypography.bodySmall.copyWith(
                       color: Colors.white.withValues(alpha: 0.5),

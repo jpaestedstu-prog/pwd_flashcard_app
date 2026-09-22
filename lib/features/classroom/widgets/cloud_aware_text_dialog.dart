@@ -5,6 +5,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import 'accessibility_category_picker.dart';
 import 'cloud_sync_error_view.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Shared "single text field → submit → wait → success/error" dialog
 /// used across the Manage Classes (teacher) and Manage Home Groups
@@ -266,7 +268,9 @@ class _CloudAwareTextDialogState extends ConsumerState<CloudAwareTextDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(
+            (AppLocalizations.of(context) ?? AppLocalizationsEn()).hubCancel,
+          ),
         ),
         FilledButton(
           onPressed: _busy ? null : _handleSubmit,
@@ -300,7 +304,7 @@ class _InlineCloudError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final msg = cloudSyncErrorMessage(error);
+    final msg = cloudSyncErrorMessage(error, AppLocalizations.of(context));
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

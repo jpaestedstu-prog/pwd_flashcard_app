@@ -7,9 +7,17 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/utils/score_utils.dart';
 import '../../../data/models/enums.dart';
+import '../../../core/accessibility/accessibility_content_policy.dart';
+import '../../../data/models/models.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
+import '../../../core/utils/localized_date.dart';
+import '../models/question_prompt.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/student_list_provider.dart';
 import '../../../widgets/shared_widgets.dart';
 import '../models/assessment_models.dart';
+import '../models/post_test_readiness.dart';
 import '../providers/assessment_provider.dart';
 import '../services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
@@ -20,6 +28,7 @@ class AssessmentHubScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final profile = ref.watch(profileProvider);
     final results = ref.watch(assessmentResultsProvider);
     final customAssessments = ref.watch(customAssessmentsProvider);
@@ -27,15 +36,38 @@ class AssessmentHubScreen extends ConsumerWidget {
     final hc = HCColor.of(context);
     final profileId = profile?.id ?? '';
 
-    final hasPreTest = AssessmentService.hasCompletedPreTest(profileId);
-    final hasPostTest = AssessmentService.hasCompletedPostTest(profileId);
-    final gainReport = AssessmentService.getLearningGainReport(profileId);
     // The educator sections belong to the *role*, not just the classroom
     // teacher: a Parent runs the same assessment surface over their home
     // group. Gating on `== UserRole.teacher` left a Parent who opened this
     // screen with nothing but a learner hub inviting them to sit their own
     // pre-test — no builder, no assessments, no way back to their children.
     final isEducator = profile?.role.isEducator ?? false;
+    // Who *sits* the pre-test / post-test pair: the enrolled learners, and
+    // only them. A Teacher runs a class and a Parent runs a home group — they
+    // are measured by what their learners gain, not by taking the instrument
+    // themselves, and this page used to hand them their own copy of it. A
+    // Player has no educator to read a learning gain and is never part of the
+    // study, so the pair is not theirs either; they keep the mastery tests.
+    final sitsPrePost = profile?.role.isEnrollableLearner ?? false;
+    final hasPreTest =
+        sitsPrePost && AssessmentService.hasCompletedPreTest(profileId);
+    final hasPostTest =
+        sitsPrePost && AssessmentService.hasCompletedPostTest(profileId);
+    final gainReport = isEducator
+        ? null
+        : AssessmentService.getLearningGainReport(profileId);
+    // An educator running the pair as a measure rather than as practice can
+    // close it once it is done — see `Classroom.allowAssessmentRetakes`.
+    final retakesAllowed = AssessmentService.retakesAllowed(profile);
+    // Warmed here, read in `_startAssessment`: for a learner who signs, part
+    // of the instrument is sign items, and the manifest has to be loaded
+    // before they tap rather than after.
+    if (sitsPrePost && ref.watch(accessibilityContentPolicyProvider).showFsl) {
+      ref.watch(fslAvailabilityProvider);
+    }
+    final retakeLocked =
+        l10n?.assessRetakeLocked ??
+        'Already done — ask your teacher to reopen it';
     // One round trip per profile per session, pulling whatever this device
     // does not yet know: for an educator their own templates/assignments plus
     // their assignees' results, for a learner the work set for them elsewhere.
@@ -54,6 +86,13 @@ class AssessmentHubScreen extends ConsumerWidget {
     final assignedWork = isEducator || profileId.isEmpty
         ? const <({AssessmentAssignment assignment, Assessment assessment})>[]
         : AssessmentService.getOpenableAssignments(profileId);
+    // The two halves of the study instrument are the educator's to hand out.
+    // A learner's cards open only what was assigned: they used to generate a
+    // test of their own — a different sample of words from the class's — and
+    // the post-test card unlocked by itself after a week, before the teacher
+    // had decided the study period was over.
+    final assignedPre = _assignedOf(assignedWork, AssessmentType.preTest);
+    final assignedPost = _assignedOf(assignedWork, AssessmentType.postTest);
 
     return Scaffold(
       body: SafeArea(
@@ -72,15 +111,17 @@ class AssessmentHubScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           FitText(
-                            'Assessment Center',
+                            l10n?.assessCenterTitle ?? 'Assessment Center',
                             style: AppTypography.headlineLarge.copyWith(
                               color: hc.textPrimary,
                             ),
                           ),
                           Text(
                             isEducator
-                                ? "Build, assign and track your learners' tests"
-                                : 'Measure your learning progress',
+                                ? (l10n?.assessCenterEducatorSub ??
+                                      "Build, assign and track your learners' tests")
+                                : (l10n?.assessCenterLearnerSub ??
+                                      'Measure your learning progress'),
                             style: AppTypography.bodyMedium.copyWith(
                               color: hc.textSecondary,
                             ),
@@ -88,9 +129,9 @@ class AssessmentHubScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    if (results.isNotEmpty)
+                    if (!isEducator && results.isNotEmpty)
                       IconButton(
-                          tooltip: 'View assessment results and analytics',
+                          tooltip: _tr(context).hubResultsTooltip,
                           onPressed: () => context.push('/assessment/results'),
                           icon: Icon(
                             Icons.analytics_rounded,
@@ -117,7 +158,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                           Expanded(
                             child: _EducatorAction(
                               icon: Icons.add_circle_rounded,
-                              label: 'Create',
+                              label: _tr(context).hubCreate,
                               color: AppColors.sectionAssessment,
                               onTap: () => context.push('/assessment/builder'),
                             ),
@@ -126,7 +167,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                           Expanded(
                             child: _EducatorAction(
                               icon: Icons.assignment_turned_in_rounded,
-                              label: 'Assign',
+                              label: _tr(context).hubAssign,
                               color: AppColors.success,
                               onTap: () => context.push('/assessment/assign'),
                             ),
@@ -135,7 +176,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                           Expanded(
                             child: _EducatorAction(
                               icon: Icons.track_changes_rounded,
-                              label: 'Track',
+                              label: _tr(context).hubTrack,
                               color: AppColors.info,
                               onTap: () => context.push('/assessment/tracking'),
                             ),
@@ -156,7 +197,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(padding, 20, padding, 8),
                   child: SectionHeader(
-                    title: '📌 Assigned to You',
+                    title: '📌 ${l10n?.assessAssignedToYou ?? 'Assigned to You'}',
                     color: hc.textPrimary,
                   ).animate().fadeIn(duration: 400.ms, delay: 80.ms),
                 ),
@@ -183,6 +224,7 @@ class AssessmentHubScreen extends ConsumerWidget {
             ],
 
             // ─── Learning Gain Banner ──────────────────────
+            // Null for an educator — see `gainReport` above.
             if (gainReport != null)
               SliverToBoxAdapter(
                 child: Padding(
@@ -197,12 +239,13 @@ class AssessmentHubScreen extends ConsumerWidget {
                 ),
               ),
 
-            // ─── Pre/Post Test Section ─────────────────────
+            // ─── Pre/Post Test Section (learners only) ─────
+            if (sitsPrePost) ...[
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(padding, 20, padding, 0),
                 child: SectionHeader(
-                  title: '📊 Pre-Test & Post-Test',
+                  title: '📊 ${l10n?.assessPrePostSection ?? 'Pre-Test & Post-Test'}',
                   color: hc.textPrimary,
                 ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
               ),
@@ -212,7 +255,8 @@ class AssessmentHubScreen extends ConsumerWidget {
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: padding),
                 child: Text(
-                  'Take a pre-test before studying, then a post-test after — see your growth!',
+                  l10n?.assessPrePostLearnerBlurb ??
+                      'Take a pre-test before studying, then a post-test after — see your growth!',
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),
@@ -246,13 +290,22 @@ class AssessmentHubScreen extends ConsumerWidget {
                                 profileId,
                               )?.percentage
                             : null,
-                        onTap: () {
-                          _startAssessment(
-                            context,
-                            ref,
-                            AssessmentType.preTest,
-                          );
-                        },
+                        isLocked: assignedPre == null &&
+                            (!hasPreTest || !retakesAllowed),
+                        lockMessage: hasPreTest
+                            ? retakeLocked
+                            : (l10n?.assessPreFromEducator ??
+                                  'Your teacher or parent will give you '
+                                      'this test'),
+                        onTap: assignedPre != null
+                            ? () => _openAssigned(context, assignedPre)
+                            : hasPreTest && retakesAllowed
+                            ? () => _startAssessment(
+                                context,
+                                ref,
+                                AssessmentType.preTest,
+                              )
+                            : null,
                       )
                       .animate()
                       .fadeIn(duration: 400.ms, delay: 250.ms)
@@ -265,16 +318,25 @@ class AssessmentHubScreen extends ConsumerWidget {
                                 profileId,
                               )?.percentage
                             : null,
-                        isLocked: !hasPreTest,
-                        lockMessage: 'Complete a Pre-Test first',
-                        onTap: hasPreTest
-                            ? () {
-                                _startAssessment(
-                                  context,
-                                  ref,
-                                  AssessmentType.postTest,
-                                );
-                              }
+                        isLocked: assignedPost == null &&
+                            (!hasPostTest || !retakesAllowed),
+                        lockMessage: hasPostTest
+                            ? retakeLocked
+                            : !hasPreTest
+                            ? const PostTestReadiness(
+                                gate: PostTestGate.noPreTest,
+                              ).lockMessageOf(l10n)
+                            : (l10n?.assessPostFromEducator ??
+                                  'Your teacher or parent will open this '
+                                      'after your lessons'),
+                        onTap: assignedPost != null
+                            ? () => _openAssigned(context, assignedPost)
+                            : hasPostTest && retakesAllowed
+                            ? () => _startAssessment(
+                                context,
+                                ref,
+                                AssessmentType.postTest,
+                              )
                             : null,
                       )
                       .animate()
@@ -283,13 +345,65 @@ class AssessmentHubScreen extends ConsumerWidget {
                 ]),
               ),
             ),
+            ],
 
-            // ─── Category Mastery Section ──────────────────
+            // ─── Educator: whose pre/post is still outstanding ───
+            // The section an educator gets where their own pre-test used to
+            // be. Same instrument, opposite side of it: who has sat which
+            // half, and what the gain came to.
+            if (isEducator) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(padding, 20, padding, 0),
+                  child: SectionHeader(
+                    title:
+                        '📊 ${l10n?.assessPrePostSection ?? 'Pre-Test & Post-Test'}',
+                    color: hc.textPrimary,
+                  ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: padding),
+                  child: Text(
+                    l10n?.assessPrePostEducatorBlurb ??
+                        'Your learners sit these. Assign the pre-test first, '
+                            'then the post-test after the lessons — the gain '
+                            'appears here.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
+                  ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(padding, 4, padding, 0),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      onPressed: () =>
+                          context.push('/assessment/class-report'),
+                      icon: const Icon(Icons.insights_rounded, size: 18),
+                      label: Text(l10n?.assessClassReport ?? 'Class report'),
+                    ),
+                  ).animate().fadeIn(duration: 400.ms, delay: 220.ms),
+                ),
+              ),
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(padding, 8, padding, 0),
+                sliver: _LearnerGainCoverage(hc: hc),
+              ),
+            ],
+
+            // ─── Category Mastery Section (learners only) ──
+            if (!isEducator) ...[
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(padding, 20, padding, 0),
                 child: SectionHeader(
-                  title: '🏆 Category Mastery Tests',
+                  title:
+                      '🏆 ${l10n?.assessMasterySection ?? 'Category Mastery Tests'}',
                   color: hc.textPrimary,
                 ).animate().fadeIn(duration: 400.ms, delay: 350.ms),
               ),
@@ -299,7 +413,8 @@ class AssessmentHubScreen extends ConsumerWidget {
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: padding),
                 child: Text(
-                  'Test your knowledge in specific vocabulary categories',
+                  l10n?.assessMasteryBlurb ??
+                      'Test your knowledge in specific vocabulary categories',
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),
@@ -349,6 +464,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                 }, childCount: FlashcardCategory.values.length),
               ),
             ),
+            ],
 
             // ─── Teacher Section: Quiz Builder ────────────
             if (isEducator) ...[
@@ -378,7 +494,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Quiz Builder',
+                                  _tr(context).hubQuizBuilder,
                                   style: AppTypography.titleMedium.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w700,
@@ -386,7 +502,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Create custom quizzes from any flashcards',
+                                  _tr(context).hubQuizBuilderDesc,
                                   style: AppTypography.bodySmall.copyWith(
                                     color: Colors.white70,
                                   ),
@@ -416,14 +532,14 @@ class AssessmentHubScreen extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          '✏️ Custom Assessments',
+                          '✏️ ${_tr(context).hubCustomAssessments}',
                           style: AppTypography.titleLarge.copyWith(
                             color: hc.textPrimary,
                           ),
                         ),
                       ),
                       IconButton(
-                          tooltip: 'Create a new custom assessment',
+                          tooltip: _tr(context).hubCreateCustomTooltip,
                           onPressed: () => context.push('/assessment/builder'),
                           icon: Icon(
                             Icons.add_circle_rounded,
@@ -456,14 +572,14 @@ class AssessmentHubScreen extends ConsumerWidget {
                           const Text('📝', style: TextStyle(fontSize: 40)),
                           const SizedBox(height: 12),
                           Text(
-                            'No custom assessments yet',
+                            _tr(context).hubNoCustom,
                             style: AppTypography.titleSmall.copyWith(
                               color: hc.textSecondary,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Tap + to create one for your students',
+                            _tr(context).hubNoCustomHint,
                             style: AppTypography.bodySmall.copyWith(
                               color: hc.textHint,
                             ),
@@ -513,8 +629,8 @@ class AssessmentHubScreen extends ConsumerWidget {
                 ),
             ],
 
-            // ─── Recent Results Quick View ─────────────────
-            if (results.isNotEmpty) ...[
+            // ─── Recent Results Quick View (learners only) ─
+            if (!isEducator && results.isNotEmpty) ...[
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(padding, 20, padding, 8),
@@ -522,7 +638,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          '📈 Recent Results',
+                          '📈 ${l10n?.assessRecentResults ?? 'Recent Results'}',
                           style: AppTypography.titleLarge.copyWith(
                             color: hc.textPrimary,
                           ),
@@ -530,10 +646,10 @@ class AssessmentHubScreen extends ConsumerWidget {
                       ),
                       Semantics(
                         button: true,
-                        label: 'View all results',
+                        label: _tr(context).hubViewAllResults,
                         child: TextButton(
                           onPressed: () => context.push('/assessment/results'),
-                          child: const Text('See All'),
+                          child: Text(l10n?.assessSeeAll ?? 'See All'),
                         ),
                       ),
                     ],
@@ -584,6 +700,27 @@ class AssessmentHubScreen extends ConsumerWidget {
     );
   }
 
+  static ({AssessmentAssignment assignment, Assessment assessment})?
+  _assignedOf(
+    List<({AssessmentAssignment assignment, Assessment assessment})> work,
+    AssessmentType type,
+  ) {
+    for (final w in work) {
+      if (w.assessment.type == type) return w;
+    }
+    return null;
+  }
+
+  void _openAssigned(
+    BuildContext context,
+    ({AssessmentAssignment assignment, Assessment assessment}) work,
+  ) => context.push(
+    '/assessment/take/${work.assessment.id}',
+    extra: work.assessment,
+  );
+
+  /// A self-started sitting — only ever a *retake*, and only where the class or
+  /// home group allows retakes. First sittings come from an assignment.
   void _startAssessment(
     BuildContext context,
     WidgetRef ref,
@@ -591,9 +728,23 @@ class AssessmentHubScreen extends ConsumerWidget {
   ) {
     final profile = ref.read(profileProvider);
     if (profile == null) return;
+    // Belt and braces: the cards are not built for anyone else, but a
+    // generated pre-test saved under an educator's id would pollute the very
+    // learning-gain figures they are meant to be reading.
+    if (!profile.role.isEnrollableLearner) return;
+    // A learner who signs sits part of the instrument in their own language.
+    // A learner who reads or lip-reads gets none — the content policy has
+    // already answered that question, and it is the same answer that decides
+    // whether they see sign surfaces anywhere else.
+    final signCards =
+        ref.read(accessibilityContentPolicyProvider).showFsl
+        ? (ref.read(fslAvailabilityProvider).valueOrNull?.cardsWithVideo ??
+              const <Flashcard>[])
+        : const <Flashcard>[];
     final assessment = AssessmentService.generateStandardAssessment(
       profileId: profile.id,
       type: type,
+      signCards: signCards,
     );
     context.push('/assessment/take/${assessment.id}', extra: assessment);
   }
@@ -621,7 +772,9 @@ class _LearningGainBanner extends StatelessWidget {
           );
 
     return Semantics(
-      label: 'Learning gain report. ${report.summary}',
+      label: _tr(
+        context,
+      ).hubGainSemantics(report.summaryOf(AppLocalizations.of(context))),
       child: AppCard(
         gradient: gradient,
         padding: const EdgeInsets.all(20),
@@ -637,7 +790,7 @@ class _LearningGainBanner extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Learning Gain Report',
+                    _tr(context).hubGainTitle,
                     style: AppTypography.titleMedium.copyWith(
                       color: AppColors.textOnPrimary,
                       fontWeight: FontWeight.w800,
@@ -647,9 +800,19 @@ class _LearningGainBanner extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+            // Flexible pills: "Panimulang Pagsusulit" is three times the
+            // width of "Pre-Test", and at a large font the fixed row ran
+            // off the card in Filipino.
             Row(
               children: [
-                _ScorePill(label: 'Pre-Test', score: report.preTestPercentage),
+                Flexible(
+                  child: _ScorePill(
+                    label: AssessmentType.preTest.labelOf(
+                      AppLocalizations.of(context),
+                    ),
+                    score: report.preTestPercentage,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Icon(
                   improved
@@ -659,15 +822,19 @@ class _LearningGainBanner extends StatelessWidget {
                   size: 28,
                 ),
                 const SizedBox(width: 12),
-                _ScorePill(
-                  label: 'Post-Test',
-                  score: report.postTestPercentage,
+                Flexible(
+                  child: _ScorePill(
+                    label: AssessmentType.postTest.labelOf(
+                      AppLocalizations.of(context),
+                    ),
+                    score: report.postTestPercentage,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             Text(
-              report.summary,
+              report.summaryOf(AppLocalizations.of(context)),
               style: AppTypography.bodySmall.copyWith(
                 color: Colors.white.withValues(alpha: 0.9),
                 fontWeight: FontWeight.w600,
@@ -697,6 +864,9 @@ class _ScorePill extends StatelessWidget {
         children: [
           Text(
             label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: AppTypography.labelSmall.copyWith(
               color: Colors.white.withValues(alpha: 0.8),
             ),
@@ -757,8 +927,18 @@ class _AssessmentTypeCard extends StatelessWidget {
     return Semantics(
       button: !isLocked,
       label: isLocked
-          ? '${type.label}. Locked. $lockMessage'
-          : '${type.label}. ${isCompleted ? "Completed. Latest score ${((latestScore ?? 0) * 100).round()} percent. Tap to retake." : "Not yet taken. Tap to start."}',
+          ? _tr(context).hubCardLockedSemantics(
+              type.labelOf(AppLocalizations.of(context)),
+              lockMessage ?? '',
+            )
+          : isCompleted
+          ? _tr(context).hubCardDoneSemantics(
+              type.labelOf(AppLocalizations.of(context)),
+              ((latestScore ?? 0) * 100).round(),
+            )
+          : _tr(context).hubCardNewSemantics(
+              type.labelOf(AppLocalizations.of(context)),
+            ),
       child: GestureDetector(
         onTap: isLocked ? null : onTap,
         child: AnimatedOpacity(
@@ -777,7 +957,7 @@ class _AssessmentTypeCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        type.label,
+                        type.labelOf(AppLocalizations.of(context)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.titleSmall.copyWith(
@@ -793,8 +973,10 @@ class _AssessmentTypeCard extends StatelessWidget {
                         isLocked
                             ? lockMessage ?? ''
                             : isCompleted
-                            ? 'Best: ${((latestScore ?? 0) * 100).round()}%'
-                            : 'Tap to start',
+                            ? _tr(
+                                context,
+                              ).hubBest(((latestScore ?? 0) * 100).round())
+                            : _tr(context).hubTapToStart,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.bodySmall.copyWith(
@@ -853,7 +1035,15 @@ class _CategoryMasteryCard extends StatelessWidget {
     return Semantics(
       button: true,
       label:
-          '${category.label} mastery test. ${bestScore != null ? "Best score: ${(bestScore! * 100).round()} percent, $attemptCount attempts" : "Not attempted yet"}. Tap to start.',
+          bestScore != null
+          ? _tr(context).hubMasteryTriedSemantics(
+              category.labelOf(_tr(context)),
+              (bestScore! * 100).round(),
+              attemptCount,
+            )
+          : _tr(
+              context,
+            ).hubMasteryNewSemantics(category.labelOf(_tr(context))),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -881,7 +1071,7 @@ class _CategoryMasteryCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                category.label,
+                category.labelOf(_tr(context)),
                 style: AppTypography.labelMedium.copyWith(
                   color: hc.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -893,7 +1083,7 @@ class _CategoryMasteryCard extends StatelessWidget {
               const SizedBox(height: 2),
               if (bestScore != null)
                 Text(
-                  'Best: ${(bestScore! * 100).round()}%',
+                  _tr(context).hubBest((bestScore! * 100).round()),
                   style: AppTypography.labelSmall.copyWith(
                     color: catColor,
                     fontWeight: FontWeight.w700,
@@ -901,7 +1091,7 @@ class _CategoryMasteryCard extends StatelessWidget {
                 )
               else
                 Text(
-                  'Not tested',
+                  _tr(context).hubNotTested,
                   style: AppTypography.labelSmall.copyWith(color: hc.textHint),
                 ),
             ],
@@ -998,13 +1188,18 @@ class _AssignedWorkTile extends StatelessWidget {
       child: Semantics(
         button: true,
         label: [
-          assignment.assessmentTitle.isEmpty
-              ? assessment.title
-              : assignment.assessmentTitle,
-          '${assessment.questions.length} questions',
+          QuestionPrompt.title(
+            assignment.assessmentTitle.isEmpty
+                ? assessment.title
+                : assignment.assessmentTitle,
+            AppLocalizations.of(context),
+          ),
+          _tr(context).hubQuestionCount(assessment.questions.length),
           if (due != null)
-            overdue ? 'Overdue' : 'Due ${_friendlyDate(due)}',
-          'Tap to start',
+            overdue
+                ? _tr(context).hubOverdue
+                : _tr(context).hubDue(_friendlyDate(context, due)),
+          _tr(context).hubTapToStart,
         ].join('. '),
         child: GestureDetector(
           onTap: onTap,
@@ -1038,9 +1233,12 @@ class _AssignedWorkTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        assignment.assessmentTitle.isEmpty
-                            ? assessment.title
-                            : assignment.assessmentTitle,
+                        QuestionPrompt.title(
+                          assignment.assessmentTitle.isEmpty
+                              ? assessment.title
+                              : assignment.assessmentTitle,
+                          AppLocalizations.of(context),
+                        ),
                         style: AppTypography.titleSmall.copyWith(
                           color: hc.textPrimary,
                         ),
@@ -1049,9 +1247,11 @@ class _AssignedWorkTile extends StatelessWidget {
                       ),
                       Text(
                         due == null
-                            ? '${assessment.questions.length} questions'
-                            : '${assessment.questions.length} questions • '
-                                  '${overdue ? "Overdue" : "Due ${_friendlyDate(due)}"}',
+                            ? _tr(
+                                context,
+                              ).hubQuestionCount(assessment.questions.length)
+                            : '${_tr(context).hubQuestionCount(assessment.questions.length)} • '
+                                  '${overdue ? _tr(context).hubOverdue : _tr(context).hubDue(_friendlyDate(context, due))}',
                         style: AppTypography.bodySmall.copyWith(
                           color: overdue ? hc.error : hc.textSecondary,
                         ),
@@ -1082,8 +1282,8 @@ class _AssignedWorkTile extends StatelessWidget {
     );
   }
 
-  static String _friendlyDate(DateTime dt) =>
-      '${dt.day}/${dt.month}/${dt.year}';
+  static String _friendlyDate(BuildContext context, DateTime dt) =>
+      LocalizedDate.monthDayYear(dt, AppLocalizations.of(context));
 }
 
 // ─── Custom Assessment Tile ────────────────────────────
@@ -1108,7 +1308,10 @@ class _CustomAssessmentTile extends StatelessWidget {
       child: Semantics(
         button: true,
         label:
-            '${assessment.title}. ${assessment.questions.length} questions. Tap to take.',
+            _tr(context).hubCustomTileSemantics(
+              assessment.title,
+              _tr(context).hubQuestionCount(assessment.questions.length),
+            ),
         child: GestureDetector(
           onTap: onTap,
           child: Container(
@@ -1144,7 +1347,8 @@ class _CustomAssessmentTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        '${assessment.questions.length} questions • ${assessment.difficulty.label}',
+                        '${_tr(context).hubQuestionCount(assessment.questions.length)} • '
+                        '${assessment.difficulty.labelOf(_tr(context))}',
                         style: AppTypography.bodySmall.copyWith(
                           color: hc.textSecondary,
                         ),
@@ -1173,14 +1377,12 @@ class _CustomAssessmentTile extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Assessment?'),
-        content: Text(
-          'Are you sure you want to delete “${assessment.title}”? This cannot be undone.',
-        ),
+        title: Text(_tr(context).hubDeleteTitle),
+        content: Text(_tr(context).hubDeleteBody(assessment.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(_tr(context).hubCancel),
           ),
           TextButton(
             onPressed: () {
@@ -1188,7 +1390,7 @@ class _CustomAssessmentTile extends StatelessWidget {
               onDelete();
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Delete'),
+            child: Text(_tr(context).hubDelete),
           ),
         ],
       ),
@@ -1211,7 +1413,15 @@ class _RecentResultTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Semantics(
         label:
-            '${result.type.label}. Score: $pct percent. ${result.grade}. Completed ${_formatDate(result.completedAt)}.',
+            _tr(context).hubResultSemantics(
+              result.type.labelOf(AppLocalizations.of(context)),
+              pct,
+              result.gradeOf(AppLocalizations.of(context)),
+              LocalizedDate.monthDayYear(
+                result.completedAt,
+                AppLocalizations.of(context),
+              ),
+            ),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
@@ -1228,13 +1438,16 @@ class _RecentResultTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      result.type.label,
+                      result.type.labelOf(AppLocalizations.of(context)),
                       style: AppTypography.labelMedium.copyWith(
                         color: hc.textPrimary,
                       ),
                     ),
                     Text(
-                      _formatDate(result.completedAt),
+                      LocalizedDate.monthDayYear(
+                        result.completedAt,
+                        AppLocalizations.of(context),
+                      ),
                       style: AppTypography.labelSmall.copyWith(
                         color: hc.textHint,
                       ),
@@ -1268,21 +1481,265 @@ class _RecentResultTile extends StatelessWidget {
 
   Color _scoreColor(double pct) => scoreColor(pct);
 
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+}
+
+// ─── Educator: pre / post coverage across the roster ───
+
+/// A sliver listing every learner this educator enrols, with which half of
+/// the instrument each has sat and what the gain came to.
+///
+/// This is the educator's half of the pre-test / post-test feature. They do
+/// not take it — they need to know who still owes them one, which is a roster
+/// question, not a personal one.
+class _LearnerGainCoverage extends ConsumerWidget {
+  final HCColor hc;
+  const _LearnerGainCoverage({required this.hc});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final roster = ref.watch(educatorLearnerRosterProvider);
+
+    if (roster.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: hc.surfaceVariant,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: hc.border),
+          ),
+          child: Column(
+            children: [
+              const Text('🧑‍🏫', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 12),
+              Text(
+                _tr(context).hubNoLearners,
+                style: AppTypography.titleSmall.copyWith(
+                  color: hc.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _tr(context).hubNoLearnersHint,
+                textAlign: TextAlign.center,
+                style: AppTypography.bodySmall.copyWith(color: hc.textHint),
+              ),
+            ],
+          ),
+        ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
+      );
+    }
+
+    final sorted = [...roster]..sort(
+      (a, b) => a.$1.name.toLowerCase().compareTo(b.$1.name.toLowerCase()),
+    );
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final learner = sorted[index].$1;
+        return _LearnerGainTile(
+              profile: learner,
+              hc: hc,
+              onTap: () =>
+                  context.push('/student-profile-detail', extra: learner),
+            )
+            .animate()
+            .fadeIn(duration: 400.ms, delay: (250 + index * 50).ms)
+            .slideY(begin: 0.06, end: 0);
+      }, childCount: sorted.length),
+    );
   }
 }
+
+class _LearnerGainTile extends StatelessWidget {
+  final UserProfile profile;
+  final HCColor hc;
+  final VoidCallback onTap;
+
+  const _LearnerGainTile({
+    required this.profile,
+    required this.hc,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPre = AssessmentService.hasCompletedPreTest(profile.id);
+    final hasPost = AssessmentService.hasCompletedPostTest(profile.id);
+    final report = AssessmentService.getLearningGainReport(profile.id);
+    final gain = report == null ? null : (report.improvement * 100).round();
+    final gainLabel = gain == null
+        ? null
+        : '${gain >= 0 ? '+' : ''}$gain%';
+    // Same rule the learner's own card obeys, phrased for the person who can
+    // do something about it: "waiting" is not the same problem as "has not
+    // started", and only one of them is the educator's to solve.
+    final readiness = AssessmentService.getPostTestReadiness(profile.id);
+
+    final status = gainLabel != null
+        ? _tr(context).hubGain(gainLabel)
+        : readiness.educatorSummaryOf(AppLocalizations.of(context));
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Semantics(
+        button: true,
+        label: _tr(context).hubLearnerRowSemantics(profile.name, status),
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: hc.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: hc.border),
+              boxShadow: AppColors.softShadow,
+            ),
+            // Wraps rather than overflows: the name plus two state pills and a
+            // gain chip is more than a phone has room for at a large font.
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    profile.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelLarge.copyWith(
+                      color: hc.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                _StatePill(label: _tr(context).hubPre, done: hasPre, hc: hc),
+                _StatePill(
+                  label: _tr(context).hubPost,
+                  done: hasPost,
+                  hc: hc,
+                ),
+                if (!hasPost && hasPre)
+                  _ReadinessPill(readiness: readiness, hc: hc),
+                if (gain != null && gainLabel != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (gain >= 0 ? AppColors.success : AppColors.warning)
+                          .withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      gainLabel,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: gain >= 0
+                            ? AppColors.success
+                            : AppColors.warning,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Where a learner is in the wait between the two halves.
+///
+/// Only shown once the pre-test is in and the post-test is not: before that
+/// the row already says "pre-test outstanding", and afterwards the gain says
+/// everything this would.
+class _ReadinessPill extends StatelessWidget {
+  final PostTestReadiness readiness;
+  final HCColor hc;
+  const _ReadinessPill({required this.readiness, required this.hc});
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, icon) = switch (readiness.gate) {
+      PostTestGate.ready => (AppColors.success, Icons.play_circle_rounded),
+      PostTestGate.assigned => (AppColors.info, Icons.assignment_rounded),
+      _ => (AppColors.warning, Icons.hourglass_bottom_rounded),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              readiness.educatorSummaryOf(AppLocalizations.of(context)),
+              style: AppTypography.labelSmall.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatePill extends StatelessWidget {
+  final String label;
+  final bool done;
+  final HCColor hc;
+  const _StatePill({
+    required this.label,
+    required this.done,
+    required this.hc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = done ? AppColors.success : hc.textHint;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            done ? Icons.check_circle_rounded : Icons.schedule_rounded,
+            size: 14,
+            color: color,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// This file's strings: English when no delegate is present, which is how
+/// widget tests build these screens.
+AppLocalizations _tr(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

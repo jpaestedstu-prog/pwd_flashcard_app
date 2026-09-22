@@ -25,7 +25,12 @@ class ResearchExportRows {
       'student_id,group_label,experiment_enabled,'
       'assessment_type,score,total_questions,'
       'percentage,duration_seconds,completed_at,'
-      'learning_gain,normalized_gain';
+      'learning_gain,normalized_gain,'
+      // The conditions a score was earned under. An accommodated score is
+      // only defensible next to a record of the accommodation, and the
+      // profile can be edited after the sitting — so it is read off the
+      // result, not off the learner.
+      'accommodations';
 
   /// Rows for one student's assessment results.
   ///
@@ -63,7 +68,8 @@ class ResearchExportRows {
         '${r.durationSeconds},'
         '${r.completedAt.toIso8601String()},'
         '${isPost ? gainValue : ''},'
-        '${isPost ? normGainValue : ''}',
+        '${isPost ? normGainValue : ''},'
+        '${esc(r.accommodations.map((a) => a.name).join(' '))}',
       );
     }
     return rows;

@@ -16,6 +16,13 @@ import '../../experiment/models/experiment_models.dart';
 import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
 import '../../../core/utils/accessible_sizing.dart';
+import '../../../core/accessibility/learner_support.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
+import '../models/question_prompt.dart';
+import '../services/assessment_service.dart';
+import '../services/sign_clip_readiness.dart';
+import '../widgets/assessment_sign_clip.dart';
 
 /// Screen that runs an assessment quiz — supports multiple choice,
 /// true/false, and fill-in-the-blank question formats. Fully accessible
@@ -32,10 +39,22 @@ class AssessmentTestScreen extends ConsumerStatefulWidget {
   /// leaves this alone and gets the real clock.
   final DateTime Function()? clock;
 
+  /// Builds the sign clip for a "watch the sign" item. Injected so a widget
+  /// test can stand in a marker for the video plugin, which no test binding
+  /// provides. Null in production, which uses [AssessmentSignClip].
+  final SignClipBuilder? signClipBuilder;
+
+  /// Makes the sign clips available offline and returns the card ids that
+  /// are still missing. Defaults to [SignClipReadiness.prepare]; a test seam,
+  /// since no test binding can download a video.
+  final Future<List<String>> Function(List<String> cardIds)? prepareSignClips;
+
   const AssessmentTestScreen({
     super.key,
     required this.assessment,
     this.clock,
+    this.signClipBuilder,
+    this.prepareSignClips,
   });
 
   @override
@@ -51,6 +70,14 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
   bool _answered = false;
   bool _isCorrect = false;
   final _fillController = TextEditingController();
+
+  /// The question area's scroll position. A sign item's clip is tall enough
+  /// that, on the tablet, answering left the "Correct! / The correct answer
+  /// is…" feedback — and the fourth choice — below the fold, with nothing to
+  /// bring it into view. And because the same scroll view carries on from
+  /// question to question, a learner who scrolled down started the next one
+  /// scrolled down too.
+  final _scroll = ScrollController();
   late DateTime _questionStartTime;
   late DateTime _assessmentStartTime;
   bool _showHint = false;
@@ -62,28 +89,82 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
   Timer? _timer;
   Duration? _remaining;
 
+  /// The limit this learner actually gets, which is the assessment's own limit
+  /// plus their extra-time accommodation if they have one. Resolved once in
+  /// [initState]: reading it per tick would let a mid-test profile switch move
+  /// the finish line.
+  int? _limitMinutes;
+
   /// Guards the single submission. The timer expiring and the learner
   /// answering the last question can otherwise both fire [_finishAssessment],
   /// saving the result twice and pushing two summary screens.
   bool _finished = false;
 
+  /// The sign clips this test needs, and whether they are all on the tablet.
+  /// A test with sign items does not start — no question, no clock — until
+  /// every clip can play: a sign item met with no video was answered blind,
+  /// and the study would have counted that as not knowing the sign.
+  late final List<String> _signCardIds;
+  bool _clipsReady = true;
+  bool _clipsMissing = false;
+
   @override
   void initState() {
     super.initState();
-    _questions = widget.assessment.questions;
+    // Accommodations are applied to the *presentation*, not to the stored
+    // instrument: every learner in the class sits the same items, and the
+    // ones who need a shorter choice list get one.
+    final supports = ref.read(profileProvider)?.supports ?? const {};
+    _questions = supports.contains(LearnerSupportOption.fewerChoices)
+        ? AssessmentService.limitChoices(widget.assessment.questions, 2)
+        : widget.assessment.questions;
+    _limitMinutes = LearnerSupportCatalog.timeLimitMinutes(
+      widget.assessment.timeLimitMinutes,
+      supports,
+    );
+    _signCardIds = SignClipReadiness.cardIdsIn(widget.assessment);
+    if (_signCardIds.isEmpty) {
+      _begin();
+    } else {
+      _clipsReady = false;
+      _prepareClips();
+    }
+  }
+
+  /// Starts the clocks: response times, duration and any time limit all count
+  /// from the first question the learner can actually answer.
+  void _begin() {
     _assessmentStartTime = _now();
     _questionStartTime = _now();
-
-    final limit = widget.assessment.timeLimitMinutes;
+    final limit = _limitMinutes;
     if (limit != null && limit > 0) {
       _remaining = Duration(minutes: limit);
       _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
     }
   }
 
+  Future<void> _prepareClips() async {
+    if (_clipsMissing) setState(() => _clipsMissing = false);
+    final prepare = widget.prepareSignClips ?? SignClipReadiness.prepare;
+    List<String> missing;
+    try {
+      missing = await prepare(_signCardIds);
+    } catch (_) {
+      missing = _signCardIds;
+    }
+    if (!mounted) return;
+    if (missing.isEmpty) {
+      setState(() => _clipsReady = true);
+      _begin();
+    } else {
+      setState(() => _clipsMissing = true);
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
+    _scroll.dispose();
     _fillController.dispose();
     super.dispose();
   }
@@ -93,7 +174,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
   /// extra minutes. Runs out of time → submit what has been answered.
   void _tick() {
     if (!mounted || _finished) return;
-    final limit = widget.assessment.timeLimitMinutes;
+    final limit = _limitMinutes;
     if (limit == null) return;
     final left =
         Duration(minutes: limit) -
@@ -107,8 +188,25 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     setState(() => _remaining = left);
   }
 
+  /// Whether this learner asked for Reduced Motion. Read defensively: the
+  /// settings live in a storage box that widget tests often leave closed, and
+  /// a scroll nicety must never be the thing that fails a sitting.
+  bool _reducedMotion() {
+    try {
+      return ref.read(settingsProvider).reducedMotion ||
+          MediaQuery.of(context).disableAnimations;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// The screen's clock: the injected one in tests, the real one in the app.
   DateTime _now() => (widget.clock ?? DateTime.now)();
+
+  /// This screen's strings. English without a delegate, which is how widget
+  /// tests build it.
+  AppLocalizations get _t =>
+      AppLocalizations.of(context) ?? AppLocalizationsEn();
 
   AssessmentQuestion get _currentQuestion => _questions[_currentIndex];
   bool get _isLastQuestion => _currentIndex >= _questions.length - 1;
@@ -142,6 +240,21 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
       haptic.error();
     }
 
+    // Bring the feedback into view once it has been laid out.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      final end = _scroll.position.maxScrollExtent;
+      if (_reducedMotion()) {
+        _scroll.jumpTo(end);
+      } else {
+        _scroll.animateTo(
+          end,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
     _answers.add(QuestionAnswer(
       questionId: _currentQuestion.id,
       givenAnswer: answer,
@@ -170,6 +283,8 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
       _fillController.clear();
       _questionStartTime = _now();
     });
+    // Every question starts at its own top, whatever the last one scrolled to.
+    if (_scroll.hasClients) _scroll.jumpTo(0);
   }
 
   void _finishAssessment() {
@@ -212,6 +327,16 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
       durationSeconds: durationSeconds,
       categories: widget.assessment.categories,
       categoryScores: categoryScores,
+      // Only the two that changed this sitting. The rest of the learner's
+      // supports shape the app, not the test, and recording them here would
+      // make the result look accommodated when it was not.
+      accommodations: profile.supports
+          .where(
+            (s) =>
+                s == LearnerSupportOption.extendedTestTime ||
+                s == LearnerSupportOption.fewerChoices,
+          )
+          .toSet(),
     );
 
     // Save result
@@ -251,13 +376,12 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Quit Assessment?'),
-        content: const Text(
-            'Your progress will be lost. Are you sure you want to quit?'),
+        title: Text(_t.testQuitTitle),
+        content: Text(_t.testQuitBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Continue'),
+            child: Text(_t.testQuitContinue),
           ),
           TextButton(
             onPressed: () {
@@ -265,15 +389,82 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
               context.pop();
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Quit'),
+            child: Text(_t.testQuitConfirm),
           ),
         ],
       ),
     );
   }
 
+  /// Shown until every sign clip is on the tablet — see [_clipsReady].
+  Widget _buildClipCheck(BuildContext context) {
+    final hc = HCColor.of(context);
+    final l10n = AppLocalizations.of(context);
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(context.pagePadding),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!_clipsMissing) ...[
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 20),
+                  Text(
+                    l10n?.assessClipsPreparing ??
+                        'Getting the sign videos ready…',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.titleMedium.copyWith(
+                      color: hc.textPrimary,
+                    ),
+                  ),
+                ] else ...[
+                  const Text('📶', style: TextStyle(fontSize: 56)),
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n?.assessClipsMissingTitle ??
+                        'The sign videos need the internet',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.titleMedium.copyWith(
+                      color: hc.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n?.assessClipsMissingBody ??
+                        'This test has sign-language videos that are not on '
+                            'this tablet yet. Connect to Wi‑Fi, then try '
+                            'again. The test has not started.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: hc.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: _prepareClips,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: Text(l10n?.assessClipsTryAgain ?? 'Try again'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => context.pop(),
+                    child: Text(l10n?.assessClipsGoBack ?? 'Go back'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!_clipsReady) return _buildClipCheck(context);
     final hc = HCColor.of(context);
     final padding = context.pagePadding;
 
@@ -292,7 +483,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                 child: Row(
                   children: [
                     IconButton(
-                        tooltip: 'Quit assessment',
+                        tooltip: _t.testQuitTooltip,
                         onPressed: _confirmQuit,
                         icon: Icon(Icons.close_rounded,
                             color: hc.textSecondary),
@@ -301,13 +492,16 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                       child: Column(
                         children: [
                           Text(
-                            widget.assessment.type.label,
+                            widget.assessment.type.labelOf(_t),
                             style: AppTypography.labelMedium.copyWith(
                               color: hc.textSecondary,
                             ),
                           ),
                           Text(
-                            'Question ${_currentIndex + 1} of ${_questions.length}',
+                            _t.testQuestionOf(
+                              _currentIndex + 1,
+                              _questions.length,
+                            ),
                             style: AppTypography.titleSmall.copyWith(
                               color: hc.textPrimary,
                               fontWeight: FontWeight.w700,
@@ -348,7 +542,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                     Expanded(
                       child: Semantics(
                         label:
-                            'Progress: ${(_progress * 100).round()} percent complete',
+                            _t.testProgressSemantics((_progress * 100).round()),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: LinearProgressIndicator(
@@ -372,12 +566,17 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
               // ─── Question Content ─────────────────────────
               Expanded(
                 child: SingleChildScrollView(
+                  controller: _scroll,
                   padding: EdgeInsets.all(padding),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Category chip
-                      if (_currentQuestion.category != null)
+                      // Not on a sign item: the clip is the whole question there, and the
+                      // category narrows the choices — a "Days & Time" chip over one day
+                      // of the week and three unrelated words gave the answer away.
+                      if (_currentQuestion.category != null &&
+                          _currentQuestion.format != QuestionFormat.signVideo)
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Container(
@@ -389,7 +588,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              _currentQuestion.category!.label,
+                              _currentQuestion.category!.labelOf(_t),
                               style: AppTypography.labelSmall.copyWith(
                                 color: _currentQuestion.category!.darkColor,
                                 fontWeight: FontWeight.w700,
@@ -411,7 +610,9 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            _currentQuestion.format.label,
+                            _currentQuestion.format.labelOf(
+                              AppLocalizations.of(context),
+                            ),
                             style: AppTypography.labelSmall.copyWith(
                               color: hc.textSecondary,
                             ),
@@ -425,7 +626,21 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                       Semantics(
                         header: true,
                         child: Text(
-                          _currentQuestion.questionText,
+                          // A sign item's prompt is the same sentence every
+                          // time, so it is read from l10n rather than from the
+                          // stored question — translating what is already
+                          // saved would rewrite a learner's pre-test template.
+                          _currentQuestion.format == QuestionFormat.signVideo
+                              ? (AppLocalizations.of(
+                                      context,
+                                    )?.signQuestionPrompt ??
+                                    _currentQuestion.questionText)
+                              // Generated wording is shown in the reader's
+                              // language; the stored text is untouched.
+                              : QuestionPrompt.localize(
+                                  _currentQuestion.questionText,
+                                  AppLocalizations.of(context),
+                                ),
                           style: AppTypography.headlineMedium.copyWith(
                             color: hc.textPrimary,
                             fontWeight: FontWeight.w700,
@@ -437,6 +652,18 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                           .slideX(begin: 0.05, end: 0),
 
                       const SizedBox(height: 24),
+
+                      // The clip *is* the prompt on a sign item, so it sits
+                      // between the question and the choices. No caption:
+                      // naming the word would give the answer away.
+                      if (_currentQuestion.format ==
+                              QuestionFormat.signVideo &&
+                          _currentQuestion.signCardId != null) ...[
+                        (widget.signClipBuilder ??
+                                (ctx, id) => AssessmentSignClip(cardId: id))(
+                            context, _currentQuestion.signCardId!),
+                        const SizedBox(height: 20),
+                      ],
 
                       // Answer area based on format
                       if (_currentQuestion.format ==
@@ -454,7 +681,9 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                               setState(() => _showHint = !_showHint),
                           child: Semantics(
                             button: true,
-                            label: _showHint ? 'Hide hint' : 'Show hint',
+                            label: _showHint
+                                ? _t.testHideHint
+                                : _t.testShowHint,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -467,7 +696,9 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  _showHint ? 'Hide Hint' : 'Show Hint',
+                                  _showHint
+                                      ? _t.testHideHint
+                                      : _t.testShowHint,
                                   style: AppTypography.labelMedium.copyWith(
                                     color: hc.warning,
                                     fontWeight: FontWeight.w600,
@@ -535,7 +766,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                         elevation: 0,
                       ),
                       child: Text(
-                        _isLastQuestion ? 'Finish Assessment' : 'Next Question',
+                        _isLastQuestion ? _t.testFinish : _t.testNext,
                         style: AppTypography.buttonText,
                       ),
                     ),
@@ -552,6 +783,8 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     return Column(
       children: List.generate(_currentQuestion.choices.length, (i) {
         final choice = _currentQuestion.choices[i];
+        // What the learner reads; `choice` stays the stored answer.
+        final shown = QuestionPrompt.choice(_currentQuestion, choice, _t);
         final isSelected = _selectedAnswer == choice;
         final isCorrectAnswer =
             choice.toLowerCase() ==
@@ -587,7 +820,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
           padding: const EdgeInsets.only(bottom: 10),
           child: Semantics(
             button: !_answered,
-            label: choice,
+            label: shown,
             selected: isSelected,
             child: GestureDetector(
               onTap: () => _selectAnswer(choice),
@@ -623,7 +856,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
-                        choice,
+                        shown,
                         style: AppTypography.titleSmall.copyWith(
                           color: textColor,
                           fontWeight: FontWeight.w600,
@@ -659,7 +892,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
           autofocus: true,
           textCapitalization: TextCapitalization.words,
           decoration: InputDecoration(
-            hintText: 'Type your answer here...',
+            hintText: _t.testTypeHere,
             hintStyle: AppTypography.bodyMedium.copyWith(color: hc.textHint),
             filled: true,
             fillColor: hc.surface,
@@ -708,7 +941,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                 ),
                 elevation: 0,
               ),
-              child: Text('Submit Answer', style: AppTypography.buttonText),
+              child: Text(_t.testSubmit, style: AppTypography.buttonText),
             ),
           ),
         ],
@@ -728,7 +961,13 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                     color: AppColors.success, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Correct answer: ${_currentQuestion.correctAnswer}',
+                  _t.testHintAnswer(
+                    QuestionPrompt.choice(
+                      _currentQuestion,
+                      _currentQuestion.correctAnswer,
+                      _t,
+                    ),
+                  ),
                   style: AppTypography.labelMedium.copyWith(
                     color: AppColors.success,
                     fontWeight: FontWeight.w700,
@@ -767,7 +1006,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _isCorrect ? 'Correct!' : 'Not quite right',
+                  _isCorrect ? _t.testCorrect : _t.testNotQuite,
                   style: AppTypography.titleSmall.copyWith(
                     color:
                         _isCorrect ? AppColors.success : AppColors.error,
@@ -776,7 +1015,13 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                 ),
                 if (!_isCorrect)
                   Text(
-                    'The correct answer is: ${_currentQuestion.correctAnswer}',
+                    _t.testTheAnswerIs(
+                      QuestionPrompt.choice(
+                        _currentQuestion,
+                        _currentQuestion.correctAnswer,
+                        _t,
+                      ),
+                    ),
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textSecondary,
                     ),
@@ -822,8 +1067,10 @@ class _TimeRemainingChip extends StatelessWidget {
     return Semantics(
       liveRegion: urgent,
       label: minutes > 0
-          ? '$minutes minute${minutes == 1 ? '' : 's'} remaining'
-          : '$seconds second${seconds == 1 ? '' : 's'} remaining',
+          ? (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                .testMinutesLeft(minutes)
+          : (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                .testSecondsLeft(seconds),
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

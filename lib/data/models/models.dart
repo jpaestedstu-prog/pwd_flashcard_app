@@ -1,3 +1,4 @@
+import '../../core/accessibility/learner_support.dart';
 import '../../l10n/app_localizations.dart';
 import 'enums.dart';
 
@@ -183,6 +184,17 @@ class UserProfile {
   /// pre-auth profiles until [OwnerUidMigration] claims them.
   final String? ownerUid;
 
+  /// Per-learner supports chosen on top of [disabilityType] — the sign system
+  /// a Deaf learner uses, how a learner with low vision reads the screen, how a
+  /// learner with a motor impairment drives the app, and any extra
+  /// accommodations such as longer timed tests.
+  ///
+  /// Empty on every profile created before the field existed and on educator
+  /// profiles. Read it through [supports], never directly: an empty set means
+  /// "never configured", which resolves to the category defaults rather than
+  /// "no support at all".
+  final Set<LearnerSupportOption> supportOptions;
+
   /// Public-facing handle used for the messaging "add friend by username"
   /// flow. Auto-generated on first save (e.g. `maria-1947`) and unique
   /// across the project — backed by the `profile_directory/{username}`
@@ -218,6 +230,7 @@ class UserProfile {
     this.learningLevelOverriddenAt,
     this.ownerUid,
     this.username,
+    this.supportOptions = const {},
     this.equippedAvatarId,
     this.equippedBorderId,
     this.equippedTitleId,
@@ -236,8 +249,8 @@ class UserProfile {
 
   /// Localized [profileTypeLabel], for the screens that show it to a person.
   ///
-  /// The English getter above is kept for the CSV and PDF exports, which must
-  /// read the same whoever generated them.
+  /// The English getter above is kept for the CSV exports, which must read
+  /// the same whoever generated them.
   String profileTypeLabelOf(AppLocalizations? l10n) =>
       (role == UserRole.student || role == UserRole.child)
       ? '${role.labelOf(l10n)} - ${disabilityType.profileTypeLabelOf(l10n)}'
@@ -277,6 +290,27 @@ class UserProfile {
   /// Whether the level is currently held by an educator override (so the
   /// adaptive promote logic should skip).
   bool get hasLearningLevelOverride => learningLevelOverriddenBy != null;
+
+  /// The supports that actually apply to this learner.
+  ///
+  /// Resolves an unconfigured profile to its category's defaults and drops
+  /// anything the category no longer offers, so callers never have to ask
+  /// whether the profile predates the feature or was re-categorised later.
+  Set<LearnerSupportOption> get supports =>
+      LearnerSupportCatalog.effective(disabilityType, supportOptions);
+
+  /// Whether this learner has [option] switched on.
+  bool hasSupport(LearnerSupportOption option) => supports.contains(option);
+
+  /// This learner's primary communication system, or null when their category
+  /// does not offer one.
+  LearnerSupportOption? get communicationMode =>
+      LearnerSupportCatalog.communicationModeIn(supports);
+
+  /// This learner's primary input method, or null when their category does not
+  /// offer one.
+  LearnerSupportOption? get inputMode =>
+      LearnerSupportCatalog.inputModeIn(supports);
 
   /// Computed age from birthDate, or null if not set.
   int? get age {
@@ -318,6 +352,7 @@ class UserProfile {
     DateTime? Function()? learningLevelOverriddenAt,
     String? Function()? ownerUid,
     String? Function()? username,
+    Set<LearnerSupportOption>? supportOptions,
     String? equippedAvatarId,
     String? equippedBorderId,
     String? equippedTitleId,
@@ -365,6 +400,7 @@ class UserProfile {
           : this.learningLevelOverriddenAt,
       ownerUid: ownerUid != null ? ownerUid() : this.ownerUid,
       username: username != null ? username() : this.username,
+      supportOptions: supportOptions ?? this.supportOptions,
     );
   }
 }

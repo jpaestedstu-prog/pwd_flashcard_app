@@ -12,6 +12,8 @@ import '../models/friend_models.dart';
 import '../models/messaging_models.dart';
 import '../services/friend_service.dart';
 import '../services/profile_directory_service.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Shared "add / manage friends" UI.
 ///
@@ -210,7 +212,7 @@ class _AddFriendDialogState extends State<AddFriendDialog> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _errorText = e.message;
+        _errorText = e.messageOf(filipino: widget.isFilipino);
       });
     } catch (e, st) {
       // Belt-and-braces: anything that slips past sendRequest's mapping still
@@ -301,7 +303,7 @@ class FriendRequestsBadgeButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 4),
       child: IconButton(
-        tooltip: 'Friend requests',
+        tooltip: _t(context).frRequests,
         onPressed: onTap,
         icon: Badge(
           isLabelVisible: count > 0,
@@ -872,3 +874,8 @@ class _FriendRequestsSheetState extends ConsumerState<FriendRequestsSheet> {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

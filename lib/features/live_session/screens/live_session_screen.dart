@@ -18,6 +18,8 @@ import '../services/live_scoring.dart';
 import '../services/live_session_service.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../../../core/utils/accessible_sizing.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Real-time live session. Learners (Student / Child) get an accessible
 /// receiver that renders the educator's pushed activities, awards stars for
@@ -31,12 +33,12 @@ class LiveSessionScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider);
     if (profile == null) {
-      return const Scaffold(body: Center(child: Text('No profile selected')));
+      return Scaffold(body: Center(child: Text(_t(context).lsNoProfile)));
     }
     final isEducator = profile.role.isEducator;
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEducator ? 'Live Session' : 'Join the Class'),
+        title: Text(isEducator ? _t(context).lsLiveSession : _t(context).lsJoinClass),
       ),
       body: SafeArea(
         child: isEducator
@@ -64,7 +66,7 @@ class _EducatorPointer extends StatelessWidget {
             const Icon(Icons.cast_rounded, size: 56, color: AppColors.primary),
             const SizedBox(height: 16),
             Text(
-              'Host live games & quizzes from TV Cast',
+              _t(context).lsHostTitle,
               textAlign: TextAlign.center,
               style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.w800,
@@ -73,9 +75,7 @@ class _EducatorPointer extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Open TV Cast, start casting, then choose “Live Activity” to '
-              'build questions, set star scoring, and see raised hands and the '
-              'scoreboard on the TV.',
+              _t(context).lsHostBody,
               textAlign: TextAlign.center,
               style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
             ),
@@ -83,7 +83,7 @@ class _EducatorPointer extends StatelessWidget {
             FilledButton.icon(
               onPressed: () => context.push('/tv-cast'),
               icon: const Icon(Icons.tv_rounded),
-              label: const Text('Open TV Cast'),
+              label: Text(_t(context).lsOpenCast),
             ),
           ],
         ),
@@ -196,29 +196,24 @@ class _LearnerViewState extends ConsumerState<_LearnerView> {
     if (_sessionKey == null) {
       return _Notice(
         icon: Icons.group_add_rounded,
-        title: 'Join a class first',
+        title: _t(context).lsJoinFirst,
         message: widget.profile.role == UserRole.child
-            ? 'Ask your parent for the home-group code, then join from Settings '
-                  'to take part in live activities.'
-            : 'You are not in a classroom yet. Tap “Join a class” to take part '
-                  'in live activities.',
+            ? _t(context).lsChildJoin
+            : _t(context).lsStudentJoin,
       );
     }
     if (!FirebaseService.isConfigured) {
-      return const _Notice(
+      return _Notice(
         icon: Icons.cloud_off_rounded,
-        title: 'Connect to the internet',
-        message:
-            'Live activities need a connection so you can join your class '
-            'in real time. Connect to Wi-Fi or mobile data and reopen this '
-            'screen.',
+        title: _t(context).lsConnect,
+        message: _t(context).lsConnectBody,
       );
     }
 
     final session = _session;
     if (session == null || session.status == LiveSessionStatus.ended) {
       return _WaitingView(
-        message: 'No live activity yet. Your teacher will start one soon.',
+        message: _t(context).lsNoActivity,
         handRaised: _handRaised,
         onToggleHand: _toggleHand,
       );
@@ -226,7 +221,7 @@ class _LearnerViewState extends ConsumerState<_LearnerView> {
     final activity = session.currentActivity;
     if (activity == null) {
       return _WaitingView(
-        message: 'Get ready! Waiting for the next question…',
+        message: _t(context).lsGetReady,
         handRaised: _handRaised,
         onToggleHand: _toggleHand,
       );
@@ -262,8 +257,8 @@ class _LearnerViewState extends ConsumerState<_LearnerView> {
     unawaited(ref.read(hapticServiceProvider).selectionClick());
     _announce(
       raising
-          ? 'Hand raised. Your teacher can see your name.'
-          : 'Hand lowered.',
+          ? _t(context).lsHandRaised
+          : _t(context).lsHandLowered,
     );
     try {
       if (raising) {
@@ -317,10 +312,10 @@ class _LearnerViewState extends ConsumerState<_LearnerView> {
     final haptic = ref.read(hapticServiceProvider);
     if (isCorrect) {
       unawaited(haptic.success());
-      _announce(award > 0 ? 'Correct! You earned $award stars.' : 'Correct!');
+      _announce(award > 0 ? _t(context).lsCorrectStars(award) : _t(context).lsCorrect);
     } else {
       unawaited(haptic.error());
-      _announce('Good try. Wait for the next question.');
+      _announce(_t(context).lsGoodTry);
     }
 
     unawaited(
@@ -377,7 +372,7 @@ class _LearnerViewState extends ConsumerState<_LearnerView> {
     ref.read(progressProvider.notifier).addStars(bonus);
     _sessionEarned += bonus;
     unawaited(ref.read(hapticServiceProvider).celebration());
-    _announce('First correct answer! Bonus $bonus stars.');
+    _announce(_t(context).lsFirstCorrect(bonus));
     if (mounted) setState(() => _lastAward += bonus);
 
     // Keep the educator scoreboard accurate.
@@ -500,7 +495,7 @@ class _ActivityView extends ConsumerWidget {
       case LiveActivityType.trueFalse:
         return [
           _AnswerButton(
-            label: 'True',
+            label: _t(context).qpTrue,
             icon: Icons.check_circle_outline_rounded,
             selected: myAnswer == true,
             state: _stateFor(true),
@@ -509,7 +504,7 @@ class _ActivityView extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           _AnswerButton(
-            label: 'False',
+            label: _t(context).qpFalse,
             icon: Icons.cancel_outlined,
             selected: myAnswer == false,
             state: _stateFor(false),
@@ -520,7 +515,7 @@ class _ActivityView extends ConsumerWidget {
       case LiveActivityType.fslSign when activity.selfReport:
         return [
           _AnswerButton(
-            label: 'I got it! ✋',
+            label: _t(context).lsGotIt,
             icon: Icons.thumb_up_alt_outlined,
             selected: myAnswer == true,
             state: _stateFor(true),
@@ -529,7 +524,7 @@ class _ActivityView extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           _AnswerButton(
-            label: 'Not yet',
+            label: _t(context).lsNotYet,
             icon: Icons.refresh_rounded,
             selected: myAnswer == false,
             state: _SelectState.neutral,
@@ -539,7 +534,7 @@ class _ActivityView extends ConsumerWidget {
       case LiveActivityType.flashcard:
         return [
           _AnswerButton(
-            label: 'Got it!',
+            label: _t(context).lsGotItShort,
             icon: Icons.thumb_up_alt_outlined,
             selected: myAnswer == true,
             state: _SelectState.neutral,
@@ -597,7 +592,7 @@ class _QNumberPill extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
-          'Question $number of $total',
+          _t(context).lsQuestionNofM(number, total),
           style: AppTypography.labelMedium.copyWith(
             color: AppColors.primary,
             fontWeight: FontWeight.w700,
@@ -631,7 +626,7 @@ class _Prompt extends StatelessWidget {
           const SizedBox(height: 8),
           if (isFsl)
             Text(
-              'Watch the sign on the TV, then choose the matching word.',
+              _t(context).lsWatchSign,
               textAlign: TextAlign.center,
               style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
             )
@@ -646,7 +641,7 @@ class _Prompt extends StatelessWidget {
             )
           else
             Text(
-              'Which word matches the picture?',
+              _t(context).lsWhichPicture,
               textAlign: TextAlign.center,
               style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
             ),
@@ -734,8 +729,8 @@ class _AnswerButton extends StatelessWidget {
     }
 
     final semanticSuffix = switch (state) {
-      _SelectState.correct => ', correct answer',
-      _SelectState.wrong => ', your answer, incorrect',
+      _SelectState.correct => _t(context).lsCorrectAnswer,
+      _SelectState.wrong => _t(context).lsYourWrong,
       _SelectState.neutral => '',
     };
 
@@ -803,8 +798,8 @@ class _ResultBanner extends StatelessWidget {
           Expanded(
             child: Text(
               correct
-                  ? (award > 0 ? 'Correct! You earned $award ⭐' : 'Correct! 🎉')
-                  : 'Good try! Keep going 💪',
+                  ? (award > 0 ? _t(context).lsCorrectStarsEmoji(award) : _t(context).lsCorrectEmoji)
+                  : _t(context).lsKeepGoing,
               style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w700,
                 color: color,
@@ -834,8 +829,8 @@ class _RaiseHandBar extends StatelessWidget {
           button: true,
           toggled: handRaised,
           label: handRaised
-              ? 'Lower your hand'
-              : 'Raise your hand to ask your teacher for help',
+              ? _t(context).lsLowerYourHand
+              : _t(context).lsRaiseForHelp,
           child: SizedBox(
             height: scaledControlHeight(context, 64),
             child: FilledButton.icon(
@@ -853,7 +848,7 @@ class _RaiseHandBar extends StatelessWidget {
                 handRaised ? '✋' : '🙋',
                 style: const TextStyle(fontSize: 24),
               ),
-              label: Text(handRaised ? 'Lower hand' : 'Raise hand'),
+              label: Text(handRaised ? _t(context).lsLowerHand : _t(context).lsRaiseHand),
             ),
           ),
         ),
@@ -905,3 +900,8 @@ class _Notice extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

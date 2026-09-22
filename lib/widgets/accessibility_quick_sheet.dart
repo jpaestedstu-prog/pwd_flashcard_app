@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_providers.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// A small, child-safe accessibility panel surfaced from the home surfaces that
 /// have no Settings gear — the Child home and the Guest Player home.
@@ -39,7 +41,7 @@ class AccessibilityQuickButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-        tooltip: 'Accessibility options',
+        tooltip: _t(context).aqOptions,
         onPressed: () => showAccessibilityQuickSheet(context),
         icon: const Icon(Icons.accessibility_new_rounded),
         iconSize: iconSize,
@@ -75,7 +77,7 @@ class _AccessibilityQuickSheet extends ConsumerWidget {
                   child: Semantics(
                     header: true,
                     child: Text(
-                      'Accessibility',
+                      _t(context).accessibility,
                       style: theme.textTheme.titleLarge
                           ?.copyWith(fontWeight: FontWeight.bold),
                     ),
@@ -85,7 +87,7 @@ class _AccessibilityQuickSheet extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Make the app easier to see, hear, and use.',
+              _t(context).aqIntro,
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: colors.onSurfaceVariant),
             ),
@@ -93,7 +95,7 @@ class _AccessibilityQuickSheet extends ConsumerWidget {
 
             // ── Text size ──
             Text(
-              'Text Size',
+              _t(context).aqTextSize,
               style: theme.textTheme.titleSmall
                   ?.copyWith(fontWeight: FontWeight.w700),
             ),
@@ -132,30 +134,30 @@ class _AccessibilityQuickSheet extends ConsumerWidget {
             // ── Toggles ──
             _ToggleTile(
               icon: Icons.contrast_rounded,
-              title: 'High Contrast',
-              subtitle: 'Bolder colors and outlines',
+              title: _t(context).apHighContrast,
+              subtitle: _t(context).aqHcSub,
               value: settings.highContrastMode,
               onChanged: (_) => notifier.toggleHighContrast(),
             ),
             _ToggleTile(
               icon: Icons.font_download_rounded,
-              title: 'Easy-Read Font',
-              subtitle: 'Friendlier spacing for reading',
+              title: _t(context).aqEasyRead,
+              subtitle: _t(context).aqEasyReadSub,
               value: settings.dyslexiaMode,
               onChanged: (v) =>
                   notifier.update(settings.copyWith(dyslexiaMode: v)),
             ),
             _ToggleTile(
               icon: Icons.volume_up_rounded,
-              title: 'Read Aloud',
-              subtitle: 'Speak words and buttons',
+              title: _t(context).aqReadAloud,
+              subtitle: _t(context).aqReadAloudSub,
               value: settings.ttsEnabled,
               onChanged: (_) => notifier.toggleTts(),
             ),
             _ToggleTile(
               icon: Icons.motion_photos_off_rounded,
-              title: 'Reduce Motion',
-              subtitle: 'Calmer, simpler animations',
+              title: _t(context).aqReduceMotion,
+              subtitle: _t(context).aqReduceMotionSub,
               value: settings.reducedMotion,
               onChanged: (_) => notifier.toggleReducedMotion(),
             ),
@@ -186,7 +188,7 @@ class _SizePreset extends StatelessWidget {
       child: Semantics(
         button: true,
         selected: isActive,
-        label: 'Text size $label',
+        label: _t(context).aqTextSizeLabel(label),
         child: Material(
           color: isActive ? colors.primary : colors.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(14),
@@ -241,3 +243,8 @@ class _ToggleTile extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

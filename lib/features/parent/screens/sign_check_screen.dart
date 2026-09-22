@@ -16,6 +16,8 @@ import '../../../widgets/app_action_bar.dart';
 import '../../../widgets/fsl_loading_overlay.dart';
 import '../../../widgets/fsl_video_sheet.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Where an educator checks a learner's "I can sign this" claims.
 ///
@@ -156,7 +158,7 @@ class _SignCheckScreenState extends ConsumerState<SignCheckScreen> {
     return Stack(
       children: [
         SafeScaffold(
-          appBar: AppBar(title: const Text('Sign Check')),
+          appBar: AppBar(title: Text(_t(context).scTitleCheck)),
           // The body is already a ListView, so opt out of SafeScaffold's own
           // SingleChildScrollView — nesting the two gives the list unbounded
           // height and the Scaffold fails layout entirely, leaving a blank
@@ -173,12 +175,8 @@ class _SignCheckScreenState extends ConsumerState<SignCheckScreen> {
                   children: [
                     Text(
                       claimed.isEmpty
-                          ? '${widget.learnerName} has not marked any signs yet. '
-                                'Claims appear here after they use “I can sign '
-                                'this” in the dictionary or finish a Sign It round.'
-                          : 'Watch the reference clip, ask ${widget.learnerName} '
-                                'to sign it, then record what you saw. Confirming '
-                                'is what earns them the sign.',
+                          ? _t(context).scNoClaims(widget.learnerName)
+                          : _t(context).scHowTo(widget.learnerName),
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                       ),
@@ -193,7 +191,7 @@ class _SignCheckScreenState extends ConsumerState<SignCheckScreen> {
                             label: '$confirmed confirmed',
                             color: hc.success,
                           ),
-                          _Pill(label: '$pending to check', color: hc.warning),
+                          _Pill(label: _t(context).scToCheck(pending), color: hc.warning),
                           _Pill(
                             label: '${claimed.length} claimed',
                             color: hc.textSecondary,
@@ -202,7 +200,7 @@ class _SignCheckScreenState extends ConsumerState<SignCheckScreen> {
                       ),
                       const SizedBox(height: 12),
                       FilterChip(
-                        label: const Text('Only ones I haven’t checked'),
+                        label: Text(_t(context).scOnlyUnchecked),
                         selected: _pendingOnly,
                         onSelected: (v) => setState(() => _pendingOnly = v),
                         selectedColor: AppColors.primary,
@@ -221,7 +219,7 @@ class _SignCheckScreenState extends ConsumerState<SignCheckScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 32),
                   child: Center(
                     child: Text(
-                      'Nothing left to check. Nice work.',
+                      _t(context).scNothingLeft,
                       style: AppTypography.bodyMedium.copyWith(
                         color: hc.textSecondary,
                       ),
@@ -325,8 +323,8 @@ class _ClaimRow extends StatelessWidget {
                         // The learner's own words, quoted back — the educator
                         // is ruling on a specific claim, not grading in general.
                         claim == SignMastery.canSign
-                            ? 'Says: “I can sign this”'
-                            : 'Says: “Not yet”',
+                            ? _t(context).scSaysCan
+                            : _t(context).scSaysNotYet,
                         style: AppTypography.labelSmall.copyWith(
                           color: hc.textSecondary,
                         ),
@@ -339,7 +337,7 @@ class _ClaimRow extends StatelessWidget {
                 IconButton(
                   onPressed: onWatch,
                   icon: const Icon(Icons.play_circle_rounded),
-                  tooltip: 'Watch the reference sign',
+                  tooltip: _t(context).scWatchRef,
                   color: AppColors.secondaryDark,
                 ),
               ],
@@ -356,10 +354,10 @@ class _ClaimRow extends StatelessWidget {
                         ),
                         icon: const Icon(Icons.replay_rounded),
                         label: Text(
-                          'Needs practice',
+                          _t(context).signNeedsPractice,
                           style: fittedStyle(
                             context,
-                            'Needs practice',
+                            _t(context).signNeedsPractice,
                             Theme.of(context).textTheme.labelLarge,
                           ),
                         ),
@@ -368,10 +366,10 @@ class _ClaimRow extends StatelessWidget {
                         onPressed: onNeedsPractice,
                         icon: const Icon(Icons.replay_rounded),
                         label: Text(
-                          'Needs practice',
+                          _t(context).signNeedsPractice,
                           style: fittedStyle(
                             context,
-                            'Needs practice',
+                            _t(context).signNeedsPractice,
                             Theme.of(context).textTheme.labelLarge,
                           ),
                         ),
@@ -383,12 +381,12 @@ class _ClaimRow extends StatelessWidget {
                           backgroundColor: hc.success,
                         ),
                         icon: const Icon(Icons.verified_rounded),
-                        label: const Text('Confirmed'),
+                        label: Text(_t(context).signConfirmed),
                       )
                     : OutlinedButton.icon(
                         onPressed: onConfirm,
                         icon: const Icon(Icons.verified_outlined),
-                        label: const Text('Confirm'),
+                        label: Text(_t(context).scConfirm),
                       ),
               ],
             ),
@@ -398,3 +396,8 @@ class _ClaimRow extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

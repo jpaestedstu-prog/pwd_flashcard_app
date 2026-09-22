@@ -19,6 +19,16 @@ class HuntMilestone {
     required this.title,
     required this.emoji,
   });
+
+  /// [title] in the learner's language — the same names the badges use.
+  String titleOf({required bool filipino}) => !filipino
+      ? title
+      : switch (finds) {
+          1 => 'Unang Nahanap',
+          10 => 'Tagahanap ng Salita',
+          25 => 'Tagaipon ng Salita',
+          _ => title,
+        };
 }
 
 /// The camera-find ladder, in ascending order. Topped out well below the ~61
@@ -57,7 +67,96 @@ class Achievement {
     required this.color,
     required this.checkUnlocked,
   });
+
+  /// [title] in the learner's language. Badge names are content, like the
+  /// category and level names, so the translation ships here, keyed by [id].
+  String titleOf({required bool filipino}) =>
+      filipino ? (_achievementTitleFilipino[id] ?? title) : title;
+
+  /// [description] in the learner's language (see [titleOf]).
+  String descriptionOf({required bool filipino}) =>
+      filipino ? (_achievementDescriptionFilipino[id] ?? description) : description;
 }
+
+final _achievementDescriptionFilipino = {
+  'first_word': 'Natutunan mo ang iyong kauna-unahang salita!',
+  'ten_words': 'Ang galing! Natuto ka ng 10 salita!',
+  'half_way': 'Natuto ka ng ${Achievements._halfWayWords} salita — kalahati na!',
+  'word_master': 'Kahanga-hanga — natuto ka ng ${Achievements._wordMasterWords} salita!',
+  'all_animals': 'Alam mo na ang karamihan sa mga salita tungkol sa hayop!',
+  'all_colors': 'Alam mo na ang karamihan sa mga kulay at hugis!',
+  'all_numbers': 'Alam mo na ang karamihan sa mga salita tungkol sa numero!',
+  'all_body': 'Alam mo na ang karamihan sa mga salita tungkol sa bahagi ng katawan!',
+  'all_food': 'Alam mo na ang karamihan sa mga salita tungkol sa pagkain at inumin!',
+  'all_family': 'Alam mo na ang karamihan sa mga salita tungkol sa pamilya at pagbati!',
+  'all_clothing': 'Alam mo na ang karamihan sa mga salita tungkol sa damit!',
+  'all_weather': 'Alam mo na ang karamihan sa mga salita tungkol sa panahon!',
+  'all_classroom': 'Alam mo na ang karamihan sa mga salita tungkol sa silid-aralan!',
+  'all_transportation': 'Alam mo na ang karamihan sa mga salita tungkol sa sasakyan!',
+  'all_emotions': 'Alam mo na ang karamihan sa mga salita tungkol sa damdamin!',
+  'all_days_time': 'Alam mo na ang karamihan sa mga salita tungkol sa araw at oras!',
+  'category_champion': 'Alam mo na ang karamihan sa mga salita sa bawat kategorya — napakahusay!',
+  'three_day_streak': 'Nagsanay ka nang 3 araw na sunod-sunod — magandang ugali!',
+  'week_streak': 'Isang buong linggo ng pag-aaral — walang makapipigil sa iyo!',
+  'two_week_streak': 'Dalawang linggo ng araw-araw na pag-aaral — kahanga-hangang sipag!',
+  'month_streak': 'Isang buong buwan ng pag-aaral — alamat ka!',
+  'game_star': 'Nakaipon ka ng 5 bituin mula sa mga laro!',
+  'star_collector': 'Nakakuha ka ng 25 bituin — kumikinang ka!',
+  'superstar': 'Nakaipon ka ng 50 bituin — talagang kamangha-mangha!',
+  'perfect_score': 'Nakakuha ka ng 100% sa isang laro — walang mali!',
+  'game_explorer': 'Nakapaglaro ka ng ${Achievements.gameExplorerTypes} iba’t ibang laro!',
+  'first_story': 'Natapos mo ang iyong unang pagsusulit sa kwento!',
+  'story_perfect': 'Nakakuha ka ng 3/3 sa pagsusulit sa kwento — magaling kang magbasa!',
+  'hunt_first_find': 'Nahanap mo ang iyong unang salita gamit ang camera!',
+  'hunt_spotter': 'Nakakita ka ng 10 salita sa totoong mundo!',
+  'hunt_collector': 'Nakaipon ka ng 25 salita gamit ang iyong camera — kahanga-hanga!',
+  'hunt_daily_streak': 'Nakahanap ka ng bagong salita nang $kHuntStreakMilestone araw na sunod-sunod!',
+  'first_sign': 'Napanood mo ang iyong kauna-unahang senyas sa Filipino Sign Language!',
+  'sign_explorer': 'Nakapanood ka ng 25 iba’t ibang senyas — natututo na ang iyong mga kamay!',
+  'sign_fluent': 'Nakapanood ka ng 100 iba’t ibang senyas. Tunay na kahusayan iyan!',
+  'first_verified_sign': 'Kinumpirma ng guro ang iyong kauna-unahang senyas!',
+  'verified_signer': '10 sa iyong mga senyas ang kinumpirma ng guro.',
+};
+
+const _achievementTitleFilipino = {
+  'first_word': 'Unang Salita',
+  'ten_words': '10 Salita',
+  'half_way': 'Kalahati Na',
+  'word_master': 'Dalubhasa sa Salita',
+  'all_animals': 'Eksperto sa Hayop',
+  'all_colors': 'Salamangkero ng Kulay',
+  'all_numbers': 'Ninja ng Numero',
+  'all_body': 'Kilala ang Katawan',
+  'all_food': 'Bituin ng Pagkain',
+  'all_family': 'Bayani ng Pamilya',
+  'all_clothing': 'Bituin ng Pananamit',
+  'all_weather': 'Bantay-Panahon',
+  'all_classroom': 'Galing sa Paaralan',
+  'all_transportation': 'Mabilis sa Daan',
+  'all_emotions': 'Eksperto sa Damdamin',
+  'all_days_time': 'Tagabantay ng Oras',
+  'category_champion': 'Kampeon ng Kategorya',
+  'three_day_streak': '3 Araw na Sunod-sunod',
+  'week_streak': '7 Araw na Sunod-sunod',
+  'two_week_streak': '14 Araw na Sunod-sunod',
+  'month_streak': '30 Araw na Sunod-sunod',
+  'game_star': 'Bituin ng Laro',
+  'star_collector': 'Tagaipon ng Bituin',
+  'superstar': 'Superstar',
+  'perfect_score': 'Perpektong Iskor',
+  'game_explorer': 'Manlalakbay ng Laro',
+  'first_story': 'Unang Kwento',
+  'story_perfect': 'Bituin ng Kwento',
+  'hunt_first_find': 'Unang Nahanap',
+  'hunt_spotter': 'Tagahanap ng Salita',
+  'hunt_collector': 'Tagaipon ng Salita',
+  'hunt_daily_streak': 'Araw-araw na Mangangaso',
+  'first_sign': 'Unang Senyas',
+  'sign_explorer': 'Manlalakbay ng Senyas',
+  'sign_fluent': 'Bihasa sa Senyas',
+  'first_verified_sign': 'Nasenyasan Mo!',
+  'verified_signer': 'Beripikadong Tagasenyas',
+};
 
 /// Whether [p] has covered enough of [category] to call it mastered.
 ///

@@ -10,6 +10,8 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/classroom_provider.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations_en.dart';
+import '../widgets/cloud_sync_error_view.dart';
 
 /// Real-time classroom monitoring screen for teachers.
 ///
@@ -61,12 +63,12 @@ class _ClassroomDashboardScreenState
           if (isEducator)
             IconButton(
               icon: const Icon(Icons.file_download_outlined),
-              tooltip: 'Export CSV report',
+              tooltip: _t(context).cdExportCsv,
               onPressed: () => context.push('/reports/export'),
             ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
+            tooltip: _t(context).cdRefresh,
             onPressed: _refresh,
           ),
         ],
@@ -76,7 +78,9 @@ class _ClassroomDashboardScreenState
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Text('Could not load dashboard:\n$e',
+            child: Text(_t(context).cdLoadError(
+              cloudSyncErrorMessage(e, _t(context)).title,
+            ),
                 textAlign: TextAlign.center),
           ),
         ),
@@ -151,7 +155,7 @@ class _ClassroomDashboardScreenState
                     padding: const EdgeInsets.all(20),
                     child: Center(
                       child: Text(
-                        'Last updated: ${_formatTime(snapshot.timestamp)}',
+                        _t(context).cdLastUpdated(_formatTime(snapshot.timestamp)),
                         style: AppTypography.labelSmall
                             .copyWith(color: AppColors.textHint),
                       ),
@@ -340,7 +344,7 @@ class _StudentCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  student.currentActivity,
+                  _activityLabel(_t(context), student.currentActivity),
                   style: AppTypography.bodySmall.copyWith(
                     color: student.isActive
                         ? AppColors.success
@@ -401,13 +405,13 @@ class _EmptyState extends StatelessWidget {
               size: 64, color: AppColors.textHint),
           const SizedBox(height: 16),
           Text(
-            'No student profiles found',
+            _t(context).cdNoStudents,
             style: AppTypography.titleMedium
                 .copyWith(color: HCColor.of(context).textSecondary),
           ),
           const SizedBox(height: 8),
           Text(
-            'Create student profiles to see them here.\nEach student will appear with their progress.',
+            _t(context).cdNoStudentsBody,
             style: AppTypography.bodyMedium
                 .copyWith(color: AppColors.textHint),
             textAlign: TextAlign.center,
@@ -417,3 +421,19 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// The activity the provider records (in English, as data) in the reader's
+/// language.
+String _activityLabel(AppLocalizations t, String activity) =>
+    switch (activity) {
+      'Idle' => t.idle,
+      'Playing Games' => t.cdPlaying,
+      'Reviewing Flashcards' => t.cdReviewing,
+      'Studying' => t.cdStudying,
+      _ => activity,
+    };

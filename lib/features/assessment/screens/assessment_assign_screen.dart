@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+import '../../../data/models/models.dart';
+import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
@@ -16,6 +18,10 @@ import '../providers/quiz_builder_provider.dart';
 import '../services/assessment_cloud_service.dart';
 import '../services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
+import '../../../core/utils/localized_date.dart';
+import '../models/question_prompt.dart';
 
 /// Something an educator can hand out.
 ///
@@ -40,13 +46,30 @@ class AssignableItem {
   final Assessment? assessment;
   final CustomQuiz? quiz;
 
+  /// Set for the two halves of the study instrument, which are minted fresh
+  /// at assign time rather than picked from a saved list.
+  final AssessmentType? instrument;
+
   AssignableItem.fromAssessment(Assessment this.assessment)
     : id = assessment.id,
       title = assessment.title,
       questionCount = assessment.questions.length,
       difficulty = assessment.difficulty,
       createdAt = assessment.createdAt,
-      quiz = null;
+      quiz = null,
+      instrument = null;
+
+  /// The class pre-test or post-test. [title] and [questionCount] describe
+  /// what *will* be minted; nothing exists until the educator presses Assign.
+  AssignableItem.instrument(
+    AssessmentType this.instrument, {
+    required this.title,
+    required this.questionCount,
+  }) : id = 'instrument:${instrument.name}',
+       difficulty = GameDifficulty.medium,
+       createdAt = DateTime.now(),
+       assessment = null,
+       quiz = null;
 
   AssignableItem.fromQuiz(CustomQuiz this.quiz)
     : id = quiz.id,
@@ -54,9 +77,20 @@ class AssignableItem {
       questionCount = quiz.flashcardIds.length,
       difficulty = quiz.difficulty,
       createdAt = quiz.createdAt,
-      assessment = null;
+      assessment = null,
+      instrument = null;
 
   bool get isQuiz => quiz != null;
+  bool get isInstrument => instrument != null;
+
+  /// Whether assigning this hands out a post-test — the Class Post-Test tile,
+  /// or a class post-test already sitting under "Saved assessments". Both are
+  /// minted afresh per learner group so each learner's post-test mirrors the
+  /// pre-test *they* sat: re-sending a saved one as-is would give every
+  /// selected learner that one form, whichever pre-test they took.
+  bool get isPostTest =>
+      instrument == AssessmentType.postTest ||
+      assessment?.type == AssessmentType.postTest;
 }
 
 /// Screen for educators to assign an assessment to students.
@@ -83,10 +117,18 @@ class _AssessmentAssignScreenState
   /// The roster in particular spans classroom students *and* home-group
   /// children — the old local `role == UserRole.student` read showed a Parent
   /// "No students found" and hid cross-device students from teachers.
-  List<AssignableItem> _assignables = const [];
   List<AssignableItem> _quizzes = const [];
   List<AssignableItem> _saved = const [];
   List<({String id, String name})> _students = const [];
+
+  /// Full profiles for the roster, keyed by id — the class instrument needs
+  /// each selected learner's accessibility and supports to decide whether it
+  /// may include sign items.
+  Map<String, UserProfile> _profiles = const {};
+
+  /// The two study-instrument tiles. Rebuilt every build, because the
+  /// post-test only appears once a class pre-test exists to mirror.
+  List<AssignableItem> _instruments = const [];
 
   @override
   void dispose() {
@@ -110,9 +152,46 @@ class _AssessmentAssignScreenState
     // the learner's device can resolve it by id like anything else. Assigning
     // the same quiz twice therefore mints two instruments, which is right:
     // they are two sittings and they are tracked separately.
-    Assessment target;
-    if (selected.isQuiz) {
-      target = AssessmentService.materialiseQuiz(
+    //
+    // Each batch is one assessment and the learners it goes to. Only the
+    // class post-test ever makes more than one: every learner's post-test
+    // mirrors the class pre-test *they* sat — see classPostTestPlan.
+    final batches = <(Assessment, List<String>)>[];
+    if (selected.isPostTest) {
+      // Pair against the results as they stand *now*: a learner who sat the
+      // pre-test on their own tablet after this screen opened is only known
+      // here once pulled, and without it they would be paired with the
+      // newest class pre-test instead of their own.
+      ref.invalidate(educatorAssessmentSyncProvider(profile!.id));
+      try {
+        await ref.read(educatorAssessmentSyncProvider(profile.id).future);
+      } catch (_) {
+        // Offline: pair with what this device already has.
+      }
+      if (!mounted) return;
+      final plan = AssessmentService.classPostTestPlan(
+        profile.id,
+        _selectedStudentIds,
+      );
+      if (plan.isEmpty) {
+        setState(() => _saving = false);
+        AppSnackBar.warning(
+          context,
+          message: _tr(context).asgPreFirst,
+        );
+        return;
+      }
+      for (final group in plan) {
+        final post = AssessmentService.createClassPostTest(group.pre);
+        await ref.read(customAssessmentsProvider.notifier).saveAssessment(post);
+        batches.add((post, group.learners));
+      }
+    } else if (selected.isInstrument) {
+      final pre = _mintClassPreTest(profile!.id);
+      await ref.read(customAssessmentsProvider.notifier).saveAssessment(pre);
+      batches.add((pre, _selectedStudentIds.toList()));
+    } else if (selected.isQuiz) {
+      final target = AssessmentService.materialiseQuiz(
         selected.quiz!,
         ref.read(allFlashcardsProvider),
       );
@@ -120,40 +199,45 @@ class _AssessmentAssignScreenState
         setState(() => _saving = false);
         AppSnackBar.warning(
           context,
-          message: 'That quiz has no cards left to ask about.',
+          message: _tr(context).asgQuizEmpty,
         );
         return;
       }
       await ref.read(customAssessmentsProvider.notifier).saveAssessment(target);
+      batches.add((target, _selectedStudentIds.toList()));
     } else {
-      target = selected.assessment!;
+      batches.add((selected.assessment!, _selectedStudentIds.toList()));
     }
 
-    final assignment = AssessmentAssignment(
-      id: const Uuid().v4(),
-      assessmentId: target.id,
-      assessmentTitle: target.title,
-      assignedBy: profile!.id,
-      studentIds: _selectedStudentIds.toList(),
-      assignedAt: DateTime.now(),
-      deadline: _deadline,
-      instructions: _instructionsController.text.trim().isEmpty
-          ? null
-          : _instructionsController.text.trim(),
-    );
-
-    final outcome = await ref
-        .read(assignmentsProvider.notifier)
-        .saveAssignment(assignment);
+    // The enum runs best to worst, so the snackbar reports the worst batch.
+    var outcome = CloudSyncOutcome.synced;
+    for (final (target, learners) in batches) {
+      final assignment = AssessmentAssignment(
+        id: const Uuid().v4(),
+        assessmentId: target.id,
+        assessmentTitle: target.title,
+        assignedBy: profile!.id,
+        studentIds: learners,
+        assignedAt: DateTime.now(),
+        deadline: _deadline,
+        instructions: _instructionsController.text.trim().isEmpty
+            ? null
+            : _instructionsController.text.trim(),
+      );
+      final result = await ref
+          .read(assignmentsProvider.notifier)
+          .saveAssignment(assignment);
+      if (result.index > outcome.index) outcome = result;
+    }
 
     if (mounted) {
       final count = _selectedStudentIds.length;
-      final learners = '$count ${count == 1 ? "learner" : "learners"}';
+      final t = _tr(context);
       switch (outcome) {
         case CloudSyncOutcome.synced:
           AppSnackBar.success(
             context,
-            message: 'Assessment assigned to $learners!',
+            message: t.asgAssigned(count),
           );
         case CloudSyncOutcome.localOnly:
           // Never claim it went out when it didn't: the row is safe locally
@@ -164,8 +248,7 @@ class _AssessmentAssignScreenState
           // wrong way.
           AppSnackBar.warning(
             context,
-            message: 'Saved for $learners on this device — not sent yet. '
-                'It will upload when syncing is working.',
+            message: t.asgLocalOnly(count),
           );
         case CloudSyncOutcome.notOwner:
           // This one is never going out, so saying "not yet" would be a lie
@@ -173,9 +256,7 @@ class _AssessmentAssignScreenState
           // cause, and it is something they did and can undo.
           AppSnackBar.warning(
             context,
-            message: 'Saved on this device only. This profile was restored on '
-                'another device, so that one now handles syncing. Restore it '
-                'back here to send work to your learners.',
+            message: t.asgNotOwner,
           );
       }
       context.pop();
@@ -192,6 +273,32 @@ class _AssessmentAssignScreenState
           ..addAll(_students.map((s) => s.id));
       }
     });
+  }
+
+  /// Build the class pre-test for the learners now selected: one common set
+  /// of questions for everyone, with sign items only if every selected
+  /// learner signs. (Each post-test is the parallel form of the pre-test its
+  /// learners sat, so it inherits whatever that one had.)
+  Assessment _mintClassPreTest(String educatorId) {
+    final available =
+        ref.read(fslAvailabilityProvider).valueOrNull?.cardsWithVideo ??
+        const <Flashcard>[];
+    final signCards = AssessmentService.signCardsForGroup<String>(
+      _selectedStudentIds,
+      (id) {
+        final learner = _profiles[id];
+        return learner != null &&
+            AccessibilityContentPolicy.forLearner(
+              learner.disabilityType,
+              learner.supportOptions,
+            ).showFsl;
+      },
+      available,
+    );
+    return AssessmentService.createClassPreTest(
+      educatorId: educatorId,
+      signCards: signCards,
+    );
   }
 
   Future<void> _pickDeadline() async {
@@ -277,12 +384,27 @@ class _AssessmentAssignScreenState
       for (final a in ref.watch(customAssessmentsProvider))
         AssignableItem.fromAssessment(a),
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    _assignables = [..._quizzes, ..._saved];
+    // Warmed so a class pre-test for signing learners can include sign items
+    // the moment it is minted.
+    ref.watch(fslAvailabilityProvider);
+    final classPre = AssessmentService.latestClassPreTest(profileId);
+    _instruments = [
+      AssignableItem.instrument(
+        AssessmentType.preTest,
+        title: _tr(context).asgClassPre,
+        questionCount: 15,
+      ),
+      if (classPre != null)
+        AssignableItem.instrument(
+          AssessmentType.postTest,
+          title: _tr(context).asgClassPost,
+          questionCount: classPre.questions.length,
+        ),
+    ];
 
-    _students = ref
-        .watch(educatorLearnerRosterProvider)
-        .map((d) => (id: d.$1.id, name: d.$1.name))
-        .toList();
+    final roster = ref.watch(educatorLearnerRosterProvider);
+    _students = roster.map((d) => (id: d.$1.id, name: d.$1.name)).toList();
+    _profiles = {for (final d in roster) d.$1.id: d.$1};
     // A learner removed from the roster while this screen is open must not
     // stay silently ticked, or "Select All" would flip to "Deselect All" on a
     // selection the educator can no longer see.
@@ -294,15 +416,16 @@ class _AssessmentAssignScreenState
       appBar: AppBar(
         leading: const AppBackButton(fallbackRoute: '/assessment-hub'),
         title: Text(
-          'Assign Assessment',
+          _tr(context).asgTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
           ),
         ),
       ),
-      body: _assignables.isEmpty
-          ? _EmptyAssessments(hc: hc)
-          : _students.isEmpty
+      // No "nothing to assign" state any more: the study pre-test is always
+      // on offer, which is the point — an educator with no custom assessments
+      // can still run the study procedure.
+      body: _students.isEmpty
               ? _EmptyStudents(hc: hc, isParent: _isParent)
               : ListView(
                   padding: const EdgeInsets.all(20),
@@ -314,31 +437,49 @@ class _AssessmentAssignScreenState
                     // of questions. Assigning a quiz adds one of the latter,
                     // so this list grows every week — hence the dates and the
                     // newest-first order.
+                    // The study instrument comes first: it is what the study
+                    // procedure has an educator assign, and everything that
+                    // reads a learning gain reads *these* two, not a custom
+                    // assessment.
                     ..._section(
                       hc: hc,
-                      label: 'Quizzes',
-                      caption: 'Makes a fresh test each time you assign it',
+                      label: _tr(context).asgStudyLabel,
+                      caption: _tr(context).asgStudyCaption,
+                      items: _instruments,
+                    ),
+                    ..._section(
+                      hc: hc,
+                      label: _tr(context).asgQuizzes,
+                      caption: _tr(context).asgQuizzesCaption,
                       items: _quizzes,
                     ),
                     ..._section(
                       hc: hc,
-                      label: 'Saved assessments',
-                      caption: 'A fixed set of questions',
+                      label: _tr(context).asgSaved,
+                      caption: _tr(context).asgSavedCaption,
                       items: _saved,
                     ),
 
                     const SizedBox(height: 24),
 
                     // ─── Select Students ──────────────
-                    Row(
+                    // A Wrap, not a Row: at a 2.0x font on a phone the
+                    // "Deselect All" button took most of the width and left
+                    // the title a sliver, which broke it inside the word —
+                    // "S / elect". Now the button drops to its own line.
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
                       children: [
-                        Expanded(
-                          child: Text(
-                            'Select Students (${_selectedStudentIds.length}/${_students.length})',
-                            style: AppTypography.titleSmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: hc.textPrimary,
-                            ),
+                        Text(
+                          _tr(context).asgSelectStudents(
+                            _selectedStudentIds.length,
+                            _students.length,
+                          ),
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: hc.textPrimary,
                           ),
                         ),
                         TextButton(
@@ -347,8 +488,8 @@ class _AssessmentAssignScreenState
                             _selectedStudentIds.isNotEmpty &&
                                     _selectedStudentIds.length ==
                                         _students.length
-                                ? 'Deselect All'
-                                : 'Select All',
+                                ? _tr(context).asgDeselectAll
+                                : _tr(context).asgSelectAll,
                           ),
                         ),
                       ],
@@ -398,7 +539,7 @@ class _AssessmentAssignScreenState
 
                     // ─── Deadline (optional) ──────────
                     Text(
-                      'Deadline (optional)',
+                      _tr(context).asgDeadline,
                       style: AppTypography.titleSmall.copyWith(
                         fontWeight: FontWeight.w700,
                         color: hc.textPrimary,
@@ -411,7 +552,7 @@ class _AssessmentAssignScreenState
                       label: Text(
                         _deadline != null
                             ? '${_deadline!.day}/${_deadline!.month}/${_deadline!.year} ${_deadline!.hour}:${_deadline!.minute.toString().padLeft(2, '0')}'
-                            : 'Set Deadline',
+                            : _tr(context).asgSetDeadline,
                       ),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
@@ -426,7 +567,7 @@ class _AssessmentAssignScreenState
                         alignment: Alignment.centerLeft,
                         child: TextButton(
                           onPressed: () => setState(() => _deadline = null),
-                          child: const Text('Remove deadline'),
+                          child: Text(_tr(context).asgRemoveDeadline),
                         ),
                       ),
 
@@ -434,7 +575,7 @@ class _AssessmentAssignScreenState
 
                     // ─── Instructions (optional) ──────
                     Text(
-                      'Instructions (optional)',
+                      _tr(context).asgInstructions,
                       style: AppTypography.titleSmall.copyWith(
                         fontWeight: FontWeight.w700,
                         color: hc.textPrimary,
@@ -445,7 +586,7 @@ class _AssessmentAssignScreenState
                       controller: _instructionsController,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        hintText: 'Add instructions for students...',
+                        hintText: _tr(context).asgInstructionsHint,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -468,7 +609,9 @@ class _AssessmentAssignScreenState
                             )
                           : const Icon(Icons.send_rounded),
                       label: Text(
-                        _saving ? 'Assigning...' : 'Assign Assessment',
+                        _saving
+                            ? _tr(context).asgAssigning
+                            : _tr(context).asgTitle,
                       ),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -500,16 +643,6 @@ class _AssessmentTile extends StatelessWidget {
     required this.onTap,
   });
 
-  /// Day and month is enough to separate this week's copy from last week's,
-  /// and short enough not to wrap on a phone.
-  static String _shortDate(DateTime d) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${d.day} ${months[d.month - 1]}';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -533,15 +666,24 @@ class _AssessmentTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(item.isQuiz ? '🧩' : AssessmentType.custom.emoji,
-                  style: const TextStyle(fontSize: 28)),
+              Text(
+                item.isQuiz
+                    ? '🧩'
+                    : (item.instrument ?? item.assessment?.type ??
+                              AssessmentType.custom)
+                          .emoji,
+                style: const TextStyle(fontSize: 28),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.title,
+                      QuestionPrompt.title(
+                        item.title,
+                        AppLocalizations.of(context),
+                      ),
                       style: AppTypography.titleSmall.copyWith(
                         fontWeight: FontWeight.w600,
                         color: hc.textPrimary,
@@ -549,9 +691,13 @@ class _AssessmentTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${item.questionCount} questions  •  '
-                      '${item.difficulty.name}  •  '
-                      '${_shortDate(item.createdAt)}',
+                      item.isInstrument
+                          // Not saved yet, so a date would be a lie.
+                          ? '${_tr(context).hubQuestionCount(item.questionCount)}  •  '
+                                '${item.instrument == AssessmentType.preTest ? _tr(context).asgMadeFresh : _tr(context).asgMirrors}'
+                          : '${_tr(context).hubQuestionCount(item.questionCount)}  •  '
+                                '${item.difficulty.labelOf(_tr(context))}  •  '
+                                '${LocalizedDate.dayMonth(item.createdAt, AppLocalizations.of(context))}',
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                       ),
@@ -574,63 +720,6 @@ class _AssessmentTile extends StatelessWidget {
 
 // ─── Empty States ─────────────────────────────────────
 
-class _EmptyAssessments extends StatelessWidget {
-  final HCColor hc;
-  const _EmptyAssessments({required this.hc});
-
-  @override
-  Widget build(BuildContext context) {
-    // Centred while it fits, scrollable when it does not — the same shape
-    // RichEmptyState uses. A fixed 64px emoji plus copy that grows with the
-    // font ran 45px off the bottom of a 360x640 phone under the dyslexia
-    // theme at 2.0x, where the 1.6 line height makes every line taller.
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final content = Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('📋', style: TextStyle(fontSize: 64)),
-            const SizedBox(height: 16),
-            Text(
-              'No assessments yet',
-              style:
-                  AppTypography.titleMedium.copyWith(color: hc.textSecondary),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Build one in the Assessment Builder, or make a Quiz — both can '
-              'be assigned.',
-              style:
-                  AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: () => context.push('/assessment/builder'),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Create Assessment'),
-            ),
-          ],
-        );
-
-        // An unbounded height means an enclosing scroll view already owns the
-        // scrolling; nesting a second one inside it would break that one.
-        if (!constraints.hasBoundedHeight) return Center(child: content);
-
-        return SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Center(child: content),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// Shown when the educator has nobody to assign to. The way out of this is to
-/// share the join code, not to mint a learner profile from the role picker —
-/// so it points at the group the educator actually owns.
 class _EmptyStudents extends StatelessWidget {
   final HCColor hc;
   final bool isParent;
@@ -638,8 +727,13 @@ class _EmptyStudents extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Scrolls when it has to: at a 2.0x font on a 360×640 phone this ran 53px
+    // off the bottom. It used to sit behind "No assessments yet", which took
+    // precedence, so nobody reached it — until the study pre-test made that
+    // state impossible and this one the thing an educator with no learners
+    // actually sees.
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -650,17 +744,17 @@ class _EmptyStudents extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              isParent ? 'No children yet' : 'No students yet',
+              isParent
+                  ? _tr(context).asgNoChildren
+                  : _tr(context).asgNoStudents,
               style:
                   AppTypography.titleMedium.copyWith(color: hc.textSecondary),
             ),
             const SizedBox(height: 8),
             Text(
               isParent
-                  ? 'Share your home group code so your child can join, then '
-                        'assign them work here.'
-                  : 'Share your class code so students can join, then assign '
-                        'them work here.',
+                  ? _tr(context).asgShareHomeHint
+                  : _tr(context).asgShareClassHint,
               style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
               textAlign: TextAlign.center,
             ),
@@ -670,7 +764,11 @@ class _EmptyStudents extends StatelessWidget {
                 isParent ? '/home-group-manage' : '/classroom-manage',
               ),
               icon: const Icon(Icons.qr_code_2_rounded),
-              label: Text(isParent ? 'Share Group Code' : 'Share Class Code'),
+              label: Text(
+                isParent
+                    ? _tr(context).asgShareGroupCode
+                    : _tr(context).asgShareClassCode,
+              ),
             ),
           ],
         ),
@@ -678,3 +776,8 @@ class _EmptyStudents extends StatelessWidget {
     );
   }
 }
+
+/// This file's strings: English when no delegate is present, which is how
+/// widget tests build this screen.
+AppLocalizations _tr(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

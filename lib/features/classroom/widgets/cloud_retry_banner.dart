@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/firebase_service.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Red banner shown at the top of management screens when Firebase
 /// failed to initialise. Replaces the older `_CloudOffBanner` that
@@ -42,7 +44,7 @@ class _CloudRetryBannerState extends State<CloudRetryBanner> {
       widget.onRetrySucceeded?.call();
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Cloud sync reconnected.')));
+      ).showSnackBar(SnackBar(content: Text(_t(context).crbReconnected)));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -79,7 +81,7 @@ class _CloudRetryBannerState extends State<CloudRetryBanner> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Cloud sync OFF — local-only mode.',
+                  _t(context).crbOff,
                   style: TextStyle(
                     color: Colors.red.shade900,
                     fontWeight: FontWeight.bold,
@@ -90,8 +92,7 @@ class _CloudRetryBannerState extends State<CloudRetryBanner> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Codes you create here can\'t be joined from other devices. '
-            '${FirebaseService.lastInitError ?? ""}',
+            _t(context).crbBody(FirebaseService.lastInitError ?? ''),
             maxLines: 4,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: Colors.red.shade900, fontSize: 12),
@@ -116,3 +117,8 @@ class _CloudRetryBannerState extends State<CloudRetryBanner> {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

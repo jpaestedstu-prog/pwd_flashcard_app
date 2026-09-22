@@ -39,6 +39,9 @@ class _FakeDelegate extends GroupManagementDelegate {
   final List<String> calls = [];
 
   @override
+  String get audience => isParent ? 'parent' : 'teacher';
+
+  @override
   String get screenTitle => isParent ? 'Home Groups' : 'Manage Classes';
 
   @override
@@ -111,6 +114,13 @@ class _FakeDelegate extends GroupManagementDelegate {
     ManagedGroup group,
     DisabilityType accessibility,
   ) async => calls.add('accessibility:${group.id}');
+
+  @override
+  Future<void> setAllowRetakes(
+    WidgetRef ref,
+    ManagedGroup group,
+    bool allowed,
+  ) async => calls.add('retakes:${group.id}:$allowed');
 
   @override
   Future<void> regenerateCode(WidgetRef ref, ManagedGroup group) async =>

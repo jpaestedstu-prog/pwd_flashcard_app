@@ -28,6 +28,8 @@ import '../core/services/sync_queue/sync_queue_models.dart';
 import '../core/services/sync_queue/sync_queue_service.dart';
 import '../core/services/sync_queue/sync_queue_storage.dart';
 import '../core/utils/error_handler.dart';
+import '../core/services/notification_service.dart';
+import '../core/services/review_reminder_service.dart';
 import '../features/goals/models/goal_model.dart';
 import '../features/goals/services/goal_service.dart';
 import '../features/experiment/models/experiment_models.dart';
@@ -133,6 +135,19 @@ class SettingsNotifier extends Notifier<AppSettings> {
   void updateLocale(String locale) {
     state = state.copyWith(locale: locale);
     _save();
+    // A scheduled reminder keeps the words it was created with, so re-issue
+    // the pending ones in the language just picked.
+    final profileId = ref.read(profileProvider)?.id;
+    unawaited(
+      NotificationService.relocalize(
+        filipino: locale == 'fil',
+        hour: state.reminderHour,
+        minute: state.reminderMinute,
+        weakWordCount: () => profileId == null
+            ? 0
+            : ReviewReminderService.countWordsToReview(profileId),
+      ),
+    );
   }
 
   void toggleNotifications() {

@@ -23,8 +23,14 @@ class SurveyResultsScreen extends ConsumerWidget {
 
     if (profile == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Survey Results')),
-        body: const Center(child: Text('No profile selected')),
+        appBar: AppBar(
+          title: Text(isFilipino ? 'Mga Resulta ng Sarbey' : 'Survey Results'),
+        ),
+        body: Center(
+          child: Text(
+            isFilipino ? 'Walang napiling profile' : 'No profile selected',
+          ),
+        ),
       );
     }
 

@@ -1,6 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 import 'package:pwdpwdpwd/core/utils/connectivity_state.dart';
 import 'package:pwdpwdpwd/widgets/connectivity_banner.dart';
 
@@ -63,6 +64,39 @@ void main() {
         reason: 'a hidden banner must not keep announcing itself',
       );
       handle.dispose();
+    });
+
+    testWidgets('above the navigator its text is styled, and in the reader’s '
+        'language', (tester) async {
+      // Mounted by MaterialApp.builder — above the Navigator, where no
+      // Material supplies a text style. Seen on a tablet that went offline:
+      // the message drew with Flutter's yellow "missing Material" underline,
+      // and in English whatever the language setting.
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('fil'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => ConnectivityBanner(child: child!),
+          home: const Scaffold(body: Text('Home')),
+        ),
+      );
+      await tester.pump();
+
+      final message = find.text('Offline ka — gumagana pa rin ang lahat!');
+      expect(message, findsOneWidget);
+      expect(
+        find.ancestor(of: message, matching: find.byType(Material)),
+        findsWidgets,
+        reason: 'without a Material the text gets the debug underline',
+      );
+      final style = tester
+          .widget<RichText>(
+            find.descendant(of: message, matching: find.byType(RichText)),
+          )
+          .text
+          .style;
+      expect(style?.decoration, isNot(TextDecoration.underline));
     });
 
     testWidgets('does not cover the app while online', (tester) async {

@@ -6,11 +6,14 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/localized_date.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/app_providers.dart';
 import '../models/showcase_models.dart';
 import '../providers/showcase_provider.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Screen that generates and previews a PDF portfolio summary for sharing
 class ShowcaseShareScreen extends ConsumerWidget {
@@ -30,7 +33,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Text(
-          'Share Portfolio',
+          _t(context).scSharePortfolio,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -54,7 +57,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
                   const Text('📤', style: TextStyle(fontSize: 48)),
                   const SizedBox(height: 12),
                   Text(
-                    'Portfolio Summary PDF',
+                    _t(context).scPdfTitle,
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w700,
                       color: hc.textPrimary,
@@ -62,14 +65,17 @@ class ShowcaseShareScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${portfolio.items.length} items • ${profile?.name ?? "Learner"}',
+                    _t(context).scItemsFor(
+                      portfolio.items.length,
+                      profile?.name ?? _t(context).playerFallbackName,
+                    ),
                     style: AppTypography.bodyMedium.copyWith(
                       color: hc.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Share with your teacher or parent to show your progress!',
+                    _t(context).scShareHint,
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textHint,
                     ),
@@ -82,7 +88,9 @@ class ShowcaseShareScreen extends ConsumerWidget {
           Expanded(
             child: PdfPreview(
               build: (_) => _generatePortfolioPdf(
-                profileName: profile?.name ?? 'Learner',
+                profileName:
+                    profile?.name ?? _t(context).playerFallbackName,
+                l10n: _t(context),
                 portfolio: portfolio,
                 totalStars: progress.totalStars,
                 wordsLearned: progress.wordsLearned,
@@ -99,13 +107,19 @@ class ShowcaseShareScreen extends ConsumerWidget {
     );
   }
 
+  /// The language of the portfolio PDF being built, set at the top of
+  /// [_generatePortfolioPdf] from the app's language.
+  static AppLocalizations _l = AppLocalizationsEn();
+
   static Future<Uint8List> _generatePortfolioPdf({
     required String profileName,
     required ShowcasePortfolio portfolio,
     required int totalStars,
     required int wordsLearned,
     required int streakDays,
+    required AppLocalizations l10n,
   }) async {
+    _l = l10n;
     final pdf = pw.Document();
     final now = DateTime.now();
 
@@ -130,7 +144,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text(
-                    '$profileName\'s Learning Portfolio',
+                    _l.pfTitle(profileName),
                     style: pw.TextStyle(
                       fontSize: 22,
                       fontWeight: pw.FontWeight.bold,
@@ -139,7 +153,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
                   ),
                   pw.SizedBox(height: 4),
                   pw.Text(
-                    'Generated on ${_fmtDate(now)}',
+                    _l.wrGeneratedOn(_fmtDate(now)),
                     style: const pw.TextStyle(
                       fontSize: 10,
                       color: PdfColors.white,
@@ -162,7 +176,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
           alignment: pw.Alignment.centerRight,
           margin: const pw.EdgeInsets.only(top: 10),
           child: pw.Text(
-            'Page ${context.pageNumber} of ${context.pagesCount}',
+            _l.prPageOf(context.pageNumber, context.pagesCount),
             style: const pw.TextStyle(
               fontSize: 9,
               color: PdfColors.grey600,
@@ -173,22 +187,22 @@ class ShowcaseShareScreen extends ConsumerWidget {
           pw.SizedBox(height: 20),
 
           // ─── Stats Overview ──────────────────
-          _sectionTitle('Overview', headerColor),
+          _sectionTitle(_l.pfOverview, headerColor),
           pw.SizedBox(height: 10),
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
             children: [
-              _statBox('Total Stars', '$totalStars', accentColor),
-              _statBox('Words Learned', '$wordsLearned', headerColor),
-              _statBox('Day Streak', '$streakDays', PdfColor.fromHex('#FF5722')),
-              _statBox('Portfolio Items', '${portfolio.items.length}', PdfColor.fromHex('#4CAF50')),
+              _statBox(_l.wrTotalStars, '$totalStars', accentColor),
+              _statBox(_l.wrWordsLearned, '$wordsLearned', headerColor),
+              _statBox(_l.pfDayStreak, '$streakDays', PdfColor.fromHex('#FF5722')),
+              _statBox(_l.pfItems, '${portfolio.items.length}', PdfColor.fromHex('#4CAF50')),
             ],
           ),
           pw.SizedBox(height: 20),
 
           // ─── Pinned Highlights ────────────────
           if (portfolio.items.any((i) => i.isPinned)) ...[
-            _sectionTitle('Pinned Highlights', accentColor),
+            _sectionTitle(_l.pfPinned, accentColor),
             pw.SizedBox(height: 10),
             ...portfolio.sortedItems
                 .where((i) => i.isPinned)
@@ -197,7 +211,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
           ],
 
           // ─── All Portfolio Items ──────────────
-          _sectionTitle('All Portfolio Items', headerColor),
+          _sectionTitle(_l.pfAllItems, headerColor),
           pw.SizedBox(height: 10),
           pw.Table(
             border: pw.TableBorder.all(
@@ -214,15 +228,15 @@ class ShowcaseShareScreen extends ConsumerWidget {
               pw.TableRow(
                 decoration: pw.BoxDecoration(color: headerColor),
                 children: [
-                  _tableHeader('Type'),
-                  _tableHeader('Title'),
-                  _tableHeader('Description'),
-                  _tableHeader('Date'),
+                  _tableHeader(_l.pfType),
+                  _tableHeader(_l.pfItemTitle),
+                  _tableHeader(_l.pfDescription),
+                  _tableHeader(_l.wrDate),
                 ],
               ),
               ...portfolio.sortedItems.map((item) => pw.TableRow(
                     children: [
-                      _tableCell(item.type.label),
+                      _tableCell(item.type.labelOf(_l)),
                       _tableCell(item.title),
                       _tableCell(item.description),
                       _tableCell(_fmtDate(item.earnedAt)),
@@ -233,7 +247,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
           pw.SizedBox(height: 20),
 
           // ─── Summary by Type ──────────────────
-          _sectionTitle('Summary by Type', headerColor),
+          _sectionTitle(_l.pfSummaryByType, headerColor),
           pw.SizedBox(height: 10),
           ...portfolio.typeCounts.entries.map(
             (e) => pw.Padding(
@@ -250,7 +264,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
                     ),
                   ),
                   pw.SizedBox(width: 8),
-                  pw.Text('${e.key.label}: ${e.value}',
+                  pw.Text('${e.key.labelOf(_l)}: ${e.value}',
                       style: const pw.TextStyle(fontSize: 11)),
                 ],
               ),
@@ -325,7 +339,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
           pw.Row(
             children: [
               pw.Text(
-                '${item.type.label}: ',
+                '${item.type.labelOf(_l)}: ',
                 style: pw.TextStyle(
                     fontSize: 10, fontWeight: pw.FontWeight.bold),
               ),
@@ -369,13 +383,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
     );
   }
 
-  static String _fmtDate(DateTime d) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${months[d.month - 1]} ${d.day}, ${d.year}';
-  }
+  static String _fmtDate(DateTime d) => LocalizedDate.monthDayYear(d, _l);
 
   static String _typeColorHex(ShowcaseItemType type) => switch (type) {
     ShowcaseItemType.achievement => '#FFD700',
@@ -387,3 +395,8 @@ class ShowcaseShareScreen extends ConsumerWidget {
     ShowcaseItemType.customNote => '#78909C',
   };
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

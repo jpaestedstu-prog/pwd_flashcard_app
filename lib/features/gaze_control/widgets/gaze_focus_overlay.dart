@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart' show AppColors;
 import '../logic/gaze_focus_driver.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Shows a hands-free learner where the focus traversal fallback currently is.
 ///
@@ -133,9 +135,9 @@ class _GazeFocusRingState extends State<_GazeFocusRing> {
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: const Text(
-                      'Look ◀ ▶ ▲ ▼ to move · blink to press',
-                      style: TextStyle(color: Colors.white, fontSize: 13),
+                    child: Text(
+                      _t(context).gzFocusHint,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
                     ),
                   ),
                 ),
@@ -147,3 +149,8 @@ class _GazeFocusRingState extends State<_GazeFocusRing> {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

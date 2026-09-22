@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/reduced_motion.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// An enhanced tutorial step that can optionally spotlight a real widget.
 class CoachStep {
@@ -140,7 +142,7 @@ class _CoachMarkOverlayState extends State<CoachMarkOverlay>
               child: TextButton(
                 onPressed: _skip,
                 child: Text(
-                  'Skip',
+                  (AppLocalizations.of(context) ?? AppLocalizationsEn()).skip,
                   style: AppTypography.labelLarge.copyWith(
                     color: Colors.white70,
                   ),

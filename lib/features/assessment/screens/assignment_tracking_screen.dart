@@ -12,6 +12,9 @@ import '../services/assessment_service.dart';
 import '../services/assessment_cloud_service.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_snack_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
+import '../models/question_prompt.dart';
 
 /// Screen showing all assignments created by the current educator,
 /// with per-student completion tracking.
@@ -49,7 +52,7 @@ class AssignmentTrackingScreen extends ConsumerWidget {
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/assessment-hub'),
         title: Text(
-          'Assignment Tracking',
+          _tr(context).trkTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -62,13 +65,13 @@ class AssignmentTrackingScreen extends ConsumerWidget {
           // ask again without restarting the app.
           IconButton(
             icon: Icon(Icons.refresh_rounded, color: hc.textSecondary),
-            tooltip: 'Check for new results',
+            tooltip: _tr(context).trkRefresh,
             onPressed: () =>
                 ref.invalidate(educatorAssessmentSyncProvider(profile.id)),
           ),
           IconButton(
             icon: Icon(Icons.add_rounded, color: hc.primary),
-            tooltip: 'Assign Assessment',
+            tooltip: _tr(context).asgTitle,
             onPressed: () => context.push('/assessment/assign'),
           ),
         ],
@@ -94,17 +97,16 @@ class AssignmentTrackingScreen extends ConsumerWidget {
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('Delete Assignment?'),
-                          content: const Text(
-                              'This will remove the assignment. Student results will be kept.'),
+                          title: Text(_tr(context).trkDeleteTitle),
+                          content: Text(_tr(context).trkDeleteBody),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
+                              child: Text(_tr(context).hubCancel),
                             ),
                             FilledButton(
                               onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Delete'),
+                              child: Text(_tr(context).hubDelete),
                             ),
                           ],
                         ),
@@ -122,10 +124,7 @@ class AssignmentTrackingScreen extends ConsumerWidget {
                             outcome == CloudSyncOutcome.notOwner) {
                           AppSnackBar.warning(
                             context,
-                            message: 'Removed here only. This profile was '
-                                'restored on another device, so that one now '
-                                'handles syncing — your learners still have '
-                                'this assignment.',
+                            message: _tr(context).trkNotOwner,
                           );
                         }
                       }
@@ -181,7 +180,10 @@ class _AssignmentCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    assignment.assessmentTitle,
+                    QuestionPrompt.title(
+                      assignment.assessmentTitle,
+                      AppLocalizations.of(context),
+                    ),
                     style: AppTypography.titleSmall.copyWith(
                       fontWeight: FontWeight.w700,
                       color: hc.textPrimary,
@@ -195,14 +197,14 @@ class _AssignmentCard extends StatelessWidget {
                     if (v == 'delete') onDelete();
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_rounded,
+                          const Icon(Icons.delete_rounded,
                               color: Colors.red, size: 18),
-                          SizedBox(width: 8),
-                          Text('Delete'),
+                          const SizedBox(width: 8),
+                          Text(_tr(context).hubDelete),
                         ],
                       ),
                     ),
@@ -213,8 +215,11 @@ class _AssignmentCard extends StatelessWidget {
 
             const SizedBox(height: 4),
 
-            // Meta info
-            Row(
+            // Meta info — wraps: the date and the deadline no longer fit one
+            // line at a large font, and "Takdang araw" is longer than "Due".
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: 4,
               children: [
                 Icon(Icons.calendar_today_rounded,
                     size: 14, color: hc.textSecondary),
@@ -235,7 +240,7 @@ class _AssignmentCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'Due: ${_formatDate(assignment.deadline!)}',
+                    _tr(context).trkDue(_formatDate(assignment.deadline!)),
                     style: AppTypography.labelSmall.copyWith(
                       color: assignment.isOverdue
                           ? Colors.red
@@ -379,13 +384,13 @@ class _EmptyState extends StatelessWidget {
           const Text('📋', style: TextStyle(fontSize: 64)),
           const SizedBox(height: 16),
           Text(
-            'No assignments yet',
+            _tr(context).trkEmpty,
             style:
                 AppTypography.titleMedium.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 8),
           Text(
-            'Assign assessments to students and track their progress here.',
+            _tr(context).trkEmptyHint,
             style:
                 AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
             textAlign: TextAlign.center,
@@ -394,10 +399,14 @@ class _EmptyState extends StatelessWidget {
           FilledButton.icon(
             onPressed: () => context.push('/assessment/assign'),
             icon: const Icon(Icons.add_rounded),
-            label: const Text('Assign Assessment'),
+            label: Text(_tr(context).asgTitle),
           ),
         ],
       ),
     );
   }
 }
+
+/// This file's strings: English when no delegate is present.
+AppLocalizations _tr(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

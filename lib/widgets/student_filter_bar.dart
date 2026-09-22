@@ -5,6 +5,8 @@ import '../core/theme/app_typography.dart';
 import '../data/models/enums.dart';
 import '../data/models/student_filter.dart';
 import '../providers/student_list_provider.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// Reusable search + filter bar for the student list.
 ///
@@ -54,7 +56,7 @@ class _StudentFilterBarState extends ConsumerState<StudentFilterBar> {
           onChanged: (v) =>
               ref.read(studentFilterProvider.notifier).setSearchQuery(v),
           decoration: InputDecoration(
-            hintText: 'Search students...',
+            hintText: _t(context).sfSearch,
             prefixIcon: const Icon(Icons.search_rounded),
             suffixIcon: filter.searchQuery.isNotEmpty
                 ? IconButton(
@@ -93,10 +95,12 @@ class _StudentFilterBarState extends ConsumerState<StudentFilterBar> {
                   children: [
                     // Grade level
                     _FilterChipDropdown<GradeLevel>(
-                      label: filter.gradeLevel?.label ?? 'Grade',
+                      label: filter.gradeLevel == null
+                          ? _t(context).sfGrade
+                          : _gradeLabel(_t(context), filter.gradeLevel!),
                       isActive: filter.gradeLevel != null,
                       items: GradeLevel.values,
-                      itemLabel: (g) => g.label,
+                      itemLabel: (g) => _gradeLabel(_t(context), g),
                       onSelected: (g) => ref
                           .read(studentFilterProvider.notifier)
                           .setGradeFilter(
@@ -106,10 +110,11 @@ class _StudentFilterBarState extends ConsumerState<StudentFilterBar> {
 
                     // Disability type
                     _FilterChipDropdown<DisabilityType>(
-                      label: filter.disabilityType?.label ?? 'Accessibility',
+                      label: filter.disabilityType?.labelOf(_t(context)) ??
+                          _t(context).accessibility,
                       isActive: filter.disabilityType != null,
                       items: DisabilityType.values,
-                      itemLabel: (d) => '${d.emoji} ${d.label}',
+                      itemLabel: (d) => '${d.emoji} ${d.labelOf(_t(context))}',
                       onSelected: (d) => ref
                           .read(studentFilterProvider.notifier)
                           .setDisabilityFilter(
@@ -119,11 +124,11 @@ class _StudentFilterBarState extends ConsumerState<StudentFilterBar> {
 
                     // Activity status
                     _FilterChipDropdown<ActivityStatus>(
-                      label: filter.activityStatus.label,
+                      label: _activityLabel(_t(context), filter.activityStatus),
                       isActive:
                           filter.activityStatus != ActivityStatus.all,
                       items: ActivityStatus.values,
-                      itemLabel: (a) => a.label,
+                      itemLabel: (a) => _activityLabel(_t(context), a),
                       onSelected: (a) => ref
                           .read(studentFilterProvider.notifier)
                           .setActivityFilter(a),
@@ -133,7 +138,7 @@ class _StudentFilterBarState extends ConsumerState<StudentFilterBar> {
                     if (availableSections.isNotEmpty) ...[
                       const SizedBox(width: 6),
                       _FilterChipDropdown<String>(
-                        label: filter.section ?? 'Section',
+                        label: filter.section ?? _t(context).sfSection,
                         isActive: filter.section != null,
                         items: availableSections,
                         itemLabel: (s) => s,
@@ -166,7 +171,7 @@ class _StudentFilterBarState extends ConsumerState<StudentFilterBar> {
             child: Row(
               children: [
                 Text(
-                  '${ref.watch(filteredStudentsProvider).length} results',
+                  _t(context).sfResults(ref.watch(filteredStudentsProvider).length),
                   style: AppTypography.labelSmall
                       .copyWith(color: hc.textSecondary),
                 ),
@@ -177,7 +182,7 @@ class _StudentFilterBarState extends ConsumerState<StudentFilterBar> {
                     ref.read(studentFilterProvider.notifier).clearFilters();
                   },
                   child: Text(
-                    'Clear all',
+                    _t(context).sfClearAll,
                     style: AppTypography.labelSmall.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
@@ -213,7 +218,7 @@ class _SortButton extends ConsumerWidget {
                             ? AppColors.primary
                             : null),
                     const SizedBox(width: 8),
-                    Text(f.label,
+                    Text(_sortLabel(_t(context), f),
                         style: f == filter.sortField
                             ? const TextStyle(fontWeight: FontWeight.w700)
                             : null),
@@ -243,7 +248,7 @@ class _SortButton extends ConsumerWidget {
             const Icon(Icons.sort_rounded, size: 18, color: AppColors.primary),
             const SizedBox(width: 4),
             Text(
-              filter.sortField.label,
+              _sortLabel(_t(context), filter.sortField),
               style: AppTypography.labelSmall.copyWith(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w600,
@@ -374,7 +379,9 @@ class _TagFilterChip extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              isActive ? 'Tags (${selectedTags.length})' : 'Tags',
+              isActive
+                  ? _t(context).sfTagsN(selectedTags.length)
+                  : _t(context).sfTags,
               style: AppTypography.labelSmall.copyWith(
                 color: isActive ? AppColors.primary : HCColor.of(context).textSecondary,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
@@ -392,3 +399,28 @@ class _TagFilterChip extends ConsumerWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+String _gradeLabel(AppLocalizations t, GradeLevel g) => g.labelOf(t);
+
+String _activityLabel(AppLocalizations t, ActivityStatus a) => switch (a) {
+  ActivityStatus.all => t.sfActAll,
+  ActivityStatus.activeToday => t.sfActToday,
+  ActivityStatus.activeThisWeek => t.sfActWeek,
+  ActivityStatus.inactive7Days => t.sfActInactive,
+};
+
+String _sortLabel(AppLocalizations t, StudentSortField f) => switch (f) {
+  StudentSortField.name => t.sfSortName,
+  StudentSortField.gradeLevel => t.sfSortGrade,
+  StudentSortField.wordsLearned => t.sfSortWords,
+  StudentSortField.streakDays => t.sfSortStreak,
+  StudentSortField.stars => t.sfSortStars,
+  StudentSortField.lastActive => t.sfSortLastActive,
+  StudentSortField.averageAccuracy => t.sfSortAccuracy,
+  StudentSortField.createdAt => t.sfSortJoined,
+};

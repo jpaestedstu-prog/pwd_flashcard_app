@@ -10,8 +10,11 @@ import '../../../widgets/rich_empty_states.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../models/assessment_models.dart';
+import '../models/question_prompt.dart';
 import '../providers/assessment_provider.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Screen for teachers to create custom assessments manually.
 class AssessmentBuilderScreen extends ConsumerStatefulWidget {
@@ -63,7 +66,7 @@ class _AssessmentBuilderScreenState
                     // A headline sharing its row with a close button and a
                     // Save button: "Assessmen / t".
                     child: FitText(
-                      'Create Assessment',
+                      _t(context).abCreate,
                       style: AppTypography.headlineLarge
                           .copyWith(color: hc.textPrimary),
                     ),
@@ -71,7 +74,7 @@ class _AssessmentBuilderScreenState
                   FilledButton.icon(
                     onPressed: _questions.isEmpty ? null : _saveAssessment,
                     icon: const Icon(Icons.save_rounded, size: 18),
-                    label: const Text('Save'),
+                    label: Text(_t(context).gmSave),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
                     ),
@@ -91,19 +94,19 @@ class _AssessmentBuilderScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // ─── Title & Description ───────
-                      _buildSectionHeader('Assessment Details', Icons.info_outline_rounded),
+                      _buildSectionHeader(_t(context).abDetails, Icons.info_outline_rounded),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _titleController,
-                        decoration: _inputDecor(hc, 'Assessment Title'),
+                        decoration: _inputDecor(hc, _t(context).abTitleField),
                         validator: (v) =>
-                            v == null || v.trim().isEmpty ? 'Title is required' : null,
+                            v == null || v.trim().isEmpty ? _t(context).abTitleRequired : null,
                         style: AppTypography.bodyLarge.copyWith(color: hc.textPrimary),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _descriptionController,
-                        decoration: _inputDecor(hc, 'Description (optional)'),
+                        decoration: _inputDecor(hc, _t(context).abDescription),
                         maxLines: 2,
                         style: AppTypography.bodyMedium.copyWith(color: hc.textPrimary),
                       ),
@@ -111,14 +114,14 @@ class _AssessmentBuilderScreenState
                       const SizedBox(height: 24),
 
                       // ─── Difficulty ─────────────────
-                      _buildSectionHeader('Difficulty', Icons.speed_rounded),
+                      _buildSectionHeader(_t(context).abDifficulty, Icons.speed_rounded),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
                         children: GameDifficulty.values.map((d) {
                           final selected = d == _difficulty;
                           return ChoiceChip(
-                            label: Text(d.label),
+                            label: Text(d.labelOf(_t(context))),
                             selected: selected,
                             onSelected: (_) =>
                                 setState(() => _difficulty = d),
@@ -138,7 +141,7 @@ class _AssessmentBuilderScreenState
                       const SizedBox(height: 24),
 
                       // ─── Time Limit ──────────────────
-                      _buildSectionHeader('Time Limit', Icons.timer_rounded),
+                      _buildSectionHeader(_t(context).abTimeLimit, Icons.timer_rounded),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -148,7 +151,7 @@ class _AssessmentBuilderScreenState
                               min: 3,
                               max: 30,
                               divisions: 9,
-                              label: '$_timeLimitMinutes min',
+                              label: _t(context).abMinutes(_timeLimitMinutes),
                               onChanged: (v) =>
                                   setState(() => _timeLimitMinutes = v.round()),
                             ),
@@ -161,7 +164,7 @@ class _AssessmentBuilderScreenState
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              '$_timeLimitMinutes min',
+                              _t(context).abMinutes(_timeLimitMinutes),
                               style: AppTypography.labelLarge
                                   .copyWith(color: hc.textPrimary),
                             ),
@@ -173,7 +176,7 @@ class _AssessmentBuilderScreenState
 
                       // ─── Questions ─────────────────
                       _buildSectionHeader(
-                        'Questions (${_questions.length})',
+                        _t(context).abQuestionsCount(_questions.length),
                         Icons.quiz_rounded,
                       ),
                       const SizedBox(height: 8),
@@ -181,9 +184,9 @@ class _AssessmentBuilderScreenState
                       if (_questions.isEmpty)
                         RichEmptyState(
                           emoji: '📝',
-                          title: 'No Questions Yet',
-                          description: 'Add your first question to build the assessment.',
-                          actionLabel: 'Add First Question',
+                          title: _t(context).abNoQuestions,
+                          description: _t(context).abNoQuestionsBody,
+                          actionLabel: _t(context).abAddFirst,
                           actionIcon: Icons.add_rounded,
                           onAction: () => _showAddQuestionDialog(),
                           compact: true,
@@ -207,7 +210,7 @@ class _AssessmentBuilderScreenState
                           child: OutlinedButton.icon(
                             onPressed: () => _showAddQuestionDialog(),
                             icon: const Icon(Icons.add_rounded),
-                            label: const Text('Add Question'),
+                            label: Text(_t(context).abAddQuestion),
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size(double.infinity, 48),
                             ),
@@ -315,7 +318,7 @@ class _AssessmentBuilderScreenState
   void _saveAssessment() {
     if (!_formKey.currentState!.validate()) return;
     if (_questions.isEmpty) {
-      AppSnackBar.warning(context, message: 'Add at least one question');
+      AppSnackBar.warning(context, message: _t(context).abNeedOne);
       return;
     }
 
@@ -323,7 +326,7 @@ class _AssessmentBuilderScreenState
       id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim().isEmpty
-          ? 'Custom teacher assessment'
+          ? _t(context).abCustomDesc
           : _descriptionController.text.trim(),
       type: AssessmentType.custom,
       questions: _questions,
@@ -340,7 +343,7 @@ class _AssessmentBuilderScreenState
 
     ref.read(customAssessmentsProvider.notifier).saveAssessment(assessment);
 
-    AppSnackBar.success(context, message: 'Assessment “${assessment.title}” saved!');
+    AppSnackBar.success(context, message: _t(context).abSaved(assessment.title));
 
     context.pop();
   }
@@ -355,14 +358,14 @@ class _AssessmentBuilderScreenState
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Discard Assessment?'),
-        content: const Text(
-          'You have unsaved questions. Are you sure you want to go back?',
+        title: Text(_t(context).abDiscardTitle),
+        content: Text(
+          _t(context).abDiscardBody,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Keep Editing'),
+            child: Text(_t(context).abKeepEditing),
           ),
           FilledButton(
             onPressed: () {
@@ -371,7 +374,7 @@ class _AssessmentBuilderScreenState
             },
             style: FilledButton.styleFrom(
                 backgroundColor: AppColors.error),
-            child: const Text('Discard'),
+            child: Text(_t(context).abDiscard),
           ),
         ],
       ),
@@ -452,19 +455,20 @@ class _QuestionCard extends StatelessWidget {
               spacing: 6,
               children: [
                 _MiniChip(
-                    label: question.format.name, color: AppColors.info),
+                    label: question.format.labelOf(_t(context)), color: AppColors.info),
                 _MiniChip(
-                    label: 'Answer: ${question.correctAnswer}',
+                    label: _t(context).abAnswer(
+                        QuestionPrompt.answer(question.correctAnswer, _t(context))),
                     color: AppColors.success),
                 if (question.category != null)
                   _MiniChip(
-                      label: question.category!.label, color: AppColors.accent),
+                      label: question.category!.labelOf(_t(context)), color: AppColors.accent),
               ],
             ),
             if (question.choices.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
-                'Choices: ${question.choices.join(", ")}',
+                _t(context).abChoices(question.choices.join(', ')),
                 style: AppTypography.bodySmall
                     .copyWith(color: hc.textHint, fontSize: 11),
                 maxLines: 1,
@@ -590,14 +594,14 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 const SizedBox(height: 16),
 
                 Text(
-                  widget.existing != null ? 'Edit Question' : 'Add Question',
+                  widget.existing != null ? _t(context).abEditQuestion : _t(context).abAddQuestion,
                   style: AppTypography.titleLarge
                       .copyWith(color: hc.textPrimary),
                 ),
                 const SizedBox(height: 16),
 
                 // Question format selector
-                Text('Question Type',
+                Text(_t(context).abQuestionType,
                     style: AppTypography.labelLarge
                         .copyWith(color: hc.textSecondary)),
                 const SizedBox(height: 8),
@@ -610,7 +614,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                   ].map((f) {
                     final selected = f == _format;
                     return ChoiceChip(
-                      label: Text(_formatLabel(f)),
+                      label: Text(f.labelOf(_t(context))),
                       selected: selected,
                       onSelected: (_) => setState(() {
                         _format = f;
@@ -640,7 +644,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 TextField(
                   controller: _questionTextController,
                   maxLines: 3,
-                  decoration: _inputDecor(hc, 'Question Text *'),
+                  decoration: _inputDecor(hc, _t(context).abQuestionText),
                   style: AppTypography.bodyLarge
                       .copyWith(color: hc.textPrimary),
                 ),
@@ -650,7 +654,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 // Correct answer
                 TextField(
                   controller: _correctAnswerController,
-                  decoration: _inputDecor(hc, 'Correct Answer *'),
+                  decoration: _inputDecor(hc, _t(context).abCorrectAnswer),
                   style: AppTypography.bodyMedium
                       .copyWith(color: hc.textPrimary),
                 ),
@@ -658,7 +662,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 // Choices (for MC and T/F)
                 if (_format != QuestionFormat.fillInBlank) ...[
                   const SizedBox(height: 16),
-                  Text('Choices',
+                  Text(_t(context).abChoicesTitle,
                       style: AppTypography.labelLarge
                           .copyWith(color: hc.textSecondary)),
                   const SizedBox(height: 8),
@@ -681,7 +685,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                             child: TextField(
                               controller: _choiceControllers[i],
                               decoration: _inputDecor(
-                                  hc, 'Choice ${String.fromCharCode(65 + i)}'),
+                                  hc, _t(context).abChoiceN(String.fromCharCode(65 + i))),
                               style: AppTypography.bodyMedium
                                   .copyWith(color: hc.textPrimary),
                             ),
@@ -711,7 +715,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                         });
                       },
                       icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Add Choice'),
+                      label: Text(_t(context).abAddChoice),
                     ),
                 ],
 
@@ -720,7 +724,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 // Category
                 DropdownButtonFormField<FlashcardCategory>(
                   initialValue: _selectedCategory,
-                  decoration: _inputDecor(hc, 'Category (optional)'),
+                  decoration: _inputDecor(hc, _t(context).abCategory),
                   dropdownColor: hc.surface,
                   items: FlashcardCategory.values.map((cat) {
                     return DropdownMenuItem(
@@ -740,7 +744,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 // Hint
                 TextField(
                   controller: _hintController,
-                  decoration: _inputDecor(hc, 'Hint (optional)'),
+                  decoration: _inputDecor(hc, _t(context).abHint),
                   style: AppTypography.bodyMedium
                       .copyWith(color: hc.textPrimary),
                 ),
@@ -758,8 +762,8 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                   ),
                   child: Text(
                     widget.existing != null
-                        ? 'Update Question'
-                        : 'Add Question',
+                        ? _t(context).abUpdateQuestion
+                        : _t(context).abAddQuestion,
                     style: AppTypography.titleMedium
                         .copyWith(color: Colors.white),
                   ),
@@ -794,25 +798,12 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
     );
   }
 
-  String _formatLabel(QuestionFormat f) {
-    switch (f) {
-      case QuestionFormat.multipleChoice:
-        return 'Multiple Choice';
-      case QuestionFormat.trueFalse:
-        return 'True / False';
-      case QuestionFormat.fillInBlank:
-        return 'Fill in Blank';
-      case QuestionFormat.matchPairs:
-        return 'Match Pairs';
-    }
-  }
-
   void _saveQuestion() {
     final qText = _questionTextController.text.trim();
     final answer = _correctAnswerController.text.trim();
 
     if (qText.isEmpty || answer.isEmpty) {
-      AppSnackBar.warning(context, message: 'Question text and answer are required');
+      AppSnackBar.warning(context, message: _t(context).abTextRequired);
       return;
     }
 
@@ -825,7 +816,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
     if (_format == QuestionFormat.multipleChoice ||
         _format == QuestionFormat.trueFalse) {
       if (!choices.contains(answer)) {
-        AppSnackBar.warning(context, message: 'Correct answer must match one of the choices');
+        AppSnackBar.warning(context, message: _t(context).abAnswerInChoices);
         return;
       }
     }
@@ -846,3 +837,8 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
     Navigator.pop(context, question);
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

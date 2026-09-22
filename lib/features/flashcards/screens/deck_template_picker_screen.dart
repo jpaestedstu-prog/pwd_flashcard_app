@@ -14,6 +14,8 @@ import '../data/deck_template_seed_data.dart';
 import '../models/deck_template.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../core/widgets/reflow_row.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Browse and clone pre-built flashcard deck templates into a learner's
 /// custom deck. Educator/parent-facing — gated by the calling screen.
@@ -46,11 +48,14 @@ class _DeckTemplatePickerScreenState
       if (!mounted) return;
       AppSnackBar.success(
         context,
-        message: 'Added ${template.cardCount} cards from ${template.name}',
+        message: _t(context).dtAdded(
+          template.cardCount,
+          template.nameOf(filipino: _fil(context)),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
-      AppSnackBar.error(context, message: 'Could not add template');
+      AppSnackBar.error(context, message: _t(context).dtFailed);
     } finally {
       if (mounted) setState(() => _cloning.remove(template.id));
     }
@@ -84,7 +89,7 @@ class _DeckTemplatePickerScreenState
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: const Text('Deck Templates'),
+        title: Text(_t(context).dtTitle),
       ),
       body: SafeArea(
         child: CustomScrollView(
@@ -96,12 +101,12 @@ class _DeckTemplatePickerScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Pre-built decks for quick setup',
+                      _t(context).dtHeading,
                       style: AppTypography.headlineSmall,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Tap “Use this deck” to copy these bilingual cards into your custom deck.',
+                      _t(context).dtIntro,
                       style: AppTypography.bodyMedium.copyWith(
                         color: HCColor.of(context).textSecondary,
                       ),
@@ -205,7 +210,7 @@ class _TemplateCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          template.name,
+                          template.nameOf(filipino: _fil(context)),
                           style: AppTypography.titleMedium.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
@@ -214,7 +219,7 @@ class _TemplateCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          '${template.cardCount} cards',
+                          _t(context).dtCards(template.cardCount),
                           style: AppTypography.labelSmall.copyWith(
                             color: Colors.white.withValues(alpha: 0.88),
                           ),
@@ -229,7 +234,7 @@ class _TemplateCard extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: Text(
-                  template.description,
+                  template.descriptionOf(filipino: _fil(context)),
                   style: AppTypography.bodySmall.copyWith(
                     color: HCColor.of(context).textSecondary,
                   ),
@@ -254,7 +259,7 @@ class _TemplateCard extends StatelessWidget {
                 // eagerly costs height on a screen that scrolls, while one
                 // that stacks too late shows a learner "Previe / w".
                 tilePadding: 72,
-                labels: const ['Preview', 'Use deck'],
+                labels: [_t(context).dtPreview, _t(context).dtUseDeck],
                 children: [
                   TextButton.icon(
                     onPressed: isLoading ? null : onPreview,
@@ -263,10 +268,10 @@ class _TemplateCard extends StatelessWidget {
                     // rather than FitText. It only trims the last few pixels
                     // now that ReflowRow gives the label a full-width row.
                     label: Text(
-                      'Preview',
+                      _t(context).dtPreview,
                       style: fittedStyle(
                         context,
-                        'Preview',
+                        _t(context).dtPreview,
                         Theme.of(context).textTheme.labelLarge,
                         // "Preview" is seven characters and still does not fit
                         // half a button row at 2x, so the default
@@ -287,7 +292,7 @@ class _TemplateCard extends StatelessWidget {
                             ),
                           )
                         : const Icon(Icons.add_rounded, size: 18),
-                    label: Text(isLoading ? 'Adding…' : 'Use deck'),
+                    label: Text(isLoading ? _t(context).dtAdding : _t(context).dtUseDeck),
                     style: FilledButton.styleFrom(
                       backgroundColor: template.color,
                       foregroundColor: Colors.white,
@@ -342,9 +347,13 @@ class _TemplatePreviewSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(template.name, style: AppTypography.headlineSmall),
                       Text(
-                        template.nameFil,
+                        template.nameOf(filipino: _fil(context)),
+                        style: AppTypography.headlineSmall,
+                      ),
+                      // The other language underneath, as the cards show it.
+                      Text(
+                        template.nameOf(filipino: !_fil(context)),
                         style: AppTypography.bodySmall.copyWith(
                           color: HCColor.of(context).textSecondary,
                           fontStyle: FontStyle.italic,
@@ -354,7 +363,7 @@ class _TemplatePreviewSheet extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${template.cardCount} cards',
+                  _t(context).dtCards(template.cardCount),
                   style: AppTypography.labelMedium.copyWith(
                     color: HCColor.of(context).textSecondary,
                   ),
@@ -394,7 +403,7 @@ class _TemplatePreviewSheet extends StatelessWidget {
             FilledButton.icon(
               onPressed: onUseDeck,
               icon: const Icon(Icons.add_rounded),
-              label: Text('Use this deck (${template.cardCount} cards)'),
+              label: Text(_t(context).dtUseThis(template.cardCount)),
               style: FilledButton.styleFrom(
                 backgroundColor: template.color,
                 foregroundColor: Colors.white,
@@ -407,3 +416,11 @@ class _TemplatePreviewSheet extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+bool _fil(BuildContext context) =>
+    Localizations.localeOf(context).languageCode == 'fil';

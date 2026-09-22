@@ -9,6 +9,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Screen that lets users pick a worksheet type, category and difficulty,
 /// then generates a printable/shareable PDF worksheet.
@@ -36,7 +37,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Text(
-          'Printable Worksheets',
+          _t(context).wscTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -50,13 +51,13 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
           children: [
             // ─── Header ────────────────────────
             Text(
-              'Create practice worksheets your students can print and use offline!',
+              _t(context).wscIntro,
               style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
             ),
             const SizedBox(height: 24),
 
             // ─── Worksheet Type ────────────────
-            _SectionTitle(label: 'Worksheet Type', hc: hc),
+            _SectionTitle(label: _t(context).wscType, hc: hc),
             const SizedBox(height: 12),
             ...WorksheetType.values.map(
               (type) => _WorksheetTypeCard(
@@ -69,7 +70,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
             const SizedBox(height: 24),
 
             // ─── Category ──────────────────────
-            _SectionTitle(label: 'Category', hc: hc),
+            _SectionTitle(label: _t(context).cfCategory, hc: hc),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -77,7 +78,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
               children: FlashcardCategory.values.map((cat) {
                 final selected = cat == _selectedCategory;
                 return ChoiceChip(
-                  label: Text(cat.label),
+                  label: Text(cat.labelOf(_t(context))),
                   selected: selected,
                   selectedColor: hc.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
@@ -91,7 +92,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
             const SizedBox(height: 24),
 
             // ─── Difficulty ─────────────────────
-            _SectionTitle(label: 'Difficulty', hc: hc),
+            _SectionTitle(label: _t(context).abDifficulty, hc: hc),
             const SizedBox(height: 12),
             Row(
               children: GameDifficulty.values.map((diff) {
@@ -128,7 +129,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
                           )
                         : const Icon(Icons.preview_rounded),
                     label: Text(
-                      _isGenerating ? 'Generating...' : 'Preview & Print',
+                      _isGenerating ? _t(context).wscGenerating : _t(context).wscPreviewPrint,
                     ),
                     style: FilledButton.styleFrom(
                       backgroundColor: hc.primary,
@@ -144,7 +145,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _isGenerating ? null : _shareWorksheet,
                     icon: const Icon(Icons.share_rounded),
-                    label: const Text('Share PDF'),
+                    label: Text(_t(context).wrsSharePdf),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -169,6 +170,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
         type: _selectedType,
         category: _selectedCategory,
         difficulty: _selectedDifficulty,
+        l10n: _t(context),
       );
       if (!mounted) return;
       await Printing.layoutPdf(
@@ -188,6 +190,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
         type: _selectedType,
         category: _selectedCategory,
         difficulty: _selectedDifficulty,
+        l10n: _t(context),
       );
       if (!mounted) return;
       await Printing.sharePdf(
@@ -260,14 +263,14 @@ class _WorksheetTypeCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        type.label,
+                        type.labelOf(_t(context)),
                         style: AppTypography.bodyMedium.copyWith(
                           fontWeight: FontWeight.w600,
                           color: isSelected ? hc.primary : hc.textPrimary,
                         ),
                       ),
                       Text(
-                        type.description,
+                        type.descriptionOf(_t(context)),
                         style: AppTypography.bodySmall.copyWith(
                           color: hc.textSecondary,
                         ),
@@ -301,9 +304,9 @@ class _DifficultyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final wordCount = switch (difficulty) {
-      GameDifficulty.easy => '6 words',
-      GameDifficulty.medium => '8 words',
-      GameDifficulty.hard => '12 words',
+      GameDifficulty.easy => _t(context).wscWords(6),
+      GameDifficulty.medium => _t(context).wscWords(8),
+      GameDifficulty.hard => _t(context).wscWords(12),
     };
 
     return Material(
@@ -346,3 +349,8 @@ class _DifficultyButton extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -4,6 +4,7 @@ import '../models/active_time_log.dart';
 import '../models/child_alarm.dart';
 import '../models/child_time_limit.dart';
 import '../models/models.dart';
+import '../../core/accessibility/learner_support.dart';
 import '../models/enums.dart';
 import '../models/classroom.dart';
 import '../models/classroom_member.dart';
@@ -122,6 +123,8 @@ class HiveService {
           ?.toIso8601String(),
       'ownerUid': profile.ownerUid,
       'username': profile.username,
+      // Stored as stable string ids, not indices — see LearnerSupportCatalog.
+      'supportOptions': LearnerSupportCatalog.encode(profile.supportOptions),
     });
     await _profileBox.put('profiles', profiles);
   }
@@ -259,6 +262,8 @@ class HiveService {
           : null,
       ownerUid: data['ownerUid'] as String?,
       username: data['username'] as String?,
+      supportOptions:
+          LearnerSupportCatalog.decode(data['supportOptions'] as List?),
     );
   }
 

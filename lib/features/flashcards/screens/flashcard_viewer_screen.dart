@@ -231,7 +231,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     if (!mounted || index < 0 || index >= _cards.length) return;
     final card = _cards[index];
     gamepadScreen.announce(
-      '${index + 1} of ${_cards.length}. '
+      '${AppLocalizations.of(context)!.viewerNofM(index + 1, _cards.length)} '
       '${card.wordEnglish}. ${card.wordFilipino}.',
     );
   }
@@ -283,10 +283,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(AppLocalizations.of(context)!.deleteFlashcard),
-        content: Text(
-          'Are you sure you want to delete “${card.wordEnglish}”? '
-          'This cannot be undone.',
-        ),
+        content: Text(AppLocalizations.of(context)!.viewerDeleteConfirm(card.wordEnglish)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -358,14 +355,14 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
       if (card != null && ActionClipService.hasClip(card))
         _ViewerAction(
           icon: Icons.play_circle_fill_rounded,
-          label: 'Show Me',
+          label: l10n.viewerShowMe,
           color: AppColors.secondaryDark,
           onTap: () => showActionClipSheet(context, card),
         ),
       if (card != null && FlashcardPhotoService.hasGallery(card))
         _ViewerAction(
           icon: Icons.photo_library_rounded,
-          label: 'Examples',
+          label: l10n.viewerExamples,
           color: AppColors.accentDark,
           onTap: () => showExamplesGallery(context, card),
         ),
@@ -399,11 +396,11 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     // the part a blind learner cannot get by pressing anything: the word, its
     // translation, and the example sentence.
     return GamepadScreenRegistrar(
-      title: widget.category.label,
+      title: widget.category.labelOf(l10n),
       narration: card == null
           ? const []
           : [
-              '${_currentIndex + 1} of ${_cards.length}.',
+              l10n.viewerNofM(_currentIndex + 1, _cards.length),
               card.wordEnglish,
               card.wordFilipino,
               if ((card.exampleSentence ?? '').trim().isNotEmpty)
@@ -437,7 +434,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
               ref,
               AppBar(
                 leading: const AppBackButton(fallbackRoute: '/flashcards'),
-                title: Text(widget.category.label),
+                title: Text(widget.category.labelOf(AppLocalizations.of(context)!)),
                 actions: [
                   // "I Need a Break" — always visible so a student who feels
                   // overwhelmed can pause the lesson and choose a calming activity,
@@ -460,7 +457,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                       color: HCColor.of(context).textSecondary,
                     ),
                     onPressed: _writeNoteAboutCurrentCard,
-                    tooltip: 'Write a note about this word',
+                    tooltip: AppLocalizations.of(context)!.viewerWriteNote,
                   ),
                   // Auto-play toggle
                   IconButton(
@@ -473,7 +470,9 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                           : HCColor.of(context).textSecondary,
                     ),
                     onPressed: _toggleAutoPlay,
-                    tooltip: _autoPlay ? 'Pause auto-play' : 'Start auto-play',
+                    tooltip: _autoPlay
+                        ? AppLocalizations.of(context)!.viewerPauseAuto
+                        : AppLocalizations.of(context)!.viewerStartAuto,
                   ),
                   // Card counter
                   Padding(
@@ -802,8 +801,14 @@ class _FlipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       label: isFlipped
-          ? '${card.wordEnglish} in Filipino is ${card.wordFilipino}. Tap to flip back.'
-          : '${card.wordEnglish}, ${category.label} category. Tap to see details.',
+          ? AppLocalizations.of(context)!.viewerFlippedSemantics(
+              card.wordEnglish,
+              card.wordFilipino,
+            )
+          : AppLocalizations.of(context)!.viewerFrontSemantics(
+              card.wordEnglish,
+              category.labelOf(AppLocalizations.of(context)!),
+            ),
       child: GestureDetector(
         onTap: onFlip,
         behavior: HitTestBehavior.deferToChild,
@@ -1014,7 +1019,7 @@ class _FlipCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            category.label,
+                            category.labelOf(AppLocalizations.of(context)!),
                             style: AppTypography.labelSmall.copyWith(
                               color: category.darkColor,
                               fontWeight: FontWeight.w700,
@@ -1254,7 +1259,7 @@ class _FlipCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          category.label,
+                          category.labelOf(AppLocalizations.of(context)!),
                           style: AppTypography.labelMedium.copyWith(
                             color: category.darkColor,
                             fontWeight: FontWeight.w700,
@@ -1481,7 +1486,7 @@ class _ActionButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: '$label button',
+      label: AppLocalizations.of(context)!.viewerButton(label),
       child: GestureDetector(
         onTap: enabled ? onTap : null,
         child: Column(
@@ -1584,11 +1589,12 @@ class _GazeViewerHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
     final (IconData icon, String text) = !ready
-        ? (Icons.hourglass_top_rounded, 'Starting gaze…')
+        ? (Icons.hourglass_top_rounded, t.viewerGazeStarting)
         : !faceVisible
-        ? (Icons.face_retouching_natural_rounded, 'Look at the screen')
-        : (Icons.visibility_rounded, 'Look ◀ ▶ to choose · blink to open');
+        ? (Icons.face_retouching_natural_rounded, t.viewerGazeLook)
+        : (Icons.visibility_rounded, t.viewerGazeChoose);
     return IgnorePointer(
       child: Center(
         child: Container(

@@ -10,6 +10,7 @@ import '../l10n/app_localizations.dart';
 import 'app_action_bar.dart';
 import 'fsl_fullscreen_player.dart';
 import 'shimmer_loading.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// Presents the FSL sign-language clip for [wordEnglish] in a modal bottom
 /// sheet with an inline, looping video player (speed selector, replay, close,
@@ -506,10 +507,8 @@ class _FslUnavailableSheet extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 unreachable
-                    ? 'The sign for “$wordEnglish” needs the internet to load '
-                          'the first time. Connect and try again — after that it '
-                          'works offline.'
-                    : 'No FSL video available yet for “$wordEnglish”.',
+                    ? _t(context).fvNeedsInternet(wordEnglish)
+                    : _t(context).fvNoVideo(wordEnglish),
                 style: AppTypography.bodyMedium.copyWith(
                   color: HCColor.of(context).textSecondary,
                 ),
@@ -565,7 +564,7 @@ class _SelfAssessment extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Can you sign this?',
+          _t(context).fvCanYou,
           textAlign: TextAlign.center,
           style: AppTypography.labelMedium.copyWith(
             color: hc.textSecondary,
@@ -578,7 +577,7 @@ class _SelfAssessment extends StatelessWidget {
           children: [
             _choice(
               context,
-              label: 'Not yet',
+              label: _t(context).lsNotYet,
               icon: Icons.hourglass_bottom_rounded,
               selected: mastery == SignMastery.learning,
               tint: hc.textSecondary,
@@ -590,7 +589,7 @@ class _SelfAssessment extends StatelessWidget {
             ),
             _choice(
               context,
-              label: 'I can sign this',
+              label: _t(context).signCanSign,
               icon: Icons.back_hand_rounded,
               selected: mastery == SignMastery.canSign,
               tint: AppColors.secondaryDark,
@@ -620,8 +619,8 @@ class _SelfAssessment extends StatelessWidget {
               Flexible(
                 child: Text(
                   verification == SignVerification.confirmed
-                      ? 'Your teacher confirmed this sign'
-                      : 'Your teacher says keep practising this one',
+                      ? _t(context).fvTeacherConfirmed
+                      : _t(context).fvKeepPractising,
                   style: AppTypography.labelSmall.copyWith(
                     color: verification == SignVerification.confirmed
                         ? hc.success
@@ -660,3 +659,8 @@ class _SelfAssessment extends StatelessWidget {
           );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

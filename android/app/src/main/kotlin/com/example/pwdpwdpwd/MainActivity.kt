@@ -121,6 +121,10 @@ class MainActivity : FlutterActivity() {
                                 CastForegroundService.EXTRA_DETAIL,
                                 call.argument<String>("detail") ?: "",
                             )
+                            putExtra(
+                                CastForegroundService.EXTRA_TITLE,
+                                call.argument<String>("title") ?: "",
+                            )
                         }
                         try {
                             startForegroundService(intent)

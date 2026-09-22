@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/accessibility/accessibility_presets.dart';
+import '../../../core/accessibility/learner_support.dart';
 import '../../../core/security/pin_credential_helper.dart';
 import '../../../core/services/learning_level_service.dart';
 import '../../../data/local/hive_service.dart';
@@ -22,6 +23,8 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/home_group_join_provider.dart';
 import '../../../providers/join_code_provider.dart';
 import '../../../widgets/app_button.dart';
+import '../../gamepad/providers/gamepad_settings_provider.dart';
+import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../widgets/profile_setup_form.dart';
 
 /// Identifies which join flow led the user to the post-join setup screen.
@@ -72,6 +75,16 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
   DateTime? _selectedBirthDate;
   bool _enablePin = false;
 
+  /// The accessibility category this learner inherits from the class or home
+  /// group they just joined, resolved once so the support picker and the
+  /// saved profile cannot disagree about it.
+  late final DisabilityType _accessibility;
+
+  /// The supports chosen for this learner. Starts at the category defaults,
+  /// which reproduce the app's pre-existing behaviour, so a family that taps
+  /// straight past this block is no worse off than before it existed.
+  late Set<LearnerSupportOption> _supports;
+
   /// True when we're upgrading an existing Player profile into a Student /
   /// Child. We preserve the profile id (and ownerUid) so local progress
   /// and any prior Firestore docs continue to belong to the same user.
@@ -84,6 +97,11 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
   @override
   void initState() {
     super.initState();
+    _accessibility = switch (widget.joinContext) {
+      ClassJoinContext(:final classroom) => classroom.accessibility,
+      HomeGroupJoinContext(:final group) => group.accessibility,
+    };
+    _supports = LearnerSupportCatalog.defaultsFor(_accessibility);
     final active = ref.read(profileProvider);
     if (active != null && active.isPlayerMode) {
       _upgradingFrom = active;
@@ -142,11 +160,10 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
 
     // Accessibility is decided by the teacher / parent at class / home-group
     // creation and inherited here, so the learner never sees the setup
-    // wizard. The resolved container travels on the JoinContext.
-    final accessibility = switch (ctx) {
-      ClassJoinContext(:final classroom) => classroom.accessibility,
-      HomeGroupJoinContext(:final group) => group.accessibility,
-    };
+    // wizard. The resolved container travels on the JoinContext; the supports
+    // *within* that category are this learner's own, chosen on the form above.
+    final accessibility = _accessibility;
+    final supports = LearnerSupportCatalog.normalize(accessibility, _supports);
 
     final upgrading = _upgradingFrom;
     if (upgrading != null) {
@@ -156,6 +173,7 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
         avatarIndex: _selectedAvatarIndex,
         isGuestPlayer: false,
         disabilityType: accessibility,
+        supportOptions: supports,
         birthDate: () => birth,
         learningLevel: () => level,
         classroomId: () => classroomId,
@@ -170,6 +188,7 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
       avatarIndex: _selectedAvatarIndex,
       createdAt: DateTime.now(),
       disabilityType: accessibility,
+      supportOptions: supports,
       birthDate: birth,
       learningLevel: level,
       classroomId: classroomId,
@@ -219,7 +238,21 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
         type,
         current: ref.read(settingsProvider),
       );
-      ref.read(settingsProvider.notifier).update(preset);
+      ref
+          .read(settingsProvider.notifier)
+          .update(AccessibilityPresets.applySupports(preset, profile.supports));
+      // Gaze and the gamepad are per-profile providers the preset cannot
+      // reach. The join flow never applied them at all, so a motor-impairment
+      // class could hand a learner a tablet they had no way to drive; now the
+      // input method they just chose switches the right one on.
+      switch (LearnerSupportCatalog.inputModeIn(profile.supports)) {
+        case LearnerSupportOption.inputGaze:
+          ref.read(gazeSettingsProvider.notifier).setEnabled(true);
+        case LearnerSupportOption.inputSwitch:
+          ref.read(gamepadSettingsProvider.notifier).setEnabled(true);
+        default:
+          break;
+      }
     }
 
     final pid = ref.read(profileProvider)?.id ?? '';
@@ -332,6 +365,10 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
                         suggestedLevel: LearningLevelService
                             .suggestLevelFromBirthDate(_selectedBirthDate),
                         onPickBirthDate: _pickBirthDate,
+                        supportDisabilityType: _accessibility,
+                        selectedSupports: _supports,
+                        onSupportsChanged: (next) =>
+                            setState(() => _supports = next),
                         enablePin: _enablePin,
                         onTogglePin: (val) {
                           setState(() {

@@ -12,6 +12,8 @@ import '../models/showcase_models.dart';
 import '../providers/showcase_provider.dart';
 import '../widgets/showcase_widgets.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class ShowcaseScreen extends ConsumerStatefulWidget {
   const ShowcaseScreen({super.key});
@@ -47,7 +49,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
         title: Text(
-          'My Portfolio',
+          _t(context).scPortfolio,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -58,7 +60,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
             IconButton(
               onPressed: () => context.push('/showcase/share'),
               icon: Icon(Icons.share_rounded, color: hc.textSecondary),
-              tooltip: 'Share Portfolio',
+              tooltip: _t(context).scSharePortfolio,
             ),
           IconButton(
             onPressed: _isAutoPopulating ? null : () => _autoPopulate(ref),
@@ -72,7 +74,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
                     ),
                   )
                 : Icon(Icons.auto_awesome_rounded, color: hc.textSecondary),
-            tooltip: 'Auto-curate portfolio',
+            tooltip: _t(context).scAutoCurate,
           ),
         ],
       ),
@@ -111,7 +113,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                     child: Text(
-                      '${filteredItems.length} item${filteredItems.length == 1 ? '' : 's'}',
+                      _t(context).scItems(filteredItems.length),
                       style: AppTypography.labelMedium.copyWith(
                         color: hc.textSecondary,
                       ),
@@ -161,7 +163,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => _showAddNoteDialog(context, ref),
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Add Note'),
+              label: Text(_t(context).scAddNote),
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
             )
@@ -176,16 +178,21 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
     setState(() => _isAutoPopulating = true);
     final progress = ref.read(progressProvider);
     final newItems =
-        await ref.read(showcaseProvider.notifier).autoPopulate(progress);
+        await ref
+            .read(showcaseProvider.notifier)
+            .autoPopulate(progress, l10n: _t(context));
     if (!mounted) return;
     setState(() => _isAutoPopulating = false);
 
     if (newItems.isNotEmpty) {
       ref.read(hapticServiceProvider).celebration();
       ref.read(soundServiceProvider).playStar();
-      AppSnackBar.success(context, message: 'Added ${newItems.length} new item${newItems.length == 1 ? '' : 's'} to your portfolio!');
+      AppSnackBar.success(
+        context,
+        message: _t(context).scAdded(newItems.length),
+      );
     } else {
-      AppSnackBar.info(context, message: 'Portfolio is already up to date!');
+      AppSnackBar.info(context, message: _t(context).scUpToDate);
     }
   }
 
@@ -194,13 +201,12 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove from Portfolio?'),
-        content: Text(
-            'Remove “${item.title}” from your showcase? You can always add it back later.'),
+        title: Text(_t(context).scRemoveTitle),
+        content: Text(_t(context).scRemoveBody(item.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(_t(context).cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -210,7 +216,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.error,
             ),
-            child: const Text('Remove'),
+            child: Text(_t(context).gmRemove),
           ),
         ],
       ),
@@ -224,11 +230,11 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Text('📌', style: TextStyle(fontSize: 24)),
-            SizedBox(width: 8),
-            Text('Add a Note'),
+            const Text('📌', style: TextStyle(fontSize: 24)),
+            const SizedBox(width: 8),
+            Text(_t(context).scAddANote),
           ],
         ),
         content: Column(
@@ -237,8 +243,8 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
             TextField(
               controller: titleController,
               decoration: InputDecoration(
-                labelText: 'Title',
-                hintText: 'e.g., “My Favorite Game”',
+                labelText: _t(context).scNoteTitle,
+                hintText: _t(context).scNoteTitleHint,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -249,8 +255,8 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
             TextField(
               controller: noteController,
               decoration: InputDecoration(
-                labelText: 'Note',
-                hintText: 'Write about your learning journey...',
+                labelText: _t(context).scNote,
+                hintText: _t(context).scNoteHint,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -263,7 +269,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(_t(context).cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -274,10 +280,15 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
                 ref.read(showcaseProvider.notifier).addNote(title, note);
               }
             },
-            child: const Text('Add'),
+            child: Text(_t(context).scAdd),
           ),
         ],
       ),
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

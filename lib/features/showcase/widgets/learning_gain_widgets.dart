@@ -4,6 +4,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../features/assessment/models/assessment_models.dart';
+import '../../../features/assessment/models/question_prompt.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Grouped bar chart comparing pre-test vs post-test scores per category
 class LearningGainBarChart extends StatelessWidget {
@@ -27,7 +30,7 @@ class LearningGainBarChart extends StatelessWidget {
         ),
         child: Center(
           child: Text(
-            'No category data available',
+            _t(context).lgNoCategoryData,
             style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
           ),
         ),
@@ -49,7 +52,7 @@ class LearningGainBarChart extends StatelessWidget {
               Icon(Icons.bar_chart_rounded, size: 22, color: hc.primary),
               const SizedBox(width: 8),
               Text(
-                'Score by Category',
+                _t(context).lgScoreByCategory,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -60,11 +63,11 @@ class LearningGainBarChart extends StatelessWidget {
           const SizedBox(height: 8),
 
           // Legend
-          const Row(
+          Row(
             children: [
-              _LegendDot(color: AppColors.info, label: 'Pre-Test'),
-              SizedBox(width: 16),
-              _LegendDot(color: AppColors.success, label: 'Post-Test'),
+              _LegendDot(color: AppColors.info, label: _t(context).assessPreTest),
+              const SizedBox(width: 16),
+              _LegendDot(color: AppColors.success, label: _t(context).assessPostTest),
             ],
           ),
           const SizedBox(height: 20),
@@ -78,7 +81,9 @@ class LearningGainBarChart extends StatelessWidget {
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final label = rodIndex == 0 ? 'Pre' : 'Post';
+                      final label = rodIndex == 0
+                            ? _t(context).lgPreShort
+                            : _t(context).lgPostShort;
                       return BarTooltipItem(
                         '$label: ${rod.toY.round()}%',
                         AppTypography.labelSmall.copyWith(
@@ -98,7 +103,10 @@ class LearningGainBarChart extends StatelessWidget {
                         if (idx < 0 || idx >= categories.length) {
                           return const SizedBox.shrink();
                         }
-                        final name = categories[idx];
+                        final name = QuestionPrompt.categoryName(
+                          categories[idx],
+                          _t(context),
+                        );
                         // Truncate long names
                         final display = name.length > 10
                             ? '${name.substring(0, 9)}…'
@@ -225,7 +233,7 @@ class LearningGainSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            hasImproved ? 'Great Improvement!' : 'Keep Practicing!',
+            hasImproved ? _t(context).lgGreatImprovement : _t(context).lgKeepPracticing,
             style: AppTypography.titleLarge.copyWith(
               color: AppColors.textOnPrimary,
               fontWeight: FontWeight.w800,
@@ -233,7 +241,7 @@ class LearningGainSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            report.summary,
+            report.summaryOf(AppLocalizations.of(context)),
             style: AppTypography.bodyMedium.copyWith(
               color: AppColors.textOnPrimary.withValues(alpha: 0.9),
             ),
@@ -244,7 +252,7 @@ class LearningGainSummaryCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _ScoreCircle(
-                label: 'Pre-Test',
+                label: _t(context).assessPreTest,
                 score: '$prePct%',
                 isPost: false,
               ),
@@ -270,7 +278,7 @@ class LearningGainSummaryCard extends StatelessWidget {
                 ],
               ),
               _ScoreCircle(
-                label: 'Post-Test',
+                label: _t(context).assessPostTest,
                 score: '$postPct%',
                 isPost: true,
               ),
@@ -365,7 +373,7 @@ class CategoryGainList extends StatelessWidget {
                   size: 22, color: hc.primary),
               const SizedBox(width: 8),
               Text(
-                'Category Breakdown',
+                _t(context).lgCategoryBreakdown,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -390,7 +398,7 @@ class CategoryGainList extends StatelessWidget {
                   SizedBox(
                     width: 120,
                     child: Text(
-                      cat,
+                      QuestionPrompt.categoryName(cat, _t(context)),
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textPrimary,
                         fontWeight: FontWeight.w600,
@@ -524,7 +532,7 @@ class AssessmentTrendChart extends StatelessWidget {
               Icon(Icons.show_chart_rounded, size: 22, color: hc.primary),
               const SizedBox(width: 8),
               Text(
-                'Score Trend Over Time',
+                _t(context).lgTrend,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -533,11 +541,11 @@ class AssessmentTrendChart extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          const Row(
+          Row(
             children: [
-              _LegendDot(color: AppColors.info, label: 'Pre-Tests'),
-              SizedBox(width: 16),
-              _LegendDot(color: AppColors.success, label: 'Post-Tests'),
+              _LegendDot(color: AppColors.info, label: _t(context).lgPreTests),
+              const SizedBox(width: 16),
+              _LegendDot(color: AppColors.success, label: _t(context).lgPostTests),
             ],
           ),
           const SizedBox(height: 20),
@@ -658,3 +666,8 @@ class _LegendDot extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

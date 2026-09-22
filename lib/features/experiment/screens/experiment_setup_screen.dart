@@ -12,6 +12,8 @@ import '../../../data/local/hive_service.dart';
 import '../models/experiment_models.dart';
 import '../services/experiment_service.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Teacher-facing screen to configure experiment mode for students.
 ///
@@ -52,7 +54,7 @@ class _ExperimentSetupScreenState
     }
     ref.read(hapticServiceProvider).success();
     if (mounted) {
-      AppSnackBar.success(context, message: 'Experiment settings saved!');
+      AppSnackBar.success(context, message: _t(context).exSaved);
     }
   }
 
@@ -529,7 +531,7 @@ class _GroupButton extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: '$label group',
+      label: _t(context).exGroup(label),
       child: Material(
         color: selected
             ? color.withValues(alpha: 0.15)
@@ -564,3 +566,8 @@ class _GroupButton extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

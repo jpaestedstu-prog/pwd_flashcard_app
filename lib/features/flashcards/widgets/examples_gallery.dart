@@ -7,6 +7,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/models.dart';
 import 'media_sheet_layout.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Opens a swipeable gallery of several real-world example photos for a card.
 ///
@@ -27,7 +29,7 @@ Future<void> showExamplesGallery(BuildContext context, Flashcard card) async {
   );
 }
 
-/// A compact pill that opens the "Examples" gallery. Renders nothing unless the
+/// A compact pill that opens the _t(context).viewerExamples gallery. Renders nothing unless the
 /// card actually has extra example photos configured, so it's safe to drop in.
 class ExamplesButton extends StatelessWidget {
   final Flashcard card;
@@ -39,7 +41,7 @@ class ExamplesButton extends StatelessWidget {
     if (!FlashcardPhotoService.hasGallery(card)) return const SizedBox.shrink();
     return Semantics(
       button: true,
-      label: 'See example photos of ${card.wordEnglish}',
+      label: _t(context).egSemantics(card.wordEnglish),
       child: Material(
         color: AppColors.accent.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(24),
@@ -58,7 +60,7 @@ class ExamplesButton extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Examples',
+                  _t(context).viewerExamples,
                   style: AppTypography.labelLarge.copyWith(
                     color: AppColors.accentDark,
                     fontWeight: FontWeight.w700,
@@ -190,3 +192,8 @@ class _ExamplesGallerySheetState extends State<_ExamplesGallerySheet> {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

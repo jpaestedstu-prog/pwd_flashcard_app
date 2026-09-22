@@ -13,6 +13,8 @@ import '../models/goal_model.dart';
 import '../services/goal_service.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/utils/accessible_sizing.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class GoalsScreen extends ConsumerStatefulWidget {
   const GoalsScreen({super.key});
@@ -48,7 +50,7 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'My Goals',
+                        _t(context).goalsTitle,
                         style: AppTypography.headlineLarge.copyWith(
                           color: hc.textPrimary,
                         ),
@@ -82,7 +84,7 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(padding, 24, padding, 0),
                   child: SectionHeader(
-                    title: 'Active Goals',
+                    title: _t(context).goalsActive,
                     icon: Icons.flag_rounded,
                     color: hc.textPrimary,
                   ),
@@ -124,14 +126,14 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                       const Text('🎯', style: TextStyle(fontSize: 64)),
                       const SizedBox(height: 16),
                       Text(
-                        'No goals yet',
+                        _t(context).goalsNone,
                         style: AppTypography.headlineSmall.copyWith(
                           color: hc.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Set a learning goal to stay motivated!',
+                        _t(context).goalsNoneHint,
                         style: AppTypography.bodyMedium.copyWith(
                           color: hc.textSecondary,
                         ),
@@ -150,7 +152,7 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(padding, 24, padding, 0),
                   child: SectionHeader(
-                    title: 'Completed (${completed.length})',
+                    title: _t(context).goalsCompleted(completed.length),
                     icon: Icons.check_circle_rounded,
                     color: hc.success,
                   ),
@@ -182,7 +184,7 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(padding, 24, padding, 0),
                   child: SectionHeader(
-                    title: 'Expired (${expired.length})',
+                    title: _t(context).goalsExpired(expired.length),
                     icon: Icons.timer_off_rounded,
                     color: hc.textSecondary,
                   ),
@@ -217,7 +219,7 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
         backgroundColor: AppColors.primary,
         icon: Icon(Icons.add_rounded, color: HCColor.of(context).textOnPrimary),
         label: Text(
-          'New Goal',
+          _t(context).goalsNew,
           style: AppTypography.labelLarge.copyWith(color: HCColor.of(context).textOnPrimary),
         ),
       ),
@@ -289,7 +291,7 @@ class _SummaryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Goal Tracker',
+                  _t(context).goalsTracker,
                   style: AppTypography.titleLarge.copyWith(
                     color: hc.textOnPrimary,
                     fontWeight: FontWeight.w800,
@@ -297,7 +299,7 @@ class _SummaryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$activeCount active · $completedCount completed',
+                  _t(context).goalsSummary(activeCount, completedCount),
                   style: AppTypography.bodyMedium.copyWith(
                     color: hc.textOnPrimary.withValues(alpha: 0.85),
                   ),
@@ -398,7 +400,8 @@ class _GoalCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${goal.currentValue} / ${goal.targetValue} ${goal.type.label.toLowerCase()}',
+                        '${goal.currentValue} / ${goal.targetValue} '
+                        '${_typeLabel(_t(context), goal.type).toLowerCase()}',
                         style: AppTypography.bodySmall.copyWith(
                           color: hc.textSecondary,
                         ),
@@ -442,7 +445,7 @@ class _GoalCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _formatDeadline(goal.deadline!),
+                    _formatDeadline(_t(context), goal.deadline!),
                     style: AppTypography.labelSmall.copyWith(
                       color: isExpired ? AppColors.error : hc.textSecondary,
                     ),
@@ -456,13 +459,13 @@ class _GoalCard extends StatelessWidget {
     );
   }
 
-  String _formatDeadline(DateTime deadline) {
+  String _formatDeadline(AppLocalizations t, DateTime deadline) {
     final now = DateTime.now();
     final diff = deadline.difference(now).inDays;
-    if (diff < 0) return 'Expired';
-    if (diff == 0) return 'Due today';
-    if (diff == 1) return 'Due tomorrow';
-    return 'Due in $diff days';
+    if (diff < 0) return t.goalsExpiredShort;
+    if (diff == 0) return t.goalsDueToday;
+    if (diff == 1) return t.goalsDueTomorrow;
+    return t.goalsDueIn(diff);
   }
 }
 
@@ -496,16 +499,18 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
     GoalType.starsEarned: [10, 25, 50, 100],
   };
 
+  /// Saved with the goal, so it is written in the language it was set in.
   String get _goalTitle {
+    final t = _t(context);
     final suffix = _selectedType == GoalType.categoryMastery
-        ? (_selectedCategory?.label ?? 'a category')
+        ? (_selectedCategory?.labelOf(t) ?? t.goalsACategory)
         : '';
     return switch (_selectedType) {
-      GoalType.wordsLearned => 'Learn $_targetValue words',
-      GoalType.gamesCompleted => 'Complete $_targetValue games',
-      GoalType.categoryMastery => 'Reach $_targetValue% mastery in $suffix',
-      GoalType.streakDays => 'Maintain a $_targetValue-day streak',
-      GoalType.starsEarned => 'Earn $_targetValue stars',
+      GoalType.wordsLearned => t.goalsLearnN(_targetValue),
+      GoalType.gamesCompleted => t.goalsCompleteN(_targetValue),
+      GoalType.categoryMastery => t.goalsMasteryN(_targetValue, suffix),
+      GoalType.streakDays => t.goalsStreakN(_targetValue),
+      GoalType.starsEarned => t.goalsStarsN(_targetValue),
     };
   }
 
@@ -538,7 +543,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
             ),
             const SizedBox(height: 20),
             Text(
-              'Set a New Goal',
+              _t(context).goalsSetNew,
               style: AppTypography.headlineSmall.copyWith(
                 color: hc.textPrimary,
                 fontWeight: FontWeight.w700,
@@ -548,7 +553,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
 
             // ─── Goal Type Selector ────────────
             Text(
-              'What do you want to achieve?',
+              _t(context).goalsWhat,
               style: AppTypography.titleSmall.copyWith(
                 color: hc.textPrimary,
               ),
@@ -560,7 +565,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
               children: GoalType.values.map((type) {
                 final selected = _selectedType == type;
                 return ChoiceChip(
-                  label: Text('${type.emoji} ${type.label}'),
+                  label: Text('${type.emoji} ${_typeLabel(_t(context), type)}'),
                   selected: selected,
                   onSelected: (val) => setState(() {
                     _selectedType = type;
@@ -582,7 +587,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
             // ─── Category Picker (for mastery goals) ─
             if (_selectedType == GoalType.categoryMastery) ...[
               Text(
-                'Which category?',
+                _t(context).goalsWhichCategory,
                 style: AppTypography.titleSmall.copyWith(
                   color: hc.textPrimary,
                 ),
@@ -620,7 +625,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
 
             // ─── Target Value ──────────────────
             Text(
-              'Target',
+              _t(context).goalsTarget,
               style: AppTypography.titleSmall.copyWith(
                 color: hc.textPrimary,
               ),
@@ -652,7 +657,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
             // ─── Deadline Toggle ───────────────
             SwitchListTile(
               title: Text(
-                'Set a deadline',
+                _t(context).goalsDeadline,
                 style: AppTypography.titleSmall.copyWith(
                   color: hc.textPrimary,
                 ),
@@ -679,7 +684,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
                             side: BorderSide(color: hc.border),
                           ),
                           child: Text(
-                            '${days}d',
+                            _t(context).goalsDaysShort(days),
                             style: AppTypography.labelMedium.copyWith(
                               color: hc.textPrimary,
                             ),
@@ -726,7 +731,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
                   ),
                 ),
                 child: Text(
-                  'Create Goal',
+                  _t(context).goalsCreate,
                   style: AppTypography.titleSmall.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -761,3 +766,16 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
     Navigator.of(context).pop();
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+String _typeLabel(AppLocalizations t, GoalType type) => switch (type) {
+  GoalType.wordsLearned => t.goalsTypeWords,
+  GoalType.gamesCompleted => t.goalsTypeGames,
+  GoalType.categoryMastery => t.goalsTypeMastery,
+  GoalType.streakDays => t.goalsTypeStreak,
+  GoalType.starsEarned => t.goalsTypeStars,
+};

@@ -207,7 +207,7 @@ class VoiceNavigationService {
         ),
         fil: (
           name: a.compareTitle(filipino: true),
-          description: 'Ihambing ang dalawa o tatlong $learnersFil.',
+          description: 'Ihambing ang dalawa o tatlong $learnerFil.',
         ),
       ),
       '/student-profiles' => (
@@ -388,6 +388,20 @@ class VoiceNavigationService {
       fil: (
         name: 'Mga Pagsusulit',
         description: 'Sagutan o balikan ang isang pagsusulit.',
+      ),
+    ),
+    '/assessment/class-report': (
+      en: (
+        name: 'Class Report',
+        description:
+            'Learning gain by accessibility category, the hardest questions, '
+            'and who has retaken which test.',
+      ),
+      fil: (
+        name: 'Ulat ng Klase',
+        description:
+            'Pag-unlad ayon sa uri ng accessibility, ang pinakamahihirap na '
+            'tanong, at kung sino ang umulit ng pagsusulit.',
       ),
     ),
     '/assessment/builder': (
@@ -682,7 +696,7 @@ class VoiceNavigationService {
         description: 'Drag words to matching pictures.',
       ),
       fil: (
-        name: 'Drag and Drop',
+        name: 'I-drag at I-drop',
         description: 'Hilahin ang salita papunta sa tamang larawan.',
       ),
     ),
@@ -753,7 +767,7 @@ class VoiceNavigationService {
         description: 'Drag the pieces to complete the picture.',
       ),
       fil: (
-        name: 'Jigsaw Puzzle',
+        name: 'Palaisipang Jigsaw',
         description: 'Hilahin ang mga piraso para mabuo ang larawan.',
       ),
     ),
@@ -833,7 +847,7 @@ class VoiceNavigationService {
         description: 'Match pictures to words.',
       ),
       fil: (
-        name: 'Word Match',
+        name: 'Pagtutugma ng Salita',
         description: 'Itapat ang larawan sa tamang salita.',
       ),
     ),
@@ -863,7 +877,7 @@ class VoiceNavigationService {
         description: 'Control the app by looking and blinking.',
       ),
       fil: (
-        name: 'Gaze Control',
+        name: 'Kontrol gamit ang Tingin',
         description: 'Kontrolin ang app sa pamamagitan ng tingin at kurap.',
       ),
     ),
@@ -981,7 +995,7 @@ class VoiceNavigationService {
             'Compare a baseline test with a later one to see the improvement.',
       ),
       fil: (
-        name: 'Learning Gain',
+        name: 'Pag-unlad sa Pagkatuto',
         description:
             'Ihambing ang baseline test sa susunod para makita ang pag-unlad.',
       ),
@@ -1190,7 +1204,7 @@ class VoiceNavigationService {
         description: 'Limits and safety settings for this device.',
       ),
       fil: (
-        name: 'Parental Controls',
+        name: 'Kontrol ng Magulang',
         description:
             'Mga limitasyon at setting ng kaligtasan para sa device na ito.',
       ),
@@ -1321,7 +1335,7 @@ class VoiceNavigationService {
         description: 'Export anonymised study data for research.',
       ),
       fil: (
-        name: 'Research Export',
+        name: 'Pag-export ng Datos ng Pananaliksik',
         description: 'I-export ang anonymised na datos para sa pananaliksik.',
       ),
     ),
@@ -1361,7 +1375,7 @@ class VoiceNavigationService {
         description: 'Your finished work.',
       ),
       fil: (
-        name: 'Showcase',
+        name: 'Aking Portfolio',
         description: 'Ang mga natapos mong gawa.',
       ),
     ),
@@ -1472,7 +1486,7 @@ class VoiceNavigationService {
         description: 'Ten questions about using the app.',
       ),
       fil: (
-        name: 'Usability Survey',
+        name: 'Sarbey ng Kakayahang-gamit',
         description: 'Sampung tanong tungkol sa paggamit ng app.',
       ),
     ),
@@ -1530,7 +1544,7 @@ class VoiceNavigationService {
             'Set up voice navigation and take a guided tour of the app.',
       ),
       fil: (
-        name: 'Voice-Guided Mode',
+        name: 'Mode na Ginagabayan ng Boses',
         description:
             'Ayusin ang voice navigation at subukan ang gabay sa paggamit ng '
             'app.',

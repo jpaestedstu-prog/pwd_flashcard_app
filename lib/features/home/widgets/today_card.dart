@@ -137,7 +137,13 @@ class _TodayMoodPaneState extends ConsumerState<TodayMoodPane> {
       emoji: checkedIn ? todays.mood.emoji : '😊',
       tint: tint,
       done: checkedIn,
-      openSemanticLabel: checkedIn
+      openSemanticLabel: isFilipino
+          ? (checkedIn
+                ? 'Check-in ng damdamin. ${todays.mood.labelFilipino} ka '
+                      'ngayon. Buksan para sa tala at kasaysayan.'
+                : 'Check-in ng damdamin. Hindi ka pa nag-check in ngayon. '
+                      'Buksan para sa tala at kasaysayan.')
+          : checkedIn
           ? 'Mood check-in. Today you feel '
                 '${todays.mood.labelOf(isFilipino: isFilipino)}. '
                 'Open for a note and your history.'
@@ -480,7 +486,17 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
     RoutineStep? paused,
     DateTime? now,
   }) {
+    // Spoken, so it follows the language setting like the text it stands for.
+    final l = isFilipino;
+    final head = l ? 'Ang Aking Araw.' : 'My Day.';
+    final open = l ? ' Buksan ang iyong araw.' : ' Open your day.';
     if (today.isEmpty) {
+      if (l) {
+        return today.hasEducator
+            ? '$head Walang nakatakda ngayon — puwede itong ayusin ng iyong '
+                  'guro o magulang.$open'
+            : '$head Walang nakatakda ngayon.$open';
+      }
       return today.hasEducator
           ? 'My Day. Nothing is scheduled for today — your teacher or parent '
                 'can set one up. Open your day.'
@@ -488,25 +504,37 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
     }
     // The chip sits inside the header's excluded subtree, so this sentence is
     // the only way the mood reaches a screen reader.
+    final feeling = routineMood?.mood.labelOf(isFilipino: isFilipino);
     final mood = routineMood == null
         ? ''
         : (routineMood.routineStepTitle == null
-              ? ' You said today felt '
-                    '${routineMood.mood.labelOf(isFilipino: isFilipino)}.'
-              : ' You felt '
-                    '${routineMood.mood.labelOf(isFilipino: isFilipino)} '
-                    'after ${routineMood.routineStepTitle}.');
+              ? (l
+                    ? ' Sabi mo, $feeling ang araw na ito.'
+                    : ' You said today felt $feeling.')
+              : (l
+                    ? ' $feeling ka pagkatapos ng '
+                          '${routineMood.routineStepTitle}.'
+                    : ' You felt $feeling '
+                          'after ${routineMood.routineStepTitle}.'));
     // "1 days finished in a row" is the kind of thing a screen reader says
     // out loud, so it gets a plural.
     final streak = today.streak > 0
-        ? ' ${today.streak} day${today.streak == 1 ? '' : 's'} '
-              'finished in a row.'
+        ? (l
+              ? ' ${today.streak} araw na sunod-sunod na natapos.'
+              : ' ${today.streak} day${today.streak == 1 ? '' : 's'} '
+                    'finished in a row.')
         : '';
     if (today.allDone) {
-      return clock
-          ? 'My Day. That’s all for today.$streak$mood Open your day.'
+      if (clock) {
+        return l
+            ? '$head Iyan ang lahat ngayon.$streak$mood$open'
+            : 'My Day. That’s all for today.$streak$mood Open your day.';
+      }
+      return l
+          ? '$head Tapos na ang lahat ng ${today.total} hakbang.'
+                '$streak$mood$open'
           : 'My Day. All ${today.total} steps are done.$streak$mood '
-              'Open your day.';
+                'Open your day.';
     }
     if (current != null) {
       final title = RoutineCatalog.titleFor(current, filipino: isFilipino);
@@ -514,14 +542,20 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
       final end = today.endOf(current, at);
       final left = end == null
           ? ''
-          : ' ${RoutineNowCountdown.leftLabel(end: end, now: at, filipino: false)}.';
-      return 'My Day. Now: $title, until ${formatStepEnd(current, end: end)}.'
-          '$left$streak$mood Open your day.';
+          : ' ${RoutineNowCountdown.leftLabel(end: end, now: at, filipino: l)}.';
+      return l
+          ? '$head Ngayon: $title, hanggang '
+                '${formatStepEnd(current, end: end)}.$left$streak$mood$open'
+          : 'My Day. Now: $title, until ${formatStepEnd(current, end: end)}.'
+                '$left$streak$mood Open your day.';
     }
     if (paused != null) {
       final title = RoutineCatalog.titleFor(paused, filipino: isFilipino);
-      return 'My Day. Paused: $title. Your teacher or parent will start it '
-          'again.$streak$mood Open your day.';
+      return l
+          ? '$head Nakahinto: $title. Ang iyong guro o magulang ang '
+                'magpapatuloy nito.$streak$mood$open'
+          : 'My Day. Paused: $title. Your teacher or parent will start it '
+                'again.$streak$mood Open your day.';
     }
     final next = today.nextStep;
     if (next == null) {
@@ -529,12 +563,21 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
       // still open was excused by an adult. There is nothing more today —
       // found on the NDL W09, where this was a null check that took the whole
       // Home card down (and its "Something went wrong" snackbar with it).
-      return 'My Day. That’s all for today.$streak$mood Open your day.';
+      return l
+          ? '$head Iyan ang lahat ngayon.$streak$mood$open'
+          : 'My Day. That’s all for today.$streak$mood Open your day.';
     }
     final title = RoutineCatalog.titleFor(next, filipino: isFilipino);
     final when = next.isScheduled
-        ? ' at ${_clock(next)}${overdue ? ', overdue' : ''}'
+        ? (l
+              ? ' sa ${_clock(next)}${overdue ? ', lampas na sa oras' : ''}'
+              : ' at ${_clock(next)}${overdue ? ', overdue' : ''}')
         : '';
+    if (l) {
+      if (clock) return '$head Susunod: $title$when.$streak$mood$open';
+      return '$head ${today.done} sa ${today.total} hakbang ang tapos. '
+          'Susunod: $title$when.$streak$mood$open';
+    }
     if (clock) return 'My Day. Next: $title$when.$streak$mood Open your day.';
     return 'My Day. ${today.done} of ${today.total} steps done. '
         'Next: $title$when.$streak$mood Open your day.';

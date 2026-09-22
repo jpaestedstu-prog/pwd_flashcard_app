@@ -26,6 +26,14 @@ class SeasonalEvent {
     this.bannerGradientStart,
   });
 
+  /// [name] in the learner's language.
+  String nameOf({required bool filipino}) =>
+      filipino ? (_seasonalNameFilipino[id] ?? name) : name;
+
+  /// [description] in the learner's language.
+  String descriptionOf({required bool filipino}) =>
+      filipino ? (_seasonalDescriptionFilipino[id] ?? description) : description;
+
   bool get isActive {
     final now = DateTime.now();
     return now.isAfter(dateRange.start) && now.isBefore(dateRange.end);
@@ -170,3 +178,22 @@ class SeasonalEvents {
     }
   }
 }
+
+const _seasonalNameFilipino = {
+  'valentines': 'Linggo ng mga Puso',
+  'back_to_school': 'Balik-Eskwela',
+  'halloween': 'Masayang Undas',
+  'christmas': 'Kapaskuhan',
+  'new_year': 'Bagong Taon!',
+  'earth_day': 'Linggo ng Kalikasan',
+};
+
+const _seasonalDescriptionFilipino = {
+  'valentines': 'Magmahalan at matuto nang sama-sama!',
+  'buwan_ng_wika': 'Ipagdiwang ang wika at kulturang Filipino!',
+  'back_to_school': 'Simula na ng bagong taon ng pag-aaral!',
+  'halloween': 'Masaya at magiliw na pag-aaral ngayong Undas!',
+  'christmas': 'Maligayang Pasko at masayang pag-aaral!',
+  'new_year': 'Salubungin ang bagong taon ng pagkatuto!',
+  'earth_day': 'Matuto tungkol sa kalikasan at sa ating mundo!',
+};

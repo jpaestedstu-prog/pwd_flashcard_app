@@ -5,9 +5,11 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/local/seed_stories.dart' show Story;
 import '../../../data/models/enums.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../widgets/depth_3d.dart';
 import '../../../widgets/tilt_3d.dart';
 import 'story_meta.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// A themed, vertical "cover" card for a single story.
 ///
@@ -59,13 +61,16 @@ class _StoryCoverCardState extends State<StoryCoverCard> {
     final locked = !widget.unlocked;
     final accent = story.category.color;
     final kid = widget.kidMode;
+    final title = _t(context).localeName.startsWith('fil')
+        ? story.titleFil
+        : story.titleEn;
 
     return Semantics(
       button: widget.unlocked,
       label: locked
-          ? '${story.titleEn} — locked'
-          : '${story.titleEn} — tap to read'
-                '${widget.read ? ', read' : ''}',
+          ? _t(context).storyLocked(title)
+          : '${_t(context).storyTapToRead(title)}'
+                '${widget.read ? _t(context).storyReadSuffix : ''}',
       child: GestureDetector(
         onTap: widget.unlocked ? () => widget.onTap?.call() : null,
         // Pressable3D adds the press-scale + gentle tilt (reduced-motion aware);
@@ -262,7 +267,7 @@ class _CoverBand extends StatelessWidget {
             child: _Pill(
               icon: Icons.check_circle_rounded,
               color: hc.success,
-              label: 'Read',
+              label: _t(context).storyRead,
             ),
           ),
         // Stars (bottom-left)
@@ -296,7 +301,7 @@ class _MetaChips extends StatelessWidget {
       children: [
         _Chip(
           icon: Icons.signal_cellular_alt_rounded,
-          label: story.difficulty.label,
+          label: story.difficulty.labelOf(AppLocalizations.of(context)!),
           color: locked ? muted : difficultyColor,
         ),
         _Chip(
@@ -398,3 +403,8 @@ class _StarRow extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

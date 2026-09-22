@@ -48,6 +48,7 @@ class ReviewReminderService {
     required bool enabled,
     required int hour,
     required int minute,
+    bool filipino = false,
   }) async {
     if (!enabled) {
       await NotificationService.cancelVocabReviewReminder();
@@ -60,6 +61,7 @@ class ReviewReminderService {
       hour: hour,
       minute: minute,
       weakWordCount: weakCount,
+      filipino: filipino,
     );
   }
 }

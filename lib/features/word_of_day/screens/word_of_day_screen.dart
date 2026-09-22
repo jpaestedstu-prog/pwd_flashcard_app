@@ -13,6 +13,9 @@ import '../models/word_of_day_models.dart';
 import '../services/word_of_day_service.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../assessment/models/question_prompt.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class WordOfDayScreen extends ConsumerStatefulWidget {
   const WordOfDayScreen({super.key});
@@ -43,7 +46,7 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
     ref.read(hapticServiceProvider).success();
     setState(() => _learned = true);
     if (mounted) {
-      AppSnackBar.success(context, message: 'Word learned! ${_word.emoji}');
+      AppSnackBar.success(context, message: _t(context).wodLearned(_word.emoji));
     }
   }
 
@@ -265,7 +268,7 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                     Flexible(
                       child: _StatTile(
                         emoji: _word.emoji,
-                        value: _word.category,
+                        value: QuestionPrompt.categoryName(_word.category, _t(context)),
                         label: isFilipino ? 'Kategorya' : 'Category',
                         color: hc.primary,
                       ),
@@ -330,7 +333,7 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                'English',
+                _t(context).english,
                 style: AppTypography.labelSmall.copyWith(color: hc.primary),
               ),
             ),
@@ -390,7 +393,7 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                'Filipino',
+                _t(context).filipino,
                 style: AppTypography.labelSmall.copyWith(color: hc.accent),
               ),
             ),
@@ -476,3 +479,8 @@ class _StatTile extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

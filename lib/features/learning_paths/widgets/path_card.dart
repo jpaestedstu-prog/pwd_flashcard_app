@@ -3,6 +3,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/learning_path.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 class PathCard extends StatelessWidget {
   final LearningPath path;
@@ -32,8 +34,8 @@ class PathCard extends StatelessWidget {
       button: isUnlocked,
       enabled: isUnlocked,
       label:
-          '${path.title} learning path. $completedSteps of $totalSteps steps completed.'
-          '${isUnlocked ? "" : " Locked. Complete the previous path to unlock."}',
+          '${_t(context).lpCardSemantics(path.titleOf(filipino: _t(context).localeName.startsWith('fil')), completedSteps, totalSteps)}'
+          '${isUnlocked ? '' : ' ${_t(context).lpCardLocked}'}',
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
@@ -88,7 +90,7 @@ class PathCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      path.title,
+                      path.titleOf(filipino: _t(context).localeName.startsWith('fil')),
                       style: AppTypography.titleSmall.copyWith(
                         fontWeight: FontWeight.w700,
                         color: isUnlocked
@@ -98,7 +100,7 @@ class PathCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      path.description,
+                      path.descriptionOf(filipino: _t(context).localeName.startsWith('fil')),
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                         fontSize: 12,
@@ -276,3 +278,8 @@ class _PathBadge extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

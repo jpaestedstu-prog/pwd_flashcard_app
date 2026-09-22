@@ -7,7 +7,12 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/utils/score_utils.dart';
 import '../../../providers/app_providers.dart';
+import '../../../core/accessibility/learner_support.dart';
 import '../models/assessment_models.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
+import '../../../core/utils/localized_date.dart';
+import '../models/question_prompt.dart';
 import '../providers/assessment_provider.dart';
 import '../services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
@@ -32,6 +37,17 @@ class AssessmentResultsScreen extends ConsumerWidget {
         .where((r) => r.type == AssessmentType.categoryMastery)
         .toList();
 
+    // Only the two halves of the study instrument: a mastery test is not an
+    // "attempt" at anything, it is practice, and the history list below
+    // already carries it.
+    final attempts = <({AssessmentType type, List<AssessmentResult> results})>[
+      for (final type in const [
+        AssessmentType.preTest,
+        AssessmentType.postTest,
+      ])
+        (type: type, results: AssessmentService.getAttempts(profileId, type)),
+    ].where((g) => g.results.isNotEmpty).toList();
+
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -52,13 +68,17 @@ class AssessmentResultsScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           FitText(
-                            'Assessment Analytics',
+                            (AppLocalizations.of(context) ??
+                                    AppLocalizationsEn())
+                                .resTitle,
                             style: AppTypography.headlineLarge.copyWith(
                               color: hc.textPrimary,
                             ),
                           ),
                           Text(
-                            '${results.length} assessments completed',
+                            (AppLocalizations.of(context) ??
+                                    AppLocalizationsEn())
+                                .resCompletedCount(results.length),
                             style: AppTypography.bodyMedium.copyWith(
                               color: hc.textSecondary,
                             ),
@@ -82,7 +102,9 @@ class AssessmentResultsScreen extends ConsumerWidget {
                       const Text('📊', style: TextStyle(fontSize: 64)),
                       const SizedBox(height: 16),
                       Text(
-                        'No assessments completed yet',
+                        (AppLocalizations.of(context) ??
+                                AppLocalizationsEn())
+                            .resEmpty,
                         style: AppTypography.titleMedium.copyWith(
                           color: hc.textSecondary,
                         ),
@@ -90,7 +112,11 @@ class AssessmentResultsScreen extends ConsumerWidget {
                       const SizedBox(height: 8),
                       ElevatedButton(
                         onPressed: () => context.popOrGo('/assessment'),
-                        child: const Text('Take an Assessment'),
+                        child: Text(
+                          (AppLocalizations.of(context) ??
+                                  AppLocalizationsEn())
+                              .resTakeOne,
+                        ),
                       ),
                     ],
                   ),
@@ -128,7 +154,7 @@ class AssessmentResultsScreen extends ConsumerWidget {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(padding, 24, padding, 0),
                   child: Text(
-                    '📈 Score Trend Over Time',
+                    '📈 ${(AppLocalizations.of(context) ?? AppLocalizationsEn()).resTrend}',
                     style: AppTypography.titleLarge.copyWith(
                       color: hc.textPrimary,
                     ),
@@ -155,7 +181,7 @@ class AssessmentResultsScreen extends ConsumerWidget {
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
                     child: Text(
-                      '🏆 Category Mastery',
+                      '🏆 ${(AppLocalizations.of(context) ?? AppLocalizationsEn()).resCategoryMastery}',
                       style: AppTypography.titleLarge.copyWith(
                         color: hc.textPrimary,
                       ),
@@ -175,12 +201,46 @@ class AssessmentResultsScreen extends ConsumerWidget {
                 ),
               ],
 
+              // ─── Attempts at each half ─────────────────
+              // The learning gain is measured from the *newest* pre-test and
+              // the *newest* post-test. With only one score ever shown, a
+              // learner who retook the pre-test after a fortnight of lessons
+              // could not see that their baseline had moved under them.
+              if (attempts.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(padding, 16, padding, 8),
+                    child: Text(
+                      '🔁 ${AppLocalizations.of(context)?.assessYourAttempts ?? 'Your attempts'}',
+                      style: AppTypography.titleLarge.copyWith(
+                        color: hc.textPrimary,
+                      ),
+                    ).animate().fadeIn(duration: 400.ms, delay: 470.ms),
+                  ),
+                ),
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: padding),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final group = attempts[index];
+                      return _AttemptsCard(
+                        type: group.type,
+                        attempts: group.results,
+                      ).animate().fadeIn(
+                        duration: 400.ms,
+                        delay: (490 + index * 60).ms,
+                      );
+                    }, childCount: attempts.length),
+                  ),
+                ),
+              ],
+
               // ─── Assessment History List ───────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(padding, 16, padding, 8),
                   child: Text(
-                    '📋 Assessment History',
+                    '📋 ${(AppLocalizations.of(context) ?? AppLocalizationsEn()).resHistory}',
                     style: AppTypography.titleLarge.copyWith(
                       color: hc.textPrimary,
                     ),
@@ -247,14 +307,19 @@ class _PrePostComparisonChart extends StatelessWidget {
                 size: 28,
               ),
               const SizedBox(width: 10),
-              Text(
-                'Learning Gain',
-                style: AppTypography.titleMedium.copyWith(
-                  color: hc.textPrimary,
-                  fontWeight: FontWeight.w700,
+              // Expanded, not Text + Spacer: "Pag-unlad sa Pagkatuto" at a
+              // large font pushed the gain badge off the card.
+              Expanded(
+                child: Text(
+                  (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                      .resLearningGain,
+                  style: AppTypography.titleMedium.copyWith(
+                    color: hc.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -297,7 +362,10 @@ class _PrePostComparisonChart extends StatelessWidget {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        final label = value == 0 ? 'Pre-Test' : 'Post-Test';
+                        final label = (value == 0
+                                ? AssessmentType.preTest
+                                : AssessmentType.postTest)
+                            .labelOf(AppLocalizations.of(context));
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
@@ -370,7 +438,7 @@ class _PrePostComparisonChart extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            report.summary,
+            report.summaryOf(AppLocalizations.of(context)),
             style: AppTypography.bodySmall.copyWith(
               color: hc.textSecondary,
               fontWeight: FontWeight.w600,
@@ -382,7 +450,8 @@ class _PrePostComparisonChart extends StatelessWidget {
           if (report.categoryGains.isNotEmpty) ...[
             const SizedBox(height: 16),
             Text(
-              'Per-Category Gains',
+              (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                  .resPerCategoryGains,
               style: AppTypography.labelLarge.copyWith(color: hc.textPrimary),
             ),
             const SizedBox(height: 8),
@@ -395,7 +464,10 @@ class _PrePostComparisonChart extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        entry.key,
+                        QuestionPrompt.categoryName(
+                          entry.key,
+                          AppLocalizations.of(context),
+                        ),
                         style: AppTypography.bodySmall.copyWith(
                           color: hc.textPrimary,
                         ),
@@ -441,7 +513,8 @@ class _OverallStatsRow extends StatelessWidget {
       children: [
         Expanded(
           child: _MiniStat(
-            label: 'Avg Score',
+            label: (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                .resAvgScore,
             value: '$avgPct%',
             icon: Icons.bar_chart_rounded,
             color: AppColors.primary,
@@ -450,7 +523,8 @@ class _OverallStatsRow extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _MiniStat(
-            label: 'Assessments',
+            label: (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                .resAssessments,
             value: '${results.length}',
             icon: Icons.assignment_rounded,
             color: AppColors.info,
@@ -459,7 +533,8 @@ class _OverallStatsRow extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _MiniStat(
-            label: 'Total Time',
+            label: (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                .resTotalTime,
             value: '${(totalTime / 60).ceil()}m',
             icon: Icons.timer_rounded,
             color: AppColors.accent,
@@ -534,7 +609,8 @@ class _ScoreTrendChart extends StatelessWidget {
         ),
         child: Center(
           child: Text(
-            'Complete 2+ assessments to see trends',
+            (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                .resNeedTwo,
             style: AppTypography.bodySmall.copyWith(color: hc.textHint),
           ),
         ),
@@ -700,7 +776,10 @@ class _CategoryMasteryBars extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      entry.key,
+                      QuestionPrompt.categoryName(
+                        entry.key,
+                        AppLocalizations.of(context),
+                      ),
                       style: AppTypography.labelMedium.copyWith(
                         color: hc.textPrimary,
                       ),
@@ -762,13 +841,21 @@ class _HistoryTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    result.type.label,
+                    result.type.labelOf(AppLocalizations.of(context)),
                     style: AppTypography.titleSmall.copyWith(
                       color: hc.textPrimary,
                     ),
                   ),
                   Text(
-                    '${_formatDate(result.completedAt)} • ${result.totalQuestions} questions • ${_formatDuration(result.durationSeconds)}',
+                    (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                        .resHistoryLine(
+                          LocalizedDate.monthDay(
+                            result.completedAt,
+                            AppLocalizations.of(context),
+                          ),
+                          result.totalQuestions,
+                          _formatDuration(result.durationSeconds),
+                        ),
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textHint,
                       fontSize: 11,
@@ -787,7 +874,7 @@ class _HistoryTile extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  result.grade,
+                  result.gradeOf(AppLocalizations.of(context)),
                   style: AppTypography.labelSmall.copyWith(
                     color: _scoreColor(result.percentage),
                     fontSize: 10,
@@ -803,28 +890,190 @@ class _HistoryTile extends StatelessWidget {
 
   Color _scoreColor(double pct) => scoreColor(pct);
 
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.day}';
-  }
-
   String _formatDuration(int seconds) {
     final min = seconds ~/ 60;
     final sec = seconds % 60;
     if (min == 0) return '${sec}s';
     return '${min}m ${sec}s';
   }
+}
+
+// ─── Attempts at one half of the instrument ────────────
+
+/// Every sitting of one assessment type, newest first, saying plainly which
+/// one the learning gain is measured from.
+class _AttemptsCard extends StatelessWidget {
+  final AssessmentType type;
+  final List<AssessmentResult> attempts;
+
+  const _AttemptsCard({required this.type, required this.attempts});
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: hc.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: hc.border),
+          boxShadow: AppColors.softShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(type.emoji, style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    type.labelOf(l10n),
+                    style: AppTypography.titleSmall.copyWith(
+                      color: hc.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Text(
+                  attempts.length == 1
+                      ? (l10n?.assessAttemptsOne ?? '1 attempt')
+                      : (l10n?.assessAttemptsMany(attempts.length) ??
+                            '${attempts.length} attempts'),
+                  style: AppTypography.labelSmall.copyWith(
+                    color: hc.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            for (var i = 0; i < attempts.length; i++)
+              _AttemptRow(
+                result: attempts[i],
+                // Newest first, so the first row is the one that counts.
+                counts: i == 0,
+                hc: hc,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttemptRow extends StatelessWidget {
+  final AssessmentResult result;
+  final bool counts;
+  final HCColor hc;
+
+  const _AttemptRow({
+    required this.result,
+    required this.counts,
+    required this.hc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (result.percentage * 100).round();
+    final accommodated = result.accommodations.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Semantics(
+        label: [
+          (AppLocalizations.of(context) ?? AppLocalizationsEn())
+              .resAttemptSemantics(
+                pct,
+                LocalizedDate.monthDayYear(
+                  result.completedAt,
+                  AppLocalizations.of(context),
+                ),
+              ),
+          if (counts)
+            (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                .resAttemptCountsSemantics,
+          if (accommodated)
+            (AppLocalizations.of(context) ?? AppLocalizationsEn()).resSatWith(
+              result.accommodations
+                  .map((a) => a.labelOf(AppLocalizations.of(context)))
+                  .join(', '),
+            ),
+        ].join('. '),
+        child: ExcludeSemantics(
+          // The row is stacked, not a Row: at a large font the date, the badge
+          // and the score do not fit across a phone.
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    '$pct%',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: scoreColor(result.percentage),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    LocalizedDate.monthDayYear(
+                      result.completedAt,
+                      AppLocalizations.of(context),
+                    ),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
+                  ),
+                  if (counts)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        AppLocalizations.of(context)?.assessAttemptCounts ??
+                            'Counts',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: AppColors.success,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  for (final a in result.accommodations)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.info.withValues(alpha: 0.13),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${a.emoji} ${a.shortLabelOf(AppLocalizations.of(context))}',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: AppColors.info,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 }

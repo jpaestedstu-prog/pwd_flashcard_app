@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/pro_surface.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Three-button remote (prev / pause / next) used on the cast screen
 /// to advance whichever content the TV is showing.
@@ -36,7 +38,7 @@ class TvCastRemoteControls extends StatelessWidget {
           Expanded(
             child: _RemoteButton(
               icon: Icons.skip_previous_rounded,
-              label: 'Previous',
+              label: _t(context).trPrevious,
               onTap: onPrev,
             ),
           ),
@@ -44,7 +46,7 @@ class TvCastRemoteControls extends StatelessWidget {
           Expanded(
             child: _RemoteButton(
               icon: isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-              label: isPaused ? 'Play' : 'Pause',
+              label: isPaused ? _t(context).trPlay : _t(context).trPause,
               primary: true,
               onTap: onPlayPause,
             ),
@@ -53,7 +55,7 @@ class TvCastRemoteControls extends StatelessWidget {
           Expanded(
             child: _RemoteButton(
               icon: Icons.skip_next_rounded,
-              label: 'Next',
+              label: _t(context).next,
               onTap: onNext,
             ),
           ),
@@ -144,3 +146,8 @@ class _RemoteButton extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -16,6 +16,8 @@ import '../../../providers/child_time_limit_provider.dart';
 import '../../../providers/lock_announcement_provider.dart';
 import '../../../providers/lock_warning_provider.dart';
 import '../../../providers/unlocking_educators_provider.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// How long the "nearly time" banner stays up before retiring itself.
 ///
@@ -314,7 +316,7 @@ class _WarningBanner extends StatelessWidget {
                           // node this leaves is the lesser problem.
                           child: Semantics(
                             button: true,
-                            label: 'Dismiss',
+                            label: _t(context).lwDismiss,
                             child: IconButton(
                               onPressed: onDismiss,
                               iconSize: 24 * scale,
@@ -373,3 +375,8 @@ class _SlideInFromTopState extends State<_SlideInFromTop>
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

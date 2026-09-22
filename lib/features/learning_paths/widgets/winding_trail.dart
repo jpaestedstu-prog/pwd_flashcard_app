@@ -5,6 +5,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/utils/reduced_motion.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// State of a single node on a [WindingTrail].
 ///
@@ -220,7 +222,7 @@ class _TrailNodeView extends StatelessWidget {
 
     return Semantics(
       button: node.onTap != null,
-      label: '${node.label}. ${isDone ? 'Completed' : isCurrent ? 'Current' : isAvailable ? 'Available' : 'Locked'}',
+      label: '${node.label}. ${isDone ? _t(context).lpNodeCompleted : isCurrent ? _t(context).lpNodeCurrent : isAvailable ? _t(context).lpNodeAvailable : _t(context).lpNodeLocked}',
       child: GestureDetector(
         onTap: node.onTap,
         behavior: HitTestBehavior.opaque,
@@ -315,3 +317,8 @@ class _TrailPathPainter extends CustomPainter {
       old.doneColor != doneColor ||
       old.pendingColor != pendingColor;
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

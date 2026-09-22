@@ -18,6 +18,7 @@ import '../features/gaze_control/controllers/gaze_controller.dart'
 import '../features/gamepad/providers/gamepad_sections.dart';
 import '../features/gaze_control/widgets/nav_gaze_scope.dart';
 import '../widgets/level_up_celebration_screen.dart';
+import '../features/assessment/widgets/learner_assignment_sync.dart';
 
 /// Route prefixes that trigger immersive mode (bottom nav hidden).
 /// Hub screens (/games, /flashcards, /stories, /home, /progress) are NOT
@@ -316,6 +317,19 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
     }
     final items = _isEducator ? _educatorNavItems() : _studentNavItems();
     _publishSections([for (final item in items) item.label], currentIndex);
+    // Whose assigned work to keep current. Watched so a profile switch swaps
+    // the listener; null for educators, whose side is pulled elsewhere.
+    final learnerId = ref.watch(
+      profileProvider.select(
+        (p) =>
+            p == null ||
+                p.isGuestPlayer ||
+                p.role == UserRole.teacher ||
+                p.role == UserRole.parent
+            ? null
+            : p.id,
+      ),
+    );
 
     // Hands-free bottom-nav: look ◀ ▶ to move the highlight, blink to open the
     // tab. Inert unless Gaze Control is enabled; runs the single camera only
@@ -334,6 +348,14 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
           // Renders nothing, and is inert for educators and for any learner
           // with nothing scheduled today.
           RoutinePopupWatcher(location: location),
+          // Live assigned work for the learner — see [LearnerAssignmentSync].
+          // Here rather than on a home screen so it outlives tab switches and
+          // scrolling. Renders nothing.
+          if (learnerId != null)
+            LearnerAssignmentSync(
+              key: ValueKey('assignment-sync-$learnerId'),
+              profileId: learnerId,
+            ),
           Scaffold(
             body: RepaintBoundary(child: widget.child),
             bottomNavigationBar: Builder(
@@ -433,8 +455,11 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
   }
 
   List<_NavItem> _studentNavItems() {
-    return const [
-      _NavItem(
+    // Watched for the same reason as the educator tabs below. "Home" stays:
+    // it is what the app's own Filipino UI calls that screen.
+    final filipino = ref.watch(settingsProvider).locale == 'fil';
+    return [
+      const _NavItem(
         icon: Icons.home_outlined,
         selectedIcon: Icons.home_rounded,
         label: 'Home',
@@ -442,22 +467,22 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       _NavItem(
         icon: Icons.style_outlined,
         selectedIcon: Icons.style_rounded,
-        label: 'Cards',
+        label: filipino ? 'Mga Kard' : 'Cards',
       ),
       _NavItem(
         icon: Icons.sports_esports_outlined,
         selectedIcon: Icons.sports_esports_rounded,
-        label: 'Games',
+        label: filipino ? 'Mga Laro' : 'Games',
       ),
       _NavItem(
         icon: Icons.auto_stories_outlined,
         selectedIcon: Icons.auto_stories_rounded,
-        label: 'Stories',
+        label: filipino ? 'Mga Kwento' : 'Stories',
       ),
       _NavItem(
         icon: Icons.emoji_events_outlined,
         selectedIcon: Icons.emoji_events_rounded,
-        label: 'Progress',
+        label: filipino ? 'Progreso' : 'Progress',
       ),
     ];
   }

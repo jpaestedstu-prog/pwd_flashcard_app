@@ -22,6 +22,8 @@ import '../widgets/race_result_view.dart';
 import '../widgets/race_sign_launcher.dart';
 import '../widgets/scramble_race_player.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Same-device "pass-and-play" race. Two players share one tablet: Player 1
 /// plays the whole challenge, then Player 2 plays the **identical** content,
@@ -39,8 +41,9 @@ enum _Phase { setup, intro, playing, result }
 
 class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
     with WidgetsBindingObserver {
-  final _p1 = TextEditingController(text: 'Player 1');
-  final _p2 = TextEditingController(text: 'Player 2');
+  final _p1 = TextEditingController();
+  final _p2 = TextEditingController();
+  bool _namesSeeded = false;
 
   _Phase _phase = _Phase.setup;
   int _currentPlayer = 1;
@@ -105,6 +108,17 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Default names follow the app language; typed names are kept.
+    if (!_namesSeeded) {
+      _namesSeeded = true;
+      _p1.text = _t(context).mqPlayerN(1);
+      _p2.text = _t(context).mqPlayerN(2);
+    }
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     // Don't let a half-read prompt follow the learner off the screen.
@@ -128,7 +142,7 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
         return [
           GazeAction(
             zone: GazeZone.down,
-            label: 'Start',
+            label: _t(context).mpStart,
             icon: Icons.play_arrow_rounded,
             color: AppColors.success,
             onSelect: _start,
@@ -138,7 +152,7 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
         return [
           GazeAction(
             zone: GazeZone.down,
-            label: 'Start',
+            label: _t(context).mpStart,
             icon: Icons.play_arrow_rounded,
             color: AppColors.success,
             onSelect: _beginTurn,
@@ -149,7 +163,7 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
         return [
           GazeAction(
             zone: GazeZone.left,
-            label: 'Prev',
+            label: _t(context).tbPrev,
             icon: Icons.chevron_left_rounded,
             color: AppColors.secondary,
             enabled: live && _cursor.canMove,
@@ -157,7 +171,7 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
           ),
           GazeAction(
             zone: GazeZone.right,
-            label: 'Next',
+            label: _t(context).next,
             icon: Icons.chevron_right_rounded,
             color: AppColors.secondary,
             enabled: live && _cursor.canMove,
@@ -165,7 +179,7 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
           ),
           GazeAction(
             zone: GazeZone.down,
-            label: 'Choose',
+            label: _t(context).mpChoose,
             icon: Icons.check_circle_rounded,
             color: AppColors.success,
             enabled: live && _cursor.canChoose,
@@ -176,14 +190,14 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
         return [
           GazeAction(
             zone: GazeZone.left,
-            label: 'Done',
+            label: _t(context).mpDone,
             icon: Icons.home_rounded,
             color: AppColors.secondary,
             onSelect: () => Navigator.of(context).maybePop(),
           ),
           GazeAction(
             zone: GazeZone.right,
-            label: 'Rematch',
+            label: _t(context).mpRematch,
             icon: Icons.replay_rounded,
             color: AppColors.success,
             onSelect: _rematch,
@@ -264,7 +278,7 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
   void _start() {
     if (!_buildContent()) {
       AppSnackBar.warning(context,
-          message: 'Not enough words to play yet — add a few flashcards first!');
+          message: _t(context).mpNotEnough);
       return;
     }
     setState(() {
@@ -574,3 +588,8 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

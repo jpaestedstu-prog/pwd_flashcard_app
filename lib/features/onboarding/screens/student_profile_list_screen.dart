@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/localized_date.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,8 @@ import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/local/local_repository.dart';
 import '../../../providers/app_providers.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Chooses which profiles a device-scoped "Manage Profiles" list may show.
 ///
@@ -88,24 +91,22 @@ class _StudentProfileListScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Profile?'),
+        title: Text(_t(context).splDeleteTitle),
         content: Text(
-          'Are you sure you want to delete “${student.name}”? '
-          'This will permanently remove all progress data for this student.'
-          '${student.role.isEducator ? ' Any classes they own will no longer '
-              'have a teacher managing them.' : ''}',
+          '${_t(context).splDeleteBody(student.name)}'
+          '${student.role.isEducator ? _t(context).splDeleteEducator : ''}',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(_t(context).cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.error,
             ),
-            child: const Text('Delete'),
+            child: Text(_t(context).delete),
           ),
         ],
       ),
@@ -114,7 +115,7 @@ class _StudentProfileListScreenState
       await const LocalRepository().deleteProfile(student.id);
       if (mounted) {
         ref.invalidate(allProfilesWithProgressProvider);
-        AppSnackBar.info(context, message: '${student.name} deleted');
+        AppSnackBar.info(context, message: _t(context).splDeleted(student.name));
         _refresh();
       }
     }
@@ -127,11 +128,11 @@ class _StudentProfileListScreenState
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            widget.deviceScope ? 'Manage Profiles' : 'Student Profiles'),
+            widget.deviceScope ? _t(context).splManageProfiles : _t(context).splStudentProfiles),
         actions: [
           IconButton(
             icon: const Icon(Icons.import_export_rounded),
-            tooltip: 'Import / Export',
+            tooltip: _t(context).splImportExport,
             onPressed: () async {
               await context.push('/profile-import-export');
               if (mounted) _refresh();
@@ -150,7 +151,7 @@ class _StudentProfileListScreenState
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  'Could not load students:\n${snap.error}',
+                  _t(context).splLoadError('${snap.error}'),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -170,8 +171,8 @@ class _StudentProfileListScreenState
                   const SizedBox(height: 16),
                   Text(
                     widget.deviceScope
-                        ? 'No other profiles on this device'
-                        : 'No student profiles yet',
+                        ? _t(context).splNoOthers
+                        : _t(context).splNoStudents,
                     style: AppTypography.titleLarge.copyWith(
                       color: HCColor.of(context).textSecondary,
                     ),
@@ -181,7 +182,7 @@ class _StudentProfileListScreenState
                     padding:
                         const EdgeInsets.symmetric(horizontal: 32),
                     child: Text(
-                      'Students appear here after joining your class with a code.',
+                      _t(context).splNoStudentsBody,
                       style: AppTypography.bodyMedium.copyWith(
                         color: AppColors.textHint,
                       ),
@@ -192,7 +193,7 @@ class _StudentProfileListScreenState
                   ElevatedButton.icon(
                     onPressed: () => context.push('/classroom-manage'),
                     icon: const Icon(Icons.qr_code_2_rounded),
-                    label: const Text('Share Class Code'),
+                    label: Text(_t(context).splShareCode),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -318,18 +319,18 @@ class _StudentProfileCard extends StatelessWidget {
                     if (profile.age != null)
                       _DetailChip(
                         icon: Icons.cake_rounded,
-                        label: '${profile.age} yrs old',
+                        label: _t(context).splAge(profile.age!),
                       ),
                     if (profile.gradeLevel != null)
                       _DetailChip(
                         icon: Icons.school_rounded,
-                        label: profile.gradeLevel!.label,
+                        label: profile.gradeLevel!.labelOf(_t(context)),
                       ),
                   ],
                 ),
                 if (profile.age == null && profile.gradeLevel == null)
                   Text(
-                    'No age or level set',
+                    _t(context).splNoAge,
                     style: AppTypography.bodySmall.copyWith(
                       color: AppColors.textHint,
                       fontStyle: FontStyle.italic,
@@ -343,7 +344,7 @@ class _StudentProfileCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                _formatDate(profile.createdAt),
+                LocalizedDate.monthDayYear(profile.createdAt, _t(context)),
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.textHint,
                 ),
@@ -372,13 +373,6 @@ class _StudentProfileCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
-  }
 }
 
 class _DetailChip extends StatelessWidget {
@@ -412,3 +406,8 @@ class _DetailChip extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

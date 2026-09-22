@@ -149,7 +149,8 @@ class _QuizRacePlayerState extends State<QuizRacePlayer> {
     final q = widget.questions[_index];
     // A picture round has an emoji/image as its prompt, so lead with the
     // question text alone rather than reading a glyph name.
-    final head = q.cardId != null ? q.promptLabel : '${q.promptLabel} ${q.prompt}';
+    final label = _promptLabel(q.promptLabel);
+    final head = q.cardId != null ? label : '$label ${q.prompt}';
     final choices = widget.isFilipino ? 'Mga pagpipilian' : 'Choices';
     return '$head. $choices: ${q.options.join(', ')}.';
   }
@@ -288,7 +289,7 @@ class _QuizRacePlayerState extends State<QuizRacePlayer> {
             child: Column(
               children: [
                 Text(
-                  question.promptLabel,
+                  _promptLabel(question.promptLabel),
                   style: AppTypography.labelMedium.copyWith(
                     color: hc.textSecondary,
                   ),
@@ -460,5 +461,20 @@ class _QuizRacePlayerState extends State<QuizRacePlayer> {
         ],
       ),
     );
+  }
+}
+
+/// The race questions are generated in English; these are the wordings the
+/// generator uses, in Filipino.
+extension on _QuizRacePlayerState {
+  String _promptLabel(String label) {
+    if (!widget.isFilipino) return label;
+    return switch (label) {
+      'Which word is this?' => 'Anong salita ito?',
+      'True or False?' => 'Tama o Mali?',
+      'What is this in Filipino?' => 'Ano ito sa Filipino?',
+      'What is this in English?' => 'Ano ito sa Ingles?',
+      _ => label,
+    };
   }
 }

@@ -15,6 +15,7 @@ import '../../../widgets/fsl_loading_overlay.dart';
 import '../../../widgets/fsl_video_sheet.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../widgets/fsl_offline_packs_sheet.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Browse all flashcard words grouped by category and watch their
 /// Filipino Sign Language (FSL) videos. Acts as a stand-alone
@@ -231,7 +232,7 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                 IconButton(
                   onPressed: () => showFslOfflinePacksSheet(context),
                   icon: const Icon(Icons.download_for_offline_rounded),
-                  tooltip: 'Offline signs',
+                  tooltip: _t(context).fslOfflineSigns,
                 ),
               ],
             ),
@@ -274,7 +275,7 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: FilterChip(
-                          label: const Text('Has sign'),
+                          label: Text(_t(context).fslHasSign),
                           avatar: Icon(
                             Icons.sign_language_rounded,
                             size: context.scaleIcon(16),
@@ -298,7 +299,7 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
                           child: FilterChip(
-                            label: Text('My Signs · ${favourites.length}'),
+                            label: Text(_t(context).fslMySigns(favourites.length)),
                             avatar: Icon(
                               Icons.star_rounded,
                               size: context.scaleIcon(16),
@@ -321,7 +322,7 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
                           child: FilterChip(
-                            label: Text('I can sign · $canSignCount'),
+                            label: Text(_t(context).fslICanSign(canSignCount)),
                             avatar: Icon(
                               Icons.back_hand_rounded,
                               size: context.scaleIcon(16),
@@ -361,7 +362,7 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                             // answer to why that category is all crossed-out
                             // cameras, and it is the only place a learner can
                             // find out before tapping through 20 dead words.
-                            label: Text('${cat.label} · $signs'),
+                            label: Text('${cat.labelOf(_t(context))} · $signs'),
                             avatar: Icon(cat.icon, size: context.scaleIcon(16)),
                             selected: _selectedCategory == cat,
                             onSelected: (_) =>
@@ -383,7 +384,7 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                     children: [
                       Flexible(
                         child: Text(
-                          _plural(filtered.length, 'word'),
+                          _t(context).fslWordCount(filtered.length),
                           style: AppTypography.labelMedium.copyWith(
                             color: hc.textSecondary,
                             fontWeight: FontWeight.w600,
@@ -397,8 +398,10 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                             // Against the number of signs that exist, not the
                             // word count — 35 words have no clip, so "/177"
                             // would be a target nobody can reach.
-                            '${HiveService.fslUniqueWordsViewed(profileId)}'
-                            ' of $totalSigns signs watched',
+                            _t(context).fslWatchedOf(
+                              HiveService.fslUniqueWordsViewed(profileId),
+                              totalSigns,
+                            ),
                             textAlign: TextAlign.end,
                             style: AppTypography.labelSmall.copyWith(
                               color: AppColors.secondary,
@@ -476,9 +479,6 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
   }
 }
 
-/// `1 word` / `12 words` — the counter used to read "1 videos watched".
-String _plural(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
-
 /// Height one grid cell needs at the current Font Size setting.
 ///
 /// The grid used to size cells by a fixed `childAspectRatio`, which pins the
@@ -543,9 +543,19 @@ class _FslWordCard extends StatelessWidget {
     // card used to be a dead end for them.
     return Semantics(
       label: hasVideo
-          ? '${card.wordEnglish}, ${card.wordFilipino}. '
-                '${watched ? "Already watched. " : ""}Watch the sign.'
-          : '${card.wordEnglish}, ${card.wordFilipino}. No sign video yet.',
+          ? (watched
+                ? _t(context).fslWatchedSemantics(
+                    card.wordEnglish,
+                    card.wordFilipino,
+                  )
+                : _t(context).fslWatchSemantics(
+                    card.wordEnglish,
+                    card.wordFilipino,
+                  ))
+          : _t(context).fslNoVideoSemantics(
+              card.wordEnglish,
+              card.wordFilipino,
+            ),
       child: Container(
         decoration: BoxDecoration(
           color: hc.surface,
@@ -640,8 +650,8 @@ class _FslWordCard extends StatelessWidget {
                           Semantics(
                             button: true,
                             label: favourite
-                                ? 'Remove ${card.wordEnglish} from My Signs'
-                                : 'Add ${card.wordEnglish} to My Signs',
+                                ? _t(context).fslRemoveMySigns(card.wordEnglish)
+                                : _t(context).fslAddMySigns(card.wordEnglish),
                             child: InkResponse(
                               onTap: onToggleFavourite,
                               radius: context.scaleIcon(20),
@@ -671,3 +681,8 @@ class _FslWordCard extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

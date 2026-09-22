@@ -9,6 +9,8 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/classroom_management_provider.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../widgets/group_management_view.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Teacher screen: list classes, see join codes, manage rosters.
 ///
@@ -31,7 +33,7 @@ class ClassroomManagementScreen extends ConsumerWidget {
       return Scaffold(
         body: Center(
           child: Text(
-            'Please sign in to manage classes.',
+            _t(context).cmSignIn,
             style: AppTypography.bodyMedium,
           ),
         ),
@@ -49,6 +51,9 @@ class _ClassroomDelegate extends GroupManagementDelegate {
   final String teacherId;
 
   const _ClassroomDelegate({required this.teacherId});
+
+  @override
+  String get audience => 'teacher';
 
   @override
   String get screenTitle => 'Manage Classes';
@@ -102,6 +107,7 @@ class _ClassroomDelegate extends GroupManagementDelegate {
                   code: c.code,
                   name: c.name,
                   accessibility: c.accessibility,
+                  allowRetakes: c.allowAssessmentRetakes,
                   source: c,
                 ),
               )
@@ -155,6 +161,13 @@ class _ClassroomDelegate extends GroupManagementDelegate {
   ) => _notifier(ref).setClassAccessibility(_classroom(group), accessibility);
 
   @override
+  Future<void> setAllowRetakes(
+    WidgetRef ref,
+    ManagedGroup group,
+    bool allowed,
+  ) => _notifier(ref).setClassRetakes(_classroom(group), allowed);
+
+  @override
   Future<void> regenerateCode(WidgetRef ref, ManagedGroup group) async {
     await _notifier(ref).regenerateCode(_classroom(group));
   }
@@ -187,3 +200,8 @@ class _ClassroomDelegate extends GroupManagementDelegate {
     List<String> profileIds,
   ) => _notifier(ref).removeStudents(_classroom(group), profileIds);
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

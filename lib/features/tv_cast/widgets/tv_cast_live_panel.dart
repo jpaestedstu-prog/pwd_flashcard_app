@@ -19,6 +19,8 @@ import '../../live_session/providers/live_activity_set_provider.dart';
 import '../models/tv_cast_session.dart';
 import '../providers/tv_cast_provider.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Host-side control panel for the interactive "Live Activity" cast mode.
 /// Lets a Teacher/Parent start a live session, configure star-scoring rules,
@@ -86,9 +88,7 @@ class _NeedsCloudNotice extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Live games & quizzes need an internet connection so learner '
-              'devices can join in real time. Connect to Wi-Fi or mobile data '
-              '(it stays on the free plan) and try again.',
+              _t(context).tlpNeedsNet,
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),
           ),
@@ -144,10 +144,8 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
         ),
         child: Text(
           profile.role == UserRole.parent
-              ? 'Create a home group first (Manage Family), then your child '
-                  'can join the live activity from their own device.'
-              : 'Create a classroom first (Manage Classes), then your students '
-                  'can join the live activity from their own devices.',
+              ? _t(context).tlpNoGroup
+              : _t(context).tlpNoClass,
           style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
         ),
       );
@@ -163,7 +161,7 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Start a live activity',
+          _t(context).tlpStartTitle,
           style: AppTypography.titleSmall.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -171,8 +169,7 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Learners in the chosen class join from their own device, answer on '
-          'screen, and earn stars. Their raised hands show on the TV.',
+          _t(context).tlpStartBody,
           style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
         ),
         const SizedBox(height: 12),
@@ -180,7 +177,7 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
           initialValue: _selectedKey,
           isExpanded: true,
           decoration: InputDecoration(
-            labelText: 'Class / group to host',
+            labelText: _t(context).tlpHost,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             prefixIcon: const Icon(Icons.groups_rounded),
           ),
@@ -201,7 +198,7 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
         const SizedBox(height: 14),
         Semantics(
           button: true,
-          label: 'Start live activity session',
+          label: _t(context).tlpStartSem,
           child: FilledButton.icon(
             onPressed: _starting ? null : _start,
             icon: _starting
@@ -214,7 +211,7 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
                     ),
                   )
                 : const Icon(Icons.play_circle_fill_rounded),
-            label: Text(_starting ? 'Starting…' : 'Start live session'),
+            label: Text(_starting ? _t(context).tcStarting : _t(context).tlpStart),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
               textStyle: AppTypography.titleMedium,
@@ -239,7 +236,7 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
     if (!ok) {
       AppSnackBar.error(
         context,
-        message: 'Could not start the live session. Check your connection.',
+        message: _t(context).tlpStartFailed,
       );
     }
   }
@@ -309,8 +306,7 @@ class _RunningPanelState extends ConsumerState<_RunningPanel> {
         _ScoreboardCard(rows: state.liveScoreboard),
         const SizedBox(height: 6),
         Text(
-          'Tip: the question, raised hands, and scoreboard all show on the TV. '
-          'Learners answer on their own devices.',
+          _t(context).tlpTip,
           style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
         ),
       ],
@@ -340,7 +336,7 @@ class _RunningPanelState extends ConsumerState<_RunningPanel> {
     if (activity == null || !mounted) return;
     await _notifier.pushLiveActivity(activity);
     if (!mounted) return;
-    AppSnackBar.success(context, message: 'Question sent to learners & TV');
+    AppSnackBar.success(context, message: _t(context).tlpSent);
   }
 
   void _runSet(LiveActivitySet set) {
@@ -389,14 +385,14 @@ class _StatusHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Live session running',
+                  _t(context).tlpRunning,
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w800,
                     color: hc.textPrimary,
                   ),
                 ),
                 Text(
-                  '${state.liveResponders} answered the current question',
+                  _t(context).tlpAnswered(state.liveResponders),
                   style:
                       AppTypography.bodySmall.copyWith(color: hc.textSecondary),
                 ),
@@ -405,11 +401,11 @@ class _StatusHeader extends StatelessWidget {
           ),
           Semantics(
             button: true,
-            label: 'End live session',
+            label: _t(context).tlpEndSem,
             child: TextButton.icon(
               onPressed: onEnd,
               icon: const Icon(Icons.stop_circle_outlined),
-              label: const Text('End'),
+              label: Text(_t(context).tlpEnd),
             ),
           ),
         ],
@@ -438,30 +434,30 @@ class _ScoringEditor extends StatelessWidget {
       child: ExpansionTile(
         leading: const Icon(Icons.star_rounded, color: Color(0xFFFFB300)),
         title: Text(
-          'Star scoring',
+          _t(context).tlpScoring,
           style: AppTypography.titleSmall.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
           ),
         ),
         subtitle: Text(
-          'Base ${rules.baseStars}★'
-          '${rules.speedBonusEnabled ? ' • speed +${rules.speedBonusMax}' : ''}'
-          '${rules.firstCorrectEnabled ? ' • first +${rules.firstCorrectBonus}' : ''}'
-          '${rules.hasCap ? ' • cap ${rules.sessionCap}' : ''}',
+          '${_t(context).tlpBase(rules.baseStars)}'
+          '${rules.speedBonusEnabled ? _t(context).tlpSpeed(rules.speedBonusMax) : ''}'
+          '${rules.firstCorrectEnabled ? _t(context).tlpFirst(rules.firstCorrectBonus) : ''}'
+          '${rules.hasCap ? _t(context).tlpCap(rules.sessionCap) : ''}',
           style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
         ),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         children: [
           _Stepper(
-            label: 'Stars per correct answer',
+            label: _t(context).tlpPerCorrect,
             value: rules.baseStars,
             min: 0,
             max: 10,
             onChanged: (v) => onChanged(rules.copyWith(baseStars: v)),
           ),
           _Stepper(
-            label: 'Speed bonus (extra for fast answers)',
+            label: _t(context).tlpSpeedBonus,
             value: rules.speedBonusMax,
             min: 0,
             max: 5,
@@ -469,7 +465,7 @@ class _ScoringEditor extends StatelessWidget {
           ),
           if (rules.speedBonusEnabled)
             _Stepper(
-              label: 'Speed window (seconds)',
+              label: _t(context).tlpSpeedWindow,
               value: rules.speedWindowSec,
               min: 5,
               max: 60,
@@ -477,14 +473,14 @@ class _ScoringEditor extends StatelessWidget {
               onChanged: (v) => onChanged(rules.copyWith(speedWindowSec: v)),
             ),
           _Stepper(
-            label: 'First-correct bonus',
+            label: _t(context).tlpFirstBonus,
             value: rules.firstCorrectBonus,
             min: 0,
             max: 5,
             onChanged: (v) => onChanged(rules.copyWith(firstCorrectBonus: v)),
           ),
           _Stepper(
-            label: 'Session star cap (0 = no cap)',
+            label: _t(context).tlpSessionCap,
             value: rules.sessionCap,
             min: 0,
             max: 100,
@@ -528,7 +524,7 @@ class _Stepper extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Decrease $label',
+            tooltip: _t(context).tlpDecrease(label),
             onPressed:
                 value > min ? () => onChanged((value - step).clamp(min, max)) : null,
             icon: const Icon(Icons.remove_circle_outline_rounded),
@@ -545,7 +541,7 @@ class _Stepper extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Increase $label',
+            tooltip: _t(context).tlpIncrease(label),
             onPressed:
                 value < max ? () => onChanged((value + step).clamp(min, max)) : null,
             icon: const Icon(Icons.add_circle_outline_rounded),
@@ -586,32 +582,32 @@ class _CurrentQuestionCard extends StatelessWidget {
           Expanded(
             child: Text(
               activity == null
-                  ? 'No question on screen. Build & push one below.'
-                  : _describe(activity),
+                  ? _t(context).tlpNoQuestion
+                  : _describe(context, activity),
               style: AppTypography.bodyMedium.copyWith(color: hc.textPrimary),
             ),
           ),
           if (onClear != null)
-            TextButton(onPressed: onClear, child: const Text('Clear')),
+            TextButton(onPressed: onClear, child: Text(_t(context).tcClear)),
         ],
       ),
     );
   }
 
-  String _describe(LiveActivity a) {
+  String _describe(BuildContext context, LiveActivity a) {
     switch (a.type) {
       case LiveActivityType.multipleChoice:
-        return 'Multiple choice: ${a.prompt}';
+        return _t(context).tlpMc(a.prompt);
       case LiveActivityType.trueFalse:
-        return 'True or False: ${a.prompt}';
+        return _t(context).tlpTf(a.prompt);
       case LiveActivityType.pictureChoice:
-        return 'Picture choice (${a.options.length} options)';
+        return _t(context).tlpPictureN(a.options.length);
       case LiveActivityType.fslSign:
         return a.selfReport
-            ? 'FSL sign — self check'
-            : 'FSL sign (${a.options.length} options)';
+            ? _t(context).tlpFslSelf
+            : _t(context).tlpFslN(a.options.length);
       case LiveActivityType.flashcard:
-        return 'Flashcard';
+        return _t(context).tlpFlashcard;
     }
   }
 }
@@ -648,8 +644,8 @@ class _RaisedHandsPanel extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 hands.isEmpty
-                    ? 'Raised hands'
-                    : 'Raised hands (${hands.length})',
+                    ? _t(context).tlpHands
+                    : _t(context).tlpHandsN(hands.length),
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -660,7 +656,7 @@ class _RaisedHandsPanel extends StatelessWidget {
           const SizedBox(height: 8),
           if (hands.isEmpty)
             Text(
-              'No one is asking for help right now.',
+              _t(context).tlpNoHands,
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             )
           else
@@ -670,15 +666,14 @@ class _RaisedHandsPanel extends StatelessWidget {
               children: [
                 for (final h in hands)
                   Semantics(
-                    label: '${h.profileName} raised their hand. '
-                        'Activate to clear.',
+                    label: _t(context).tlpHandSem(h.profileName),
                     button: true,
                     child: InputChip(
                       avatar: const Text('✋'),
                       label: Text(h.profileName),
                       onDeleted: () => onClear(h.profileId),
                       deleteIcon: const Icon(Icons.check_rounded, size: 18),
-                      deleteButtonTooltipMessage: 'Mark handled',
+                      deleteButtonTooltipMessage: _t(context).tlpHandled,
                     ),
                   ),
               ],
@@ -717,7 +712,7 @@ class _PushArea extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Send a question',
+          _t(context).tlpSend,
           style: AppTypography.titleSmall.copyWith(
             fontWeight: FontWeight.w700,
             color: hc.textPrimary,
@@ -744,8 +739,8 @@ class _PushArea extends ConsumerWidget {
                 style: _liveFilledButtonStyle,
                 onPressed: onBuildAndPush,
                 icon: const Icon(Icons.add_rounded),
-                label: const Text(
-                  'Build & push question',
+                label: Text(
+                  _t(context).tlpBuildPush,
                   maxLines: 2,
                   textAlign: TextAlign.center,
                 ),
@@ -754,8 +749,8 @@ class _PushArea extends ConsumerWidget {
                 style: _liveOutlinedButtonStyle(hc),
                 onPressed: () => _newQuiz(context, ref),
                 icon: const Icon(Icons.playlist_add_rounded),
-                label: const Text(
-                  'New quiz',
+                label: Text(
+                  _t(context).tlpNewQuiz,
                   maxLines: 2,
                   textAlign: TextAlign.center,
                 ),
@@ -765,7 +760,7 @@ class _PushArea extends ConsumerWidget {
           if (sets.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              'Saved quizzes',
+              _t(context).tlpSavedQuizzes,
               style:
                   AppTypography.labelMedium.copyWith(color: hc.textSecondary),
             ),
@@ -776,19 +771,19 @@ class _PushArea extends ConsumerWidget {
                 child: ListTile(
                   leading: const Icon(Icons.quiz_outlined),
                   title: Text(set.title),
-                  subtitle: Text('${set.activities.length} questions'),
+                  subtitle: Text(_t(context).tlpQuestionsN(set.activities.length)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        tooltip: 'Run this quiz',
+                        tooltip: _t(context).tlpRunQuiz,
                         icon: const Icon(Icons.play_arrow_rounded),
                         onPressed: set.activities.isEmpty
                             ? null
                             : () => onRunSet(set),
                       ),
                       IconButton(
-                        tooltip: 'Delete quiz',
+                        tooltip: _t(context).tlpDeleteQuiz,
                         icon: const Icon(Icons.delete_outline_rounded),
                         onPressed: () => ref
                             .read(liveActivitySetProvider.notifier)
@@ -849,7 +844,7 @@ class _RunningSetControls extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Running “${set.title}” — question ${index + 1} of $total',
+            _t(context).tlpRunningSet(set.title, index + 1, total),
             style: AppTypography.bodyMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: hc.textPrimary,
@@ -866,19 +861,19 @@ class _RunningSetControls extends StatelessWidget {
                 style: _liveOutlinedButtonStyle(hc),
                 onPressed: index > 0 ? () => onPush(index - 1) : null,
                 icon: const Icon(Icons.skip_previous_rounded),
-                label: const Text('Prev', maxLines: 1),
+                label: Text(_t(context).tbPrev, maxLines: 1),
               ),
               FilledButton.icon(
                 style: _liveFilledButtonStyle,
                 onPressed: index < total - 1 ? () => onPush(index + 1) : null,
                 icon: const Icon(Icons.skip_next_rounded),
-                label: const Text('Next', maxLines: 1),
+                label: Text(_t(context).next, maxLines: 1),
               ),
               OutlinedButton.icon(
                 style: _liveOutlinedButtonStyle(hc),
                 onPressed: onStop,
                 icon: const Icon(Icons.stop_rounded),
-                label: const Text('Stop', maxLines: 1),
+                label: Text(_t(context).opStop, maxLines: 1),
               ),
             ],
           ),
@@ -912,7 +907,7 @@ class _ScoreboardCard extends StatelessWidget {
               Icon(Icons.leaderboard_rounded, color: hc.primary),
               const SizedBox(width: 8),
               Text(
-                'Live scoreboard',
+                _t(context).tlpScoreboard,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -923,7 +918,7 @@ class _ScoreboardCard extends StatelessWidget {
           const SizedBox(height: 8),
           if (rows.isEmpty)
             Text(
-              'No answers yet.',
+              _t(context).tlpNoAnswers,
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             )
           else
@@ -1027,7 +1022,7 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
             ),
             const SizedBox(height: 12),
             Text(
-              'New question',
+              _t(context).tlpNewQuestion,
               style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.w800,
                 color: hc.textPrimary,
@@ -1043,14 +1038,14 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text(_t(context).cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     onPressed: _build,
-                    child: const Text('Push to TV'),
+                    child: Text(_t(context).tlpPushTv),
                   ),
                 ),
               ],
@@ -1063,10 +1058,10 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
 
   Widget _typePicker(HCColor hc) {
     final types = [
-      (LiveActivityType.multipleChoice, 'Multiple choice', Icons.list_alt_rounded),
-      (LiveActivityType.pictureChoice, 'Picture', Icons.image_rounded),
-      (LiveActivityType.trueFalse, 'True / False', Icons.rule_rounded),
-      (LiveActivityType.fslSign, 'FSL sign', Icons.sign_language_rounded),
+      (LiveActivityType.multipleChoice, _t(context).tlpMcLabel, Icons.list_alt_rounded),
+      (LiveActivityType.pictureChoice, _t(context).tlpPicture, Icons.image_rounded),
+      (LiveActivityType.trueFalse, _t(context).tlpTfLabel, Icons.rule_rounded),
+      (LiveActivityType.fslSign, _t(context).tlpFslSign, Icons.sign_language_rounded),
     ];
     return Wrap(
       spacing: 8,
@@ -1096,14 +1091,14 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
         return [
           TextField(
             controller: _promptCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Question',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: _t(context).tlpQuestion,
+              border: const OutlineInputBorder(),
             ),
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 12),
-          Text('Answer options (tap ✓ to mark the correct one)',
+          Text(_t(context).tlpOptionsHint,
               style: AppTypography.labelMedium.copyWith(color: hc.textSecondary)),
           const SizedBox(height: 6),
           for (var i = 0; i < _optionCtrls.length; i++)
@@ -1112,7 +1107,7 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
               child: Row(
                 children: [
                   IconButton(
-                    tooltip: 'Mark option ${i + 1} correct',
+                    tooltip: _t(context).tlpMarkCorrect(i + 1),
                     onPressed: () => setState(() => _correctIndex = i),
                     icon: Icon(
                       _correctIndex == i
@@ -1127,8 +1122,8 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
                     child: TextField(
                       controller: _optionCtrls[i],
                       decoration: InputDecoration(
-                        labelText: 'Option ${i + 1}'
-                            '${i >= 2 ? ' (optional)' : ''}',
+                        labelText: '${_t(context).tlpOption(i + 1)}'
+                            '${i >= 2 ? _t(context).tlpOptional : ''}',
                         border: const OutlineInputBorder(),
                       ),
                     ),
@@ -1141,16 +1136,16 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
         return [
           TextField(
             controller: _statementCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Statement',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: _t(context).tlpStatement,
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
           SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: true, label: Text('True'), icon: Icon(Icons.check)),
-              ButtonSegment(value: false, label: Text('False'), icon: Icon(Icons.close)),
+            segments: [
+              ButtonSegment(value: true, label: Text(_t(context).tlpTrue), icon: const Icon(Icons.check)),
+              ButtonSegment(value: false, label: Text(_t(context).tlpFalse), icon: const Icon(Icons.close)),
             ],
             selected: {_tfCorrect},
             onSelectionChanged: (s) => setState(() => _tfCorrect = s.first),
@@ -1165,7 +1160,7 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Learners pick the matching word from 4 options (auto-generated).',
+            _t(context).tlpAutoOptions,
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
         ];
@@ -1181,12 +1176,12 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
             contentPadding: EdgeInsets.zero,
             value: _fslSelfReport,
             onChanged: (v) => setState(() => _fslSelfReport = v),
-            title: Text('Self-check (learner taps “I got it”)',
+            title: Text(_t(context).tlpSelfCheck,
                 style: AppTypography.bodyMedium.copyWith(color: hc.textPrimary)),
             subtitle: Text(
               _fslSelfReport
-                  ? 'No options — the learner judges their own sign.'
-                  : 'Learners pick the matching word from options.',
+                  ? _t(context).tlpSelfCheckNote
+                  : _t(context).tlpPickOptions,
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),
           ),
@@ -1208,14 +1203,14 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
   String _validationMessage() {
     switch (_type) {
       case LiveActivityType.multipleChoice:
-        return 'Add a question and at least two options, and mark the correct one.';
+        return _t(context).tlpNeedOptions;
       case LiveActivityType.trueFalse:
-        return 'Type a statement.';
+        return _t(context).tlpNeedStatement;
       case LiveActivityType.pictureChoice:
       case LiveActivityType.fslSign:
-        return 'Pick a flashcard first.';
+        return _t(context).tlpNeedCard;
       case LiveActivityType.flashcard:
-        return 'Unsupported.';
+        return _t(context).tlpUnsupported;
     }
   }
 
@@ -1328,7 +1323,7 @@ class _SetBuilderSheetState extends State<_SetBuilderSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'New quiz',
+              _t(context).tlpNewQuiz,
               style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.w800,
                 color: hc.textPrimary,
@@ -1337,15 +1332,15 @@ class _SetBuilderSheetState extends State<_SetBuilderSheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _titleCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Quiz title',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: _t(context).tlpQuizTitle,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             if (_activities.isEmpty)
               Text(
-                'No questions yet. Add your first below.',
+                _t(context).tlpNoQuestions,
                 style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
               )
             else
@@ -1363,7 +1358,7 @@ class _SetBuilderSheetState extends State<_SetBuilderSheet> {
             OutlinedButton.icon(
               onPressed: _addQuestion,
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Add question'),
+              label: Text(_t(context).tlpAddQuestion),
             ),
             const SizedBox(height: 16),
             Row(
@@ -1371,14 +1366,14 @@ class _SetBuilderSheetState extends State<_SetBuilderSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text(_t(context).cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     onPressed: _canSave ? _save : null,
-                    child: const Text('Save quiz'),
+                    child: Text(_t(context).tlpSaveQuiz),
                   ),
                 ),
               ],
@@ -1423,13 +1418,13 @@ class _SetBuilderSheetState extends State<_SetBuilderSheet> {
       case LiveActivityType.multipleChoice:
         return a.prompt;
       case LiveActivityType.trueFalse:
-        return 'T/F: ${a.prompt}';
+        return _t(context).tlpTfShort(a.prompt);
       case LiveActivityType.pictureChoice:
-        return 'Picture choice';
+        return _t(context).tlpPictureChoice;
       case LiveActivityType.fslSign:
-        return a.selfReport ? 'FSL self-check' : 'FSL sign';
+        return a.selfReport ? _t(context).tlpFslSelfShort : _t(context).tlpFslSign;
       case LiveActivityType.flashcard:
-        return 'Flashcard';
+        return _t(context).tlpFlashcard;
     }
   }
 }
@@ -1470,12 +1465,17 @@ class _CardPickerState extends ConsumerState<_CardPicker> {
           initialValue: _category,
           isExpanded: true,
           decoration: InputDecoration(
-            labelText: 'Category',
+            labelText: _t(context).cfCategory,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             prefixIcon: const Icon(Icons.category_rounded),
           ),
           items: FlashcardCategory.values
-              .map((c) => DropdownMenuItem(value: c, child: Text(c.label)))
+              .map(
+                (c) => DropdownMenuItem(
+                  value: c,
+                  child: Text(c.labelOf(_t(context))),
+                ),
+              )
               .toList(),
           onChanged: (c) {
             if (c != null) setState(() => _category = c);
@@ -1487,8 +1487,8 @@ class _CardPickerState extends ConsumerState<_CardPicker> {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
               widget.fslOnly
-                  ? 'No FSL signs in this category yet — try another.'
-                  : 'No words in this category.',
+                  ? _t(context).tlpNoFslCat
+                  : _t(context).tcNoWords,
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
             ),
           )
@@ -1520,3 +1520,8 @@ class _CardPickerState extends ConsumerState<_CardPicker> {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

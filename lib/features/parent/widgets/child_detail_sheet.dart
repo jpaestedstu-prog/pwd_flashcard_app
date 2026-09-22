@@ -22,6 +22,8 @@ import '../../../features/progress/widgets/charts/study_time_chart.dart';
 import '../../../features/progress/widgets/shared/progress_section_header.dart';
 import 'learning_gain_card.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../assessment/models/question_prompt.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Bottom sheet showing detailed progress for a single child.
 class ChildDetailSheet extends ConsumerWidget {
@@ -64,8 +66,9 @@ class ChildDetailSheet extends ConsumerWidget {
 
     // Whether this learner has sign claims waiting on an educator's eye.
     // Scoped to the child's own accessibility type, like the Signs stat.
-    final showFsl = AccessibilityContentPolicy.forType(
+    final showFsl = AccessibilityContentPolicy.forLearner(
       child.disabilityType,
+      child.supportOptions,
     ).showFsl;
     final claims = HiveService.fslMastery(child.profileId);
     final verdicts = HiveService.fslVerifications(child.profileId);
@@ -110,7 +113,7 @@ class ChildDetailSheet extends ConsumerWidget {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Customize progress',
+                    tooltip: _t(context).cdsCustomize,
                     icon: Icon(Icons.palette_rounded, color: accent),
                     onPressed: () => showProgressCustomizeSheet(
                       context,
@@ -222,8 +225,10 @@ class ChildDetailSheet extends ConsumerWidget {
                               Flexible(
                                 child: Text(
                                   child.isRecentlyActive
-                                      ? 'Active today'
-                                      : 'Last active ${_formatLastActive(child.lastActivityDate)}',
+                                      ? _t(context).cdsActiveToday
+                                      : _t(context).cdsLastActive(
+                                          _formatLastActive(context, child.lastActivityDate),
+                                        ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.labelSmall.copyWith(
@@ -270,7 +275,7 @@ class ChildDetailSheet extends ConsumerWidget {
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  '${child.streakDays} day streak',
+                                  _t(context).cdsStreak(child.streakDays),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.labelSmall.copyWith(
@@ -333,7 +338,7 @@ class ChildDetailSheet extends ConsumerWidget {
               // ─── Recent Games ─────────────────────
               if (child.recentScores.isNotEmpty) ...[
                 ProgressSectionHeader(
-                  title: 'Recent Games',
+                  title: _t(context).cdsRecentGames,
                   icon: Icons.sports_esports_rounded,
                   iconColor: accent,
                 ),
@@ -379,7 +384,7 @@ class ChildDetailSheet extends ConsumerWidget {
                         );
                       },
                       icon: const Icon(Icons.sign_language_rounded),
-                      label: Text('Sign Check · $pendingSignClaims to review'),
+                      label: Text(_t(context).cdsSignCheck(pendingSignClaims)),
                     ),
                   ),
                 ).animate().fadeIn(duration: 400.ms, delay: 500.ms),
@@ -404,7 +409,7 @@ class ChildDetailSheet extends ConsumerWidget {
                       );
                     },
                     icon: const Icon(Icons.event_note_rounded),
-                    label: const Text('Daily Routine'),
+                    label: Text(_t(context).cdsDailyRoutine),
                   ),
                 ),
               ).animate().fadeIn(duration: 400.ms, delay: 520.ms),
@@ -421,7 +426,7 @@ class ChildDetailSheet extends ConsumerWidget {
                         onViewFullDashboard!();
                       },
                       icon: const Icon(Icons.dashboard_rounded),
-                      label: const Text('View Full Dashboard'),
+                      label: Text(_t(context).cdsFullDashboard),
                     ),
                   ),
                 ).animate().fadeIn(duration: 400.ms, delay: 550.ms),
@@ -434,12 +439,12 @@ class ChildDetailSheet extends ConsumerWidget {
     );
   }
 
-  String _formatLastActive(DateTime date) {
+  String _formatLastActive(BuildContext context, DateTime date) {
     final diff = DateTime.now().difference(date);
-    if (diff.inDays == 0) return 'today';
-    if (diff.inDays == 1) return 'yesterday';
-    if (diff.inDays < 7) return '${diff.inDays} days ago';
-    return '${(diff.inDays / 7).round()} weeks ago';
+    if (diff.inDays == 0) return _t(context).cdsToday;
+    if (diff.inDays == 1) return _t(context).cdsYesterday;
+    if (diff.inDays < 7) return _t(context).cdsDaysAgo(diff.inDays);
+    return _t(context).cdsWeeksAgo((diff.inDays / 7).round());
   }
 }
 
@@ -457,8 +462,9 @@ class _QuickStatsGrid extends ConsumerWidget {
     // Derived from THIS CHILD's accessibility type, not from
     // `accessibilityContentPolicyProvider` — that reads the signed-in profile,
     // which on this screen is the teacher or parent, not the learner.
-    final showFsl = AccessibilityContentPolicy.forType(
+    final showFsl = AccessibilityContentPolicy.forLearner(
       child.disabilityType,
+      child.supportOptions,
     ).showFsl;
     final totalSigns =
         ref.watch(fslAvailabilityProvider).valueOrNull?.cardsWithVideo.length ??
@@ -466,21 +472,21 @@ class _QuickStatsGrid extends ConsumerWidget {
     // Professional dashboard kit: a structured, overflow-safe stat grid in a
     // titled panel, replacing the fixed 2-per-row gradient tiles.
     return ProPanel(
-      title: 'Quick Stats',
+      title: _t(context).cdsQuickStats,
       child: ProStatGrid(
         tiles: [
           ProStatTile(
             icon: Icons.school_rounded,
-            label: 'Words Learned',
+            label: _t(context).goalsTypeWords,
             value: '${child.wordsLearned}',
-            caption: 'of $totalWords total',
+            caption: _t(context).cdsOfTotal(totalWords),
             accent: AppColors.primary,
           ),
           ProStatTile(
             icon: Icons.star_rounded,
-            label: 'Stars Earned',
+            label: _t(context).dcStarsEarned,
             value: '${child.totalStars}',
-            caption: 'available',
+            caption: _t(context).cdsAvailable,
             accent: AppColors.warning,
           ),
           // Only where signing is this learner's modality — a permanent zero
@@ -490,20 +496,22 @@ class _QuickStatsGrid extends ConsumerWidget {
           if (showFsl)
             ProStatTile(
               icon: Icons.sign_language_rounded,
-              label: 'Signs Watched',
+              label: _t(context).cdsSignsWatched,
               value: '${child.signsWatched}',
-              caption: totalSigns > 0 ? 'of $totalSigns signs' : 'FSL clips',
+              caption: totalSigns > 0
+                  ? _t(context).cdsOfSigns(totalSigns)
+                  : _t(context).cdsFslClips,
               accent: AppColors.secondaryDark,
             ),
           ProStatTile(
             icon: Icons.percent_rounded,
-            label: 'Accuracy',
+            label: _t(context).accuracy,
             value: '${(accuracy * 100).round()}%',
             caption: accuracy >= 0.7
-                ? 'Great!'
+                ? _t(context).cdsGreat
                 : accuracy >= 0.4
-                ? 'Good progress'
-                : 'Needs practice',
+                ? _t(context).cdsGoodProgress
+                : _t(context).signNeedsPractice,
             trend: accuracy >= 0.7
                 ? ProTrend.up
                 : accuracy >= 0.4
@@ -513,23 +521,23 @@ class _QuickStatsGrid extends ConsumerWidget {
           ),
           ProStatTile(
             icon: Icons.category_rounded,
-            label: 'Categories',
+            label: _t(context).cdsCategories,
             value: '${child.masteredCategories}',
-            caption: 'mastered (≥80%)',
+            caption: _t(context).cdsMasteredPct,
             accent: AppColors.secondary,
           ),
           ProStatTile(
             icon: Icons.timer_rounded,
-            label: 'Study Time',
+            label: _t(context).dbStudyTime,
             value: '${child.studyMinutesThisWeek}m',
-            caption: 'this week',
+            caption: _t(context).cdsThisWeek,
             accent: AppColors.success,
           ),
           ProStatTile(
             icon: Icons.sports_esports_rounded,
-            label: 'Games Played',
+            label: _t(context).cdsGamesPlayed,
             value: '${child.gamesPlayed}',
-            caption: '${child.totalSessions} sessions',
+            caption: _t(context).cdsSessions(child.totalSessions),
             accent: AppColors.accent,
           ),
           // Word Hunt is the one activity that happens away from the screen —
@@ -537,11 +545,11 @@ class _QuickStatsGrid extends ConsumerWidget {
           // game score. Shared by the Teacher and Parent surfaces.
           ProStatTile(
             icon: Icons.photo_camera_rounded,
-            label: 'Word Hunt Finds',
+            label: _t(context).cdsHuntFinds,
             value: '${child.wordHuntFinds}',
             caption: child.wordHuntStreak > 0
-                ? '${child.wordHuntStreak}-day streak'
-                : 'with the camera',
+                ? _t(context).cdsHuntStreak(child.wordHuntStreak)
+                : _t(context).cdsWithCamera,
             trend: child.wordHuntStreak > 0 ? ProTrend.up : null,
             accent: AppColors.bannerWordHuntStart,
           ),
@@ -581,7 +589,7 @@ class _StrengthsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Strengths & Areas to Improve',
+            _t(context).cdsStrengths,
             style: AppTypography.titleSmall.copyWith(
               fontWeight: FontWeight.w700,
               color: hc.textPrimary,
@@ -592,32 +600,37 @@ class _StrengthsCard extends StatelessWidget {
             _InsightRow(
               icon: Icons.emoji_events_rounded,
               iconColor: AppColors.success,
-              title: 'Strongest: $strongest',
-              subtitle:
-                  '${((child.categoryProgress[strongest] ?? 0) * 100).round()}% mastery',
+              title: _t(context).cdsStrongest(QuestionPrompt.categoryName(strongest, _t(context))),
+              subtitle: _t(context).cdsPctMastery(
+                ((child.categoryProgress[strongest] ?? 0) * 100).round(),
+              ),
             ),
           if (weakest != null && weakest != strongest)
             _InsightRow(
               icon: Icons.trending_up_rounded,
               iconColor: AppColors.warning,
-              title: 'Needs work: $weakest',
-              subtitle:
-                  '${((child.categoryProgress[weakest] ?? 0) * 100).round()}% mastery — encourage more practice here',
+              title: _t(context).cdsNeedsWork(QuestionPrompt.categoryName(weakest, _t(context))),
+              subtitle: _t(context).cdsPctMasteryMore(
+                ((child.categoryProgress[weakest] ?? 0) * 100).round(),
+              ),
             ),
           if (unexplored.isNotEmpty)
             _InsightRow(
               icon: Icons.explore_rounded,
               iconColor: AppColors.info,
-              title: '${unexplored.length} categories unexplored',
-              subtitle: unexplored.take(4).join(', '),
+              title: _t(context).cdsUnexplored(unexplored.length),
+              subtitle: unexplored
+                  .take(4)
+                  .map((c) => QuestionPrompt.categoryName(c, _t(context)))
+                  .join(', '),
             ),
           if (strongest == null && weakest == null)
             _InsightRow(
               icon: Icons.play_circle_rounded,
               iconColor: AppColors.primary,
-              title: 'Just getting started!',
+              title: _t(context).cdsJustStarting,
               subtitle:
-                  'Encourage ${child.name} to try some flashcards or games.',
+                  _t(context).cdsEncourage(child.name),
             ),
         ],
       ),
@@ -693,10 +706,10 @@ class _RecentGameRow extends StatelessWidget {
     final pct = score.total > 0 ? (score.score / score.total * 100).round() : 0;
     final diff = DateTime.now().difference(score.date);
     final timeAgo = diff.inDays > 0
-        ? '${diff.inDays}d ago'
+        ? _t(context).gmDaysAgo(diff.inDays)
         : diff.inHours > 0
-        ? '${diff.inHours}h ago'
-        : '${diff.inMinutes}m ago';
+        ? _t(context).gmHoursAgo(diff.inHours)
+        : _t(context).gmMinutesAgo(diff.inMinutes);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -715,7 +728,7 @@ class _RecentGameRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  score.gameType.label,
+                  score.gameType.labelOf(_t(context)),
                   style: AppTypography.labelMedium.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -788,3 +801,8 @@ class _RecentGameRow extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

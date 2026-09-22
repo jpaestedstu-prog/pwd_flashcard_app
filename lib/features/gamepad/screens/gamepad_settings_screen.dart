@@ -9,6 +9,8 @@ import '../models/gamepad_settings.dart';
 import '../providers/gamepad_settings_provider.dart';
 import '../providers/gamepad_status_provider.dart';
 import '../widgets/gamepad_guide.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Configuration screen for Bluetooth gamepad control, plus the on-screen copy
 /// of the button guide.
@@ -28,7 +30,7 @@ class GamepadSettingsScreen extends ConsumerWidget {
     final appSettings = ref.watch(settingsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('🎮  Game Controller')),
+      appBar: AppBar(title: Text(_t(context).gpTitle)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
@@ -36,11 +38,11 @@ class GamepadSettingsScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           Semantics(
             button: true,
-            label: 'Practise the controller',
+            label: _t(context).gpPractise,
             child: FilledButton.icon(
               onPressed: () => context.push('/gamepad-practice'),
               icon: const Icon(Icons.school_rounded),
-              label: const Text('Practise the buttons'),
+              label: Text(_t(context).gpPractiseButtons),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
                 backgroundColor: AppColors.primary,
@@ -49,8 +51,7 @@ class GamepadSettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Press anything and hear what it does. Nothing in the app moves '
-            'while practising.',
+            _t(context).gpPractiseHelp,
             style: TextStyle(
               fontSize: 12.5,
               color: Theme.of(context).hintColor,
@@ -63,36 +64,35 @@ class GamepadSettingsScreen extends ConsumerWidget {
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.sports_esports_rounded),
-            title: const Text(
-              'Enable controller',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            title: Text(
+              _t(context).gpEnable,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
               settings.enabled
-                  ? 'A paired controller can drive the app'
-                  : 'Off — touch only',
+                  ? _t(context).gpEnabledOn
+                  : _t(context).gpEnabledOff,
             ),
             onChanged: notifier.setEnabled,
           ),
 
           const SizedBox(height: 20),
-          const _SectionHeader('Speech'),
+          _SectionHeader(_t(context).gpSpeech),
           SwitchListTile.adaptive(
             value: settings.speak,
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.record_voice_over_rounded),
-            title: const Text('Say what is happening'),
-            subtitle: const Text(
-              'Announces each section, each item and every question. Leave this '
-              'on for a learner who cannot see the screen.',
+            title: Text(_t(context).gpSay),
+            subtitle: Text(
+              _t(context).gpSayHelp,
             ),
             onChanged: notifier.setSpeak,
           ),
           _SliderTile(
             icon: Icons.speed_rounded,
-            title: 'Speech speed',
-            valueLabel: _speedLabel(appSettings.ttsSpeed),
+            title: _t(context).gpSpeed,
+            valueLabel: _speedLabel(_t(context), appSettings.ttsSpeed),
             value: appSettings.ttsSpeed,
             min: 0.2,
             max: 1.0,
@@ -102,83 +102,75 @@ class GamepadSettingsScreen extends ConsumerWidget {
             divisions: 4,
             onChanged: (v) =>
                 ref.read(settingsProvider.notifier).updateTtsSpeed(v),
-            help: 'Experienced listeners often want this faster than it '
-                'starts. It sets the speaking speed for the whole app, so '
-                'stories and vocabulary read at the same pace.',
+            help: _t(context).gpSpeedHelp,
           ),
           SwitchListTile.adaptive(
             value: settings.announceItems,
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.format_list_numbered_rounded),
-            title: const Text('Read each item'),
-            subtitle: const Text(
-              'Says the name and position — “Games, 3 of 8” — as the cursor '
-              'lands on it.',
+            title: Text(_t(context).gpReadItem),
+            subtitle: Text(
+              _t(context).gpReadItemHelp,
             ),
             onChanged: settings.speak ? notifier.setAnnounceItems : null,
           ),
 
           const SizedBox(height: 20),
-          const _SectionHeader('Moving between sections'),
+          _SectionHeader(_t(context).gpMoving),
           SwitchListTile.adaptive(
             value: settings.confirmSectionChange,
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.help_outline_rounded),
-            title: const Text('Ask before switching'),
-            subtitle: const Text(
-              'Left and right ask “Do you want to go to the Cards section?” — '
-              'A for yes, B for no. Turn off to switch straight away.',
+            title: Text(_t(context).gpAsk),
+            subtitle: Text(
+              _t(context).gpAskHelp,
             ),
             onChanged: notifier.setConfirmSectionChange,
           ),
 
           const SizedBox(height: 20),
-          const _SectionHeader('Comfort'),
+          _SectionHeader(_t(context).gpComfort),
           SwitchListTile.adaptive(
             value: settings.vibrate,
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.vibration_rounded),
-            title: const Text('Vibrate on each press'),
-            subtitle: const Text(
-              'A silent confirmation that the press registered, even while a '
-              'previous sentence is still finishing.',
+            title: Text(_t(context).gpVibrate),
+            subtitle: Text(
+              _t(context).gpVibrateHelp,
             ),
             onChanged: notifier.setVibrate,
           ),
           _SliderTile(
             icon: Icons.touch_app_rounded,
-            title: 'Ignore repeat presses within',
-            valueLabel: '${settings.dedupeMs} ms',
+            title: _t(context).gpDedupe,
+            valueLabel: _t(context).gpMs(settings.dedupeMs),
             value: settings.dedupeMs.toDouble(),
             min: GamepadSettings.minDedupeMs.toDouble(),
             max: GamepadSettings.maxDedupeMs.toDouble(),
             divisions:
                 (GamepadSettings.maxDedupeMs - GamepadSettings.minDedupeMs) ~/ 20,
             onChanged: (v) => notifier.setDedupeMs((v / 20).round() * 20),
-            help: 'Raise this for a learner whose grip produces extra presses. '
-                'Lower it if deliberate quick presses are being missed.',
+            help: _t(context).gpDedupeHelp,
           ),
           SwitchListTile.adaptive(
             value: settings.holdToRepeat,
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.repeat_rounded),
-            title: const Text('Hold to keep moving'),
-            subtitle: const Text(
-              'Holding up or down keeps stepping through items, instead of one '
-              'press per step. Opening, going back and switching section never '
-              'repeat.',
+            title: Text(_t(context).gpHold),
+            subtitle: Text(
+              _t(context).gpHoldHelp,
             ),
             onChanged: notifier.setHoldToRepeat,
           ),
           if (settings.holdToRepeat) ...[
             _SliderTile(
               icon: Icons.hourglass_top_rounded,
-              title: 'Wait before repeating',
-              valueLabel: '${settings.repeatDelayMs} ms',
+              title: _t(context).gpWait,
+              valueLabel: _t(context).gpMs(settings.repeatDelayMs),
               value: settings.repeatDelayMs.toDouble(),
               min: GamepadSettings.minRepeatDelayMs.toDouble(),
               max: GamepadSettings.maxRepeatDelayMs.toDouble(),
@@ -187,12 +179,12 @@ class GamepadSettingsScreen extends ConsumerWidget {
                   100,
               onChanged: (v) =>
                   notifier.setRepeatDelayMs((v / 100).round() * 100),
-              help: 'Long enough that an ordinary press never starts a repeat.',
+              help: _t(context).gpWaitHelp,
             ),
             _SliderTile(
               icon: Icons.timer_rounded,
-              title: 'Repeat every',
-              valueLabel: '${settings.repeatRateMs} ms',
+              title: _t(context).gpRepeat,
+              valueLabel: _t(context).gpMs(settings.repeatRateMs),
               value: settings.repeatRateMs.toDouble(),
               min: GamepadSettings.minRepeatRateMs.toDouble(),
               max: GamepadSettings.maxRepeatRateMs.toDouble(),
@@ -200,7 +192,7 @@ class GamepadSettingsScreen extends ConsumerWidget {
                       GamepadSettings.minRepeatRateMs) ~/
                   50,
               onChanged: (v) => notifier.setRepeatRateMs((v / 50).round() * 50),
-              help: 'Slow enough that each item is still announced in full.',
+              help: _t(context).gpRepeatHelp,
             ),
           ],
           SwitchListTile.adaptive(
@@ -208,21 +200,20 @@ class GamepadSettingsScreen extends ConsumerWidget {
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.swap_horiz_rounded),
-            title: const Text('Swap A and B'),
-            subtitle: const Text(
-              'Only if “yes” and “no” come out backwards — some controllers '
-              'label the bottom button B rather than A.',
+            title: Text(_t(context).gpSwap),
+            subtitle: Text(
+              _t(context).gpSwapHelp,
             ),
             onChanged: notifier.setSwapConfirmButtons,
           ),
 
           const SizedBox(height: 28),
-          const _SectionHeader('Button guide'),
+          _SectionHeader(_t(context).gpGuide),
           const SizedBox(height: 8),
           const GamepadGuide(),
           const SizedBox(height: 16),
           Text(
-            'The learner can hear this list at any time by pressing Select.',
+            _t(context).gpGuideHelp,
             style: TextStyle(
               fontSize: 12.5,
               fontStyle: FontStyle.italic,
@@ -239,12 +230,12 @@ class GamepadSettingsScreen extends ConsumerWidget {
 /// teacher deciding whether a learner needs it slower.
 /// Five names across the slider's five stops, so every press changes what is
 /// announced — the thing that tells a learner their press registered.
-String _speedLabel(double v) {
-  if (v <= 0.3) return 'Very slow';
-  if (v <= 0.5) return 'Slow';
-  if (v <= 0.7) return 'Normal';
-  if (v <= 0.9) return 'Fast';
-  return 'Very fast';
+String _speedLabel(AppLocalizations t, double v) {
+  if (v <= 0.3) return t.gpVerySlow;
+  if (v <= 0.5) return t.vgSlow;
+  if (v <= 0.7) return t.vgNormal;
+  if (v <= 0.9) return t.vgFast;
+  return t.gpVeryFast;
 }
 
 class _StatusCard extends StatelessWidget {
@@ -259,8 +250,8 @@ class _StatusCard extends StatelessWidget {
     return Semantics(
       liveRegion: true,
       label: connected
-          ? 'Controller connected: ${name ?? "Gamepad"}'
-          : 'No controller connected',
+          ? _t(context).gpConnectedTo(name ?? 'Gamepad')
+          : _t(context).gpNoController,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -283,7 +274,7 @@ class _StatusCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    connected ? 'Controller connected' : 'No controller',
+                    connected ? _t(context).gpConnected : _t(context).gpNone,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
@@ -293,8 +284,7 @@ class _StatusCard extends StatelessWidget {
                   Text(
                     connected
                         ? (name ?? 'Gamepad')
-                        : 'Pair one in Android Settings → Bluetooth, then come '
-                            'back here.',
+                        : _t(context).gpPair,
                     style: TextStyle(
                       fontSize: 12.5,
                       color: Theme.of(context).hintColor,
@@ -415,3 +405,8 @@ class _SliderTile extends StatelessWidget {
 /// Exposed so the guide widget and the spoken guide can be checked against each
 /// other in tests — the two must never drift apart.
 const int kSpokenGuideItemCap = GamepadPhrases.maxSpokenItems;
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

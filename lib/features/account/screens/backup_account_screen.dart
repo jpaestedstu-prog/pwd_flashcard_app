@@ -8,6 +8,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/sync_status_widget.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Settings entry for **Backup & Link Account**.
 ///
@@ -50,20 +52,20 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
 
   String? _validateEmail(String? value) {
     final v = (value ?? '').trim();
-    if (v.isEmpty) return 'Enter an email';
+    if (v.isEmpty) return _t(context).baEnterEmail;
     final emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    if (!emailRe.hasMatch(v)) return 'Enter a valid email address';
+    if (!emailRe.hasMatch(v)) return _t(context).baValidEmail;
     return null;
   }
 
   String? _validatePassword(String? value) {
     final v = value ?? '';
-    if (v.length < 8) return 'Password must be at least 8 characters';
+    if (v.length < 8) return _t(context).baPwLength;
     return null;
   }
 
   String? _validateConfirm(String? value) {
-    if (value != _passwordController.text) return 'Passwords do not match';
+    if (value != _passwordController.text) return _t(context).baPwMismatch;
     return null;
   }
 
@@ -73,26 +75,25 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
   String _friendlyAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'email-already-in-use':
-        return 'That email already has an account. Choose “I already have '
-            'an account” instead.';
+        return _t(context).baEmailInUse;
       case 'weak-password':
-        return 'That password is too easy to guess. Use 8+ characters.';
+        return _t(context).baWeakPw;
       case 'invalid-email':
-        return 'That doesn\'t look like a valid email address.';
+        return _t(context).baBadEmail;
       case 'user-not-found':
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Email or password is incorrect.';
+        return _t(context).baWrongCreds;
       case 'user-disabled':
-        return 'That account has been disabled.';
+        return _t(context).baDisabled;
       case 'network-request-failed':
-        return 'No internet connection. Try again when you\'re online.';
+        return _t(context).baOffline;
       case 'too-many-requests':
-        return 'Too many tries. Wait a minute and try again.';
+        return _t(context).baTooMany;
       case 'provider-already-linked':
-        return 'This device is already linked to a different account.';
+        return _t(context).baLinkedElsewhere;
       default:
-        return e.message ?? 'Sign-in failed (${e.code}).';
+        return _t(context).baSignInFailed(e.code);
     }
   }
 
@@ -107,8 +108,7 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
       if (!mounted) return;
       AppSnackBar.success(
         context,
-        message: 'Account linked! Your data is now backed up to '
-            '${_emailController.text.trim()}.',
+        message: _t(context).baLinked(_emailController.text.trim()),
       );
       setState(() {});
     } on FirebaseAuthException catch (e) {
@@ -139,9 +139,8 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
       AppSnackBar.success(
         context,
         message: restored == 0
-            ? 'Signed in. No backup data was found for this account.'
-            : 'Signed in. Restored $restored '
-                '${restored == 1 ? 'profile' : 'profiles'} from the cloud.',
+            ? _t(context).baSignedInNone
+            : _t(context).baSignedInRestored(restored),
       );
       setState(() => _signInMode = false);
     } on FirebaseAuthException catch (e) {
@@ -159,7 +158,7 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
     final email = FirebaseService.linkedEmail ?? _emailController.text.trim();
     if (email.isEmpty) {
       AppSnackBar.error(context,
-          message: 'Enter your email above before requesting a reset.');
+          message: _t(context).baEnterEmailFirst);
       return;
     }
     setState(() => _busy = true);
@@ -168,7 +167,7 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
       if (!mounted) return;
       AppSnackBar.success(
         context,
-        message: 'Password reset email sent to $email.',
+        message: _t(context).baResetSent(email),
       );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
@@ -182,20 +181,18 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign out of linked account?'),
-        content: const Text(
-          'The app will keep working offline, but new cloud writes will '
-          'use a fresh anonymous session. Your local profiles stay on '
-          'this device — they are not deleted.',
+        title: Text(_t(context).baSignOutTitle),
+        content: Text(
+          _t(context).baSignOutBody,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(_t(context).cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Sign out'),
+            child: Text(_t(context).baSignOut),
           ),
         ],
       ),
@@ -206,7 +203,7 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
     try {
       await FirebaseService.signOut();
       if (!mounted) return;
-      AppSnackBar.success(context, message: 'Signed out.');
+      AppSnackBar.success(context, message: _t(context).baSignedOut);
       setState(() {});
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -221,7 +218,7 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: const Text('Backup & Link Account'),
+        title: Text(_t(context).baTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -286,7 +283,7 @@ class _StatusCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  linked ? 'Backup is active' : 'No backup yet',
+                  linked ? _t(context).baActive : _t(context).baNone,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -294,12 +291,8 @@ class _StatusCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   linked
-                      ? 'Linked to ${email ?? '(unknown email)'}. Sign in '
-                          'with this email on a new device to restore '
-                          'your profiles and progress.'
-                      : 'Your data is stored on this device only. Link '
-                          'an email below so you can recover everything '
-                          'if the device is lost or reset.',
+                      ? _t(context).baLinkedTo(email ?? _t(context).baUnknownEmail)
+                      : _t(context).baLocalOnly,
                   style: AppTypography.bodySmall,
                 ),
               ],
@@ -353,8 +346,8 @@ class _LinkForm extends StatelessWidget {
         children: [
           Text(
             signInMode
-                ? 'Sign in to restore'
-                : 'Create a backup',
+                ? _t(context).baSignInRestore
+                : _t(context).baCreateBackup,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -362,9 +355,8 @@ class _LinkForm extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             signInMode
-                ? 'Use the email and password you set on your other device.'
-                : 'Pick an email and password to back up this device. '
-                    'No verification email required.',
+                ? _t(context).baUseOther
+                : _t(context).baPickCreds,
             style: AppTypography.bodySmall,
           ),
           const SizedBox(height: 16),
@@ -374,10 +366,10 @@ class _LinkForm extends StatelessWidget {
             autocorrect: false,
             enableSuggestions: false,
             textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              prefixIcon: Icon(Icons.email_outlined),
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: _t(context).baEmail,
+              prefixIcon: const Icon(Icons.email_outlined),
+              border: const OutlineInputBorder(),
             ),
             validator: validateEmail,
           ),
@@ -388,14 +380,14 @@ class _LinkForm extends StatelessWidget {
             textInputAction:
                 signInMode ? TextInputAction.done : TextInputAction.next,
             decoration: InputDecoration(
-              labelText: 'Password',
+              labelText: _t(context).baPassword,
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
                 icon: Icon(passwordVisible
                     ? Icons.visibility_off_rounded
                     : Icons.visibility_rounded),
                 onPressed: onTogglePasswordVisible,
-                tooltip: passwordVisible ? 'Hide password' : 'Show password',
+                tooltip: passwordVisible ? _t(context).baHidePw : _t(context).baShowPw,
               ),
               border: const OutlineInputBorder(),
             ),
@@ -407,10 +399,10 @@ class _LinkForm extends StatelessWidget {
               controller: confirmController,
               obscureText: !passwordVisible,
               textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                labelText: 'Confirm password',
-                prefixIcon: Icon(Icons.lock_outline),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: _t(context).baConfirmPw,
+                prefixIcon: const Icon(Icons.lock_outline),
+                border: const OutlineInputBorder(),
               ),
               validator: validateConfirm,
             ),
@@ -427,7 +419,7 @@ class _LinkForm extends StatelessWidget {
                 : Icon(signInMode
                     ? Icons.login_rounded
                     : Icons.cloud_upload_rounded),
-            label: Text(signInMode ? 'Sign in & restore' : 'Link this device'),
+            label: Text(signInMode ? _t(context).baSignInRestoreBtn : _t(context).baLinkDevice),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
@@ -437,14 +429,14 @@ class _LinkForm extends StatelessWidget {
             onPressed: busy ? null : onToggleMode,
             child: Text(
               signInMode
-                  ? "Don't have an account yet? Create one"
-                  : 'I already have an account — sign in',
+                  ? _t(context).baCreateOne
+                  : _t(context).baHaveOne,
             ),
           ),
           if (signInMode)
             TextButton(
               onPressed: busy ? null : onPasswordReset,
-              child: const Text('Forgot password? Send reset email'),
+              child: Text(_t(context).baForgot),
             ),
         ],
       ),
@@ -470,7 +462,7 @@ class _LinkedAccountActions extends StatelessWidget {
         FilledButton.tonalIcon(
           onPressed: busy ? null : onPasswordReset,
           icon: const Icon(Icons.lock_reset_rounded),
-          label: const Text('Send password reset email'),
+          label: Text(_t(context).baSendReset),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
@@ -479,7 +471,7 @@ class _LinkedAccountActions extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: busy ? null : onSignOut,
           icon: const Icon(Icons.logout_rounded),
-          label: const Text('Sign out of linked account'),
+          label: Text(_t(context).baSignOutLinked),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
             foregroundColor: AppColors.error,
@@ -490,3 +482,8 @@ class _LinkedAccountActions extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

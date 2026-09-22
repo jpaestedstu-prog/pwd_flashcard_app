@@ -17,6 +17,7 @@ import '../../../providers/lock_announcement_provider.dart';
 import '../../../providers/managed_child_profile_provider.dart';
 import '../services/child_time_limit_service.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Per-child editor for [ChildTimeLimit].
 ///
@@ -118,8 +119,8 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
       appBar: AppBar(
         title: Text(
           widget.childDisplayName == null
-              ? 'Time limits'
-              : 'Time limits — ${widget.childDisplayName}',
+              ? _t(context).tlTitle
+              : _t(context).tlTitleFor(widget.childDisplayName!),
         ),
         actions: [
           if (_dirty)
@@ -132,13 +133,13 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.save_rounded),
-              label: const Text('Save'),
+              label: Text(_t(context).tlSave),
             ),
         ],
       ),
       body: remoteAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load: $e')),
+        error: (e, _) => Center(child: Text(_t(context).tlLoadError('$e'))),
         data: (remote) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -165,13 +166,13 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
                   : () => _applyDefaults(childType),
             ),
             const Divider(height: 32),
-            const _SectionHeader(text: 'Daily time limit'),
+            _SectionHeader(text: _t(context).tlDaily),
             SwitchListTile(
-              title: const Text('Enforce a daily limit'),
+              title: Text(_t(context).tlEnforce),
               subtitle: Text(
                 draft.dailyLimitEnabled
-                    ? '${draft.dailyLimitMinutes} min per day'
-                    : 'No limit',
+                    ? _t(context).tlMinPerDay(draft.dailyLimitMinutes)
+                    : _t(context).tlNoLimit,
               ),
               value: draft.dailyLimitEnabled,
               onChanged: (v) => _update(draft.copyWith(dailyLimitEnabled: v)),
@@ -187,23 +188,23 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
                   onChanged: (v) =>
                       _update(draft.copyWith(dailyLimitMinutes: v.round())),
                 ),
-                subtitle: Text('${draft.dailyLimitMinutes} minutes per day'),
+                subtitle: Text(_t(context).tlMinutesPerDay(draft.dailyLimitMinutes)),
               ),
             const Divider(height: 32),
-            const _SectionHeader(text: 'Allowed schedule'),
+            _SectionHeader(text: _t(context).tlSchedule),
             SwitchListTile(
-              title: const Text('Restrict by time of day'),
+              title: Text(_t(context).tlRestrict),
               subtitle: Text(
                 draft.scheduleEnabled
                     ? 'Only ${_fmt(draft.allowedStartHour)} – ${_fmt(draft.allowedEndHour)}'
-                    : 'Any time',
+                    : _t(context).tlAnyTime,
               ),
               value: draft.scheduleEnabled,
               onChanged: (v) => _update(draft.copyWith(scheduleEnabled: v)),
             ),
             if (draft.scheduleEnabled) ...[
               ListTile(
-                title: const Text('Allowed start'),
+                title: Text(_t(context).tlStart),
                 trailing: Text(_fmt(draft.allowedStartHour)),
                 onTap: () => _pickHour(
                   initial: draft.allowedStartHour,
@@ -211,7 +212,7 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
                 ),
               ),
               ListTile(
-                title: const Text('Allowed end'),
+                title: Text(_t(context).tlEnd),
                 trailing: Text(_fmt(draft.allowedEndHour)),
                 onTap: () => _pickHour(
                   initial: draft.allowedEndHour,
@@ -225,24 +226,22 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
               ),
             ],
             const Divider(height: 32),
-            const _SectionHeader(text: 'When time is up'),
+            _SectionHeader(text: _t(context).tlWhenUp),
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
-                'The child hears an alarm, then a message telling them who '
-                'to hand the device to.',
+                _t(context).tlWhenUpBody,
                 style: AppTypography.bodySmall.copyWith(
                   color: HCColor.of(context).textSecondary,
                 ),
               ),
             ),
             SwitchListTile(
-              title: const Text('Warn before the lock'),
+              title: Text(_t(context).tlWarn),
               subtitle: Text(
                 draft.warningEnabled
-                    ? 'A banner ${draft.effectiveWarningMinutes} minutes '
-                          'before, so they can finish what they are doing.'
-                    : 'The lock screen will be the first warning.',
+                    ? _t(context).tlWarnOn(draft.effectiveWarningMinutes)
+                    : _t(context).tlWarnOff,
               ),
               value: draft.warningEnabled,
               onChanged: (v) => _update(draft.copyWith(warningEnabled: v)),
@@ -261,26 +260,24 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
                       _update(draft.copyWith(warningMinutes: v.round())),
                 ),
                 subtitle: Text(
-                  '${draft.effectiveWarningMinutes} minutes of notice',
+                  _t(context).tlNotice(draft.effectiveWarningMinutes),
                 ),
               ),
             const SizedBox(height: 4),
             SwitchListTile(
-              title: const Text('Play an alarm sound'),
-              subtitle: const Text(
-                'Also alerts the adult in the room, so it stays on for '
-                'learners who are deaf or hard of hearing.',
+              title: Text(_t(context).tlAlarm),
+              subtitle: Text(
+                _t(context).tlAlarmBody,
               ),
               value: draft.alarmSoundEnabled,
               onChanged: (v) => _update(draft.copyWith(alarmSoundEnabled: v)),
             ),
             SwitchListTile(
-              title: const Text('Speak the message out loud'),
+              title: Text(_t(context).tlSpeak),
               subtitle: Text(
                 presentation.speakMessage
-                    ? 'Spoken after the alarm.'
-                    : 'This learner\'s profile does not use speech — the '
-                          'message is shown as a large caption instead.',
+                    ? _t(context).tlSpeakOn
+                    : _t(context).tlSpeakOff,
               ),
               value: draft.voiceMessageEnabled,
               onChanged: (v) => _update(draft.copyWith(voiceMessageEnabled: v)),
@@ -310,10 +307,7 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Text(
-                    'When a limit is reached, the child sees a “Time’s up” '
-                    'lock screen that requires your PIN to dismiss. They keep '
-                    'all progress, and a “Switch account” button lets someone '
-                    'else use the device without unlocking this profile.',
+                    _t(context).tlLockIntro,
                     style: AppTypography.bodySmall,
                   ),
                 ),
@@ -403,8 +397,9 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Applied the recommended settings for '
-          '${type.profileTypeLabelOf(AppLocalizations.of(context))}. Tap Save to confirm.',
+          _t(context).tlApplied(
+            type.profileTypeLabelOf(AppLocalizations.of(context)),
+          ),
         ),
       ),
     );
@@ -449,13 +444,13 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
       });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Saved.')));
+      ).showSnackBar(SnackBar(content: Text(_t(context).tlSaved)));
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      ).showSnackBar(SnackBar(content: Text(_t(context).tlSaveError('$e'))));
     }
   }
 
@@ -515,9 +510,7 @@ class _AccessibilityProfileCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'This learner\'s profile isn\'t cached on this device yet, '
-                  'so the accessibility-specific guidance is hidden. Every '
-                  'setting below still applies.',
+                  _t(context).tlNotCached,
                   style: AppTypography.bodySmall,
                 ),
               ),
@@ -547,7 +540,7 @@ class _AccessibilityProfileCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'At lock time this learner gets:',
+              _t(context).tlAtLock,
               style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
             ),
             const SizedBox(height: 4),
@@ -555,7 +548,9 @@ class _AccessibilityProfileCard extends StatelessWidget {
               spacing: 6,
               runSpacing: 6,
               children: [
-                for (final line in presentation.educatorSummary)
+                for (final line in presentation.educatorSummaryOf(
+                  AppLocalizations.of(context),
+                ))
                   Chip(
                     label: Text(line, style: AppTypography.labelSmall),
                     visualDensity: VisualDensity.compact,
@@ -564,7 +559,10 @@ class _AccessibilityProfileCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              LockPolicyDefaults.rationaleFor(type!),
+              LockPolicyDefaults.rationaleFor(
+                type!,
+                AppLocalizations.of(context),
+              ),
               style: AppTypography.bodySmall,
             ),
             const SizedBox(height: 8),
@@ -574,8 +572,9 @@ class _AccessibilityProfileCard extends StatelessWidget {
                 onPressed: onApplyDefaults,
                 icon: const Icon(Icons.auto_fix_high_rounded),
                 label: Text(
-                  'Use recommended '
-                  '(${LockPolicyDefaults.dailyMinutesFor(type!)} min/day)',
+                  _t(context).tlUseRecommended(
+                    LockPolicyDefaults.dailyMinutesFor(type!),
+                  ),
                 ),
               ),
             ),
@@ -605,14 +604,13 @@ class _PreferredNameField extends StatelessWidget {
       onChanged: onChanged,
       textCapitalization: TextCapitalization.words,
       decoration: InputDecoration(
-        labelText: 'What should the child call you?',
-        hintText: 'e.g. Teacher Ana, Dad, Lola',
+        labelText: _t(context).tlCallYou,
+        hintText: _t(context).tlCallHint,
         border: const OutlineInputBorder(),
         helperMaxLines: 3,
         helperText: derivedHonorific.isEmpty
-            ? 'Leave blank to use the default.'
-            : 'Leave blank to use “$derivedHonorific”, taken from the '
-                  'avatar on your profile.',
+            ? _t(context).tlBlankDefault
+            : _t(context).tlBlankAvatar(derivedHonorific),
       ),
     );
   }
@@ -635,7 +633,7 @@ class _MessagePreviewCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'The child will hear',
+              _t(context).tlWillHear,
               style: AppTypography.labelSmall.copyWith(
                 color: HCColor.of(context).textSecondary,
               ),
@@ -653,7 +651,7 @@ class _MessagePreviewCard extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: onPlay,
                 icon: const Icon(Icons.volume_up_rounded),
-                label: const Text('Preview'),
+                label: Text(_t(context).dtPreview),
               ),
             ),
           ],
@@ -689,26 +687,20 @@ class _FslUrlField extends StatelessWidget {
           onChanged: onChanged,
           keyboardType: TextInputType.url,
           decoration: InputDecoration(
-            labelText: 'Sign-language (FSL) video URL',
+            labelText: _t(context).tlFslUrl,
             hintText: 'https://…',
             border: const OutlineInputBorder(),
             helperMaxLines: 4,
             helperText: hasDefault
-                ? 'Leave blank to use the built-in FSL clip for whoever the '
-                      'child hands the device to (Ma\'am / Sir / Mommy / Daddy). '
-                      'Shown on the lock screen for learners who are deaf or '
-                      'hard of hearing; downloaded once, then plays offline.'
-                : 'Shown on the lock screen for learners who are deaf or hard '
-                      'of hearing. The clip is downloaded once and then plays '
-                      'offline.',
+                ? _t(context).tlFslBlank
+                : _t(context).tlFslSet,
           ),
         ),
         if (!relevant)
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
-              'This learner\'s profile does not show the FSL video, so this '
-              'is stored but unused unless their profile changes.',
+              _t(context).tlFslUnused,
               style: AppTypography.labelSmall.copyWith(
                 color: HCColor.of(context).textSecondary,
               ),
@@ -720,8 +712,7 @@ class _FslUrlField extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
-              'No clip set. The lock screen will show the written message '
-              'only until a URL is added here.',
+              _t(context).tlNoClip,
               style: AppTypography.labelSmall.copyWith(
                 color: AppColors.warning,
               ),
@@ -774,8 +765,8 @@ class _DaysOfWeekChips extends StatelessWidget {
         children: [
           Text(
             selected.isEmpty
-                ? 'Schedule applies every day'
-                : 'Schedule applies only on selected days',
+                ? _t(context).tlEveryDay
+                : _t(context).tlSelectedDays,
             style: Theme.of(context).textTheme.labelSmall,
           ),
           const SizedBox(height: 6),
@@ -803,3 +794,8 @@ class _DaysOfWeekChips extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

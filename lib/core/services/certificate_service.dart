@@ -2,6 +2,9 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../data/models/enums.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/app_localizations_en.dart';
+import '../utils/localized_date.dart';
 
 /// Types of certificates that can be generated.
 enum CertificateType {
@@ -19,6 +22,14 @@ extension CertificateTypeX on CertificateType {
     CertificateType.overallProgress => 'Overall Progress',
   };
 
+  /// [label] in the certificate's language.
+  String labelOf(AppLocalizations l10n) => switch (this) {
+    CertificateType.categoryMastery => l10n.wrCategoryMastery,
+    CertificateType.assessmentCompletion => l10n.ceTypeAssessment,
+    CertificateType.streakMilestone => l10n.ceTypeStreak,
+    CertificateType.overallProgress => l10n.ceTypeOverall,
+  };
+
   String get emoji => switch (this) {
     CertificateType.categoryMastery => '🏆',
     CertificateType.assessmentCompletion => '📋',
@@ -31,18 +42,20 @@ extension CertificateTypeX on CertificateType {
 class CertificateService {
   CertificateService._();
 
-  /// Generate a certificate PDF.
+  /// Generate a certificate PDF, worded in [l10n]'s language (English when
+  /// none is given).
   static Future<Uint8List> generate({
     required CertificateType type,
     required String studentName,
     required String achievementTitle,
     required String achievementDetail,
     DateTime? date,
+    AppLocalizations? l10n,
   }) async {
+    final l = l10n ?? AppLocalizationsEn();
     final pdf = pw.Document();
     final certDate = date ?? DateTime.now();
-    final dateStr =
-        '${certDate.month}/${certDate.day}/${certDate.year}';
+    final dateStr = LocalizedDate.monthDayYear(certDate, l);
 
     pdf.addPage(
       pw.Page(
@@ -69,7 +82,7 @@ class CertificateService {
                 children: [
                   // ─── Header ──────────────────────
                   pw.Text(
-                    'CERTIFICATE OF ACHIEVEMENT',
+                    l.cePdfTitle,
                     style: pw.TextStyle(
                       fontSize: 28,
                       fontWeight: pw.FontWeight.bold,
@@ -87,7 +100,7 @@ class CertificateService {
 
                   // ─── Presented To ────────────────
                   pw.Text(
-                    'This certificate is proudly presented to',
+                    l.cePdfPresented,
                     style: const pw.TextStyle(
                       fontSize: 14,
                       color: PdfColors.grey700,
@@ -112,7 +125,7 @@ class CertificateService {
 
                   // ─── Achievement ─────────────────
                   pw.Text(
-                    'For ${type.label}',
+                    l.cePdfFor(type.labelOf(l)),
                     style: const pw.TextStyle(
                       fontSize: 16,
                       color: PdfColors.grey700,
@@ -153,7 +166,7 @@ class CertificateService {
                           ),
                           pw.SizedBox(height: 4),
                           pw.Text(
-                            'Date: $dateStr',
+                            l.cePdfDate(dateStr),
                             style: const pw.TextStyle(
                               fontSize: 11,
                               color: PdfColors.grey600,
@@ -205,14 +218,16 @@ class CertificateService {
     required FlashcardCategory category,
     required int wordsLearned,
     required int totalWords,
+    AppLocalizations? l10n,
   }) {
+    final l = l10n ?? AppLocalizationsEn();
+    final name = category.labelOf(l);
     return generate(
       type: CertificateType.categoryMastery,
       studentName: studentName,
-      achievementTitle: '${category.label} Category Mastery',
-      achievementDetail:
-          'Successfully learned $wordsLearned out of $totalWords words '
-          'in the ${category.label} vocabulary category.',
+      achievementTitle: l.ceCatTitle(name),
+      achievementDetail: l.ceCatDetail(wordsLearned, totalWords, name),
+      l10n: l,
     );
   }
 
@@ -220,14 +235,15 @@ class CertificateService {
   static Future<Uint8List> streakMilestone({
     required String studentName,
     required int streakDays,
+    AppLocalizations? l10n,
   }) {
+    final l = l10n ?? AppLocalizationsEn();
     return generate(
       type: CertificateType.streakMilestone,
       studentName: studentName,
-      achievementTitle: '$streakDays-Day Learning Streak',
-      achievementDetail:
-          'Demonstrated outstanding dedication by maintaining '
-          'a $streakDays-day consecutive study streak.',
+      achievementTitle: l.ceStreakTitle(streakDays),
+      achievementDetail: l.ceStreakDetail(streakDays),
+      l10n: l,
     );
   }
 
@@ -237,14 +253,15 @@ class CertificateService {
     required int totalWords,
     required int totalStars,
     required int streakDays,
+    AppLocalizations? l10n,
   }) {
+    final l = l10n ?? AppLocalizationsEn();
     return generate(
       type: CertificateType.overallProgress,
       studentName: studentName,
-      achievementTitle: 'Learning Excellence',
-      achievementDetail:
-          'Learned $totalWords words, earned $totalStars stars, '
-          'and maintained a $streakDays-day streak.',
+      achievementTitle: l.certExcellence,
+      achievementDetail: l.ceOverallDetail(totalWords, totalStars, streakDays),
+      l10n: l,
     );
   }
 }

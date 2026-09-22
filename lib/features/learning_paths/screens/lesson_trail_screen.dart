@@ -10,6 +10,8 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/app_back_button.dart';
 import '../lesson_step_launcher.dart';
 import '../widgets/winding_trail.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// A playful, game-like "adventure trail" view of a single learning path:
 /// the path's steps are laid out as a winding column of nodes (Duolingo-style)
@@ -59,7 +61,12 @@ class LessonTrailScreen extends ConsumerWidget {
           children: [
             Text(path.emoji, style: const TextStyle(fontSize: 24)),
             const SizedBox(width: 8),
-            Flexible(child: Text(path.title, overflow: TextOverflow.ellipsis)),
+            Flexible(
+              child: Text(
+                path.titleOf(filipino: _t(context).localeName.startsWith('fil')),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         centerTitle: true,
@@ -136,8 +143,8 @@ class _TrailHeader extends StatelessWidget {
               children: [
                 Text(
                   isCompleted
-                      ? 'Adventure complete!'
-                      : 'Climb the trail to master every step',
+                      ? _t(context).lpAdventureDone
+                      : _t(context).lpClimb,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.labelLarge.copyWith(
@@ -198,12 +205,17 @@ class LessonTrail extends StatelessWidget {
     return WindingTrail(
       nodes: [
         for (var i = 0; i < steps.length; i++)
-          _nodeFor(steps[i], i, currentIndex),
+          _nodeFor(context, steps[i], i, currentIndex),
       ],
     );
   }
 
-  TrailNode _nodeFor(LessonStep step, int i, int currentIndex) {
+  TrailNode _nodeFor(
+    BuildContext context,
+    LessonStep step,
+    int i,
+    int currentIndex,
+  ) {
     final isDone = progress?.completedStepIndices.contains(i) ?? false;
     final isCurrent = !isDone && i == currentIndex;
     final state = isDone
@@ -214,14 +226,19 @@ class LessonTrail extends StatelessWidget {
     return TrailNode(
       state: state,
       emoji: step.type.emoji,
-      label: step.title,
+      label: step.titleOf(filipino: _t(context).localeName.startsWith('fil')),
       accent: categoryColor,
       pillText: isCurrent
-          ? 'START'
+          ? _t(context).lpPillStart
           : isDone
-              ? 'REPLAY'
+              ? _t(context).lpPillReplay
               : null,
       onTap: state == TrailNodeState.locked ? null : () => onStep(step),
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

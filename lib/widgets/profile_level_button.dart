@@ -4,6 +4,8 @@ import '../core/services/xp_level_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../data/models/models.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 import 'profile_avatar.dart';
 
 /// The learner's avatar as the door to their **Player Profile**, with their
@@ -45,6 +47,8 @@ class ProfileLevelButton extends StatelessWidget {
     final next = XpService.nextLevel(progress);
     final fraction = XpService.progressToNextLevel(progress);
     final toNext = XpService.xpToNextLevel(progress);
+    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
+    final filipino = t.localeName.startsWith('fil');
 
     // The ring sits outside the avatar, so the button is wider than the face.
     final diameter = radius * 2 + 8;
@@ -52,10 +56,18 @@ class ProfileLevelButton extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label:
-          'Player Profile. Level ${level.level} ${level.title}, $xp XP total, '
-          '${toNext != null ? '$toNext XP to level ${next!.level} ${next.title}' : 'max level reached'}. '
-          'Opens your stats, rewards and achievements.',
+      label: t.homeLevelSemantics(
+        level.level,
+        level.titleOf(filipino: filipino),
+        xp,
+        toNext != null
+            ? t.homeXpToLevel(
+                toNext,
+                next!.level,
+                next.titleOf(filipino: filipino),
+              )
+            : t.homeMaxLevel,
+      ),
       excludeSemantics: true,
       child: Material(
         color: Colors.transparent,

@@ -14,6 +14,8 @@ import '../../gaze_control/providers/gaze_home_grid.dart';
 import '../../../providers/tile_grid_active_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Minimal home for the Player (guest) role.
 ///
@@ -29,6 +31,7 @@ class PlayerHomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider);
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
     final colors = theme.colorScheme;
 
     // Hands-free reach: each action button registers with the guest shell's
@@ -89,14 +92,14 @@ class PlayerHomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     Text(
-                      'Hi, ${profile?.name ?? "Player"}!',
+                      t.childGreeting(profile?.name ?? t.playerFallbackName),
                       style: theme.textTheme.headlineMedium
                           ?.copyWith(fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      'You\'re in Player mode. Your fun stays on this device.',
+                      t.playerModeNote,
                       style: theme.textTheme.bodyMedium
                           ?.copyWith(color: colors.onSurfaceVariant),
                       textAlign: TextAlign.center,
@@ -105,7 +108,7 @@ class PlayerHomeScreen extends ConsumerWidget {
 
                     // ▶ Start Learning
                     gazeButton(
-                      'Start Learning',
+                      t.playerStartLearning,
                       () => context.go('/games'),
                       FilledButton.icon(
                         style: FilledButton.styleFrom(
@@ -115,27 +118,27 @@ class PlayerHomeScreen extends ConsumerWidget {
                         onPressed: () => context.go('/games'),
                         icon: Icon(Icons.play_circle_fill_rounded,
                             size: context.scaleIcon(32)),
-                        label: const Text('Start Learning'),
+                        label: Text(t.playerStartLearning),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     gazeButton(
-                      'Browse flashcards',
+                      t.playerBrowseFlashcards,
                       () => context.go('/flashcards'),
                       OutlinedButton.icon(
                         onPressed: () => context.go('/flashcards'),
                         icon: const Icon(Icons.style_rounded),
-                        label: const Text('Browse flashcards'),
+                        label: Text(t.playerBrowseFlashcards),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     gazeButton(
-                      'How was it?',
+                      t.homeHowWasIt,
                       () => context.push('/smileyometer'),
                       OutlinedButton.icon(
                         onPressed: () => context.push('/smileyometer'),
                         icon: const Icon(Icons.emoji_emotions_outlined),
-                        label: const Text('How was it?'),
+                        label: Text(t.homeHowWasIt),
                       ),
                     ),
 
@@ -153,7 +156,7 @@ class PlayerHomeScreen extends ConsumerWidget {
                               const SizedBox(width: AppSpacing.sm),
                               Expanded(
                                 child: Text(
-                                  'Save your stars across devices',
+                                  t.playerSaveStars,
                                   style: theme.textTheme.titleSmall,
                                 ),
                               ),
@@ -161,8 +164,7 @@ class PlayerHomeScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           Text(
-                            'Join a class or home group to back up your '
-                            'progress and learn with others.',
+                            t.playerSaveBody,
                             style: theme.textTheme.bodySmall,
                           ),
                           const SizedBox(height: AppSpacing.md),
@@ -179,10 +181,10 @@ class PlayerHomeScreen extends ConsumerWidget {
                                       onPressed: () =>
                                           context.push('/join-class'),
                                       child: Text(
-                                        'Join class',
+                                        t.playerJoinClass,
                                         style: fittedStyle(
                                           context,
-                                          'Join class',
+                                          t.playerJoinClass,
                                           Theme.of(context)
                                               .textTheme
                                               .labelLarge,
@@ -196,7 +198,7 @@ class PlayerHomeScreen extends ConsumerWidget {
                                     ),
                                   ),
                                   cell: GazeTileCell(
-                                    label: 'Join class',
+                                    label: t.playerJoinClass,
                                     onActivate: () =>
                                         context.push('/join-class'),
                                   ),
@@ -208,10 +210,10 @@ class PlayerHomeScreen extends ConsumerWidget {
                                       onPressed: () =>
                                           context.push('/join-home-group'),
                                       child: Text(
-                                        'Join group',
+                                        t.playerJoinGroup,
                                         style: fittedStyle(
                                           context,
-                                          'Join group',
+                                          t.playerJoinGroup,
                                           Theme.of(context)
                                               .textTheme
                                               .labelLarge,
@@ -225,7 +227,7 @@ class PlayerHomeScreen extends ConsumerWidget {
                                     ),
                                   ),
                                   cell: GazeTileCell(
-                                    label: 'Join group',
+                                    label: t.playerJoinGroup,
                                     onActivate: () =>
                                         context.push('/join-home-group'),
                                   ),
@@ -245,12 +247,12 @@ class PlayerHomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     gazeButton(
-                      'Switch profile',
+                      t.childSwitchProfile,
                       () => context.push('/profile-switcher'),
                       TextButton.icon(
                         onPressed: () => context.push('/profile-switcher'),
                         icon: const Icon(Icons.person_outline_rounded),
-                        label: const Text('Switch profile'),
+                        label: Text(t.childSwitchProfile),
                       ),
                     ),
                   ],
@@ -278,7 +280,7 @@ class PlayerHomeScreen extends ConsumerWidget {
                 (
                   tile: const AccessibilityQuickButton(),
                   cell: GazeTileCell(
-                    label: 'Accessibility',
+                    label: t.accessibility,
                     onActivate: () => showAccessibilityQuickSheet(context),
                   ),
                 ),

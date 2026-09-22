@@ -197,17 +197,32 @@ String? validateCustomTile({
   required String label,
   required String labelFil,
   required String emoji,
+  bool filipino = false,
 }) {
   final en = label.trim();
   final fil = labelFil.trim();
-  if (en.isEmpty) return 'Enter the word in English.';
+  if (en.isEmpty) {
+    return filipino
+        ? 'Ilagay ang salita sa Ingles.'
+        : 'Enter the word in English.';
+  }
   if (en.length > kMaxCustomTileLabel) {
-    return 'English word is too long (max $kMaxCustomTileLabel characters).';
+    return filipino
+        ? 'Masyadong mahaba ang salitang Ingles '
+              '(hanggang $kMaxCustomTileLabel titik).'
+        : 'English word is too long (max $kMaxCustomTileLabel characters).';
   }
   if (fil.length > kMaxCustomTileLabel) {
-    return 'Filipino word is too long (max $kMaxCustomTileLabel characters).';
+    return filipino
+        ? 'Masyadong mahaba ang salitang Filipino '
+              '(hanggang $kMaxCustomTileLabel titik).'
+        : 'Filipino word is too long (max $kMaxCustomTileLabel characters).';
   }
-  if (emoji.trim().isEmpty) return 'Pick a picture for the tile.';
+  if (emoji.trim().isEmpty) {
+    return filipino
+        ? 'Pumili ng larawan para sa tile.'
+        : 'Pick a picture for the tile.';
+  }
   return null;
 }
 

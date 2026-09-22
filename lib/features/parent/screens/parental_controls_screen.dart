@@ -9,6 +9,8 @@ import '../../../data/models/enums.dart';
 import '../models/parental_controls.dart';
 import '../services/parental_controls_service.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Educator / parent screen for configuring parental controls.
 ///
@@ -45,12 +47,12 @@ class _ParentalControlsScreenState
       await ParentalControlsService.saveControls(_controls);
     } catch (e) {
       if (!mounted) return;
-      AppSnackBar.error(context,
-          message: "Couldn't save parental controls: $e");
+      debugPrint('Parental controls save failed: $e');
+      AppSnackBar.error(context, message: _t(context).pcSaveFailed);
       return;
     }
     if (!mounted) return;
-    AppSnackBar.success(context, message: 'Parental controls saved! \u2705');
+    AppSnackBar.success(context, message: _t(context).pcSaved);
     context.pop();
   }
 
@@ -60,13 +62,13 @@ class _ParentalControlsScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Parental Controls'),
+        title: Text(_t(context).pcTitle),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: FilledButton(
               onPressed: _hasChanged ? _save : null,
-              child: const Text('Save'),
+              child: Text(_t(context).gmSave),
             ),
           ),
         ],
@@ -117,8 +119,7 @@ class _ParentalControlsScreenState
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Set restrictions to manage how students use the app. '
-                    'These controls apply to all student profiles on this device.',
+                    _t(context).pcIntro,
                     style: AppTypography.bodySmall,
                   ),
                 ),
@@ -129,16 +130,16 @@ class _ParentalControlsScreenState
           const SizedBox(height: 24),
 
           // ─── Daily Time Limit ────────────
-          const _SectionHeader(title: 'Daily Time Limit', icon: Icons.timer_rounded),
+          _SectionHeader(title: _t(context).pcDaily, icon: Icons.timer_rounded),
           const SizedBox(height: 8),
 
           SwitchListTile.adaptive(
-            title: const Text('Enable Time Limit'),
+            title: Text(_t(context).pcEnableLimit),
             subtitle: Builder(
               builder: (context) {
                 final text = _controls.timeLimitEnabled
-                    ? '${_controls.dailyTimeLimitMinutes} minutes per day'
-                    : 'No time restriction';
+                    ? _t(context).pcMinutesPerDay(_controls.dailyTimeLimitMinutes)
+                    : _t(context).pcNoRestriction;
                 // A ListTile subtitle shares its row with the switch, so the
                 // column is narrow: "restr / iction" at a large scale.
                 return Text(
@@ -166,7 +167,7 @@ class _ParentalControlsScreenState
                 children: [
                   Row(
                     children: [
-                      Text('${_controls.dailyTimeLimitMinutes} min',
+                      Text(_t(context).pcMin(_controls.dailyTimeLimitMinutes),
                           style: AppTypography.titleSmall
                               .copyWith(fontWeight: FontWeight.w700)),
                       const Spacer(),
@@ -180,17 +181,17 @@ class _ParentalControlsScreenState
                     min: 15,
                     max: 180,
                     divisions: 11,
-                    label: '${_controls.dailyTimeLimitMinutes} min',
+                    label: _t(context).pcMin(_controls.dailyTimeLimitMinutes),
                     onChanged: (v) => _update(_controls.copyWith(
                         dailyTimeLimitMinutes: v.round())),
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('15 min',
+                      Text(_t(context).pc15,
                           style: AppTypography.labelSmall
                               .copyWith(color: hc.textSecondary)),
-                      Text('3 hours',
+                      Text(_t(context).pc3h,
                           style: AppTypography.labelSmall
                               .copyWith(color: hc.textSecondary)),
                     ],
@@ -204,15 +205,18 @@ class _ParentalControlsScreenState
           const Divider(height: 32),
 
           // ─── Usage Schedule ──────────────
-          const _SectionHeader(
-              title: 'Usage Schedule', icon: Icons.schedule_rounded),
+          _SectionHeader(
+              title: _t(context).pcSchedule, icon: Icons.schedule_rounded),
           const SizedBox(height: 8),
 
           SwitchListTile.adaptive(
-            title: const Text('Enable Schedule'),
+            title: Text(_t(context).pcEnableSchedule),
             subtitle: Text(_controls.scheduleEnabled
-                ? 'Allowed: ${_formatHour(_controls.allowedStartHour)} – ${_formatHour(_controls.allowedEndHour)}'
-                : 'No time-of-day restriction'),
+                ? _t(context).pcAllowed(
+                    _formatHour(_controls.allowedStartHour),
+                    _formatHour(_controls.allowedEndHour),
+                  )
+                : _t(context).pcNoTimeOfDay),
             secondary:
                 Icon(Icons.access_time_rounded, color: hc.textSecondary),
             value: _controls.scheduleEnabled,
@@ -228,7 +232,7 @@ class _ParentalControlsScreenState
                 children: [
                   Expanded(
                     child: _TimePickerTile(
-                      label: 'Start',
+                      label: _t(context).pcStart,
                       hour: _controls.allowedStartHour,
                       onChanged: (h) =>
                           _update(_controls.copyWith(allowedStartHour: h)),
@@ -240,7 +244,7 @@ class _ParentalControlsScreenState
                   ),
                   Expanded(
                     child: _TimePickerTile(
-                      label: 'End',
+                      label: _t(context).pcEnd,
                       hour: _controls.allowedEndHour,
                       onChanged: (h) =>
                           _update(_controls.copyWith(allowedEndHour: h)),
@@ -255,13 +259,13 @@ class _ParentalControlsScreenState
           const Divider(height: 32),
 
           // ─── Feature Restrictions ────────
-          const _SectionHeader(
-              title: 'Feature Restrictions', icon: Icons.block_rounded),
+          _SectionHeader(
+              title: _t(context).pcFeatures, icon: Icons.block_rounded),
           const SizedBox(height: 8),
 
           SwitchListTile.adaptive(
-            title: const Text('Block Star Shop'),
-            subtitle: const Text('Prevent students from spending stars'),
+            title: Text(_t(context).pcBlockShop),
+            subtitle: Text(_t(context).pcBlockShopSub),
             secondary:
                 Icon(Icons.store_rounded, color: hc.textSecondary),
             value: _controls.shopBlocked,
@@ -271,8 +275,8 @@ class _ParentalControlsScreenState
           ),
 
           SwitchListTile.adaptive(
-            title: const Text('Block Multiplayer'),
-            subtitle: const Text('Disable multiplayer quiz mode'),
+            title: Text(_t(context).pcBlockMulti),
+            subtitle: Text(_t(context).pcBlockMultiSub),
             secondary: Icon(Icons.people_rounded, color: hc.textSecondary),
             value: _controls.multiplayerBlocked,
             activeTrackColor: AppColors.error,
@@ -281,8 +285,8 @@ class _ParentalControlsScreenState
           ),
 
           SwitchListTile.adaptive(
-            title: const Text('Block Messaging'),
-            subtitle: const Text('Disable in-app messaging'),
+            title: Text(_t(context).pcBlockMsg),
+            subtitle: Text(_t(context).pcBlockMsgSub),
             secondary:
                 Icon(Icons.message_rounded, color: hc.textSecondary),
             value: _controls.messagingBlocked,
@@ -294,17 +298,17 @@ class _ParentalControlsScreenState
           const Divider(height: 32),
 
           // ─── Blocked Games ───────────────
-          const _SectionHeader(
-              title: 'Blocked Games', icon: Icons.sports_esports_rounded),
+          _SectionHeader(
+              title: _t(context).pcBlockedGames, icon: Icons.sports_esports_rounded),
           const SizedBox(height: 8),
           Text(
-            'Select games to hide from students',
+            _t(context).pcBlockedGamesSub,
             style:
                 AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 8),
           ...GameType.values.map((gt) => CheckboxListTile.adaptive(
-                title: Text(gt.label),
+                title: Text(gt.labelOf(_t(context))),
                 secondary: Icon(gt.icon, color: gt.color),
                 value: _controls.blockedGames.contains(gt),
                 activeColor: AppColors.error,
@@ -322,18 +326,18 @@ class _ParentalControlsScreenState
           const Divider(height: 32),
 
           // ─── Blocked Categories ──────────
-          const _SectionHeader(
-              title: 'Blocked Categories',
+          _SectionHeader(
+              title: _t(context).pcBlockedCats,
               icon: Icons.category_rounded),
           const SizedBox(height: 8),
           Text(
-            'Select categories to hide from flashcards & games',
+            _t(context).pcBlockedCatsSub,
             style:
                 AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 8),
           ...FlashcardCategory.values.map((fc) => CheckboxListTile.adaptive(
-                title: Text(fc.label),
+                title: Text(fc.labelOf(_t(context))),
                 secondary: Icon(fc.icon, color: fc.color),
                 value: _controls.blockedCategories.contains(fc),
                 activeColor: AppColors.error,
@@ -359,9 +363,9 @@ class _ParentalControlsScreenState
               },
               icon: const Icon(Icons.restart_alt_rounded,
                   color: AppColors.error),
-              label: const Text(
-                'Reset All Controls',
-                style: TextStyle(color: AppColors.error),
+              label: Text(
+                _t(context).pcReset,
+                style: const TextStyle(color: AppColors.error),
               ),
             ),
           ),
@@ -373,11 +377,11 @@ class _ParentalControlsScreenState
   }
 
   String _timeLimitLabel(int minutes) {
-    if (minutes <= 30) return 'Very Short';
-    if (minutes <= 60) return 'Short';
-    if (minutes <= 90) return 'Moderate';
-    if (minutes <= 120) return 'Standard';
-    return 'Extended';
+    if (minutes <= 30) return _t(context).pcVeryShort;
+    if (minutes <= 60) return _t(context).pcShort;
+    if (minutes <= 90) return _t(context).pcModerate;
+    if (minutes <= 120) return _t(context).pcStandard;
+    return _t(context).pcExtended;
   }
 
   String _formatHour(int hour) {
@@ -470,3 +474,8 @@ class _TimePickerTile extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

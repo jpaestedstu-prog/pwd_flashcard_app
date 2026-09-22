@@ -12,6 +12,7 @@ import '../models/shop_data.dart';
 import '../models/home_group_member.dart';
 import '../models/models.dart';
 import '../repository.dart';
+import '../../core/accessibility/learner_support.dart';
 
 /// Remote (Cloud Firestore) implementation of [DataRepository].
 ///
@@ -70,6 +71,9 @@ class FirestoreRepository implements DataRepository {
       'avatar_index': profile.avatarIndex,
       'created_at': profile.createdAt.toIso8601String(),
       'disability_type': profile.disabilityType.index,
+      // Travels with the profile so the learner's educator sees which sign
+      // system / input method / accommodations they use on any device.
+      'support_options': LearnerSupportCatalog.encode(profile.supportOptions),
       'classroom_id': profile.classroomId,
       'is_guest_player': profile.isGuestPlayer,
       'owner_uid': profile.ownerUid ?? currentUid,
@@ -210,6 +214,8 @@ class FirestoreRepository implements DataRepository {
       createdAt: DateTime.parse(r['created_at'] as String),
       disabilityType:
           DisabilityType.values[(r['disability_type'] as int?) ?? 0],
+      supportOptions:
+          LearnerSupportCatalog.decode(r['support_options'] as List?),
       classroomId: r['classroom_id'] as String?,
       isGuestPlayer: (r['is_guest_player'] as bool?) ?? false,
       ownerUid: r['owner_uid'] as String?,

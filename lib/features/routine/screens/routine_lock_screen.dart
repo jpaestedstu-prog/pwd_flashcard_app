@@ -35,6 +35,8 @@ import '../widgets/routine_media.dart';
 import '../widgets/routine_mood_prompt.dart';
 import '../widgets/routine_step_card.dart';
 import '../widgets/routine_time_timer.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// How long the screen waits before announcing itself. Same reasoning as the
 /// time's-up lock: the learner should *see* the step before they hear it.
@@ -285,13 +287,17 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
     unawaited(_announcer?.stop());
     try {
       // An infinitive phrase, because the gate builds the sentence around it:
-      // "Answer this to end Brushing Teeth early." The dialog is English only,
-      // so the step's English title goes in whatever the app locale is.
-      final title = RoutineCatalog.titleFor(step, filipino: false);
+      // "Answer this to end Brushing Teeth early." The gate speaks the app's
+      // language, so the step's title does too.
+      final t = _t(context);
+      final title = RoutineCatalog.titleFor(
+        step,
+        filipino: t.localeName.startsWith('fil'),
+      );
       final passed = await requireAdult(
         context,
         ref,
-        reason: 'to end $title early',
+        reason: t.agEndEarly(title),
       );
       if (!passed || !mounted) return;
       final day = DateTime.now();
@@ -1217,3 +1223,8 @@ class _UnlockCountdown extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

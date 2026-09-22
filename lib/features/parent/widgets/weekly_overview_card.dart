@@ -4,6 +4,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/pro_surface.dart';
 import '../../../providers/parent_provider.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Shows a weekly summary card comparing study times across a roster.
 ///
@@ -103,7 +105,7 @@ class WeeklyOverviewCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(
-                      'Study minutes',
+                      _t(context).woStudyMinutes,
                       style: AppTypography.labelSmall
                           .copyWith(color: hc.textSecondary),
                     ),
@@ -111,12 +113,12 @@ class WeeklyOverviewCard extends StatelessWidget {
                 ],
               ),
               _WeekStatChip(
-                label: 'Total',
+                label: _t(context).total,
                 value: '${totalThisWeek}m',
                 color: AppColors.primary,
               ),
               _WeekStatChip(
-                label: 'Avg/$learnerNoun',
+                label: _t(context).woAvgPer(learnerNoun),
                 value: '${avgPerChild}m',
                 color: AppColors.secondary,
               ),
@@ -424,3 +426,8 @@ class _WeekStatChip extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

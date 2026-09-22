@@ -23,6 +23,8 @@ import '../widgets/quiz_race_player.dart';
 import '../widgets/race_result_view.dart';
 import '../widgets/race_sign_launcher.dart';
 import '../widgets/scramble_race_player.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Online "Play with a Friend" race over Firestore.
 ///
@@ -135,7 +137,7 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
       return [
         GazeAction(
           zone: GazeZone.down,
-          label: 'Back',
+          label: _t(context).back,
           icon: Icons.arrow_back_rounded,
           color: AppColors.secondary,
           onSelect: _leave,
@@ -145,7 +147,7 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
     return [
       GazeAction(
         zone: GazeZone.left,
-        label: 'Prev',
+        label: _t(context).tbPrev,
         icon: Icons.chevron_left_rounded,
         color: AppColors.secondary,
         enabled: _cursor.canMove,
@@ -153,7 +155,7 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
       ),
       GazeAction(
         zone: GazeZone.right,
-        label: 'Next',
+        label: _t(context).next,
         icon: Icons.chevron_right_rounded,
         color: AppColors.secondary,
         enabled: _cursor.canMove,
@@ -161,7 +163,7 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
       ),
       GazeAction(
         zone: GazeZone.down,
-        label: 'Choose',
+        label: _t(context).mpChoose,
         icon: Icons.check_circle_rounded,
         color: AppColors.success,
         enabled: _cursor.canChoose,
@@ -181,7 +183,7 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
   Future<void> _bootstrap() async {
     final me = ref.read(profileProvider);
     if (me == null) {
-      setState(() => _error = 'No active profile.');
+      setState(() => _error = _t(context).mpNoProfile);
       return;
     }
 
@@ -226,7 +228,9 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
           needsFairPlay: ref.read(racePresentationProvider).needsFairPlay,
         );
       } on MpActionException catch (e) {
-        if (mounted) setState(() => _error = e.message);
+        if (mounted) {
+          setState(() => _error = e.localizedMessage(AppLocalizations.of(context)));
+        }
       }
     }
   }
@@ -392,7 +396,7 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
       return _message('😕', _error!, isFilipino);
     }
     if (me == null) {
-      return _message('😕', 'No active profile.', isFilipino);
+      return _message('😕', _t(context).mpNoProfile, isFilipino);
     }
     if (room == null) {
       return _everLoaded
@@ -719,3 +723,8 @@ class _OpponentStrip extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();

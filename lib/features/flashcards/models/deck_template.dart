@@ -52,6 +52,13 @@ class DeckTemplate {
   });
 
   int get cardCount => cards.length;
+
+  /// The name in the app's language. [name] stays the English original.
+  String nameOf({required bool filipino}) => filipino ? nameFil : name;
+
+  /// The description in the app's language.
+  String descriptionOf({required bool filipino}) =>
+      filipino ? descriptionFil : description;
 }
 
 /// A card stub inside a template — has no id until cloned.

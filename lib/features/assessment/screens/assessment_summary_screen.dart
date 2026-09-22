@@ -8,6 +8,9 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/utils/score_utils.dart';
 import '../models/assessment_models.dart';
+import '../models/question_prompt.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../core/widgets/reflow_row.dart';
@@ -47,7 +50,7 @@ class AssessmentSummaryScreen extends ConsumerWidget {
               Semantics(
                 header: true,
                 child: Text(
-                  result.grade,
+                  result.gradeOf(AppLocalizations.of(context)),
                   style: AppTypography.displaySmall.copyWith(
                     color: hc.textPrimary,
                     fontWeight: FontWeight.w900,
@@ -56,7 +59,10 @@ class AssessmentSummaryScreen extends ConsumerWidget {
               ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
               const SizedBox(height: 4),
               Text(
-                '${result.type.label} Complete!',
+                (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                    .sumComplete(
+                      result.type.labelOf(AppLocalizations.of(context)),
+                    ),
                 style: AppTypography.bodyMedium.copyWith(
                   color: hc.textSecondary,
                 ),
@@ -107,24 +113,28 @@ class AssessmentSummaryScreen extends ConsumerWidget {
               // Three result cards across, stacking when the labels no longer
               // fit a third of the row.
               ReflowRow(
-                    labels: const ['Time', 'Correct', 'Wrong'],
+                    labels: [
+                      _t(context).sumTime,
+                      _t(context).sumCorrect,
+                      _t(context).sumWrong,
+                    ],
                     children: [
                       _StatCard(
                         icon: Icons.timer_rounded,
                         value: _formatDuration(result.durationSeconds),
-                        label: 'Time',
+                        label: _t(context).sumTime,
                         color: hc.info,
                       ),
                       _StatCard(
                         icon: Icons.check_circle_rounded,
                         value: '${result.score}',
-                        label: 'Correct',
+                        label: _t(context).sumCorrect,
                         color: AppColors.success,
                       ),
                       _StatCard(
                         icon: Icons.cancel_rounded,
                         value: '${result.totalQuestions - result.score}',
-                        label: 'Wrong',
+                        label: _t(context).sumWrong,
                         color: AppColors.error,
                       ),
                     ],
@@ -140,7 +150,7 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Category Breakdown',
+                    _t(context).sumCategoryBreakdown,
                     style: AppTypography.titleMedium.copyWith(
                       color: hc.textPrimary,
                       fontWeight: FontWeight.w700,
@@ -163,7 +173,7 @@ class AssessmentSummaryScreen extends ConsumerWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Question Review',
+                  _t(context).sumQuestionReview,
                   style: AppTypography.titleMedium.copyWith(
                     color: hc.textPrimary,
                     fontWeight: FontWeight.w700,
@@ -186,7 +196,10 @@ class AssessmentSummaryScreen extends ConsumerWidget {
               // a large text scale, however small the label gets. Stack them
               // instead: taller, but both fully readable and fully tappable.
               ReflowRow(
-                    labels: const ['Back to Hub', 'View Analytics'],
+                    labels: [
+                      _t(context).sumBackToHub,
+                      _t(context).sumViewAnalytics,
+                    ],
                     children: [
                       OutlinedButton.icon(
                           onPressed: () => context.popOrGo('/assessment'),
@@ -194,10 +207,10 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                           // A button's child Row measures intrinsics, so
                           // the style step rather than FitText.
                           label: Text(
-                            'Back to Hub',
+                            _t(context).sumBackToHub,
                             style: fittedStyle(
                               context,
-                              'Back to Hub',
+                              _t(context).sumBackToHub,
                               Theme.of(context).textTheme.labelLarge,
                               longWord: 4,
                             ),
@@ -213,10 +226,10 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                           onPressed: () => context.push('/assessment/results'),
                           icon: const Icon(Icons.analytics_rounded),
                           label: Text(
-                            'View Analytics',
+                            _t(context).sumViewAnalytics,
                             style: fittedStyle(
                               context,
-                              'View Analytics',
+                              _t(context).sumViewAnalytics,
                               Theme.of(context).textTheme.labelLarge,
                               longWord: 4,
                             ),
@@ -246,6 +259,9 @@ class AssessmentSummaryScreen extends ConsumerWidget {
   }
 
   Color _scoreColor(double pct) => scoreColor(pct);
+
+  static AppLocalizations _t(BuildContext context) =>
+      AppLocalizations.of(context) ?? AppLocalizationsEn();
 
   String _formatDuration(int seconds) {
     final min = seconds ~/ 60;
@@ -331,7 +347,14 @@ class _CategoryScoreBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Semantics(
-        label: '$category: $displayPercent percent',
+        label: (AppLocalizations.of(context) ?? AppLocalizationsEn())
+            .sumCategorySemantics(
+              QuestionPrompt.categoryName(
+                category,
+                AppLocalizations.of(context),
+              ),
+              displayPercent,
+            ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -340,7 +363,10 @@ class _CategoryScoreBar extends StatelessWidget {
               children: [
                 Flexible(
                   child: Text(
-                    category,
+                    QuestionPrompt.categoryName(
+                      category,
+                      AppLocalizations.of(context),
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.labelMedium.copyWith(
@@ -424,7 +450,10 @@ class _QuestionReviewTile extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                answer.givenAnswer,
+                QuestionPrompt.answer(
+                  answer.givenAnswer,
+                  AppLocalizations.of(context),
+                ),
                 style: AppTypography.bodySmall.copyWith(color: hc.textPrimary),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

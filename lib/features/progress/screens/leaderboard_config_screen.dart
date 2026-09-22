@@ -9,6 +9,8 @@ import '../../../providers/classroom_management_provider.dart';
 import '../../../providers/home_group_provider.dart';
 import '../../../providers/online_leaderboard_provider.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Educator-facing leaderboard controls for one classroom / home group.
 ///
@@ -33,7 +35,7 @@ class LeaderboardConfigScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: const Text('Leaderboard Settings'),
+        title: Text(_t(context).lcTitle),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -52,12 +54,12 @@ class LeaderboardConfigScreen extends ConsumerWidget {
 
               // ─── Visibility ──────────────────────────
               _Section(
-                title: 'Visibility',
+                title: _t(context).lcVisibility,
                 child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: config.visible,
                   activeThumbColor: AppColors.primary,
-                  title: Text('Show leaderboard to members',
+                  title: Text(_t(context).lcShow,
                       style: AppTypography.bodyMedium
                           .copyWith(color: hc.textPrimary)),
                   subtitle: Text(
@@ -73,14 +75,14 @@ class LeaderboardConfigScreen extends ConsumerWidget {
 
               // ─── Ranking metric ──────────────────────
               _Section(
-                title: 'Rank by',
+                title: _t(context).lcRankBy,
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
                     for (final m in LeaderboardSort.values)
                       ChoiceChip(
-                        label: Text(m.label),
+                        label: Text(_sortLabel(_t(context), m)),
                         selected: config.metric == m,
                         onSelected: (_) => save(config.copyWith(metric: m)),
                       ),
@@ -90,7 +92,7 @@ class LeaderboardConfigScreen extends ConsumerWidget {
 
               // ─── Time period / reset ─────────────────
               _Section(
-                title: 'Time period',
+                title: _t(context).lcPeriod,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -100,7 +102,7 @@ class LeaderboardConfigScreen extends ConsumerWidget {
                       children: [
                         for (final p in LeaderboardPeriod.values)
                           ChoiceChip(
-                            label: Text(p.label),
+                            label: Text(_periodLabel(_t(context), p)),
                             selected: config.period == p,
                             onSelected: (_) =>
                                 save(config.copyWith(period: p)),
@@ -113,7 +115,7 @@ class LeaderboardConfigScreen extends ConsumerWidget {
                         Expanded(
                           child: OutlinedButton.icon(
                             icon: const Icon(Icons.restart_alt_rounded),
-                            label: const Text('Start new season'),
+                            label: Text(_t(context).lcNewSeason),
                             onPressed: () => save(config.copyWith(
                                 seasonStartAt: DateTime.now())),
                           ),
@@ -121,7 +123,7 @@ class LeaderboardConfigScreen extends ConsumerWidget {
                         if (config.seasonStartAt != null) ...[
                           const SizedBox(width: 8),
                           IconButton(
-                            tooltip: 'Clear season',
+                            tooltip: _t(context).lcClearSeason,
                             icon: const Icon(Icons.clear_rounded),
                             onPressed: () =>
                                 save(config.copyWith(clearSeason: true)),
@@ -142,7 +144,7 @@ class LeaderboardConfigScreen extends ConsumerWidget {
 
               // ─── Hidden members ──────────────────────
               _Section(
-                title: 'Hide members',
+                title: _t(context).lcHide,
                 child: _MemberHideList(
                   scope: scope,
                   hiddenIds: config.hiddenMemberIds.toSet(),
@@ -205,7 +207,7 @@ class _MemberHideList extends ConsumerWidget {
     }
 
     if (roster.isEmpty) {
-      return Text('No members have joined yet.',
+      return Text(_t(context).lcNoMembers,
           style: AppTypography.bodySmall.copyWith(color: hc.textSecondary));
     }
 
@@ -272,3 +274,21 @@ class _Section extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+String _sortLabel(AppLocalizations t, LeaderboardSort s) => switch (s) {
+  LeaderboardSort.byStars => t.lbSortStars,
+  LeaderboardSort.byWords => t.lbSortWords,
+  LeaderboardSort.byStreak => t.lbSortStreak,
+  LeaderboardSort.byOverall => t.lbSortOverall,
+};
+
+String _periodLabel(AppLocalizations t, LeaderboardPeriod p) => switch (p) {
+  LeaderboardPeriod.allTime => t.lbAllTime,
+  LeaderboardPeriod.thisWeek => t.lbThisWeek,
+  LeaderboardPeriod.thisMonth => t.lbThisMonth,
+};

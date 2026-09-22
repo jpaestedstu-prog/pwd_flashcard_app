@@ -8,6 +8,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_snack_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 
 /// Settings entry for **Backup & Recovery**: shows the profile's active
 /// recovery code (or invites the user to generate one). Reachable from
@@ -52,11 +54,11 @@ class _ShowRecoveryCodeScreenState
       ref.invalidate(recoveryCodeProvider(profileId));
       AppSnackBar.success(
         context,
-        message: 'Recovery code created. Save it somewhere safe.',
+        message: _t(context).rcCreated,
       );
     } on RecoveryCodeException catch (e) {
       if (!mounted) return;
-      AppSnackBar.error(context, message: e.message);
+      AppSnackBar.error(context, message: e.localizedMessage(_t(context)));
     } catch (e) {
       if (!mounted) return;
       AppSnackBar.error(context, message: e.toString());
@@ -72,10 +74,10 @@ class _ShowRecoveryCodeScreenState
       return Scaffold(
         appBar: AppBar(
           leading: const AppBackButton(),
-          title: const Text('Backup & Recovery'),
+          title: Text(_t(context).rcBackupTitle),
         ),
-        body: const Center(
-          child: Text('Select a profile first to view its recovery code.'),
+        body: Center(
+          child: Text(_t(context).rcSelectProfile),
         ),
       );
     }
@@ -85,7 +87,7 @@ class _ShowRecoveryCodeScreenState
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: const Text('Backup & Recovery'),
+        title: Text(_t(context).rcBackupTitle),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -140,15 +142,14 @@ class _Header extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Backup & Recovery',
+          _t(context).rcBackupTitle,
           style: AppTypography.headlineMedium.copyWith(
             fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 6),
         Text(
-          'A recovery code lets $profileName restore their profile and '
-          'progress on a new device if this one is lost or replaced.',
+          _t(context).rcExplain(profileName),
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.textSecondary,
           ),
@@ -187,7 +188,7 @@ class _GeneratePrompt extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'No recovery code yet',
+                  _t(context).rcNoneYet,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -197,8 +198,7 @@ class _GeneratePrompt extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Generate a one-time code now. Write it down or take a photo — '
-            "you'll need it to restore this profile on another device.",
+            _t(context).rcGenerateNow,
             style: AppTypography.bodyMedium,
           ),
           const SizedBox(height: 20),
@@ -211,7 +211,7 @@ class _GeneratePrompt extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.add_rounded),
-            label: Text(busy ? 'Generating…' : 'Generate recovery code'),
+            label: Text(busy ? _t(context).rcGenerating : _t(context).rcGenerate),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
@@ -257,7 +257,7 @@ class _CodeDisplay extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                isFreshlyGenerated ? 'Code created!' : 'Your recovery code',
+                isFreshlyGenerated ? _t(context).rcCodeCreated : _t(context).rcYourCode,
                 style: AppTypography.titleMedium.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -280,12 +280,12 @@ class _CodeDisplay extends StatelessWidget {
                   if (context.mounted) {
                     AppSnackBar.success(
                       context,
-                      message: 'Recovery code copied to clipboard',
+                      message: _t(context).rcCopied,
                     );
                   }
                 },
                 icon: const Icon(Icons.copy_rounded),
-                label: const Text('Copy to clipboard'),
+                label: Text(_t(context).rcCopy),
               ),
             ],
           ),
@@ -311,8 +311,7 @@ class _CodeDisplay extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Save this code somewhere safe. If you lose it AND lose '
-                  'access to this device, the profile cannot be recovered.',
+                  _t(context).rcSaveWarning,
                   style: AppTypography.bodySmall,
                 ),
               ),
@@ -329,11 +328,11 @@ class _CodeDisplay extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.refresh_rounded),
-          label: Text(busy ? 'Regenerating…' : 'Generate a new code'),
+          label: Text(busy ? _t(context).rcRegenerating : _t(context).rcNewCode),
         ),
         const SizedBox(height: 4),
         Text(
-          'Regenerating revokes the previous code.',
+          _t(context).rcRevokes,
           style: AppTypography.bodySmall.copyWith(
             color: AppColors.textSecondary,
           ),
@@ -375,3 +374,8 @@ class _ErrorCard extends StatelessWidget {
     );
   }
 }
+
+/// `AppLocalizations.of` is nullable here, and a screen pumped in a test
+/// without the delegate would otherwise throw.
+AppLocalizations _t(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
