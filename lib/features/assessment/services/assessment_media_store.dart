@@ -265,6 +265,9 @@ class AssessmentMediaLedger {
 
   void adopted(String value) => _adopted.add(value.trim());
 
+  /// Everything picked during this edit, kept or not.
+  Set<String> get adoptedValues => Set.unmodifiable(_adopted);
+
   /// Files to delete once [saved] has been stored.
   Set<String> toDiscardOnSave(AssessmentMedia saved) => {
     ...initial.storedValues,

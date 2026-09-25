@@ -12330,4 +12330,27 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get assessMediaRecordSignTitle => 'Mag-record sa FSL';
+
+  @override
+  String get assessPictureChoicesHelp =>
+      'Magdagdag ng larawan sa kahit anong pagpipilian. Mapipindot ng mga hindi pa nakakabasa ang larawan; maririnig pa rin ng may mahinang paningin ang mga salita.';
+
+  @override
+  String get assessPictureAnswers => 'Mga sagot na larawan';
+
+  @override
+  String assessChoicePictureAdd(String letter) {
+    return 'Magdagdag ng larawan sa pagpipiliang $letter';
+  }
+
+  @override
+  String assessChoicePicture(String letter) {
+    return 'Larawan ng pagpipiliang $letter';
+  }
+
+  @override
+  String get assessChoicePictureReplace => 'Palitan ang larawan';
+
+  @override
+  String get assessChoicePictureRemove => 'Alisin ang larawan';
 }

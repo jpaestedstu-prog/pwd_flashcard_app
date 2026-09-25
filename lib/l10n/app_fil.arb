@@ -3435,5 +3435,11 @@
   "captureRecordedHint": "Handa na ang iyong bidyo. Gamitin ito, o mag-record ulit.",
   "assessMediaRecordVideo": "Mag-record gamit ang camera",
   "assessMediaTakePhoto": "Kumuha ng larawan gamit ang camera",
-  "assessMediaRecordSignTitle": "Mag-record sa FSL"
+  "assessMediaRecordSignTitle": "Mag-record sa FSL",
+  "assessPictureChoicesHelp": "Magdagdag ng larawan sa kahit anong pagpipilian. Mapipindot ng mga hindi pa nakakabasa ang larawan; maririnig pa rin ng may mahinang paningin ang mga salita.",
+  "assessPictureAnswers": "Mga sagot na larawan",
+  "assessChoicePictureAdd": "Magdagdag ng larawan sa pagpipiliang {letter}",
+  "assessChoicePicture": "Larawan ng pagpipiliang {letter}",
+  "assessChoicePictureReplace": "Palitan ang larawan",
+  "assessChoicePictureRemove": "Alisin ang larawan"
 }

@@ -98,7 +98,7 @@ class CustomAssessmentsNotifier extends StateNotifier<List<Assessment>> {
     final files = {
       for (final a in state)
         if (a.id == assessmentId)
-          for (final q in a.questions) ...q.media.storedValues,
+          for (final q in a.questions) ...q.storedValues,
     };
     await cloud.deleteAssessment(profileId, assessmentId);
     state = AssessmentService.getAssessments(profileId);

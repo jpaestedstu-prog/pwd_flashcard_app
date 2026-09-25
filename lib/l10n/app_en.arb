@@ -8490,5 +8490,25 @@
   "captureRecordedHint": "Your video is ready. Use it, or record again.",
   "assessMediaRecordVideo": "Record with the camera",
   "assessMediaTakePhoto": "Take a photo with the camera",
-  "assessMediaRecordSignTitle": "Record in FSL"
+  "assessMediaRecordSignTitle": "Record in FSL",
+  "assessPictureChoicesHelp": "Add a picture to any choice. Learners who don’t read yet can tap the picture; learners with low vision still hear the words.",
+  "assessPictureAnswers": "Picture answers",
+  "assessChoicePictureAdd": "Add a picture to choice {letter}",
+  "@assessChoicePictureAdd": {
+    "placeholders": {
+      "letter": {
+        "type": "String"
+      }
+    }
+  },
+  "assessChoicePicture": "Picture for choice {letter}",
+  "@assessChoicePicture": {
+    "placeholders": {
+      "letter": {
+        "type": "String"
+      }
+    }
+  },
+  "assessChoicePictureReplace": "Replace the picture",
+  "assessChoicePictureRemove": "Remove the picture"
 }

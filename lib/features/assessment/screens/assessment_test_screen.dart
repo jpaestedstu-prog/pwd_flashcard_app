@@ -893,7 +893,48 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     );
   }
 
+  /// How one choice looks: plain before answering, then green for the right
+  /// answer and red for a wrong pick — the same for words and pictures.
+  ({Color bg, Color border, Color text}) _choiceColors(
+    HCColor hc, {
+    required bool isSelected,
+    required bool isCorrectAnswer,
+  }) {
+    if (!_answered) {
+      return (bg: hc.surface, border: hc.border, text: hc.textPrimary);
+    }
+    if (isSelected && _isCorrect) {
+      return (
+        bg: AppColors.success.withValues(alpha: 0.15),
+        border: AppColors.success,
+        text: AppColors.success,
+      );
+    }
+    if (isSelected && !_isCorrect) {
+      return (
+        bg: AppColors.error.withValues(alpha: 0.15),
+        border: AppColors.error,
+        text: AppColors.error,
+      );
+    }
+    if (isCorrectAnswer) {
+      return (
+        bg: AppColors.success.withValues(alpha: 0.1),
+        border: AppColors.success.withValues(alpha: 0.5),
+        text: AppColors.success,
+      );
+    }
+    return (bg: hc.surface, border: hc.border, text: hc.textHint);
+  }
+
   Widget _buildChoices(HCColor hc) {
+    // Pictures to tap, for a learner who does not read yet — unless this
+    // learner cannot use pictures, who keeps the list their screen reader
+    // reads (see AssessmentMediaPresentation.pictureChoices).
+    if (_mediaPresentation.pictureChoices &&
+        _currentQuestion.hasPictureChoices) {
+      return _buildPictureChoices(hc);
+    }
     return Column(
       children: List.generate(_currentQuestion.choices.length, (i) {
         final choice = _currentQuestion.choices[i];
@@ -904,31 +945,14 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
             choice.toLowerCase() ==
             _currentQuestion.correctAnswer.toLowerCase();
 
-        Color bgColor;
-        Color borderColor;
-        Color textColor;
-
-        if (!_answered) {
-          bgColor = hc.surface;
-          borderColor = hc.border;
-          textColor = hc.textPrimary;
-        } else if (isSelected && _isCorrect) {
-          bgColor = AppColors.success.withValues(alpha: 0.15);
-          borderColor = AppColors.success;
-          textColor = AppColors.success;
-        } else if (isSelected && !_isCorrect) {
-          bgColor = AppColors.error.withValues(alpha: 0.15);
-          borderColor = AppColors.error;
-          textColor = AppColors.error;
-        } else if (isCorrectAnswer) {
-          bgColor = AppColors.success.withValues(alpha: 0.1);
-          borderColor = AppColors.success.withValues(alpha: 0.5);
-          textColor = AppColors.success;
-        } else {
-          bgColor = hc.surface;
-          borderColor = hc.border;
-          textColor = hc.textHint;
-        }
+        final colors = _choiceColors(
+          hc,
+          isSelected: isSelected,
+          isCorrectAnswer: isCorrectAnswer,
+        );
+        final bgColor = colors.bg;
+        final borderColor = colors.border;
+        final textColor = colors.text;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -993,6 +1017,143 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
             .fadeIn(duration: 300.ms, delay: (100 + i * 80).ms)
             .slideY(begin: 0.1, end: 0);
       }),
+    );
+  }
+
+  /// The choices as a grid of pictures. Every card still carries its letter
+  /// and words — for the educator reading over a shoulder, and for the
+  /// learner who is just starting to read — and the whole card is the
+  /// button, a big target for an unsteady hand or a gaze pointer.
+  Widget _buildPictureChoices(HCColor hc) {
+    final q = _currentQuestion;
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 520;
+        final columns = wide
+            ? (q.choices.length > 4 ? 3 : 2)
+            : (scale > 1.5 ? 1 : 2);
+        const gap = 12.0;
+        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (var i = 0; i < q.choices.length; i++)
+              SizedBox(
+                width: width,
+                child: _pictureChoice(hc, i)
+                    .animate(key: ValueKey('picture_${_currentIndex}_$i'))
+                    .fadeIn(duration: 300.ms, delay: (100 + i * 80).ms),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _pictureChoice(HCColor hc, int i) {
+    final q = _currentQuestion;
+    final choice = q.choices[i];
+    final shown = QuestionPrompt.choice(q, choice, _t);
+    final isSelected = _selectedAnswer == choice;
+    final isCorrectAnswer =
+        choice.toLowerCase() == q.correctAnswer.toLowerCase();
+    final colors = _choiceColors(
+      hc,
+      isSelected: isSelected,
+      isCorrectAnswer: isCorrectAnswer,
+    );
+    final picture = q.choiceImages[choice];
+    final letter = String.fromCharCode(65 + i);
+
+    return Semantics(
+      button: !_answered,
+      selected: isSelected,
+      label: shown,
+      onTap: _answered ? null : () => _selectAnswer(choice),
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: () => _selectAnswer(choice),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: colors.bg,
+              borderRadius: BorderRadius.circular(18),
+              // Thicker than the list's rim: on a picture the colour is the
+              // main signal of right and wrong.
+              border: Border.all(color: colors.border, width: 3),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: picture != null
+                      ? AssessmentPicture(value: picture, maxHeight: 600)
+                      : Container(
+                          decoration: BoxDecoration(
+                            color: hc.surfaceVariant,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            letter,
+                            style: AppTypography.displayLarge.copyWith(
+                              color: hc.textSecondary,
+                            ),
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: colors.border.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        letter,
+                        style: AppTypography.labelLarge.copyWith(
+                          color: colors.text,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        shown,
+                        style: AppTypography.titleSmall.copyWith(
+                          color: colors.text,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (_answered && isCorrectAnswer)
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.success,
+                        size: 22,
+                      ),
+                    if (_answered && isSelected && !_isCorrect)
+                      const Icon(
+                        Icons.cancel_rounded,
+                        color: AppColors.error,
+                        size: 22,
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

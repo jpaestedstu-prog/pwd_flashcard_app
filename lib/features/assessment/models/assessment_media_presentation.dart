@@ -68,6 +68,12 @@ class AssessmentMediaPresentation {
   /// which language it was filmed in rather than implying it is theirs.
   final bool signSystemDiffers;
 
+  /// Show answer choices that have pictures as a grid of pictures to tap.
+  /// Off for a learner with a visual impairment, who gets the choices as a
+  /// list of words their screen reader reads — a picture is no help to them,
+  /// and a grid is harder to move through than a list.
+  final bool pictureChoices;
+
   const AssessmentMediaPresentation({
     required this.order,
     required this.showSign,
@@ -78,6 +84,7 @@ class AssessmentMediaPresentation {
     required this.leadOnly,
     required this.largeControls,
     this.signSystemDiffers = false,
+    this.pictureChoices = true,
   });
 
   /// The slots of [media] this learner sees, lead first.
@@ -100,6 +107,7 @@ class AssessmentMediaPresentation {
     bool? leadOnly,
     bool? largeControls,
     bool? signSystemDiffers,
+    bool? pictureChoices,
   }) => AssessmentMediaPresentation(
     order: order ?? this.order,
     showSign: showSign ?? this.showSign,
@@ -110,6 +118,7 @@ class AssessmentMediaPresentation {
     leadOnly: leadOnly ?? this.leadOnly,
     largeControls: largeControls ?? this.largeControls,
     signSystemDiffers: signSystemDiffers ?? this.signSystemDiffers,
+    pictureChoices: pictureChoices ?? this.pictureChoices,
   );
 
   static const _p = AssessmentMediaKind.photo;
@@ -131,6 +140,7 @@ class AssessmentMediaPresentation {
         offerReadAloud: true,
         leadOnly: false,
         largeControls: true,
+        pictureChoices: false,
       ),
       DisabilityType.hearing => AssessmentMediaPresentation(
         order: const [_s, _v, _g, _p, _a],

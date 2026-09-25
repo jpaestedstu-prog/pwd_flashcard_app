@@ -40,17 +40,22 @@ class _AssessmentBuilderScreenState
   final List<AssessmentQuestion> _questions = [];
   final Set<FlashcardCategory> _selectedCategories = {};
 
-  /// Set once the assessment is stored. Until then the files picked for its
-  /// questions belong to nothing, and leaving — by the close button or by the
-  /// system back gesture — removes them.
+  /// Set once the assessment is stored.
   bool _saved = false;
+
+  /// Every file picked while this builder is open, by any question sheet.
+  ///
+  /// Cleanup happens here, once, not in each sheet: a sheet that deleted the
+  /// file it replaced would delete one the *stored* assessment still uses
+  /// the moment the educator then left without saving. So nothing is
+  /// deleted until the assessment is saved (files picked and not kept) or
+  /// abandoned (files picked this session).
+  final AssessmentMediaLedger _ledger = AssessmentMediaLedger();
 
   @override
   void dispose() {
     if (!_saved) {
-      const AssessmentMediaStore().discard({
-        for (final q in _questions) ...q.media.storedValues,
-      });
+      const AssessmentMediaStore().discard(_ledger.adoptedValues);
     }
     _titleController.dispose();
     _descriptionController.dispose();
@@ -211,12 +216,10 @@ class _AssessmentBuilderScreenState
                           return _QuestionCard(
                             index: i,
                             question: q,
-                            onDelete: () {
-                              const AssessmentMediaStore().discard(
-                                q.media.storedValues,
-                              );
-                              setState(() => _questions.removeAt(i));
-                            },
+                            // Its files go when the assessment is saved
+                            // without it — see [_ledger].
+                            onDelete: () =>
+                                setState(() => _questions.removeAt(i)),
                             onEdit: () => _showEditQuestionDialog(i),
                           );
                         }),
@@ -302,6 +305,7 @@ class _AssessmentBuilderScreenState
       useSafeArea: true,
       builder: (_) => _QuestionEditorSheet(
         ownerProfileId: ref.read(profileProvider)?.id,
+        ledger: _ledger,
       ),
     );
     if (result != null && mounted) {
@@ -326,6 +330,7 @@ class _AssessmentBuilderScreenState
       builder: (_) => _QuestionEditorSheet(
         existing: _questions[index],
         ownerProfileId: ref.read(profileProvider)?.id,
+        ledger: _ledger,
       ),
     );
     if (result != null && mounted) {
@@ -365,6 +370,11 @@ class _AssessmentBuilderScreenState
 
     _saved = true;
     ref.read(customAssessmentsProvider.notifier).saveAssessment(assessment);
+    // Files picked and then replaced, removed, or left in a cancelled sheet.
+    final kept = {for (final q in assessment.questions) ...q.storedValues};
+    const AssessmentMediaStore().discardUnreferenced(
+      _ledger.adoptedValues.difference(kept),
+    );
 
     AppSnackBar.success(context, message: _t(context).abSaved(assessment.title));
 
@@ -492,6 +502,13 @@ class _QuestionCard extends StatelessWidget {
               const SizedBox(height: 6),
               AssessmentMediaBadges(kinds: question.media.supplied),
             ],
+            if (question.hasPictureChoices) ...[
+              const SizedBox(height: 6),
+              _MiniChip(
+                label: _t(context).assessPictureAnswers,
+                color: AppColors.info,
+              ),
+            ],
             if (question.choices.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
@@ -542,7 +559,15 @@ class _QuestionEditorSheet extends StatefulWidget {
   /// The educator a picked file is shared as.
   final String? ownerProfileId;
 
-  const _QuestionEditorSheet({this.existing, this.ownerProfileId});
+  /// The builder's ledger: this sheet records what it picks there, and the
+  /// builder decides what to delete when the assessment is saved or left.
+  final AssessmentMediaLedger ledger;
+
+  const _QuestionEditorSheet({
+    this.existing,
+    this.ownerProfileId,
+    required this.ledger,
+  });
 
   @override
   State<_QuestionEditorSheet> createState() => _QuestionEditorSheetState();
@@ -561,8 +586,14 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
   late final String _questionId =
       widget.existing?.id ?? 'q_${DateTime.now().millisecondsSinceEpoch}';
   late AssessmentMedia _media = widget.existing?.media ?? AssessmentMedia.none;
-  late final AssessmentMediaLedger _ledger = AssessmentMediaLedger(_media);
-  bool _committed = false;
+
+  /// A picture per choice, parallel to [_choiceControllers] ('' = none).
+  /// Kept by position while editing, because the choice's words can change
+  /// under it; turned into a map keyed by text only when the question saves.
+  final List<String> _choicePictures = [];
+
+  /// The choice whose picture is being picked or shared right now.
+  int? _pictureBusy;
 
   @override
   void initState() {
@@ -576,20 +607,36 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
       _format = e.format;
       for (final c in e.choices) {
         _choiceControllers.add(TextEditingController(text: c));
+        _choicePictures.add(e.choiceImages[c] ?? '');
       }
     } else {
       // Default 4 choices for multiple choice
       for (int i = 0; i < 4; i++) {
         _choiceControllers.add(TextEditingController());
+        _choicePictures.add('');
       }
+    }
+  }
+
+  Future<void> _pickChoicePicture(int index) async {
+    setState(() => _pictureBusy = index);
+    try {
+      final value = await pickAssessmentPicture(
+        context,
+        ownerKey: '${_questionId}_choice$index',
+        ledger: widget.ledger,
+        ownerProfileId: widget.ownerProfileId,
+      );
+      if (value != null && mounted && index < _choicePictures.length) {
+        setState(() => _choicePictures[index] = value);
+      }
+    } finally {
+      if (mounted) setState(() => _pictureBusy = null);
     }
   }
 
   @override
   void dispose() {
-    if (!_committed) {
-      const AssessmentMediaStore().discard(_ledger.toDiscardOnCancel());
-    }
     _questionTextController.dispose();
     _correctAnswerController.dispose();
     _hintController.dispose();
@@ -673,6 +720,10 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                             _choiceControllers.add(TextEditingController());
                           }
                         }
+                        // Pictures belong to multiple-choice answers only.
+                        _choicePictures
+                          ..clear()
+                          ..addAll(List.filled(_choiceControllers.length, ''));
                       }),
                       selectedColor:
                           AppColors.primary.withValues(alpha: 0.2),
@@ -699,7 +750,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                   value: _media,
                   onChanged: (m) => setState(() => _media = m),
                   ownerKey: _questionId,
-                  ledger: _ledger,
+                  ledger: widget.ledger,
                   forQuestion: true,
                   ownerProfileId: widget.ownerProfileId,
                 ),
@@ -720,6 +771,14 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                   Text(_t(context).abChoicesTitle,
                       style: AppTypography.labelLarge
                           .copyWith(color: hc.textSecondary)),
+                  if (_format == QuestionFormat.multipleChoice) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _t(context).assessPictureChoicesHelp,
+                      style: AppTypography.bodySmall
+                          .copyWith(color: hc.textSecondary),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   ...List.generate(_choiceControllers.length, (i) {
                     return Padding(
@@ -745,6 +804,19 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                                   .copyWith(color: hc.textPrimary),
                             ),
                           ),
+                          if (_format == QuestionFormat.multipleChoice) ...[
+                            const SizedBox(width: 6),
+                            _ChoicePictureButton(
+                              value: _choicePictures[i],
+                              letter: String.fromCharCode(65 + i),
+                              busy: _pictureBusy == i,
+                              onPick: _pictureBusy == null
+                                  ? () => _pickChoicePicture(i)
+                                  : null,
+                              onRemove: () =>
+                                  setState(() => _choicePictures[i] = ''),
+                            ),
+                          ],
                           if (_format == QuestionFormat.multipleChoice &&
                               _choiceControllers.length > 2)
                             IconButton(
@@ -754,6 +826,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                                 setState(() {
                                   _choiceControllers[i].dispose();
                                   _choiceControllers.removeAt(i);
+                                  _choicePictures.removeAt(i);
                                 });
                               },
                             ),
@@ -767,6 +840,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                       onPressed: () {
                         setState(() {
                           _choiceControllers.add(TextEditingController());
+                          _choicePictures.add('');
                         });
                       },
                       icon: const Icon(Icons.add, size: 16),
@@ -889,13 +963,82 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
       imageAsset: widget.existing?.imageAsset,
       signCardId: widget.existing?.signCardId,
       media: _media,
+      choiceImages: _format == QuestionFormat.multipleChoice
+          ? {
+              for (var i = 0; i < _choiceControllers.length; i++)
+                if (_choiceControllers[i].text.trim().isNotEmpty &&
+                    _choicePictures[i].trim().isNotEmpty)
+                  _choiceControllers[i].text.trim(): _choicePictures[i],
+            }
+          : const {},
     );
 
-    // Nothing is stored yet, so a file this edit replaced or removed is
-    // referred to by nothing at all.
-    _committed = true;
-    const AssessmentMediaStore().discard(_ledger.toDiscardOnSave(_media));
     Navigator.pop(context, question);
+  }
+}
+
+/// The picture for one answer choice: an "add a picture" button, or the
+/// picture itself with Replace / Remove behind it.
+class _ChoicePictureButton extends StatelessWidget {
+  final String value;
+  final String letter;
+  final bool busy;
+  final VoidCallback? onPick;
+  final VoidCallback onRemove;
+
+  const _ChoicePictureButton({
+    required this.value,
+    required this.letter,
+    required this.busy,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = _t(context);
+    if (busy) {
+      return const SizedBox(
+        width: 48,
+        height: 48,
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+    if (value.trim().isEmpty) {
+      return IconButton.outlined(
+        tooltip: t.assessChoicePictureAdd(letter),
+        onPressed: onPick,
+        icon: const Icon(Icons.add_photo_alternate_rounded),
+      );
+    }
+    return PopupMenuButton<String>(
+      tooltip: t.assessChoicePicture(letter),
+      onSelected: (v) {
+        if (v == 'replace') onPick?.call();
+        if (v == 'remove') onRemove();
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'replace',
+          child: Text(t.assessChoicePictureReplace),
+        ),
+        PopupMenuItem(
+          value: 'remove',
+          child: Text(t.assessChoicePictureRemove),
+        ),
+      ],
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: AssessmentPicture(value: value, maxHeight: 48),
+      ),
+    );
   }
 }
 

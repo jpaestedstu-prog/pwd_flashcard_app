@@ -20713,6 +20713,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Record in FSL'**
   String get assessMediaRecordSignTitle;
+
+  /// No description provided for @assessPictureChoicesHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a picture to any choice. Learners who don’t read yet can tap the picture; learners with low vision still hear the words.'**
+  String get assessPictureChoicesHelp;
+
+  /// No description provided for @assessPictureAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture answers'**
+  String get assessPictureAnswers;
+
+  /// No description provided for @assessChoicePictureAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a picture to choice {letter}'**
+  String assessChoicePictureAdd(String letter);
+
+  /// No description provided for @assessChoicePicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture for choice {letter}'**
+  String assessChoicePicture(String letter);
+
+  /// No description provided for @assessChoicePictureReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace the picture'**
+  String get assessChoicePictureReplace;
+
+  /// No description provided for @assessChoicePictureRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the picture'**
+  String get assessChoicePictureRemove;
 }
 
 class _AppLocalizationsDelegate

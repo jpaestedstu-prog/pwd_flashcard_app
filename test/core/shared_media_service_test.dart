@@ -427,6 +427,42 @@ void main() {
       );
     });
 
+    test('choice pictures picked offline are shared too', () async {
+      final src = await fileOf(20, 'cat.png');
+      final cat = (await const AssessmentMediaStore().adopt(
+        sourcePath: src.path,
+        ownerKey: 'q1_choice0',
+        kind: AssessmentMediaKind.photo,
+      )).value!;
+      await AssessmentService.saveAssessment(
+        'teacher-1',
+        Assessment(
+          id: 'a1',
+          title: 'A',
+          type: AssessmentType.custom,
+          questions: [
+            AssessmentQuestion(
+              id: 'q1',
+              questionText: 'Which says meow?',
+              correctAnswer: 'Cat',
+              choices: const ['Cat', 'Dog'],
+              choiceImages: {'Cat': cat, 'Dog': 'https://example.com/dog.png'},
+            ),
+          ],
+          createdBy: 'teacher-1',
+          createdAt: DateTime(2026, 9),
+        ),
+      );
+      expect(
+        await const AssessmentMediaPublisher().publishPending('teacher-1'),
+        1,
+      );
+      final q = AssessmentService.getAssessments('teacher-1').single.questions
+          .single;
+      expect(SharedMediaService.isShared(q.choiceImages['Cat']!), isTrue);
+      expect(q.choiceImages['Dog'], 'https://example.com/dog.png');
+    });
+
     test('offline, nothing is re-saved and the files stay put', () async {
       final src = await fileOf(20, 'q.png');
       final q = (await const AssessmentMediaStore().adopt(

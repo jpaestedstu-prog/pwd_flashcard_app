@@ -616,6 +616,7 @@ class AssessmentService {
               hint: q.hint,
               signCardId: q.signCardId,
               media: q.media,
+              choiceImages: q.choiceImages,
             ))
         .toList()
       ..shuffle(rng);
@@ -802,6 +803,9 @@ class AssessmentService {
         // sign-language version away from the learners who needed the most
         // support to read the question.
         media: q.media,
+        // Keyed by choice text, so the pictures of the choices kept still
+        // match; the dropped ones are simply never looked up.
+        choiceImages: q.choiceImages,
       );
     }).toList();
   }
@@ -1333,7 +1337,7 @@ class AssessmentService {
           final json = Map<String, dynamic>.from(entry);
           if (isAssessments) {
             for (final q in Assessment.fromJson(json).questions) {
-              out.addAll(q.media.storedValues);
+              out.addAll(q.storedValues);
             }
           } else {
             out.addAll(AssessmentAssignment.fromJson(json).storedValues);

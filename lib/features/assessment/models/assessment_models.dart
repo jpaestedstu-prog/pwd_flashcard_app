@@ -128,6 +128,13 @@ class AssessmentQuestion {
   /// media existed.
   final AssessmentMedia media;
 
+  /// A picture for each answer choice, keyed by the choice's text — so a
+  /// learner who does not read yet can tap the picture of the cat rather
+  /// than the word. Only choices with a picture appear; empty on anything
+  /// that has none. Keyed by text rather than position because the choices
+  /// are shuffled and narrowed ("fewer choices") before a learner sees them.
+  final Map<String, String> choiceImages;
+
   const AssessmentQuestion({
     required this.id,
     required this.questionText,
@@ -139,7 +146,20 @@ class AssessmentQuestion {
     this.hint,
     this.signCardId,
     this.media = AssessmentMedia.none,
+    this.choiceImages = const {},
   });
+
+  /// Whether any choice has a picture.
+  bool get hasPictureChoices =>
+      choiceImages.values.any((v) => v.trim().isNotEmpty);
+
+  /// Every file this question stored — its media and its choice pictures —
+  /// for cleanup when nothing refers to them any more.
+  Set<String> get storedValues => {
+    ...media.storedValues,
+    for (final v in choiceImages.values)
+      ...AssessmentMedia(photo: v).storedValues,
+  };
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -152,6 +172,11 @@ class AssessmentQuestion {
     'hint': hint,
     'signCardId': signCardId,
     if (!media.isEmpty) 'media': media.toJson(),
+    if (hasPictureChoices)
+      'choiceImages': {
+        for (final e in choiceImages.entries)
+          if (e.value.trim().isNotEmpty) e.key: e.value.trim(),
+      },
   };
 
   factory AssessmentQuestion.fromJson(Map<String, dynamic> json) {
@@ -172,22 +197,40 @@ class AssessmentQuestion {
       hint: json['hint'] as String?,
       signCardId: json['signCardId'] as String?,
       media: AssessmentMedia.fromJson(json['media']),
+      choiceImages: _choiceImagesFromJson(json['choiceImages']),
     );
   }
 
-  /// A copy with [media] in place of this question's own.
-  AssessmentQuestion withMedia(AssessmentMedia media) => AssessmentQuestion(
+  static Map<String, String> _choiceImagesFromJson(Object? raw) {
+    if (raw is! Map) return const {};
+    return {
+      for (final e in raw.entries)
+        if (e.value is String && (e.value as String).trim().isNotEmpty)
+          e.key.toString(): (e.value as String).trim(),
+    };
+  }
+
+  /// A copy with the given parts replaced.
+  AssessmentQuestion copyWith({
+    List<String>? choices,
+    AssessmentMedia? media,
+    Map<String, String>? choiceImages,
+  }) => AssessmentQuestion(
     id: id,
     questionText: questionText,
     correctAnswer: correctAnswer,
-    choices: choices,
+    choices: choices ?? this.choices,
     format: format,
     category: category,
     imageAsset: imageAsset,
     hint: hint,
     signCardId: signCardId,
-    media: media,
+    media: media ?? this.media,
+    choiceImages: choiceImages ?? this.choiceImages,
   );
+
+  /// A copy with [media] in place of this question's own.
+  AssessmentQuestion withMedia(AssessmentMedia media) => copyWith(media: media);
 }
 
 /// An assessment definition (template)

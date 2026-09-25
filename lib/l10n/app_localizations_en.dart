@@ -12420,4 +12420,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assessMediaRecordSignTitle => 'Record in FSL';
+
+  @override
+  String get assessPictureChoicesHelp =>
+      'Add a picture to any choice. Learners who don’t read yet can tap the picture; learners with low vision still hear the words.';
+
+  @override
+  String get assessPictureAnswers => 'Picture answers';
+
+  @override
+  String assessChoicePictureAdd(String letter) {
+    return 'Add a picture to choice $letter';
+  }
+
+  @override
+  String assessChoicePicture(String letter) {
+    return 'Picture for choice $letter';
+  }
+
+  @override
+  String get assessChoicePictureReplace => 'Replace the picture';
+
+  @override
+  String get assessChoicePictureRemove => 'Remove the picture';
 }

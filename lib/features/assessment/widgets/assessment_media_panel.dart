@@ -356,11 +356,18 @@ class _MediaImage extends StatefulWidget {
   final String semanticLabel;
   final bool pauseAnimation;
 
+  /// Tap to enlarge, with its own semantics. Off inside something that is
+  /// itself the button — an answer choice — which then speaks for it.
+  final bool interactive;
+  final double maxHeight;
+
   const _MediaImage({
     required this.value,
     required this.kind,
     required this.semanticLabel,
     required this.pauseAnimation,
+    this.interactive = true,
+    this.maxHeight = 280,
   });
 
   @override
@@ -452,6 +459,23 @@ class _MediaImageState extends State<_MediaImage> {
     final hc = HCColor.of(context);
     final t = _tr(context);
     final isGif = widget.kind == AssessmentMediaKind.gif;
+    if (!widget.interactive) {
+      return ExcludeSemantics(
+        child: Container(
+          constraints: BoxConstraints(maxHeight: widget.maxHeight),
+          decoration: BoxDecoration(
+            color: hc.surfaceVariant,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          clipBehavior: Clip.antiAlias,
+          alignment: Alignment.center,
+          child: TickerMode(
+            enabled: !isGif || !widget.pauseAnimation,
+            child: _image(),
+          ),
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -465,7 +489,7 @@ class _MediaImageState extends State<_MediaImage> {
             child: GestureDetector(
               onTap: () => _enlarge(context),
               child: Container(
-                constraints: const BoxConstraints(maxHeight: 280),
+                constraints: BoxConstraints(maxHeight: widget.maxHeight),
                 decoration: BoxDecoration(
                   color: hc.surfaceVariant,
                   borderRadius: BorderRadius.circular(16),
@@ -550,6 +574,32 @@ class _MediaImageState extends State<_MediaImage> {
       },
     );
   }
+}
+
+/// A picture from any source the module understands — a link, a file on
+/// this tablet, a bundled asset or a shared file — shown whole (never
+/// cropped) and silent to a screen reader: the answer card around it names
+/// the choice. Falls back to a calm "could not load" rather than a broken
+/// image.
+class AssessmentPicture extends StatelessWidget {
+  final String value;
+  final double maxHeight;
+
+  const AssessmentPicture({
+    super.key,
+    required this.value,
+    this.maxHeight = 180,
+  });
+
+  @override
+  Widget build(BuildContext context) => _MediaImage(
+    value: value,
+    kind: AssessmentMediaKind.photo,
+    semanticLabel: '',
+    pauseAnimation: false,
+    interactive: false,
+    maxHeight: maxHeight,
+  );
 }
 
 // ─── Sound ────────────────────────────────────────────────

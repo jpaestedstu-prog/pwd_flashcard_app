@@ -124,8 +124,12 @@ class AssessmentMediaCache {
     Assessment assessment,
     AssessmentMediaPresentation presentation,
   ) => {
-    for (final q in assessment.questions)
-      for (final kind in presentation.kindsFor(q.media)) q.media.urlFor(kind).trim(),
+    for (final q in assessment.questions) ...[
+      for (final kind in presentation.kindsFor(q.media))
+        q.media.urlFor(kind).trim(),
+      if (presentation.pictureChoices)
+        for (final v in q.choiceImages.values) v.trim(),
+    ],
   }.toList();
 
   /// Makes every value available offline and returns the ones that are still

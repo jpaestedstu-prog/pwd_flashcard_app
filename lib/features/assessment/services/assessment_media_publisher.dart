@@ -34,7 +34,7 @@ class AssessmentMediaPublisher {
     try {
       var changed = 0;
       for (final assessment in AssessmentService.getAssessments(educatorId)) {
-        if (!assessment.questions.any((q) => _pending(q.media))) continue;
+        if (!assessment.questions.any(_questionPending)) continue;
         final questions = <AssessmentQuestion>[];
         var touched = false;
         for (final q in assessment.questions) {
@@ -42,8 +42,21 @@ class AssessmentMediaPublisher {
             q.media,
             ownerProfileId: educatorId,
           );
-          touched = touched || media != q.media;
-          questions.add(q.withMedia(media));
+          final pictures = <String, String>{};
+          for (final e in q.choiceImages.entries) {
+            final shared = await store.shareAll(
+              AssessmentMedia(photo: e.value),
+              ownerProfileId: educatorId,
+            );
+            pictures[e.key] = shared.photo;
+          }
+          final changed =
+              media != q.media ||
+              pictures.entries.any((e) => q.choiceImages[e.key] != e.value);
+          touched = touched || changed;
+          questions.add(
+            changed ? q.copyWith(media: media, choiceImages: pictures) : q,
+          );
         }
         if (touched) {
           await cloud.saveAssessment(
@@ -93,4 +106,8 @@ class AssessmentMediaPublisher {
 
   static bool _pending(AssessmentMedia media) =>
       media.deviceFiles.any(AssessmentMediaStore.isOwnFile);
+
+  static bool _questionPending(AssessmentQuestion q) =>
+      _pending(q.media) ||
+      q.choiceImages.values.any(AssessmentMediaStore.isOwnFile);
 }

@@ -57,6 +57,85 @@ InputDecoration assessmentFieldDecoration(
   );
 }
 
+/// Picks one picture — from the camera, the device or a link — for something
+/// smaller than a whole media section, such as one answer choice. Returns
+/// the value to store (already shared with every device when that worked),
+/// or null when the educator cancelled or the pick failed.
+///
+/// Records what it picked in [ledger], so a cancelled question sheet cleans
+/// up after it like the full editor does.
+Future<String?> pickAssessmentPicture(
+  BuildContext context, {
+  required String ownerKey,
+  required AssessmentMediaLedger ledger,
+  String? ownerProfileId,
+}) async {
+  const kind = AssessmentMediaKind.photo;
+  final canShare =
+      (ownerProfileId?.isNotEmpty ?? false) &&
+      const SharedMediaService().available;
+  FocusManager.instance.primaryFocus?.unfocus();
+  final choice = await showModalBottomSheet<_Source>(
+    context: context,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (_) => _MediaSourceSheet(kind: kind, willShare: canShare),
+  );
+  if (choice == null || !context.mounted) return null;
+  if (choice.link != null) return choice.link;
+  String? captured;
+  if (choice.capture) {
+    captured = await captureMedia(context, mode: CaptureMode.photo);
+    if (captured == null || !context.mounted) return null;
+  }
+  final result = captured != null
+      ? await const AssessmentMediaStore().adoptCaptured(
+          capturedPath: captured,
+          ownerKey: ownerKey,
+          kind: kind,
+        )
+      : await const AssessmentMediaStore().pickAndAdopt(
+          ownerKey: ownerKey,
+          kind: kind,
+        );
+  if (!context.mounted) return null;
+  final t = _tr(context);
+  switch (result.status) {
+    case MediaPickStatus.cancelled:
+      return null;
+    case MediaPickStatus.tooLarge:
+      AppSnackBar.warning(
+        context,
+        message: t.assessMediaTooLarge(
+          AssessmentMediaStore.maxBytes ~/ (1024 * 1024),
+        ),
+      );
+      return null;
+    case MediaPickStatus.failed:
+      AppSnackBar.warning(context, message: t.assessMediaPickFailed);
+      return null;
+    case MediaPickStatus.added:
+      break;
+  }
+  final value = result.value!;
+  ledger.adopted(value);
+  if (!canShare) return value;
+  final shared = await const AssessmentMediaStore().share(
+    value,
+    ownerProfileId: ownerProfileId!,
+  );
+  if (shared.status == SharedUploadStatus.shared) {
+    ledger.adopted(shared.value);
+    return shared.value;
+  }
+  // Stays on this tablet; the next sync shares it.
+  if (context.mounted && shared.status == SharedUploadStatus.failed) {
+    AppSnackBar.warning(context, message: t.assessMediaShareFailed);
+  }
+  return value;
+}
+
 /// The order slots are offered in. The sign-language version leads: for a
 /// Deaf learner it is the one that carries the words.
 const List<AssessmentMediaKind> _editorOrder = [
