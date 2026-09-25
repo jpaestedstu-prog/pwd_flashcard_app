@@ -11954,4 +11954,265 @@ class AppLocalizationsFil extends AppLocalizations {
   String dwsUnlocked(String badge) {
     return 'Nabuksan ang $badge!';
   }
+
+  @override
+  String get assessMediaPhoto => 'Larawan';
+
+  @override
+  String get assessMediaGif => 'GIF na gumagalaw';
+
+  @override
+  String get assessMediaVideo => 'Bidyo';
+
+  @override
+  String get assessMediaAudio => 'Tunog';
+
+  @override
+  String get assessMediaSign => 'Bidyo sa FSL';
+
+  @override
+  String get assessMediaSectionTitle => 'Larawan, bidyo at senyas';
+
+  @override
+  String get assessMediaSectionHelp =>
+      'Opsyonal. Makikita ito ng bawat mag-aaral sa paraang angkop sa kanya — unang makikita ng mag-aaral na Bingi ang bidyo sa FSL, at maririnig ng may mahinang paningin ang tunog at ang paglalarawan.';
+
+  @override
+  String assessMediaAdd(String kind) {
+    return 'Magdagdag ng $kind';
+  }
+
+  @override
+  String get assessMediaFromDevice => 'Pumili mula sa device na ito';
+
+  @override
+  String get assessMediaOnDevice =>
+      'Nasa tablet na ito lang — hindi ito makikita ng mag-aaral sa ibang device.';
+
+  @override
+  String get assessMediaPasteLink => 'O mag-paste ng link';
+
+  @override
+  String get assessMediaLinkHint => 'https://… (direktang link sa file)';
+
+  @override
+  String get assessMediaUseLink => 'Gamitin ang link na ito';
+
+  @override
+  String get assessMediaLinkInvalid =>
+      'Mag-paste ng link na nagsisimula sa https://';
+
+  @override
+  String get assessMediaLinkReaches => 'Makikita ang link sa bawat device.';
+
+  @override
+  String get assessMediaPreview => 'Silipin';
+
+  @override
+  String get assessMediaReplace => 'Palitan';
+
+  @override
+  String get assessMediaRemove => 'Alisin';
+
+  @override
+  String assessMediaTooLarge(int size) {
+    return 'Masyadong malaki ang file na iyan. Pumili ng mas maliit sa $size MB.';
+  }
+
+  @override
+  String get assessMediaPickFailed =>
+      'Hindi maidagdag ang file na iyan. Subukan ang iba.';
+
+  @override
+  String get assessMediaDescribe => 'Ilarawan ito sa mga salita';
+
+  @override
+  String get assessMediaDescribeHelp =>
+      'Babasahin nang malakas para sa hindi nakakakita, at ipapakita bilang caption para sa hindi nakakarinig.';
+
+  @override
+  String get assessMediaDescribeHelpQuestion =>
+      'Babasahin nang malakas para sa hindi nakakakita, at ipapakita bilang caption para sa hindi nakakarinig. Huwag ibigay ang sagot.';
+
+  @override
+  String get assessMediaSignHelp =>
+      'Ipinapakita sa mga mag-aaral na gumagamit ng senyas. Kung ang senyas mismo ang itatanong, ilagay ang clip sa Bidyo para makita ng lahat.';
+
+  @override
+  String assessMediaTipFor(String names, String advice) {
+    return 'Para kay $names: $advice';
+  }
+
+  @override
+  String get assessMediaTipHearing =>
+      'magdagdag ng bidyo sa FSL, at isulat sa mga salita ang anumang tunog.';
+
+  @override
+  String get assessMediaTipVisual =>
+      'magdagdag ng tunog, at ilarawan sa mga salita ang mga larawan — babasahin ito nang malakas.';
+
+  @override
+  String get assessMediaTipCognitive =>
+      'pinakamainam ang isang malinaw na larawan — isa-isa ang nakikita nila.';
+
+  @override
+  String get assessMediaTipMotor =>
+      'kusang nagpe-play ang mga bidyo, kaya walang maliliit na pindutang kailangan.';
+
+  @override
+  String get assessMediaTipMultiple =>
+      'magdagdag ng bidyo sa FSL at larawan, at ilarawan ang mga ito sa mga salita.';
+
+  @override
+  String get assessMediaTipWordsOnly =>
+      'isulat ang lahat sa mga salita — ipapakita ito bilang caption.';
+
+  @override
+  String get assessMediaSignHeading => 'Senyas';
+
+  @override
+  String get assessMediaFilmedInFsl => 'Kinunan sa FSL';
+
+  @override
+  String get assessMediaCaption => 'Ang ipinapakita o sinasabi nito';
+
+  @override
+  String get assessMediaReadAloud => 'Basahin mo sa akin';
+
+  @override
+  String assessMediaShowMore(int count) {
+    return 'Ipakita pa ($count)';
+  }
+
+  @override
+  String get assessMediaTapToEnlarge => 'Pindutin para lumaki';
+
+  @override
+  String get assessMediaPlayAnimation => 'I-play ang gumagalaw na larawan';
+
+  @override
+  String get assessMediaStopAnimation => 'Ihinto ang gumagalaw na larawan';
+
+  @override
+  String get assessMediaPlay => 'I-play';
+
+  @override
+  String get assessMediaPause => 'Ihinto sandali';
+
+  @override
+  String get assessMediaReplay => 'Panoorin ulit';
+
+  @override
+  String get assessMediaClose => 'Isara';
+
+  @override
+  String assessMediaOnOtherDevice(String kind) {
+    return 'Nakaimbak ang $kind na ito sa tablet ng iyong guro, kaya hindi ito maipakita rito.';
+  }
+
+  @override
+  String assessMediaCouldNotLoad(String kind) {
+    return 'Hindi ma-load ang $kind na ito. Subukan muli kapag may internet.';
+  }
+
+  @override
+  String get assessMediaPreparing => 'Inihahanda ang mga larawan at bidyo…';
+
+  @override
+  String get assessMediaMissingTitle =>
+      'May mga larawan o bidyong wala pa sa tablet na ito';
+
+  @override
+  String get assessMediaMissingBody =>
+      'Kumonekta sa Wi‑Fi at subukang muli, o magsimula nang wala ang mga ito. Hindi pa nagsisimula ang pagsusulit.';
+
+  @override
+  String get assessMediaStartAnyway => 'Magsimula nang wala ang mga ito';
+
+  @override
+  String get assessInstructionsMediaTitle =>
+      'Larawan, bidyo o senyas para sa mga tagubilin';
+
+  @override
+  String get assessBriefingTitle => 'Bago ka magsimula';
+
+  @override
+  String get assessBriefingStart => 'Simulan ang pagsusulit';
+
+  @override
+  String get assessBriefingLater => 'Mamaya na lang';
+
+  @override
+  String assessFeedbackFor(String name) {
+    return 'Puna para kay $name';
+  }
+
+  @override
+  String assessFeedbackOn(String title) {
+    return 'Puna sa $title';
+  }
+
+  @override
+  String get assessFeedbackFromEducator => 'Mula sa iyong guro o magulang';
+
+  @override
+  String get assessFeedbackNote => 'Iyong tala';
+
+  @override
+  String get assessFeedbackNoteHint =>
+      'Ano ang naging maganda, at ano ang susunod na sasanayin';
+
+  @override
+  String get assessFeedbackSave => 'Ipadala ang puna';
+
+  @override
+  String get assessFeedbackRemove => 'Alisin ang puna';
+
+  @override
+  String get assessFeedbackEmpty =>
+      'Sumulat muna ng tala o magdagdag ng larawan, bidyo o tunog.';
+
+  @override
+  String get assessFeedbackNotFinished => 'Hindi pa tapos';
+
+  @override
+  String assessFeedbackScore(int percent) {
+    return 'Iskor: $percent%';
+  }
+
+  @override
+  String get assessFeedbackForYou => 'Puna para sa Iyo';
+
+  @override
+  String assessFeedbackAdd(String name) {
+    return 'Magdagdag ng puna para kay $name';
+  }
+
+  @override
+  String assessFeedbackEdit(String name) {
+    return 'Baguhin ang puna para kay $name';
+  }
+
+  @override
+  String assessFeedbackSaved(String name) {
+    return 'Naipadala ang puna kay $name.';
+  }
+
+  @override
+  String get assessFeedbackRemoved => 'Inalis ang puna.';
+
+  @override
+  String assessFeedbackLocalOnly(String name) {
+    return 'Nai-save ang puna sa device na ito — hindi pa naipapadala. Makakarating ito kay $name kapag gumagana na ang pag-sync.';
+  }
+
+  @override
+  String get assessFeedbackNotOwner =>
+      'Nai-save lang sa device na ito. Na-restore ang profile na ito sa ibang device, kaya iyon na ang nagsi-sync — hindi naipadala ang puna.';
+
+  @override
+  String get assessFeedbackTapToOpen => 'Pindutin para buksan';
+
+  @override
+  String get assessFeedbackHas => 'May puna na';
 }

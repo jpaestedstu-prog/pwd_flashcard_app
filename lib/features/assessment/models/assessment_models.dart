@@ -1,6 +1,7 @@
 import '../../../core/accessibility/learner_support.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
+import 'assessment_media.dart';
 
 /// Type of assessment
 enum AssessmentType {
@@ -122,6 +123,11 @@ class AssessmentQuestion {
   /// the media moved, and it has moved before.
   final String? signCardId;
 
+  /// Pictures, video, sound and an FSL version an educator attached to this
+  /// question. Empty on every generated item, and on anything stored before
+  /// media existed.
+  final AssessmentMedia media;
+
   const AssessmentQuestion({
     required this.id,
     required this.questionText,
@@ -132,6 +138,7 @@ class AssessmentQuestion {
     this.imageAsset,
     this.hint,
     this.signCardId,
+    this.media = AssessmentMedia.none,
   });
 
   Map<String, dynamic> toJson() => {
@@ -144,6 +151,7 @@ class AssessmentQuestion {
     'imageAsset': imageAsset,
     'hint': hint,
     'signCardId': signCardId,
+    if (!media.isEmpty) 'media': media.toJson(),
   };
 
   factory AssessmentQuestion.fromJson(Map<String, dynamic> json) {
@@ -163,6 +171,7 @@ class AssessmentQuestion {
       imageAsset: json['imageAsset'] as String?,
       hint: json['hint'] as String?,
       signCardId: json['signCardId'] as String?,
+      media: AssessmentMedia.fromJson(json['media']),
     );
   }
 }
@@ -484,6 +493,14 @@ class AssessmentAssignment {
   final DateTime? deadline;
   final String? instructions;
 
+  /// Pictures, video, sound or an FSL version of [instructions]. The learner
+  /// meets them in the "Before you start" sheet, before the clock runs.
+  final AssessmentMedia media;
+
+  /// The educator's feedback, keyed by learner id. See [AssessmentFeedback]
+  /// for why it lives on the assignment rather than on the result.
+  final Map<String, AssessmentFeedback> feedback;
+
   const AssessmentAssignment({
     required this.id,
     required this.assessmentId,
@@ -493,7 +510,45 @@ class AssessmentAssignment {
     required this.assignedAt,
     this.deadline,
     this.instructions,
+    this.media = AssessmentMedia.none,
+    this.feedback = const {},
   });
+
+  /// [learnerId]'s feedback, if the educator has written any.
+  AssessmentFeedback? feedbackFor(String learnerId) => feedback[learnerId];
+
+  /// A copy with [learnerId]'s feedback replaced — or removed, when [entry] is
+  /// null or empty.
+  AssessmentAssignment withFeedback(
+    String learnerId,
+    AssessmentFeedback? entry,
+  ) {
+    final next = Map<String, AssessmentFeedback>.of(feedback);
+    if (entry == null || entry.isEmpty) {
+      next.remove(learnerId);
+    } else {
+      next[learnerId] = entry;
+    }
+    return AssessmentAssignment(
+      id: id,
+      assessmentId: assessmentId,
+      assessmentTitle: assessmentTitle,
+      assignedBy: assignedBy,
+      studentIds: studentIds,
+      assignedAt: assignedAt,
+      deadline: deadline,
+      instructions: instructions,
+      media: media,
+      feedback: next,
+    );
+  }
+
+  /// Every device file this assignment points at, in its instructions and in
+  /// anyone's feedback.
+  Set<String> get deviceFiles => {
+    ...media.deviceFiles,
+    for (final f in feedback.values) ...f.media.deviceFiles,
+  };
 
   /// Whether the deadline has passed.
   bool get isOverdue =>
@@ -508,6 +563,11 @@ class AssessmentAssignment {
     'assignedAt': assignedAt.toIso8601String(),
     'deadline': deadline?.toIso8601String(),
     'instructions': instructions,
+    if (!media.isEmpty) 'media': media.toJson(),
+    if (feedback.isNotEmpty)
+      'feedback': {
+        for (final e in feedback.entries) e.key: e.value.toJson(),
+      },
   };
 
   factory AssessmentAssignment.fromJson(Map<String, dynamic> json) {
@@ -522,7 +582,19 @@ class AssessmentAssignment {
           ? DateTime.parse(json['deadline'] as String)
           : null,
       instructions: json['instructions'] as String?,
+      media: AssessmentMedia.fromJson(json['media']),
+      feedback: _feedbackFromJson(json['feedback']),
     );
+  }
+
+  static Map<String, AssessmentFeedback> _feedbackFromJson(Object? raw) {
+    if (raw is! Map) return const {};
+    final out = <String, AssessmentFeedback>{};
+    raw.forEach((key, value) {
+      final entry = AssessmentFeedback.tryFromJson(value);
+      if (entry != null) out[key.toString()] = entry;
+    });
+    return out;
   }
 }
 

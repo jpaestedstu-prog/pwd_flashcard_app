@@ -6,6 +6,7 @@ import '../../../data/local/seed_data.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
+import '../models/assessment_media.dart';
 import '../models/assessment_models.dart';
 import '../models/post_test_readiness.dart';
 import '../models/custom_quiz_models.dart';
@@ -614,6 +615,7 @@ class AssessmentService {
               imageAsset: q.imageAsset,
               hint: q.hint,
               signCardId: q.signCardId,
+              media: q.media,
             ))
         .toList()
       ..shuffle(rng);
@@ -796,6 +798,10 @@ class AssessmentService {
         imageAsset: q.imageAsset,
         hint: q.hint,
         signCardId: q.signCardId,
+        // Without this, "fewer choices" quietly took the pictures and the
+        // sign-language version away from the learners who needed the most
+        // support to read the question.
+        media: q.media,
       );
     }).toList();
   }
@@ -1289,6 +1295,55 @@ class AssessmentService {
       return da.compareTo(db);
     });
     return open;
+  }
+
+  /// Feedback an educator left for [studentId], newest first, paired with the
+  /// assignment it is about.
+  static List<({AssessmentAssignment assignment, AssessmentFeedback feedback})>
+      getFeedbackForStudent(String studentId) {
+    final out =
+        <({AssessmentAssignment assignment, AssessmentFeedback feedback})>[];
+    for (final assignment in getAssignmentsForStudent(studentId)) {
+      final entry = assignment.feedbackFor(studentId);
+      if (entry != null) out.add((assignment: assignment, feedback: entry));
+    }
+    out.sort((a, b) => b.feedback.updatedAt.compareTo(a.feedback.updatedAt));
+    return out;
+  }
+
+  /// Every `file://` media value any stored assessment or assignment still
+  /// points at, on this device.
+  ///
+  /// A picked file is only deleted once nothing refers to it. On a shared
+  /// tablet the same file can sit behind two things at once — an assessment
+  /// assigned twice, the same instructions sent to two groups — so "the thing
+  /// I just deleted used it" is not reason enough.
+  static Set<String> referencedMediaFiles() {
+    final out = <String>{};
+    for (final key in _box.keys) {
+      final bucket = key.toString();
+      final isAssessments = bucket.startsWith('assessments_');
+      final isAssignments = bucket.startsWith('assignments_');
+      if (!isAssessments && !isAssignments) continue;
+      final raw = _box.get(key);
+      if (raw is! List) continue;
+      for (final entry in raw) {
+        if (entry is! Map) continue;
+        try {
+          final json = Map<String, dynamic>.from(entry);
+          if (isAssessments) {
+            for (final q in Assessment.fromJson(json).questions) {
+              out.addAll(q.media.deviceFiles);
+            }
+          } else {
+            out.addAll(AssessmentAssignment.fromJson(json).deviceFiles);
+          }
+        } catch (_) {
+          // A row that will not decode refers to nothing we can resolve.
+        }
+      }
+    }
+    return out;
   }
 
   /// Build completion status for each student in an assignment.

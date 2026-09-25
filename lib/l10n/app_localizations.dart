@@ -20083,6 +20083,438 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{badge} unlocked!'**
   String dwsUnlocked(String badge);
+
+  /// No description provided for @assessMediaPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get assessMediaPhoto;
+
+  /// No description provided for @assessMediaGif.
+  ///
+  /// In en, this message translates to:
+  /// **'GIF'**
+  String get assessMediaGif;
+
+  /// No description provided for @assessMediaVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get assessMediaVideo;
+
+  /// No description provided for @assessMediaAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get assessMediaAudio;
+
+  /// No description provided for @assessMediaSign.
+  ///
+  /// In en, this message translates to:
+  /// **'FSL video'**
+  String get assessMediaSign;
+
+  /// No description provided for @assessMediaSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pictures, video & sign language'**
+  String get assessMediaSectionTitle;
+
+  /// No description provided for @assessMediaSectionHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. Each learner meets these in the way that suits them — a Deaf learner sees the FSL video first, a learner with low vision hears the sound and the description.'**
+  String get assessMediaSectionHelp;
+
+  /// No description provided for @assessMediaAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {kind}'**
+  String assessMediaAdd(String kind);
+
+  /// No description provided for @assessMediaFromDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from this device'**
+  String get assessMediaFromDevice;
+
+  /// No description provided for @assessMediaOnDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'On this tablet only — learners on another device won\'t see it.'**
+  String get assessMediaOnDevice;
+
+  /// No description provided for @assessMediaPasteLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Or paste a link'**
+  String get assessMediaPasteLink;
+
+  /// No description provided for @assessMediaLinkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://… (a direct link to the file)'**
+  String get assessMediaLinkHint;
+
+  /// No description provided for @assessMediaUseLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this link'**
+  String get assessMediaUseLink;
+
+  /// No description provided for @assessMediaLinkInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a link that starts with https://'**
+  String get assessMediaLinkInvalid;
+
+  /// No description provided for @assessMediaLinkReaches.
+  ///
+  /// In en, this message translates to:
+  /// **'A link reaches every device.'**
+  String get assessMediaLinkReaches;
+
+  /// No description provided for @assessMediaPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get assessMediaPreview;
+
+  /// No description provided for @assessMediaReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get assessMediaReplace;
+
+  /// No description provided for @assessMediaRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get assessMediaRemove;
+
+  /// No description provided for @assessMediaTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'That file is too big. Choose one under {size} MB.'**
+  String assessMediaTooLarge(int size);
+
+  /// No description provided for @assessMediaPickFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That file could not be added. Try another one.'**
+  String get assessMediaPickFailed;
+
+  /// No description provided for @assessMediaDescribe.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe it in words'**
+  String get assessMediaDescribe;
+
+  /// No description provided for @assessMediaDescribeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Read aloud to learners who can\'t see it, and shown as a caption to learners who can\'t hear it.'**
+  String get assessMediaDescribeHelp;
+
+  /// No description provided for @assessMediaDescribeHelpQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Read aloud to learners who can\'t see it, and shown as a caption to learners who can\'t hear it. Don\'t give the answer away.'**
+  String get assessMediaDescribeHelpQuestion;
+
+  /// No description provided for @assessMediaSignHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown to learners who sign. To ask about a sign itself, put the clip under Video so every learner sees it.'**
+  String get assessMediaSignHelp;
+
+  /// No description provided for @assessMediaTipFor.
+  ///
+  /// In en, this message translates to:
+  /// **'For {names}: {advice}'**
+  String assessMediaTipFor(String names, String advice);
+
+  /// No description provided for @assessMediaTipHearing.
+  ///
+  /// In en, this message translates to:
+  /// **'add an FSL video, and put any sound into words.'**
+  String get assessMediaTipHearing;
+
+  /// No description provided for @assessMediaTipVisual.
+  ///
+  /// In en, this message translates to:
+  /// **'add a sound, and describe pictures in words — they will be read aloud.'**
+  String get assessMediaTipVisual;
+
+  /// No description provided for @assessMediaTipCognitive.
+  ///
+  /// In en, this message translates to:
+  /// **'one clear photo works best — they see one thing at a time.'**
+  String get assessMediaTipCognitive;
+
+  /// No description provided for @assessMediaTipMotor.
+  ///
+  /// In en, this message translates to:
+  /// **'videos play by themselves, so no small buttons are needed.'**
+  String get assessMediaTipMotor;
+
+  /// No description provided for @assessMediaTipMultiple.
+  ///
+  /// In en, this message translates to:
+  /// **'add an FSL video and a photo, and describe them in words.'**
+  String get assessMediaTipMultiple;
+
+  /// No description provided for @assessMediaTipWordsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'put everything into words — it is shown as a caption.'**
+  String get assessMediaTipWordsOnly;
+
+  /// No description provided for @assessMediaSignHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign language'**
+  String get assessMediaSignHeading;
+
+  /// No description provided for @assessMediaFilmedInFsl.
+  ///
+  /// In en, this message translates to:
+  /// **'Filmed in FSL'**
+  String get assessMediaFilmedInFsl;
+
+  /// No description provided for @assessMediaCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'What it shows or says'**
+  String get assessMediaCaption;
+
+  /// No description provided for @assessMediaReadAloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Read it to me'**
+  String get assessMediaReadAloud;
+
+  /// No description provided for @assessMediaShowMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show more ({count})'**
+  String assessMediaShowMore(int count);
+
+  /// No description provided for @assessMediaTapToEnlarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to see it bigger'**
+  String get assessMediaTapToEnlarge;
+
+  /// No description provided for @assessMediaPlayAnimation.
+  ///
+  /// In en, this message translates to:
+  /// **'Play the moving picture'**
+  String get assessMediaPlayAnimation;
+
+  /// No description provided for @assessMediaStopAnimation.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the moving picture'**
+  String get assessMediaStopAnimation;
+
+  /// No description provided for @assessMediaPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get assessMediaPlay;
+
+  /// No description provided for @assessMediaPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get assessMediaPause;
+
+  /// No description provided for @assessMediaReplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch again'**
+  String get assessMediaReplay;
+
+  /// No description provided for @assessMediaClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get assessMediaClose;
+
+  /// No description provided for @assessMediaOnOtherDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This {kind} is saved on your teacher\'s tablet, so it can\'t show here.'**
+  String assessMediaOnOtherDevice(String kind);
+
+  /// No description provided for @assessMediaCouldNotLoad.
+  ///
+  /// In en, this message translates to:
+  /// **'This {kind} could not be loaded. Try again when you are online.'**
+  String assessMediaCouldNotLoad(String kind);
+
+  /// No description provided for @assessMediaPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting the pictures and videos ready…'**
+  String get assessMediaPreparing;
+
+  /// No description provided for @assessMediaMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Some pictures or videos aren\'t on this tablet'**
+  String get assessMediaMissingTitle;
+
+  /// No description provided for @assessMediaMissingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to Wi‑Fi and try again, or start without them. The test has not started.'**
+  String get assessMediaMissingBody;
+
+  /// No description provided for @assessMediaStartAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Start without them'**
+  String get assessMediaStartAnyway;
+
+  /// No description provided for @assessInstructionsMediaTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pictures, video or sign language for the instructions'**
+  String get assessInstructionsMediaTitle;
+
+  /// No description provided for @assessBriefingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Before you start'**
+  String get assessBriefingTitle;
+
+  /// No description provided for @assessBriefingStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the test'**
+  String get assessBriefingStart;
+
+  /// No description provided for @assessBriefingLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get assessBriefingLater;
+
+  /// No description provided for @assessFeedbackFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback for {name}'**
+  String assessFeedbackFor(String name);
+
+  /// No description provided for @assessFeedbackOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback on {title}'**
+  String assessFeedbackOn(String title);
+
+  /// No description provided for @assessFeedbackFromEducator.
+  ///
+  /// In en, this message translates to:
+  /// **'From your teacher or parent'**
+  String get assessFeedbackFromEducator;
+
+  /// No description provided for @assessFeedbackNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Your note'**
+  String get assessFeedbackNote;
+
+  /// No description provided for @assessFeedbackNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What went well, and what to practise next'**
+  String get assessFeedbackNoteHint;
+
+  /// No description provided for @assessFeedbackSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Send feedback'**
+  String get assessFeedbackSave;
+
+  /// No description provided for @assessFeedbackRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove feedback'**
+  String get assessFeedbackRemove;
+
+  /// No description provided for @assessFeedbackEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a note or add a picture, video or sound first.'**
+  String get assessFeedbackEmpty;
+
+  /// No description provided for @assessFeedbackNotFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'Not finished yet'**
+  String get assessFeedbackNotFinished;
+
+  /// No description provided for @assessFeedbackScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Score: {percent}%'**
+  String assessFeedbackScore(int percent);
+
+  /// No description provided for @assessFeedbackForYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback for You'**
+  String get assessFeedbackForYou;
+
+  /// No description provided for @assessFeedbackAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add feedback for {name}'**
+  String assessFeedbackAdd(String name);
+
+  /// No description provided for @assessFeedbackEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit feedback for {name}'**
+  String assessFeedbackEdit(String name);
+
+  /// No description provided for @assessFeedbackSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback sent to {name}.'**
+  String assessFeedbackSaved(String name);
+
+  /// No description provided for @assessFeedbackRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback removed.'**
+  String get assessFeedbackRemoved;
+
+  /// No description provided for @assessFeedbackLocalOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback saved on this device — not sent yet. It will reach {name} when syncing is working.'**
+  String assessFeedbackLocalOnly(String name);
+
+  /// No description provided for @assessFeedbackNotOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on this device only. This profile was restored on another device, so that one now handles syncing — the feedback was not sent.'**
+  String get assessFeedbackNotOwner;
+
+  /// No description provided for @assessFeedbackTapToOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to open'**
+  String get assessFeedbackTapToOpen;
+
+  /// No description provided for @assessFeedbackHas.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback sent'**
+  String get assessFeedbackHas;
 }
 
 class _AppLocalizationsDelegate

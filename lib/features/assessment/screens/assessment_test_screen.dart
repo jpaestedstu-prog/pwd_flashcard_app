@@ -13,6 +13,7 @@ import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/experiment_provider.dart';
 import '../../experiment/models/experiment_models.dart';
+import '../models/assessment_media_presentation.dart';
 import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
 import '../../../core/utils/accessible_sizing.dart';
@@ -20,8 +21,10 @@ import '../../../core/accessibility/learner_support.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../models/question_prompt.dart';
+import '../services/assessment_media_cache.dart';
 import '../services/assessment_service.dart';
 import '../services/sign_clip_readiness.dart';
+import '../widgets/assessment_media_panel.dart';
 import '../widgets/assessment_sign_clip.dart';
 
 /// Screen that runs an assessment quiz — supports multiple choice,
@@ -49,12 +52,18 @@ class AssessmentTestScreen extends ConsumerStatefulWidget {
   /// since no test binding can download a video.
   final Future<List<String>> Function(List<String> cardIds)? prepareSignClips;
 
+  /// Makes the pictures, videos and sounds an educator attached available on
+  /// this tablet and returns the ones still missing. Defaults to
+  /// [AssessmentMediaCache.prepare]; a test seam.
+  final Future<List<String>> Function(List<String> values)? prepareMedia;
+
   const AssessmentTestScreen({
     super.key,
     required this.assessment,
     this.clock,
     this.signClipBuilder,
     this.prepareSignClips,
+    this.prepareMedia,
   });
 
   @override
@@ -108,6 +117,18 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
   bool _clipsReady = true;
   bool _clipsMissing = false;
 
+  /// How this learner meets attached media, resolved once like the time
+  /// limit — a mid-test profile switch must not re-order a question.
+  late final AssessmentMediaPresentation _mediaPresentation;
+
+  /// The attached media this learner will be shown, and whether some of it
+  /// could not be made ready. Unlike a sign item, attached media supports the
+  /// question rather than *being* it, so a learner may start without it —
+  /// but only by choosing to, never because the clock began while a video
+  /// was still downloading.
+  late final List<String> _mediaValues;
+  bool _mediaMissing = false;
+
   @override
   void initState() {
     super.initState();
@@ -123,7 +144,14 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
       supports,
     );
     _signCardIds = SignClipReadiness.cardIdsIn(widget.assessment);
-    if (_signCardIds.isEmpty) {
+    _mediaPresentation = AssessmentMediaPresentation.forProfile(
+      ref.read(profileProvider),
+    );
+    _mediaValues = AssessmentMediaCache.valuesIn(
+      widget.assessment,
+      _mediaPresentation,
+    );
+    if (_signCardIds.isEmpty && _mediaValues.isEmpty) {
       _begin();
     } else {
       _clipsReady = false;
@@ -144,21 +172,46 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
   }
 
   Future<void> _prepareClips() async {
-    if (_clipsMissing) setState(() => _clipsMissing = false);
-    final prepare = widget.prepareSignClips ?? SignClipReadiness.prepare;
-    List<String> missing;
-    try {
-      missing = await prepare(_signCardIds);
-    } catch (_) {
-      missing = _signCardIds;
+    if (_clipsMissing || _mediaMissing) {
+      setState(() {
+        _clipsMissing = false;
+        _mediaMissing = false;
+      });
     }
-    if (!mounted) return;
-    if (missing.isEmpty) {
-      setState(() => _clipsReady = true);
-      _begin();
-    } else {
-      setState(() => _clipsMissing = true);
+    if (_signCardIds.isNotEmpty) {
+      final prepare = widget.prepareSignClips ?? SignClipReadiness.prepare;
+      List<String> missing;
+      try {
+        missing = await prepare(_signCardIds);
+      } catch (_) {
+        missing = _signCardIds;
+      }
+      if (!mounted) return;
+      if (missing.isNotEmpty) {
+        setState(() => _clipsMissing = true);
+        return;
+      }
     }
+    if (_mediaValues.isNotEmpty) {
+      final prepare = widget.prepareMedia ?? AssessmentMediaCache.prepare;
+      List<String> missing;
+      try {
+        missing = await prepare(_mediaValues);
+      } catch (_) {
+        missing = _mediaValues;
+      }
+      if (!mounted) return;
+      if (missing.isNotEmpty) {
+        setState(() => _mediaMissing = true);
+        return;
+      }
+    }
+    _startNow();
+  }
+
+  void _startNow() {
+    setState(() => _clipsReady = true);
+    _begin();
   }
 
   @override
@@ -408,12 +461,54 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!_clipsMissing) ...[
+                if (_mediaMissing) ...[
+                  const Text('🖼️', style: TextStyle(fontSize: 56)),
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n?.assessMediaMissingTitle ??
+                        "Some pictures or videos aren't on this tablet",
+                    textAlign: TextAlign.center,
+                    style: AppTypography.titleMedium.copyWith(
+                      color: hc.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n?.assessMediaMissingBody ??
+                        'Connect to Wi-Fi and try again, or start without '
+                            'them. The test has not started.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: hc.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: _prepareClips,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: Text(l10n?.assessClipsTryAgain ?? 'Try again'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: _startNow,
+                    child: Text(
+                      l10n?.assessMediaStartAnyway ?? 'Start without them',
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.pop(),
+                    child: Text(l10n?.assessClipsGoBack ?? 'Go back'),
+                  ),
+                ] else if (!_clipsMissing) ...[
                   const CircularProgressIndicator(),
                   const SizedBox(height: 20),
                   Text(
-                    l10n?.assessClipsPreparing ??
-                        'Getting the sign videos ready…',
+                    _signCardIds.isEmpty
+                        ? (l10n?.assessMediaPreparing ??
+                              'Getting the pictures and videos ready…')
+                        : (l10n?.assessClipsPreparing ??
+                              'Getting the sign videos ready…'),
                     textAlign: TextAlign.center,
                     style: AppTypography.titleMedium.copyWith(
                       color: hc.textPrimary,
@@ -663,6 +758,25 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                                 (ctx, id) => AssessmentSignClip(cardId: id))(
                             context, _currentQuestion.signCardId!),
                         const SizedBox(height: 20),
+                      ],
+
+                      // What the educator attached: a picture, a video, a
+                      // sound, a signed version of the question — in the
+                      // order and form this learner needs. Keyed by question
+                      // so a video never carries on into the next one.
+                      if (_mediaPresentation.showsAnything(
+                        _currentQuestion.media,
+                      )) ...[
+                        AssessmentMediaPanel(
+                          key: ValueKey('media_$_currentIndex'),
+                          media: _currentQuestion.media,
+                          presentation: _mediaPresentation,
+                          fallbackLabel: QuestionPrompt.localize(
+                            _currentQuestion.questionText,
+                            AppLocalizations.of(context),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                       ],
 
                       // Answer area based on format

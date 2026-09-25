@@ -9,9 +9,13 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
+import '../models/assessment_media.dart';
 import '../models/assessment_models.dart';
 import '../models/question_prompt.dart';
 import '../providers/assessment_provider.dart';
+import '../services/assessment_media_store.dart';
+import '../widgets/assessment_media_editor.dart';
+import '../widgets/assessment_media_panel.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
@@ -36,8 +40,18 @@ class _AssessmentBuilderScreenState
   final List<AssessmentQuestion> _questions = [];
   final Set<FlashcardCategory> _selectedCategories = {};
 
+  /// Set once the assessment is stored. Until then the files picked for its
+  /// questions belong to nothing, and leaving — by the close button or by the
+  /// system back gesture — removes them.
+  bool _saved = false;
+
   @override
   void dispose() {
+    if (!_saved) {
+      const AssessmentMediaStore().discard({
+        for (final q in _questions) ...q.media.deviceFiles,
+      });
+    }
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -197,9 +211,12 @@ class _AssessmentBuilderScreenState
                           return _QuestionCard(
                             index: i,
                             question: q,
-                            onDelete: () => setState(() {
-                              _questions.removeAt(i);
-                            }),
+                            onDelete: () {
+                              const AssessmentMediaStore().discard(
+                                q.media.deviceFiles,
+                              );
+                              setState(() => _questions.removeAt(i));
+                            },
                             onEdit: () => _showEditQuestionDialog(i),
                           );
                         }),
@@ -341,6 +358,7 @@ class _AssessmentBuilderScreenState
       createdAt: DateTime.now(),
     );
 
+    _saved = true;
     ref.read(customAssessmentsProvider.notifier).saveAssessment(assessment);
 
     AppSnackBar.success(context, message: _t(context).abSaved(assessment.title));
@@ -465,6 +483,10 @@ class _QuestionCard extends StatelessWidget {
                       label: question.category!.labelOf(_t(context)), color: AppColors.accent),
               ],
             ),
+            if (question.media.hasAny) ...[
+              const SizedBox(height: 6),
+              AssessmentMediaBadges(kinds: question.media.supplied),
+            ],
             if (question.choices.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
@@ -525,6 +547,14 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
   QuestionFormat _format = QuestionFormat.multipleChoice;
   final List<TextEditingController> _choiceControllers = [];
 
+  /// Fixed when the sheet opens, not when it saves: a file picked for a new
+  /// question is named after the question it will belong to.
+  late final String _questionId =
+      widget.existing?.id ?? 'q_${DateTime.now().millisecondsSinceEpoch}';
+  late AssessmentMedia _media = widget.existing?.media ?? AssessmentMedia.none;
+  late final AssessmentMediaLedger _ledger = AssessmentMediaLedger(_media);
+  bool _committed = false;
+
   @override
   void initState() {
     super.initState();
@@ -548,6 +578,9 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
 
   @override
   void dispose() {
+    if (!_committed) {
+      const AssessmentMediaStore().discard(_ledger.toDiscardOnCancel());
+    }
     _questionTextController.dispose();
     _correctAnswerController.dispose();
     _hintController.dispose();
@@ -647,6 +680,18 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                   decoration: _inputDecor(hc, _t(context).abQuestionText),
                   style: AppTypography.bodyLarge
                       .copyWith(color: hc.textPrimary),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Pictures, video, sound and a signed version — beside the
+                // words they belong to, before the answer fields.
+                AssessmentMediaEditor(
+                  value: _media,
+                  onChanged: (m) => setState(() => _media = m),
+                  ownerKey: _questionId,
+                  ledger: _ledger,
+                  forQuestion: true,
                 ),
 
                 const SizedBox(height: 12),
@@ -822,8 +867,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
     }
 
     final question = AssessmentQuestion(
-      id: widget.existing?.id ??
-          'q_${DateTime.now().millisecondsSinceEpoch}',
+      id: _questionId,
       questionText: qText,
       correctAnswer: answer,
       choices: choices,
@@ -832,8 +876,15 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
       hint: _hintController.text.trim().isEmpty
           ? null
           : _hintController.text.trim(),
+      imageAsset: widget.existing?.imageAsset,
+      signCardId: widget.existing?.signCardId,
+      media: _media,
     );
 
+    // Nothing is stored yet, so a file this edit replaced or removed is
+    // referred to by nothing at all.
+    _committed = true;
+    const AssessmentMediaStore().discard(_ledger.toDiscardOnSave(_media));
     Navigator.pop(context, question);
   }
 }

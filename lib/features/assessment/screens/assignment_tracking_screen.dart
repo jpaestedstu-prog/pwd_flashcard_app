@@ -6,10 +6,16 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/student_list_provider.dart';
+import '../../../data/models/models.dart';
+import '../models/assessment_media.dart';
 import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
+import '../services/assessment_media_store.dart';
 import '../services/assessment_service.dart';
 import '../services/assessment_cloud_service.dart';
+import '../widgets/assessment_media_editor.dart';
+import '../widgets/assessment_media_panel.dart';
+import '../widgets/assessment_media_sheets.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../l10n/app_localizations.dart';
@@ -34,10 +40,12 @@ class AssignmentTrackingScreen extends ConsumerWidget {
 
     // Display names for the assignees. The roster spans devices; local Hive
     // does not, so without this a cross-device student reads "Unknown".
-    final names = {
-      for (final d in ref.watch(educatorLearnerRosterProvider))
-        d.$1.id: d.$1.name,
-    };
+    final roster = ref.watch(educatorLearnerRosterProvider);
+    final names = {for (final d in roster) d.$1.id: d.$1.name};
+    // Whole profiles too: the feedback sheet tips an educator off to what
+    // reaches this learner best — an FSL video for a Deaf child, a spoken
+    // description for one with low vision.
+    final learners = {for (final d in roster) d.$1.id: d.$1};
 
     // Watched, not read: assigning from this screen's "+" action or deleting a
     // card has to repaint the list immediately.
@@ -93,6 +101,13 @@ class AssignmentTrackingScreen extends ConsumerWidget {
                     assignment: assignment,
                     statuses: statuses,
                     hc: hc,
+                    onFeedback: (status) => _editFeedback(
+                      context,
+                      ref,
+                      assignment,
+                      status,
+                      learners[status.studentId],
+                    ),
                     onDelete: () async {
                       final confirm = await showDialog<bool>(
                         context: context,
@@ -140,6 +155,74 @@ class AssignmentTrackingScreen extends ConsumerWidget {
   }
 }
 
+/// Opens the feedback sheet for one learner on one assignment and stores the
+/// result on the assignment, which is what carries it to the learner.
+Future<void> _editFeedback(
+  BuildContext context,
+  WidgetRef ref,
+  AssessmentAssignment assignment,
+  StudentAssignmentStatus status,
+  UserProfile? learner,
+) async {
+  final t = _tr(context);
+  final existing = assignment.feedbackFor(status.studentId);
+  final edit = await showFeedbackEditor(
+    context,
+    learnerName: status.studentName,
+    assignmentTitle: assignment.assessmentTitle,
+    ownerKey: 'fb_${assignment.id}_${status.studentId}',
+    existing: existing,
+    result: status.result,
+    tips: learner == null
+        ? const []
+        : assessmentMediaTips(t, [
+            (
+              name: learner.name,
+              type: learner.disabilityType,
+              supports: learner.supports,
+            ),
+          ]),
+  );
+  if (edit == null) return;
+  if (!context.mounted) {
+    // Nowhere left to report to, so nothing is saved — and a file picked
+    // for it belongs to nothing.
+    await const AssessmentMediaStore().discard(edit.ledger.toDiscardOnCancel());
+    return;
+  }
+
+  // The newest copy, not the one this card was built from: a pull that
+  // landed while the sheet was open (feedback written on another tablet)
+  // must not be overwritten by a stale row.
+  final latest = ref
+      .read(assignmentsProvider)
+      .firstWhere((a) => a.id == assignment.id, orElse: () => assignment);
+  final outcome = await ref
+      .read(assignmentsProvider.notifier)
+      .saveAssignment(latest.withFeedback(status.studentId, edit.feedback));
+  // Only now is the replaced or removed file referred to by nothing.
+  await const AssessmentMediaStore().discardUnreferenced(
+    edit.ledger.toDiscardOnSave(edit.feedback?.media ?? AssessmentMedia.none),
+  );
+  if (!context.mounted) return;
+  switch (outcome) {
+    case CloudSyncOutcome.synced:
+      AppSnackBar.success(
+        context,
+        message: edit.feedback == null
+            ? t.assessFeedbackRemoved
+            : t.assessFeedbackSaved(status.studentName),
+      );
+    case CloudSyncOutcome.localOnly:
+      AppSnackBar.warning(
+        context,
+        message: t.assessFeedbackLocalOnly(status.studentName),
+      );
+    case CloudSyncOutcome.notOwner:
+      AppSnackBar.warning(context, message: t.assessFeedbackNotOwner);
+  }
+}
+
 // ─── Assignment Card ──────────────────────────────────
 
 class _AssignmentCard extends StatelessWidget {
@@ -147,12 +230,14 @@ class _AssignmentCard extends StatelessWidget {
   final List<StudentAssignmentStatus> statuses;
   final HCColor hc;
   final VoidCallback onDelete;
+  final ValueChanged<StudentAssignmentStatus> onFeedback;
 
   const _AssignmentCard({
     required this.assignment,
     required this.statuses,
     required this.hc,
     required this.onDelete,
+    required this.onFeedback,
   });
 
   @override
@@ -263,6 +348,10 @@ class _AssignmentCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
+            if (assignment.media.hasAny) ...[
+              const SizedBox(height: 8),
+              AssessmentMediaBadges(kinds: assignment.media.supplied),
+            ],
 
             const SizedBox(height: 12),
 
@@ -295,9 +384,30 @@ class _AssignmentCard extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // Student status list
-            ...statuses.map((s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+            // Student status list. Each row opens that learner's feedback —
+            // the whole row, not a small icon, so it is an easy target.
+            ...statuses.map((s) {
+              final feedback = assignment.feedbackFor(s.studentId);
+              final t = _tr(context);
+              return Semantics(
+                button: true,
+                onTap: () => onFeedback(s),
+                label: [
+                  curlyQuotes(s.studentName),
+                  s.result != null
+                      ? '${(s.result!.percentage * 100).round()}%'
+                      : s.status.label,
+                  if (feedback != null) t.assessFeedbackHas,
+                  feedback == null
+                      ? t.assessFeedbackAdd(s.studentName)
+                      : t.assessFeedbackEdit(s.studentName),
+                ].join('. '),
+                child: ExcludeSemantics(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => onFeedback(s),
+                    child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
                     children: [
                       CircleAvatar(
@@ -343,9 +453,23 @@ class _AssignmentCard extends StatelessWidget {
                             color: _statusColor(s.status),
                           ),
                         ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        feedback == null
+                            ? Icons.add_comment_outlined
+                            : Icons.rate_review_rounded,
+                        size: 20,
+                        color: feedback == null
+                            ? hc.textSecondary
+                            : AppColors.info,
+                      ),
                     ],
                   ),
-                )),
+                    ),
+                  ),
+                ),
+              );
+            }),
           ],
         ),
       ),

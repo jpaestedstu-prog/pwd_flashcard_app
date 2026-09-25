@@ -1,0 +1,635 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+
+import '../../../core/accessibility/learner_support.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../data/models/enums.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/app_snack_bar.dart';
+import '../../routine/services/routine_media_store.dart';
+import '../../routine/widgets/routine_media.dart';
+import '../models/assessment_media.dart';
+import '../models/assessment_media_presentation.dart';
+import '../services/assessment_media_store.dart';
+import 'assessment_media_panel.dart';
+
+AppLocalizations _tr(BuildContext context) =>
+    AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// A text field's look in this module's sheets — the builder's own style.
+///
+/// Spelled out rather than left to the theme: the app theme draws no border
+/// on an unfocused field, so a bare `OutlineInputBorder` showed an outline
+/// only while typing, and the field vanished into the sheet the moment focus
+/// left it.
+InputDecoration assessmentFieldDecoration(
+  BuildContext context, {
+  required String label,
+  String? helper,
+  String? hint,
+  String? error,
+  Widget? prefixIcon,
+}) {
+  final hc = HCColor.of(context);
+  OutlineInputBorder edge(Color color, [double width = 1]) => OutlineInputBorder(
+    borderRadius: BorderRadius.circular(12),
+    borderSide: BorderSide(color: color, width: width),
+  );
+  return InputDecoration(
+    labelText: label,
+    helperText: helper,
+    helperMaxLines: 4,
+    hintText: hint,
+    errorText: error,
+    prefixIcon: prefixIcon,
+    filled: true,
+    fillColor: hc.surface,
+    border: edge(hc.border),
+    enabledBorder: edge(hc.border),
+    focusedBorder: edge(hc.primary, 2),
+  );
+}
+
+/// The order slots are offered in. The sign-language version leads: for a
+/// Deaf learner it is the one that carries the words.
+const List<AssessmentMediaKind> _editorOrder = [
+  AssessmentMediaKind.sign,
+  AssessmentMediaKind.photo,
+  AssessmentMediaKind.gif,
+  AssessmentMediaKind.video,
+  AssessmentMediaKind.audio,
+];
+
+/// One-line tips about the learners some media is for — "For Ana and Ben: add
+/// an FSL video…" — grouped so five Deaf learners make one line, not five.
+List<String> assessmentMediaTips(
+  AppLocalizations t,
+  Iterable<({String name, DisabilityType type, Set<LearnerSupportOption> supports})>
+  learners,
+) {
+  final byAdvice = <AssessmentMediaAdvice, List<String>>{};
+  for (final l in learners) {
+    final advice = AssessmentMediaAdviceX.forLearner(l.type, l.supports);
+    if (advice == null) continue;
+    byAdvice.putIfAbsent(advice, () => []).add(l.name);
+  }
+  return [
+    for (final e in byAdvice.entries)
+      t.assessMediaTipFor(_names(e.value), _adviceText(t, e.key)),
+  ];
+}
+
+String _names(List<String> names) {
+  if (names.length <= 3) return names.join(', ');
+  return '${names.take(3).join(', ')} +${names.length - 3}';
+}
+
+String _adviceText(AppLocalizations t, AssessmentMediaAdvice a) =>
+    switch (a) {
+      AssessmentMediaAdvice.signAndCaption => t.assessMediaTipHearing,
+      AssessmentMediaAdvice.soundAndDescription => t.assessMediaTipVisual,
+      AssessmentMediaAdvice.onePhoto => t.assessMediaTipCognitive,
+      AssessmentMediaAdvice.playsItself => t.assessMediaTipMotor,
+      AssessmentMediaAdvice.signPhotoAndDescription => t.assessMediaTipMultiple,
+      AssessmentMediaAdvice.captionEverything => t.assessMediaTipWordsOnly,
+    };
+
+/// Attach photos, GIFs, video, sound and an FSL video to something an
+/// educator is writing — a question, an assignment's instructions, or
+/// feedback.
+///
+/// Mirrors the routine step editor's media section (a link reaches every
+/// device, a picked file stays on this tablet, and it says which), but as
+/// "Add" chips rather than five always-open fields: an assessment question
+/// sheet is already long, and most questions carry one picture or none.
+class AssessmentMediaEditor extends StatefulWidget {
+  final AssessmentMedia value;
+  final ValueChanged<AssessmentMedia> onChanged;
+
+  /// Names picked files, so they can be traced back to what they belong to.
+  final String ownerKey;
+
+  /// Records what this edit picked, for cleanup on save or cancel.
+  final AssessmentMediaLedger ledger;
+
+  /// On a question the description must not give the answer away.
+  final bool forQuestion;
+
+  /// One-line tips about the learners this is for.
+  final List<String> tips;
+
+  /// Heading; defaults to the general one.
+  final String? title;
+
+  const AssessmentMediaEditor({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    required this.ownerKey,
+    required this.ledger,
+    this.forQuestion = false,
+    this.tips = const [],
+    this.title,
+  });
+
+  @override
+  State<AssessmentMediaEditor> createState() => _AssessmentMediaEditorState();
+}
+
+class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
+  late final TextEditingController _description = TextEditingController(
+    text: widget.value.description,
+  );
+  AssessmentMediaKind? _busy;
+
+  @override
+  void didUpdateWidget(covariant AssessmentMediaEditor old) {
+    super.didUpdateWidget(old);
+    // Only an outside reset moves the text; typing already matches.
+    if (widget.value.description != _description.text) {
+      _description.text = widget.value.description;
+    }
+  }
+
+  @override
+  void dispose() {
+    _description.dispose();
+    super.dispose();
+  }
+
+  /// Drops the keyboard's focus before a sheet opens. A route that pops hands
+  /// focus back to whatever held it, so without this the question field
+  /// re-focused and the keyboard sprang up over the slot just filled — seen
+  /// on the tablet after every add and every preview.
+  void _releaseFocus() => FocusManager.instance.primaryFocus?.unfocus();
+
+  Future<void> _add(AssessmentMediaKind kind) async {
+    if (_busy != null) return;
+    _releaseFocus();
+    final choice = await showModalBottomSheet<({bool device, String? link})>(
+      context: context,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _MediaSourceSheet(kind: kind),
+    );
+    if (choice == null || !mounted) return;
+    final t = _tr(context);
+    if (!choice.device) {
+      widget.onChanged(widget.value.withSlot(kind, choice.link ?? ''));
+      return;
+    }
+    setState(() => _busy = kind);
+    try {
+      final result = await const AssessmentMediaStore().pickAndAdopt(
+        ownerKey: widget.ownerKey,
+        kind: kind,
+      );
+      if (!mounted) return;
+      switch (result.status) {
+        case MediaPickStatus.added:
+          widget.ledger.adopted(result.value!);
+          widget.onChanged(widget.value.withSlot(kind, result.value!));
+        case MediaPickStatus.cancelled:
+          break;
+        case MediaPickStatus.tooLarge:
+          AppSnackBar.warning(
+            context,
+            message: t.assessMediaTooLarge(
+              AssessmentMediaStore.maxBytes ~/ (1024 * 1024),
+            ),
+          );
+        case MediaPickStatus.failed:
+          AppSnackBar.warning(context, message: t.assessMediaPickFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  void _remove(AssessmentMediaKind kind) =>
+      // The file itself is let go of when the edit is saved (the ledger), so
+      // a remove followed by a cancel still has its picture.
+      widget.onChanged(widget.value.withSlot(kind, ''));
+
+  void _preview(AssessmentMediaKind kind) {
+    _releaseFocus();
+    showModalBottomSheet<void>(
+      context: context,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheet) {
+        final hc = HCColor.of(sheet);
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                kind.labelOf(_tr(sheet)),
+                style: AppTypography.titleMedium.copyWith(
+                  color: hc.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              AssessmentMediaPanel(
+                media: AssessmentMedia.none
+                    .withSlot(kind, widget.value.urlFor(kind))
+                    .withDescription(widget.value.description),
+                presentation: AssessmentMediaPresentation.educatorPreview,
+                fallbackLabel: kind.labelOf(_tr(sheet)),
+              ),
+              TextButton.icon(
+                onPressed: () => Navigator.of(sheet).maybePop(),
+                icon: const Icon(Icons.close_rounded),
+                label: Text(_tr(sheet).assessMediaClose),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final t = _tr(context);
+    final value = widget.value;
+    final filled = _editorOrder.where(value.has).toList();
+    final empty = _editorOrder.where((k) => !value.has(k)).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.perm_media_rounded, color: hc.primary, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                widget.title ?? t.assessMediaSectionTitle,
+                style: AppTypography.titleSmall.copyWith(
+                  color: hc.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          t.assessMediaSectionHelp,
+          style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+        ),
+        for (final tip in widget.tips)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.tips_and_updates_rounded,
+                  size: 18,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    tip,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: hc.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 10),
+        for (final kind in filled)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _FilledSlot(
+              kind: kind,
+              value: value.urlFor(kind),
+              onPreview: () => _preview(kind),
+              onReplace: () => _add(kind),
+              onRemove: () => _remove(kind),
+            ),
+          ),
+        // Buttons rather than chips: a chip keeps its label on one faded
+        // line, and "Magdagdag ng GIF na gumagalaw" at a large font on a
+        // phone would lose its end. A button's label wraps between words.
+        if (empty.isNotEmpty)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final kind in empty)
+                OutlinedButton.icon(
+                  onPressed: _busy == null ? () => _add(kind) : null,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: assessmentMediaColor(kind),
+                    side: BorderSide(
+                      color: assessmentMediaColor(kind).withValues(alpha: 0.5),
+                    ),
+                  ),
+                  icon: _busy == kind
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(assessmentMediaIcon(kind), size: 18),
+                  label: Text(t.assessMediaAdd(kind.labelOf(t))),
+                ),
+            ],
+          ),
+        if (value.hasAny) ...[
+          const SizedBox(height: 14),
+          TextField(
+            controller: _description,
+            maxLines: 3,
+            minLines: 1,
+            textCapitalization: TextCapitalization.sentences,
+            onChanged: (text) =>
+                widget.onChanged(widget.value.withDescription(text)),
+            decoration: assessmentFieldDecoration(
+              context,
+              label: t.assessMediaDescribe,
+              helper: widget.forQuestion
+                  ? t.assessMediaDescribeHelpQuestion
+                  : t.assessMediaDescribeHelp,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// One attached item: what it is, where it lives, and what can be done.
+class _FilledSlot extends StatelessWidget {
+  final AssessmentMediaKind kind;
+  final String value;
+  final VoidCallback onPreview;
+  final VoidCallback onReplace;
+  final VoidCallback onRemove;
+
+  const _FilledSlot({
+    required this.kind,
+    required this.value,
+    required this.onPreview,
+    required this.onReplace,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final t = _tr(context);
+    final color = assessmentMediaColor(kind);
+    final onDevice = RoutineMediaStore.isDeviceFile(value);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(color.withValues(alpha: 0.06), hc.surface),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              _Thumb(kind: kind, value: value),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      kind.labelOf(t),
+                      style: AppTypography.labelLarge.copyWith(
+                        color: hc.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      onDevice
+                          ? t.assessMediaOnDevice
+                          : t.assessMediaLinkReaches,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: onDevice ? AppColors.warning : hc.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (kind == AssessmentMediaKind.sign)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                t.assessMediaSignHelp,
+                style: AppTypography.bodySmall.copyWith(
+                  color: hc.textSecondary,
+                ),
+              ),
+            ),
+          Wrap(
+            spacing: 4,
+            children: [
+              TextButton.icon(
+                onPressed: onPreview,
+                icon: const Icon(Icons.visibility_rounded, size: 18),
+                label: Text(t.assessMediaPreview),
+              ),
+              TextButton.icon(
+                onPressed: onReplace,
+                icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                label: Text(t.assessMediaReplace),
+              ),
+              TextButton.icon(
+                onPressed: onRemove,
+                style: TextButton.styleFrom(foregroundColor: hc.error),
+                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                label: Text(t.assessMediaRemove),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A small square showing a picture, or the kind's icon for anything that
+/// plays.
+class _Thumb extends StatelessWidget {
+  final AssessmentMediaKind kind;
+  final String value;
+
+  const _Thumb({required this.kind, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = assessmentMediaColor(kind);
+    Widget icon() => Icon(assessmentMediaIcon(kind), color: color, size: 28);
+    final v = value.trim();
+    Widget child;
+    if (!kind.isPicture) {
+      child = icon();
+    } else if (RoutineMediaStore.isDeviceFile(v)) {
+      child = Image.file(
+        File(RoutineMediaStore.pathOf(v)),
+        fit: BoxFit.cover,
+        cacheWidth: 160,
+        errorBuilder: (_, _, _) => icon(),
+      );
+    } else if (isAssetMedia(v)) {
+      child = Image.asset(
+        assetPathOf(v),
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => icon(),
+      );
+    } else {
+      child = Image.network(
+        v,
+        fit: BoxFit.cover,
+        cacheWidth: 160,
+        errorBuilder: (_, _, _) => icon(),
+      );
+    }
+    return ExcludeSemantics(
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        clipBehavior: Clip.antiAlias,
+        alignment: Alignment.center,
+        child: child,
+      ),
+    );
+  }
+}
+
+/// "Choose from this device" or "Paste a link" for one slot.
+class _MediaSourceSheet extends StatefulWidget {
+  final AssessmentMediaKind kind;
+  const _MediaSourceSheet({required this.kind});
+
+  @override
+  State<_MediaSourceSheet> createState() => _MediaSourceSheetState();
+}
+
+class _MediaSourceSheetState extends State<_MediaSourceSheet> {
+  final _link = TextEditingController();
+  String? _error;
+
+  @override
+  void dispose() {
+    _link.dispose();
+    super.dispose();
+  }
+
+  void _useLink() {
+    final v = _link.text.trim();
+    final ok = v.startsWith('https://') ||
+        v.startsWith('http://') ||
+        isAssetMedia(v);
+    if (!ok) {
+      setState(() => _error = _tr(context).assessMediaLinkInvalid);
+      return;
+    }
+    Navigator.of(context).pop((device: false, link: v));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final t = _tr(context);
+    final label = widget.kind.labelOf(t);
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              t.assessMediaAdd(label),
+              style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
+            ),
+            if (widget.kind == AssessmentMediaKind.sign) ...[
+              const SizedBox(height: 6),
+              Text(
+                t.assessMediaSignHelp,
+                style: AppTypography.bodySmall.copyWith(
+                  color: hc.textSecondary,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () =>
+                  Navigator.of(context).pop((device: true, link: null)),
+              icon: const Icon(Icons.phone_android_rounded),
+              label: Text(t.assessMediaFromDevice),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              t.assessMediaOnDevice,
+              style: AppTypography.labelSmall.copyWith(
+                color: AppColors.warning,
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _link,
+              keyboardType: TextInputType.url,
+              onSubmitted: (_) => _useLink(),
+              decoration: assessmentFieldDecoration(
+                context,
+                label: t.assessMediaPasteLink,
+                hint: t.assessMediaLinkHint,
+                error: _error,
+                prefixIcon: const Icon(Icons.link_rounded),
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _useLink,
+              icon: const Icon(Icons.check_rounded),
+              label: Text(t.assessMediaUseLink),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              t.assessMediaLinkReaches,
+              style: AppTypography.labelSmall.copyWith(
+                color: hc.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/assessment_media_presentation.dart';
 import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
 import '../services/assessment_cloud_service.dart';
+import '../services/assessment_media_cache.dart';
 import '../services/assessment_service.dart';
 import '../services/sign_clip_readiness.dart';
 
@@ -18,8 +20,8 @@ import '../services/sign_clip_readiness.dart';
 ///  * **New work, live.** A Firestore listener on the learner's assignments
 ///    fires the moment a teacher presses Assign, so the test appears on a
 ///    tablet that never left the app. It only re-pulls when the set of
-///    assignment ids differs from what this device already holds, so an idle
-///    learner costs nothing.
+///    assignments — or this learner's feedback on one — differs from what
+///    this device already holds, so an idle learner costs nothing.
 ///  * **A failed pull is retried.** The first pull on a slow classroom network
 ///    can time out; it used to stay failed until the learner left and reopened
 ///    the app, and assigned work stayed invisible until then. Retries back off
@@ -141,7 +143,7 @@ class _LearnerAssignmentSyncState extends ConsumerState<LearnerAssignmentSync>
         for (final a in AssessmentService.getAssignmentsForStudent(
           widget.profileId,
         ))
-          a.id,
+          AssessmentCloudService.revisionKey(a, widget.profileId),
       };
     } catch (_) {
       // Storage not ready — treat everything as new and pull.
@@ -155,15 +157,35 @@ class _LearnerAssignmentSyncState extends ConsumerState<LearnerAssignmentSync>
   /// again before the first question.
   void _prefetchClips() {
     try {
-      final waiting = AssessmentService.getOpenableAssignments(
-        widget.profileId,
-      ).map((w) => w.assessment).toList();
-      if (waiting.isEmpty) return;
-      unawaited(
-        (widget.prefetchClips ?? SignClipReadiness.prefetch)(
-          waiting,
-        ).catchError((Object _) {}),
-      );
+      final open = AssessmentService.getOpenableAssignments(widget.profileId);
+      final waiting = open.map((w) => w.assessment).toList();
+      if (waiting.isNotEmpty) {
+        unawaited(
+          (widget.prefetchClips ?? SignClipReadiness.prefetch)(
+            waiting,
+          ).catchError((Object _) {}),
+        );
+      }
+      // The pictures, videos and signed instructions an educator attached,
+      // and their feedback — the same "fetch while online" reasoning. Only
+      // the slots this learner will be shown.
+      final presentation = ref.read(assessmentMediaPresentationProvider);
+      final media = [
+        for (final w in open) ...[
+          ...AssessmentMediaCache.valuesIn(w.assessment, presentation),
+          ...AssessmentMediaCache.instructionValues(w.assignment, presentation),
+        ],
+        for (final f in AssessmentService.getFeedbackForStudent(
+          widget.profileId,
+        ))
+          for (final kind in presentation.kindsFor(f.feedback.media))
+            f.feedback.media.urlFor(kind),
+      ];
+      if (media.isNotEmpty) {
+        unawaited(
+          AssessmentMediaCache.prefetchValues(media).catchError((Object _) {}),
+        );
+      }
     } catch (_) {
       // Storage not ready — the test screen's own check still applies.
     }

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/app_providers.dart';
 import '../models/assessment_models.dart';
 import '../services/assessment_cloud_service.dart';
+import '../services/assessment_media_store.dart';
 import '../services/assessment_service.dart';
 
 // ─── Assessment Results Provider ─────────────────────────
@@ -93,8 +94,18 @@ class CustomAssessmentsNotifier extends StateNotifier<List<Assessment>> {
   }
 
   Future<void> deleteAssessment(String assessmentId) async {
+    final files = {
+      for (final a in state)
+        if (a.id == assessmentId)
+          for (final q in a.questions) ...q.media.deviceFiles,
+    };
     await cloud.deleteAssessment(profileId, assessmentId);
     state = AssessmentService.getAssessments(profileId);
+    // A picked video can be tens of megabytes on a shared tablet; once no
+    // stored assessment or assignment refers to it, it goes too.
+    if (files.isNotEmpty) {
+      await const AssessmentMediaStore().discardUnreferenced(files);
+    }
   }
 }
 
@@ -140,8 +151,15 @@ class AssignmentsNotifier extends StateNotifier<List<AssessmentAssignment>> {
   /// happened here still leaves the work on the learner's device, so the
   /// caller has to be able to say so.
   Future<CloudSyncOutcome> deleteAssignment(String assignmentId) async {
+    final files = {
+      for (final a in state)
+        if (a.id == assignmentId) ...a.deviceFiles,
+    };
     final outcome = await cloud.deleteAssignment(educatorId, assignmentId);
     refresh();
+    if (files.isNotEmpty) {
+      await const AssessmentMediaStore().discardUnreferenced(files);
+    }
     return outcome;
   }
 }

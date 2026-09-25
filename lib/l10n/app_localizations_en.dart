@@ -12047,4 +12047,264 @@ class AppLocalizationsEn extends AppLocalizations {
   String dwsUnlocked(String badge) {
     return '$badge unlocked!';
   }
+
+  @override
+  String get assessMediaPhoto => 'Photo';
+
+  @override
+  String get assessMediaGif => 'GIF';
+
+  @override
+  String get assessMediaVideo => 'Video';
+
+  @override
+  String get assessMediaAudio => 'Sound';
+
+  @override
+  String get assessMediaSign => 'FSL video';
+
+  @override
+  String get assessMediaSectionTitle => 'Pictures, video & sign language';
+
+  @override
+  String get assessMediaSectionHelp =>
+      'Optional. Each learner meets these in the way that suits them — a Deaf learner sees the FSL video first, a learner with low vision hears the sound and the description.';
+
+  @override
+  String assessMediaAdd(String kind) {
+    return 'Add $kind';
+  }
+
+  @override
+  String get assessMediaFromDevice => 'Choose from this device';
+
+  @override
+  String get assessMediaOnDevice =>
+      'On this tablet only — learners on another device won\'t see it.';
+
+  @override
+  String get assessMediaPasteLink => 'Or paste a link';
+
+  @override
+  String get assessMediaLinkHint => 'https://… (a direct link to the file)';
+
+  @override
+  String get assessMediaUseLink => 'Use this link';
+
+  @override
+  String get assessMediaLinkInvalid => 'Paste a link that starts with https://';
+
+  @override
+  String get assessMediaLinkReaches => 'A link reaches every device.';
+
+  @override
+  String get assessMediaPreview => 'Preview';
+
+  @override
+  String get assessMediaReplace => 'Replace';
+
+  @override
+  String get assessMediaRemove => 'Remove';
+
+  @override
+  String assessMediaTooLarge(int size) {
+    return 'That file is too big. Choose one under $size MB.';
+  }
+
+  @override
+  String get assessMediaPickFailed =>
+      'That file could not be added. Try another one.';
+
+  @override
+  String get assessMediaDescribe => 'Describe it in words';
+
+  @override
+  String get assessMediaDescribeHelp =>
+      'Read aloud to learners who can\'t see it, and shown as a caption to learners who can\'t hear it.';
+
+  @override
+  String get assessMediaDescribeHelpQuestion =>
+      'Read aloud to learners who can\'t see it, and shown as a caption to learners who can\'t hear it. Don\'t give the answer away.';
+
+  @override
+  String get assessMediaSignHelp =>
+      'Shown to learners who sign. To ask about a sign itself, put the clip under Video so every learner sees it.';
+
+  @override
+  String assessMediaTipFor(String names, String advice) {
+    return 'For $names: $advice';
+  }
+
+  @override
+  String get assessMediaTipHearing =>
+      'add an FSL video, and put any sound into words.';
+
+  @override
+  String get assessMediaTipVisual =>
+      'add a sound, and describe pictures in words — they will be read aloud.';
+
+  @override
+  String get assessMediaTipCognitive =>
+      'one clear photo works best — they see one thing at a time.';
+
+  @override
+  String get assessMediaTipMotor =>
+      'videos play by themselves, so no small buttons are needed.';
+
+  @override
+  String get assessMediaTipMultiple =>
+      'add an FSL video and a photo, and describe them in words.';
+
+  @override
+  String get assessMediaTipWordsOnly =>
+      'put everything into words — it is shown as a caption.';
+
+  @override
+  String get assessMediaSignHeading => 'Sign language';
+
+  @override
+  String get assessMediaFilmedInFsl => 'Filmed in FSL';
+
+  @override
+  String get assessMediaCaption => 'What it shows or says';
+
+  @override
+  String get assessMediaReadAloud => 'Read it to me';
+
+  @override
+  String assessMediaShowMore(int count) {
+    return 'Show more ($count)';
+  }
+
+  @override
+  String get assessMediaTapToEnlarge => 'Tap to see it bigger';
+
+  @override
+  String get assessMediaPlayAnimation => 'Play the moving picture';
+
+  @override
+  String get assessMediaStopAnimation => 'Stop the moving picture';
+
+  @override
+  String get assessMediaPlay => 'Play';
+
+  @override
+  String get assessMediaPause => 'Pause';
+
+  @override
+  String get assessMediaReplay => 'Watch again';
+
+  @override
+  String get assessMediaClose => 'Close';
+
+  @override
+  String assessMediaOnOtherDevice(String kind) {
+    return 'This $kind is saved on your teacher\'s tablet, so it can\'t show here.';
+  }
+
+  @override
+  String assessMediaCouldNotLoad(String kind) {
+    return 'This $kind could not be loaded. Try again when you are online.';
+  }
+
+  @override
+  String get assessMediaPreparing => 'Getting the pictures and videos ready…';
+
+  @override
+  String get assessMediaMissingTitle =>
+      'Some pictures or videos aren\'t on this tablet';
+
+  @override
+  String get assessMediaMissingBody =>
+      'Connect to Wi‑Fi and try again, or start without them. The test has not started.';
+
+  @override
+  String get assessMediaStartAnyway => 'Start without them';
+
+  @override
+  String get assessInstructionsMediaTitle =>
+      'Pictures, video or sign language for the instructions';
+
+  @override
+  String get assessBriefingTitle => 'Before you start';
+
+  @override
+  String get assessBriefingStart => 'Start the test';
+
+  @override
+  String get assessBriefingLater => 'Not now';
+
+  @override
+  String assessFeedbackFor(String name) {
+    return 'Feedback for $name';
+  }
+
+  @override
+  String assessFeedbackOn(String title) {
+    return 'Feedback on $title';
+  }
+
+  @override
+  String get assessFeedbackFromEducator => 'From your teacher or parent';
+
+  @override
+  String get assessFeedbackNote => 'Your note';
+
+  @override
+  String get assessFeedbackNoteHint =>
+      'What went well, and what to practise next';
+
+  @override
+  String get assessFeedbackSave => 'Send feedback';
+
+  @override
+  String get assessFeedbackRemove => 'Remove feedback';
+
+  @override
+  String get assessFeedbackEmpty =>
+      'Write a note or add a picture, video or sound first.';
+
+  @override
+  String get assessFeedbackNotFinished => 'Not finished yet';
+
+  @override
+  String assessFeedbackScore(int percent) {
+    return 'Score: $percent%';
+  }
+
+  @override
+  String get assessFeedbackForYou => 'Feedback for You';
+
+  @override
+  String assessFeedbackAdd(String name) {
+    return 'Add feedback for $name';
+  }
+
+  @override
+  String assessFeedbackEdit(String name) {
+    return 'Edit feedback for $name';
+  }
+
+  @override
+  String assessFeedbackSaved(String name) {
+    return 'Feedback sent to $name.';
+  }
+
+  @override
+  String get assessFeedbackRemoved => 'Feedback removed.';
+
+  @override
+  String assessFeedbackLocalOnly(String name) {
+    return 'Feedback saved on this device — not sent yet. It will reach $name when syncing is working.';
+  }
+
+  @override
+  String get assessFeedbackNotOwner =>
+      'Saved on this device only. This profile was restored on another device, so that one now handles syncing — the feedback was not sent.';
+
+  @override
+  String get assessFeedbackTapToOpen => 'Tap to open';
+
+  @override
+  String get assessFeedbackHas => 'Feedback sent';
 }

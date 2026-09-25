@@ -360,21 +360,36 @@ class AssessmentCloudService {
     }
   }
 
-  /// The ids of every assignment naming [learnerId], live.
+  /// Every assignment naming [learnerId], live, as [revisionKey]s.
   ///
   /// A Firestore listener rather than a poll: it costs one read per document
   /// that actually changes, it reconnects by itself when a classroom network
   /// drops and comes back, and it tells a learner's tablet about new work the
   /// moment the teacher presses Assign — without the learner having to leave
   /// and reopen the app. Empty (never emits) without Firebase.
+  ///
+  /// Keyed by revision, not bare id, so feedback an educator writes on work
+  /// the learner already has — an FSL video telling a Deaf child how they
+  /// did — also arrives while the app is open. Compared against the same key
+  /// computed from this device's copy, so an unchanged row costs nothing.
   Stream<Set<String>> watchLearnerAssignmentIds(String learnerId) {
     if (!_enabled || learnerId.isEmpty) return const Stream.empty();
     return _db
         .collection(assignmentsCollection)
         .where('studentIds', arrayContains: learnerId)
         .snapshots()
-        .map((snap) => {for (final d in snap.docs) d.id});
+        .map(
+          (snap) => {
+            for (final a in _decode(snap.docs, AssessmentAssignment.fromJson))
+              revisionKey(a, learnerId),
+          },
+        );
   }
+
+  /// `<id>@<when this learner's feedback last changed>` — the part of an
+  /// assignment that can change after it is handed out.
+  static String revisionKey(AssessmentAssignment a, String learnerId) =>
+      '${a.id}@${a.feedbackFor(learnerId)?.updatedAt.toIso8601String() ?? ''}';
 
   // ─── Internals ──────────────────────────────────────────
 

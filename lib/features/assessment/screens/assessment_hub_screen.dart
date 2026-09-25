@@ -16,10 +16,14 @@ import '../models/question_prompt.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/student_list_provider.dart';
 import '../../../widgets/shared_widgets.dart';
+import '../models/assessment_media.dart';
+import '../models/assessment_media_presentation.dart';
 import '../models/assessment_models.dart';
 import '../models/post_test_readiness.dart';
 import '../providers/assessment_provider.dart';
 import '../services/assessment_service.dart';
+import '../widgets/assessment_media_panel.dart';
+import '../widgets/assessment_media_sheets.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
 
@@ -93,6 +97,13 @@ class AssessmentHubScreen extends ConsumerWidget {
     // had decided the study period was over.
     final assignedPre = _assignedOf(assignedWork, AssessmentType.preTest);
     final assignedPost = _assignedOf(assignedWork, AssessmentType.postTest);
+    // How this learner meets pictures, video and sign language an educator
+    // attached — the badges on their work and the sheets below follow it.
+    final mediaPresentation = ref.watch(assessmentMediaPresentationProvider);
+    // What their teacher or parent wrote back, newest first.
+    final feedbackForYou = isEducator || profileId.isEmpty
+        ? const <({AssessmentAssignment assignment, AssessmentFeedback feedback})>[]
+        : AssessmentService.getFeedbackForStudent(profileId);
 
     return Scaffold(
       body: SafeArea(
@@ -210,15 +221,42 @@ class AssessmentHubScreen extends ConsumerWidget {
                     return _AssignedWorkTile(
                           assignment: work.assignment,
                           assessment: work.assessment,
-                          onTap: () => context.push(
-                            '/assessment/take/${work.assessment.id}',
-                            extra: work.assessment,
-                          ),
+                          presentation: mediaPresentation,
+                          onTap: () => _openAssigned(context, ref, work),
                         )
                         .animate()
                         .fadeIn(duration: 400.ms, delay: (120 + index * 60).ms)
                         .slideY(begin: 0.08, end: 0);
                   }, childCount: assignedWork.length),
+                ),
+              ),
+            ],
+
+            // ─── Feedback For You ──────────────────────────
+            // The educator's note on a piece of work, with whatever they
+            // showed or signed. Learners only — an educator writes these from
+            // Assignment Tracking.
+            if (feedbackForYou.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(padding, 20, padding, 8),
+                  child: SectionHeader(
+                    title: '💬 ${_tr(context).assessFeedbackForYou}',
+                    color: hc.textPrimary,
+                  ).animate().fadeIn(duration: 400.ms, delay: 90.ms),
+                ),
+              ),
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: padding),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final item = feedbackForYou[index];
+                    return _FeedbackTile(
+                      assignment: item.assignment,
+                      feedback: item.feedback,
+                      presentation: mediaPresentation,
+                    );
+                  }, childCount: feedbackForYou.length),
                 ),
               ),
             ],
@@ -298,7 +336,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                                   'Your teacher or parent will give you '
                                       'this test'),
                         onTap: assignedPre != null
-                            ? () => _openAssigned(context, assignedPre)
+                            ? () => _openAssigned(context, ref, assignedPre)
                             : hasPreTest && retakesAllowed
                             ? () => _startAssessment(
                                 context,
@@ -330,7 +368,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                                   'Your teacher or parent will open this '
                                       'after your lessons'),
                         onTap: assignedPost != null
-                            ? () => _openAssigned(context, assignedPost)
+                            ? () => _openAssigned(context, ref, assignedPost)
                             : hasPostTest && retakesAllowed
                             ? () => _startAssessment(
                                 context,
@@ -711,13 +749,26 @@ class AssessmentHubScreen extends ConsumerWidget {
     return null;
   }
 
-  void _openAssigned(
+  /// Opens assigned work — through its instructions first, when the educator
+  /// wrote or attached any, so a learner watches the signed instructions
+  /// before the clock starts rather than during it.
+  Future<void> _openAssigned(
     BuildContext context,
+    WidgetRef ref,
     ({AssessmentAssignment assignment, Assessment assessment}) work,
-  ) => context.push(
-    '/assessment/take/${work.assessment.id}',
-    extra: work.assessment,
-  );
+  ) async {
+    final presentation = ref.read(assessmentMediaPresentationProvider);
+    if (assignmentHasBriefing(work.assignment, presentation)) {
+      final start = await showAssignmentBriefing(
+        context,
+        assignment: work.assignment,
+        assessment: work.assessment,
+        presentation: presentation,
+      );
+      if (!start || !context.mounted) return;
+    }
+    context.push('/assessment/take/${work.assessment.id}', extra: work.assessment);
+  }
 
   /// A self-started sitting — only ever a *retake*, and only where the class or
   /// home group allows retakes. First sittings come from an assignment.
@@ -1168,11 +1219,13 @@ class _EducatorAction extends StatelessWidget {
 class _AssignedWorkTile extends StatelessWidget {
   final AssessmentAssignment assignment;
   final Assessment assessment;
+  final AssessmentMediaPresentation presentation;
   final VoidCallback onTap;
 
   const _AssignedWorkTile({
     required this.assignment,
     required this.assessment,
+    required this.presentation,
     required this.onTap,
   });
 
@@ -1182,6 +1235,13 @@ class _AssignedWorkTile extends StatelessWidget {
     final overdue = assignment.isOverdue;
     final accent = overdue ? hc.error : AppColors.sectionAssessment;
     final due = assignment.deadline;
+    // What this learner will meet — their own slots, so a learner who does
+    // not sign is not promised a sign video.
+    final mediaKinds = {
+      ...presentation.kindsFor(assignment.media),
+      for (final q in assessment.questions) ...presentation.kindsFor(q.media),
+    }.toList()
+      ..sort((a, b) => presentation.order.indexOf(a) - presentation.order.indexOf(b));
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1199,6 +1259,8 @@ class _AssignedWorkTile extends StatelessWidget {
             overdue
                 ? _tr(context).hubOverdue
                 : _tr(context).hubDue(_friendlyDate(context, due)),
+          if (mediaKinds.isNotEmpty)
+            mediaKinds.map((k) => k.labelOf(_tr(context))).join(', '),
           _tr(context).hubTapToStart,
         ].join('. '),
         child: GestureDetector(
@@ -1270,6 +1332,12 @@ class _AssignedWorkTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
+                      if (mediaKinds.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        ExcludeSemantics(
+                          child: AssessmentMediaBadges(kinds: mediaKinds),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -1284,6 +1352,115 @@ class _AssignedWorkTile extends StatelessWidget {
 
   static String _friendlyDate(BuildContext context, DateTime dt) =>
       LocalizedDate.monthDayYear(dt, AppLocalizations.of(context));
+}
+
+// ─── Feedback Tile ─────────────────────────────────────
+
+/// One piece of feedback from a learner's teacher or parent. Opens the note
+/// with its pictures, video or signed version, shown the way this learner
+/// needs them.
+class _FeedbackTile extends StatelessWidget {
+  final AssessmentAssignment assignment;
+  final AssessmentFeedback feedback;
+  final AssessmentMediaPresentation presentation;
+
+  const _FeedbackTile({
+    required this.assignment,
+    required this.feedback,
+    required this.presentation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final t = _tr(context);
+    final title = QuestionPrompt.title(
+      assignment.assessmentTitle,
+      AppLocalizations.of(context),
+    );
+    final kinds = presentation.kindsFor(feedback.media);
+    final note = curlyQuotes(feedback.note.trim());
+    void open() => showFeedbackForLearner(
+      context,
+      assignmentTitle: assignment.assessmentTitle,
+      feedback: feedback,
+      presentation: presentation,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Semantics(
+        button: true,
+        onTap: open,
+        label: [
+          t.assessFeedbackOn(title),
+          if (note.isNotEmpty) note,
+          if (kinds.isNotEmpty) kinds.map((k) => k.labelOf(t)).join(', '),
+          t.assessFeedbackTapToOpen,
+        ].join('. '),
+        child: ExcludeSemantics(
+          child: GestureDetector(
+            onTap: open,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: hc.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.info.withValues(alpha: 0.45)),
+                boxShadow: AppColors.softShadow,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.info.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.rate_review_rounded,
+                      color: AppColors.info,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          t.assessFeedbackOn(title),
+                          style: AppTypography.titleSmall.copyWith(
+                            color: hc.textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (note.isNotEmpty)
+                          Text(
+                            note,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: hc.textSecondary,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        if (kinds.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          AssessmentMediaBadges(kinds: kinds),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: hc.textHint),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ─── Custom Assessment Tile ────────────────────────────

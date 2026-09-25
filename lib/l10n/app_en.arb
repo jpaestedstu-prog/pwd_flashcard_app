@@ -8256,5 +8256,171 @@
         "type": "String"
       }
     }
-  }
+  },
+  "assessMediaPhoto": "Photo",
+  "assessMediaGif": "GIF",
+  "assessMediaVideo": "Video",
+  "assessMediaAudio": "Sound",
+  "assessMediaSign": "FSL video",
+  "assessMediaSectionTitle": "Pictures, video & sign language",
+  "assessMediaSectionHelp": "Optional. Each learner meets these in the way that suits them — a Deaf learner sees the FSL video first, a learner with low vision hears the sound and the description.",
+  "assessMediaAdd": "Add {kind}",
+  "@assessMediaAdd": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "assessMediaFromDevice": "Choose from this device",
+  "assessMediaOnDevice": "On this tablet only — learners on another device won't see it.",
+  "assessMediaPasteLink": "Or paste a link",
+  "assessMediaLinkHint": "https://… (a direct link to the file)",
+  "assessMediaUseLink": "Use this link",
+  "assessMediaLinkInvalid": "Paste a link that starts with https://",
+  "assessMediaLinkReaches": "A link reaches every device.",
+  "assessMediaPreview": "Preview",
+  "assessMediaReplace": "Replace",
+  "assessMediaRemove": "Remove",
+  "assessMediaTooLarge": "That file is too big. Choose one under {size} MB.",
+  "@assessMediaTooLarge": {
+    "placeholders": {
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "assessMediaPickFailed": "That file could not be added. Try another one.",
+  "assessMediaDescribe": "Describe it in words",
+  "assessMediaDescribeHelp": "Read aloud to learners who can't see it, and shown as a caption to learners who can't hear it.",
+  "assessMediaDescribeHelpQuestion": "Read aloud to learners who can't see it, and shown as a caption to learners who can't hear it. Don't give the answer away.",
+  "assessMediaSignHelp": "Shown to learners who sign. To ask about a sign itself, put the clip under Video so every learner sees it.",
+  "assessMediaTipFor": "For {names}: {advice}",
+  "@assessMediaTipFor": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      },
+      "advice": {
+        "type": "String"
+      }
+    }
+  },
+  "assessMediaTipHearing": "add an FSL video, and put any sound into words.",
+  "assessMediaTipVisual": "add a sound, and describe pictures in words — they will be read aloud.",
+  "assessMediaTipCognitive": "one clear photo works best — they see one thing at a time.",
+  "assessMediaTipMotor": "videos play by themselves, so no small buttons are needed.",
+  "assessMediaTipMultiple": "add an FSL video and a photo, and describe them in words.",
+  "assessMediaTipWordsOnly": "put everything into words — it is shown as a caption.",
+  "assessMediaSignHeading": "Sign language",
+  "assessMediaFilmedInFsl": "Filmed in FSL",
+  "assessMediaCaption": "What it shows or says",
+  "assessMediaReadAloud": "Read it to me",
+  "assessMediaShowMore": "Show more ({count})",
+  "@assessMediaShowMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "assessMediaTapToEnlarge": "Tap to see it bigger",
+  "assessMediaPlayAnimation": "Play the moving picture",
+  "assessMediaStopAnimation": "Stop the moving picture",
+  "assessMediaPlay": "Play",
+  "assessMediaPause": "Pause",
+  "assessMediaReplay": "Watch again",
+  "assessMediaClose": "Close",
+  "assessMediaOnOtherDevice": "This {kind} is saved on your teacher's tablet, so it can't show here.",
+  "@assessMediaOnOtherDevice": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "assessMediaCouldNotLoad": "This {kind} could not be loaded. Try again when you are online.",
+  "@assessMediaCouldNotLoad": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "assessMediaPreparing": "Getting the pictures and videos ready…",
+  "assessMediaMissingTitle": "Some pictures or videos aren't on this tablet",
+  "assessMediaMissingBody": "Connect to Wi‑Fi and try again, or start without them. The test has not started.",
+  "assessMediaStartAnyway": "Start without them",
+  "assessInstructionsMediaTitle": "Pictures, video or sign language for the instructions",
+  "assessBriefingTitle": "Before you start",
+  "assessBriefingStart": "Start the test",
+  "assessBriefingLater": "Not now",
+  "assessFeedbackFor": "Feedback for {name}",
+  "@assessFeedbackFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assessFeedbackOn": "Feedback on {title}",
+  "@assessFeedbackOn": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "assessFeedbackFromEducator": "From your teacher or parent",
+  "assessFeedbackNote": "Your note",
+  "assessFeedbackNoteHint": "What went well, and what to practise next",
+  "assessFeedbackSave": "Send feedback",
+  "assessFeedbackRemove": "Remove feedback",
+  "assessFeedbackEmpty": "Write a note or add a picture, video or sound first.",
+  "assessFeedbackNotFinished": "Not finished yet",
+  "assessFeedbackScore": "Score: {percent}%",
+  "@assessFeedbackScore": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "assessFeedbackForYou": "Feedback for You",
+  "assessFeedbackAdd": "Add feedback for {name}",
+  "@assessFeedbackAdd": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assessFeedbackEdit": "Edit feedback for {name}",
+  "@assessFeedbackEdit": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assessFeedbackSaved": "Feedback sent to {name}.",
+  "@assessFeedbackSaved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assessFeedbackRemoved": "Feedback removed.",
+  "assessFeedbackLocalOnly": "Feedback saved on this device — not sent yet. It will reach {name} when syncing is working.",
+  "@assessFeedbackLocalOnly": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assessFeedbackNotOwner": "Saved on this device only. This profile was restored on another device, so that one now handles syncing — the feedback was not sent.",
+  "assessFeedbackTapToOpen": "Tap to open",
+  "assessFeedbackHas": "Feedback sent"
 }

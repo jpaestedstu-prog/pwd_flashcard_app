@@ -11,12 +11,15 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/student_list_provider.dart';
+import '../models/assessment_media.dart';
 import '../models/assessment_models.dart';
 import '../models/custom_quiz_models.dart';
 import '../providers/assessment_provider.dart';
 import '../providers/quiz_builder_provider.dart';
 import '../services/assessment_cloud_service.dart';
+import '../services/assessment_media_store.dart';
 import '../services/assessment_service.dart';
+import '../widgets/assessment_media_editor.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
@@ -110,6 +113,17 @@ class _AssessmentAssignScreenState
   final _instructionsController = TextEditingController();
   bool _saving = false;
 
+  /// Pictures, video, sound or a signed version of the instructions. One
+  /// value shared by every batch this screen mints — the files are referred
+  /// to, not owned, so two post-test groups can point at the same clip.
+  AssessmentMedia _instructionsMedia = AssessmentMedia.none;
+  final _mediaLedger = AssessmentMediaLedger();
+  final String _mediaOwnerKey = 'asg_${const Uuid().v4()}';
+
+  /// Set once the work has gone out; until then a picked file belongs to
+  /// nothing and is removed when the screen closes.
+  bool _assigned = false;
+
   /// Assessments this educator may hand out, and the learners they may hand
   /// them to. Both are read in `build`, never cached in `initState`: each is
   /// backed by a Firestore pull that can land *after* this screen opens.
@@ -132,6 +146,9 @@ class _AssessmentAssignScreenState
 
   @override
   void dispose() {
+    if (!_assigned) {
+      const AssessmentMediaStore().discard(_mediaLedger.toDiscardOnCancel());
+    }
     _instructionsController.dispose();
     super.dispose();
   }
@@ -223,12 +240,18 @@ class _AssessmentAssignScreenState
         instructions: _instructionsController.text.trim().isEmpty
             ? null
             : _instructionsController.text.trim(),
+        media: _instructionsMedia,
       );
       final result = await ref
           .read(assignmentsProvider.notifier)
           .saveAssignment(assignment);
       if (result.index > outcome.index) outcome = result;
     }
+    _assigned = true;
+    // A file picked and then removed before assigning belongs to nothing.
+    await const AssessmentMediaStore().discardUnreferenced(
+      _mediaLedger.toDiscardOnSave(_instructionsMedia),
+    );
 
     if (mounted) {
       final count = _selectedStudentIds.length;
@@ -591,6 +614,27 @@ class _AssessmentAssignScreenState
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    // A Deaf learner cannot use written instructions they do
+                    // not read, and a learner with low vision cannot read them
+                    // at all — so the instructions can be signed, shown or
+                    // spoken too, with a tip for the learners picked above.
+                    AssessmentMediaEditor(
+                      value: _instructionsMedia,
+                      onChanged: (m) => setState(() => _instructionsMedia = m),
+                      ownerKey: _mediaOwnerKey,
+                      ledger: _mediaLedger,
+                      title: _tr(context).assessInstructionsMediaTitle,
+                      tips: assessmentMediaTips(_tr(context), [
+                        for (final id in _selectedStudentIds)
+                          if (_profiles[id] case final p?)
+                            (
+                              name: p.name,
+                              type: p.disabilityType,
+                              supports: p.supports,
+                            ),
+                      ]),
                     ),
 
                     const SizedBox(height: 32),
