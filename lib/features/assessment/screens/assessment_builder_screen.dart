@@ -696,10 +696,14 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
+                  runSpacing: 8,
                   children: [
                     QuestionFormat.multipleChoice,
                     QuestionFormat.trueFalse,
                     QuestionFormat.fillInBlank,
+                    // The learner signs or says the answer on camera, and
+                    // you mark it — see QuestionAnswer.needsReview.
+                    QuestionFormat.videoResponse,
                   ].map((f) {
                     final selected = f == _format;
                     return ChoiceChip(
@@ -713,7 +717,8 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                               TextEditingController(text: 'True'));
                           _choiceControllers.add(
                               TextEditingController(text: 'False'));
-                        } else if (f == QuestionFormat.fillInBlank) {
+                        } else if (f == QuestionFormat.fillInBlank ||
+                            f == QuestionFormat.videoResponse) {
                           _choiceControllers.clear();
                         } else {
                           while (_choiceControllers.length < 4) {
@@ -760,13 +765,19 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 // Correct answer
                 TextField(
                   controller: _correctAnswerController,
-                  decoration: _inputDecor(hc, _t(context).abCorrectAnswer),
+                  decoration: _inputDecor(
+                    hc,
+                    _format == QuestionFormat.videoResponse
+                        ? _t(context).assessWhatToLookFor
+                        : _t(context).abCorrectAnswer,
+                  ),
                   style: AppTypography.bodyMedium
                       .copyWith(color: hc.textPrimary),
                 ),
 
                 // Choices (for MC and T/F)
-                if (_format != QuestionFormat.fillInBlank) ...[
+                if (_format != QuestionFormat.fillInBlank &&
+                    _format != QuestionFormat.videoResponse) ...[
                   const SizedBox(height: 16),
                   Text(_t(context).abChoicesTitle,
                       style: AppTypography.labelLarge
@@ -931,7 +942,10 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
     final qText = _questionTextController.text.trim();
     final answer = _correctAnswerController.text.trim();
 
-    if (qText.isEmpty || answer.isEmpty) {
+    // A video answer is marked by a person, so "what a good answer shows"
+    // is a note to them, not something the app checks — it may be left out.
+    if (qText.isEmpty ||
+        (answer.isEmpty && _format != QuestionFormat.videoResponse)) {
       AppSnackBar.warning(context, message: _t(context).abTextRequired);
       return;
     }

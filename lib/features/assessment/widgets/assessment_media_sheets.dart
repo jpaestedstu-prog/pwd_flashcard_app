@@ -13,11 +13,29 @@ import '../models/assessment_media_presentation.dart';
 import '../models/assessment_models.dart';
 import '../models/question_prompt.dart';
 import '../services/assessment_media_store.dart';
+import '../services/assessment_service.dart';
 import 'assessment_media_editor.dart';
 import 'assessment_media_panel.dart';
 
 AppLocalizations _tr(BuildContext context) =>
     AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// The questions of [assessmentId], by id — only for their words, so any
+/// failure to find them (a template deleted since, storage not open) leaves
+/// the words out rather than the sheet.
+Map<String, AssessmentQuestion> _questionsOf(String? assessmentId) {
+  if (assessmentId == null) return const {};
+  try {
+    return {
+      for (final q
+          in AssessmentService.findAssessmentById(assessmentId)?.questions ??
+              const <AssessmentQuestion>[])
+        q.id: q,
+    };
+  } on Object {
+    return const {};
+  }
+}
 
 /// Whether an assignment has something to *show* before the test starts.
 ///
@@ -193,7 +211,9 @@ Future<void> showFeedbackForLearner(
   required String assignmentTitle,
   required AssessmentFeedback feedback,
   required AssessmentMediaPresentation presentation,
+  String? assessmentId,
 }) {
+  final questions = _questionsOf(assessmentId);
   return showModalBottomSheet<void>(
     context: context,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
@@ -239,6 +259,21 @@ Future<void> showFeedbackForLearner(
               presentation: presentation,
               fallbackLabel: t.assessFeedbackFromEducator,
             ),
+            // How the learner's own video answers were marked.
+            for (final entry in feedback.reviews.entries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _ReviewedLine(
+                  question: curlyQuotes(
+                    QuestionPrompt.localize(
+                      questions[entry.key]?.questionText ??
+                          t.assessYourVideoAnswer,
+                      AppLocalizations.of(sheet),
+                    ),
+                  ),
+                  correct: entry.value,
+                ),
+              ),
             TextButton.icon(
               onPressed: () => Navigator.of(sheet).maybePop(),
               icon: const Icon(Icons.close_rounded),
@@ -249,6 +284,136 @@ Future<void> showFeedbackForLearner(
       );
     },
   );
+}
+
+/// One of the learner's video answers, for a person to mark: the question,
+/// what a good answer shows (the educator's own note), the video, and
+/// Correct / Not yet.
+class _ReviewCard extends StatelessWidget {
+  final QuestionAnswer answer;
+  final AssessmentQuestion? question;
+  final bool? mark;
+  final ValueChanged<bool?> onMark;
+
+  const _ReviewCard({
+    required this.answer,
+    required this.question,
+    required this.mark,
+    required this.onMark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final t = _tr(context);
+    final lookFor = question?.correctAnswer.trim() ?? '';
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: hc.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            curlyQuotes(
+              QuestionPrompt.localize(
+                question?.questionText ?? t.assessYourVideoAnswer,
+                AppLocalizations.of(context),
+              ),
+            ),
+            style: AppTypography.titleSmall.copyWith(color: hc.textPrimary),
+          ),
+          if (lookFor.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              curlyQuotes('${t.assessWhatToLookFor}: $lookFor'),
+              style: AppTypography.bodySmall.copyWith(
+                color: hc.textSecondary,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          AssessmentMediaPanel(
+            media: AssessmentMedia(video: answer.givenAnswer),
+            presentation: AssessmentMediaPresentation.educatorPreview,
+            fallbackLabel: t.assessYourVideoAnswer,
+          ),
+          SegmentedButton<bool>(
+            emptySelectionAllowed: true,
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: true,
+                icon: const Icon(Icons.check_circle_rounded),
+                label: Text(t.assessReviewCorrect),
+              ),
+              ButtonSegment(
+                value: false,
+                icon: const Icon(Icons.replay_rounded),
+                label: Text(t.assessReviewNotYet),
+              ),
+            ],
+            selected: mark == null ? const <bool>{} : {mark!},
+            onSelectionChanged: (s) => onMark(s.isEmpty ? null : s.first),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// How one video answer was marked, as the learner reads it.
+class _ReviewedLine extends StatelessWidget {
+  final String question;
+  final bool correct;
+
+  const _ReviewedLine({required this.question, required this.correct});
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final t = _tr(context);
+    final color = correct ? AppColors.success : AppColors.warning;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            correct ? Icons.check_circle_rounded : Icons.replay_rounded,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  question,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: hc.textPrimary,
+                  ),
+                ),
+                Text(
+                  correct ? t.assessReviewedCorrect : t.assessReviewedNotYet,
+                  style: AppTypography.labelLarge.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ─── Feedback, as the educator writes it ──────────────────
@@ -321,6 +486,14 @@ class _FeedbackEditorSheetState extends State<_FeedbackEditorSheet> {
   late final AssessmentMediaLedger _ledger = AssessmentMediaLedger(_media);
   bool _committed = false;
 
+  /// Marks on the learner's video answers, by question id.
+  late final Map<String, bool> _reviews = {...?widget.existing?.reviews};
+
+  /// The questions of the assessment the result belongs to, for their words.
+  late final Map<String, AssessmentQuestion> _questions = _questionsOf(
+    widget.result?.assessmentId,
+  );
+
   @override
   void dispose() {
     // Swiped away or cancelled: whatever was picked belongs to nothing.
@@ -336,6 +509,7 @@ class _FeedbackEditorSheetState extends State<_FeedbackEditorSheet> {
       note: _note.text.trim(),
       media: _media,
       updatedAt: DateTime.now(),
+      reviews: Map.of(_reviews),
     );
     if (entry.isEmpty) {
       AppSnackBar.warning(context, message: _tr(context).assessFeedbackEmpty);
@@ -348,6 +522,20 @@ class _FeedbackEditorSheetState extends State<_FeedbackEditorSheet> {
   void _remove() {
     _committed = true;
     Navigator.of(context).pop((feedback: null, ledger: _ledger));
+  }
+
+  /// "Score: 80%", counting the marks made in this sheet, and how many
+  /// video answers still wait — or "Not finished yet".
+  String _scoreLine(AppLocalizations t, AssessmentResult? result) {
+    if (result == null) return t.assessFeedbackNotFinished;
+    final now = result.reviewedWith(
+      AssessmentFeedback(updatedAt: DateTime.now(), reviews: _reviews),
+    );
+    return [
+      if (now.total > 0)
+        t.assessFeedbackScore((now.correct / now.total * 100).round()),
+      if (now.pending > 0) t.assessToReview(now.pending),
+    ].join(' · ');
   }
 
   @override
@@ -385,14 +573,47 @@ class _FeedbackEditorSheetState extends State<_FeedbackEditorSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              result == null
-                  ? t.assessFeedbackNotFinished
-                  : t.assessFeedbackScore((result.percentage * 100).round()),
+              _scoreLine(t, result),
               style: AppTypography.labelLarge.copyWith(
                 color: result == null ? hc.textSecondary : AppColors.success,
                 fontWeight: FontWeight.w700,
               ),
             ),
+            if (result != null && result.reviewAnswers.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.videocam_rounded, color: AppColors.info),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      t.assessReviewTitle,
+                      style: AppTypography.titleSmall.copyWith(
+                        color: hc.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              for (final answer in result.reviewAnswers)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _ReviewCard(
+                    answer: answer,
+                    question: _questions[answer.questionId],
+                    mark: _reviews[answer.questionId],
+                    onMark: (mark) => setState(() {
+                      if (mark == null) {
+                        _reviews.remove(answer.questionId);
+                      } else {
+                        _reviews[answer.questionId] = mark;
+                      }
+                    }),
+                  ),
+                ),
+            ],
             const SizedBox(height: 16),
             TextField(
               controller: _note,

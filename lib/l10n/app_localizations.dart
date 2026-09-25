@@ -20345,7 +20345,7 @@ abstract class AppLocalizations {
   /// No description provided for @assessMediaOnOtherDevice.
   ///
   /// In en, this message translates to:
-  /// **'This {kind} is saved on your teacher\'s tablet, so it can\'t show here.'**
+  /// **'This {kind} is on another tablet and has not been shared yet.'**
   String assessMediaOnOtherDevice(String kind);
 
   /// No description provided for @assessMediaCouldNotLoad.
@@ -20749,6 +20749,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove the picture'**
   String get assessChoicePictureRemove;
+
+  /// No description provided for @formatVideoResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer on Video'**
+  String get formatVideoResponse;
+
+  /// No description provided for @assessVideoAnswerRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Record your answer'**
+  String get assessVideoAnswerRecord;
+
+  /// No description provided for @assessVideoAnswerHintSign.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign your answer to the camera.'**
+  String get assessVideoAnswerHintSign;
+
+  /// No description provided for @assessVideoAnswerHintSay.
+  ///
+  /// In en, this message translates to:
+  /// **'Say your answer out loud to the camera.'**
+  String get assessVideoAnswerHintSay;
+
+  /// No description provided for @assessVideoAnswerHintEither.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign or say your answer to the camera.'**
+  String get assessVideoAnswerHintEither;
+
+  /// No description provided for @assessVideoAnswerSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer saved — your teacher or parent will watch it.'**
+  String get assessVideoAnswerSaved;
+
+  /// No description provided for @assessVideoAnswerRedo.
+  ///
+  /// In en, this message translates to:
+  /// **'Record again'**
+  String get assessVideoAnswerRedo;
+
+  /// No description provided for @assessVideoAnswerSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending your video answers…'**
+  String get assessVideoAnswerSending;
+
+  /// No description provided for @assessToReview.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 answer to review} other{{count} answers to review}}'**
+  String assessToReview(int count);
+
+  /// No description provided for @assessSentForReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to your teacher or parent'**
+  String get assessSentForReview;
+
+  /// No description provided for @assessAllForReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Your teacher or parent will watch your answers and tell you how you did.'**
+  String get assessAllForReview;
+
+  /// No description provided for @assessReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Video answers to check'**
+  String get assessReviewTitle;
+
+  /// No description provided for @assessReviewCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct'**
+  String get assessReviewCorrect;
+
+  /// No description provided for @assessReviewNotYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not yet'**
+  String get assessReviewNotYet;
+
+  /// No description provided for @assessReviewedCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked correct'**
+  String get assessReviewedCorrect;
+
+  /// No description provided for @assessReviewedNotYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not yet — try it again'**
+  String get assessReviewedNotYet;
+
+  /// No description provided for @assessReviewWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to be checked'**
+  String get assessReviewWaiting;
+
+  /// No description provided for @assessWhatToLookFor.
+  ///
+  /// In en, this message translates to:
+  /// **'What a good answer shows (only you see this)'**
+  String get assessWhatToLookFor;
+
+  /// No description provided for @assessYourVideoAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Your video answer'**
+  String get assessYourVideoAnswer;
+
+  /// No description provided for @assessReviewedScore.
+  ///
+  /// In en, this message translates to:
+  /// **'{correct} of {total} correct'**
+  String assessReviewedScore(int correct, int total);
 }
 
 class _AppLocalizationsDelegate

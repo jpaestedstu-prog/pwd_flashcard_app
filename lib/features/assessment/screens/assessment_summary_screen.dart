@@ -27,6 +27,10 @@ class AssessmentSummaryScreen extends ConsumerWidget {
     final padding = context.pagePadding;
     final pct = result.percentage;
     final pctDisplay = (pct * 100).round();
+    // A test answered only on video has no score until a person marks it;
+    // "0% — Keep Practicing" would tell a child they got it all wrong.
+    final scored = result.hasAutoScore;
+    final toReview = result.reviewAnswers.length;
 
     return Scaffold(
       body: SafeArea(
@@ -37,7 +41,10 @@ class AssessmentSummaryScreen extends ConsumerWidget {
               const SizedBox(height: 20),
 
               // ─── Grade emoji + title ───────────────────
-              Text(result.gradeEmoji, style: const TextStyle(fontSize: 64))
+              Text(
+                scored ? result.gradeEmoji : '🎥',
+                style: const TextStyle(fontSize: 64),
+              )
                   .animate()
                   .fadeIn(duration: 500.ms)
                   .scale(
@@ -50,7 +57,10 @@ class AssessmentSummaryScreen extends ConsumerWidget {
               Semantics(
                 header: true,
                 child: Text(
-                  result.gradeOf(AppLocalizations.of(context)),
+                  scored
+                      ? result.gradeOf(AppLocalizations.of(context))
+                      : _t(context).assessSentForReview,
+                  textAlign: TextAlign.center,
                   style: AppTypography.displaySmall.copyWith(
                     color: hc.textPrimary,
                     fontWeight: FontWeight.w900,
@@ -70,7 +80,24 @@ class AssessmentSummaryScreen extends ConsumerWidget {
 
               const SizedBox(height: 32),
 
+              if (!scored)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.info.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    _t(context).assessAllForReview,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.bodyLarge.copyWith(
+                      color: hc.textPrimary,
+                    ),
+                  ),
+                ),
+
               // ─── Score Circle ──────────────────────────
+              if (scored) ...[
               CircularPercentIndicator(
                     radius: 80,
                     lineWidth: 12,
@@ -142,6 +169,25 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 600.ms)
                   .slideY(begin: 0.1, end: 0),
+              ],
+              if (scored && toReview > 0) ...[
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.videocam_rounded, color: AppColors.info),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        _t(context).assessToReview(toReview),
+                        style: AppTypography.titleSmall.copyWith(
+                          color: hc.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
 
               const SizedBox(height: 28),
 
@@ -411,6 +457,7 @@ class _QuestionReviewTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
+    if (answer.needsReview) return _sentForReview(context, hc);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -466,6 +513,52 @@ class _QuestionReviewTile extends StatelessWidget {
               color: answer.isCorrect ? AppColors.success : AppColors.error,
               size: 20,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// A video answer: not right or wrong yet, and never shown as a raw
+  /// `shared://` value.
+  Widget _sentForReview(BuildContext context, HCColor hc) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: hc.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.info.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.info.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  '$index',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: AppColors.info,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                    .assessSentForReview,
+                style: AppTypography.bodySmall.copyWith(color: hc.textPrimary),
+              ),
+            ),
+            const Icon(Icons.videocam_rounded, color: AppColors.info, size: 20),
           ],
         ),
       ),

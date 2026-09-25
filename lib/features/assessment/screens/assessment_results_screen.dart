@@ -597,7 +597,9 @@ class _ScoreTrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    final sorted = List.of(results)
+    // Only sittings with a score: one answered on video alone would plot
+    // as a fall to 0%.
+    final sorted = results.where((r) => r.hasAutoScore).toList()
       ..sort((a, b) => a.completedAt.compareTo(b.completedAt));
 
     if (sorted.length < 2) {
@@ -866,6 +868,16 @@ class _HistoryTile extends StatelessWidget {
             ),
             Column(
               children: [
+                if (!result.hasAutoScore)
+                  Semantics(
+                    label: (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                        .assessSentForReview,
+                    child: const Icon(
+                      Icons.videocam_rounded,
+                      color: AppColors.info,
+                    ),
+                  )
+                else
                 Text(
                   '$pct%',
                   style: AppTypography.titleMedium.copyWith(

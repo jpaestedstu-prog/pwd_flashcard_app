@@ -12199,7 +12199,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String assessMediaOnOtherDevice(String kind) {
-    return 'This $kind is saved on your teacher\'s tablet, so it can\'t show here.';
+    return 'This $kind is on another tablet and has not been shared yet.';
   }
 
   @override
@@ -12443,4 +12443,79 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assessChoicePictureRemove => 'Remove the picture';
+
+  @override
+  String get formatVideoResponse => 'Answer on Video';
+
+  @override
+  String get assessVideoAnswerRecord => 'Record your answer';
+
+  @override
+  String get assessVideoAnswerHintSign => 'Sign your answer to the camera.';
+
+  @override
+  String get assessVideoAnswerHintSay =>
+      'Say your answer out loud to the camera.';
+
+  @override
+  String get assessVideoAnswerHintEither =>
+      'Sign or say your answer to the camera.';
+
+  @override
+  String get assessVideoAnswerSaved =>
+      'Answer saved — your teacher or parent will watch it.';
+
+  @override
+  String get assessVideoAnswerRedo => 'Record again';
+
+  @override
+  String get assessVideoAnswerSending => 'Sending your video answers…';
+
+  @override
+  String assessToReview(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count answers to review',
+      one: '1 answer to review',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assessSentForReview => 'Sent to your teacher or parent';
+
+  @override
+  String get assessAllForReview =>
+      'Your teacher or parent will watch your answers and tell you how you did.';
+
+  @override
+  String get assessReviewTitle => 'Video answers to check';
+
+  @override
+  String get assessReviewCorrect => 'Correct';
+
+  @override
+  String get assessReviewNotYet => 'Not yet';
+
+  @override
+  String get assessReviewedCorrect => 'Marked correct';
+
+  @override
+  String get assessReviewedNotYet => 'Not yet — try it again';
+
+  @override
+  String get assessReviewWaiting => 'Waiting to be checked';
+
+  @override
+  String get assessWhatToLookFor =>
+      'What a good answer shows (only you see this)';
+
+  @override
+  String get assessYourVideoAnswer => 'Your video answer';
+
+  @override
+  String assessReviewedScore(int correct, int total) {
+    return '$correct of $total correct';
+  }
 }

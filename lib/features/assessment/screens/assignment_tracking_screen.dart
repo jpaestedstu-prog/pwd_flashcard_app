@@ -390,14 +390,24 @@ class _AssignmentCard extends StatelessWidget {
             ...statuses.map((s) {
               final feedback = assignment.feedbackFor(s.studentId);
               final t = _tr(context);
+              // The score with this educator's marks on any video answers
+              // counted in; video answers nobody has marked yet are shown
+              // as waiting, never as wrong.
+              final reviewed = s.result?.reviewedWith(feedback);
+              final fraction = reviewed == null || reviewed.total == 0
+                  ? null
+                  : reviewed.correct / reviewed.total;
+              final pending = reviewed?.pending ?? 0;
               return Semantics(
                 button: true,
                 onTap: () => onFeedback(s),
                 label: [
                   curlyQuotes(s.studentName),
-                  s.result != null
-                      ? '${(s.result!.percentage * 100).round()}%'
-                      : s.status.label,
+                  if (s.result == null)
+                    s.status.label
+                  else if (fraction != null)
+                    '${(fraction * 100).round()}%',
+                  if (pending > 0) t.assessToReview(pending),
                   if (feedback != null) t.assessFeedbackHas,
                   feedback == null
                       ? t.assessFeedbackAdd(s.studentName)
@@ -435,18 +445,20 @@ class _AssignmentCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        s.status.emoji,
+                        pending > 0 ? '🎥' : s.status.emoji,
                         style: const TextStyle(fontSize: 16),
                       ),
                       const SizedBox(width: 4),
-                      if (s.result != null)
+                      if (s.result != null && fraction != null)
                         Text(
-                          '${(s.result!.percentage * 100).round()}%',
+                          '${(fraction * 100).round()}%',
                           style: AppTypography.labelMedium.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: _scoreColor(s.result!.percentage),
+                            color: _scoreColor(fraction),
                           ),
                         )
+                      else if (s.result != null)
+                        const SizedBox.shrink()
                       else
                         Text(
                           s.status.label,

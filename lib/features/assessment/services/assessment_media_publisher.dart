@@ -104,6 +104,45 @@ class AssessmentMediaPublisher {
     }
   }
 
+  /// The learner's half: video answers recorded while offline, shared now
+  /// so their teacher's tablet can play them. Returns how many results were
+  /// updated.
+  Future<int> publishLearnerAnswers(String learnerId) async {
+    if (learnerId.isEmpty || _running) return 0;
+    if (!const SharedMediaService().available) return 0;
+    _running = true;
+    try {
+      var changed = 0;
+      for (final result in AssessmentService.getResults(learnerId)) {
+        if (!result.answers.any(_answerPending)) continue;
+        var touched = false;
+        final answers = <QuestionAnswer>[];
+        for (final a in result.answers) {
+          if (!_answerPending(a)) {
+            answers.add(a);
+            continue;
+          }
+          final shared = await store.share(
+            a.givenAnswer,
+            ownerProfileId: learnerId,
+          );
+          touched = touched || shared.value != a.givenAnswer;
+          answers.add(a.withGivenAnswer(shared.value));
+        }
+        if (touched) {
+          await cloud.updateResult(learnerId, result.withAnswers(answers));
+          changed++;
+        }
+      }
+      return changed;
+    } finally {
+      _running = false;
+    }
+  }
+
+  static bool _answerPending(QuestionAnswer a) =>
+      a.needsReview && AssessmentMediaStore.isOwnFile(a.givenAnswer);
+
   static bool _pending(AssessmentMedia media) =>
       media.deviceFiles.any(AssessmentMediaStore.isOwnFile);
 

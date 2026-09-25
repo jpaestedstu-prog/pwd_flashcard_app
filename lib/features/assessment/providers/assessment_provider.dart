@@ -188,7 +188,12 @@ final assignmentsProvider =
 final learnerAssignmentSyncProvider = FutureProvider.family<bool, String>((
   ref,
   profileId,
-) => const AssessmentCloudService().hydrateLearner(profileId));
+) async {
+  final ok = await const AssessmentCloudService().hydrateLearner(profileId);
+  // Video answers recorded offline reach the teacher once this works.
+  await const AssessmentMediaPublisher().publishLearnerAnswers(profileId);
+  return ok;
+});
 
 /// The educator's mirror of [learnerAssignmentSyncProvider]: their templates,
 /// their assignments, and their assignees' results. Watched by the assessment

@@ -12107,7 +12107,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String assessMediaOnOtherDevice(String kind) {
-    return 'Nakaimbak ang $kind na ito sa tablet ng iyong guro, kaya hindi ito maipakita rito.';
+    return 'Nasa ibang tablet ang $kind na ito at hindi pa naibabahagi.';
   }
 
   @override
@@ -12353,4 +12353,74 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get assessChoicePictureRemove => 'Alisin ang larawan';
+
+  @override
+  String get formatVideoResponse => 'Sagot sa Bidyo';
+
+  @override
+  String get assessVideoAnswerRecord => 'I-record ang iyong sagot';
+
+  @override
+  String get assessVideoAnswerHintSign => 'Isenyas ang iyong sagot sa camera.';
+
+  @override
+  String get assessVideoAnswerHintSay =>
+      'Sabihin nang malakas ang iyong sagot sa camera.';
+
+  @override
+  String get assessVideoAnswerHintEither =>
+      'Isenyas o sabihin ang iyong sagot sa camera.';
+
+  @override
+  String get assessVideoAnswerSaved =>
+      'Nai-save ang sagot — panonoorin ito ng iyong guro o magulang.';
+
+  @override
+  String get assessVideoAnswerRedo => 'I-record muli';
+
+  @override
+  String get assessVideoAnswerSending =>
+      'Ipinapadala ang iyong mga sagot na bidyo…';
+
+  @override
+  String assessToReview(int count) {
+    return '$count sagot na susuriin';
+  }
+
+  @override
+  String get assessSentForReview => 'Naipadala sa iyong guro o magulang';
+
+  @override
+  String get assessAllForReview =>
+      'Panonoorin ng iyong guro o magulang ang iyong mga sagot at sasabihin kung paano ka nakagawa.';
+
+  @override
+  String get assessReviewTitle => 'Mga sagot na bidyo na susuriin';
+
+  @override
+  String get assessReviewCorrect => 'Tama';
+
+  @override
+  String get assessReviewNotYet => 'Hindi pa';
+
+  @override
+  String get assessReviewedCorrect => 'Minarkahang tama';
+
+  @override
+  String get assessReviewedNotYet => 'Hindi pa — subukan ulit';
+
+  @override
+  String get assessReviewWaiting => 'Hinihintay pang suriin';
+
+  @override
+  String get assessWhatToLookFor =>
+      'Ano ang ipinapakita ng mahusay na sagot (ikaw lang ang makakakita nito)';
+
+  @override
+  String get assessYourVideoAnswer => 'Ang iyong sagot na bidyo';
+
+  @override
+  String assessReviewedScore(int correct, int total) {
+    return '$correct sa $total ang tama';
+  }
 }

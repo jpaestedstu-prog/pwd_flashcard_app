@@ -13,15 +13,19 @@ import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/experiment_provider.dart';
 import '../../experiment/models/experiment_models.dart';
+import '../models/assessment_media.dart';
 import '../models/assessment_media_presentation.dart';
 import '../models/assessment_models.dart';
 import '../providers/assessment_provider.dart';
+import '../../../core/services/shared_media_service.dart';
 import '../../../core/utils/accessible_sizing.dart';
+import '../../../core/widgets/media_capture_screen.dart';
 import '../../../core/accessibility/learner_support.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../models/question_prompt.dart';
 import '../services/assessment_media_cache.dart';
+import '../services/assessment_media_store.dart';
 import '../services/assessment_service.dart';
 import '../services/sign_clip_readiness.dart';
 import '../widgets/assessment_media_panel.dart';
@@ -57,6 +61,12 @@ class AssessmentTestScreen extends ConsumerStatefulWidget {
   /// [AssessmentMediaCache.prepare]; a test seam.
   final Future<List<String>> Function(List<String> values)? prepareMedia;
 
+  /// Records a video answer and returns the value to store (`file://…`),
+  /// or null if the learner closed the camera. A seam: no test binding has
+  /// the camera plugin. Null in the app, which opens [MediaCaptureScreen].
+  final Future<String?> Function(BuildContext context, String prompt)?
+  recordAnswer;
+
   const AssessmentTestScreen({
     super.key,
     required this.assessment,
@@ -64,6 +74,7 @@ class AssessmentTestScreen extends ConsumerStatefulWidget {
     this.signClipBuilder,
     this.prepareSignClips,
     this.prepareMedia,
+    this.recordAnswer,
   });
 
   @override
@@ -128,6 +139,15 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
   /// was still downloading.
   late final List<String> _mediaValues;
   bool _mediaMissing = false;
+
+  /// Video answers being shared, by question, and what each came back as.
+  /// A learner's signed answer is shared in the background while they carry
+  /// on; the test waits for them only at the very end.
+  final Map<String, Future<void>> _pendingShares = {};
+  final Map<String, String> _sharedAnswers = {};
+
+  /// True while the last video answers finish uploading.
+  bool _sending = false;
 
   @override
   void initState() {
@@ -316,6 +336,100 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     ));
   }
 
+  /// Records (or re-records) the answer to a video question. A second take
+  /// replaces the first — one answer per question, as every count assumes.
+  Future<void> _recordVideoAnswer() async {
+    final q = _currentQuestion;
+    final prompt = QuestionPrompt.localize(
+      q.questionText,
+      AppLocalizations.of(context),
+    );
+    final value = await (widget.recordAnswer ?? _defaultRecordAnswer)(
+      context,
+      prompt,
+    );
+    if (value == null || !mounted || _finished) return;
+    final answer = QuestionAnswer(
+      questionId: q.id,
+      givenAnswer: value,
+      isCorrect: false,
+      responseTimeMs: _now().difference(_questionStartTime).inMilliseconds,
+      needsReview: true,
+    );
+    final previous = _answers.indexWhere((a) => a.questionId == q.id);
+    if (previous == -1) {
+      _answers.add(answer);
+    } else {
+      final old = _answers[previous].givenAnswer;
+      _answers[previous] = answer;
+      unawaited(
+        const AssessmentMediaStore().discard([
+          old,
+          ?_sharedAnswers.remove(q.id),
+        ]),
+      );
+    }
+    _startSharing(q.id, value);
+    ref.read(hapticServiceProvider).lightTap();
+    setState(() {
+      _answered = true;
+      _isCorrect = false;
+      _selectedAnswer = value;
+    });
+  }
+
+  Future<String?> _defaultRecordAnswer(
+    BuildContext context,
+    String prompt,
+  ) async {
+    final path = await captureMedia(
+      context,
+      mode: CaptureMode.video,
+      title: _t.assessVideoAnswerRecord,
+      prompt: prompt,
+    );
+    if (path == null) return null;
+    final learner = ref.read(profileProvider)?.id ?? 'learner';
+    final adopted = await const AssessmentMediaStore().adoptCaptured(
+      capturedPath: path,
+      ownerKey: 'ans_${widget.assessment.id}_${_currentQuestion.id}_$learner',
+      kind: AssessmentMediaKind.video,
+    );
+    return adopted.status == MediaPickStatus.added ? adopted.value : null;
+  }
+
+  void _startSharing(String questionId, String value) {
+    final learner = ref.read(profileProvider)?.id ?? '';
+    _pendingShares[questionId] = const AssessmentMediaStore()
+        .share(value, ownerProfileId: learner)
+        .then((r) async {
+          if (r.status != SharedUploadStatus.shared) return;
+          final current = _answers
+              .where((a) => a.questionId == questionId)
+              .map((a) => a.givenAnswer)
+              .firstOrNull;
+          if (current == value) {
+            _sharedAnswers[questionId] = r.value;
+          } else {
+            // A newer take replaced this one while it uploaded.
+            await const AssessmentMediaStore().discard([r.value]);
+          }
+        });
+  }
+
+  /// The words that tell this learner how to answer on camera.
+  String _videoAnswerHint() {
+    final profile = ref.read(profileProvider);
+    if (profile?.disabilityType == DisabilityType.visual) {
+      return _t.assessVideoAnswerHintSay;
+    }
+    if (profile?.disabilityType == DisabilityType.hearing &&
+        _mediaPresentation.showSign) {
+      return _t.assessVideoAnswerHintSign;
+    }
+    return _t.assessVideoAnswerHintEither;
+  }
+
   void _submitFillIn() {
     final text = _fillController.text.trim();
     if (text.isEmpty) return;
@@ -340,27 +454,55 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     if (_scroll.hasClients) _scroll.jumpTo(0);
   }
 
-  void _finishAssessment() {
+  Future<void> _finishAssessment() async {
     if (_finished) return;
     final profile = ref.read(profileProvider);
     if (profile == null) return;
     _finished = true;
     _timer?.cancel();
-
-    final score = _answers.where((a) => a.isCorrect).length;
+    // The clock stops here, not after the uploads below.
     final durationSeconds =
         _now().difference(_assessmentStartTime).inSeconds;
+
+    // Video answers still uploading get a moment to finish, so the result
+    // carries their shared value and the teacher's tablet can play them.
+    // One that cannot (offline) is kept on this tablet and shared on the
+    // next sync — see AssessmentMediaPublisher.publishLearnerAnswers.
+    if (_pendingShares.isNotEmpty) {
+      setState(() => _sending = true);
+      try {
+        await Future.wait(
+          _pendingShares.values,
+        ).timeout(const Duration(seconds: 90));
+      } catch (_) {
+        // Whatever finished is used; the rest are shared later.
+      }
+      for (var i = 0; i < _answers.length; i++) {
+        final shared = _sharedAnswers[_answers[i].questionId];
+        if (_answers[i].needsReview && shared != null) {
+          _answers[i] = _answers[i].withGivenAnswer(shared);
+        }
+      }
+    }
+
+    // Only the questions the app marks count here. A video answer waits for
+    // a person, so it is neither right nor wrong yet — and every existing
+    // percentage (reports, the class report, the study's exports) stays what
+    // it would have been.
+    final answerOf = {for (final a in _answers) a.questionId: a};
+    final marked = _questions.where((q) => !q.format.needsReview).toList();
+    final score = marked.where((q) => answerOf[q.id]?.isCorrect ?? false).length;
 
     // Calculate per-category scores
     final categoryScores = <String, double>{};
     final categoryCorrect = <String, int>{};
     final categoryTotal = <String, int>{};
-    for (int i = 0; i < _questions.length; i++) {
-      final cat = _questions[i].category;
+    for (final q in marked) {
+      final cat = q.category;
       if (cat == null) continue;
       final key = cat.label;
       categoryTotal[key] = (categoryTotal[key] ?? 0) + 1;
-      if (i < _answers.length && _answers[i].isCorrect) {
+      if (answerOf[q.id]?.isCorrect ?? false) {
         categoryCorrect[key] = (categoryCorrect[key] ?? 0) + 1;
       }
     }
@@ -374,7 +516,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
       profileId: profile.id,
       type: widget.assessment.type,
       score: score,
-      totalQuestions: _questions.length,
+      totalQuestions: marked.length,
       answers: _answers,
       completedAt: _now(),
       durationSeconds: durationSeconds,
@@ -395,8 +537,11 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     // Save result
     ref.read(assessmentResultsProvider.notifier).saveResult(result);
 
-    // Award stars based on performance
-    final pct = score / _questions.length;
+    // Award stars based on performance. A test of video answers only has
+    // no score yet; answering it on camera still earns stars for the effort.
+    final pct = marked.isEmpty
+        ? (_answers.isEmpty ? 0.0 : 0.5)
+        : score / marked.length;
     int stars = 0;
     if (pct >= 0.9) {
       stars = 5;
@@ -417,7 +562,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     }
 
     // Navigate to result summary
-    if (context.mounted) {
+    if (mounted) {
       context.pushReplacement(
         '/assessment/summary',
         extra: result,
@@ -557,9 +702,40 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     );
   }
 
+  Widget _buildSending(BuildContext context) {
+    final hc = HCColor.of(context);
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(context.pagePadding),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 20),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    _t.assessVideoAnswerSending,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.titleMedium.copyWith(
+                      color: hc.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_clipsReady) return _buildClipCheck(context);
+    if (_sending) return _buildSending(context);
     final hc = HCColor.of(context);
     final padding = context.pagePadding;
 
@@ -614,7 +790,8 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${_answers.where((a) => a.isCorrect).length}/${_answers.length}',
+                        '${_answers.where((a) => a.isCorrect).length}/'
+                        '${_answers.where((a) => !a.needsReview).length}',
                         style: AppTypography.labelLarge.copyWith(
                           color: hc.primary,
                           fontWeight: FontWeight.w800,
@@ -781,6 +958,9 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
 
                       // Answer area based on format
                       if (_currentQuestion.format ==
+                          QuestionFormat.videoResponse)
+                        _buildVideoAnswer(hc)
+                      else if (_currentQuestion.format ==
                           QuestionFormat.fillInBlank)
                         _buildFillInBlank(hc)
                       else
@@ -1157,6 +1337,50 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     );
   }
 
+  /// Answering on camera: one big button, then the take itself with a way
+  /// to record it again.
+  Widget _buildVideoAnswer(HCColor hc) {
+    final taken = _answered ? _selectedAnswer : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          _videoAnswerHint(),
+          style: AppTypography.bodyLarge.copyWith(color: hc.textPrimary),
+        ),
+        const SizedBox(height: 14),
+        if (taken == null)
+          SizedBox(
+            height: scaledControlHeight(context, 64),
+            child: FilledButton.icon(
+              onPressed: _recordVideoAnswer,
+              icon: const Icon(Icons.videocam_rounded, size: 28),
+              label: Text(
+                _t.assessVideoAnswerRecord,
+                style: AppTypography.buttonText,
+              ),
+            ),
+          )
+        else ...[
+          AssessmentMediaPanel(
+            key: ValueKey('answer_$taken'),
+            media: AssessmentMedia(video: taken),
+            presentation: AssessmentMediaPresentation.educatorPreview,
+            fallbackLabel: _t.assessYourVideoAnswer,
+          ),
+          OutlinedButton.icon(
+            onPressed: _recordVideoAnswer,
+            icon: const Icon(Icons.replay_rounded),
+            label: Text(_t.assessVideoAnswerRedo),
+            style: OutlinedButton.styleFrom(
+              minimumSize: Size.fromHeight(scaledControlHeight(context, 52)),
+            ),
+          ),
+        ],
+      ],
+    ).animate(key: ValueKey('video_$_currentIndex')).fadeIn(duration: 400.ms);
+  }
+
   Widget _buildFillInBlank(HCColor hc) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1257,6 +1481,35 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
   }
 
   Widget _buildFeedback(HCColor hc) {
+    if (_currentQuestion.format.needsReview) {
+      // Not right, not wrong: sent to a person.
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.info.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.info.withValues(alpha: 0.35),
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            const Text('🎥', style: TextStyle(fontSize: 28)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _t.assessVideoAnswerSaved,
+                style: AppTypography.titleSmall.copyWith(
+                  color: hc.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ).animate().fadeIn(duration: 300.ms);
+    }
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

@@ -70,6 +70,11 @@ enum QuestionFormat {
   // pick the word — the only item type that tests what the app teaches a
   // Deaf learner, rather than testing their reading.
   signVideo,
+  // The learner answers on camera — signing it, or saying it — and their
+  // teacher or parent marks it. The only item a Deaf learner answers in
+  // their own language, and one a learner who cannot write can answer at
+  // all. Never marked automatically: see QuestionAnswer.needsReview.
+  videoResponse,
 }
 
 /// The formats a person may pick when authoring a question by hand.
@@ -92,6 +97,7 @@ extension QuestionFormatX on QuestionFormat {
     QuestionFormat.matchPairs => 'Match Pairs',
     QuestionFormat.trueFalse => 'True or False',
     QuestionFormat.signVideo => 'Watch the Sign',
+    QuestionFormat.videoResponse => 'Answer on Video',
   };
 
   /// Localized [label]. Nullable l10n, same reasoning as [AssessmentTypeX].
@@ -102,7 +108,11 @@ extension QuestionFormatX on QuestionFormat {
         QuestionFormat.matchPairs => l10n.formatMatchPairs,
         QuestionFormat.trueFalse => l10n.formatTrueFalse,
         QuestionFormat.signVideo => l10n.formatSignVideo,
+        QuestionFormat.videoResponse => l10n.formatVideoResponse,
       };
+
+  /// Marked by a person, not by the app.
+  bool get needsReview => this == QuestionFormat.videoResponse;
 }
 
 /// A single question in an assessment
@@ -322,18 +332,34 @@ class QuestionAnswer {
   final bool isCorrect;
   final int responseTimeMs;
 
+  /// A video answer waiting for a person to mark it. [givenAnswer] is then
+  /// the video (`shared://…`, or `file://…` until it has been shared) and
+  /// [isCorrect] is false only because nobody has said otherwise yet — so
+  /// every automatic count skips these rather than scoring them wrong.
+  final bool needsReview;
+
   const QuestionAnswer({
     required this.questionId,
     required this.givenAnswer,
     required this.isCorrect,
     required this.responseTimeMs,
+    this.needsReview = false,
   });
+
+  QuestionAnswer withGivenAnswer(String value) => QuestionAnswer(
+    questionId: questionId,
+    givenAnswer: value,
+    isCorrect: isCorrect,
+    responseTimeMs: responseTimeMs,
+    needsReview: needsReview,
+  );
 
   Map<String, dynamic> toJson() => {
     'questionId': questionId,
     'givenAnswer': givenAnswer,
     'isCorrect': isCorrect,
     'responseTimeMs': responseTimeMs,
+    if (needsReview) 'needsReview': true,
   };
 
   factory QuestionAnswer.fromJson(Map<String, dynamic> json) {
@@ -342,6 +368,7 @@ class QuestionAnswer {
       givenAnswer: json['givenAnswer'] as String,
       isCorrect: json['isCorrect'] as bool,
       responseTimeMs: json['responseTimeMs'] as int? ?? 0,
+      needsReview: json['needsReview'] as bool? ?? false,
     );
   }
 }
@@ -385,6 +412,52 @@ class AssessmentResult {
   });
 
   double get percentage => totalQuestions > 0 ? score / totalQuestions : 0.0;
+
+  /// Video answers waiting for a person to mark them. They are not in
+  /// [score] or [totalQuestions], which count the automatically marked
+  /// questions only — so every existing percentage stays what it was.
+  List<QuestionAnswer> get reviewAnswers =>
+      answers.where((a) => a.needsReview).toList();
+
+  /// Whether this sitting has an automatic score at all. A test made only
+  /// of video answers has none until a person marks it, and must not be
+  /// shown as 0%.
+  bool get hasAutoScore => totalQuestions > 0;
+
+  /// The score once a person's marks on the video answers are counted in:
+  /// the automatic part plus every video answer [feedback] has marked.
+  /// [pending] are the video answers nobody has marked yet — they are in
+  /// neither number.
+  ({int correct, int total, int pending}) reviewedWith(
+    AssessmentFeedback? feedback,
+  ) {
+    final marks = feedback?.reviews ?? const <String, bool>{};
+    final videos = reviewAnswers;
+    final marked = videos.where((a) => marks.containsKey(a.questionId));
+    return (
+      correct: score + marked.where((a) => marks[a.questionId]!).length,
+      total: totalQuestions + marked.length,
+      pending: videos.length - marked.length,
+    );
+  }
+
+  /// This result with [answers] swapped in — the same sitting, for when a
+  /// video answer recorded offline has since been shared.
+  AssessmentResult withAnswers(List<QuestionAnswer> answers) =>
+      AssessmentResult(
+        id: id,
+        assessmentId: assessmentId,
+        profileId: profileId,
+        type: type,
+        score: score,
+        totalQuestions: totalQuestions,
+        answers: answers,
+        completedAt: completedAt,
+        durationSeconds: durationSeconds,
+        categories: categories,
+        categoryScores: categoryScores,
+        accommodations: accommodations,
+      );
 
   String get grade {
     final pct = percentage;

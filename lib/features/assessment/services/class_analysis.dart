@@ -147,7 +147,12 @@ class ClassAnalysis {
       if (result.answers.isEmpty) continue;
       sittings.add((
         score: result.percentage,
-        answers: {for (final a in result.answers) a.questionId: a},
+        // A video answer waiting for a person has no right or wrong yet;
+        // counting it as wrong would make every such item look impossible.
+        answers: {
+          for (final a in result.answers)
+            if (!a.needsReview) a.questionId: a,
+        },
       ));
     }
     if (sittings.isEmpty) return const [];

@@ -93,6 +93,9 @@ class ResearchExportRows {
       final completedAt = r.completedAt.toIso8601String();
       final assessmentType = r.type.name;
       for (final a in r.answers) {
+        // Video answers are marked by a person, not scored: a 0 in the
+        // correctness column would read as "wrong" in the analysis.
+        if (a.needsReview) continue;
         rows.add(
           '$studentId,'
           '$groupCell,'

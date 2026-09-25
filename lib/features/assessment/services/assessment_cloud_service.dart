@@ -213,6 +213,24 @@ class AssessmentCloudService {
   /// upload did not go through (the result is safe locally either way), so
   /// the caller can make sure it is pushed once the connection returns —
   /// see [AssessmentResultsNotifier.saveResult].
+  /// Replaces a result already saved — locally, then in the cloud (the
+  /// learner's own document, which the rules let their device update).
+  Future<bool> updateResult(String learnerId, AssessmentResult result) async {
+    await AssessmentService.replaceResult(learnerId, result);
+    if (!_enabled) return true;
+    try {
+      await _db
+          .collection(resultsCollection)
+          .doc(result.id)
+          .set({...result.toJson(), 'owner_uid': FirebaseService.currentUid})
+          .timeout(remoteTimeout);
+      return true;
+    } catch (e, s) {
+      _log('updateResult', e, s);
+      return false;
+    }
+  }
+
   Future<bool> saveResult(String learnerId, AssessmentResult result) async {
     await AssessmentService.saveResult(learnerId, result);
     if (!_enabled) return true;

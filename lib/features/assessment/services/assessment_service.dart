@@ -224,6 +224,23 @@ class AssessmentService {
     );
   }
 
+  /// Replaces the stored copy of [result] (same id) — the same sitting,
+  /// updated. Used when a video answer recorded offline has since been
+  /// shared; a result is otherwise never changed after it is saved.
+  static Future<void> replaceResult(
+    String profileId,
+    AssessmentResult result,
+  ) async {
+    final list = getResults(profileId);
+    final i = list.indexWhere((r) => r.id == result.id);
+    if (i == -1) return;
+    list[i] = result;
+    await _box.put(
+      'assessment_results_$profileId',
+      list.map((r) => r.toJson()).toList(),
+    );
+  }
+
   /// Get results filtered by assessment type
   static List<AssessmentResult> getResultsByType(
       String profileId, AssessmentType type) {
@@ -888,8 +905,10 @@ class AssessmentService {
     switch (format) {
       // A sign item cannot be built from a quiz recipe — the Quiz Builder
       // picks flashcards, not clips, and not every card has one. Falling back
-      // to multiple choice is the only honest answer.
+      // to multiple choice is the only honest answer. A video answer needs a
+      // person to mark it, which a generated quiz never has.
       case QuestionFormat.signVideo:
+      case QuestionFormat.videoResponse:
       case QuestionFormat.multipleChoice:
         return AssessmentQuestion(
           id: 'q_${card.id}',
@@ -973,8 +992,12 @@ class AssessmentService {
   ) {
     switch (format) {
       // Sign items are generated from the clips that exist, not from a random
-      // format roll — see [buildSignQuestion].
+      // format roll — see [buildSignQuestion]. A video answer is only ever
+      // written by a teacher: a generated test (the study's pre-test among
+      // them) must be marked by the app, so the "hard" roll that can land on
+      // it gets multiple choice instead.
       case QuestionFormat.signVideo:
+      case QuestionFormat.videoResponse:
       case QuestionFormat.multipleChoice:
         return _generateMultipleChoice(card, allCards, rng);
       case QuestionFormat.trueFalse:
@@ -1081,6 +1104,9 @@ class AssessmentService {
     final results = getResults(profileId);
     final groups = <AssessmentType, List<double>>{};
     for (final r in results) {
+      // A sitting answered only on video has no score until a person marks
+      // it; averaging it in as 0% would drag the learner down.
+      if (!r.hasAutoScore) continue;
       groups.putIfAbsent(r.type, () => []).add(r.percentage);
     }
     return groups.map((type, scores) =>
@@ -1090,7 +1116,9 @@ class AssessmentService {
   /// Get score trend over time for a specific type
   static List<({DateTime date, double score})> getScoreTrend(
       String profileId, AssessmentType type) {
-    final results = getResultsByType(profileId, type);
+    final results = getResultsByType(profileId, type)
+        .where((r) => r.hasAutoScore)
+        .toList();
     results.sort((a, b) => a.completedAt.compareTo(b.completedAt));
     return results
         .map((r) => (date: r.completedAt, score: r.percentage))

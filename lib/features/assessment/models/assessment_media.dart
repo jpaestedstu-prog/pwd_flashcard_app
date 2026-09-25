@@ -217,17 +217,26 @@ class AssessmentFeedback {
   final AssessmentMedia media;
   final DateTime updatedAt;
 
+  /// The educator's marks on this learner's video answers, by question id:
+  /// true for correct, false for "not yet". A learner's result is theirs
+  /// alone to write, so a person's marking of it lives here, with the rest
+  /// of what the educator had to say.
+  final Map<String, bool> reviews;
+
   const AssessmentFeedback({
     this.note = '',
     this.media = AssessmentMedia.none,
     required this.updatedAt,
+    this.reviews = const {},
   });
 
-  bool get isEmpty => note.trim().isEmpty && !media.hasAny;
+  bool get isEmpty =>
+      note.trim().isEmpty && !media.hasAny && reviews.isEmpty;
 
   Map<String, dynamic> toJson() => {
     if (note.trim().isNotEmpty) 'note': note.trim(),
     if (!media.isEmpty) 'media': media.toJson(),
+    if (reviews.isNotEmpty) 'reviews': reviews,
     'updatedAt': updatedAt.toIso8601String(),
   };
 
@@ -236,10 +245,17 @@ class AssessmentFeedback {
     if (raw is! Map) return null;
     final at = DateTime.tryParse(raw['updatedAt']?.toString() ?? '');
     final note = raw['note'];
+    final reviews = raw['reviews'];
     final feedback = AssessmentFeedback(
       note: note is String ? note : '',
       media: AssessmentMedia.fromJson(raw['media']),
       updatedAt: at ?? DateTime.fromMillisecondsSinceEpoch(0),
+      reviews: reviews is Map
+          ? {
+              for (final e in reviews.entries)
+                if (e.value is bool) e.key.toString(): e.value as bool,
+            }
+          : const {},
     );
     return feedback.isEmpty ? null : feedback;
   }

@@ -8331,7 +8331,7 @@
   "assessMediaPause": "Pause",
   "assessMediaReplay": "Watch again",
   "assessMediaClose": "Close",
-  "assessMediaOnOtherDevice": "This {kind} is saved on your teacher's tablet, so it can't show here.",
+  "assessMediaOnOtherDevice": "This {kind} is on another tablet and has not been shared yet.",
   "@assessMediaOnOtherDevice": {
     "placeholders": {
       "kind": {
@@ -8510,5 +8510,42 @@
     }
   },
   "assessChoicePictureReplace": "Replace the picture",
-  "assessChoicePictureRemove": "Remove the picture"
+  "assessChoicePictureRemove": "Remove the picture",
+  "formatVideoResponse": "Answer on Video",
+  "assessVideoAnswerRecord": "Record your answer",
+  "assessVideoAnswerHintSign": "Sign your answer to the camera.",
+  "assessVideoAnswerHintSay": "Say your answer out loud to the camera.",
+  "assessVideoAnswerHintEither": "Sign or say your answer to the camera.",
+  "assessVideoAnswerSaved": "Answer saved — your teacher or parent will watch it.",
+  "assessVideoAnswerRedo": "Record again",
+  "assessVideoAnswerSending": "Sending your video answers…",
+  "assessToReview": "{count, plural, =1{1 answer to review} other{{count} answers to review}}",
+  "@assessToReview": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "assessSentForReview": "Sent to your teacher or parent",
+  "assessAllForReview": "Your teacher or parent will watch your answers and tell you how you did.",
+  "assessReviewTitle": "Video answers to check",
+  "assessReviewCorrect": "Correct",
+  "assessReviewNotYet": "Not yet",
+  "assessReviewedCorrect": "Marked correct",
+  "assessReviewedNotYet": "Not yet — try it again",
+  "assessReviewWaiting": "Waiting to be checked",
+  "assessWhatToLookFor": "What a good answer shows (only you see this)",
+  "assessYourVideoAnswer": "Your video answer",
+  "assessReviewedScore": "{correct} of {total} correct",
+  "@assessReviewedScore": {
+    "placeholders": {
+      "correct": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }

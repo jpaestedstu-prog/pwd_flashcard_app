@@ -1385,6 +1385,7 @@ class _FeedbackTile extends StatelessWidget {
       assignmentTitle: assignment.assessmentTitle,
       feedback: feedback,
       presentation: presentation,
+      assessmentId: assignment.assessmentId,
     );
 
     return Padding(
@@ -1641,13 +1642,23 @@ class _RecentResultTile extends StatelessWidget {
                   color: _scoreColor(result.percentage).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  '$pct%',
-                  style: AppTypography.labelLarge.copyWith(
-                    color: _scoreColor(result.percentage),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                child: result.hasAutoScore
+                    ? Text(
+                        '$pct%',
+                        style: AppTypography.labelLarge.copyWith(
+                          color: _scoreColor(result.percentage),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      )
+                    // Answered only on video: waiting for a person, not 0%.
+                    : Semantics(
+                        label: _tr(context).assessSentForReview,
+                        child: const Icon(
+                          Icons.videocam_rounded,
+                          color: AppColors.info,
+                          size: 20,
+                        ),
+                      ),
               ),
             ],
           ),
