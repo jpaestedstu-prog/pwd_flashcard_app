@@ -105,6 +105,27 @@ class AssessmentMediaStore {
     }
   }
 
+  /// Adopts something the in-app camera just captured and removes the
+  /// camera's own temporary copy, which would otherwise sit in the cache.
+  Future<({MediaPickStatus status, String? value})> adoptCaptured({
+    required String capturedPath,
+    required String ownerKey,
+    required AssessmentMediaKind kind,
+  }) async {
+    final result = await adopt(
+      sourcePath: capturedPath,
+      ownerKey: ownerKey,
+      kind: kind,
+    );
+    try {
+      final temp = File(capturedPath);
+      if (await temp.exists()) await temp.delete();
+    } on Object {
+      // The OS reclaims its cache anyway.
+    }
+    return result;
+  }
+
   /// Pick and adopt in one step.
   Future<({MediaPickStatus status, String? value})> pickAndAdopt({
     required String ownerKey,

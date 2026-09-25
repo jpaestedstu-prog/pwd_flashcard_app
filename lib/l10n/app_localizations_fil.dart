@@ -12248,4 +12248,86 @@ class AppLocalizationsFil extends AppLocalizations {
   @override
   String get assessMediaShareNotOwner =>
       'Pinamamahalaan na ang profile na ito mula sa ibang device, kaya hindi makapagbahagi ng file mula rito.';
+
+  @override
+  String get captureRecordTitle => 'Mag-record ng bidyo';
+
+  @override
+  String get capturePhotoTitle => 'Kumuha ng larawan';
+
+  @override
+  String get captureStart => 'Simulan ang pag-record';
+
+  @override
+  String get captureStop => 'Ihinto';
+
+  @override
+  String get captureTakePhoto => 'Kunan';
+
+  @override
+  String get captureSwitchCamera => 'Palitan ang camera';
+
+  @override
+  String get captureUse => 'Gamitin ang bidyong ito';
+
+  @override
+  String get captureUsePhoto => 'Gamitin ang larawang ito';
+
+  @override
+  String get captureRetake => 'Mag-record ulit';
+
+  @override
+  String get captureRetakePhoto => 'Kumuha ulit';
+
+  @override
+  String get captureClose => 'Isara';
+
+  @override
+  String get captureRecordingNow => 'Nagre-record';
+
+  @override
+  String captureTimeLeft(int seconds) {
+    return '$seconds segundo na lang';
+  }
+
+  @override
+  String get captureGetReady => 'Maghanda…';
+
+  @override
+  String get captureStarted => 'Nagsimula ang pag-record';
+
+  @override
+  String get captureStopped => 'Huminto ang pag-record';
+
+  @override
+  String captureMaxLength(int seconds) {
+    return 'Hanggang $seconds segundo';
+  }
+
+  @override
+  String get captureNoCamera =>
+      'Walang camera sa tablet na ito na magagamit ng app.';
+
+  @override
+  String get captureDenied =>
+      'Nakapatay ang camera o mikropono para sa FlashLearn. Buksan ang mga ito sa settings ng tablet, saka subukang muli.';
+
+  @override
+  String get captureFailed => 'Hindi mabuksan ang camera. Subukang muli.';
+
+  @override
+  String get captureTryAgain => 'Subukang muli';
+
+  @override
+  String get captureRecordedHint =>
+      'Handa na ang iyong bidyo. Gamitin ito, o mag-record ulit.';
+
+  @override
+  String get assessMediaRecordVideo => 'Mag-record gamit ang camera';
+
+  @override
+  String get assessMediaTakePhoto => 'Kumuha ng larawan gamit ang camera';
+
+  @override
+  String get assessMediaRecordSignTitle => 'Mag-record sa FSL';
 }

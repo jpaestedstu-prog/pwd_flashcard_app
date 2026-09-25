@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/services/shared_media_service.dart';
+import '../../../core/widgets/media_capture_screen.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/routine_catalog.dart';
@@ -787,14 +788,43 @@ class _MediaFieldState extends State<_MediaField> {
   RoutineMediaKind get kind => widget.kind;
   bool get filipino => widget.filipino;
 
-  Future<void> _pick() async {
+  /// The camera makes photos and videos; a GIF or a sound it cannot.
+  bool get _cameraMakes =>
+      kind == RoutineMediaKind.photo || kind == RoutineMediaKind.video;
+
+  /// Fills the slot from a file on the device, or — with [camera] — from the
+  /// in-app camera, so an educator can film the step then and there.
+  Future<void> _pick({bool camera = false}) async {
     if (_picking) return;
+    String? captured;
+    if (camera) {
+      captured = await captureMedia(
+        context,
+        mode: kind == RoutineMediaKind.photo
+            ? CaptureMode.photo
+            : CaptureMode.video,
+      );
+      if (captured == null || !mounted) return;
+    }
     setState(() => _picking = true);
     try {
-      final slot = await const RoutineMediaStore().pickAndAdopt(
-        stepId: widget.stepId,
-        kind: kind,
-      );
+      final slot = captured != null
+          ? await const RoutineMediaStore().adopt(
+              sourcePath: captured,
+              stepId: widget.stepId,
+              kind: kind,
+            )
+          : await const RoutineMediaStore().pickAndAdopt(
+              stepId: widget.stepId,
+              kind: kind,
+            );
+      if (captured != null) {
+        try {
+          await File(captured).delete();
+        } on Object {
+          // The camera's own temp file; the OS reclaims it anyway.
+        }
+      }
       if (!mounted || slot == null) return;
       // Replacing a device file removes the old copy; a URL belongs to
       // whoever hosts it and is only forgotten, never deleted.
@@ -872,6 +902,25 @@ class _MediaFieldState extends State<_MediaField> {
                   filipino ? 'Pumili mula sa device' : 'Choose from device',
                 ),
               ),
+              if (_cameraMakes) ...[
+                const SizedBox(width: 6),
+                IconButton.outlined(
+                  tooltip: kind == RoutineMediaKind.photo
+                      ? (filipino
+                            ? 'Kumuha ng larawan gamit ang camera'
+                            : 'Take a photo with the camera')
+                      : (filipino
+                            ? 'Mag-record gamit ang camera'
+                            : 'Record with the camera'),
+                  onPressed: _picking ? null : () => _pick(camera: true),
+                  icon: Icon(
+                    kind == RoutineMediaKind.photo
+                        ? Icons.photo_camera_rounded
+                        : Icons.videocam_rounded,
+                    size: 20,
+                  ),
+                ),
+              ],
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

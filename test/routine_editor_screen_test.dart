@@ -355,6 +355,17 @@ void main() {
       await _settle(tester);
     }
 
+    testWidgets('photo and video can be made with the camera, GIF and sound '
+        'cannot', (tester) async {
+      await pumpSheet(
+        tester,
+        const RoutineStep(id: 's', activity: RoutineActivity.brushingTeeth),
+      );
+      expect(find.byTooltip('Take a photo with the camera'), findsOneWidget);
+      expect(find.byTooltip('Record with the camera'), findsOneWidget);
+      await _unmount(tester);
+    });
+
     testWidgets('a shared file says it reaches every device', (tester) async {
       // A picked file is shared the moment it is chosen; the field must say
       // so, or an educator cannot tell it apart from one stuck on this tablet.

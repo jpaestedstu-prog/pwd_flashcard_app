@@ -20563,6 +20563,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This profile is now managed from another device, so files can’t be shared from this one.'**
   String get assessMediaShareNotOwner;
+
+  /// No description provided for @captureRecordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a video'**
+  String get captureRecordTitle;
+
+  /// No description provided for @capturePhotoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get capturePhotoTitle;
+
+  /// No description provided for @captureStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start recording'**
+  String get captureStart;
+
+  /// No description provided for @captureStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get captureStop;
+
+  /// No description provided for @captureTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take photo'**
+  String get captureTakePhoto;
+
+  /// No description provided for @captureSwitchCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch camera'**
+  String get captureSwitchCamera;
+
+  /// No description provided for @captureUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this video'**
+  String get captureUse;
+
+  /// No description provided for @captureUsePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this photo'**
+  String get captureUsePhoto;
+
+  /// No description provided for @captureRetake.
+  ///
+  /// In en, this message translates to:
+  /// **'Record again'**
+  String get captureRetake;
+
+  /// No description provided for @captureRetakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take again'**
+  String get captureRetakePhoto;
+
+  /// No description provided for @captureClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get captureClose;
+
+  /// No description provided for @captureRecordingNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording'**
+  String get captureRecordingNow;
+
+  /// No description provided for @captureTimeLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s left'**
+  String captureTimeLeft(int seconds);
+
+  /// No description provided for @captureGetReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Get ready…'**
+  String get captureGetReady;
+
+  /// No description provided for @captureStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording started'**
+  String get captureStarted;
+
+  /// No description provided for @captureStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording stopped'**
+  String get captureStopped;
+
+  /// No description provided for @captureMaxLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to {seconds} seconds'**
+  String captureMaxLength(int seconds);
+
+  /// No description provided for @captureNoCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'This tablet has no camera the app can use.'**
+  String get captureNoCamera;
+
+  /// No description provided for @captureDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera or microphone is turned off for FlashLearn. Turn them on in the tablet’s settings, then try again.'**
+  String get captureDenied;
+
+  /// No description provided for @captureFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera could not start. Try again.'**
+  String get captureFailed;
+
+  /// No description provided for @captureTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get captureTryAgain;
+
+  /// No description provided for @captureRecordedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your video is ready. Use it, or record again.'**
+  String get captureRecordedHint;
+
+  /// No description provided for @assessMediaRecordVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Record with the camera'**
+  String get assessMediaRecordVideo;
+
+  /// No description provided for @assessMediaTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo with the camera'**
+  String get assessMediaTakePhoto;
+
+  /// No description provided for @assessMediaRecordSignTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Record in FSL'**
+  String get assessMediaRecordSignTitle;
 }
 
 class _AppLocalizationsDelegate

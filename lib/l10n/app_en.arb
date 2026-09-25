@@ -8451,5 +8451,44 @@
     }
   },
   "assessMediaShareFailed": "Couldn’t share it right now. It is saved on this tablet and will be shared when you are online.",
-  "assessMediaShareNotOwner": "This profile is now managed from another device, so files can’t be shared from this one."
+  "assessMediaShareNotOwner": "This profile is now managed from another device, so files can’t be shared from this one.",
+  "captureRecordTitle": "Record a video",
+  "capturePhotoTitle": "Take a photo",
+  "captureStart": "Start recording",
+  "captureStop": "Stop",
+  "captureTakePhoto": "Take photo",
+  "captureSwitchCamera": "Switch camera",
+  "captureUse": "Use this video",
+  "captureUsePhoto": "Use this photo",
+  "captureRetake": "Record again",
+  "captureRetakePhoto": "Take again",
+  "captureClose": "Close",
+  "captureRecordingNow": "Recording",
+  "captureTimeLeft": "{seconds} s left",
+  "@captureTimeLeft": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "captureGetReady": "Get ready…",
+  "captureStarted": "Recording started",
+  "captureStopped": "Recording stopped",
+  "captureMaxLength": "Up to {seconds} seconds",
+  "@captureMaxLength": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "captureNoCamera": "This tablet has no camera the app can use.",
+  "captureDenied": "The camera or microphone is turned off for FlashLearn. Turn them on in the tablet’s settings, then try again.",
+  "captureFailed": "The camera could not start. Try again.",
+  "captureTryAgain": "Try again",
+  "captureRecordedHint": "Your video is ready. Use it, or record again.",
+  "assessMediaRecordVideo": "Record with the camera",
+  "assessMediaTakePhoto": "Take a photo with the camera",
+  "assessMediaRecordSignTitle": "Record in FSL"
 }

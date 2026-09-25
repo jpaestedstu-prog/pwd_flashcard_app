@@ -12339,4 +12339,85 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get assessMediaShareNotOwner =>
       'This profile is now managed from another device, so files can’t be shared from this one.';
+
+  @override
+  String get captureRecordTitle => 'Record a video';
+
+  @override
+  String get capturePhotoTitle => 'Take a photo';
+
+  @override
+  String get captureStart => 'Start recording';
+
+  @override
+  String get captureStop => 'Stop';
+
+  @override
+  String get captureTakePhoto => 'Take photo';
+
+  @override
+  String get captureSwitchCamera => 'Switch camera';
+
+  @override
+  String get captureUse => 'Use this video';
+
+  @override
+  String get captureUsePhoto => 'Use this photo';
+
+  @override
+  String get captureRetake => 'Record again';
+
+  @override
+  String get captureRetakePhoto => 'Take again';
+
+  @override
+  String get captureClose => 'Close';
+
+  @override
+  String get captureRecordingNow => 'Recording';
+
+  @override
+  String captureTimeLeft(int seconds) {
+    return '$seconds s left';
+  }
+
+  @override
+  String get captureGetReady => 'Get ready…';
+
+  @override
+  String get captureStarted => 'Recording started';
+
+  @override
+  String get captureStopped => 'Recording stopped';
+
+  @override
+  String captureMaxLength(int seconds) {
+    return 'Up to $seconds seconds';
+  }
+
+  @override
+  String get captureNoCamera => 'This tablet has no camera the app can use.';
+
+  @override
+  String get captureDenied =>
+      'The camera or microphone is turned off for FlashLearn. Turn them on in the tablet’s settings, then try again.';
+
+  @override
+  String get captureFailed => 'The camera could not start. Try again.';
+
+  @override
+  String get captureTryAgain => 'Try again';
+
+  @override
+  String get captureRecordedHint =>
+      'Your video is ready. Use it, or record again.';
+
+  @override
+  String get assessMediaRecordVideo => 'Record with the camera';
+
+  @override
+  String get assessMediaTakePhoto => 'Take a photo with the camera';
+
+  @override
+  String get assessMediaRecordSignTitle => 'Record in FSL';
 }

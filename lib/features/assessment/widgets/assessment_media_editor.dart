@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/accessibility/learner_support.dart';
 import '../../../core/services/shared_media_service.dart';
+import '../../../core/widgets/media_capture_screen.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
@@ -186,7 +187,7 @@ class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
   Future<void> _add(AssessmentMediaKind kind) async {
     if (_busy != null) return;
     _releaseFocus();
-    final choice = await showModalBottomSheet<({bool device, String? link})>(
+    final choice = await showModalBottomSheet<_Source>(
       context: context,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
@@ -195,16 +196,35 @@ class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
     );
     if (choice == null || !mounted) return;
     final t = _tr(context);
-    if (!choice.device) {
-      widget.onChanged(widget.value.withSlot(kind, choice.link ?? ''));
+    if (choice.link != null) {
+      widget.onChanged(widget.value.withSlot(kind, choice.link!));
       return;
+    }
+    String? captured;
+    if (choice.capture) {
+      captured = await captureMedia(
+        context,
+        mode: kind == AssessmentMediaKind.photo
+            ? CaptureMode.photo
+            : CaptureMode.video,
+        title: kind == AssessmentMediaKind.sign
+            ? t.assessMediaRecordSignTitle
+            : null,
+      );
+      if (captured == null || !mounted) return;
     }
     setState(() => _busy = kind);
     try {
-      final result = await const AssessmentMediaStore().pickAndAdopt(
-        ownerKey: widget.ownerKey,
-        kind: kind,
-      );
+      final result = captured != null
+          ? await const AssessmentMediaStore().adoptCaptured(
+              capturedPath: captured,
+              ownerKey: widget.ownerKey,
+              kind: kind,
+            )
+          : await const AssessmentMediaStore().pickAndAdopt(
+              ownerKey: widget.ownerKey,
+              kind: kind,
+            );
       if (!mounted) return;
       switch (result.status) {
         case MediaPickStatus.added:
@@ -649,7 +669,20 @@ class _Thumb extends StatelessWidget {
   }
 }
 
-/// "Choose from this device" or "Paste a link" for one slot.
+/// Where a slot's media comes from: the camera, a file on this device, or a
+/// link.
+class _Source {
+  final bool capture;
+  final String? link;
+
+  const _Source.device() : capture = false, link = null;
+  const _Source.camera() : capture = true, link = null;
+  const _Source.link(String this.link) : capture = false;
+}
+
+/// "Record with the camera", "Choose from this device" or "Paste a link" for
+/// one slot. The camera is offered for photos, videos and FSL videos — the
+/// kinds it can make.
 class _MediaSourceSheet extends StatefulWidget {
   final AssessmentMediaKind kind;
 
@@ -666,6 +699,14 @@ class _MediaSourceSheetState extends State<_MediaSourceSheet> {
   final _link = TextEditingController();
   String? _error;
 
+  /// The camera makes photos and videos; a GIF or a sound it cannot.
+  bool get _cameraMakes => switch (widget.kind) {
+    AssessmentMediaKind.photo ||
+    AssessmentMediaKind.video ||
+    AssessmentMediaKind.sign => true,
+    AssessmentMediaKind.gif || AssessmentMediaKind.audio => false,
+  };
+
   @override
   void dispose() {
     _link.dispose();
@@ -681,7 +722,7 @@ class _MediaSourceSheetState extends State<_MediaSourceSheet> {
       setState(() => _error = _tr(context).assessMediaLinkInvalid);
       return;
     }
-    Navigator.of(context).pop((device: false, link: v));
+    Navigator.of(context).pop(_Source.link(v));
   }
 
   @override
@@ -710,9 +751,30 @@ class _MediaSourceSheetState extends State<_MediaSourceSheet> {
               ),
             ],
             const SizedBox(height: 16),
+            if (_cameraMakes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: FilledButton.tonalIcon(
+                  onPressed: () =>
+                      Navigator.of(context).pop(const _Source.camera()),
+                  icon: Icon(
+                    widget.kind == AssessmentMediaKind.photo
+                        ? Icons.photo_camera_rounded
+                        : Icons.videocam_rounded,
+                  ),
+                  label: Text(
+                    widget.kind == AssessmentMediaKind.photo
+                        ? t.assessMediaTakePhoto
+                        : t.assessMediaRecordVideo,
+                  ),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                  ),
+                ),
+              ),
             FilledButton.icon(
               onPressed: () =>
-                  Navigator.of(context).pop((device: true, link: null)),
+                  Navigator.of(context).pop(const _Source.device()),
               icon: const Icon(Icons.phone_android_rounded),
               label: Text(t.assessMediaFromDevice),
               style: FilledButton.styleFrom(

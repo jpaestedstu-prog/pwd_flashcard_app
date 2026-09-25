@@ -51,6 +51,10 @@ void main() {
     (k) =>
         !k.startsWith('@') &&
         (k.startsWith('assess') ||
+            // The in-app camera and the learner portfolio, which the
+            // assessment module opens.
+            k.startsWith('capture') ||
+            k.startsWith('portfolio') ||
             k.startsWith('report') ||
             k.startsWith('support') ||
             k.startsWith('format') ||
