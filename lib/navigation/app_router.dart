@@ -85,6 +85,7 @@ import '../features/assessment/screens/assessment_results_screen.dart';
 import '../features/assessment/screens/assessment_builder_screen.dart';
 import '../features/assessment/screens/assessment_assign_screen.dart';
 import '../features/assessment/screens/assignment_tracking_screen.dart';
+import '../features/assessment/screens/learner_portfolio_screen.dart';
 import '../features/assessment/screens/class_report_screen.dart';
 import '../features/assessment/models/assessment_models.dart';
 import '../features/assessment/services/assessment_service.dart';
@@ -1579,6 +1580,31 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
           child: const AssessmentResultsScreen(),
+        ),
+      ),
+      // A learner's portfolio: tests, video answers and feedback. Their own
+      // at the bare path; an educator opens a learner's with the id, and a
+      // learner who types someone else's id is shown their own instead.
+      GoRoute(
+        path: '/assessment/portfolio',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const LearnerPortfolioScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/assessment/portfolio/:profileId',
+        redirect: (context, state) {
+          final viewer = ref.read(profileProvider);
+          if (viewer == null || viewer.role.isEducator) return null;
+          return '/assessment/portfolio';
+        },
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: LearnerPortfolioScreen(
+            learnerId: state.pathParameters['profileId'],
+            learnerName: state.uri.queryParameters['name'],
+          ),
         ),
       ),
       GoRoute(

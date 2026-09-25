@@ -12423,4 +12423,96 @@ class AppLocalizationsFil extends AppLocalizations {
   String assessReviewedScore(int correct, int total) {
     return '$correct sa $total ang tama';
   }
+
+  @override
+  String get portfolioTitle => 'Portpolyo';
+
+  @override
+  String get portfolioMine => 'Aking portpolyo';
+
+  @override
+  String get portfolioMineSub =>
+      'Ang iyong mga pagsusulit, sagot sa video at puna';
+
+  @override
+  String portfolioOfSub(String name) {
+    return 'Mga pagsusulit, sagot sa video at puna ni $name';
+  }
+
+  @override
+  String get portfolioTestsTaken => 'Natapos na pagsusulit';
+
+  @override
+  String get portfolioAverage => 'Karaniwang iskor';
+
+  @override
+  String get portfolioVideoAnswers => 'Sagot sa video';
+
+  @override
+  String get portfolioFeedback => 'Mga puna';
+
+  @override
+  String get portfolioSoFar => 'Lahat ng nagawa';
+
+  @override
+  String get portfolioEmpty =>
+      'Wala pang laman. Lalabas dito ang mga natapos na pagsusulit at puna.';
+
+  @override
+  String get portfolioWatchAnswers => 'Panoorin ang mga sagot sa video';
+
+  @override
+  String portfolioSupports(String list) {
+    return 'Mga suporta: $list';
+  }
+
+  @override
+  String get portfolioSharePdf => 'PDF para sa magulang';
+
+  @override
+  String get portfolioPdfTitle => 'Portpolyo ng Pag-aaral';
+
+  @override
+  String portfolioPdfLearner(String name) {
+    return 'Mag-aaral: $name';
+  }
+
+  @override
+  String portfolioPdfMade(String date) {
+    return 'Ginawa noong $date';
+  }
+
+  @override
+  String get portfolioPdfSummary => 'Buod';
+
+  @override
+  String get portfolioPdfTests => 'Mga Pagsusulit';
+
+  @override
+  String get portfolioPdfDate => 'Petsa';
+
+  @override
+  String get portfolioPdfTest => 'Pagsusulit';
+
+  @override
+  String get portfolioPdfScore => 'Iskor';
+
+  @override
+  String get portfolioPdfFeedback => 'Puna mula sa guro o magulang';
+
+  @override
+  String portfolioPdfInApp(String kinds) {
+    return 'Kalakip din: $kinds. Buksan ang app para panoorin o pakinggan.';
+  }
+
+  @override
+  String portfolioPdfSubject(String name) {
+    return 'Portpolyo ng pag-aaral ni $name';
+  }
+
+  @override
+  String get portfolioPdfFailed => 'Hindi magawa ang PDF. Pakisubukang muli.';
+
+  @override
+  String get portfolioPdfWaiting => 'Hinihintay pang suriin';
 }

@@ -20869,6 +20869,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{correct} of {total} correct'**
   String assessReviewedScore(int correct, int total);
+
+  /// No description provided for @portfolioTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Portfolio'**
+  String get portfolioTitle;
+
+  /// No description provided for @portfolioMine.
+  ///
+  /// In en, this message translates to:
+  /// **'My portfolio'**
+  String get portfolioMine;
+
+  /// No description provided for @portfolioMineSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Your tests, video answers and feedback'**
+  String get portfolioMineSub;
+
+  /// No description provided for @portfolioOfSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Tests, video answers and feedback for {name}'**
+  String portfolioOfSub(String name);
+
+  /// No description provided for @portfolioTestsTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Tests taken'**
+  String get portfolioTestsTaken;
+
+  /// No description provided for @portfolioAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Average score'**
+  String get portfolioAverage;
+
+  /// No description provided for @portfolioVideoAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'Video answers'**
+  String get portfolioVideoAnswers;
+
+  /// No description provided for @portfolioFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback'**
+  String get portfolioFeedback;
+
+  /// No description provided for @portfolioSoFar.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything so far'**
+  String get portfolioSoFar;
+
+  /// No description provided for @portfolioEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here yet. Finished tests and feedback will show up here.'**
+  String get portfolioEmpty;
+
+  /// No description provided for @portfolioWatchAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch the video answers'**
+  String get portfolioWatchAnswers;
+
+  /// No description provided for @portfolioSupports.
+  ///
+  /// In en, this message translates to:
+  /// **'Supports: {list}'**
+  String portfolioSupports(String list);
+
+  /// No description provided for @portfolioSharePdf.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF for parents'**
+  String get portfolioSharePdf;
+
+  /// No description provided for @portfolioPdfTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Learning Portfolio'**
+  String get portfolioPdfTitle;
+
+  /// No description provided for @portfolioPdfLearner.
+  ///
+  /// In en, this message translates to:
+  /// **'Learner: {name}'**
+  String portfolioPdfLearner(String name);
+
+  /// No description provided for @portfolioPdfMade.
+  ///
+  /// In en, this message translates to:
+  /// **'Made on {date}'**
+  String portfolioPdfMade(String date);
+
+  /// No description provided for @portfolioPdfSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get portfolioPdfSummary;
+
+  /// No description provided for @portfolioPdfTests.
+  ///
+  /// In en, this message translates to:
+  /// **'Tests'**
+  String get portfolioPdfTests;
+
+  /// No description provided for @portfolioPdfDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get portfolioPdfDate;
+
+  /// No description provided for @portfolioPdfTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test'**
+  String get portfolioPdfTest;
+
+  /// No description provided for @portfolioPdfScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Score'**
+  String get portfolioPdfScore;
+
+  /// No description provided for @portfolioPdfFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback from the teacher or parent'**
+  String get portfolioPdfFeedback;
+
+  /// No description provided for @portfolioPdfInApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Also attached: {kinds}. Open the app to watch or listen.'**
+  String portfolioPdfInApp(String kinds);
+
+  /// No description provided for @portfolioPdfSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Learning portfolio for {name}'**
+  String portfolioPdfSubject(String name);
+
+  /// No description provided for @portfolioPdfFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not make the PDF. Please try again.'**
+  String get portfolioPdfFailed;
+
+  /// No description provided for @portfolioPdfWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for review'**
+  String get portfolioPdfWaiting;
 }
 
 class _AppLocalizationsDelegate

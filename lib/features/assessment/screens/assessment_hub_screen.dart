@@ -150,6 +150,18 @@ class AssessmentHubScreen extends ConsumerWidget {
                             size: 28,
                           ),
                         ),
+                    // Everything they have done and been told, in one place.
+                    if (!isEducator &&
+                        (results.isNotEmpty || feedbackForYou.isNotEmpty))
+                      IconButton(
+                        tooltip: _tr(context).portfolioMine,
+                        onPressed: () => context.push('/assessment/portfolio'),
+                        icon: Icon(
+                          Icons.folder_special_rounded,
+                          color: hc.primary,
+                          size: 28,
+                        ),
+                      ),
                   ],
                 ).animate().fadeIn(duration: 400.ms),
               ),

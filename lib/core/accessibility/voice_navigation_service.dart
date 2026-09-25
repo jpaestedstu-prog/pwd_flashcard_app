@@ -134,6 +134,7 @@ class VoiceNavigationService {
     '/parent-teacher-notes',
     '/parent-teacher-notes/:profileId',
     '/progress-timeline/:profileId',
+    '/assessment/portfolio/:profileId',
     '/routine-manage/:profileId',
     '/student-comparison',
     '/student-profile-detail',
@@ -238,6 +239,20 @@ class VoiceNavigationService {
         fil: (
           name: 'Timeline ng Progreso',
           description: 'Araw-araw na kasaysayan ng isang $learnerFil.',
+        ),
+      ),
+      '/assessment/portfolio/:profileId' => (
+        en: (
+          name: 'Portfolio',
+          description:
+              'Tests, video answers and feedback for one $learner, with a '
+              'PDF for the family.',
+        ),
+        fil: (
+          name: 'Portpolyo',
+          description:
+              'Mga pagsusulit, sagot sa video at puna ng isang $learnerFil, '
+              'may PDF para sa pamilya.',
         ),
       ),
       '/child-alarms/:profileId' => (
@@ -423,6 +438,17 @@ class VoiceNavigationService {
         name: 'Pagsusulit sa Kategorya',
         description:
             'Sagutin ang mga tanong mula sa isang kategorya ng bokabularyo.',
+      ),
+    ),
+    '/assessment/portfolio': (
+      en: (
+        name: 'My Portfolio',
+        description: 'Your tests, your video answers and your feedback.',
+      ),
+      fil: (
+        name: 'Aking Portpolyo',
+        description:
+            'Ang iyong mga pagsusulit, sagot sa video at puna.',
       ),
     ),
     '/assessment/results': (

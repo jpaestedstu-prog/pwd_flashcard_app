@@ -8547,5 +8547,73 @@
         "type": "int"
       }
     }
-  }
+  },
+  "portfolioTitle": "Portfolio",
+  "portfolioMine": "My portfolio",
+  "portfolioMineSub": "Your tests, video answers and feedback",
+  "portfolioOfSub": "Tests, video answers and feedback for {name}",
+  "@portfolioOfSub": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "portfolioTestsTaken": "Tests taken",
+  "portfolioAverage": "Average score",
+  "portfolioVideoAnswers": "Video answers",
+  "portfolioFeedback": "Feedback",
+  "portfolioSoFar": "Everything so far",
+  "portfolioEmpty": "Nothing here yet. Finished tests and feedback will show up here.",
+  "portfolioWatchAnswers": "Watch the video answers",
+  "portfolioSupports": "Supports: {list}",
+  "@portfolioSupports": {
+    "placeholders": {
+      "list": {
+        "type": "String"
+      }
+    }
+  },
+  "portfolioSharePdf": "PDF for parents",
+  "portfolioPdfTitle": "Learning Portfolio",
+  "portfolioPdfLearner": "Learner: {name}",
+  "@portfolioPdfLearner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "portfolioPdfMade": "Made on {date}",
+  "@portfolioPdfMade": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "portfolioPdfSummary": "Summary",
+  "portfolioPdfTests": "Tests",
+  "portfolioPdfDate": "Date",
+  "portfolioPdfTest": "Test",
+  "portfolioPdfScore": "Score",
+  "portfolioPdfFeedback": "Feedback from the teacher or parent",
+  "portfolioPdfInApp": "Also attached: {kinds}. Open the app to watch or listen.",
+  "@portfolioPdfInApp": {
+    "placeholders": {
+      "kinds": {
+        "type": "String"
+      }
+    }
+  },
+  "portfolioPdfSubject": "Learning portfolio for {name}",
+  "@portfolioPdfSubject": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "portfolioPdfFailed": "Could not make the PDF. Please try again.",
+  "portfolioPdfWaiting": "Waiting for review"
 }

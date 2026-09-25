@@ -884,6 +884,18 @@ class _ChildCard extends ConsumerWidget {
                     '?name=${Uri.encodeQueryComponent(child.name)}',
                   ),
                 ),
+                // Tests, video answers and feedback, and the family's PDF.
+                IconButton(
+                  icon: const Icon(Icons.folder_special_rounded,
+                      size: 20, color: AppColors.primary),
+                  tooltip: filipino ? 'Portpolyo' : 'Portfolio',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => context.push(
+                    '/assessment/portfolio/${child.profileId}'
+                    '?name=${Uri.encodeQueryComponent(child.name)}',
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.sticky_note_2_rounded,
                       size: 20, color: AppColors.primary),

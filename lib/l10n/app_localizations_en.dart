@@ -12518,4 +12518,95 @@ class AppLocalizationsEn extends AppLocalizations {
   String assessReviewedScore(int correct, int total) {
     return '$correct of $total correct';
   }
+
+  @override
+  String get portfolioTitle => 'Portfolio';
+
+  @override
+  String get portfolioMine => 'My portfolio';
+
+  @override
+  String get portfolioMineSub => 'Your tests, video answers and feedback';
+
+  @override
+  String portfolioOfSub(String name) {
+    return 'Tests, video answers and feedback for $name';
+  }
+
+  @override
+  String get portfolioTestsTaken => 'Tests taken';
+
+  @override
+  String get portfolioAverage => 'Average score';
+
+  @override
+  String get portfolioVideoAnswers => 'Video answers';
+
+  @override
+  String get portfolioFeedback => 'Feedback';
+
+  @override
+  String get portfolioSoFar => 'Everything so far';
+
+  @override
+  String get portfolioEmpty =>
+      'Nothing here yet. Finished tests and feedback will show up here.';
+
+  @override
+  String get portfolioWatchAnswers => 'Watch the video answers';
+
+  @override
+  String portfolioSupports(String list) {
+    return 'Supports: $list';
+  }
+
+  @override
+  String get portfolioSharePdf => 'PDF for parents';
+
+  @override
+  String get portfolioPdfTitle => 'Learning Portfolio';
+
+  @override
+  String portfolioPdfLearner(String name) {
+    return 'Learner: $name';
+  }
+
+  @override
+  String portfolioPdfMade(String date) {
+    return 'Made on $date';
+  }
+
+  @override
+  String get portfolioPdfSummary => 'Summary';
+
+  @override
+  String get portfolioPdfTests => 'Tests';
+
+  @override
+  String get portfolioPdfDate => 'Date';
+
+  @override
+  String get portfolioPdfTest => 'Test';
+
+  @override
+  String get portfolioPdfScore => 'Score';
+
+  @override
+  String get portfolioPdfFeedback => 'Feedback from the teacher or parent';
+
+  @override
+  String portfolioPdfInApp(String kinds) {
+    return 'Also attached: $kinds. Open the app to watch or listen.';
+  }
+
+  @override
+  String portfolioPdfSubject(String name) {
+    return 'Learning portfolio for $name';
+  }
+
+  @override
+  String get portfolioPdfFailed => 'Could not make the PDF. Please try again.';
+
+  @override
+  String get portfolioPdfWaiting => 'Waiting for review';
 }
