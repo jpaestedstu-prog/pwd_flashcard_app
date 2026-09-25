@@ -8615,5 +8615,57 @@
     }
   },
   "portfolioPdfFailed": "Could not make the PDF. Please try again.",
-  "portfolioPdfWaiting": "Waiting for review"
+  "portfolioPdfWaiting": "Waiting for review",
+  "assessEditTitle": "Edit Assessment",
+  "assessEditTooltip": "Edit {title}",
+  "@assessEditTooltip": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "assessDeleteTooltip": "Delete {title}",
+  "@assessDeleteTooltip": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "assessEditSaved": "Changes to “{title}” saved",
+  "@assessEditSaved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "assessEditSavedSent": "Changes to “{title}” saved and sent to the tablets it is assigned to",
+  "@assessEditSavedSent": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "assessEditAlreadyTaken": "{count, plural, =1{1 learner has already taken this. Their score stays as it was; your changes apply the next time it is taken.} other{{count} learners have already taken this. Their scores stay as they were; your changes apply the next time it is taken.}}",
+  "@assessEditAlreadyTaken": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "assessEditedOn": "Edited {date}",
+  "@assessEditedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "assessEditDiscardTitle": "Discard your changes?",
+  "assessEditDiscardBody": "The saved assessment stays as it was.",
+  "assessEditNotFound": "That assessment could not be found. It may have been deleted."
 }

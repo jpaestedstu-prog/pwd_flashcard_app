@@ -1607,11 +1607,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ),
       ),
+      // `?edit=<id>` opens one of the educator's saved assessments to change.
       GoRoute(
         path: '/assessment/builder',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
-          child: const AssessmentBuilderScreen(),
+          child: AssessmentBuilderScreen(
+            editId: state.uri.queryParameters['edit'],
+          ),
         ),
       ),
       GoRoute(

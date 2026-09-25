@@ -21025,6 +21025,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Waiting for review'**
   String get portfolioPdfWaiting;
+
+  /// No description provided for @assessEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Assessment'**
+  String get assessEditTitle;
+
+  /// No description provided for @assessEditTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit {title}'**
+  String assessEditTooltip(String title);
+
+  /// No description provided for @assessDeleteTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {title}'**
+  String assessDeleteTooltip(String title);
+
+  /// No description provided for @assessEditSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes to “{title}” saved'**
+  String assessEditSaved(String title);
+
+  /// No description provided for @assessEditSavedSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes to “{title}” saved and sent to the tablets it is assigned to'**
+  String assessEditSavedSent(String title);
+
+  /// No description provided for @assessEditAlreadyTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 learner has already taken this. Their score stays as it was; your changes apply the next time it is taken.} other{{count} learners have already taken this. Their scores stay as they were; your changes apply the next time it is taken.}}'**
+  String assessEditAlreadyTaken(int count);
+
+  /// No description provided for @assessEditedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Edited {date}'**
+  String assessEditedOn(String date);
+
+  /// No description provided for @assessEditDiscardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard your changes?'**
+  String get assessEditDiscardTitle;
+
+  /// No description provided for @assessEditDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The saved assessment stays as it was.'**
+  String get assessEditDiscardBody;
+
+  /// No description provided for @assessEditNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That assessment could not be found. It may have been deleted.'**
+  String get assessEditNotFound;
 }
 
 class _AppLocalizationsDelegate

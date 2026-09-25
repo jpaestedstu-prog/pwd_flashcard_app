@@ -416,7 +416,8 @@ class AssessmentCloudService {
       ...?feedback?.media.storedValues,
     ]..sort();
     return '${a.id}@${feedback?.updatedAt.toIso8601String() ?? ''}'
-        '@${media.join(',')}';
+        '@${media.join(',')}'
+        '@${a.assessmentEditedAt?.toIso8601String() ?? ''}';
   }
 
   // ─── Internals ──────────────────────────────────────────

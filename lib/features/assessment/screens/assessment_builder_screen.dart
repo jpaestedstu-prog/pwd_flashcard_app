@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,15 +17,22 @@ import '../models/assessment_models.dart';
 import '../models/question_prompt.dart';
 import '../providers/assessment_provider.dart';
 import '../services/assessment_media_store.dart';
+import '../services/assessment_service.dart';
 import '../widgets/assessment_media_editor.dart';
 import '../widgets/assessment_media_panel.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../l10n/app_localizations_fil.dart';
 
-/// Screen for teachers to create custom assessments manually.
+/// Screen for teachers to create custom assessments manually — or, given
+/// [editId], to change one they already saved.
 class AssessmentBuilderScreen extends ConsumerStatefulWidget {
-  const AssessmentBuilderScreen({super.key});
+  /// The id of one of this educator's own custom assessments to edit. Null,
+  /// or an id that is not theirs, builds a new one.
+  final String? editId;
+
+  const AssessmentBuilderScreen({super.key, this.editId});
 
   @override
   ConsumerState<AssessmentBuilderScreen> createState() =>
@@ -43,6 +53,13 @@ class _AssessmentBuilderScreenState
   /// Set once the assessment is stored.
   bool _saved = false;
 
+  /// The saved assessment being edited, as it was when the editor opened.
+  /// Null when building a new one.
+  Assessment? _original;
+
+  /// Learners this device knows have already sat [_original].
+  int _alreadyTaken = 0;
+
   /// Every file picked while this builder is open, by any question sheet.
   ///
   /// Cleanup happens here, once, not in each sheet: a sheet that deleted the
@@ -51,6 +68,71 @@ class _AssessmentBuilderScreenState
   /// deleted until the assessment is saved (files picked and not kept) or
   /// abandoned (files picked this session).
   final AssessmentMediaLedger _ledger = AssessmentMediaLedger();
+
+  /// What the form held when it opened, to tell a real change from none.
+  late final String _initialSnapshot;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _initialSnapshot = _snapshot();
+  }
+
+  /// Fills the form from the assessment being edited, if there is one.
+  void _load() {
+    final id = widget.editId;
+    if (id == null || id.isEmpty) return;
+    // Only their own custom assessments: the study's pre/post tests are the
+    // instrument and must read the same for every learner who sits them.
+    Assessment? found;
+    for (final a in ref.read(customAssessmentsProvider)) {
+      if (a.id == id && a.type == AssessmentType.custom) found = a;
+    }
+    if (found == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          AppSnackBar.warning(context, message: _t(context).assessEditNotFound);
+        }
+      });
+      return;
+    }
+    _original = found;
+    _titleController.text = found.title;
+    final description = found.description?.trim() ?? '';
+    // The placeholder the builder writes for an empty field is not the
+    // educator's words; editing it would save it as if it were.
+    if (description.isNotEmpty &&
+        description != AppLocalizationsEn().abCustomDesc &&
+        description != AppLocalizationsFil().abCustomDesc) {
+      _descriptionController.text = description;
+    }
+    _difficulty = found.difficulty;
+    _timeLimitMinutes = (found.timeLimitMinutes ?? _timeLimitMinutes).clamp(
+      3,
+      30,
+    );
+    _questions.addAll(found.questions);
+    _selectedCategories.addAll(found.categories);
+    try {
+      _alreadyTaken = AssessmentService.learnersWhoTook(found.id).length;
+    } catch (_) {
+      // No box (a test harness): nothing known to have been taken.
+    }
+  }
+
+  bool get _isEditing => _original != null;
+
+  String _snapshot() => jsonEncode({
+    'title': _titleController.text.trim(),
+    'description': _descriptionController.text.trim(),
+    'difficulty': _difficulty.index,
+    'minutes': _timeLimitMinutes,
+    'questions': [for (final q in _questions) q.toJson()],
+  });
+
+  /// Whether leaving now would lose anything.
+  bool get _hasChanges => _snapshot() != _initialSnapshot;
 
   @override
   void dispose() {
@@ -85,7 +167,9 @@ class _AssessmentBuilderScreenState
                     // A headline sharing its row with a close button and a
                     // Save button: "Assessmen / t".
                     child: FitText(
-                      _t(context).abCreate,
+                      _isEditing
+                          ? _t(context).assessEditTitle
+                          : _t(context).abCreate,
                       style: AppTypography.headlineLarge
                           .copyWith(color: hc.textPrimary),
                     ),
@@ -112,6 +196,12 @@ class _AssessmentBuilderScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Scores already earned stay as they were; say so
+                      // before the educator changes what they were earned on.
+                      if (_isEditing && _alreadyTaken > 0) ...[
+                        _AlreadyTakenNotice(count: _alreadyTaken),
+                        const SizedBox(height: 16),
+                      ],
                       // ─── Title & Description ───────
                       _buildSectionHeader(_t(context).abDetails, Icons.info_outline_rounded),
                       const SizedBox(height: 8),
@@ -349,8 +439,12 @@ class _AssessmentBuilderScreenState
       return;
     }
 
+    final original = _original;
+    final now = DateTime.now();
     final assessment = Assessment(
-      id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+      // An edit keeps its id, so every tablet and assignment holding it gets
+      // this version in place of the old one.
+      id: original?.id ?? 'custom_${now.millisecondsSinceEpoch}',
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim().isEmpty
           ? _t(context).abCustomDesc
@@ -364,19 +458,50 @@ class _AssessmentBuilderScreenState
       // doc comment. Legacy rows hold the literal 'teacher', which is why the
       // cloud mirror stamps `created_by_profile_id` separately rather than
       // trusting this.
-      createdBy: ref.read(profileProvider)?.id ?? '',
-      createdAt: DateTime.now(),
+      createdBy: original?.createdBy ?? ref.read(profileProvider)?.id ?? '',
+      createdAt: original?.createdAt ?? now,
+      updatedAt: original == null ? null : now,
     );
 
     _saved = true;
     ref.read(customAssessmentsProvider.notifier).saveAssessment(assessment);
-    // Files picked and then replaced, removed, or left in a cancelled sheet.
+    // Files picked and then replaced, removed, or left in a cancelled sheet —
+    // and, on an edit, the saved version's files it no longer uses. Each is
+    // deleted only if nothing else still points at it.
     final kept = {for (final q in assessment.questions) ...q.storedValues};
+    final before = {
+      for (final q in original?.questions ?? const <AssessmentQuestion>[])
+        ...q.storedValues,
+    };
     const AssessmentMediaStore().discardUnreferenced(
-      _ledger.adoptedValues.difference(kept),
+      {..._ledger.adoptedValues, ...before}.difference(kept),
     );
 
-    AppSnackBar.success(context, message: _t(context).abSaved(assessment.title));
+    final t = _t(context);
+    if (original == null) {
+      AppSnackBar.success(context, message: t.abSaved(assessment.title));
+    } else {
+      // Every assignment of it: its title, and a stamp that makes each
+      // learner's tablet fetch the new version.
+      final assigned = [
+        for (final a in ref.read(assignmentsProvider))
+          if (a.assessmentId == assessment.id) a,
+      ];
+      final notifier = ref.read(assignmentsProvider.notifier);
+      unawaited(() async {
+        for (final a in assigned) {
+          await notifier.saveAssignment(
+            a.withEditedAssessment(title: assessment.title, editedAt: now),
+          );
+        }
+      }());
+      AppSnackBar.success(
+        context,
+        message: assigned.isEmpty
+            ? t.assessEditSaved(assessment.title)
+            : t.assessEditSavedSent(assessment.title),
+      );
+    }
 
     context.pop();
   }
@@ -384,16 +509,22 @@ class _AssessmentBuilderScreenState
   // ─── Discard Confirmation ──────────────────────────
 
   void _confirmDiscard() {
-    if (_questions.isEmpty && _titleController.text.isEmpty) {
+    if (!_hasChanges) {
       context.pop();
       return;
     }
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(_t(context).abDiscardTitle),
+        title: Text(
+          _isEditing
+              ? _t(context).assessEditDiscardTitle
+              : _t(context).abDiscardTitle,
+        ),
         content: Text(
-          _t(context).abDiscardBody,
+          _isEditing
+              ? _t(context).assessEditDiscardBody
+              : _t(context).abDiscardBody,
         ),
         actions: [
           TextButton(
@@ -408,6 +539,39 @@ class _AssessmentBuilderScreenState
             style: FilledButton.styleFrom(
                 backgroundColor: AppColors.error),
             child: Text(_t(context).abDiscard),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "3 learners have already taken this…" — shown above an edit.
+class _AlreadyTakenNotice extends StatelessWidget {
+  final int count;
+
+  const _AlreadyTakenNotice({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.info.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_rounded, color: AppColors.info),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _t(context).assessEditAlreadyTaken(count),
+              style: AppTypography.bodyMedium.copyWith(color: hc.textPrimary),
+            ),
           ),
         ],
       ),
@@ -467,6 +631,7 @@ class _QuestionCard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
+                  tooltip: _t(context).abEditQuestion,
                   icon: Icon(Icons.edit_rounded,
                       size: 18, color: hc.textSecondary),
                   onPressed: onEdit,
@@ -475,6 +640,7 @@ class _QuestionCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 IconButton(
+                  tooltip: _t(context).hubDelete,
                   icon: const Icon(Icons.delete_outline_rounded,
                       size: 18, color: AppColors.error),
                   onPressed: onDelete,

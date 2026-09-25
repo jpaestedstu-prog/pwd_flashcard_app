@@ -256,6 +256,10 @@ class Assessment {
   final String createdBy; // profile ID
   final DateTime createdAt;
 
+  /// When the educator last changed it after first saving it; null for one
+  /// never edited. [createdAt] stays the day it was made.
+  final DateTime? updatedAt;
+
   const Assessment({
     required this.id,
     required this.title,
@@ -267,6 +271,7 @@ class Assessment {
     this.timeLimitMinutes,
     required this.createdBy,
     required this.createdAt,
+    this.updatedAt,
   });
 
   Map<String, dynamic> toJson() => {
@@ -280,6 +285,7 @@ class Assessment {
     'timeLimitMinutes': timeLimitMinutes,
     'createdBy': createdBy,
     'createdAt': createdAt.toIso8601String(),
+    if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
   };
 
   /// A copy with [questions] in place of this assessment's own — the same
@@ -295,6 +301,7 @@ class Assessment {
     timeLimitMinutes: timeLimitMinutes,
     createdBy: createdBy,
     createdAt: createdAt,
+    updatedAt: updatedAt,
   );
 
   factory Assessment.fromJson(Map<String, dynamic> json) {
@@ -321,6 +328,7 @@ class Assessment {
       timeLimitMinutes: json['timeLimitMinutes'] as int?,
       createdBy: json['createdBy'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
     );
   }
 }
@@ -646,6 +654,14 @@ class AssessmentAssignment {
   /// for why it lives on the assignment rather than on the result.
   final Map<String, AssessmentFeedback> feedback;
 
+  /// When the educator last edited the assessment this hands out.
+  ///
+  /// A learner's tablet re-reads its work when an assignment changes (see
+  /// `AssessmentCloudService.revisionKey`), not when a template does — so an
+  /// edit stamps every assignment of it, and the tablets fetch the new
+  /// version instead of keeping the one they already had.
+  final DateTime? assessmentEditedAt;
+
   const AssessmentAssignment({
     required this.id,
     required this.assessmentId,
@@ -657,6 +673,7 @@ class AssessmentAssignment {
     this.instructions,
     this.media = AssessmentMedia.none,
     this.feedback = const {},
+    this.assessmentEditedAt,
   });
 
   /// A copy with [media] as the instructions' media.
@@ -671,6 +688,26 @@ class AssessmentAssignment {
     instructions: instructions,
     media: media,
     feedback: feedback,
+    assessmentEditedAt: assessmentEditedAt,
+  );
+
+  /// A copy after its assessment was edited: the new [title] (the list a
+  /// learner sees names it), and the moment of the edit.
+  AssessmentAssignment withEditedAssessment({
+    required String title,
+    required DateTime editedAt,
+  }) => AssessmentAssignment(
+    id: id,
+    assessmentId: assessmentId,
+    assessmentTitle: title,
+    assignedBy: assignedBy,
+    studentIds: studentIds,
+    assignedAt: assignedAt,
+    deadline: deadline,
+    instructions: instructions,
+    media: media,
+    feedback: feedback,
+    assessmentEditedAt: editedAt,
   );
 
   /// [learnerId]'s feedback, if the educator has written any.
@@ -699,6 +736,7 @@ class AssessmentAssignment {
       instructions: instructions,
       media: media,
       feedback: next,
+      assessmentEditedAt: assessmentEditedAt,
     );
   }
 
@@ -734,6 +772,8 @@ class AssessmentAssignment {
       'feedback': {
         for (final e in feedback.entries) e.key: e.value.toJson(),
       },
+    if (assessmentEditedAt != null)
+      'assessmentEditedAt': assessmentEditedAt!.toIso8601String(),
   };
 
   factory AssessmentAssignment.fromJson(Map<String, dynamic> json) {
@@ -750,6 +790,9 @@ class AssessmentAssignment {
       instructions: json['instructions'] as String?,
       media: AssessmentMedia.fromJson(json['media']),
       feedback: _feedbackFromJson(json['feedback']),
+      assessmentEditedAt: DateTime.tryParse(
+        json['assessmentEditedAt'] as String? ?? '',
+      ),
     );
   }
 

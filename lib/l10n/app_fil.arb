@@ -3487,5 +3487,15 @@
   "portfolioPdfInApp": "Kalakip din: {kinds}. Buksan ang app para panoorin o pakinggan.",
   "portfolioPdfSubject": "Portpolyo ng pag-aaral ni {name}",
   "portfolioPdfFailed": "Hindi magawa ang PDF. Pakisubukang muli.",
-  "portfolioPdfWaiting": "Hinihintay pang suriin"
+  "portfolioPdfWaiting": "Hinihintay pang suriin",
+  "assessEditTitle": "I-edit ang Pagsusulit",
+  "assessEditTooltip": "I-edit ang {title}",
+  "assessDeleteTooltip": "Burahin ang {title}",
+  "assessEditSaved": "Nai-save ang mga pagbabago sa “{title}”",
+  "assessEditSavedSent": "Nai-save ang mga pagbabago sa “{title}” at ipinadala sa mga tablet na binigyan nito",
+  "assessEditAlreadyTaken": "{count, plural, =1{May 1 mag-aaral na nakasagot na nito. Mananatili ang kanyang iskor; ang mga pagbabago ay para sa susunod na pagsagot.} other{May {count} mag-aaral na nakasagot na nito. Mananatili ang kanilang iskor; ang mga pagbabago ay para sa susunod na pagsagot.}}",
+  "assessEditedOn": "Binago noong {date}",
+  "assessEditDiscardTitle": "Itapon ang mga pagbabago?",
+  "assessEditDiscardBody": "Mananatili ang naka-save na pagsusulit gaya ng dati.",
+  "assessEditNotFound": "Hindi makita ang pagsusulit na iyon. Maaaring nabura na ito."
 }

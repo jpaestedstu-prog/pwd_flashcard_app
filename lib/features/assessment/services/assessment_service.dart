@@ -255,6 +255,21 @@ class AssessmentService {
     return results.first;
   }
 
+  /// Every learner this device holds a result from for [assessmentId] —
+  /// who has already sat it, for an educator about to change it.
+  static Set<String> learnersWhoTook(String assessmentId) {
+    const prefix = 'assessment_results_';
+    final out = <String>{};
+    for (final key in _box.keys.toList()) {
+      final k = key.toString();
+      if (!k.startsWith(prefix)) continue;
+      for (final r in getResults(k.substring(prefix.length))) {
+        if (r.assessmentId == assessmentId) out.add(r.profileId);
+      }
+    }
+    return out;
+  }
+
   /// Get the latest post-test result
   static AssessmentResult? getLatestPostTest(String profileId) {
     final results = getResultsByType(profileId, AssessmentType.postTest);

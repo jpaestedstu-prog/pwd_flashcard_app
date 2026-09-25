@@ -12609,4 +12609,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get portfolioPdfWaiting => 'Waiting for review';
+
+  @override
+  String get assessEditTitle => 'Edit Assessment';
+
+  @override
+  String assessEditTooltip(String title) {
+    return 'Edit $title';
+  }
+
+  @override
+  String assessDeleteTooltip(String title) {
+    return 'Delete $title';
+  }
+
+  @override
+  String assessEditSaved(String title) {
+    return 'Changes to “$title” saved';
+  }
+
+  @override
+  String assessEditSavedSent(String title) {
+    return 'Changes to “$title” saved and sent to the tablets it is assigned to';
+  }
+
+  @override
+  String assessEditAlreadyTaken(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count learners have already taken this. Their scores stay as they were; your changes apply the next time it is taken.',
+      one:
+          '1 learner has already taken this. Their score stays as it was; your changes apply the next time it is taken.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String assessEditedOn(String date) {
+    return 'Edited $date';
+  }
+
+  @override
+  String get assessEditDiscardTitle => 'Discard your changes?';
+
+  @override
+  String get assessEditDiscardBody => 'The saved assessment stays as it was.';
+
+  @override
+  String get assessEditNotFound =>
+      'That assessment could not be found. It may have been deleted.';
 }

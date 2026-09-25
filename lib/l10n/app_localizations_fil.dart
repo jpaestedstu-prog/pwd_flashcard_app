@@ -12515,4 +12515,56 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get portfolioPdfWaiting => 'Hinihintay pang suriin';
+
+  @override
+  String get assessEditTitle => 'I-edit ang Pagsusulit';
+
+  @override
+  String assessEditTooltip(String title) {
+    return 'I-edit ang $title';
+  }
+
+  @override
+  String assessDeleteTooltip(String title) {
+    return 'Burahin ang $title';
+  }
+
+  @override
+  String assessEditSaved(String title) {
+    return 'Nai-save ang mga pagbabago sa “$title”';
+  }
+
+  @override
+  String assessEditSavedSent(String title) {
+    return 'Nai-save ang mga pagbabago sa “$title” at ipinadala sa mga tablet na binigyan nito';
+  }
+
+  @override
+  String assessEditAlreadyTaken(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'May $count mag-aaral na nakasagot na nito. Mananatili ang kanilang iskor; ang mga pagbabago ay para sa susunod na pagsagot.',
+      one:
+          'May 1 mag-aaral na nakasagot na nito. Mananatili ang kanyang iskor; ang mga pagbabago ay para sa susunod na pagsagot.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String assessEditedOn(String date) {
+    return 'Binago noong $date';
+  }
+
+  @override
+  String get assessEditDiscardTitle => 'Itapon ang mga pagbabago?';
+
+  @override
+  String get assessEditDiscardBody =>
+      'Mananatili ang naka-save na pagsusulit gaya ng dati.';
+
+  @override
+  String get assessEditNotFound =>
+      'Hindi makita ang pagsusulit na iyon. Maaaring nabura na ito.';
 }

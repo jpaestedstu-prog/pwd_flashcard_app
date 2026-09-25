@@ -658,6 +658,10 @@ class AssessmentHubScreen extends ConsumerWidget {
                                 '/assessment/take/${assessment.id}',
                                 extra: assessment,
                               ),
+                              onEdit: () => context.push(
+                                '/assessment/builder?edit='
+                                '${Uri.encodeQueryComponent(assessment.id)}',
+                              ),
                               onDelete: () {
                                 ref
                                     .read(customAssessmentsProvider.notifier)
@@ -1481,11 +1485,13 @@ class _FeedbackTile extends StatelessWidget {
 class _CustomAssessmentTile extends StatelessWidget {
   final Assessment assessment;
   final VoidCallback onTap;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _CustomAssessmentTile({
     required this.assessment,
     required this.onTap,
+    required this.onEdit,
     required this.onDelete,
   });
 
@@ -1543,10 +1549,32 @@ class _CustomAssessmentTile extends StatelessWidget {
                           color: hc.textSecondary,
                         ),
                       ),
+                      if (assessment.updatedAt != null)
+                        Text(
+                          _tr(context).assessEditedOn(
+                            LocalizedDate.monthDayYear(
+                              assessment.updatedAt!,
+                              AppLocalizations.of(context),
+                            ),
+                          ),
+                          style: AppTypography.bodySmall.copyWith(
+                            color: hc.textSecondary,
+                          ),
+                        ),
                     ],
                   ),
                 ),
                 IconButton(
+                  tooltip: _tr(context).assessEditTooltip(assessment.title),
+                  onPressed: onEdit,
+                  icon: Icon(
+                    Icons.edit_rounded,
+                    color: hc.primary,
+                    size: 22,
+                  ),
+                ),
+                IconButton(
+                  tooltip: _tr(context).assessDeleteTooltip(assessment.title),
                   onPressed: () => _confirmDelete(context),
                   icon: Icon(
                     Icons.delete_outline_rounded,
