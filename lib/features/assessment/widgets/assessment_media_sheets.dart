@@ -344,6 +344,18 @@ class _ReviewCard extends StatelessWidget {
           SegmentedButton<bool>(
             emptySelectionAllowed: true,
             showSelectedIcon: false,
+            // The theme draws a chosen segment as white on a pale tint —
+            // unreadable. Dark words on a stronger tint say which mark is set.
+            style: SegmentedButton.styleFrom(
+              foregroundColor: hc.textPrimary,
+              selectedForegroundColor: hc.textPrimary,
+              selectedBackgroundColor: (mark ?? true)
+                  ? AppColors.success.withValues(alpha: 0.3)
+                  : AppColors.warning.withValues(alpha: 0.3),
+              textStyle: AppTypography.labelLarge.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             segments: [
               ButtonSegment(
                 value: true,

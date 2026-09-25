@@ -234,11 +234,18 @@ class _AssessmentBuilderScreenState
                             selected: selected,
                             onSelected: (_) =>
                                 setState(() => _difficulty = d),
+                            // Dark words on the pale tint: the pastel
+                            // primary on its own tint was near unreadable.
                             selectedColor:
                                 AppColors.primary.withValues(alpha: 0.2),
+                            checkmarkColor: hc.textPrimary,
+                            side: BorderSide(
+                              color: selected ? AppColors.primary : hc.border,
+                              width: selected ? 2 : 1,
+                            ),
                             labelStyle: AppTypography.labelMedium.copyWith(
                               color: selected
-                                  ? AppColors.primary
+                                  ? hc.textPrimary
                                   : hc.textSecondary,
                               fontWeight:
                                   selected ? FontWeight.w700 : FontWeight.w500,
@@ -385,6 +392,10 @@ class _AssessmentBuilderScreenState
   // ─── Add / Edit Dialogs ───────────────────────────
 
   Future<void> _showAddQuestionDialog() async {
+    // The sheet hands focus back to whatever held it when it closes — the
+    // title field, keyboard and all, over the list the educator just added
+    // to. Let go of it first.
+    FocusManager.instance.primaryFocus?.unfocus();
     final result = await showModalBottomSheet<AssessmentQuestion>(
       context: context,
       // Without this the dismiss barrier announces itself as "Scrim",
@@ -409,6 +420,7 @@ class _AssessmentBuilderScreenState
   }
 
   Future<void> _showEditQuestionDialog(int index) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final result = await showModalBottomSheet<AssessmentQuestion>(
       context: context,
       // Without this the dismiss barrier announces itself as "Scrim",
@@ -896,8 +908,20 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                           ..clear()
                           ..addAll(List.filled(_choiceControllers.length, ''));
                       }),
+                      // The theme's light label vanished on this tint;
+                      // dark words and a border say which one is chosen.
                       selectedColor:
                           AppColors.primary.withValues(alpha: 0.2),
+                      checkmarkColor: hc.textPrimary,
+                      side: BorderSide(
+                        color: selected ? AppColors.primary : hc.border,
+                        width: selected ? 2 : 1,
+                      ),
+                      labelStyle: AppTypography.labelMedium.copyWith(
+                        color: selected ? hc.textPrimary : hc.textSecondary,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                      ),
                     );
                   }).toList(),
                 ),

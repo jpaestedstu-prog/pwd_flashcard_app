@@ -356,6 +356,32 @@ void main() {
       await unmount(tester);
     });
 
+    testWidgets('closing a question sheet does not hand the keyboard back to '
+        'the title', (tester) async {
+      await openEditor(tester, 'a1');
+      final title = find.widgetWithText(TextFormField, 'Animal quiz');
+      await tester.tap(title);
+      await tester.pump();
+      EditableText field() => tester.widget<EditableText>(
+        find.descendant(of: title, matching: find.byType(EditableText)),
+      );
+      expect(field().focusNode.hasFocus, isTrue);
+
+      await tester.tap(find.byTooltip('Edit Question').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.ensureVisible(find.text('Update Question'));
+      await tester.tap(find.text('Update Question'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Update Question'), findsNothing);
+      // Found on a tablet: the sheet returned focus to the title, and the
+      // keyboard sprang up over the list just added to.
+      expect(field().focusNode.hasFocus, isFalse);
+      await unmount(tester);
+    });
+
     testWidgets('closing with nothing changed just closes; with a change it '
         'asks first', (tester) async {
       await openEditor(tester, 'a1');

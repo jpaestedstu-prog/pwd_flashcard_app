@@ -266,12 +266,11 @@ class _Summary extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Columns drop as the font grows, so a label never wraps letter by
-        // letter in a sliver of a tile.
+        // letter in a sliver of a tile — 4, 2 or 1, never 3, which left the
+        // fourth tile alone on a row of its own.
         final scale = MediaQuery.textScalerOf(context).scale(1);
-        final columns = (constraints.maxWidth / (150 * scale)).floor().clamp(
-          1,
-          4,
-        );
+        final fit = (constraints.maxWidth / (150 * scale)).floor();
+        final columns = fit >= 4 ? 4 : (fit >= 2 ? 2 : 1);
         const gap = 10.0;
         final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
         return Wrap(
@@ -411,9 +410,6 @@ class _ResultCard extends StatelessWidget {
     final supports = result.accommodations.map((s) => s.labelOf(l10n)).join(
       ', ',
     );
-    final scoreText = fraction == null
-        ? t.assessSentForReview
-        : '${(fraction * 100).round()}%';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -470,7 +466,15 @@ class _ResultCard extends StatelessWidget {
                             color: hc.textSecondary,
                           ),
                         ),
-                      if (fraction != null && score.pending > 0)
+                      if (fraction == null)
+                        Text(
+                          t.assessSentForReview,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.info,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        )
+                      else if (score.pending > 0)
                         Text(
                           t.assessToReview(score.pending),
                           style: AppTypography.bodySmall.copyWith(
@@ -482,45 +486,38 @@ class _ResultCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Flexible(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          (fraction == null
-                                  ? AppColors.info
-                                  : scoreColor(fraction))
-                              .withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (fraction == null) ...[
-                          const Icon(
-                            Icons.videocam_rounded,
-                            size: 18,
-                            color: AppColors.info,
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-                        Flexible(
-                          child: Text(
-                            scoreText,
-                            style: AppTypography.labelLarge.copyWith(
-                              color: fraction == null
-                                  ? hc.textPrimary
-                                  : scoreColor(fraction),
-                              fontWeight: FontWeight.w800,
-                            ),
+                // A percentage or a camera, sized to itself: it used to be
+                // Flexible beside the Expanded title, took half the row and
+                // parked the score mid-card. The words for a waiting test
+                // are under the date instead.
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        (fraction == null
+                                ? AppColors.info
+                                : scoreColor(fraction))
+                            .withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: fraction == null
+                      ? const Icon(
+                          Icons.videocam_rounded,
+                          size: 20,
+                          color: AppColors.info,
+                        )
+                      // Dark words on the tint: the pastel score colour on
+                      // its own tint was too faint to read.
+                      : Text(
+                          '${(fraction * 100).round()}%',
+                          style: AppTypography.labelLarge.copyWith(
+                            color: hc.textPrimary,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
                 ),
               ],
             ),

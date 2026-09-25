@@ -253,9 +253,11 @@ class PortfolioPdf {
                 ),
                 for (final mark in e.feedback!.reviews.entries)
                   pw.Bullet(
+                    // The mark first: a question ends in its own full stop,
+                    // and "animal.: Marked correct" read badly.
                     text: text(
-                      '${_questionText(e.result!.assessmentId, mark.key, l10n)}: '
-                      '${mark.value ? l10n.assessReviewedCorrect : l10n.assessReviewedNotYet}',
+                      '${mark.value ? l10n.assessReviewedCorrect : l10n.assessReviewedNotYet}: '
+                      '${_questionText(e.result!.assessmentId, mark.key, l10n)}',
                     ),
                     style: const pw.TextStyle(fontSize: 10, color: ink),
                   ),

@@ -530,6 +530,24 @@ void main() {
       expect(find.text('Natapos na pagsusulit'), findsOneWidget);
     });
 
+    testWidgets('the four totals sit 4 across or 2 by 2, never 3 and 1', (
+      tester,
+    ) async {
+      Offset at(String label) => tester.getTopLeft(
+        find.ancestor(of: find.text(label), matching: find.byType(Container)).first,
+      );
+
+      // Wide: one row of four.
+      await pump(tester, teacher: true);
+      expect(at('Tests taken').dy, at('Feedback').dy);
+
+      // Room for three: two rows of two, not three and an orphan.
+      await pump(tester, teacher: true, size: const Size(560, 1400));
+      expect(at('Tests taken').dx, at('Video answers').dx);
+      expect(at('Tests taken').dy, at('Average score').dy);
+      expect(at('Video answers').dy, at('Feedback').dy);
+    });
+
     testWidgets('2x text on a small phone does not overflow', (tester) async {
       await pump(
         tester,
