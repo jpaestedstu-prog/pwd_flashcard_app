@@ -355,6 +355,21 @@ void main() {
       await _settle(tester);
     }
 
+    testWidgets('a shared file says it reaches every device', (tester) async {
+      // A picked file is shared the moment it is chosen; the field must say
+      // so, or an educator cannot tell it apart from one stuck on this tablet.
+      await pumpSheet(
+        tester,
+        const RoutineStep(
+          id: 's',
+          activity: RoutineActivity.brushingTeeth,
+          photoUrl: 'shared://abc',
+        ),
+      );
+      expect(find.text('Shared — reaches every device.'), findsOneWidget);
+      await _unmount(tester);
+    });
+
     testWidgets('offers a field for every media channel, each with its own '
         'placeholder hint', (tester) async {
       await pumpSheet(

@@ -12215,4 +12215,37 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get assessFeedbackHas => 'May puna na';
+
+  @override
+  String get assessMediaShared => 'Naibahagi na — makikita sa bawat device.';
+
+  @override
+  String get assessMediaNotShared =>
+      'Nasa tablet na ito lang — hindi pa naibabahagi.';
+
+  @override
+  String assessMediaSharing(int percent) {
+    return 'Ibinabahagi… $percent%';
+  }
+
+  @override
+  String get assessMediaShareNow => 'Ibahagi ngayon';
+
+  @override
+  String assessMediaFromDeviceShared(int size) {
+    return 'Ibabahagi ito sa bawat device (mga file hanggang $size MB).';
+  }
+
+  @override
+  String assessMediaShareTooLarge(int size) {
+    return 'Lampas sa $size MB — mananatili lang ang file na ito sa tablet na ito.';
+  }
+
+  @override
+  String get assessMediaShareFailed =>
+      'Hindi ito maibahagi ngayon. Naka-save ito sa tablet na ito at ibabahagi kapag may internet na.';
+
+  @override
+  String get assessMediaShareNotOwner =>
+      'Pinamamahalaan na ang profile na ito mula sa ibang device, kaya hindi makapagbahagi ng file mula rito.';
 }

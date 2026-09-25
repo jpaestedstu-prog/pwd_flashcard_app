@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../core/services/shared_media_service.dart';
 import '../../routine/services/routine_media_store.dart';
 import '../models/assessment_media.dart';
 import 'assessment_service.dart';
@@ -120,13 +121,66 @@ class AssessmentMediaStore {
     return adopt(sourcePath: picked, ownerKey: ownerKey, kind: kind);
   }
 
-  /// Deletes the file behind each value, if it is one of this store's own.
+  /// Shares a picked file with every device and returns its `shared://`
+  /// value, deleting the staging copy it no longer needs.
+  ///
+  /// Anything that is not one of this store's own files comes back
+  /// unchanged. So does a file that cannot be shared right now — offline,
+  /// over the free quota for today, or too big — and [status] says which, so
+  /// the editor can tell the educator it is still on this tablet only.
+  Future<({SharedUploadStatus status, String value})> share(
+    String value, {
+    required String ownerProfileId,
+    void Function(double progress)? onProgress,
+  }) async {
+    if (!isOwnFile(value) || ownerProfileId.isEmpty) {
+      return (status: SharedUploadStatus.unavailable, value: value);
+    }
+    final path = RoutineMediaStore.pathOf(value);
+    final dot = path.lastIndexOf('.');
+    final result = await const SharedMediaService().upload(
+      File(path),
+      ownerProfileId: ownerProfileId,
+      ext: dot == -1 ? 'bin' : path.substring(dot + 1),
+      onProgress: onProgress,
+    );
+    if (!result.ok) return (status: result.status, value: value);
+    await discard([value]);
+    return (status: SharedUploadStatus.shared, value: result.value!);
+  }
+
+  /// Every stored media value in [media] shared, where it can be. Values that
+  /// cannot be shared yet stay as they were.
+  Future<AssessmentMedia> shareAll(
+    AssessmentMedia media, {
+    required String ownerProfileId,
+  }) async {
+    var out = media;
+    for (final kind in AssessmentMediaKind.values) {
+      final value = media.urlFor(kind);
+      if (!isOwnFile(value)) continue;
+      final shared = await share(value, ownerProfileId: ownerProfileId);
+      if (shared.status == SharedUploadStatus.shared) {
+        out = out.withSlot(kind, shared.value);
+      }
+    }
+    return out;
+  }
+
+  /// Deletes the file behind each value, if it is one of this store's own —
+  /// and a shared file everywhere this device is allowed to.
   ///
   /// Anything outside [folder] is left alone: a `file://` value is only ever
   /// written by [adopt], but a value can also arrive from sync or be typed in,
-  /// and this must never become a way to delete an arbitrary file.
+  /// and this must never become a way to delete an arbitrary file. A shared
+  /// file can only be deleted in the cloud by the device that shared it; the
+  /// rules refuse anyone else, quietly.
   Future<void> discard(Iterable<String> values) async {
     for (final value in values) {
+      if (SharedMediaService.isShared(value)) {
+        await const SharedMediaService().delete(value);
+        continue;
+      }
       if (!isOwnFile(value)) continue;
       try {
         final f = File(RoutineMediaStore.pathOf(value));
@@ -145,7 +199,7 @@ class AssessmentMediaStore {
     Iterable<String> candidates, {
     Set<String>? referenced,
   }) async {
-    final inUse = referenced ?? AssessmentService.referencedMediaFiles();
+    final inUse = referenced ?? AssessmentService.referencedMediaValues();
     await discard(candidates.where((c) => !inUse.contains(c.trim())));
   }
 
@@ -192,10 +246,10 @@ class AssessmentMediaLedger {
 
   /// Files to delete once [saved] has been stored.
   Set<String> toDiscardOnSave(AssessmentMedia saved) => {
-    ...initial.deviceFiles,
+    ...initial.storedValues,
     ..._adopted,
-  }.difference(saved.deviceFiles);
+  }.difference(saved.storedValues);
 
   /// Files to delete when the edit is abandoned.
-  Set<String> toDiscardOnCancel() => _adopted.difference(initial.deviceFiles);
+  Set<String> toDiscardOnCancel() => _adopted.difference(initial.storedValues);
 }

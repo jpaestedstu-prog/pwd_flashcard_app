@@ -779,5 +779,46 @@ service cloud.firestore {
       allow delete: if signedIn()
         && resource.data.profile_owner_uid == request.auth.uid;
     }
+
+    // ─── Shared media ─────────────────────────────────
+    // Pictures, videos and sounds a teacher or parent attaches to
+    // assessments and feedback, and learners' signed/spoken video answers,
+    // shared between tablets without Cloud Storage (which would need the
+    // paid Blaze plan). A file is a metadata doc plus ≤ 1 MB `bytes` pieces
+    // in /chunks, written by SharedMediaService.
+    //
+    // Reads are open to any signed-in user, like the assessments that point
+    // at these files. Only the device that uploaded a file may write or
+    // delete it (`owner_uid`, one read per piece via the metadata doc), and
+    // the sizes are pinned so no single upload can eat the free quota:
+    // 15 MB a file, 17 pieces of at most 1,000,000 bytes. Pieces must be
+    // deleted before their metadata, whose owner the piece rule checks.
+    match /shared_media/{mediaId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && request.resource.data.size is int
+        && request.resource.data.size <= 15728640
+        && request.resource.data.chunk_count is int
+        && request.resource.data.chunk_count >= 1
+        && request.resource.data.chunk_count <= 17;
+      allow update: if signedIn()
+        && resource.data.owner_uid == request.auth.uid
+        && request.resource.data.owner_uid == request.auth.uid
+        && request.resource.data.size == resource.data.size
+        && request.resource.data.chunk_count == resource.data.chunk_count;
+      allow delete: if signedIn()
+        && resource.data.owner_uid == request.auth.uid;
+
+      match /chunks/{chunkId} {
+        allow read: if signedIn();
+        allow create, update: if signedIn()
+          && get(/databases/$(database)/documents/shared_media/$(mediaId)).data.owner_uid == request.auth.uid
+          && request.resource.data.data is bytes
+          && request.resource.data.data.size() <= 1000000;
+        allow delete: if signedIn()
+          && get(/databases/$(database)/documents/shared_media/$(mediaId)).data.owner_uid == request.auth.uid;
+      }
+    }
   }
 }

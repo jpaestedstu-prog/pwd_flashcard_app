@@ -20515,6 +20515,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Feedback sent'**
   String get assessFeedbackHas;
+
+  /// No description provided for @assessMediaShared.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared — reaches every device.'**
+  String get assessMediaShared;
+
+  /// No description provided for @assessMediaNotShared.
+  ///
+  /// In en, this message translates to:
+  /// **'On this tablet only — not shared yet.'**
+  String get assessMediaNotShared;
+
+  /// No description provided for @assessMediaSharing.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing… {percent}%'**
+  String assessMediaSharing(int percent);
+
+  /// No description provided for @assessMediaShareNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Share now'**
+  String get assessMediaShareNow;
+
+  /// No description provided for @assessMediaFromDeviceShared.
+  ///
+  /// In en, this message translates to:
+  /// **'It is shared with every device (files up to {size} MB).'**
+  String assessMediaFromDeviceShared(int size);
+
+  /// No description provided for @assessMediaShareTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Over {size} MB — this file stays on this tablet only.'**
+  String assessMediaShareTooLarge(int size);
+
+  /// No description provided for @assessMediaShareFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t share it right now. It is saved on this tablet and will be shared when you are online.'**
+  String get assessMediaShareFailed;
+
+  /// No description provided for @assessMediaShareNotOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'This profile is now managed from another device, so files can’t be shared from this one.'**
+  String get assessMediaShareNotOwner;
 }
 
 class _AppLocalizationsDelegate

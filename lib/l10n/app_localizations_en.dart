@@ -12307,4 +12307,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assessFeedbackHas => 'Feedback sent';
+
+  @override
+  String get assessMediaShared => 'Shared — reaches every device.';
+
+  @override
+  String get assessMediaNotShared => 'On this tablet only — not shared yet.';
+
+  @override
+  String assessMediaSharing(int percent) {
+    return 'Sharing… $percent%';
+  }
+
+  @override
+  String get assessMediaShareNow => 'Share now';
+
+  @override
+  String assessMediaFromDeviceShared(int size) {
+    return 'It is shared with every device (files up to $size MB).';
+  }
+
+  @override
+  String assessMediaShareTooLarge(int size) {
+    return 'Over $size MB — this file stays on this tablet only.';
+  }
+
+  @override
+  String get assessMediaShareFailed =>
+      'Couldn’t share it right now. It is saved on this tablet and will be shared when you are online.';
+
+  @override
+  String get assessMediaShareNotOwner =>
+      'This profile is now managed from another device, so files can’t be shared from this one.';
 }

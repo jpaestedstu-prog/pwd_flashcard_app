@@ -413,6 +413,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
         step: fresh,
         filipino: l,
         routineLocks: _draft.lockEnabled,
+        ownerProfileId: ref.read(profileProvider)?.id,
       );
       if (edited == null || !mounted) return;
       _mutate(_draft.copyWith(steps: [..._draft.steps, edited]));
@@ -427,6 +428,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
       step: step,
       filipino: l,
       routineLocks: _draft.lockEnabled,
+      ownerProfileId: ref.read(profileProvider)?.id,
     );
     if (edited == null || !mounted) return;
     _replaceStep(edited);

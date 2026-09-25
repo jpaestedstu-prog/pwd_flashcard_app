@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/services/fsl_assets_service.dart';
+import '../../../core/services/shared_media_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/routine_catalog.dart';
@@ -268,7 +269,13 @@ class RoutineImage extends StatelessWidget {
           filipino: filipino,
         );
 
-    final image = RoutineMediaStore.isDeviceFile(trimmed)
+    final image = SharedMediaService.isShared(trimmed)
+        ? _SharedRoutineImage(
+            value: trimmed,
+            height: height,
+            placeholder: failed,
+          )
+        : RoutineMediaStore.isDeviceFile(trimmed)
         ? Image.file(
             File(RoutineMediaStore.pathOf(trimmed)),
             height: height,
@@ -308,6 +315,51 @@ class RoutineImage extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A shared picture: downloaded once per tablet, then shown from disk. The
+/// placeholder — the step's emoji — stands in while it arrives or if it
+/// cannot, so the step always has a visual.
+class _SharedRoutineImage extends StatefulWidget {
+  final String value;
+  final double? height;
+  final Widget Function() placeholder;
+
+  const _SharedRoutineImage({
+    required this.value,
+    required this.height,
+    required this.placeholder,
+  });
+
+  @override
+  State<_SharedRoutineImage> createState() => _SharedRoutineImageState();
+}
+
+class _SharedRoutineImageState extends State<_SharedRoutineImage> {
+  late Future<File?> _file = const SharedMediaService().resolve(widget.value);
+
+  @override
+  void didUpdateWidget(covariant _SharedRoutineImage old) {
+    super.didUpdateWidget(old);
+    if (old.value != widget.value) {
+      _file = const SharedMediaService().resolve(widget.value);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<File?>(
+    future: _file,
+    builder: (context, snap) {
+      final file = snap.data;
+      if (file == null) return widget.placeholder();
+      return Image.file(
+        file,
+        height: widget.height,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => widget.placeholder(),
+      );
+    },
+  );
 }
 
 /// Plays a routine step's audio cue.
@@ -352,7 +404,12 @@ class _RoutineAudioButtonState extends State<RoutineAudioButton> {
       if (mounted) setState(() => _playing = false);
     });
     try {
-      final u = widget.url.trim();
+      var u = widget.url.trim();
+      if (SharedMediaService.isShared(u)) {
+        final file = await const SharedMediaService().resolve(u);
+        if (file == null) throw StateError('shared sound unavailable');
+        u = '${RoutineMediaStore.filePrefix}${file.path}';
+      }
       await player.play(
         RoutineMediaStore.isDeviceFile(u)
             ? DeviceFileSource(RoutineMediaStore.pathOf(u))
@@ -449,7 +506,11 @@ class _RoutineVideoSheetState extends State<_RoutineVideoSheet> {
     final raw = widget.url.trim();
     VideoPlayerController? controller;
     try {
-      if (RoutineMediaStore.isDeviceFile(raw)) {
+      if (SharedMediaService.isShared(raw)) {
+        final file = await const SharedMediaService().resolve(raw);
+        if (file == null) throw StateError('shared video unavailable');
+        controller = VideoPlayerController.file(file);
+      } else if (RoutineMediaStore.isDeviceFile(raw)) {
         controller =
             VideoPlayerController.file(File(RoutineMediaStore.pathOf(raw)));
       } else if (isAssetMedia(raw)) {

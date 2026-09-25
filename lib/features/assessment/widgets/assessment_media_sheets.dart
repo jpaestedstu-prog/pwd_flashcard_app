@@ -271,6 +271,7 @@ Future<FeedbackEdit?> showFeedbackEditor(
   AssessmentFeedback? existing,
   AssessmentResult? result,
   List<String> tips = const [],
+  String? ownerProfileId,
 }) {
   return showModalBottomSheet<FeedbackEdit>(
     context: context,
@@ -284,6 +285,7 @@ Future<FeedbackEdit?> showFeedbackEditor(
       existing: existing,
       result: result,
       tips: tips,
+      ownerProfileId: ownerProfileId,
     ),
   );
 }
@@ -295,6 +297,7 @@ class _FeedbackEditorSheet extends StatefulWidget {
   final AssessmentFeedback? existing;
   final AssessmentResult? result;
   final List<String> tips;
+  final String? ownerProfileId;
 
   const _FeedbackEditorSheet({
     required this.learnerName,
@@ -303,6 +306,7 @@ class _FeedbackEditorSheet extends StatefulWidget {
     required this.existing,
     required this.result,
     required this.tips,
+    this.ownerProfileId,
   });
 
   @override
@@ -408,6 +412,7 @@ class _FeedbackEditorSheetState extends State<_FeedbackEditorSheet> {
               ownerKey: widget.ownerKey,
               ledger: _ledger,
               tips: widget.tips,
+              ownerProfileId: widget.ownerProfileId,
             ),
             const SizedBox(height: 24),
             FilledButton.icon(

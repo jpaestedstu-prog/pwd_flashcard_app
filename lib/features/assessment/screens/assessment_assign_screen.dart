@@ -625,6 +625,7 @@ class _AssessmentAssignScreenState
                       onChanged: (m) => setState(() => _instructionsMedia = m),
                       ownerKey: _mediaOwnerKey,
                       ledger: _mediaLedger,
+                      ownerProfileId: ref.read(profileProvider)?.id,
                       title: _tr(context).assessInstructionsMediaTitle,
                       tips: assessmentMediaTips(_tr(context), [
                         for (final id in _selectedStudentIds)

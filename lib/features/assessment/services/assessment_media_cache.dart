@@ -5,6 +5,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import '../../../core/services/media_cache_key.dart';
 import '../../../core/services/media_url_resolver.dart';
+import '../../../core/services/shared_media_service.dart';
 import '../../routine/services/routine_media_store.dart';
 import '../../routine/widgets/routine_media.dart';
 import '../models/assessment_media_presentation.dart';
@@ -17,10 +18,11 @@ enum MediaAvailability {
   ready,
 
   /// A picked file that is not on this device — it was chosen on another
-  /// tablet, and there is no shared storage for it to travel through.
+  /// tablet and has not been shared (yet).
   otherDevice,
 
-  /// A link that could not be downloaded (offline, or a dead link).
+  /// A link or a shared file that could not be downloaded (offline, a dead
+  /// link, or today's free quota used up).
   unreachable,
 }
 
@@ -44,6 +46,10 @@ class AssessmentMediaCache {
   /// How long one item may take to download before it counts as missing.
   static const Duration perItem = Duration(seconds: 45);
 
+  /// A shared file arrives in pieces and may be up to 15 MB, so it gets
+  /// longer than a single link before it counts as missing.
+  static const Duration perSharedItem = Duration(minutes: 3);
+
   /// Replaces the download in tests; returns the file or null.
   static Future<File?> Function(String url)? debugFetch;
 
@@ -55,6 +61,10 @@ class AssessmentMediaCache {
     return v.startsWith('http://') || v.startsWith('https://');
   }
 
+  /// Fetched over the network: a link, or a file shared through Firestore.
+  static bool _isRemote(String value) =>
+      _isLink(value) || SharedMediaService.isShared(value);
+
   /// The local file for [value], downloading a link if need be. Null for a
   /// bundled asset (play it with the asset APIs), a missing device file, or a
   /// download that failed.
@@ -65,9 +75,12 @@ class AssessmentMediaCache {
       final f = File(RoutineMediaStore.pathOf(v));
       return await f.exists() ? f : null;
     }
-    if (!_isLink(v)) return null;
+    if (!_isRemote(v)) return null;
     final fetch = debugFetch;
     if (fetch != null) return fetch(v);
+    if (SharedMediaService.isShared(v)) {
+      return const SharedMediaService().resolve(v);
+    }
     try {
       final cached = await _cache.getFileFromCache(_keyFor(v));
       if (cached != null) return cached.file;
@@ -95,7 +108,9 @@ class AssessmentMediaCache {
     }
     File? file;
     try {
-      file = await fileFor(v).timeout(perItem);
+      file = await fileFor(v).timeout(
+        SharedMediaService.isShared(v) ? perSharedItem : perItem,
+      );
     } catch (_) {
       file = null;
     }
@@ -137,9 +152,11 @@ class AssessmentMediaCache {
   /// tablet is online. Failures are ignored: the check before a test starts
   /// catches them, and a sheet shows its own "could not load".
   static Future<void> prefetchValues(Iterable<String> values) async {
-    for (final v in values.where(_isLink).toSet()) {
+    for (final v in values.where(_isRemote).toSet()) {
       try {
-        await fileFor(v).timeout(perItem);
+        await fileFor(v).timeout(
+          SharedMediaService.isShared(v) ? perSharedItem : perItem,
+        );
       } catch (_) {
         // Best effort.
       }

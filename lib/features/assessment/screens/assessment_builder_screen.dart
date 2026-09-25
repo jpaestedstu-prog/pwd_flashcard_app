@@ -49,7 +49,7 @@ class _AssessmentBuilderScreenState
   void dispose() {
     if (!_saved) {
       const AssessmentMediaStore().discard({
-        for (final q in _questions) ...q.media.deviceFiles,
+        for (final q in _questions) ...q.media.storedValues,
       });
     }
     _titleController.dispose();
@@ -213,7 +213,7 @@ class _AssessmentBuilderScreenState
                             question: q,
                             onDelete: () {
                               const AssessmentMediaStore().discard(
-                                q.media.deviceFiles,
+                                q.media.storedValues,
                               );
                               setState(() => _questions.removeAt(i));
                             },
@@ -300,7 +300,9 @@ class _AssessmentBuilderScreenState
           MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => const _QuestionEditorSheet(),
+      builder: (_) => _QuestionEditorSheet(
+        ownerProfileId: ref.read(profileProvider)?.id,
+      ),
     );
     if (result != null && mounted) {
       setState(() {
@@ -321,7 +323,10 @@ class _AssessmentBuilderScreenState
           MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _QuestionEditorSheet(existing: _questions[index]),
+      builder: (_) => _QuestionEditorSheet(
+        existing: _questions[index],
+        ownerProfileId: ref.read(profileProvider)?.id,
+      ),
     );
     if (result != null && mounted) {
       setState(() {
@@ -533,7 +538,11 @@ class _MiniChip extends StatelessWidget {
 
 class _QuestionEditorSheet extends StatefulWidget {
   final AssessmentQuestion? existing;
-  const _QuestionEditorSheet({this.existing});
+
+  /// The educator a picked file is shared as.
+  final String? ownerProfileId;
+
+  const _QuestionEditorSheet({this.existing, this.ownerProfileId});
 
   @override
   State<_QuestionEditorSheet> createState() => _QuestionEditorSheetState();
@@ -692,6 +701,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                   ownerKey: _questionId,
                   ledger: _ledger,
                   forQuestion: true,
+                  ownerProfileId: widget.ownerProfileId,
                 ),
 
                 const SizedBox(height: 12),

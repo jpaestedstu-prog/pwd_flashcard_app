@@ -174,6 +174,20 @@ class AssessmentQuestion {
       media: AssessmentMedia.fromJson(json['media']),
     );
   }
+
+  /// A copy with [media] in place of this question's own.
+  AssessmentQuestion withMedia(AssessmentMedia media) => AssessmentQuestion(
+    id: id,
+    questionText: questionText,
+    correctAnswer: correctAnswer,
+    choices: choices,
+    format: format,
+    category: category,
+    imageAsset: imageAsset,
+    hint: hint,
+    signCardId: signCardId,
+    media: media,
+  );
 }
 
 /// An assessment definition (template)
@@ -214,6 +228,21 @@ class Assessment {
     'createdBy': createdBy,
     'createdAt': createdAt.toIso8601String(),
   };
+
+  /// A copy with [questions] in place of this assessment's own — the same
+  /// id, so a save replaces it everywhere it has been synced.
+  Assessment withQuestions(List<AssessmentQuestion> questions) => Assessment(
+    id: id,
+    title: title,
+    description: description,
+    type: type,
+    questions: questions,
+    categories: categories,
+    difficulty: difficulty,
+    timeLimitMinutes: timeLimitMinutes,
+    createdBy: createdBy,
+    createdAt: createdAt,
+  );
 
   factory Assessment.fromJson(Map<String, dynamic> json) {
     final typeIndex = json['type'] as int? ?? 0;
@@ -514,6 +543,20 @@ class AssessmentAssignment {
     this.feedback = const {},
   });
 
+  /// A copy with [media] as the instructions' media.
+  AssessmentAssignment withMedia(AssessmentMedia media) => AssessmentAssignment(
+    id: id,
+    assessmentId: assessmentId,
+    assessmentTitle: assessmentTitle,
+    assignedBy: assignedBy,
+    studentIds: studentIds,
+    assignedAt: assignedAt,
+    deadline: deadline,
+    instructions: instructions,
+    media: media,
+    feedback: feedback,
+  );
+
   /// [learnerId]'s feedback, if the educator has written any.
   AssessmentFeedback? feedbackFor(String learnerId) => feedback[learnerId];
 
@@ -548,6 +591,13 @@ class AssessmentAssignment {
   Set<String> get deviceFiles => {
     ...media.deviceFiles,
     for (final f in feedback.values) ...f.media.deviceFiles,
+  };
+
+  /// Every file this assignment's media stored — on the device or shared —
+  /// in its instructions and in anyone's feedback.
+  Set<String> get storedValues => {
+    ...media.storedValues,
+    for (final f in feedback.values) ...f.media.storedValues,
   };
 
   /// Whether the deadline has passed.

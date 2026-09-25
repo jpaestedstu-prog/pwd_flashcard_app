@@ -386,10 +386,20 @@ class AssessmentCloudService {
         );
   }
 
-  /// `<id>@<when this learner's feedback last changed>` — the part of an
-  /// assignment that can change after it is handed out.
-  static String revisionKey(AssessmentAssignment a, String learnerId) =>
-      '${a.id}@${a.feedbackFor(learnerId)?.updatedAt.toIso8601String() ?? ''}';
+  /// `<id>@<this learner's feedback>@<shared media>` — the parts of an
+  /// assignment that can change after it is handed out: feedback written
+  /// later, and a file picked offline that has since been shared (its value
+  /// turns from `file://` into `shared://`, and the learner's copy must
+  /// follow or their tablet keeps a file it can never open).
+  static String revisionKey(AssessmentAssignment a, String learnerId) {
+    final feedback = a.feedbackFor(learnerId);
+    final media = [
+      ...a.media.storedValues,
+      ...?feedback?.media.storedValues,
+    ]..sort();
+    return '${a.id}@${feedback?.updatedAt.toIso8601String() ?? ''}'
+        '@${media.join(',')}';
+  }
 
   // ─── Internals ──────────────────────────────────────────
 

@@ -1,9 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pwdpwdpwd/core/accessibility/haptic_service.dart';
 import 'package:pwdpwdpwd/core/accessibility/tts_service.dart';
+import 'package:pwdpwdpwd/core/services/shared_media_service.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/assessment/models/assessment_media.dart';
@@ -79,6 +82,23 @@ class _FakeTts extends TtsService {
 
   @override
   Future<void> stop() async {}
+}
+
+/// A cloud that accepts nothing and holds nothing — enough for the editor to
+/// know sharing is possible without any upload happening.
+class _NoopBackend implements SharedMediaBackend {
+  @override
+  Future<void> writeMeta(SharedMediaMeta meta) async {}
+  @override
+  Future<void> writeChunk(String id, int index, Uint8List bytes) async {}
+  @override
+  Future<SharedMediaMeta?> readMeta(String id) async => null;
+  @override
+  Future<Uint8List?> readChunk(String id, int index) async => null;
+  @override
+  Future<void> deleteChunk(String id, int index) async {}
+  @override
+  Future<void> deleteMeta(String id) async {}
 }
 
 const _photo = 'assets/test/cat.png';
@@ -535,6 +555,70 @@ void main() {
       );
       await tapThrough(tester, find.text('Use this link'));
       expect(find.text('Paste a link that starts with https://'), findsOneWidget);
+    });
+  });
+
+  // ─── Sharing ─────────────────────────────────────────────
+
+  group('where each file stands', () {
+    Future<void> pumpEditor(
+      WidgetTester tester,
+      AssessmentMedia value, {
+      String? owner,
+    }) async {
+      await pumpHost(
+        tester,
+        (context) => showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          builder: (_) => SingleChildScrollView(
+            child: AssessmentMediaEditor(
+              value: value,
+              onChanged: (_) {},
+              ownerKey: 'q1',
+              ledger: AssessmentMediaLedger(),
+              ownerProfileId: owner,
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('a shared file says it reaches every device', (tester) async {
+      await pumpEditor(tester, const AssessmentMedia(sign: 'shared://abc'));
+      expect(find.text('Shared — reaches every device.'), findsOneWidget);
+      expect(find.text('Share now'), findsNothing);
+    });
+
+    testWidgets('a file still on this tablet offers to share it', (
+      tester,
+    ) async {
+      SharedMediaService.debugBackend = _NoopBackend();
+      addTearDown(() => SharedMediaService.debugBackend = null);
+      await pumpEditor(
+        tester,
+        const AssessmentMedia(photo: 'file:///d/assessment_media/q_photo_1.jpg'),
+        owner: 'teacher-1',
+      );
+      expect(find.text('On this tablet only — not shared yet.'), findsOneWidget);
+      expect(find.text('Share now'), findsOneWidget);
+    });
+
+    testWidgets('with no cloud at all it only warns, and offers nothing', (
+      tester,
+    ) async {
+      await pumpEditor(
+        tester,
+        const AssessmentMedia(photo: 'file:///d/assessment_media/q_photo_1.jpg'),
+        owner: 'teacher-1',
+      );
+      expect(
+        find.text(
+          "On this tablet only — learners on another device won't see it.",
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Share now'), findsNothing);
     });
   });
 

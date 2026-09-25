@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 
 import '../../../core/accessibility/learner_support.dart';
+import '../../../core/services/shared_media_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
@@ -13,6 +15,7 @@ import '../../routine/services/routine_media_store.dart';
 import '../../routine/widgets/routine_media.dart';
 import '../models/assessment_media.dart';
 import '../models/assessment_media_presentation.dart';
+import '../services/assessment_media_cache.dart';
 import '../services/assessment_media_store.dart';
 import 'assessment_media_panel.dart';
 
@@ -101,10 +104,12 @@ String _adviceText(AppLocalizations t, AssessmentMediaAdvice a) =>
 /// educator is writing — a question, an assignment's instructions, or
 /// feedback.
 ///
-/// Mirrors the routine step editor's media section (a link reaches every
-/// device, a picked file stays on this tablet, and it says which), but as
-/// "Add" chips rather than five always-open fields: an assessment question
-/// sheet is already long, and most questions carry one picture or none.
+/// A picked file is shared with every device the moment it is chosen
+/// (`SharedMediaService`, free Firestore plan) and each slot says where it
+/// stands — shared, sharing, or still on this tablet only — so an educator
+/// never learns from a learner's blank screen that a video did not travel.
+/// "Add" buttons rather than five always-open fields: a question sheet is
+/// already long, and most questions carry one picture or none.
 class AssessmentMediaEditor extends StatefulWidget {
   final AssessmentMedia value;
   final ValueChanged<AssessmentMedia> onChanged;
@@ -124,6 +129,10 @@ class AssessmentMediaEditor extends StatefulWidget {
   /// Heading; defaults to the general one.
   final String? title;
 
+  /// The profile a shared file is uploaded as — the educator writing this.
+  /// Null keeps picked files on this tablet only.
+  final String? ownerProfileId;
+
   const AssessmentMediaEditor({
     super.key,
     required this.value,
@@ -133,6 +142,7 @@ class AssessmentMediaEditor extends StatefulWidget {
     this.forQuestion = false,
     this.tips = const [],
     this.title,
+    this.ownerProfileId,
   });
 
   @override
@@ -144,6 +154,13 @@ class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
     text: widget.value.description,
   );
   AssessmentMediaKind? _busy;
+
+  /// Upload progress per slot, 0–1, while a picked file is being shared.
+  final Map<AssessmentMediaKind, double> _sharing = {};
+
+  bool get _canShare =>
+      (widget.ownerProfileId?.isNotEmpty ?? false) &&
+      const SharedMediaService().available;
 
   @override
   void didUpdateWidget(covariant AssessmentMediaEditor old) {
@@ -174,7 +191,7 @@ class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _MediaSourceSheet(kind: kind),
+      builder: (_) => _MediaSourceSheet(kind: kind, willShare: _canShare),
     );
     if (choice == null || !mounted) return;
     final t = _tr(context);
@@ -193,6 +210,7 @@ class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
         case MediaPickStatus.added:
           widget.ledger.adopted(result.value!);
           widget.onChanged(widget.value.withSlot(kind, result.value!));
+          unawaited(_share(kind, result.value!));
         case MediaPickStatus.cancelled:
           break;
         case MediaPickStatus.tooLarge:
@@ -207,6 +225,48 @@ class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
       }
     } finally {
       if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  /// Shares the picked file in [kind] and swaps the slot to its `shared://`
+  /// value. Whatever happens, the file stays usable on this tablet.
+  Future<void> _share(AssessmentMediaKind kind, String fileValue) async {
+    if (!_canShare || _sharing.containsKey(kind)) return;
+    setState(() => _sharing[kind] = 0);
+    final result = await const AssessmentMediaStore().share(
+      fileValue,
+      ownerProfileId: widget.ownerProfileId!,
+      onProgress: (p) {
+        if (mounted) setState(() => _sharing[kind] = p);
+      },
+    );
+    final shared = result.status == SharedUploadStatus.shared;
+    // The sheet closed, or the slot was replaced or cleared meanwhile: this
+    // upload belongs to nothing any more.
+    if (!mounted || widget.value.urlFor(kind) != fileValue) {
+      if (shared) await const AssessmentMediaStore().discard([result.value]);
+      if (mounted) setState(() => _sharing.remove(kind));
+      return;
+    }
+    setState(() => _sharing.remove(kind));
+    final t = _tr(context);
+    switch (result.status) {
+      case SharedUploadStatus.shared:
+        widget.ledger.adopted(result.value);
+        widget.onChanged(widget.value.withSlot(kind, result.value));
+      case SharedUploadStatus.tooLarge:
+        AppSnackBar.warning(
+          context,
+          message: t.assessMediaShareTooLarge(
+            SharedMediaService.maxBytes ~/ (1024 * 1024),
+          ),
+        );
+      case SharedUploadStatus.failed:
+        AppSnackBar.warning(context, message: t.assessMediaShareFailed);
+      case SharedUploadStatus.notOwner:
+        AppSnackBar.warning(context, message: t.assessMediaShareNotOwner);
+      case SharedUploadStatus.unavailable:
+        break;
     }
   }
 
@@ -317,6 +377,9 @@ class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
             child: _FilledSlot(
               kind: kind,
               value: value.urlFor(kind),
+              sharing: _sharing[kind],
+              canShare: _canShare,
+              onShareNow: () => _share(kind, value.urlFor(kind)),
               onPreview: () => _preview(kind),
               onReplace: () => _add(kind),
               onRemove: () => _remove(kind),
@@ -377,6 +440,13 @@ class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
 class _FilledSlot extends StatelessWidget {
   final AssessmentMediaKind kind;
   final String value;
+
+  /// Upload progress while this slot's file is being shared.
+  final double? sharing;
+
+  /// Whether a file still on this tablet could be shared from here.
+  final bool canShare;
+  final VoidCallback onShareNow;
   final VoidCallback onPreview;
   final VoidCallback onReplace;
   final VoidCallback onRemove;
@@ -384,6 +454,9 @@ class _FilledSlot extends StatelessWidget {
   const _FilledSlot({
     required this.kind,
     required this.value,
+    required this.sharing,
+    required this.canShare,
+    required this.onShareNow,
     required this.onPreview,
     required this.onReplace,
     required this.onRemove,
@@ -395,6 +468,23 @@ class _FilledSlot extends StatelessWidget {
     final t = _tr(context);
     final color = assessmentMediaColor(kind);
     final onDevice = RoutineMediaStore.isDeviceFile(value);
+    final shared = SharedMediaService.isShared(value);
+    final progress = sharing;
+    final String where;
+    final Color whereColor;
+    if (progress != null) {
+      where = t.assessMediaSharing((progress * 100).round());
+      whereColor = hc.textSecondary;
+    } else if (shared) {
+      where = t.assessMediaShared;
+      whereColor = AppColors.success;
+    } else if (onDevice) {
+      where = canShare ? t.assessMediaNotShared : t.assessMediaOnDevice;
+      whereColor = AppColors.warning;
+    } else {
+      where = t.assessMediaLinkReaches;
+      whereColor = hc.textSecondary;
+    }
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
@@ -422,14 +512,30 @@ class _FilledSlot extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      onDevice
-                          ? t.assessMediaOnDevice
-                          : t.assessMediaLinkReaches,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: onDevice ? AppColors.warning : hc.textSecondary,
-                      ),
+                    Row(
+                      children: [
+                        if (shared) ...[
+                          const Icon(
+                            Icons.cloud_done_rounded,
+                            size: 14,
+                            color: AppColors.success,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Flexible(
+                          child: Text(
+                            where,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: whereColor,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    if (progress != null) ...[
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(value: progress),
+                    ],
                   ],
                 ),
               ),
@@ -448,6 +554,12 @@ class _FilledSlot extends StatelessWidget {
           Wrap(
             spacing: 4,
             children: [
+              if (onDevice && canShare && progress == null)
+                TextButton.icon(
+                  onPressed: onShareNow,
+                  icon: const Icon(Icons.cloud_upload_rounded, size: 18),
+                  label: Text(t.assessMediaShareNow),
+                ),
               TextButton.icon(
                 onPressed: onPreview,
                 icon: const Icon(Icons.visibility_rounded, size: 18),
@@ -501,6 +613,18 @@ class _Thumb extends StatelessWidget {
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => icon(),
       );
+    } else if (SharedMediaService.isShared(v)) {
+      child = FutureBuilder<File?>(
+        future: AssessmentMediaCache.fileFor(v),
+        builder: (_, snap) => snap.data == null
+            ? icon()
+            : Image.file(
+                snap.data!,
+                fit: BoxFit.cover,
+                cacheWidth: 160,
+                errorBuilder: (_, _, _) => icon(),
+              ),
+      );
     } else {
       child = Image.network(
         v,
@@ -528,7 +652,11 @@ class _Thumb extends StatelessWidget {
 /// "Choose from this device" or "Paste a link" for one slot.
 class _MediaSourceSheet extends StatefulWidget {
   final AssessmentMediaKind kind;
-  const _MediaSourceSheet({required this.kind});
+
+  /// A picked file will be shared with every device, not kept on this one.
+  final bool willShare;
+
+  const _MediaSourceSheet({required this.kind, required this.willShare});
 
   @override
   State<_MediaSourceSheet> createState() => _MediaSourceSheetState();
@@ -593,9 +721,13 @@ class _MediaSourceSheetState extends State<_MediaSourceSheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              t.assessMediaOnDevice,
+              widget.willShare
+                  ? t.assessMediaFromDeviceShared(
+                      SharedMediaService.maxBytes ~/ (1024 * 1024),
+                    )
+                  : t.assessMediaOnDevice,
               style: AppTypography.labelSmall.copyWith(
-                color: AppColors.warning,
+                color: widget.willShare ? hc.textSecondary : AppColors.warning,
               ),
             ),
             const SizedBox(height: 20),

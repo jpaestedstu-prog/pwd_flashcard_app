@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/app_providers.dart';
 import '../models/assessment_models.dart';
 import '../services/assessment_cloud_service.dart';
+import '../services/assessment_media_publisher.dart';
 import '../services/assessment_media_store.dart';
 import '../services/assessment_service.dart';
 
@@ -97,7 +98,7 @@ class CustomAssessmentsNotifier extends StateNotifier<List<Assessment>> {
     final files = {
       for (final a in state)
         if (a.id == assessmentId)
-          for (final q in a.questions) ...q.media.deviceFiles,
+          for (final q in a.questions) ...q.media.storedValues,
     };
     await cloud.deleteAssessment(profileId, assessmentId);
     state = AssessmentService.getAssessments(profileId);
@@ -153,7 +154,7 @@ class AssignmentsNotifier extends StateNotifier<List<AssessmentAssignment>> {
   Future<CloudSyncOutcome> deleteAssignment(String assignmentId) async {
     final files = {
       for (final a in state)
-        if (a.id == assignmentId) ...a.deviceFiles,
+        if (a.id == assignmentId) ...a.storedValues,
     };
     final outcome = await cloud.deleteAssignment(educatorId, assignmentId);
     refresh();
@@ -197,6 +198,9 @@ final educatorAssessmentSyncProvider = FutureProvider.family<void, String>((
   educatorId,
 ) async {
   await const AssessmentCloudService().hydrateEducator(educatorId);
+  // Files picked while offline are shared now that the pull worked, so the
+  // learners' tablets can open them.
+  await const AssessmentMediaPublisher().publishPending(educatorId);
 
   // Hydration writes straight to Hive, which these two notifiers cannot see:
   // they load once and then only re-read after their own writes. Without this

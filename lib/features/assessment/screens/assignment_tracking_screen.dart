@@ -173,6 +173,7 @@ Future<void> _editFeedback(
     ownerKey: 'fb_${assignment.id}_${status.studentId}',
     existing: existing,
     result: status.result,
+    ownerProfileId: ref.read(profileProvider)?.id,
     tips: learner == null
         ? const []
         : assessmentMediaTips(t, [

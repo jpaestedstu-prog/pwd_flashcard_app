@@ -1,3 +1,4 @@
+import '../../../core/services/shared_media_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../routine/services/routine_media_store.dart';
 
@@ -14,10 +15,12 @@ import '../../routine/services/routine_media_store.dart';
 ///    A link reaches every device the assessment syncs to.
 ///  * `assets/…` — something bundled with the app.
 ///  * `file://…` — a file picked off *this* device, copied into app storage by
-///    `AssessmentMediaStore`. There is no shared storage bucket in this
-///    project, so such a file reaches only learners who use this tablet — the
-///    common case on a shared classroom or family tablet, and one the editor
-///    states plainly next to every picked file.
+///    `AssessmentMediaStore`. It reaches only learners on this tablet until
+///    it is shared.
+///  * `shared://…` — a picked file once it has been shared through
+///    `SharedMediaService` (Firestore, free plan), which reaches every
+///    device. A file picked offline stays `file://` until it can be shared,
+///    and the editor says which each one is.
 ///
 /// [sign] is kept apart from [video] on purpose. A video is part of the
 /// question and every learner sees it; a sign-language video is an
@@ -126,6 +129,16 @@ class AssessmentMedia {
   };
 
   bool get hasDeviceFiles => deviceFiles.isNotEmpty;
+
+  /// Every value this app stored itself and must clean up when nothing
+  /// refers to it any more: files on this device and shared files.
+  /// Links and bundled assets belong to someone else and are never deleted.
+  Set<String> get storedValues => {
+    for (final kind in AssessmentMediaKind.values)
+      if (RoutineMediaStore.isDeviceFile(urlFor(kind)) ||
+          SharedMediaService.isShared(urlFor(kind)))
+        urlFor(kind).trim(),
+  };
 
   AssessmentMedia withSlot(AssessmentMediaKind kind, String url) {
     final v = url.trim();

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/accessibility/tts_service.dart';
+import '../../../core/services/shared_media_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../l10n/app_localizations.dart';
@@ -374,19 +375,24 @@ class _MediaImageState extends State<_MediaImage> {
 
   String get _v => widget.value.trim();
 
+  /// Fetched over the network — a link or a shared file — rather than
+  /// read straight off this device.
+  bool get _remote =>
+      _v.startsWith('http://') ||
+      _v.startsWith('https://') ||
+      SharedMediaService.isShared(_v);
+
   @override
   void initState() {
     super.initState();
-    if (_v.startsWith('http://') || _v.startsWith('https://')) {
-      _download = AssessmentMediaCache.fileFor(_v);
-    }
+    if (_remote) _download = AssessmentMediaCache.fileFor(_v);
   }
 
   @override
   void didUpdateWidget(covariant _MediaImage old) {
     super.didUpdateWidget(old);
     if (old.value != widget.value) {
-      _download = _v.startsWith('http') ? AssessmentMediaCache.fileFor(_v) : null;
+      _download = _remote ? AssessmentMediaCache.fileFor(_v) : null;
     }
   }
 
@@ -425,6 +431,10 @@ class _MediaImageState extends State<_MediaImage> {
             errorBuilder: (_, _, _) =>
                 _unavailable(MediaAvailability.unreachable),
           );
+        }
+        // A shared file has no URL to fall back on.
+        if (SharedMediaService.isShared(_v)) {
+          return _unavailable(MediaAvailability.unreachable);
         }
         // The cache could not fetch it; a plain network load is the last try
         // before saying so.
@@ -681,6 +691,10 @@ class _MediaVideoState extends State<_MediaVideo> {
         controller = VideoPlayerController.asset(assetPathOf(v));
       } else {
         final file = await AssessmentMediaCache.fileFor(v);
+        if (file == null && SharedMediaService.isShared(v)) {
+          if (mounted) setState(() => _failed = MediaAvailability.unreachable);
+          return;
+        }
         controller = file != null
             ? VideoPlayerController.file(file)
             : VideoPlayerController.networkUrl(Uri.parse(v));

@@ -40,6 +40,7 @@ feature.
 | **Worksheets** | **Local only** — PDF generated from bundled seed data | ✅ Yes | See [`worksheet_service.dart`](lib/core/services/worksheet_service.dart). |
 | **Classroom** | Firestore read/write `classrooms`, `classroom_members`, `classroom_audit` | ✅ Yes | Direct (non-queued) writes for responsive teacher UX. |
 | **Assessments** | **Local (Hive)** for the question bank and results; Firestore only for assignment/tracking | ✅ Yes | See [`assessment_service.dart`](lib/features/assessment/services/assessment_service.dart). |
+| **Shared media** (teacher pictures, videos, sounds and FSL clips on assessments, feedback and routines; learner video answers) | Firestore `shared_media/{id}` + `chunks` — each file split into ≤ 1 MB `bytes` pieces | ✅ Yes | Replaces Cloud Storage, which needs Blaze. Files are capped at **15 MB**; the rules enforce the cap and let only the uploading device write or delete. Each tablet downloads a file once and keeps it. See [`shared_media_service.dart`](lib/core/services/shared_media_service.dart); rules checked by `tool/shared_media_rules_probe.py`. |
 | **Notifications** | **Local only** (`flutter_local_notifications`); parental alarms sync via Firestore, then fire locally on-device | ✅ Yes | **No FCM dependency at all.** See [`notification_service.dart`](lib/core/services/notification_service.dart). |
 | **Live sessions** | Firestore `live_sessions/{classroomId}` + `responses` subcollection | ✅ Yes | Real-time via Firestore snapshots (not Cloud Functions). Requires connectivity while a session is live. |
 | **Messaging / friends / home groups / parent-teacher notes** | Firestore (+ local Hive cache) | ✅ Yes | All paths covered by owner-scoped rules in [`firestore.rules`](firestore.rules). |
@@ -70,7 +71,7 @@ working from Hive, and pending cloud writes queue for later replay.
 | Product | Used here? | Why it would cost money |
 |---|:---:|---|
 | Cloud Functions | ❌ No | Deploying any function requires the Blaze plan. The app does server-side integrity checks client-side instead. |
-| Cloud Storage | ❌ No | All assets are bundled or generated on-device; FSL videos are downloaded from GitHub Releases / Cloudinary and cached locally, not from Firebase Storage. |
+| Cloud Storage | ❌ No | All assets are bundled or generated on-device; FSL videos are downloaded from GitHub Releases / Cloudinary and cached locally, not from Firebase Storage. Files that teachers pick and learners record are shared through **Firestore** instead (see *Shared media* above). |
 | Firebase Cloud Messaging (outbound push) | ❌ No | No `firebase_messaging` dependency; all reminders are local notifications. |
 
 `pubspec.yaml` confirms the absence of `cloud_functions`, `firebase_storage`, and
@@ -81,5 +82,12 @@ working from Hive, and pending cloud writes queue for later replay.
 Firestore Spark limits are **50,000 document reads** and **20,000 writes** per day. For a
 classroom-sized deployment (~30 students), typical daily usage stays well within these limits,
 especially because Hive serves as a local cache and offline persistence reduces redundant
-reads. If a deployment ever outgrows the quota, the upgrade path is enabling Blaze for higher
+reads.
+
+Shared media is the heaviest user of the quota, so it is budgeted: a 5 MB clip is 6 writes to
+upload and 7 reads per tablet that downloads it (once — every tablet keeps its copy), and
+Spark's **1 GiB stored / 10 GiB downloaded per month** comfortably holds a class's worth of
+short FSL clips recorded in the app at 480p (about 1 MB per 10 seconds). On Spark, running out
+of quota never costs anything: uploads fail until the quota resets, and the app keeps the file
+on the tablet and says "not shared yet". If a deployment ever outgrows the quota, the upgrade path is enabling Blaze for higher
 Firestore quotas — still without needing Cloud Functions.

@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../core/services/shared_media_service.dart';
 import '../models/routine_models.dart';
 
 /// Where a photo, GIF, video or sound picked from the device is kept.
@@ -13,15 +14,12 @@ import '../models/routine_models.dart';
 /// later is worse than one that never had a picture. So the file is copied
 /// into the app's own documents directory and the slot stores that path.
 ///
-/// **A picked file lives on this device only.** There is no Firebase Storage
-/// bucket in this project, so bytes have nowhere shared to go; a URL typed
-/// into the slot reaches every device, a picked file does not. The editor says
-/// so plainly rather than letting an educator discover it from a learner's
-/// blank screen — see `RoutineMediaSourceSheet`.
-///
-/// This is the honest shape for a family tablet, which is the common case: a
-/// parent photographs their own bathroom on the device the child also uses.
-/// Hosting picked media is the natural next step and wants a real bucket.
+/// **A picked file starts on this device only.** The step editor then shares
+/// it through `SharedMediaService` (Firestore on the free plan — there is no
+/// Storage bucket, which would need the paid plan) and swaps the slot to its
+/// `shared://` value, which reaches every device. If it cannot be shared yet
+/// (offline, over 15 MB) it stays here, and the editor says so plainly rather
+/// than letting an educator discover it from a learner's blank screen.
 class RoutineMediaStore {
   const RoutineMediaStore();
 
@@ -120,6 +118,12 @@ class RoutineMediaStore {
   /// Only ever called for a slot the educator cleared or replaced — never for
   /// a URL, which belongs to whoever hosts it.
   Future<void> discard(String slotValue) async {
+    // A shared file is removed from the cloud by the device that shared it;
+    // the rules refuse anyone else, quietly.
+    if (SharedMediaService.isShared(slotValue)) {
+      await const SharedMediaService().delete(slotValue);
+      return;
+    }
     if (!isDeviceFile(slotValue)) return;
     try {
       final f = File(pathOf(slotValue));

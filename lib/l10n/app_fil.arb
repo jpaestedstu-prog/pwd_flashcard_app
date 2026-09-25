@@ -3402,5 +3402,13 @@
   "assessFeedbackLocalOnly": "Nai-save ang puna sa device na ito — hindi pa naipapadala. Makakarating ito kay {name} kapag gumagana na ang pag-sync.",
   "assessFeedbackNotOwner": "Nai-save lang sa device na ito. Na-restore ang profile na ito sa ibang device, kaya iyon na ang nagsi-sync — hindi naipadala ang puna.",
   "assessFeedbackTapToOpen": "Pindutin para buksan",
-  "assessFeedbackHas": "May puna na"
+  "assessFeedbackHas": "May puna na",
+  "assessMediaShared": "Naibahagi na — makikita sa bawat device.",
+  "assessMediaNotShared": "Nasa tablet na ito lang — hindi pa naibabahagi.",
+  "assessMediaSharing": "Ibinabahagi… {percent}%",
+  "assessMediaShareNow": "Ibahagi ngayon",
+  "assessMediaFromDeviceShared": "Ibabahagi ito sa bawat device (mga file hanggang {size} MB).",
+  "assessMediaShareTooLarge": "Lampas sa {size} MB — mananatili lang ang file na ito sa tablet na ito.",
+  "assessMediaShareFailed": "Hindi ito maibahagi ngayon. Naka-save ito sa tablet na ito at ibabahagi kapag may internet na.",
+  "assessMediaShareNotOwner": "Pinamamahalaan na ang profile na ito mula sa ibang device, kaya hindi makapagbahagi ng file mula rito."
 }

@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/services/fsl_assets_service.dart';
+import '../../../core/services/shared_media_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/routine_catalog.dart';
@@ -17,6 +20,7 @@ Future<RoutineStep?> openRoutineStepEditor(
   required RoutineStep step,
   required bool filipino,
   bool routineLocks = false,
+  String? ownerProfileId,
 }) {
   return showModalBottomSheet<RoutineStep>(
     context: context,
@@ -27,6 +31,7 @@ Future<RoutineStep?> openRoutineStepEditor(
       step: step,
       filipino: filipino,
       routineLocks: routineLocks,
+      ownerProfileId: ownerProfileId,
     ),
   );
 }
@@ -35,13 +40,12 @@ Future<RoutineStep?> openRoutineStepEditor(
 /// it happens, how long it lasts, what it says, and — the part the brief is
 /// really about — which accessibility content is attached to it.
 ///
-/// The media fields are plain address boxes on purpose. A device picker would
-/// be friendlier but would tie a routine's pictures to one phone's storage;
-/// an address works from a school's shared drive, from the project's existing
-/// Cloudinary media, or from a bundled asset, and it is what makes "use
-/// placeholders now, replace them later" a one-field edit rather than a
-/// migration. Uploading from the device is the natural next step and is called
-/// out in the recommendations.
+/// Each media slot is one value: an address typed in (a school's shared drive,
+/// the project's Cloudinary media, a bundled asset), or a file chosen from the
+/// device — which is shared through `SharedMediaService` the moment it is
+/// picked, so it reaches the learner's own tablet, and stays usable on this
+/// one if it cannot be shared yet. One value per slot is what makes "use
+/// placeholders now, replace them later" a one-field edit, not a migration.
 class RoutineStepEditorSheet extends StatefulWidget {
   final RoutineStep step;
   final bool filipino;
@@ -55,11 +59,16 @@ class RoutineStepEditorSheet extends StatefulWidget {
   /// there, not silently reset to "everything locks".
   final bool routineLocks;
 
+  /// The educator a picked file is shared as, so it reaches the learner's own
+  /// tablet. Null keeps picked files on this tablet only.
+  final String? ownerProfileId;
+
   const RoutineStepEditorSheet({
     super.key,
     required this.step,
     required this.filipino,
     this.routineLocks = false,
+    this.ownerProfileId,
   });
 
   @override
@@ -622,6 +631,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                       kind: slot.$1,
                       filipino: l,
                       stepId: _draft.id,
+                      ownerProfileId: widget.ownerProfileId,
                       onChanged: () => setState(() {}),
                     ),
 
@@ -718,12 +728,16 @@ class _MediaField extends StatefulWidget {
   /// accumulates.
   final String stepId;
 
+  /// Who a picked file is shared as; null keeps it on this tablet.
+  final String? ownerProfileId;
+
   const _MediaField({
     required this.controller,
     required this.kind,
     required this.filipino,
     required this.onChanged,
     required this.stepId,
+    this.ownerProfileId,
   });
 
   @override
@@ -732,6 +746,42 @@ class _MediaField extends StatefulWidget {
 
 class _MediaFieldState extends State<_MediaField> {
   bool _picking = false;
+
+  /// Upload progress while a picked file is being shared.
+  double? _sharing;
+
+  bool get _canShare =>
+      (widget.ownerProfileId?.isNotEmpty ?? false) &&
+      const SharedMediaService().available;
+
+  /// Shares the picked file behind [fileValue] so the learner's own tablet
+  /// can show it, and swaps the field to the `shared://` value. A file that
+  /// cannot be shared now stays usable on this tablet.
+  Future<void> _share(String fileValue) async {
+    if (!_canShare || _sharing != null) return;
+    setState(() => _sharing = 0);
+    final path = RoutineMediaStore.pathOf(fileValue);
+    final dot = path.lastIndexOf('.');
+    final result = await const SharedMediaService().upload(
+      File(path),
+      ownerProfileId: widget.ownerProfileId!,
+      ext: dot == -1 ? 'bin' : path.substring(dot + 1),
+      onProgress: (p) {
+        if (mounted) setState(() => _sharing = p);
+      },
+    );
+    if (!mounted || controller.text.trim() != fileValue) {
+      // Replaced or cleared meanwhile: this upload belongs to nothing.
+      if (result.ok) await const RoutineMediaStore().discard(result.value!);
+      if (mounted) setState(() => _sharing = null);
+      return;
+    }
+    setState(() => _sharing = null);
+    if (!result.ok) return;
+    await const RoutineMediaStore().discard(fileValue);
+    controller.text = result.value!;
+    widget.onChanged();
+  }
 
   TextEditingController get controller => widget.controller;
   RoutineMediaKind get kind => widget.kind;
@@ -749,13 +799,19 @@ class _MediaFieldState extends State<_MediaField> {
       // Replacing a device file removes the old copy; a URL belongs to
       // whoever hosts it and is only forgotten, never deleted.
       final previous = controller.text.trim();
-      if (RoutineMediaStore.isDeviceFile(previous) && previous != slot) {
+      final ownsPrevious = RoutineMediaStore.isDeviceFile(previous) ||
+          SharedMediaService.isShared(previous);
+      if (ownsPrevious && previous != slot) {
         await const RoutineMediaStore().discard(previous);
       }
       controller.text = slot;
       widget.onChanged();
     } finally {
       if (mounted) setState(() => _picking = false);
+    }
+    final picked = controller.text.trim();
+    if (mounted && RoutineMediaStore.isDeviceFile(picked)) {
+      await _share(picked);
     }
   }
 
@@ -766,6 +822,8 @@ class _MediaFieldState extends State<_MediaField> {
     final value = controller.text.trim();
     final filled = value.isNotEmpty;
     final onDevice = RoutineMediaStore.isDeviceFile(value);
+    final shared = SharedMediaService.isShared(value);
+    final sharing = _sharing;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
@@ -787,7 +845,7 @@ class _MediaFieldState extends State<_MediaField> {
                       tooltip: filipino ? 'Alisin' : 'Clear',
                       icon: const Icon(Icons.close_rounded),
                       onPressed: () async {
-                        if (onDevice) {
+                        if (onDevice || shared) {
                           await const RoutineMediaStore().discard(value);
                         }
                         controller.clear();
@@ -817,7 +875,15 @@ class _MediaFieldState extends State<_MediaField> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  onDevice
+                  sharing != null
+                      ? (filipino
+                            ? 'Ibinabahagi… ${(sharing * 100).round()}%'
+                            : 'Sharing… ${(sharing * 100).round()}%')
+                      : shared
+                      ? (filipino
+                            ? 'Naibahagi na — makikita sa bawat device.'
+                            : 'Shared — reaches every device.')
+                      : onDevice
                       ? (filipino
                             ? 'Nasa tablet na ito lang. Hindi ito makikita ng '
                                   'bata sa ibang device.'
@@ -827,12 +893,30 @@ class _MediaFieldState extends State<_MediaField> {
                             ? 'Makikita ang link sa bawat device.'
                             : 'A link reaches every device.'),
                   style: AppTypography.labelSmall.copyWith(
-                    color: onDevice ? AppColors.warning : hc.textSecondary,
+                    color: shared
+                        ? AppColors.success
+                        : onDevice
+                        ? AppColors.warning
+                        : hc.textSecondary,
                   ),
                 ),
               ),
             ],
           ),
+          if (sharing != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: LinearProgressIndicator(value: sharing),
+            )
+          else if (onDevice && _canShare)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: () => _share(value),
+                icon: const Icon(Icons.cloud_upload_rounded, size: 18),
+                label: Text(filipino ? 'Ibahagi ngayon' : 'Share now'),
+              ),
+            ),
         ],
       ),
     );

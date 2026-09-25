@@ -1311,14 +1311,14 @@ class AssessmentService {
     return out;
   }
 
-  /// Every `file://` media value any stored assessment or assignment still
-  /// points at, on this device.
+  /// Every stored media value — `file://` or `shared://` — any assessment
+  /// or assignment on this device still points at.
   ///
   /// A picked file is only deleted once nothing refers to it. On a shared
   /// tablet the same file can sit behind two things at once — an assessment
   /// assigned twice, the same instructions sent to two groups — so "the thing
   /// I just deleted used it" is not reason enough.
-  static Set<String> referencedMediaFiles() {
+  static Set<String> referencedMediaValues() {
     final out = <String>{};
     for (final key in _box.keys) {
       final bucket = key.toString();
@@ -1333,10 +1333,10 @@ class AssessmentService {
           final json = Map<String, dynamic>.from(entry);
           if (isAssessments) {
             for (final q in Assessment.fromJson(json).questions) {
-              out.addAll(q.media.deviceFiles);
+              out.addAll(q.media.storedValues);
             }
           } else {
-            out.addAll(AssessmentAssignment.fromJson(json).deviceFiles);
+            out.addAll(AssessmentAssignment.fromJson(json).storedValues);
           }
         } catch (_) {
           // A row that will not decode refers to nothing we can resolve.

@@ -8422,5 +8422,34 @@
   },
   "assessFeedbackNotOwner": "Saved on this device only. This profile was restored on another device, so that one now handles syncing — the feedback was not sent.",
   "assessFeedbackTapToOpen": "Tap to open",
-  "assessFeedbackHas": "Feedback sent"
+  "assessFeedbackHas": "Feedback sent",
+  "assessMediaShared": "Shared — reaches every device.",
+  "assessMediaNotShared": "On this tablet only — not shared yet.",
+  "assessMediaSharing": "Sharing… {percent}%",
+  "@assessMediaSharing": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "assessMediaShareNow": "Share now",
+  "assessMediaFromDeviceShared": "It is shared with every device (files up to {size} MB).",
+  "@assessMediaFromDeviceShared": {
+    "placeholders": {
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "assessMediaShareTooLarge": "Over {size} MB — this file stays on this tablet only.",
+  "@assessMediaShareTooLarge": {
+    "placeholders": {
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "assessMediaShareFailed": "Couldn’t share it right now. It is saved on this tablet and will be shared when you are online.",
+  "assessMediaShareNotOwner": "This profile is now managed from another device, so files can’t be shared from this one."
 }

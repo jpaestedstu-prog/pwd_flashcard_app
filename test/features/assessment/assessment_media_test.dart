@@ -731,7 +731,7 @@ void main() {
     test('every file an assessment or assignment uses is referenced', () async {
       await seed();
       expect(
-        AssessmentService.referencedMediaFiles(),
+        AssessmentService.referencedMediaValues(),
         containsAll([qFile, asgFile, fbFile]),
       );
     });
