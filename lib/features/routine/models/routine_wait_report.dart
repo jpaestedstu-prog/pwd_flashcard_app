@@ -266,7 +266,7 @@ class RoutineWaitReport {
     }
     return [
       for (final r in routines)
-        if (r.runsOn(day)) ...r.lockingSteps,
+        if (r.runsOn(day)) ...r.lockingStepsOn(day),
     ];
   }
 }

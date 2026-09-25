@@ -171,7 +171,7 @@ class RoutineLockSummary {
     final out = <RoutineStepLockStatus>[];
     for (final routine in routines) {
       if (!routine.runsOn(today)) continue;
-      for (final step in routine.lockingSteps) {
+      for (final step in routine.lockingStepsOn(today)) {
         out.add(statusFor(
           routine: routine,
           step: step,

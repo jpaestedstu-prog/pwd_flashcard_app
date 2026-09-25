@@ -374,7 +374,15 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
                         !_step.hasMedia(RoutineMediaKind.audio)) ...[
                       const SizedBox(height: 10),
                       Text(
-                        l
+                        // Only a Player ticks their own day, and a Player has
+                        // no teacher or parent: they build it themselves.
+                        widget.canTick && !widget.readOnly
+                            ? (l
+                                ? 'Wala pang larawan o bidyo dito. Maaari kang '
+                                    'magdagdag nito sa Ayusin ang aking araw.'
+                                : 'No photo or video here yet. You can add '
+                                    'one in Edit my day.')
+                            : l
                             ? 'Wala pang larawan o bidyo dito. Maaari itong '
                                 'idagdag ng iyong guro o magulang.'
                             : 'No photo or video here yet. Your teacher or '

@@ -168,4 +168,77 @@ void main() {
       expect(read.steps, hasLength(1));
     });
   });
+
+  // The group above proves the prune respects the marker. This one proves the
+  // snapshot listener sets the marker honestly, which it did not: Firestore
+  // echoes a device's own write back *before* the server rules on it, and that
+  // echo was cached as "synced". On the NDL W09 (Sir Kevin, whose profile was
+  // restored elsewhere) a routine built in Manage Classes → Routine was gone
+  // from the manager seconds after it was made, and never reached the student
+  // on the same tablet.
+  group('mirroring a snapshot never mislabels a refused save', () {
+    test('a refused save survives: echo, refusal, then an empty snapshot',
+        () async {
+      final routine = _routine('r-echo', 'child-10');
+      // RoutineService.save: cached as not synced before the cloud write.
+      await HiveService.cacheRoutine(routine, cloudSynced: false);
+      // The latency-compensated snapshot carries it with pending writes.
+      await HiveService.mirrorRoutineFromCloud(routine, pending: true);
+      expect(
+        HiveService.routineAwaitsCloud('r-echo'),
+        isTrue,
+        reason: 'an echo of an unconfirmed write is not proof it landed',
+      );
+      // The server refuses; the next snapshot no longer has the document.
+      await HiveService.pruneRoutinesForChild('child-10', const <String>{});
+
+      expect(
+        HiveService.getRoutinesForChild('child-10').map((r) => r.id),
+        ['r-echo'],
+      );
+    });
+
+    test('a confirmed document is synced, and prunable once deleted',
+        () async {
+      final routine = _routine('r-acked', 'child-11');
+      await HiveService.cacheRoutine(routine, cloudSynced: false);
+      // The server accepted it: the same document, no pending writes.
+      await HiveService.mirrorRoutineFromCloud(routine, pending: false);
+      expect(HiveService.routineAwaitsCloud('r-acked'), isFalse);
+
+      // Deleted by the educator on another device.
+      await HiveService.pruneRoutinesForChild('child-11', const <String>{});
+      expect(HiveService.getRoutinesForChild('child-11'), isEmpty);
+    });
+
+    test('a refused edit is not undone by the older cloud copy', () async {
+      final cloud = _routine('r-edit', 'child-12');
+      await HiveService.cacheRoutine(cloud, cloudSynced: true);
+      // Edited here; the cloud refuses it and still holds the old version.
+      final edited = cloud.copyWith(
+        name: 'Morning (edited)',
+        updatedAt: DateTime(2026, 2),
+      );
+      await HiveService.cacheRoutine(edited, cloudSynced: false);
+      await HiveService.mirrorRoutineFromCloud(cloud, pending: false);
+
+      final read = HiveService.getRoutinesForChild('child-12').single;
+      expect(read.name, 'Morning (edited)');
+      expect(HiveService.routineAwaitsCloud('r-edit'), isTrue);
+    });
+
+    test('a newer cloud copy still replaces an older unsynced one', () async {
+      final stale = _routine('r-newer', 'child-13');
+      await HiveService.cacheRoutine(stale, cloudSynced: false);
+      final fromElsewhere = stale.copyWith(
+        name: 'Changed on the teacher phone',
+        updatedAt: DateTime(2026, 3),
+      );
+      await HiveService.mirrorRoutineFromCloud(fromElsewhere, pending: false);
+
+      final read = HiveService.getRoutinesForChild('child-13').single;
+      expect(read.name, 'Changed on the teacher phone');
+      expect(HiveService.routineAwaitsCloud('r-newer'), isFalse);
+    });
+  });
 }

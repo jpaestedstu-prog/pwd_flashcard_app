@@ -172,6 +172,18 @@ class RoutineStep {
   /// never a control the learner sees.
   final bool releaseEarly;
 
+  /// When this step was put on the learner's schedule — stamped by
+  /// `RoutineService.save` the first time a save carries it, and kept from
+  /// then on. Null on a step saved before steps were stamped; such a step
+  /// counts as added when its routine was made ([Routine.createdAt]).
+  ///
+  /// It is what keeps a step added at 2 PM with a 1:30 PM time out of *that*
+  /// day: it was never on the learner's schedule while its time ran, so it
+  /// was neither done nor missed ([Routine.stepsOn]). Without it a Student's
+  /// or Child's clock recorded the step as finished, back-dated to 1:40, the
+  /// moment it arrived.
+  final DateTime? addedAt;
+
   const RoutineStep({
     required this.id,
     required this.activity,
@@ -193,6 +205,7 @@ class RoutineStep {
     this.lockScreen = true,
     this.askMood = false,
     this.releaseEarly = false,
+    this.addedAt,
   });
 
   bool get isScheduled => hour != null && minute != null;
@@ -266,6 +279,7 @@ class RoutineStep {
     bool? lockScreen,
     bool? askMood,
     bool? releaseEarly,
+    DateTime? addedAt,
   }) {
     return RoutineStep(
       id: id ?? this.id,
@@ -288,6 +302,7 @@ class RoutineStep {
       lockScreen: lockScreen ?? this.lockScreen,
       askMood: askMood ?? this.askMood,
       releaseEarly: releaseEarly ?? this.releaseEarly,
+      addedAt: addedAt ?? this.addedAt,
     );
   }
 
@@ -321,6 +336,7 @@ class RoutineStep {
         'lock_screen': lockScreen,
         'ask_mood': askMood,
         'release_early': releaseEarly,
+        if (addedAt != null) 'added_at': addedAt!.toIso8601String(),
       };
 
   factory RoutineStep.fromJson(Map<String, dynamic> json) {
@@ -366,6 +382,11 @@ class RoutineStep {
       // Absent on every step written before early release existed: that
       // learner waits until the time ends, which is the default.
       releaseEarly: (json['release_early'] as bool?) ?? false,
+      // Absent on every step saved before steps were stamped: it counts from
+      // its routine's creation instead.
+      addedAt: json['added_at'] is String
+          ? DateTime.tryParse(json['added_at'] as String)
+          : null,
     );
   }
 }
@@ -468,6 +489,54 @@ class Routine {
     // with 00:00, and keep the order the educator dragged them into.
     final loose = live.where((s) => !s.isScheduled).toList();
     return [...scheduled, ...loose];
+  }
+
+  /// The steps [day] actually holds, in [orderedSteps] order: every enabled
+  /// step, except — on the day a step was added — one whose time was already
+  /// over when it was added. A step's [RoutineStep.addedAt] says when; a step
+  /// saved before steps were stamped counts from the routine's [createdAt].
+  ///
+  /// A Morning Routine built at 11 AM has no morning left today. Its 6:30 step
+  /// was never on the learner's schedule, so it was neither done nor missed.
+  /// Counting it did both at once: a Student's or Child's day runs on the
+  /// clock (a step is finished when its time ends), so the moment such a
+  /// routine arrived every morning step was written as finished, back-dated to
+  /// 6:45 — "That's all for today, 1 day finished in a row" on Home before the
+  /// learner had seen it, 4 of 4 on the educator's dashboard, and a perfect day
+  /// in the history the study reads. Unscheduled steps have no time to be over
+  /// and always stay.
+  ///
+  /// The same holds for one step added later: a 1:30 PM step added at 2 PM to
+  /// a routine the learner has followed for weeks starts the next day, while
+  /// the rest of today's routine carries on.
+  List<RoutineStep> stepsOn(DateTime day) => [
+        for (final s in orderedSteps)
+          if (!_addedAfterItsTime(s, day)) s,
+      ];
+
+  /// [lockingSteps] as [stepsOn] has them for [day].
+  List<RoutineStep> lockingStepsOn(DateTime day) {
+    if (!enabled || !lockEnabled) return const [];
+    return stepsOn(day).where((s) => s.canLock).toList();
+  }
+
+  /// True when every step of this routine was added on [day] after its time
+  /// — it has nothing left today and starts on its next scheduled day. What
+  /// turns "Nothing scheduled today" into the truth: "starts tomorrow".
+  bool startsAfter(DateTime day) =>
+      orderedSteps.isNotEmpty && stepsOn(day).isEmpty;
+
+  /// Whether [s] was put on the schedule on [day] only after its time there
+  /// had already ended.
+  bool _addedAfterItsTime(RoutineStep s, DateTime day) {
+    final added = (s.addedAt ?? createdAt).toLocal();
+    if (added.year != day.year ||
+        added.month != day.month ||
+        added.day != day.day) {
+      return false;
+    }
+    final end = s.endsOn(day);
+    return end != null && !end.isAfter(added);
   }
 
   /// Every step including disabled ones, in the order the editor shows them.

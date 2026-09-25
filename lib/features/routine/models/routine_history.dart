@@ -177,7 +177,7 @@ class RoutineHistory {
           ? log.scheduled.map((s) => s.toStep()).toList()
           : [
               for (final routine in live)
-                if (routine.runsOn(log.day)) ...routine.orderedSteps,
+                if (routine.runsOn(log.day)) ...routine.stepsOn(log.day),
             ];
 
       var done = 0;

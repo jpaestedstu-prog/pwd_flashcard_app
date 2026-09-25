@@ -54,6 +54,21 @@ class RoutineService {
 
   String newId() => _uuid.v4();
 
+  /// Learner ids whose cached routines this device just changed itself.
+  ///
+  /// [watchForChild] re-emits from the cache on each, because a snapshot is
+  /// not guaranteed to follow a local write: deleting a routine the cloud
+  /// never had (an educator whose profile was restored elsewhere, or one who
+  /// was offline when they made it) changes nothing in Firestore, so the
+  /// deleted routine stayed on the dashboard and on the learner's My Day
+  /// until the app was restarted.
+  static final StreamController<String> _localChanges =
+      StreamController<String>.broadcast();
+
+  static void _changedLocally(String childProfileId) {
+    if (childProfileId.isNotEmpty) _localChanges.add(childProfileId);
+  }
+
   // ─── Routines ─────────────────────────────────────────
 
   /// One-shot snapshot of every routine for [childProfileId], cache-first on
@@ -65,11 +80,14 @@ class RoutineService {
     try {
       final snap =
           await _col.where('child_profile_id', isEqualTo: childProfileId).get();
-      final routines = snap.docs
-          .map((d) => Routine.fromJson(Map<String, dynamic>.from(d.data())))
-          .toList();
-      for (final r in routines) {
-        await HiveService.cacheRoutine(r, cloudSynced: true);
+      final routines = <Routine>[];
+      for (final d in snap.docs) {
+        final r = Routine.fromJson(Map<String, dynamic>.from(d.data()));
+        routines.add(r);
+        await HiveService.mirrorRoutineFromCloud(
+          r,
+          pending: d.metadata.hasPendingWrites,
+        );
       }
       await HiveService.pruneRoutinesForChild(
         childProfileId,
@@ -100,11 +118,25 @@ class RoutineService {
     final controller = StreamController<List<Routine>>();
     controller.add(cached);
     StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? sub;
+    StreamSubscription<String>? local;
 
     controller.onListen = () {
+      local = _localChanges.stream
+          .where((id) => id == childProfileId)
+          .listen((_) {
+        if (!controller.isClosed) {
+          controller.add(_sorted(
+            HiveService.getRoutinesForChild(childProfileId),
+          ));
+        }
+      });
       sub = _col
           .where('child_profile_id', isEqualTo: childProfileId)
-          .snapshots()
+          // Metadata changes too: the server accepting a write made in an
+          // earlier session arrives as nothing *but* a metadata change, and
+          // without it the cached copy would stay "not synced" for good — so a
+          // later delete from another device could never prune it.
+          .snapshots(includeMetadataChanges: true)
           .listen(
         (snap) async {
           final routines = <Routine>[];
@@ -115,7 +147,19 @@ class RoutineService {
               // Awaited: the emit below reads the cache back, and a
               // fire-and-forget put is not visible to a read on the same
               // frame.
-              await HiveService.cacheRoutine(r, cloudSynced: true);
+              //
+              // A document with pending writes is this device's own save
+              // echoed back before the server has ruled on it. Marking it
+              // synced was what lost routines: when the server then refused
+              // the write (an educator whose profile was restored onto another
+              // device), the next snapshot left it out and the prune below
+              // deleted the only copy — the routine vanished from the manager
+              // seconds after it was made, and never reached the learner on
+              // this same tablet.
+              await HiveService.mirrorRoutineFromCloud(
+                r,
+                pending: d.metadata.hasPendingWrites,
+              );
             } catch (_) {}
           }
           await HiveService.pruneRoutinesForChild(
@@ -141,6 +185,7 @@ class RoutineService {
       );
     };
     controller.onCancel = () async {
+      await local?.cancel();
       await sub?.cancel();
       await controller.close();
     };
@@ -182,7 +227,7 @@ class RoutineService {
   Future<RoutineWrite> save(Routine routine) async {
     final isNew = routine.id.isEmpty;
     final now = DateTime.now();
-    final saved = routine.copyWith(
+    final saved = stampAddedSteps(routine, isNew: isNew, now: now).copyWith(
       id: isNew ? _uuid.v4() : routine.id,
       createdAt: isNew ? now : routine.createdAt,
       updatedAt: now,
@@ -191,6 +236,7 @@ class RoutineService {
     // of them succeeds this device holds the only copy — which is what stops
     // the next snapshot from pruning it away.
     await HiveService.cacheRoutine(saved, cloudSynced: false);
+    _changedLocally(saved.childProfileId);
     if (!FirebaseService.isConfigured) {
       return RoutineWrite(saved, CloudSyncOutcome.localOnly);
     }
@@ -205,13 +251,50 @@ class RoutineService {
     }
   }
 
+  /// Gives every step this save puts on the schedule for the first time its
+  /// [RoutineStep.addedAt], and keeps the stamp of every step the cached copy
+  /// already had, whatever the draft says.
+  ///
+  /// Stamped here, at save, rather than when the step is added in the
+  /// builder: a step only reaches the learner when the routine is saved, and
+  /// an educator can leave the builder open for a while in between.
+  ///
+  /// An existing routine this device has no cached copy of is left alone: with
+  /// nothing to compare against, every step would look new, and stamping them
+  /// all would take today's already-run steps off the learner's day.
+  static Routine stampAddedSteps(
+    Routine routine, {
+    required bool isNew,
+    required DateTime now,
+  }) {
+    final Routine? before =
+        isNew ? null : HiveService.getCachedRoutine(routine.id);
+    if (!isNew && before == null) return routine;
+    final known = <String, RoutineStep>{
+      for (final s in before?.steps ?? const <RoutineStep>[]) s.id: s,
+    };
+    return routine.copyWith(
+      steps: [
+        for (final s in routine.steps)
+          if (!known.containsKey(s.id))
+            s.copyWith(addedAt: now)
+          else if (known[s.id]!.addedAt != null)
+            s.copyWith(addedAt: known[s.id]!.addedAt)
+          else
+            s,
+      ],
+    );
+  }
+
   /// Permanently remove [routineId] from Firestore + Hive.
   ///
   /// A [CloudSyncOutcome.notOwner] delete is the one that bites hardest: the
   /// row vanishes from the educator's list, survives in Firestore, and comes
   /// back on the device that owns the profile. Saying so is the whole point.
   Future<CloudSyncOutcome> delete(String routineId) async {
+    final childProfileId = HiveService.routineChildOf(routineId);
     await HiveService.deleteRoutineLocal(routineId);
+    if (childProfileId != null) _changedLocally(childProfileId);
     if (!FirebaseService.isConfigured) return CloudSyncOutcome.localOnly;
     try {
       await _col.doc(routineId).delete();
@@ -290,8 +373,8 @@ class RoutineService {
     final out = <RoutineDayStep>[];
     for (final r in routines) {
       if (!r.enabled || !r.runsOn(day)) continue;
-      final locking = {for (final s in r.lockingSteps) s.id};
-      for (final step in r.orderedSteps) {
+      final locking = {for (final s in r.lockingStepsOn(day)) s.id};
+      for (final step in r.stepsOn(day)) {
         out.add(RoutineDayStep.of(step, locks: locking.contains(step.id)));
       }
     }

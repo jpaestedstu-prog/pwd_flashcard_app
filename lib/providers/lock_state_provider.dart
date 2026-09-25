@@ -100,7 +100,7 @@ final lockStateProvider =
             const <Routine>[];
     routineSteps = [
       for (final r in routines)
-        if (r.runsOn(today)) ...r.lockingSteps,
+        if (r.runsOn(today)) ...r.lockingStepsOn(today),
     ];
     // Nothing locks today — do not subscribe to the day log or the skips for
     // it. A learner whose routines are all plain checklists costs this

@@ -9,6 +9,7 @@ import '../models/routine_catalog.dart';
 import '../models/routine_day_state.dart';
 import '../models/routine_history.dart';
 import '../models/routine_models.dart';
+import '../models/routine_timeline.dart';
 
 /// Everything the signed-in learner's day amounts to, in one value.
 ///
@@ -27,7 +28,25 @@ class TodayRoutine {
     required this.hasEducator,
     this.excusedIds = const <String>{},
     this.view,
+    this.startsLater,
+    this.day,
   });
+
+  /// A routine made today after its steps' times ([Routine.startsAfter]):
+  /// nothing of it is left today, but the learner *has* been given one — the
+  /// Home card must not tell them to go and ask for it.
+  final Routine? startsLater;
+
+  /// The calendar day this describes; what [startsNext] counts from.
+  final DateTime? day;
+
+  /// "tomorrow" / "bukas" (or a weekday) when [startsLater] is set.
+  String? startsNext({required bool filipino}) {
+    final r = startsLater;
+    final d = day;
+    if (r == null || d == null) return null;
+    return routineNextDayWord(r, d, filipino: filipino);
+  }
 
   /// The joined day, when it is known — what answers how an adult moved a
   /// step's end (added time, a pause). Null reads as "nothing moved".
@@ -192,8 +211,11 @@ final todayRoutineProvider = Provider<TodayRoutine>((ref) {
 
   final steps = <RoutineStep>[
     for (final r in routines)
-      if (r.enabled && r.runsOn(today)) ...r.orderedSteps,
+      if (r.enabled && r.runsOn(today)) ...r.stepsOn(today),
   ];
+  final startsLater = routines
+      .where((r) => r.enabled && r.runsOn(today) && r.startsAfter(today))
+      .firstOrNull;
 
   final filipino = ref.watch(settingsProvider).locale == 'fil';
   final history = RoutineHistory.from(
@@ -208,6 +230,8 @@ final todayRoutineProvider = Provider<TodayRoutine>((ref) {
     log: log,
     excusedIds: view.excusedIds,
     view: view,
+    startsLater: steps.isEmpty ? startsLater : null,
+    day: today,
     streak: history.streak(now: today),
     // A learner who belongs to a class or a family group has someone whose
     // job this is. A Player profile does not, and telling them to ask their

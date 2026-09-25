@@ -34,10 +34,15 @@ class RoutineOwnershipBanner extends ConsumerWidget {
 
   final bool filipino;
 
+  /// A Player managing their own day: there is no learner on another device
+  /// to "not reach", only this tablet the changes stay on.
+  final bool selfManaged;
+
   const RoutineOwnershipBanner({
     super.key,
     required this.educatorProfileId,
     required this.filipino,
+    this.selfManaged = false,
   });
 
   @override
@@ -75,7 +80,11 @@ class RoutineOwnershipBanner extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  l
+                  selfManaged
+                      ? (l
+                          ? 'Mananatili lang sa tablet na ito ang mga pagbabago'
+                          : 'Changes here stay on this tablet')
+                      : l
                       ? 'Hindi makakarating sa bata ang mga pagbabago'
                       : "Changes here won't reach your learner",
                   style: AppTypography.titleSmall.copyWith(

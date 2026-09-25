@@ -1238,10 +1238,59 @@ class HiveService {
     });
   }
 
+  /// Mirrors one routine from a Firestore snapshot into the cache.
+  ///
+  /// [pending] is the document's `hasPendingWrites`: this device's own save
+  /// echoed back before the server has accepted it. That copy is cached as
+  /// *not* synced — calling it synced is what let a refused save be pruned
+  /// away a moment later.
+  ///
+  /// A cloud copy never replaces a newer edit made here that has not reached
+  /// the cloud: when the server refuses an edit, the snapshot that follows
+  /// carries the older version, and taking it would quietly undo the change
+  /// the educator was told they could still make on this tablet.
+  static Future<void> mirrorRoutineFromCloud(
+    Routine remote, {
+    required bool pending,
+  }) async {
+    if (!pending) {
+      final raw = _routineBox.get(remote.id);
+      if (raw is Map && raw[_routineSyncedKey] != true) {
+        try {
+          final local = Routine.fromJson(Map<String, dynamic>.from(raw));
+          if (local.updatedAt.isAfter(remote.updatedAt)) return;
+        } catch (_) {
+          // An unreadable local copy loses to the cloud's.
+        }
+      }
+    }
+    await cacheRoutine(remote, cloudSynced: !pending);
+  }
+
   /// Whether [routineId] is cached but has never reached Firestore.
   static bool routineAwaitsCloud(String routineId) {
     final raw = _routineBox.get(routineId);
     return raw is Map && raw[_routineSyncedKey] != true;
+  }
+
+  /// The cached copy of [routineId], or null when it is not cached (or cannot
+  /// be read).
+  static Routine? getCachedRoutine(String routineId) {
+    final raw = _routineBox.get(routineId);
+    if (raw is! Map) return null;
+    try {
+      return Routine.fromJson(Map<String, dynamic>.from(raw));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The learner a cached routine belongs to, or null when it is not cached.
+  static String? routineChildOf(String routineId) {
+    final raw = _routineBox.get(routineId);
+    if (raw is! Map) return null;
+    final id = raw['child_profile_id'];
+    return id is String ? id : null;
   }
 
   static Future<void> deleteRoutineLocal(String routineId) async {

@@ -8,6 +8,7 @@ import '../../../data/models/enums.dart';
 import '../../../providers/routine_provider.dart';
 import '../../../widgets/app_card.dart';
 import '../models/routine_models.dart';
+import '../models/routine_timeline.dart';
 import 'educator_routine_alerts.dart';
 import 'routine_educator_actions.dart';
 import 'routine_lock_status_line.dart';
@@ -136,15 +137,23 @@ class _RoutineRow extends ConsumerWidget {
         .effectiveLog;
 
     final live = routines.where((r) => r.enabled && r.runsOn(today)).toList();
-    final steps = [for (final r in live) ...r.orderedSteps];
+    final steps = [for (final r in live) ...r.stepsOn(today)];
     final done =
         steps.where((s) => log.completedStepIds.contains(s.id)).length;
     final hasAny = routines.isNotEmpty;
+    // Made today after its steps' times: it has not begun yet.
+    final notYet = live.where((r) => r.startsAfter(today)).firstOrNull;
 
     final subtitle = !hasAny
         ? (l ? 'Wala pang routine — gumawa ng isa' : 'No routine yet — set one up')
         : steps.isEmpty
-            ? (l ? 'Walang nakatakda ngayon' : 'Nothing scheduled today')
+            ? (notYet != null
+                ? (l
+                    ? 'Magsisimula '
+                        '${routineNextDayWord(notYet, today, filipino: true)}'
+                    : 'Starts '
+                        '${routineNextDayWord(notYet, today, filipino: false)}')
+                : (l ? 'Walang nakatakda ngayon' : 'Nothing scheduled today'))
             : (l
                 ? '$done sa ${steps.length} tapos na'
                 : '$done of ${steps.length} done');

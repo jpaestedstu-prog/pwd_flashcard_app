@@ -132,7 +132,10 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
   void _openMyBuilder() {
     final id = _profileId;
     if (id.isEmpty) return;
-    context.push('/routine-manage/$id?noun=day');
+    // No `noun`: the manager sees that the reader is the routine's own
+    // learner and speaks to them as "you". (It used to pass "day", which
+    // printed "Build a daily routine for this day".)
+    context.push('/routine-manage/$id');
   }
 
   @override
@@ -185,12 +188,20 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
           // makes a day the learner *looked at* but did nothing on still
           // score against the right routine later.
           _recordSchedule(profileId, routines);
-          final today =
+          final running =
               routines.where((r) => r.enabled && r.runsOn(_today)).toList();
+          // Only routines with something left on today's clock — one made
+          // this morning after its steps' times begins on its next day.
+          final today =
+              running.where((r) => r.stepsOn(_today).isNotEmpty).toList();
           if (today.isEmpty) {
             return _EmptyDay(
               filipino: l,
               hasAnyRoutine: routines.isNotEmpty,
+              startsNext: running
+                  .where((r) => r.startsAfter(_today))
+                  .map((r) => routineNextDayWord(r, _today, filipino: l))
+                  .firstOrNull,
               // Previewing: the learner plainly *has* an educator — the one
               // reading this. Only the learner's own view consults their
               // profile, which is whose class membership the provider knows.
@@ -305,7 +316,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
     required RoutinePresentation presentation,
     required String profileId,
   }) {
-    final allSteps = [for (final r in routines) ...r.orderedSteps];
+    final allSteps = [for (final r in routines) ...r.stepsOn(_today)];
     final doneCount =
         allSteps.where((s) => log.completedStepIds.contains(s.id)).length;
     final collapse = presentation.showOnlyNextStep && !_showWholeDay;
@@ -685,15 +696,35 @@ class _EmptyDay extends StatelessWidget {
   /// whose job it is.
   final VoidCallback? onBuildMyOwn;
 
+  /// When a routine made today, after its steps' times, first runs —
+  /// "tomorrow" / "Monday" ([routineNextDayWord]). Without it the learner was
+  /// told "Nothing scheduled today" about a routine they had just been given.
+  final String? startsNext;
+
   const _EmptyDay({
     required this.filipino,
     required this.hasAnyRoutine,
     required this.hasEducator,
     this.onBuildMyOwn,
+    this.startsNext,
   });
 
   @override
   Widget build(BuildContext context) {
+    final next = startsNext;
+    if (next != null) {
+      return RichEmptyState(
+        emoji: '🌅',
+        title: filipino
+            ? 'Magsisimula ang iyong routine $next'
+            : 'Your routine starts $next',
+        description: filipino
+            ? 'Lumipas na ang oras ng mga hakbang ngayong araw nang gawin ito, '
+                'kaya wala nang natitira para ngayon.'
+            : 'Today’s steps were already over when it was made, so there is '
+                'nothing left for today.',
+      );
+    }
     if (hasAnyRoutine) {
       return RichEmptyState(
         emoji: '🌴',

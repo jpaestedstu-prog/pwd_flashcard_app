@@ -34,11 +34,15 @@ class RoutineBuilderScreen extends ConsumerStatefulWidget {
   final String learnerNoun;
   final String? learnerName;
 
+  /// A Player building their own day: the copy says "you", not "the learner".
+  final bool selfManaged;
+
   const RoutineBuilderScreen({
     super.key,
     required this.routine,
     this.learnerNoun = 'learner',
     this.learnerName,
+    this.selfManaged = false,
   });
 
   @override
@@ -241,7 +245,13 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                       ProSwitchTile(
                         icon: Icons.notifications_active_rounded,
                         label: l ? 'Mga paalala' : 'Reminders',
-                        caption: l
+                        caption: widget.selfManaged
+                            ? (l
+                                ? 'Makatatanggap ka ng abiso sa oras ng bawat '
+                                    'hakbang na may nakatakdang oras.'
+                                : 'Get a notification at each step that has '
+                                    'a set time.')
+                            : l
                             ? 'Magpapadala ng abiso sa device ng bata sa oras '
                                 'ng bawat hakbang na may nakatakdang oras.'
                             : 'Notify the learner on their own device at each '
@@ -329,6 +339,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                         filipino: l,
                         canMoveUp: i > 0,
                         canMoveDown: i < steps.length - 1,
+                        selfManaged: widget.selfManaged,
                         onEdit: () => _editStep(step, l),
                         onDelete: () => _deleteStep(step),
                         onMoveUp: () => _reorder(i, i - 1, adjusted: true),
@@ -519,6 +530,7 @@ class _StepTile extends StatelessWidget {
   final VoidCallback onMoveUp;
   final VoidCallback onMoveDown;
   final ValueChanged<bool> onToggleEnabled;
+  final bool selfManaged;
 
   const _StepTile({
     super.key,
@@ -532,6 +544,7 @@ class _StepTile extends StatelessWidget {
     required this.onMoveUp,
     required this.onMoveDown,
     required this.onToggleEnabled,
+    this.selfManaged = false,
   });
 
   @override
@@ -659,7 +672,9 @@ class _StepTile extends StatelessWidget {
                       ? Icons.visibility_off_rounded
                       : Icons.visibility_rounded,
                   step.enabled
-                      ? (l ? 'Itago sa bata' : 'Hide from learner')
+                      ? (selfManaged
+                          ? (l ? 'Itago ang hakbang' : 'Hide this step')
+                          : (l ? 'Itago sa bata' : 'Hide from learner'))
                       : (l ? 'Ipakita muli' : 'Show again'),
                 ),
                 _item(

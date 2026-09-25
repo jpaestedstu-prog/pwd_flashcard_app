@@ -55,7 +55,7 @@ final lockWarningProvider = Provider.family<LockWarning?, String>((
             const <Routine>[];
     final steps = [
       for (final r in routines)
-        if (r.runsOn(today)) ...r.lockingSteps,
+        if (r.runsOn(today)) ...r.lockingStepsOn(today),
     ];
     if (steps.isNotEmpty) {
       final key = routineDayKey(childProfileId, today);

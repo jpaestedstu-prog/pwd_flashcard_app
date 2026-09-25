@@ -365,7 +365,12 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
     final routineMood = ref.watch(todaysRoutineMoodProvider);
 
     final String subtitle;
-    if (today.isEmpty) {
+    final startsNext = today.startsNext(filipino: isFilipino);
+    if (today.isEmpty && startsNext != null) {
+      // A routine made this morning after its steps' times: it has been set
+      // up, it just has nothing left today.
+      subtitle = isFilipino ? 'Magsisimula $startsNext' : 'Starts $startsNext';
+    } else if (today.isEmpty) {
       // An empty day is not a failure, and it is also not a dead end: name
       // who can fill it when there *is* somebody, and say nothing more when
       // there is not. A Player profile has no teacher to ask.
@@ -490,6 +495,12 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
     final l = isFilipino;
     final head = l ? 'Ang Aking Araw.' : 'My Day.';
     final open = l ? ' Buksan ang iyong araw.' : ' Open your day.';
+    final startsNext = today.startsNext(filipino: l);
+    if (today.isEmpty && startsNext != null) {
+      return l
+          ? '$head Magsisimula ang iyong routine $startsNext.$open'
+          : '$head Your routine starts $startsNext.$open';
+    }
     if (today.isEmpty) {
       if (l) {
         return today.hasEducator

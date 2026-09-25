@@ -13,6 +13,7 @@ import '../../../widgets/rich_empty_states.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_templates.dart';
+import '../models/routine_timeline.dart';
 import '../services/routine_service.dart';
 import '../widgets/routine_copy_sheet.dart';
 import '../widgets/routine_educator_actions.dart';
@@ -60,6 +61,12 @@ class RoutineEditorScreen extends ConsumerWidget {
     final hc = HCColor.of(context);
     final l = ref.watch(settingsProvider).locale == 'fil';
     final routinesAsync = ref.watch(routineListProvider(childProfileId));
+    // A Player planning their own day reaches this same screen from My Day.
+    // Everything here that speaks *about* a learner would then be speaking
+    // about the reader ("Build a daily routine for this day", "Preview what
+    // the day sees"), so the copy turns to "you" and the educator-only tools
+    // step aside.
+    final self = ref.watch(profileProvider)?.id == childProfileId;
     final today = DateTime.now();
     // The joined day, so an approval made here shows as done at once and a
     // reset clears the card without waiting for the learner's device.
@@ -77,7 +84,9 @@ class RoutineEditorScreen extends ConsumerWidget {
           elevation: 0,
           leading: const AppBackButton(),
           title: Text(
-            childDisplayName == null
+            self
+                ? (l ? 'Ang Aking mga Routine' : 'My Routines')
+                : childDisplayName == null
                 ? (l ? 'Mga Routine' : 'Routines')
                 : (l
                     ? 'Mga Routine ni $childDisplayName'
@@ -97,26 +106,30 @@ class RoutineEditorScreen extends ConsumerWidget {
                     childProfileId: childProfileId,
                     childDisplayName: childDisplayName,
                     learnerNoun: learnerNoun,
+                    selfManaged: self,
                   ),
                 ),
               ),
             ),
-            IconButton(
-              tooltip: l
-                  ? 'Tingnan ang nakikita ng bata'
-                  : 'Preview what the $learnerNoun sees',
-              icon: Icon(Icons.visibility_rounded, color: hc.textSecondary),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => RoutineScreen(
-                    profileId: childProfileId,
-                    displayName: childDisplayName,
-                    accessibility: accessibility,
-                    readOnly: true,
+            // Previewing is how an educator checks what the learner will
+            // see; a Player has just come from their own My Day.
+            if (!self)
+              IconButton(
+                tooltip: l
+                    ? 'Tingnan ang nakikita ng bata'
+                    : 'Preview what the $learnerNoun sees',
+                icon: Icon(Icons.visibility_rounded, color: hc.textSecondary),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => RoutineScreen(
+                      profileId: childProfileId,
+                      displayName: childDisplayName,
+                      accessibility: accessibility,
+                      readOnly: true,
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
@@ -148,12 +161,20 @@ class RoutineEditorScreen extends ConsumerWidget {
                         child: RoutineOwnershipBanner(
                           educatorProfileId: ref.watch(profileProvider)?.id,
                           filipino: l,
+                          selfManaged: self,
                         ),
                       ),
                       RichEmptyState(
                     emoji: '🗓️',
                     title: l ? 'Wala pang routine' : 'No routines yet',
-                    description: l
+                    description: self
+                        ? (l
+                            ? 'Gumawa ng sarili mong pang-araw-araw na routine. '
+                                'Puwedeng magsimula sa handang template at '
+                                'baguhin ang bawat hakbang.'
+                            : 'Build your own daily routine. Start from a '
+                                'ready-made template and change any step.')
+                        : l
                         ? 'Gumawa ng pang-araw-araw na routine para kay '
                             '${childDisplayName ?? 'bata'}. Puwedeng magsimula '
                             'sa handang template at baguhin ang bawat hakbang.'
@@ -178,12 +199,13 @@ class RoutineEditorScreen extends ConsumerWidget {
                   RoutineOwnershipBanner(
                     educatorProfileId: ref.watch(profileProvider)?.id,
                     filipino: l,
+                    selfManaged: self,
                   ),
                   _TodayCard(
                     routines: routines,
                     log: log,
                     filipino: l,
-                    onReset: () => _resetToday(context, ref, l),
+                    onReset: () => _resetToday(context, ref, l, self: self),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -217,7 +239,7 @@ class RoutineEditorScreen extends ConsumerWidget {
                       routine: r,
                       log: log,
                       filipino: l,
-                      onEdit: () => _edit(context, r),
+                      onEdit: () => _edit(context, r, self: self),
                       onToggle: (v) async {
                         final write = await const RoutineService()
                             .save(r.copyWith(enabled: v));
@@ -229,7 +251,8 @@ class RoutineEditorScreen extends ConsumerWidget {
                           subject: l ? 'pagbabago' : 'change',
                         );
                       },
-                      onDelete: () => _confirmDelete(context, r, l),
+                      onDelete: () =>
+                          _confirmDelete(context, r, l, self: self),
                       // An educator's tool: a Player planning their own day
                       // has nobody to copy it to.
                       onCopy: ref.watch(profileProvider)?.role.isEducator ==
@@ -292,16 +315,25 @@ class RoutineEditorScreen extends ConsumerWidget {
       filipino: l,
       subject: l ? 'routine' : 'routine',
     );
-    await _edit(context, write.routine);
+    await _edit(
+      context,
+      write.routine,
+      self: setter != null && setter.id == childProfileId,
+    );
   }
 
-  Future<void> _edit(BuildContext context, Routine routine) {
+  Future<void> _edit(
+    BuildContext context,
+    Routine routine, {
+    bool self = false,
+  }) {
     return Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => RoutineBuilderScreen(
           routine: routine,
           learnerNoun: learnerNoun,
           learnerName: childDisplayName,
+          selfManaged: self,
         ),
       ),
     );
@@ -310,14 +342,21 @@ class RoutineEditorScreen extends ConsumerWidget {
   Future<void> _resetToday(
     BuildContext context,
     WidgetRef ref,
-    bool l,
-  ) async {
+    bool l, {
+    bool self = false,
+  }) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l ? 'Simulan muli ang araw na ito?' : 'Start today over?'),
         content: Text(
-          l
+          self
+              ? (l
+                  ? 'Aalisin ang lahat ng markang tapos para sa araw na ito. '
+                      'Hindi mababago ang routine mismo.'
+                  : 'Every tick for today will be cleared. The routine '
+                      'itself is not changed.')
+              : l
               ? 'Aalisin ang lahat ng markang tapos para sa araw na ito, at '
                   'ang mga hakbang na pinalaktaw ng nakatatanda ay muling mala-lock. Hindi mababago ang '
                   'routine mismo.'
@@ -367,8 +406,9 @@ class RoutineEditorScreen extends ConsumerWidget {
   Future<void> _confirmDelete(
     BuildContext context,
     Routine routine,
-    bool l,
-  ) async {
+    bool l, {
+    bool self = false,
+  }) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -376,7 +416,11 @@ class RoutineEditorScreen extends ConsumerWidget {
           l ? 'Burahin ang “${routine.name}”?' : 'Delete “${routine.name}”?',
         ),
         content: Text(
-          l
+          self
+              ? (l
+                  ? 'Aalisin ito sa Ang Aking Araw. Hindi na ito maibabalik.'
+                  : 'It will be removed from My Day. This cannot be undone.')
+              : l
               ? 'Mawawala ito sa device ng bata. Hindi na ito maibabalik.'
               : 'It will disappear from the $learnerNoun’s device. This '
                   'cannot be undone.',
@@ -636,13 +680,23 @@ class _TodayCard extends StatelessWidget {
     final today = DateTime.now();
     final live =
         routines.where((r) => r.enabled && r.runsOn(today)).toList();
-    final steps = [for (final r in live) ...r.orderedSteps];
+    final steps = [for (final r in live) ...r.stepsOn(today)];
     final done =
         steps.where((s) => log.completedStepIds.contains(s.id)).length;
+    // Made today after its steps' times: nothing of it is left today, and
+    // "set the days inside a routine" would send the educator hunting for a
+    // setting that is already right.
+    final notYet = live.where((r) => r.startsAfter(today)).firstOrNull;
 
     return ProPanel(
       title: filipino ? 'Ngayong Araw' : 'Today',
-      subtitle: live.isEmpty
+      subtitle: steps.isEmpty && notYet != null
+          ? (filipino
+              ? 'Magsisimula '
+                  '${routineNextDayWord(notYet, today, filipino: true)}'
+              : 'Starts '
+                  '${routineNextDayWord(notYet, today, filipino: false)}')
+          : live.isEmpty
           ? (filipino
               ? 'Walang routine na nakatakda ngayon'
               : 'No routine scheduled today')
@@ -658,7 +712,14 @@ class _TodayCard extends StatelessWidget {
             ),
       child: steps.isEmpty
           ? Text(
-              filipino
+              notYet != null
+                  ? (filipino
+                      ? 'Lumipas na ang oras ng mga hakbang ngayong araw nang '
+                          'gawin ang routine, kaya hindi ito ibinibilang '
+                          'ngayon.'
+                      : 'Today’s steps were already over when the routine was '
+                          'made, so today does not count them.')
+                  : filipino
                   ? 'Piliin ang mga araw sa loob ng routine para lumabas ito dito.'
                   : 'Set the days inside a routine and it will appear here.',
               style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),

@@ -54,6 +54,31 @@ RoutineStepMoment routineStepMoment(
   return RoutineStepMoment.earlier;
 }
 
+/// When [routine] next runs after [day]: "tomorrow" / "Monday" in English,
+/// "bukas" / "sa Lunes" in Filipino — to finish "Starts …" for a routine made
+/// on [day] after its steps' times ([Routine.startsAfter]).
+String routineNextDayWord(
+  Routine routine,
+  DateTime day, {
+  required bool filipino,
+}) {
+  const en = [
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+    'Sunday', //
+  ];
+  const fil = [
+    'Lunes', 'Martes', 'Miyerkules', 'Huwebes', 'Biyernes', 'Sabado',
+    'Linggo', //
+  ];
+  for (var i = 1; i <= 7; i++) {
+    final d = DateTime(day.year, day.month, day.day + i);
+    if (!routine.runsOn(d)) continue;
+    if (i == 1) return filipino ? 'bukas' : 'tomorrow';
+    return filipino ? 'sa ${fil[d.weekday - 1]}' : en[d.weekday - 1];
+  }
+  return filipino ? 'sa susunod' : 'next time';
+}
+
 /// `7:40 AM`, without a locale-aware formatter.
 String formatClockOf(DateTime t) {
   final h = t.hour;

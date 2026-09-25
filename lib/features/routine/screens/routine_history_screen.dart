@@ -27,11 +27,15 @@ class RoutineHistoryScreen extends ConsumerWidget {
   /// "student" / "child" — the audience's word for this learner.
   final String learnerNoun;
 
+  /// A Player reading their own history: "you", not "the learner".
+  final bool selfManaged;
+
   const RoutineHistoryScreen({
     super.key,
     required this.childProfileId,
     this.childDisplayName,
     this.learnerNoun = 'learner',
+    this.selfManaged = false,
   });
 
   @override
@@ -80,11 +84,17 @@ class RoutineHistoryScreen extends ConsumerWidget {
                       RichEmptyState(
                         emoji: '📈',
                         title: l ? 'Wala pang kasaysayan' : 'No history yet',
-                        description: l
-                            ? 'Lalabas dito ang bawat araw kapag nagsimula '
-                                'nang markahan ng bata ang mga hakbang.'
-                            : 'Once the $learnerNoun starts ticking steps '
-                                'off, every day shows up here.',
+                        description: selfManaged
+                            ? (l
+                                ? 'Lalabas dito ang bawat araw kapag nagsimula '
+                                    'ka nang markahan ang mga hakbang.'
+                                : 'Once you start ticking steps off, every '
+                                    'day shows up here.')
+                            : l
+                            ? 'Lalabas dito ang bawat araw kapag natapos na '
+                                'ang unang hakbang ng routine.'
+                            : 'Once the first step of the routine has run, '
+                                'every day shows up here.',
                       ),
                       // A day can have lock activity and no ticks — a step
                       // that was excused is exactly that day.
@@ -123,7 +133,11 @@ class RoutineHistoryScreen extends ConsumerWidget {
                       for (final s in history.stalls.take(5))
                         _StallRow(entry: s, filipino: l),
                     ] else
-                      _AllSteady(filipino: l, learnerNoun: learnerNoun),
+                      _AllSteady(
+                        filipino: l,
+                        learnerNoun: learnerNoun,
+                        self: selfManaged,
+                      ),
                     const SizedBox(height: 16),
                     RoutineWaitReportSection(
                       profileId: childProfileId,
@@ -371,8 +385,13 @@ class _StallRow extends StatelessWidget {
 class _AllSteady extends StatelessWidget {
   final bool filipino;
   final String learnerNoun;
+  final bool self;
 
-  const _AllSteady({required this.filipino, required this.learnerNoun});
+  const _AllSteady({
+    required this.filipino,
+    required this.learnerNoun,
+    this.self = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -387,6 +406,9 @@ class _AllSteady extends StatelessWidget {
               filipino
                   ? 'Walang hakbang na paulit-ulit na hindi natatapos. '
                       'Maayos ang takbo ng routine.'
+                  : self
+                  ? 'No step is being missed repeatedly — this routine is '
+                      'running well.'
                   : 'No step is being missed repeatedly — this routine is '
                       'running well for your $learnerNoun.',
               style: AppTypography.bodyMedium.copyWith(color: hc.textPrimary),
