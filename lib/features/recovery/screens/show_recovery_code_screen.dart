@@ -269,7 +269,7 @@ class _CodeDisplay extends StatelessWidget {
                   fontFamily: 'monospace',
                   letterSpacing: 3,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.primaryDark,
+                  color: HCColor.of(context).readable(AppColors.primaryDark),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -334,7 +334,7 @@ class _CodeDisplay extends StatelessWidget {
         Text(
           _t(context).rcRevokes,
           style: AppTypography.bodySmall.copyWith(
-            color: AppColors.textSecondary,
+            color: HCColor.of(context).textSecondary,
           ),
           textAlign: TextAlign.center,
         ),

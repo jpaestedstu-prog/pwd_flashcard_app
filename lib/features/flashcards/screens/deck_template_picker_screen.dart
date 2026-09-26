@@ -294,7 +294,7 @@ class _TemplateCard extends StatelessWidget {
                         : const Icon(Icons.add_rounded, size: 18),
                     label: Text(isLoading ? _t(context).dtAdding : _t(context).dtUseDeck),
                     style: FilledButton.styleFrom(
-                      backgroundColor: template.color,
+                      backgroundColor: HCColor.of(context).fillFor(template.color),
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -405,7 +405,7 @@ class _TemplatePreviewSheet extends StatelessWidget {
               icon: const Icon(Icons.add_rounded),
               label: Text(_t(context).dtUseThis(template.cardCount)),
               style: FilledButton.styleFrom(
-                backgroundColor: template.color,
+                backgroundColor: HCColor.of(context).fillFor(template.color),
                 foregroundColor: Colors.white,
                 minimumSize: const Size.fromHeight(52),
               ),

@@ -237,7 +237,7 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
                             ? step.type.labelFilipino
                             : step.type.label,
                         style: AppTypography.labelMedium.copyWith(
-                          color: AppColors.primaryDark,
+                          color: HCColor.of(context).readable(AppColors.primaryDark),
                           fontWeight: FontWeight.w700,
                         ),
                       ),

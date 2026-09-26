@@ -166,7 +166,7 @@ class _StudentProfileListScreenState
                   Icon(
                     Icons.people_outline_rounded,
                     size: 80,
-                    color: AppColors.textHint.withValues(alpha: 0.5),
+                    color: HCColor.of(context).textHint.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -332,7 +332,7 @@ class _StudentProfileCard extends StatelessWidget {
                   Text(
                     _t(context).splNoAge,
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textHint,
+                      color: HCColor.of(context).textHint,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -346,7 +346,7 @@ class _StudentProfileCard extends StatelessWidget {
               Text(
                 LocalizedDate.monthDayYear(profile.createdAt, _t(context)),
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textHint,
+                  color: HCColor.of(context).textHint,
                 ),
               ),
               const SizedBox(height: 6),
@@ -359,10 +359,17 @@ class _StudentProfileCard extends StatelessWidget {
                       child: Icon(Icons.lock_rounded,
                           size: 16, color: HCColor.of(context).graphic(AppColors.warning)),
                     ),
-                  GestureDetector(
-                    onTap: onDelete,
-                    child: Icon(Icons.delete_outline_rounded,
-                        size: 20, color: AppColors.error.withValues(alpha: 0.7)),
+                  // A real button: a 48 px target a shaky hand can hit,
+                  // and a name a screen reader can say (it was a bare
+                  // 20 px icon in a translucent pastel).
+                  IconButton(
+                    onPressed: onDelete,
+                    tooltip: _t(context).delete,
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      size: 22,
+                      color: HCColor.of(context).graphic(AppColors.error),
+                    ),
                   ),
                 ],
               ),

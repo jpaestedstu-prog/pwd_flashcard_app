@@ -157,12 +157,12 @@ class _ProfileImportExportScreenState
                 children: [
                   Icon(Icons.people_outline_rounded,
                       size: 48,
-                      color: AppColors.textHint.withValues(alpha: 0.5)),
+                      color: HCColor.of(context).textHint.withValues(alpha: 0.5)),
                   const SizedBox(height: 12),
                   Text(
                     _t(context).ieNoStudents,
                     style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textHint,
+                      color: HCColor.of(context).textHint,
                     ),
                   ),
                 ],
@@ -272,7 +272,7 @@ class _ActionCard extends StatelessWidget {
               icon: Icon(buttonIcon, size: 18),
               label: Text(buttonLabel),
               style: FilledButton.styleFrom(
-                backgroundColor: color,
+                backgroundColor: HCColor.of(context).fillFor(color),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -350,21 +350,21 @@ class _ExportProfileCard extends StatelessWidget {
                       Text(
                         _t(context).profileAgeYrs(profile.age!),
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textHint,
+                          color: HCColor.of(context).textHint,
                         ),
                       ),
                     if (profile.age != null && profile.gradeLevel != null)
                       Text(
                         ' · ',
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textHint,
+                          color: HCColor.of(context).textHint,
                         ),
                       ),
                     if (profile.gradeLevel != null)
                       Text(
                         profile.gradeLevel!.label,
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textHint,
+                          color: HCColor.of(context).textHint,
                         ),
                       ),
                   ],

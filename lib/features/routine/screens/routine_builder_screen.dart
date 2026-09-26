@@ -879,10 +879,10 @@ class _ActivityPicker extends StatelessWidget {
                           message: l
                               ? 'May FSL na senyas'
                               : 'Has Filipino Sign Language',
-                          child: const Icon(
+                          child: Icon(
                             Icons.sign_language_rounded,
                             size: 20,
-                            color: AppColors.secondaryDark,
+                            color: HCColor.of(context).readable(AppColors.secondaryDark),
                           ),
                         ),
                   onTap: () => Navigator.pop(context, info.activity),

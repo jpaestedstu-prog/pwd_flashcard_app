@@ -213,7 +213,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       style: AppTypography.displayLarge.copyWith(
                         color: isDark
                             ? Theme.of(context).colorScheme.primary
-                            : AppColors.primaryDark,
+                            : HCColor.of(context).readable(AppColors.primaryDark),
                         fontWeight: FontWeight.w900,
                       ),
                     ),

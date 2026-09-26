@@ -334,7 +334,7 @@ class _FlashcardImageState extends State<FlashcardImage> {
           Icon(
             _showPhoto ? Icons.brush_rounded : Icons.photo_camera_rounded,
             size: 20,
-            color: AppColors.primaryDark,
+            color: HCColor.of(context).readable(AppColors.primaryDark),
           ),
           const SizedBox(width: 8),
           // No Flexible/Expanded here: the viewer hosts this inside a
@@ -346,7 +346,7 @@ class _FlashcardImageState extends State<FlashcardImage> {
               l10n: _t(context),
             ),
             style: AppTypography.titleSmall.copyWith(
-              color: AppColors.primaryDark,
+              color: HCColor.of(context).readable(AppColors.primaryDark),
               fontWeight: FontWeight.w700,
             ),
             textAlign: TextAlign.center,

@@ -661,7 +661,7 @@ class _FslWordCard extends StatelessWidget {
                                       ? Icons.star_rounded
                                       : Icons.star_outline_rounded,
                                   color: favourite
-                                      ? AppColors.warningDark
+                                      ? HCColor.of(context).readable(AppColors.warningDark)
                                       : hc.textHint,
                                   size: context.scaleIcon(20),
                                 ),

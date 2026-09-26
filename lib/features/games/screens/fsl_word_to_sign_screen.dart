@@ -931,9 +931,9 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                                               style: AppTypography.labelLarge
                                                   .copyWith(
                                                     color: showCorrect
-                                                        ? AppColors.successDark
+                                                        ? HCColor.of(context).readableOver(AppColors.successDark, AppColors.surfaceVariant)
                                                         : showWrong
-                                                        ? AppColors.errorDark
+                                                        ? HCColor.of(context).readableOver(AppColors.errorDark, AppColors.surfaceVariant)
                                                         : hc.textSecondary,
                                                     fontWeight: FontWeight.w600,
                                                   ),
@@ -945,11 +945,10 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                                                 style: AppTypography.bodySmall
                                                     .copyWith(
                                                       color: showCorrect
-                                                          ? AppColors
-                                                                .successDark
+                                                          ? HCColor.of(context).successText
                                                           : showWrong
-                                                          ? AppColors.errorDark
-                                                          : AppColors.textHint,
+                                                          ? HCColor.of(context).errorText
+                                                          : HCColor.of(context).textHint,
                                                       fontWeight:
                                                           FontWeight.w500,
                                                     ),

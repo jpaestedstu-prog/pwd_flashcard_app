@@ -64,13 +64,13 @@ class ShowMeButton extends StatelessWidget {
                 Icon(
                   Icons.play_circle_fill_rounded,
                   size: context.scaleIcon(20),
-                  color: AppColors.secondaryDark,
+                  color: HCColor.of(context).readable(AppColors.secondaryDark),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   AppLocalizations.of(context)!.showMe,
                   style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.secondaryDark,
+                    color: HCColor.of(context).readable(AppColors.secondaryDark),
                     fontWeight: FontWeight.w700,
                   ),
                 ),

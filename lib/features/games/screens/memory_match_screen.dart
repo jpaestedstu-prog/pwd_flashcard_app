@@ -786,7 +786,7 @@ class _MemoryCardWidget extends StatelessWidget {
                 card.displayText,
                 style: AppTypography.labelMedium.copyWith(
                   color: card.isMatched
-                      ? AppColors.successDark
+                      ? HCColor.of(context).readableOver(AppColors.successDark, AppColors.successLight)
                       : HCColor.of(context).textPrimary,
                   fontWeight: FontWeight.w700,
                 ),

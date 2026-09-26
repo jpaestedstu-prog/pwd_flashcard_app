@@ -128,7 +128,7 @@ class _FslOfflinePacksSheetState extends ConsumerState<FslOfflinePacksSheet> {
     children: [
       Icon(
         Icons.download_for_offline_rounded,
-        color: AppColors.secondaryDark,
+        color: HCColor.of(context).readable(AppColors.secondaryDark),
         size: context.scaleIcon(28),
       ),
       const SizedBox(width: 12),

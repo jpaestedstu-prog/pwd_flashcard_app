@@ -825,7 +825,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                                 )!.tapSpeakerReplay,
                                                 style: AppTypography.labelSmall
                                                     .copyWith(
-                                                      color: AppColors.textHint,
+                                                      color: HCColor.of(context).textHint,
                                                     ),
                                               ),
                                               // Voice answer mic button

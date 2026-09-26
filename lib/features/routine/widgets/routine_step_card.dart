@@ -246,7 +246,7 @@ class RoutineStepCard extends StatelessWidget {
                         ),
                         style: FilledButton.styleFrom(
                           backgroundColor:
-                              done ? AppColors.success : hc.primary,
+                              HCColor.of(context).fillFor(done ? AppColors.success : hc.primary),
                           foregroundColor: Colors.white,
                         ),
                       ),

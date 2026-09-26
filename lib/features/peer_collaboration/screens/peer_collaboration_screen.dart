@@ -1735,7 +1735,7 @@ class _AnswerBar extends StatelessWidget {
                       onPressed: () => onChoose(controller.text),
                       icon: const Icon(Icons.check_rounded),
                       style: IconButton.styleFrom(
-                        backgroundColor: accent,
+                        backgroundColor: HCColor.of(context).fillFor(accent),
                         foregroundColor: Colors.white,
                       ),
                     ),

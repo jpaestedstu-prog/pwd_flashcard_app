@@ -593,7 +593,7 @@ class _DropTargetRow extends StatelessWidget {
                       style: AppTypography.labelMedium.copyWith(
                         color: matchedWord != null
                             ? HCColor.of(context).errorText
-                            : AppColors.textHint,
+                            : HCColor.of(context).textHint,
                       ),
                     ),
                   ),

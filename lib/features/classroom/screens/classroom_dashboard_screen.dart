@@ -402,8 +402,8 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.group_off_rounded,
-              size: 64, color: AppColors.textHint),
+          Icon(Icons.group_off_rounded,
+              size: 64, color: HCColor.of(context).textHint),
           const SizedBox(height: 16),
           Text(
             _t(context).cdNoStudents,
@@ -414,7 +414,7 @@ class _EmptyState extends StatelessWidget {
           Text(
             _t(context).cdNoStudentsBody,
             style: AppTypography.bodyMedium
-                .copyWith(color: AppColors.textHint),
+                .copyWith(color: HCColor.of(context).textHint),
             textAlign: TextAlign.center,
           ),
         ],

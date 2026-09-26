@@ -188,7 +188,7 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                 children: [
                   Icon(
                     Icons.sign_language_rounded,
-                    color: AppColors.secondaryDark,
+                    color: HCColor.of(context).readable(AppColors.secondaryDark),
                     size: context.scaleIcon(24),
                   ),
                   const SizedBox(width: 8),
@@ -496,7 +496,7 @@ class _FslUnavailableSheet extends StatelessWidget {
                 child: Icon(
                   Icons.sign_language_rounded,
                   size: context.scaleIcon(40),
-                  color: AppColors.secondaryDark,
+                  color: HCColor.of(context).readable(AppColors.secondaryDark),
                 ),
               ),
               const SizedBox(height: 20),

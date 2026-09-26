@@ -577,7 +577,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
                   selectedColor: AppColors.primaryLight,
                   backgroundColor: hc.surfaceLight,
                   labelStyle: AppTypography.labelLarge.copyWith(
-                    color: selected ? AppColors.primaryDark : hc.textPrimary,
+                    color: selected ? HCColor.of(context).readable(AppColors.primaryDark) : hc.textPrimary,
                   ),
                 );
               }).toList(),
@@ -645,7 +645,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
                   selectedColor: AppColors.primaryLight,
                   backgroundColor: hc.surfaceLight,
                   labelStyle: AppTypography.labelLarge.copyWith(
-                    color: selected ? AppColors.primaryDark : hc.textPrimary,
+                    color: selected ? HCColor.of(context).readable(AppColors.primaryDark) : hc.textPrimary,
                     fontWeight:
                         selected ? FontWeight.w700 : FontWeight.w500,
                   ),

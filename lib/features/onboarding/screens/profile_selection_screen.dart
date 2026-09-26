@@ -126,7 +126,7 @@ class ProfileSelectionScreen extends StatelessWidget {
                           style: AppTypography.displayMedium.copyWith(
                             color: isDark
                                 ? colorScheme.primary
-                                : AppColors.primaryDark,
+                                : HCColor.of(context).readable(AppColors.primaryDark),
                           ),
                         )
                         .animate()

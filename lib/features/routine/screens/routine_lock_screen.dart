@@ -670,7 +670,7 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
                   icon: const Icon(Icons.sign_language_rounded),
                   label: Text(l ? 'Panoorin sa FSL' : 'Watch in FSL'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.secondaryDark,
+                    backgroundColor: HCColor.of(context).fillFor(AppColors.secondaryDark),
                     foregroundColor: Colors.white,
                   ),
                 ),

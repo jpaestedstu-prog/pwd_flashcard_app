@@ -186,6 +186,12 @@ class FirestoreRepository implements DataRepository {
     await deleteMatching('routines', 'setter_profile_id');
     await deleteMatching('routine_actions', 'setter_profile_id');
     await deleteMatching('routine_logs', 'profile_id');
+    // Its study-time records, and its recovery code — a code left behind
+    // still named a profile that no longer exists. Before the profile
+    // document: the time logs' rule reads it.
+    await deleteMatching('active_time_logs', 'child_profile_id');
+    await deleteMatching('session_logs', 'profile_id');
+    await deleteMatching('recovery_codes', 'profile_id');
     // Every file shared as this profile: pictures, videos and sounds on the
     // tests, feedback and routines just deleted, and the learner's own video
     // answers. Before the profile document, which the rules read.

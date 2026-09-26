@@ -891,7 +891,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                                       _answerSlots[i] ?? '',
                                       style: AppTypography.titleLarge.copyWith(
                                         color: isCorrectSlot
-                                            ? AppColors.successDark
+                                            ? HCColor.of(context).readable(AppColors.successDark)
                                             : hc.textPrimary,
                                         fontWeight: FontWeight.w800,
                                       ),

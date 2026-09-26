@@ -624,7 +624,7 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
                       Icons.timer_rounded,
                       color: _timedMode
                           ? HCColor.of(context).graphic(AppColors.warning)
-                          : AppColors.textHint,
+                          : HCColor.of(context).textHint,
                       size: context.scaleIcon(24),
                     ),
                     const SizedBox(width: 12),

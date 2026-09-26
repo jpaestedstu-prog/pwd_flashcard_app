@@ -324,7 +324,7 @@ class _NeedHelpAlert extends StatelessWidget {
                       : 'Below 50% accuracy over '
                           '${StudentStanding.minGradedGames}+ games',
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.error.withValues(alpha: 0.7),
+                    color: HCColor.of(context).errorText,
                     fontSize: 11,
                   ),
                 ),

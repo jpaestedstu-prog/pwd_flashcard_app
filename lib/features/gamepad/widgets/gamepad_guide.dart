@@ -158,11 +158,11 @@ class GamepadGuide extends StatelessWidget {
             padding: const EdgeInsets.only(top: 14, bottom: 8),
             child: Text(
               group.title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.4,
-                color: AppColors.primaryDark,
+                color: HCColor.of(context).readable(AppColors.primaryDark),
               ),
             ),
           ),
@@ -202,10 +202,10 @@ class _GuideRow extends StatelessWidget {
               ),
               child: Text(
                 control,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primaryDark,
+                  color: HCColor.of(context).readable(AppColors.primaryDark),
                 ),
               ),
             ),

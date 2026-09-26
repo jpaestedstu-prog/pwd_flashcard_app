@@ -662,7 +662,7 @@ class _RoutineVideoSheetState extends State<_RoutineVideoSheet> {
                       icon: const Icon(Icons.sign_language_rounded),
                       label: Text(l ? 'FSL' : 'FSL'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.secondaryDark,
+                        backgroundColor: HCColor.of(context).fillFor(AppColors.secondaryDark),
                         foregroundColor: Colors.white,
                       ),
                     ),

@@ -359,7 +359,7 @@ class _SliderTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 20, color: AppColors.primaryDark),
+              Icon(icon, size: 20, color: HCColor.of(context).readable(AppColors.primaryDark)),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

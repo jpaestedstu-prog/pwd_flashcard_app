@@ -250,10 +250,10 @@ class DifficultyHistoryChart extends StatelessWidget {
       child: Center(
         child: Column(
           children: [
-            const Icon(
+            Icon(
               Icons.trending_up_rounded,
               size: 40,
-              color: AppColors.textHint,
+              color: HCColor.of(context).textHint,
             ),
             const SizedBox(height: 8),
             Text(

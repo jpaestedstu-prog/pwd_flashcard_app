@@ -331,7 +331,7 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
                             icon: const Icon(Icons.sign_language_rounded),
                             label: Text(l ? 'Panoorin sa FSL' : 'Watch in FSL'),
                             style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.secondaryDark,
+                              backgroundColor: HCColor.of(context).fillFor(AppColors.secondaryDark),
                               foregroundColor: Colors.white,
                             ),
                           ),
@@ -437,7 +437,7 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
                           .copyWith(fontWeight: FontWeight.w700),
                     ),
                     style: FilledButton.styleFrom(
-                      backgroundColor: done ? hc.textHint : AppColors.success,
+                      backgroundColor: HCColor.of(context).fillFor(done ? hc.textHint : AppColors.success),
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -566,7 +566,7 @@ class _HeroMedia extends StatelessWidget {
               icon: const Icon(Icons.sign_language_rounded),
               label: Text(filipino ? 'FSL' : 'FSL'),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.secondaryDark,
+                backgroundColor: HCColor.of(context).fillFor(AppColors.secondaryDark),
                 foregroundColor: Colors.white,
               ),
             ),
@@ -663,7 +663,7 @@ class _VideoPoster extends StatelessWidget {
             icon: const Icon(Icons.sign_language_rounded),
             label: const Text('FSL'),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.secondaryDark,
+              backgroundColor: HCColor.of(context).fillFor(AppColors.secondaryDark),
               foregroundColor: Colors.white,
             ),
           ),

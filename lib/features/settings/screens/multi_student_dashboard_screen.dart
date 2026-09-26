@@ -150,7 +150,7 @@ class _EmptyState extends StatelessWidget {
           Icon(
             hasFilters ? Icons.search_off_rounded : Icons.person_off_rounded,
             size: context.scaleIcon(64),
-            color: AppColors.textHint,
+            color: HCColor.of(context).textHint,
           ),
           const SizedBox(height: 16),
           Text(
@@ -178,7 +178,7 @@ class _EmptyState extends StatelessWidget {
                       : '${audience.learnerNounPluralCap} will appear here once '
                             'they create\na profile in the app.'),
             style:
-                AppTypography.bodyMedium.copyWith(color: AppColors.textHint),
+                AppTypography.bodyMedium.copyWith(color: HCColor.of(context).textHint),
             textAlign: TextAlign.center,
           ),
         ],
@@ -352,10 +352,10 @@ class _StudentCard extends StatelessWidget {
               ),
 
               // Arrow
-              const Icon(
+              Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 18,
-                color: AppColors.textHint,
+                color: HCColor.of(context).textHint,
               ),
             ],
           ),

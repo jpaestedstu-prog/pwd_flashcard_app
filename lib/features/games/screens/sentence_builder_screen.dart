@@ -863,8 +863,8 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
                   card.wordEnglish,
                   style: AppTypography.titleMedium.copyWith(
                     color: isCorrect
-                        ? AppColors.successDark
-                        : AppColors.errorDark,
+                        ? HCColor.of(context).readable(AppColors.successDark)
+                        : HCColor.of(context).readable(AppColors.errorDark),
                     fontWeight: FontWeight.w800,
                   ),
                 ),

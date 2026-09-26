@@ -278,7 +278,7 @@ class _RoleSetupScreenState extends ConsumerState<RoleSetupScreen> {
                                   style: AppTypography.displaySmall.copyWith(
                                     color: isDark
                                         ? colorScheme.primary
-                                        : AppColors.primaryDark,
+                                        : HCColor.of(context).readable(AppColors.primaryDark),
                                   ),
                                 ),
                                 const SizedBox(height: AppSpacing.xs),

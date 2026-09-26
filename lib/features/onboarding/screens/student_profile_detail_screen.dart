@@ -613,7 +613,7 @@ class _CategoryRow extends StatelessWidget {
                 color: AppColors.success.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_rounded, size: 14, color: AppColors.successDark),
+              child: Icon(Icons.check_rounded, size: 14, color: HCColor.of(context).readable(AppColors.successDark)),
             ),
           ],
         ],
@@ -704,7 +704,7 @@ class _ScoreRow extends StatelessWidget {
               Text(
                 _formatDate(context, score.date),
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textHint,
+                  color: HCColor.of(context).textHint,
                 ),
               ),
             ],
@@ -736,7 +736,7 @@ class _ScoreRow extends StatelessWidget {
                   Text(
                     '$pct%',
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textHint,
+                      color: HCColor.of(context).textHint,
                     ),
                   ),
                 ],

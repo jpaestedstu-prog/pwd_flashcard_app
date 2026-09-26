@@ -288,7 +288,7 @@ class _NavScopeOption extends StatelessWidget {
                         : Icons.radio_button_unchecked_rounded,
                     color: selected
                         ? HCColor.of(context).primary
-                        : AppColors.textSecondary,
+                        : HCColor.of(context).textSecondary,
                     size: 22,
                   ),
                   const SizedBox(width: 12),
@@ -299,7 +299,7 @@ class _NavScopeOption extends StatelessWidget {
                         Row(
                           children: [
                             Icon(icon,
-                                size: 18, color: AppColors.primaryDark),
+                                size: 18, color: HCColor.of(context).readable(AppColors.primaryDark)),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
@@ -398,7 +398,7 @@ class _SliderTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: AppColors.primaryDark, size: 22),
+              Icon(icon, color: HCColor.of(context).readable(AppColors.primaryDark), size: 22),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(title,

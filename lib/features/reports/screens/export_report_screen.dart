@@ -260,7 +260,7 @@ class _Form extends StatelessWidget {
         Text(
           _t(context).erShareNote,
           style: AppTypography.bodySmall.copyWith(
-            color: AppColors.textSecondary,
+            color: HCColor.of(context).textSecondary,
           ),
           textAlign: TextAlign.center,
         ),

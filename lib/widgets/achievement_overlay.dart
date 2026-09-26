@@ -181,7 +181,7 @@ class _AchievementUnlockedOverlayState
                   Text(
                     '${_currentIndex + 1} of ${widget.achievements.length}',
                     style: AppTypography.labelSmall
-                        .copyWith(color: AppColors.textHint),
+                        .copyWith(color: HCColor.of(context).textHint),
                   ),
                 ],
 
@@ -193,7 +193,7 @@ class _AchievementUnlockedOverlayState
                   child: ElevatedButton(
                     onPressed: _next,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: achievement.color,
+                      backgroundColor: HCColor.of(context).fillFor(achievement.color),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(

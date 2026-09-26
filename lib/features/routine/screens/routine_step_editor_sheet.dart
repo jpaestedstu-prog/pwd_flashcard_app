@@ -656,10 +656,10 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.sign_language_rounded,
                             size: 18,
-                            color: AppColors.secondaryDark,
+                            color: HCColor.of(context).readable(AppColors.secondaryDark),
                           ),
                           const SizedBox(width: 8),
                           Expanded(

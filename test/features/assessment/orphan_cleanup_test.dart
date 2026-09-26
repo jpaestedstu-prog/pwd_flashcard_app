@@ -112,6 +112,8 @@ void main() {
     RoutineService.debugSharedInUse = null;
     DeletedLearnerCleanup.debugMissingProfiles = null;
     DeletedLearnerCleanup.debugRoutines = null;
+    DeletedLearnerCleanup.debugPolicyLearners = null;
+    DeletedLearnerCleanup.debugForgetLearner = null;
     if (await _root.exists()) await _root.delete(recursive: true);
   });
 
@@ -366,6 +368,28 @@ void main() {
         addTearDown(() => SharedMediaSweep.debugOwned = null);
         expect(await const SharedMediaSweep().run('kid-full'), 0);
         expect(_inCloud(orphan), isTrue);
+      });
+
+      test('a gone learner known only by a time limit, alarm, unlock or '
+          'routine-day action loses those too — and only a gone one', () async {
+        DeletedLearnerCleanup.debugRoutines = (_) async => const [];
+        DeletedLearnerCleanup.debugPolicyLearners = (_) async => {
+          'cara',
+          'dan',
+        };
+        DeletedLearnerCleanup.debugMissingProfiles = (ids) async =>
+            ids.intersection({'cara'});
+        final forgotten = <String>[];
+        DeletedLearnerCleanup.debugForgetLearner = (setter, learner) async =>
+            forgotten.add('$setter/$learner');
+
+        await const DeletedLearnerCleanup().run(
+          'teacher-9',
+          saveAssignment: (_) async => CloudSyncOutcome.synced,
+          deleteAssignment: (_) async => CloudSyncOutcome.synced,
+        );
+
+        expect(forgotten, ['teacher-9/cara']);
       });
 
       test('a learner whose profile is on this tablet is never counted as '

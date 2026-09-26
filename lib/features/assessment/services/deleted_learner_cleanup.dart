@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/services/cloud_sync_outcome.dart';
+import '../../../core/services/educator_policy_cascade.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../data/local/hive_service.dart';
 import '../../routine/models/routine_models.dart';
@@ -17,7 +18,9 @@ import 'assessment_service.dart';
 /// is deleted — their results and their video answers among it. What their
 /// educator made for them belongs to the educator: the learner's place and
 /// feedback on an assignment, the routines set for them, and the pictures,
-/// videos and sounds on both. The rules let only the educator's own device
+/// videos and sounds on both; the time limit, alarms, unlock and routine-day
+/// actions set for them, and the notes written about them. The rules let
+/// only the educator's own device
 /// change those, so this runs there, at sync, and notices who is gone.
 ///
 /// Careful by construction, because what it removes cannot come back: a
@@ -32,6 +35,12 @@ class DeletedLearnerCleanup {
   /// routines this educator has set.
   static Future<Set<String>> Function(Set<String> ids)? debugMissingProfiles;
   static Future<List<Routine>> Function(String setterId)? debugRoutines;
+
+  /// Test seams: the learners this educator set a policy for (a time limit,
+  /// alarm, unlock or routine-day action); and forgetting one learner's.
+  static Future<Set<String>> Function(String setterId)? debugPolicyLearners;
+  static Future<void> Function(String setterId, String learnerId)?
+  debugForgetLearner;
 
   /// What becomes of [assignments] once the [gone] learners leave them:
   /// the ones that keep other learners lose these learners' places and
@@ -108,9 +117,19 @@ class DeletedLearnerCleanup {
         routines = const [];
       }
 
+      Set<String> policyLearners;
+      try {
+        policyLearners = await (debugPolicyLearners ?? _policyLearners)(
+          educatorId,
+        );
+      } on Object {
+        policyLearners = const {};
+      }
+
       final candidates = <String>{
         for (final a in assignments) ...a.studentIds,
         for (final r in routines) r.childProfileId,
+        ...policyLearners,
       }..removeWhere((id) => id.isEmpty || _isOnThisDevice(id));
       if (candidates.isEmpty) return nothing;
 
@@ -131,6 +150,9 @@ class DeletedLearnerCleanup {
       for (final r in stale) {
         await const RoutineService().delete(r.id, known: r);
       }
+      for (final id in gone) {
+        await (debugForgetLearner ?? _forgetLearner)(educatorId, id);
+      }
       return (
         assignments: plan.update.length + plan.remove.length,
         routines: stale.length,
@@ -139,6 +161,77 @@ class DeletedLearnerCleanup {
       // Offline, or a read refused: try again next sync.
       if (kDebugMode) debugPrint('DeletedLearnerCleanup skipped: $e');
       return nothing;
+    }
+  }
+
+  /// The learners [setterId] set a time limit, alarm, unlock or
+  /// routine-day action for, asked of the server.
+  static Future<Set<String>> _policyLearners(String setterId) async {
+    if (!FirebaseService.isConfigured) return const {};
+    final db = FirebaseService.db;
+    const server = GetOptions(source: Source.server);
+    final out = <String>{};
+    // Keyed by the learner.
+    for (final col in const ['child_time_limits', 'child_unlock_overrides']) {
+      final snap = await db
+          .collection(col)
+          .where('setter_profile_id', isEqualTo: setterId)
+          .get(server);
+      out.addAll(snap.docs.map((d) => d.id));
+    }
+    // Naming the learner.
+    for (final col in const ['child_alarms', 'routine_actions']) {
+      final snap = await db
+          .collection(col)
+          .where('setter_profile_id', isEqualTo: setterId)
+          .get(server);
+      for (final d in snap.docs) {
+        final id = d.data()['child_profile_id'];
+        if (id is String && id.isNotEmpty) out.add(id);
+      }
+    }
+    return out;
+  }
+
+  /// Removes what [setterId] set or wrote for [learnerId] outside
+  /// assignments and routines. Best-effort, each part on its own.
+  static Future<void> _forgetLearner(String setterId, String learnerId) async {
+    if (!FirebaseService.isConfigured) return;
+    await EducatorPolicyCascade.dropPoliciesSetBy(
+      setterProfileId: setterId,
+      childProfileId: learnerId,
+    );
+    final db = FirebaseService.db;
+    Future<void> deleteAll(Query<Map<String, dynamic>> query) async {
+      try {
+        final snap = await query.get();
+        for (final d in snap.docs) {
+          try {
+            await d.reference.delete();
+          } on Object {
+            // The next sync tries again.
+          }
+        }
+      } on Object {
+        // Offline or refused: the next sync tries again.
+      }
+    }
+
+    await deleteAll(
+      db
+          .collection('routine_actions')
+          .where('child_profile_id', isEqualTo: learnerId)
+          .where('setter_profile_id', isEqualTo: setterId),
+    );
+    final uid = FirebaseService.currentUid;
+    if (uid != null && uid.isNotEmpty) {
+      await deleteAll(
+        db
+            .collection('parent_teacher_notes')
+            .doc(learnerId)
+            .collection('notes')
+            .where('author_uid', isEqualTo: uid),
+      );
     }
   }
 

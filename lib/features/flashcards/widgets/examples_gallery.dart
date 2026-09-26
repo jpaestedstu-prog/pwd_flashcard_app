@@ -53,16 +53,16 @@ class ExamplesButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.photo_library_rounded,
                   size: 20,
-                  color: AppColors.accentDark,
+                  color: HCColor.of(context).readable(AppColors.accentDark),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   _t(context).viewerExamples,
                   style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.accentDark,
+                    color: HCColor.of(context).readable(AppColors.accentDark),
                     fontWeight: FontWeight.w700,
                   ),
                 ),

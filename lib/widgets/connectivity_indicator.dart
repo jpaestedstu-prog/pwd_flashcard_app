@@ -88,7 +88,7 @@ class _ConnectivityIndicatorState extends State<ConnectivityIndicator>
           child: Icon(
             Icons.wifi_rounded,
             size: 20,
-            color: AppColors.success.withValues(alpha: 0.6),
+            color: HCColor.of(context).graphic(AppColors.success),
           ),
         ),
       );

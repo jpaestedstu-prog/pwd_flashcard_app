@@ -338,10 +338,10 @@ class _ProfileCard extends StatelessWidget {
                 ),
               )
             else
-              const Icon(
+              Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 18,
-                color: AppColors.textHint,
+                color: HCColor.of(context).textHint,
               ),
           ],
         ),

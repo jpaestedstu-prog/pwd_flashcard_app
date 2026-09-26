@@ -335,7 +335,7 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
                                   style: AppTypography.displaySmall.copyWith(
                                     color: isDark
                                         ? colorScheme.primary
-                                        : AppColors.primaryDark,
+                                        : HCColor.of(context).readable(AppColors.primaryDark),
                                   ),
                                 ),
                                 const SizedBox(height: AppSpacing.xs),
@@ -398,7 +398,7 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
                           child: Text(
                             failureMessage,
                             style: AppTypography.bodyMedium
-                                .copyWith(color: AppColors.errorDark),
+                                .copyWith(color: HCColor.of(context).readableOver(AppColors.errorDark, AppColors.errorLight)),
                           ),
                         ),
 

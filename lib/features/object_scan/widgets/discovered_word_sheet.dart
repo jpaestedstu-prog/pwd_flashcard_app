@@ -92,7 +92,7 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.textSecondary.withValues(alpha: 0.4),
+                  color: HCColor.of(context).textSecondary.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),

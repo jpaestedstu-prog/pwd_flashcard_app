@@ -704,7 +704,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _story!.category.color,
+                            backgroundColor: HCColor.of(context).fillFor(_story!.category.color),
                             foregroundColor: Colors.white,
                             minimumSize: const Size(double.infinity, 52),
                           ),

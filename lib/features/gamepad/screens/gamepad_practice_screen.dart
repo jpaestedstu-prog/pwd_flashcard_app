@@ -246,7 +246,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
                           textAlign: TextAlign.center,
                           style: theme.textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.primaryDark,
+                            color: HCColor.of(context).readable(AppColors.primaryDark),
                           ),
                         ),
                         const SizedBox(height: 10),

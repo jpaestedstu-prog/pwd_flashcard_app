@@ -15,8 +15,40 @@ import 'package:flutter_test/flutter_test.dart';
 /// there. Icons the same way, at the 3:1 WCAG asks of a meaningful graphic
 /// (`HCColor.graphic`): a yellow warning sign was 1.4:1 on white.
 
+/// A palette colour as it is — or faded, which reads worse still (a red
+/// "Below 50%" at 70%).
 final _raw = RegExp(
-  r'AppColors\.(success|warning|error|info|primary|secondary|accent)\b(?![.(\w])',
+  r'AppColors\.(success|warning|error|info|primary|secondary|accent)\b'
+  r'(?![(\w])(?!\.(?!withValues|withOpacity))',
+);
+
+/// The light theme's own greys, fixed: on a dark theme's page they are dim
+/// or unreadable. `HCColor.textPrimary` and friends follow the theme.
+final _fixedGrey = RegExp(r'AppColors\.text(Primary|Secondary|Hint)\b');
+
+/// A fixed dark shade of the palette: right on a light page, nearly
+/// invisible on a dark theme's. `readable(AppColors.primaryDark)` keeps it
+/// in light themes and lifts it in dark ones; on a fixed light box,
+/// `readableOver(shade, thatBox)`.
+final _fixedDark = RegExp(r'AppColors\s*\.\s*\w+Dark\b(?![.(\w])');
+
+/// Files where a fixed light grey is right: they paint their own white.
+const _fixedWhite = {
+  'lib/features/object_scan/widgets/photo_results_panel.dart',
+};
+
+/// A button's fill, when its label is white.
+final _buttonStart = RegExp(
+  r'\b(?:styleFrom|FloatingActionButton(?:\.extended|\.small|\.large)?)\(',
+);
+final _whiteLabel = RegExp(r'\bforegroundColor:\s*Colors\.white\b');
+final _fill = RegExp(r'\bbackgroundColor:\s*');
+
+/// A fill that is sure to carry white words: the theme's, a helper's, or a
+/// fixed colour of Flutter's own.
+final _safeFill = RegExp(
+  r'^\s*(?:hc\.|HCColor\.of\(context\)\.|Colors\.|Theme\.|theme\.|'
+  r'scheme\.|cs\.|colorScheme\.|null)|fillFor|readableFill|readable|bestOn',
 );
 
 /// Words coloured straight from a score/status helper or a fixed hex: the
@@ -59,11 +91,24 @@ String _expression(String src, int from) {
 String _withoutHelpers(String expr) {
   var out = expr;
   for (var m = _helper.firstMatch(out); m != null; m = _helper.firstMatch(out)) {
-    final args = _expression(out, m.end);
-    final close = (m.end + args.length + 1).clamp(0, out.length);
-    out = out.replaceRange(m.start, close, 'ok');
+    out = out.replaceRange(m.start, _closing(out, m.end) + 1, 'ok');
   }
   return out;
+}
+
+/// The index of the bracket that closes the call whose arguments start at
+/// [from] — past every argument, not just the first.
+int _closing(String src, int from) {
+  var depth = 0;
+  for (var i = from; i < src.length; i++) {
+    final c = src[i];
+    if (c == '(' || c == '[' || c == '{') depth++;
+    if (c == ')' || c == ']' || c == '}') {
+      if (depth == 0) return i;
+      depth--;
+    }
+  }
+  return src.length - 1;
 }
 
 /// A variable that colours words, set to a raw palette colour.
@@ -102,6 +147,22 @@ void main() {
         if (!pdf && identical(m.pattern, _style) &&
             _rawWords.hasMatch(colour)) {
           found.add(at(m.end));
+        }
+        if (!pdf && !_fixedWhite.contains(path) &&
+            _fixedGrey.hasMatch(colour)) {
+          found.add(at(m.end));
+        }
+        if (!pdf && _fixedDark.hasMatch(colour)) found.add(at(m.end));
+      }
+      if (!pdf) {
+        for (final m in _buttonStart.allMatches(src)) {
+          final style = src.substring(m.end, _closing(src, m.end));
+          if (!_whiteLabel.hasMatch(style)) continue;
+          final fill = _fill.firstMatch(style);
+          if (fill == null) continue;
+          if (!_safeFill.hasMatch(_expression(style, fill.end))) {
+            found.add(at(m.start));
+          }
         }
       }
       for (final m in _wordVar.allMatches(src)) {

@@ -203,7 +203,7 @@ class _CoachMarkOverlayState extends State<CoachMarkOverlay>
             child: ElevatedButton(
               onPressed: _next,
               style: ElevatedButton.styleFrom(
-                backgroundColor: step.color,
+                backgroundColor: HCColor.of(context).fillFor(step.color),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(

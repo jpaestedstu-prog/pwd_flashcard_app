@@ -251,7 +251,7 @@ class ProfileSetupForm extends StatelessWidget {
             title: Text(l10n.enablePinLock, style: AppTypography.bodyLarge),
             secondary: Icon(
               enablePin ? Icons.lock_rounded : Icons.lock_open_rounded,
-              color: enablePin ? accent : AppColors.textHint,
+              color: enablePin ? accent : HCColor.of(context).textHint,
             ),
             contentPadding: EdgeInsets.zero,
           ),

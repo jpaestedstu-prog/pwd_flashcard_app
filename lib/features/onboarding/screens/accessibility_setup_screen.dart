@@ -295,7 +295,7 @@ class _AccessibilitySetupScreenState
           FitText(
             AppLocalizations.of(context)!.accessibilitySetup,
             style: AppTypography.displaySmall.copyWith(
-              color: AppColors.primaryDark,
+              color: HCColor.of(context).readable(AppColors.primaryDark),
               fontWeight: FontWeight.w800,
             ),
           ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.2, end: 0),
@@ -379,7 +379,7 @@ class _AccessibilitySetupScreenState
           Text(
             AppLocalizations.of(context)!.recommendedSettings,
             style: AppTypography.displaySmall.copyWith(
-              color: AppColors.primaryDark,
+              color: HCColor.of(context).readable(AppColors.primaryDark),
               fontWeight: FontWeight.w800,
             ),
           ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.2, end: 0),
@@ -627,7 +627,7 @@ class _AccessibilitySetupScreenState
             Text(
               _t(context).asAllSet,
               style: AppTypography.displaySmall.copyWith(
-                color: AppColors.primaryDark,
+                color: HCColor.of(context).readable(AppColors.primaryDark),
                 fontWeight: FontWeight.w800,
               ),
             ).animate().fadeIn(duration: 500.ms, delay: 300.ms),
@@ -900,16 +900,16 @@ class _OptionalComfortTipsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.lightbulb_outline_rounded,
                 size: 20,
-                color: AppColors.primaryDark,
+                color: HCColor.of(context).readable(AppColors.primaryDark),
               ),
               const SizedBox(width: 8),
               Text(
                 _t(context).asComfort,
                 style: AppTypography.labelLarge.copyWith(
-                  color: AppColors.primaryDark,
+                  color: HCColor.of(context).readable(AppColors.primaryDark),
                   fontWeight: FontWeight.w700,
                 ),
               ),
