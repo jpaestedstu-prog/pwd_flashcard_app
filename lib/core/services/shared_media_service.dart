@@ -219,10 +219,28 @@ class SharedMediaService {
     }
   }
 
+  /// Removes every file shared as [ownerProfileId] — for a profile that is
+  /// being deleted, whose tests, feedback, routines and video answers go with
+  /// it. Returns how many were found.
+  ///
+  /// Must run while the profile document still exists: the rules let the
+  /// profile's own device remove its files. Throws when the list cannot be
+  /// read (offline), so a caller can say the cleanup did not happen.
+  Future<int> deleteAllOwnedBy(String ownerProfileId) async {
+    final backend = _backend;
+    if (backend == null || ownerProfileId.isEmpty) return 0;
+    final ids = await backend.idsOwnedBy(ownerProfileId).timeout(chunkTimeout);
+    for (final id in ids) {
+      await delete('$prefix$id');
+    }
+    return ids.length;
+  }
+
   /// Removes a shared file everywhere this device may: its pieces in the
-  /// cloud (the rules let only the uploading device do that) and this
-  /// tablet's copy. Best effort and silent — a refused or offline delete
-  /// leaves a harmless orphan, never an error in front of a teacher.
+  /// cloud (the rules let only the device that owns the file's profile do
+  /// that) and this tablet's copy. Best effort and silent — a refused or
+  /// offline delete leaves a harmless orphan, never an error in front of a
+  /// teacher.
   Future<void> delete(String value) async {
     if (!isShared(value)) return;
     final id = idOf(value);
@@ -368,6 +386,9 @@ abstract class SharedMediaBackend {
   Future<Uint8List?> readChunk(String id, int index);
   Future<void> deleteChunk(String id, int index);
   Future<void> deleteMeta(String id);
+
+  /// The ids of every file shared as [ownerProfileId], from the server.
+  Future<List<String>> idsOwnedBy(String ownerProfileId);
 }
 
 class FirestoreSharedMediaBackend implements SharedMediaBackend {
@@ -408,4 +429,14 @@ class FirestoreSharedMediaBackend implements SharedMediaBackend {
 
   @override
   Future<void> deleteMeta(String id) => _media.doc(id).delete();
+
+  @override
+  Future<List<String>> idsOwnedBy(String ownerProfileId) async {
+    // From the server only: a cache that happens to hold none of them must
+    // not read as "nothing to clean up".
+    final snap = await _media
+        .where('owner_profile_id', isEqualTo: ownerProfileId)
+        .get(const GetOptions(source: Source.server));
+    return [for (final d in snap.docs) d.id];
+  }
 }

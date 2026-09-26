@@ -9,9 +9,9 @@ import 'package:pwdpwdpwd/features/routine/services/routine_media_store.dart';
 /// The picker hands back a path in the OS cache, which Android may reclaim —
 /// so the file is copied into app storage and the slot points at the copy.
 /// These tests pin the parts that decide whether a learner still has a
-/// picture next week: that the copy happens, that re-picking replaces rather
-/// than accumulates, and that clearing a slot never deletes someone else's
-/// hosted URL.
+/// picture next week: that the copy happens, that re-picking never destroys
+/// the copy a saved routine still uses, and that clearing a slot never
+/// deletes someone else's hosted URL.
 
 late Directory _root;
 
@@ -74,30 +74,36 @@ void main() {
         stepId: 'step1',
         kind: RoutineMediaKind.photo,
       );
-      expect(RoutineMediaStore.pathOf(slot!), contains('step1_photo.png'));
+      expect(
+        RoutineMediaStore.pathOf(slot!),
+        matches(RegExp(r'step1_photo_\d+\.png$')),
+      );
     });
 
-    test('re-picking replaces the old copy instead of accumulating', () async {
+    test('re-picking never destroys the copy a saved routine still uses',
+        () async {
       const store = RoutineMediaStore();
       final first = await store.adopt(
         sourcePath: await makeSource('one.jpg', 'first'),
         stepId: 'step1',
         kind: RoutineMediaKind.photo,
       );
-      // A different extension, so a naive "overwrite same name" would leave
-      // the jpg behind forever.
       final second = await store.adopt(
         sourcePath: await makeSource('two.png', 'second'),
         stepId: 'step1',
         kind: RoutineMediaKind.photo,
       );
       expect(first, isNot(second));
-      expect(await File(RoutineMediaStore.pathOf(first!)).exists(), isFalse);
+      // The first may be the saved routine's: an educator who re-picks and
+      // then cancels must still find it. The builder deletes whichever one
+      // the save leaves unused (RoutineMediaLedger).
+      expect(await File(RoutineMediaStore.pathOf(first!)).readAsString(),
+          'first');
       expect(await File(RoutineMediaStore.pathOf(second!)).readAsString(),
           'second');
 
-      final left = await storeDir().list().toList();
-      expect(left, hasLength(1), reason: 'one slot should keep one file');
+      await store.discard(first);
+      expect(await storeDir().list().toList(), hasLength(1));
     });
 
     test('different slots on one step coexist', () async {
@@ -130,7 +136,10 @@ void main() {
         stepId: 'step1',
         kind: RoutineMediaKind.video,
       );
-      expect(RoutineMediaStore.pathOf(slot!), endsWith('step1_video.mp4'));
+      expect(
+        RoutineMediaStore.pathOf(slot!),
+        matches(RegExp(r'step1_video_\d+\.mp4$')),
+      );
     });
   });
 

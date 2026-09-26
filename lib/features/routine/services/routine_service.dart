@@ -5,11 +5,13 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/services/cloud_sync_outcome.dart';
 import '../../../core/services/firebase_service.dart';
+import '../../../core/services/shared_media_service.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/models.dart';
 import '../models/routine_day_state.dart';
 import '../models/routine_models.dart';
+import 'routine_media_store.dart';
 
 /// Per-learner routine CRUD against Firestore with a Hive mirror.
 ///
@@ -286,23 +288,100 @@ class RoutineService {
     );
   }
 
-  /// Permanently remove [routineId] from Firestore + Hive.
+  /// Permanently remove [routineId] from Firestore + Hive — and the files
+  /// its steps used, once no other routine uses them.
+  ///
+  /// [known] is the routine as the caller has it, for one this device never
+  /// cached (an educator clearing a routine read straight from the cloud).
   ///
   /// A [CloudSyncOutcome.notOwner] delete is the one that bites hardest: the
   /// row vanishes from the educator's list, survives in Firestore, and comes
   /// back on the device that owns the profile. Saying so is the whole point.
-  Future<CloudSyncOutcome> delete(String routineId) async {
-    final childProfileId = HiveService.routineChildOf(routineId);
+  /// Its files stay too, since the surviving routine still shows them.
+  Future<CloudSyncOutcome> delete(String routineId, {Routine? known}) async {
+    final cached = HiveService.getCachedRoutine(routineId);
+    final childProfileId =
+        HiveService.routineChildOf(routineId) ?? known?.childProfileId;
+    final media = (cached ?? known)?.storedMedia ?? const <String>{};
     await HiveService.deleteRoutineLocal(routineId);
     if (childProfileId != null) _changedLocally(childProfileId);
-    if (!FirebaseService.isConfigured) return CloudSyncOutcome.localOnly;
+    if (!FirebaseService.isConfigured) {
+      await discardUnusedMedia(media, exceptRoutineId: routineId);
+      return CloudSyncOutcome.localOnly;
+    }
     try {
       await _col.doc(routineId).delete();
+      await discardUnusedMedia(media, exceptRoutineId: routineId);
       return CloudSyncOutcome.synced;
     } on Object catch (e, s) {
       ErrorHandler.report(e, s, 'RoutineDelete:silent');
       return outcomeForError(e);
     }
+  }
+
+  /// Test seam: whether a routine in the cloud other than [exceptRoutineId]
+  /// names the shared file [value]. Null asks Firestore.
+  static Future<bool> Function(String value, String? exceptRoutineId)?
+  debugSharedInUse;
+
+  /// Deletes those of [values] that no routine uses any more — not one on
+  /// this device, and, for a shared file, not one in the cloud (a copy made
+  /// for a second learner shares its files). [exceptRoutineId] is the
+  /// routine being replaced or removed, whose own reference does not count.
+  ///
+  /// When the cloud cannot be asked, a shared file is kept: an orphan costs
+  /// a little quota, a file deleted from under a learner's routine costs
+  /// them their pictures.
+  Future<void> discardUnusedMedia(
+    Set<String> values, {
+    String? exceptRoutineId,
+  }) async {
+    if (values.isEmpty) return;
+    final usedHere = <String>{
+      for (final r in HiveService.getAllCachedRoutines())
+        if (r.id != exceptRoutineId) ...r.storedMedia,
+    };
+    for (final value in values) {
+      if (usedHere.contains(value)) continue;
+      if (SharedMediaService.isShared(value) &&
+          await _sharedInUseInCloud(value, exceptRoutineId)) {
+        continue;
+      }
+      await const RoutineMediaStore().discard(value);
+    }
+  }
+
+  Future<bool> _sharedInUseInCloud(String value, String? exceptRoutineId) async {
+    final seam = debugSharedInUse;
+    if (seam != null) return seam(value, exceptRoutineId);
+    if (!FirebaseService.isConfigured) return false;
+    try {
+      final snap = await _col
+          .where('media_refs', arrayContains: value)
+          .limit(3)
+          .get(const GetOptions(source: Source.server));
+      return snap.docs.any((d) => d.id != exceptRoutineId);
+    } on Object {
+      return true;
+    }
+  }
+
+  /// Every routine [setterProfileId] has set, read from the server. Throws
+  /// when the server cannot be reached — a cache is no basis for deciding
+  /// what to delete.
+  Future<List<Routine>> listBySetterFromServer(String setterProfileId) async {
+    final snap = await _col
+        .where('setter_profile_id', isEqualTo: setterProfileId)
+        .get(const GetOptions(source: Source.server));
+    final routines = <Routine>[];
+    for (final d in snap.docs) {
+      try {
+        routines.add(Routine.fromJson(Map<String, dynamic>.from(d.data())));
+      } catch (_) {
+        continue;
+      }
+    }
+    return routines;
   }
 
   // ─── Day logs (completion) ────────────────────────────

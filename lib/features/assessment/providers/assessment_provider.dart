@@ -3,6 +3,8 @@ import '../../../providers/app_providers.dart';
 import '../models/assessment_models.dart';
 import '../services/assessment_cloud_service.dart';
 import '../services/assessment_media_publisher.dart';
+import '../services/deleted_learner_cleanup.dart';
+import '../../../core/services/firebase_service.dart';
 import '../services/assessment_media_store.dart';
 import '../services/assessment_service.dart';
 
@@ -206,6 +208,10 @@ final educatorAssessmentSyncProvider = FutureProvider.family<void, String>((
   // Files picked while offline are shared now that the pull worked, so the
   // learners' tablets can open them.
   await const AssessmentMediaPublisher().publishPending(educatorId);
+  // Learners who deleted their profiles leave this educator's assignments,
+  // with their feedback and its files — after the pull, so every assignment
+  // is here to check.
+  await ref.read(deletedLearnerCleanupProvider(educatorId).future);
 
   // Hydration writes straight to Hive, which these two notifiers cannot see:
   // they load once and then only re-read after their own writes. Without this
@@ -215,4 +221,27 @@ final educatorAssessmentSyncProvider = FutureProvider.family<void, String>((
   // build has already returned.
   ref.read(assignmentsProvider.notifier).refresh();
   ref.read(customAssessmentsProvider.notifier).refresh();
+});
+
+/// Clears what an educator made for learners who have since deleted their
+/// profiles — their places and feedback on assignments, the routines set for
+/// them, and the files on both. Once per educator per session; watched from
+/// the educator's home as well as run after the assessment sync, so an
+/// educator who only uses routines is covered too. See
+/// [DeletedLearnerCleanup].
+final deletedLearnerCleanupProvider = FutureProvider.family<void, String>((
+  ref,
+  educatorId,
+) async {
+  // Nothing to check without the cloud — and nothing local is touched then.
+  if (!FirebaseService.isConfigured &&
+      DeletedLearnerCleanup.debugMissingProfiles == null) {
+    return;
+  }
+  final notifier = ref.read(assignmentsProvider.notifier);
+  await const DeletedLearnerCleanup().run(
+    educatorId,
+    saveAssignment: notifier.saveAssignment,
+    deleteAssignment: notifier.deleteAssignment,
+  );
 });

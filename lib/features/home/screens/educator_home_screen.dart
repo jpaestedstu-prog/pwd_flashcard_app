@@ -18,6 +18,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../parent/models/educator_audience.dart';
 import '../../messaging/providers/messaging_providers.dart';
+import '../../assessment/providers/assessment_provider.dart';
 
 /// Home screen shown to teachers and parents.
 ///
@@ -56,6 +57,9 @@ class EducatorHomeScreen extends ConsumerWidget {
         ? ref.watch(educatorRosterProvider(profile.id))
         : null;
     final students = ref.watch(educatorLearnerRosterProvider);
+    // Background housekeeping, once a session: clears what this educator
+    // made for learners who have deleted their profiles.
+    if (isEducator) ref.watch(deletedLearnerCleanupProvider(profile.id));
     final showRosterLoading =
         rosterAsync != null &&
         rosterAsync.isLoading &&
@@ -971,7 +975,7 @@ class _StudentCard extends StatelessWidget {
               child: Text(
                 name.isNotEmpty ? name[0].toUpperCase() : '?',
                 style: AppTypography.titleMedium.copyWith(
-                  color: AppColors.primary,
+                  color: HCColor.of(context).primary,
                   fontWeight: FontWeight.w700,
                 ),
               ),

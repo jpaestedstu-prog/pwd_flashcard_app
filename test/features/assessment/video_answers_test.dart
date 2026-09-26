@@ -94,6 +94,11 @@ class _MemoryBackend implements SharedMediaBackend {
       chunks.remove('$id/$index');
   @override
   Future<void> deleteMeta(String id) async => metas.remove(id);
+  @override
+  Future<List<String>> idsOwnedBy(String ownerProfileId) async => [
+    for (final m in metas.values)
+      if (m.ownerProfileId == ownerProfileId) m.id,
+  ];
 }
 
 const _video = AssessmentQuestion(

@@ -1,3 +1,4 @@
+import '../../../core/services/shared_media_service.dart';
 import '../../../data/models/enums.dart';
 
 /// Minutes a locked routine step waits before it counts as "needs help",
@@ -542,6 +543,25 @@ class Routine {
   /// Every step including disabled ones, in the order the editor shows them.
   List<RoutineStep> get editorSteps => List.unmodifiable(steps);
 
+  /// Every file the app stored for this routine's steps — on this device
+  /// (`file://`) or shared between tablets (`shared://`). Links and bundled
+  /// assets belong to someone else and are never deleted, so they are not
+  /// here.
+  Set<String> get storedMedia => {
+    for (final s in steps)
+      for (final v in [s.photoUrl, s.gifUrl, s.videoUrl, s.audioUrl])
+        if (v.trim().startsWith('file://') || SharedMediaService.isShared(v))
+          v.trim(),
+  };
+
+  /// The shared files among [storedMedia], written to the cloud as
+  /// `media_refs` so any tablet can ask whether another routine — a copy
+  /// made for a second learner — still uses one before deleting it.
+  List<String> get sharedMediaRefs => [
+    for (final v in storedMedia)
+      if (SharedMediaService.isShared(v)) v,
+  ]..sort();
+
   /// The steps this routine will raise a reminder for.
   ///
   /// Empty unless the routine is enabled *and* reminding; an unscheduled step
@@ -608,6 +628,7 @@ class Routine {
         'name_filipino': nameFilipino,
         'days_of_week': daysOfWeek.toList()..sort(),
         'steps': steps.map((s) => s.toJson()).toList(),
+        'media_refs': sharedMediaRefs,
         'enabled': enabled,
         'reminders_enabled': remindersEnabled,
         'lock_enabled': lockEnabled,

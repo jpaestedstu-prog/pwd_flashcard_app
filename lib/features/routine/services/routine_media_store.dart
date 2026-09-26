@@ -88,12 +88,14 @@ class RoutineMediaStore {
       if (!await src.exists()) return null;
       final ext = _extensionOf(sourcePath, kind);
       final dir = await _dir();
+      // A new name for every pick. Overwriting the slot's file used to
+      // destroy the SAVED routine's copy the moment an educator re-picked —
+      // and then cancelled. What is left over is removed on save or cancel
+      // instead (see [RoutineMediaLedger]).
       final dest = File(
-        '${dir.path}${Platform.pathSeparator}${stepId}_${kind.name}.$ext',
+        '${dir.path}${Platform.pathSeparator}${stepId}_${kind.name}_'
+        '${DateTime.now().microsecondsSinceEpoch}.$ext',
       );
-      // Remove a previous file for this slot even if its extension differed,
-      // or a jpg replaced by a png would leave the jpg behind forever.
-      await _deleteSlotFiles(dir, stepId, kind);
       await src.copy(dest.path);
       return '$filePrefix${dest.path}';
     } on Object catch (e) {
@@ -133,24 +135,6 @@ class RoutineMediaStore {
     }
   }
 
-  Future<void> _deleteSlotFiles(
-    Directory dir,
-    String stepId,
-    RoutineMediaKind kind,
-  ) async {
-    final prefix = '${stepId}_${kind.name}.';
-    try {
-      await for (final entity in dir.list()) {
-        if (entity is File) {
-          final name = entity.uri.pathSegments.last;
-          if (name.startsWith(prefix)) await entity.delete();
-        }
-      }
-    } on Object {
-      // A directory we cannot list is not a reason to refuse the new file.
-    }
-  }
-
   static String _extensionOf(String path, RoutineMediaKind kind) {
     final dot = path.lastIndexOf('.');
     if (dot != -1 && dot < path.length - 1) {
@@ -166,4 +150,23 @@ class RoutineMediaStore {
       RoutineMediaKind.audio => 'm4a',
     };
   }
+}
+
+/// Every file picked or shared while one routine is open in the builder.
+///
+/// Nothing is deleted while editing: a step editor that removed the file it
+/// replaced deleted one the SAVED routine — and the learner's tablet — still
+/// used, the moment the educator then cancelled. The builder settles up once:
+/// on save, whatever neither the new routine nor any other routine uses; on
+/// leaving without saving, only what was picked this time.
+class RoutineMediaLedger {
+  final Set<String> _adopted = {};
+
+  void adopted(String value) {
+    final v = value.trim();
+    if (v.isNotEmpty) _adopted.add(v);
+  }
+
+  /// Everything picked or shared during this edit, kept or not.
+  Set<String> get adoptedValues => Set.unmodifiable(_adopted);
 }

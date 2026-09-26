@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/cloud_sync_outcome.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart' show UserRole;
@@ -10,6 +13,7 @@ import '../../../providers/profile_role_provider.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
+import '../services/routine_media_store.dart';
 import '../services/routine_reminder_scheduler.dart';
 import '../services/routine_service.dart';
 import '../widgets/routine_media.dart';
@@ -62,8 +66,23 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
   bool _dirty = false;
   bool _saving = false;
 
+  /// Every file picked or shared while this routine is open. See
+  /// [RoutineMediaLedger] for why nothing is deleted until save or leave.
+  final RoutineMediaLedger _ledger = RoutineMediaLedger();
+  bool _saved = false;
+
   @override
   void dispose() {
+    if (!_saved) {
+      // Left without saving: what was picked this time belongs to nothing.
+      // The saved routine's own files are untouched.
+      final picked = _ledger.adoptedValues.difference(
+        widget.routine.storedMedia,
+      );
+      for (final value in picked) {
+        const RoutineMediaStore().discard(value);
+      }
+    }
     _name.dispose();
     _nameFil.dispose();
     super.dispose();
@@ -82,6 +101,20 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
       _draft.copyWith(
         name: _name.text.trim(),
         nameFilipino: _nameFil.text.trim(),
+      ),
+    );
+    _saved = true;
+    // Files picked and not kept, and the saved version's files this one no
+    // longer uses — each only once no other routine uses it. A save the
+    // cloud refused leaves the old routine live there, so its files stay.
+    final kept = write.routine.storedMedia;
+    final settle = write.outcome == CloudSyncOutcome.notOwner
+        ? _ledger.adoptedValues.difference(widget.routine.storedMedia)
+        : {..._ledger.adoptedValues, ...widget.routine.storedMedia};
+    unawaited(
+      const RoutineService().discardUnusedMedia(
+        settle.difference(kept),
+        exceptRoutineId: write.routine.id,
       ),
     );
     if (!mounted) return;
@@ -414,6 +447,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
         filipino: l,
         routineLocks: _draft.lockEnabled,
         ownerProfileId: ref.read(profileProvider)?.id,
+        ledger: _ledger,
       );
       if (edited == null || !mounted) return;
       _mutate(_draft.copyWith(steps: [..._draft.steps, edited]));
@@ -429,6 +463,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
       filipino: l,
       routineLocks: _draft.lockEnabled,
       ownerProfileId: ref.read(profileProvider)?.id,
+      ledger: _ledger,
     );
     if (edited == null || !mounted) return;
     _replaceStep(edited);

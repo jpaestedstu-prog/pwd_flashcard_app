@@ -691,6 +691,29 @@ class AssessmentAssignment {
     assessmentEditedAt: assessmentEditedAt,
   );
 
+  /// A copy without [learnerIds]: their places and their feedback removed —
+  /// for learners who have deleted their profiles.
+  AssessmentAssignment withoutLearners(Set<String> learnerIds) =>
+      AssessmentAssignment(
+        id: id,
+        assessmentId: assessmentId,
+        assessmentTitle: assessmentTitle,
+        assignedBy: assignedBy,
+        studentIds: [
+          for (final s in studentIds)
+            if (!learnerIds.contains(s)) s,
+        ],
+        assignedAt: assignedAt,
+        deadline: deadline,
+        instructions: instructions,
+        media: media,
+        feedback: {
+          for (final e in feedback.entries)
+            if (!learnerIds.contains(e.key)) e.key: e.value,
+        },
+        assessmentEditedAt: assessmentEditedAt,
+      );
+
   /// A copy after its assessment was edited: the new [title] (the list a
   /// learner sees names it), and the moment of the edit.
   AssessmentAssignment withEditedAssessment({

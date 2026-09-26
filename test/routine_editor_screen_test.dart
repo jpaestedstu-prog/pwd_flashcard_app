@@ -1,13 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:pwdpwdpwd/core/services/shared_media_service.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_models.dart';
 import 'package:pwdpwdpwd/features/routine/screens/routine_builder_screen.dart';
 import 'package:pwdpwdpwd/features/routine/screens/routine_editor_screen.dart';
 import 'package:pwdpwdpwd/features/routine/screens/routine_step_editor_sheet.dart';
+import 'package:pwdpwdpwd/features/routine/services/routine_media_store.dart';
 import 'package:pwdpwdpwd/features/routine/widgets/routine_media.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 
@@ -366,6 +370,57 @@ void main() {
       await _unmount(tester);
     });
 
+    testWidgets('clearing a file never deletes it: the saved routine may '
+        'still use it, and the builder settles up on save', (tester) async {
+      final backend = _MemoryMedia()
+        ..metas['old'] = const SharedMediaMeta(
+          id: 'old',
+          ownerProfileId: 'teacher-1',
+          ext: 'jpg',
+          size: 1,
+          chunkCount: 1,
+          sha256: '',
+          ready: true,
+        );
+      SharedMediaService.debugBackend = backend;
+      SharedMediaService.debugDirectory = () async => Directory.systemTemp;
+      addTearDown(() {
+        SharedMediaService.debugBackend = null;
+        SharedMediaService.debugDirectory = null;
+      });
+      tester.view.physicalSize = const Size(900, 1800) * 2.0;
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final ledger = RoutineMediaLedger();
+      await tester.pumpWidget(_app(
+        home: Scaffold(
+          body: RoutineStepEditorSheet(
+            step: const RoutineStep(
+              id: 's',
+              activity: RoutineActivity.brushingTeeth,
+              photoUrl: 'shared://old',
+            ),
+            filipino: false,
+            ledger: ledger,
+          ),
+        ),
+      ));
+      await _settle(tester);
+      expect(find.text('Shared — reaches every device.'), findsOneWidget);
+
+      // Found on a tablet: the old editor deleted the file here, and a
+      // routine the educator then left unsaved lost its picture everywhere.
+      await tester.runAsync(() async {
+        await tester.tap(find.byTooltip('Clear').first);
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      });
+      await tester.pump();
+      expect(find.text('Shared — reaches every device.'), findsNothing);
+      expect(backend.metas.containsKey('old'), isTrue);
+      await _unmount(tester);
+    });
+
     testWidgets('a shared file says it reaches every device', (tester) async {
       // A picked file is shared the moment it is chosen; the field must say
       // so, or an educator cannot tell it apart from one stuck on this tablet.
@@ -537,4 +592,23 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+}
+
+class _MemoryMedia implements SharedMediaBackend {
+  final Map<String, SharedMediaMeta> metas = {};
+
+  @override
+  Future<void> writeMeta(SharedMediaMeta meta) async => metas[meta.id] = meta;
+  @override
+  Future<void> writeChunk(String id, int index, Uint8List bytes) async {}
+  @override
+  Future<SharedMediaMeta?> readMeta(String id) async => metas[id];
+  @override
+  Future<Uint8List?> readChunk(String id, int index) async => null;
+  @override
+  Future<void> deleteChunk(String id, int index) async {}
+  @override
+  Future<void> deleteMeta(String id) async => metas.remove(id);
+  @override
+  Future<List<String>> idsOwnedBy(String ownerProfileId) async => const [];
 }

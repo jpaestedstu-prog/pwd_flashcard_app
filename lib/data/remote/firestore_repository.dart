@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/services/cloud_sync_exceptions.dart';
 import '../../core/utils/error_handler.dart';
 import '../../core/services/firebase_service.dart';
+import '../../core/services/shared_media_service.dart';
 import '../local/hive_service.dart';
 import '../models/classroom.dart';
 import '../models/classroom_member.dart';
@@ -178,6 +179,17 @@ class FirestoreRepository implements DataRepository {
             }));
       }
     });
+    // Routines this profile set as a teacher or parent (with their day
+    // actions), and this profile's own routine day logs as a learner. A
+    // routine left behind would keep showing on a learner's tablet with its
+    // pictures and videos deleted from under it (below).
+    await deleteMatching('routines', 'setter_profile_id');
+    await deleteMatching('routine_actions', 'setter_profile_id');
+    await deleteMatching('routine_logs', 'profile_id');
+    // Every file shared as this profile: pictures, videos and sounds on the
+    // tests, feedback and routines just deleted, and the learner's own video
+    // answers. Before the profile document, which the rules read.
+    await attempt(() => const SharedMediaService().deleteAllOwnedBy(profileId));
     await deleteItems('achievements');
     await deleteItems('shop_purchases');
     await deleteIfPresent(_db.collection('progress').doc(profileId));

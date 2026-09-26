@@ -782,21 +782,45 @@ service cloud.firestore {
 
     // ─── Shared media ─────────────────────────────────
     // Pictures, videos and sounds a teacher or parent attaches to
-    // assessments and feedback, and learners' signed/spoken video answers,
-    // shared between tablets without Cloud Storage (which would need the
-    // paid Blaze plan). A file is a metadata doc plus ≤ 1 MB `bytes` pieces
-    // in /chunks, written by SharedMediaService.
+    // assessments, feedback and routines, and learners' signed/spoken video
+    // answers, shared between tablets without Cloud Storage (which would need
+    // the paid Blaze plan). A file is a metadata doc plus ≤ 1 MB `bytes`
+    // pieces in /chunks, written by SharedMediaService.
     //
     // Reads are open to any signed-in user, like the assessments that point
-    // at these files. Only the device that uploaded a file may write or
-    // delete it (`owner_uid`, one read per piece via the metadata doc), and
-    // the sizes are pinned so no single upload can eat the free quota:
-    // 15 MB a file, 17 pieces of at most 1,000,000 bytes. Pieces must be
-    // deleted before their metadata, whose owner the piece rule checks.
+    // at these files. A file belongs to the profile it was shared as
+    // (`owner_profile_id`):
+    //  * Only the device that owns that profile may share one for it. A
+    //    tablet the profile was restored away from is read-only for that
+    //    profile, and a file it shared would belong to nothing the cloud
+    //    kept — an orphan nobody could see or clear.
+    //  * Only the device that owns the profile NOW may remove one, so an old
+    //    tablet cannot delete a file the profile's new tablet still uses.
+    //    Once the profile itself is deleted, the device that uploaded a file
+    //    may still clear it, so nothing is stranded.
+    // Sizes are pinned so no single upload can eat the free quota: 15 MB a
+    // file, 17 pieces of at most 1,000,000 bytes. Pieces must be deleted
+    // before their metadata, which the piece rules read.
+    function mediaProfile(data) {
+      return data.get('owner_profile_id', '');
+    }
+
+    function mayRemoveSharedMedia(data) {
+      return signedIn() && (
+        (mediaProfile(data) == '' && data.owner_uid == request.auth.uid)
+        || (mediaProfile(data) != ''
+          && (ownsProfile(mediaProfile(data))
+            || (data.owner_uid == request.auth.uid
+              && !exists(/databases/$(database)/documents/profiles/$(mediaProfile(data))))))
+      );
+    }
+
     match /shared_media/{mediaId} {
       allow read: if signedIn();
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
+        && request.resource.data.owner_profile_id is string
+        && ownsProfile(request.resource.data.owner_profile_id)
         && request.resource.data.size is int
         && request.resource.data.size <= 15728640
         && request.resource.data.chunk_count is int
@@ -805,10 +829,10 @@ service cloud.firestore {
       allow update: if signedIn()
         && resource.data.owner_uid == request.auth.uid
         && request.resource.data.owner_uid == request.auth.uid
+        && request.resource.data.owner_profile_id == resource.data.owner_profile_id
         && request.resource.data.size == resource.data.size
         && request.resource.data.chunk_count == resource.data.chunk_count;
-      allow delete: if signedIn()
-        && resource.data.owner_uid == request.auth.uid;
+      allow delete: if mayRemoveSharedMedia(resource.data);
 
       match /chunks/{chunkId} {
         allow read: if signedIn();
@@ -816,8 +840,8 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/shared_media/$(mediaId)).data.owner_uid == request.auth.uid
           && request.resource.data.data is bytes
           && request.resource.data.data.size() <= 1000000;
-        allow delete: if signedIn()
-          && get(/databases/$(database)/documents/shared_media/$(mediaId)).data.owner_uid == request.auth.uid;
+        allow delete: if mayRemoveSharedMedia(
+          get(/databases/$(database)/documents/shared_media/$(mediaId)).data);
       }
     }
   }

@@ -99,6 +99,8 @@ class _NoopBackend implements SharedMediaBackend {
   Future<void> deleteChunk(String id, int index) async {}
   @override
   Future<void> deleteMeta(String id) async {}
+  @override
+  Future<List<String>> idsOwnedBy(String ownerProfileId) async => const [];
 }
 
 const _photo = 'assets/test/cat.png';

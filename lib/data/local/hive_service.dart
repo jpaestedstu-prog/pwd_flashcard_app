@@ -1316,6 +1316,21 @@ class HiveService {
     return result;
   }
 
+  /// Every cached routine on this device, for every learner.
+  static List<Routine> getAllCachedRoutines() {
+    final result = <Routine>[];
+    for (final key in _routineBox.keys) {
+      final raw = _routineBox.get(key);
+      if (raw is! Map) continue;
+      try {
+        result.add(Routine.fromJson(Map<String, dynamic>.from(raw)));
+      } catch (_) {
+        continue;
+      }
+    }
+    return result;
+  }
+
   /// Drops every cached routine for [childProfileId] that is not in [keepIds].
   ///
   /// Without this a routine an educator deleted on their own device lives on

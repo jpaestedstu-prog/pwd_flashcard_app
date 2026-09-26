@@ -22,6 +22,7 @@ Future<RoutineStep?> openRoutineStepEditor(
   required bool filipino,
   bool routineLocks = false,
   String? ownerProfileId,
+  RoutineMediaLedger? ledger,
 }) {
   return showModalBottomSheet<RoutineStep>(
     context: context,
@@ -33,6 +34,7 @@ Future<RoutineStep?> openRoutineStepEditor(
       filipino: filipino,
       routineLocks: routineLocks,
       ownerProfileId: ownerProfileId,
+      ledger: ledger,
     ),
   );
 }
@@ -64,12 +66,17 @@ class RoutineStepEditorSheet extends StatefulWidget {
   /// tablet. Null keeps picked files on this tablet only.
   final String? ownerProfileId;
 
+  /// Records every file picked or shared here. The sheet never deletes one:
+  /// the routine builder does, once it knows what was saved.
+  final RoutineMediaLedger? ledger;
+
   const RoutineStepEditorSheet({
     super.key,
     required this.step,
     required this.filipino,
     this.routineLocks = false,
     this.ownerProfileId,
+    this.ledger,
   });
 
   @override
@@ -633,6 +640,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                       filipino: l,
                       stepId: _draft.id,
                       ownerProfileId: widget.ownerProfileId,
+                      ledger: widget.ledger,
                       onChanged: () => setState(() {}),
                     ),
 
@@ -732,6 +740,8 @@ class _MediaField extends StatefulWidget {
   /// Who a picked file is shared as; null keeps it on this tablet.
   final String? ownerProfileId;
 
+  final RoutineMediaLedger? ledger;
+
   const _MediaField({
     required this.controller,
     required this.kind,
@@ -739,6 +749,7 @@ class _MediaField extends StatefulWidget {
     required this.onChanged,
     required this.stepId,
     this.ownerProfileId,
+    this.ledger,
   });
 
   @override
@@ -779,7 +790,9 @@ class _MediaFieldState extends State<_MediaField> {
     }
     setState(() => _sharing = null);
     if (!result.ok) return;
-    await const RoutineMediaStore().discard(fileValue);
+    // The device copy is left for the builder to settle: the saved routine
+    // may still point at it until the educator saves.
+    widget.ledger?.adopted(result.value!);
     controller.text = result.value!;
     widget.onChanged();
   }
@@ -825,15 +838,10 @@ class _MediaFieldState extends State<_MediaField> {
           // The camera's own temp file; the OS reclaims it anyway.
         }
       }
+      if (slot != null) widget.ledger?.adopted(slot);
       if (!mounted || slot == null) return;
-      // Replacing a device file removes the old copy; a URL belongs to
-      // whoever hosts it and is only forgotten, never deleted.
-      final previous = controller.text.trim();
-      final ownsPrevious = RoutineMediaStore.isDeviceFile(previous) ||
-          SharedMediaService.isShared(previous);
-      if (ownsPrevious && previous != slot) {
-        await const RoutineMediaStore().discard(previous);
-      }
+      // The file this replaces is not deleted here: the saved routine may
+      // still use it, and the educator may yet cancel. The builder decides.
       controller.text = slot;
       widget.onChanged();
     } finally {
@@ -874,10 +882,9 @@ class _MediaFieldState extends State<_MediaField> {
                   ? IconButton(
                       tooltip: filipino ? 'Alisin' : 'Clear',
                       icon: const Icon(Icons.close_rounded),
-                      onPressed: () async {
-                        if (onDevice || shared) {
-                          await const RoutineMediaStore().discard(value);
-                        }
+                      // Cleared, not deleted: the builder removes the
+                      // file once a save no longer uses it.
+                      onPressed: () {
                         controller.clear();
                         widget.onChanged();
                       },

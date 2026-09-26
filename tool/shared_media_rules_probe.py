@@ -5,9 +5,11 @@
 `shared_media/{id}` and its `chunks` hold the pictures, videos and learner
 video answers shared between tablets (SharedMediaService) — on the free Spark
 plan, in place of Cloud Storage. This signs in two throwaway anonymous users
-(the same mechanism the app uses) and checks that only the uploading device
-can write or delete a file, that anyone signed in can read it, and that the
-size limits which keep one upload from eating the free quota hold.
+(the same mechanism the app uses) and checks that a file can only be shared
+for a profile the sharing device owns, that only that profile's device may
+write or delete it (and the uploading device once the profile is gone), that
+anyone signed in can read it, and that the size limits which keep one upload
+from eating the free quota hold.
 
 Runs against **production** rules. Every doc it writes is removed on the way
 out; the anonymous auth accounts remain (harmless). Standard library only.
@@ -62,10 +64,10 @@ def b(n):
     return {"bytesValue": base64.b64encode(b"\x01" * n).decode()}
 
 
-def meta(uid, size=4, chunks=1, status="uploading"):
+def meta(uid, profile, size=4, chunks=1, status="uploading"):
     return {
         "owner_uid": s(uid),
-        "owner_profile_id": s("rulesprobe"),
+        "owner_profile_id": s(profile),
         "ext": s("mp4"),
         "size": i(size),
         "chunk_count": i(chunks),
@@ -99,17 +101,26 @@ def main():
 
     media = f"shared_media/rulesprobe-{uid_a[:8]}"
     chunk = f"{media}/chunks/0"
+    # A throwaway profile owned by device A — files are shared AS a profile.
+    profile_a = f"rulesprobe-profile-{uid_a[:8]}"
+    check("device A can create its profile",
+          write(f"profiles/{profile_a}", {"owner_uid": s(uid_a), "name": s("probe")}, tok_a), 200)
 
     # ── the metadata document ─────────────────────────────
-    check("uploader can create a file's metadata", write(media, meta(uid_a), tok_a), 200)
+    check("uploader can create a file's metadata", write(media, meta(uid_a, profile_a), tok_a), 200)
     check("another device CANNOT create metadata in the uploader's name",
-          write(f"shared_media/rulesprobe-forged-{uid_b[:8]}", meta(uid_a), tok_b), 403)
+          write(f"shared_media/rulesprobe-forged-{uid_b[:8]}", meta(uid_a, profile_a), tok_b), 403)
+    check("a device CANNOT share a file for a profile it does not own",
+          write(f"shared_media/rulesprobe-notmine-{uid_b[:8]}", meta(uid_b, profile_a), tok_b), 403)
+    check("a device CANNOT share a file for a profile that does not exist",
+          write(f"shared_media/rulesprobe-noprofile-{uid_a[:8]}",
+                meta(uid_a, f"rulesprobe-missing-{uid_a[:8]}"), tok_a), 403)
     check("a file over 15 MB is refused",
           write(f"shared_media/rulesprobe-big-{uid_a[:8]}",
-                meta(uid_a, size=15728641, chunks=17), tok_a), 403)
+                meta(uid_a, profile_a, size=15728641, chunks=17), tok_a), 403)
     check("more than 17 pieces is refused",
           write(f"shared_media/rulesprobe-many-{uid_a[:8]}",
-                meta(uid_a, size=100, chunks=18), tok_a), 403)
+                meta(uid_a, profile_a, size=100, chunks=18), tok_a), 403)
 
     # ── the pieces ────────────────────────────────────────
     check("uploader can write a piece", write(chunk, {"i": i(0), "data": b(4)}, tok_a), 200)
@@ -126,13 +137,27 @@ def main():
 
     # ── changing and deleting ─────────────────────────────
     check("uploader CANNOT change the recorded size",
-          write(media, meta(uid_a, size=999), tok_a), 403)
+          write(media, meta(uid_a, profile_a, size=999), tok_a), 403)
+    check("uploader CANNOT hand the file to another profile",
+          write(media, meta(uid_a, f"rulesprobe-other-{uid_a[:8]}", status="ready"), tok_a), 403)
     check("uploader can mark the file ready",
-          write(media, meta(uid_a, status="ready"), tok_a), 200)
+          write(media, meta(uid_a, profile_a, status="ready"), tok_a), 200)
     check("another device CANNOT delete a piece", delete(chunk, tok_b), 403)
     check("another device CANNOT delete the metadata", delete(media, tok_b), 403)
-    check("uploader can delete a piece", delete(chunk, tok_a), 200)
-    check("uploader can delete the metadata", delete(media, tok_a), 200)
+    check("the profile's device can delete a piece", delete(chunk, tok_a), 200)
+    check("the profile's device can delete the metadata", delete(media, tok_a), 200)
+
+    # ── a deleted profile's leftovers ─────────────────────
+    left = f"shared_media/rulesprobe-left-{uid_a[:8]}"
+    check("uploader can share a second file", write(left, meta(uid_a, profile_a), tok_a), 200)
+    check("uploader can write its piece", write(f"{left}/chunks/0", {"i": i(0), "data": b(4)}, tok_a), 200)
+    check("device A can delete its profile", delete(f"profiles/{profile_a}", tok_a), 200)
+    check("once the profile is gone, another device still CANNOT delete its file",
+          delete(left, tok_b), 403)
+    check("once the profile is gone, the uploading device can delete a piece",
+          delete(f"{left}/chunks/0", tok_a), 200)
+    check("once the profile is gone, the uploading device can delete the file",
+          delete(left, tok_a), 200)
 
     failed = [r for r in results if not r[0]]
     print(f"\n{len(results) - len(failed)}/{len(results)} checks passed")
