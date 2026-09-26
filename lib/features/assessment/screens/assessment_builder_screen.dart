@@ -179,7 +179,7 @@ class _AssessmentBuilderScreenState
                     icon: const Icon(Icons.save_rounded, size: 18),
                     label: Text(_t(context).gmSave),
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: HCColor.of(context).primary,
                     ),
                   ),
                 ],
@@ -240,7 +240,7 @@ class _AssessmentBuilderScreenState
                                 AppColors.primary.withValues(alpha: 0.2),
                             checkmarkColor: hc.textPrimary,
                             side: BorderSide(
-                              color: selected ? AppColors.primary : hc.border,
+                              color: selected ? hc.primary : hc.border,
                               width: selected ? 2 : 1,
                             ),
                             labelStyle: AppTypography.labelMedium.copyWith(
@@ -350,7 +350,7 @@ class _AssessmentBuilderScreenState
     final hc = HCColor.of(context);
     return Row(
       children: [
-        Icon(icon, color: AppColors.primary, size: 20),
+        Icon(icon, color: HCColor.of(context).primary, size: 20),
         const SizedBox(width: 8),
         // Flexible, or a long section title beside the icon runs off the row.
         Flexible(
@@ -381,7 +381,7 @@ class _AssessmentBuilderScreenState
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        borderSide: BorderSide(color: HCColor.of(context).primary, width: 2),
       ),
       filled: true,
       fillColor: hc.surface,
@@ -549,7 +549,7 @@ class _AssessmentBuilderScreenState
               context.pop();
             },
             style: FilledButton.styleFrom(
-                backgroundColor: AppColors.error),
+                backgroundColor: HCColor.of(context).fillFor(AppColors.error)),
             child: Text(_t(context).abDiscard),
           ),
         ],
@@ -914,7 +914,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                           AppColors.primary.withValues(alpha: 0.2),
                       checkmarkColor: hc.textPrimary,
                       side: BorderSide(
-                        color: selected ? AppColors.primary : hc.border,
+                        color: selected ? hc.primary : hc.border,
                         width: selected ? 2 : 1,
                       ),
                       labelStyle: AppTypography.labelMedium.copyWith(
@@ -1085,7 +1085,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 FilledButton(
                   onPressed: _saveQuestion,
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: HCColor.of(context).primary,
                     minimumSize: const Size(double.infinity, 52),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16)),
@@ -1119,7 +1119,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        borderSide: BorderSide(color: HCColor.of(context).primary, width: 2),
       ),
       filled: true,
       fillColor: hc.surface,

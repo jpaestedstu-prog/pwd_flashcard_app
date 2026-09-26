@@ -303,7 +303,7 @@ class _RoutineStepActionBarState extends ConsumerState<RoutineStepActionBar> {
             icon: const Icon(Icons.verified_rounded, size: 18),
             label: Text(l ? 'Markahang tapos' : 'Mark done'),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.success,
+              backgroundColor: HCColor.of(context).fillFor(AppColors.success),
               foregroundColor: Colors.white,
               visualDensity: compact,
             ),

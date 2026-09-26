@@ -721,7 +721,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
                       label: Text(_t(context).siGotItBang),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: AppColors.success,
+                        backgroundColor: HCColor.of(context).fillFor(AppColors.success),
                       ),
                     ),
                   ),

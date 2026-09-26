@@ -120,7 +120,7 @@ class UsernameHeaderCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.alternate_email_rounded, color: AppColors.primary),
+          Icon(Icons.alternate_email_rounded, color: HCColor.of(context).primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -529,7 +529,7 @@ class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(backgroundColor: HCColor.of(context).fillFor(AppColors.error)),
             child: Text(confirmLabel),
           ),
         ],

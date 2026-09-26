@@ -397,7 +397,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                     ),
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: HCColor.of(context).primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -445,7 +445,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                           ),
                         ),
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.success,
+                          backgroundColor: HCColor.of(context).fillFor(AppColors.success),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -575,7 +575,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                     _loadReviewWords();
                   },
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: HCColor.of(context).primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),

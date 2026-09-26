@@ -164,8 +164,8 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
               onPressed: () => _showAddNoteDialog(context, ref),
               icon: const Icon(Icons.add_rounded),
               label: Text(_t(context).scAddNote),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              backgroundColor: HCColor.of(context).primary,
+              foregroundColor: HCColor.of(context).textOnPrimary,
             )
               .animate()
               .fadeIn(duration: 400.ms, delay: 400.ms)
@@ -214,7 +214,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
               ref.read(showcaseProvider.notifier).removeItem(item.id);
             },
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
+              backgroundColor: HCColor.of(context).fillFor(AppColors.error),
             ),
             child: Text(_t(context).gmRemove),
           ),

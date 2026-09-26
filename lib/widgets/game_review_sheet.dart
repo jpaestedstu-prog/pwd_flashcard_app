@@ -77,9 +77,9 @@ class _GameReviewSheet extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.rate_review_rounded,
-                      color: AppColors.primary,
+                      color: HCColor.of(context).primary,
                       size: 20,
                     ),
                   ),

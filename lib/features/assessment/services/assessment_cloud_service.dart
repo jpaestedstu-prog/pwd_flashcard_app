@@ -252,8 +252,13 @@ class AssessmentCloudService {
   /// Pull everything this educator needs to run Assign Tasks and Assignment
   /// Tracking: their own templates, their own assignments, and the results
   /// their assignees have submitted from any device.
-  Future<void> hydrateEducator(String educatorId) async {
-    if (!_enabled || educatorId.isEmpty) return;
+  ///
+  /// True only when the pull completed and the server itself answered for
+  /// the templates and the assignments — the point at which this tablet
+  /// holds everything the educator made, which is what the orphaned-file
+  /// sweep needs to know before it deletes anything.
+  Future<bool> hydrateEducator(String educatorId) async {
+    if (!_enabled || educatorId.isEmpty) return false;
     try {
       // Replay first, so the pull below reflects the deletes this device made
       // offline rather than handing them straight back.
@@ -309,8 +314,10 @@ class AssessmentCloudService {
         assessmentsAuthoritative: assessmentsAuthoritative,
         assignmentsAuthoritative: assignmentsAuthoritative,
       );
+      return assessmentsAuthoritative && assignmentsAuthoritative;
     } catch (e, s) {
       _log('hydrateEducator', e, s);
+      return false;
     }
   }
 

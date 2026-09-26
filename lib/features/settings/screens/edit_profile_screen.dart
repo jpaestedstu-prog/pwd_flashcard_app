@@ -986,7 +986,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               icon: const Icon(Icons.lock_open_rounded),
               label: Text(_t(context).epRemovePin),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
+                foregroundColor: HCColor.of(context).errorText,
                 side: const BorderSide(color: AppColors.error),
               ),
             )

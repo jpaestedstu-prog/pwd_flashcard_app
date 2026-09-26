@@ -4,6 +4,7 @@ import '../models/assessment_models.dart';
 import '../services/assessment_cloud_service.dart';
 import '../services/assessment_media_publisher.dart';
 import '../services/deleted_learner_cleanup.dart';
+import '../services/shared_media_sweep.dart';
 import '../../../core/services/firebase_service.dart';
 import '../services/assessment_media_store.dart';
 import '../services/assessment_service.dart';
@@ -194,6 +195,9 @@ final learnerAssignmentSyncProvider = FutureProvider.family<bool, String>((
   final ok = await const AssessmentCloudService().hydrateLearner(profileId);
   // Video answers recorded offline reach the teacher once this works.
   await const AssessmentMediaPublisher().publishLearnerAnswers(profileId);
+  // Files this learner shared that nothing points at (an app closed in the
+  // middle of a test) — only once the pull has put everything here.
+  if (ok) await const SharedMediaSweep().run(profileId);
   return ok;
 });
 
@@ -204,7 +208,9 @@ final educatorAssessmentSyncProvider = FutureProvider.family<void, String>((
   ref,
   educatorId,
 ) async {
-  await const AssessmentCloudService().hydrateEducator(educatorId);
+  final complete = await const AssessmentCloudService().hydrateEducator(
+    educatorId,
+  );
   // Files picked while offline are shared now that the pull worked, so the
   // learners' tablets can open them.
   await const AssessmentMediaPublisher().publishPending(educatorId);
@@ -212,6 +218,9 @@ final educatorAssessmentSyncProvider = FutureProvider.family<void, String>((
   // with their feedback and its files — after the pull, so every assignment
   // is here to check.
   await ref.read(deletedLearnerCleanupProvider(educatorId).future);
+  // Files this educator shared that nothing points at — an editor closed
+  // by the system before it could save or tidy up.
+  if (complete) await const SharedMediaSweep().run(educatorId);
 
   // Hydration writes straight to Hive, which these two notifiers cannot see:
   // they load once and then only re-read after their own writes. Without this

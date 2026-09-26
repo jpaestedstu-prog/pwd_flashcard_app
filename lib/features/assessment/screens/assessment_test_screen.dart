@@ -586,7 +586,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
               Navigator.pop(ctx);
               context.pop();
             },
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            style: TextButton.styleFrom(foregroundColor: HCColor.of(context).errorText),
             child: Text(_t.testQuitConfirm),
           ),
         ],

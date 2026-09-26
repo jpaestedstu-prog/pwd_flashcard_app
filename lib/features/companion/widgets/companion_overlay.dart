@@ -767,7 +767,7 @@ class _ListeningBar extends StatelessWidget {
       color: AppColors.primary.withValues(alpha: 0.08),
       child: Row(
         children: [
-          const Icon(Icons.mic_rounded, size: 18, color: AppColors.primary),
+          Icon(Icons.mic_rounded, size: 18, color: HCColor.of(context).primary),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -872,8 +872,8 @@ class _InputRow extends StatelessWidget {
               onPressed: onSend,
               icon: const Icon(Icons.send_rounded),
               style: IconButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                backgroundColor: HCColor.of(context).primary,
+                foregroundColor: HCColor.of(context).textOnPrimary,
               ),
             ),
         ],

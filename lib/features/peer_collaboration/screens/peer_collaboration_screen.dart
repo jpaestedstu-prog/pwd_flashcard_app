@@ -1008,7 +1008,7 @@ class _PeerCollaborationScreenState
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: HCColor.of(context).primary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -1144,10 +1144,10 @@ class _AdaptationNote extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.accessibility_new_rounded,
             size: 16,
-            color: AppColors.primary,
+            color: HCColor.of(context).primary,
           ),
           const SizedBox(width: 6),
           Flexible(
@@ -1356,7 +1356,7 @@ class _RelayBoard extends StatelessWidget {
                       : hc.surface,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isRevealed ? AppColors.primary : hc.border,
+                    color: isRevealed ? HCColor.of(context).primary : hc.border,
                     width: isRevealed ? 2 : 1,
                   ),
                 ),
@@ -1365,7 +1365,7 @@ class _RelayBoard extends StatelessWidget {
                     isRevealed ? revealed[i].toUpperCase() : '_',
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: isRevealed ? AppColors.primary : hc.textSecondary,
+                      color: isRevealed ? HCColor.of(context).primary : hc.textSecondary,
                     ),
                   ),
                 ),

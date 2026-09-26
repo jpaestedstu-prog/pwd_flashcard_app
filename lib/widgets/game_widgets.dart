@@ -185,7 +185,7 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
                       ),
                       child: Icon(
                         Icons.category_rounded,
-                        color: AppColors.primary,
+                        color: HCColor.of(context).primary,
                         size: context.scaleIcon(22),
                       ),
                     ),

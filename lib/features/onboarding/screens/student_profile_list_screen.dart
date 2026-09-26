@@ -104,7 +104,7 @@ class _StudentProfileListScreenState
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
+              backgroundColor: HCColor.of(context).fillFor(AppColors.error),
             ),
             child: Text(_t(context).delete),
           ),
@@ -392,7 +392,7 @@ class _DetailChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.primary),
+          Icon(icon, size: 14, color: HCColor.of(context).primary),
           const SizedBox(width: 4),
           Text(
             label,

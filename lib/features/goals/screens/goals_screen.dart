@@ -724,8 +724,8 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
               child: ElevatedButton(
                 onPressed: _canSave ? _save : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                  backgroundColor: HCColor.of(context).primary,
+                  foregroundColor: HCColor.of(context).textOnPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),

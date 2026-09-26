@@ -58,10 +58,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
             ),
             child: Column(
               children: [
-                const Icon(
+                Icon(
                   Icons.cloud_done_rounded,
                   size: 64,
-                  color: AppColors.primary,
+                  color: HCColor.of(context).primary,
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -232,7 +232,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            style: FilledButton.styleFrom(backgroundColor: HCColor.of(context).primary),
             child: Text(_t(context).brRestore),
           ),
         ],
@@ -398,7 +398,7 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppColors.primary),
+          Icon(icon, size: 20, color: HCColor.of(context).primary),
           const SizedBox(width: 10),
           Text(text, style: AppTypography.bodyMedium),
         ],

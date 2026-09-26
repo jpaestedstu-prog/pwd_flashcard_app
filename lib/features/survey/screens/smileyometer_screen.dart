@@ -190,7 +190,7 @@ class _QuestionBlock extends StatelessWidget {
                               faceLabels[i],
                               textAlign: TextAlign.center,
                               style: AppTypography.labelSmall.copyWith(
-                                color: isSelected ? AppColors.primary : null,
+                                color: isSelected ? HCColor.of(context).primary : null,
                                 fontWeight:
                                     isSelected ? FontWeight.bold : null,
                               ),

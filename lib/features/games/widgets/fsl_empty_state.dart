@@ -69,10 +69,10 @@ class FslEmptyStateScaffold extends ConsumerWidget {
                   color: AppColors.primary.withValues(alpha: 0.10),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.sign_language_rounded,
                   size: 48,
-                  color: AppColors.primary,
+                  color: HCColor.of(context).primary,
                 ),
               ),
               const SizedBox(height: 20),

@@ -643,7 +643,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                     ),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.error,
+                        backgroundColor: HCColor.of(context).fillFor(AppColors.error),
                       ),
                       onPressed: _bulkRemove,
                       icon: const Icon(Icons.delete_rounded, size: 16),
@@ -870,7 +870,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
             child: Text(_tr(context).hubCancel),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(backgroundColor: HCColor.of(context).fillFor(AppColors.error)),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(_tr(context).hubDelete),
           ),
@@ -958,7 +958,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
             child: Text(_tr(context).hubCancel),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(backgroundColor: HCColor.of(context).fillFor(AppColors.error)),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(_tr(context).gmRemove),
           ),
@@ -990,7 +990,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
             child: Text(_tr(context).hubCancel),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(backgroundColor: HCColor.of(context).fillFor(AppColors.error)),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(_tr(context).gmRemove),
           ),

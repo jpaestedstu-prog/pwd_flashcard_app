@@ -860,8 +860,8 @@ class _ChildCard extends ConsumerWidget {
                     ),
                   ),
                 IconButton(
-                  icon: const Icon(Icons.timer_outlined,
-                      size: 20, color: AppColors.primary),
+                  icon: Icon(Icons.timer_outlined,
+                      size: 20, color: HCColor.of(context).primary),
                   tooltip: filipino ? 'Limitasyon sa oras' : 'Time limits',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -871,8 +871,8 @@ class _ChildCard extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.alarm_rounded,
-                      size: 20, color: AppColors.primary),
+                  icon: Icon(Icons.alarm_rounded,
+                      size: 20, color: HCColor.of(context).primary),
                   tooltip: filipino ? 'Mga alarma' : 'Alarms',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -882,8 +882,8 @@ class _ChildCard extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.timeline_rounded,
-                      size: 20, color: AppColors.primary),
+                  icon: Icon(Icons.timeline_rounded,
+                      size: 20, color: HCColor.of(context).primary),
                   tooltip: filipino ? 'Tingnan ang timeline' : 'View Timeline',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -894,8 +894,8 @@ class _ChildCard extends ConsumerWidget {
                 ),
                 // Tests, video answers and feedback, and the family's PDF.
                 IconButton(
-                  icon: const Icon(Icons.folder_special_rounded,
-                      size: 20, color: AppColors.primary),
+                  icon: Icon(Icons.folder_special_rounded,
+                      size: 20, color: HCColor.of(context).primary),
                   tooltip: filipino ? 'Portpolyo' : 'Portfolio',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -905,8 +905,8 @@ class _ChildCard extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.sticky_note_2_rounded,
-                      size: 20, color: AppColors.primary),
+                  icon: Icon(Icons.sticky_note_2_rounded,
+                      size: 20, color: HCColor.of(context).primary),
                   tooltip: audience.notesTooltipOf(filipino: filipino),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),

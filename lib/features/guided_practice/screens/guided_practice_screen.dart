@@ -714,7 +714,7 @@ class _CompletionScreen extends StatelessWidget {
                         .copyWith(color: AppColors.textOnPrimary, fontWeight: FontWeight.w700),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: HCColor.of(context).primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),

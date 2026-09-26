@@ -239,10 +239,10 @@ class _Hero extends StatelessWidget {
             shape: BoxShape.circle,
             color: AppColors.primary.withValues(alpha: 0.12),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.cloud_sync_rounded,
             size: 48,
-            color: AppColors.primary,
+            color: HCColor.of(context).primary,
           ),
         ),
         const SizedBox(height: 16),

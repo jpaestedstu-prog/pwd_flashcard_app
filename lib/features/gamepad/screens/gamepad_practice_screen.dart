@@ -343,7 +343,7 @@ class _ControlChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = tried ? AppColors.success : Theme.of(context).hintColor;
-    final color = active ? AppColors.primary : base;
+    final color = active ? HCColor.of(context).primary : base;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),

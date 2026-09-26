@@ -88,7 +88,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                       : null),
               secondary: Icon(
                 Icons.notifications_active_rounded,
-                color: _config.enabled ? AppColors.primary : hc.textHint,
+                color: _config.enabled ? HCColor.of(context).primary : hc.textHint,
               ),
             ),
           ).animate().fadeIn(duration: 300.ms),

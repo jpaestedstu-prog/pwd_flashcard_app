@@ -197,7 +197,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            style: TextButton.styleFrom(foregroundColor: HCColor.of(context).errorText),
             child: Text(isFilipino ? 'Itapon' : 'Discard'),
           ),
         ],

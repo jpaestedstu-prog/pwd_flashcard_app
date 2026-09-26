@@ -1393,6 +1393,33 @@ class AssessmentService {
     return out;
   }
 
+  /// Every stored media value in the results on this device — learners'
+  /// video answers, which live in a result rather than in an assessment.
+  static Set<String> resultMediaValues() {
+    final out = <String>{};
+    for (final key in _box.keys) {
+      if (!key.toString().startsWith('assessment_results_')) continue;
+      final raw = _box.get(key);
+      if (raw is! List) continue;
+      for (final entry in raw) {
+        if (entry is! Map) continue;
+        try {
+          final r = AssessmentResult.fromJson(Map<String, dynamic>.from(entry));
+          for (final a in r.answers) {
+            final v = a.givenAnswer.trim();
+            if (v.startsWith('shared://') || v.startsWith('file://')) out.add(v);
+          }
+        } catch (_) {
+          // Undecodable: refers to nothing we can resolve.
+        }
+      }
+    }
+    return out;
+  }
+
+  /// How many results this device keeps per learner; older ones fall off.
+  static const int resultsKept = 100;
+
   /// Build completion status for each student in an assignment.
   ///
   /// [names] is an optional profile-id → display-name map, which the caller

@@ -229,7 +229,7 @@ class _SortButton extends ConsumerWidget {
                             ? Icons.arrow_upward_rounded
                             : Icons.arrow_downward_rounded,
                         size: 16,
-                        color: AppColors.primary,
+                        color: HCColor.of(context).primary,
                       ),
                     ],
                   ],
@@ -245,7 +245,7 @@ class _SortButton extends ConsumerWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.sort_rounded, size: 18, color: AppColors.primary),
+            Icon(Icons.sort_rounded, size: 18, color: HCColor.of(context).primary),
             const SizedBox(width: 4),
             Text(
               _sortLabel(_t(context), filter.sortField),
@@ -262,7 +262,7 @@ class _SortButton extends ConsumerWidget {
                   ? Icons.arrow_upward_rounded
                   : Icons.arrow_downward_rounded,
               size: 14,
-              color: AppColors.primary,
+              color: HCColor.of(context).primary,
             ),
           ],
         ),
@@ -317,7 +317,7 @@ class _FilterChipDropdown<T> extends StatelessWidget {
             Text(
               label,
               style: AppTypography.labelSmall.copyWith(
-                color: isActive ? AppColors.primary : HCColor.of(context).textSecondary,
+                color: isActive ? HCColor.of(context).primary : HCColor.of(context).textSecondary,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
@@ -325,7 +325,7 @@ class _FilterChipDropdown<T> extends StatelessWidget {
             Icon(
               Icons.arrow_drop_down_rounded,
               size: 18,
-              color: isActive ? AppColors.primary : AppColors.textHint,
+              color: isActive ? HCColor.of(context).primary : HCColor.of(context).textHint,
             ),
           ],
         ),
@@ -386,7 +386,7 @@ class _TagFilterChip extends ConsumerWidget {
                   ? _t(context).sfTagsN(selectedTags.length)
                   : _t(context).sfTags,
               style: AppTypography.labelSmall.copyWith(
-                color: isActive ? AppColors.primary : HCColor.of(context).textSecondary,
+                color: isActive ? HCColor.of(context).primary : HCColor.of(context).textSecondary,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
@@ -394,7 +394,7 @@ class _TagFilterChip extends ConsumerWidget {
             Icon(
               Icons.arrow_drop_down_rounded,
               size: 18,
-              color: isActive ? AppColors.primary : AppColors.textHint,
+              color: isActive ? HCColor.of(context).primary : HCColor.of(context).textHint,
             ),
           ],
         ),

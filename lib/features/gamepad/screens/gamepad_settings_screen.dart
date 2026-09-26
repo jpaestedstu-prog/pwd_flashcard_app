@@ -246,7 +246,7 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = connected ? AppColors.primary : Theme.of(context).hintColor;
+    final color = connected ? HCColor.of(context).primary : Theme.of(context).hintColor;
     return Semantics(
       liveRegion: true,
       label: connected

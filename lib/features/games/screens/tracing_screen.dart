@@ -650,7 +650,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
           label: Text(AppLocalizations.of(context)!.check),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            backgroundColor: AppColors.primary,
+            backgroundColor: HCColor.of(context).primary,
           ),
         ),
       ],

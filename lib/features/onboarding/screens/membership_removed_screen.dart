@@ -79,10 +79,10 @@ class _MembershipRemovedScreenState extends State<MembershipRemovedScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.exit_to_app_rounded,
                 size: 64,
-                color: AppColors.primary,
+                color: HCColor.of(context).primary,
               ),
               const SizedBox(height: 16),
               Text(

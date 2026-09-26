@@ -191,12 +191,12 @@ class _ProfileSwitcherScreenState extends ConsumerState<ProfileSwitcherScreen> {
                     icon: const Icon(Icons.person_add_rounded),
                     label: Text(AppLocalizations.of(context)!.addNewProfile),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
+                      foregroundColor: HCColor.of(context).primary,
                       // Last gaze row — ring it the same way as the cards.
                       side: gaze.isFocused(_profiles.length, 0)
                           ? const BorderSide(color: AppColors.accent, width: 4)
-                          : const BorderSide(
-                              color: AppColors.primary,
+                          : BorderSide(
+                              color: HCColor.of(context).primary,
                               width: 2,
                             ),
                       shape: RoundedRectangleBorder(
@@ -489,7 +489,7 @@ class _PinEntryDialogState extends State<_PinEntryDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.lock_rounded, size: 40, color: AppColors.primary),
+            Icon(Icons.lock_rounded, size: 40, color: HCColor.of(context).primary),
             const SizedBox(height: 12),
             Text(
               l10n.enterPin(_profile.name),
@@ -722,10 +722,10 @@ class _RecoveryCodeSheetState extends State<_RecoveryCodeSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.vpn_key_rounded,
               size: 40,
-              color: AppColors.primary,
+              color: HCColor.of(context).primary,
             ),
             const SizedBox(height: 12),
             Text(
@@ -844,10 +844,10 @@ class _EducatorOverrideSheetState extends State<_EducatorOverrideSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.supervisor_account_rounded,
               size: 40,
-              color: AppColors.primary,
+              color: HCColor.of(context).primary,
             ),
             const SizedBox(height: 12),
             Text(
@@ -974,7 +974,7 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.primary),
+          Icon(icon, size: 14, color: HCColor.of(context).primary),
           const SizedBox(width: 4),
           Text(
             label,

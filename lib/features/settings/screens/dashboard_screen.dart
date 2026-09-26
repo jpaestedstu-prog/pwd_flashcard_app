@@ -781,10 +781,10 @@ class _InsightCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.tips_and_updates_rounded,
                         size: 16,
-                        color: AppColors.primary,
+                        color: HCColor.of(context).primary,
                       ),
                       const SizedBox(width: 8),
                       Expanded(

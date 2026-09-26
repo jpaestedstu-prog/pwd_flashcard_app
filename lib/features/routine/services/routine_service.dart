@@ -351,6 +351,11 @@ class RoutineService {
     }
   }
 
+  /// Whether a routine in the cloud other than [exceptRoutineId] names the
+  /// shared file [value]. True when the cloud cannot be asked.
+  Future<bool> sharedMediaInUse(String value, {String? exceptRoutineId}) =>
+      _sharedInUseInCloud(value, exceptRoutineId);
+
   Future<bool> _sharedInUseInCloud(String value, String? exceptRoutineId) async {
     final seam = debugSharedInUse;
     if (seam != null) return seam(value, exceptRoutineId);

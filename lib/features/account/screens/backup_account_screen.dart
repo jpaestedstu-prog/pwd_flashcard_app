@@ -474,7 +474,7 @@ class _LinkedAccountActions extends StatelessWidget {
           label: Text(_t(context).baSignOutLinked),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
-            foregroundColor: AppColors.error,
+            foregroundColor: HCColor.of(context).errorText,
             side: const BorderSide(color: AppColors.error),
           ),
         ),

@@ -52,7 +52,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
               ),
             ],
           ),
-          backgroundColor: AppColors.error,
+          backgroundColor: HCColor.of(context).fillFor(AppColors.error),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

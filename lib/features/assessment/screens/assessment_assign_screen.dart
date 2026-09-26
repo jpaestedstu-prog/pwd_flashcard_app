@@ -756,8 +756,8 @@ class _AssessmentTile extends StatelessWidget {
                 ),
               ),
               if (selected)
-                const Icon(Icons.check_circle_rounded,
-                    color: AppColors.primary, size: 24),
+                Icon(Icons.check_circle_rounded,
+                    color: HCColor.of(context).primary, size: 24),
             ],
           ),
         ),

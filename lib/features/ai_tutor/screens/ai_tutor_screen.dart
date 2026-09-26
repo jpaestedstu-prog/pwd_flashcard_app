@@ -847,8 +847,8 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
                           onPressed: _sendMessage,
                           icon: const Icon(Icons.send_rounded),
                           style: IconButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
+                            backgroundColor: HCColor.of(context).primary,
+                            foregroundColor: HCColor.of(context).textOnPrimary,
                           ),
                         ),
                       ),

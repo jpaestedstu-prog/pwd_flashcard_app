@@ -1845,7 +1845,7 @@ class _JoinClassCta extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.school_rounded, color: AppColors.primary),
+            child: Icon(Icons.school_rounded, color: HCColor.of(context).primary),
           ),
           const SizedBox(width: 12),
           Expanded(

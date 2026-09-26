@@ -380,7 +380,7 @@ class TutorMessageBubble extends StatelessWidget {
                             .copyWith(color: AppColors.textOnPrimary),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.secondary,
+                        backgroundColor: HCColor.of(context).fillFor(AppColors.secondary),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -482,7 +482,7 @@ class _BubbleAction extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 16, color: AppColors.primary),
+              Icon(icon, size: 16, color: HCColor.of(context).primary),
               const SizedBox(width: 4),
               Text(
                 label,

@@ -63,7 +63,7 @@ class _EducatorPointer extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cast_rounded, size: 56, color: AppColors.primary),
+            Icon(Icons.cast_rounded, size: 56, color: HCColor.of(context).primary),
             const SizedBox(height: 16),
             Text(
               _t(context).lsHostTitle,
@@ -878,7 +878,7 @@ class _Notice extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 52, color: AppColors.primary),
+            Icon(icon, size: 52, color: HCColor.of(context).primary),
             const SizedBox(height: 16),
             Text(
               title,

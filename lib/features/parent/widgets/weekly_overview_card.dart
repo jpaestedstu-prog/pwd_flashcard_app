@@ -99,8 +99,8 @@ class WeeklyOverviewCard extends StatelessWidget {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.bar_chart_rounded,
-                        size: 18, color: AppColors.primary),
+                    child: Icon(Icons.bar_chart_rounded,
+                        size: 18, color: HCColor.of(context).primary),
                   ),
                   const SizedBox(width: 10),
                   Flexible(
@@ -227,7 +227,7 @@ class WeeklyOverviewCard extends StatelessWidget {
                           fontWeight:
                               isToday ? FontWeight.w800 : FontWeight.w500,
                           color:
-                              isToday ? AppColors.primary : hc.textSecondary,
+                              isToday ? HCColor.of(context).primary : hc.textSecondary,
                         ),
                       ),
                       if (isToday)

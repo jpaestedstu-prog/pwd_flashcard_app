@@ -339,7 +339,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                     ),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 18),
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: HCColor.of(context).primary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),

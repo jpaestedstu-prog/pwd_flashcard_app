@@ -249,7 +249,7 @@ class _FlashcardLinkPickerState extends ConsumerState<_FlashcardLinkPicker> {
                         onPressed: () =>
                             Navigator.pop(context, _selected.toList()),
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: HCColor.of(context).primary,
                           foregroundColor: AppColors.textOnPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),

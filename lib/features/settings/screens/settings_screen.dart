@@ -1098,7 +1098,7 @@ class SettingsScreen extends ConsumerWidget {
               ref.read(profileProvider.notifier).clearProfile();
               if (context.mounted) context.go('/profile');
             },
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(backgroundColor: HCColor.of(context).fillFor(AppColors.error)),
             child: Text(AppLocalizations.of(context)?.reset ?? 'Reset'),
           ),
         ],

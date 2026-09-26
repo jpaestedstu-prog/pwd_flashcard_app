@@ -925,8 +925,8 @@ class _FriendPickerSheet extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                    trailing: const Icon(Icons.play_circle_fill_rounded,
-                        color: AppColors.primary),
+                    trailing: Icon(Icons.play_circle_fill_rounded,
+                        color: HCColor.of(context).primary),
                     onTap: () => Navigator.of(ctx).pop(f),
                   );
                 },

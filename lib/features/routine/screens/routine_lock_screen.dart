@@ -720,7 +720,7 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
                   overflow: TextOverflow.ellipsis,
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.success,
+                  backgroundColor: HCColor.of(context).fillFor(AppColors.success),
                   foregroundColor: Colors.white,
                 ),
               ),

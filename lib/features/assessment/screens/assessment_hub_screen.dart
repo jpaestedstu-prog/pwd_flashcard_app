@@ -1607,7 +1607,7 @@ class _CustomAssessmentTile extends StatelessWidget {
               Navigator.pop(ctx);
               onDelete();
             },
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            style: TextButton.styleFrom(foregroundColor: HCColor.of(context).errorText),
             child: Text(_tr(context).hubDelete),
           ),
         ],

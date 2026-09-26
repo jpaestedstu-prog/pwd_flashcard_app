@@ -291,7 +291,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(backgroundColor: HCColor.of(context).fillFor(AppColors.error)),
             child: Text(AppLocalizations.of(context)!.delete),
           ),
         ],

@@ -331,7 +331,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(backgroundColor: HCColor.of(context).fillFor(AppColors.error)),
             child: Text(isFilipino ? 'Bawiin' : 'Unsend'),
           ),
         ],
@@ -781,8 +781,8 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                     ),
                     icon: const Icon(Icons.send_rounded),
                     style: IconButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                      backgroundColor: HCColor.of(context).primary,
+                      foregroundColor: HCColor.of(context).textOnPrimary,
                     ),
                   ),
                 ),
@@ -925,7 +925,7 @@ class _ConversationTile extends StatelessWidget {
               Text(
                 MessageTime.relative(last.timestamp, isFilipino: isFilipino),
                 style: AppTypography.labelSmall.copyWith(
-                  color: hasUnread ? AppColors.primary : hc.textSecondary,
+                  color: hasUnread ? HCColor.of(context).primary : hc.textSecondary,
                   fontWeight: hasUnread ? FontWeight.w700 : FontWeight.normal,
                 ),
               ),
@@ -1366,10 +1366,10 @@ class _SignMessageBodyState extends ConsumerState<_SignMessageBody> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else
-              const Icon(
+              Icon(
                 Icons.sign_language_rounded,
                 size: 20,
-                color: AppColors.primary,
+                color: HCColor.of(context).primary,
               ),
             const SizedBox(width: 8),
             Flexible(

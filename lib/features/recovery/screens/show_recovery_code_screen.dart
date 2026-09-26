@@ -180,9 +180,9 @@ class _GeneratePrompt extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.lock_reset_rounded,
-                color: AppColors.primary,
+                color: HCColor.of(context).primary,
                 size: 28,
               ),
               const SizedBox(width: 12),

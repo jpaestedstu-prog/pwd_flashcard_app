@@ -153,8 +153,11 @@ class RichEmptyState extends StatelessWidget {
                     ? Icon(actionIcon, size: 18)
                     : const SizedBox.shrink(),
                 label: Text(actionLabel!),
+                // The accent, deepened just enough for its white label
+                // (the pastel default was 2.4:1).
                 style: FilledButton.styleFrom(
-                  backgroundColor: accent,
+                  backgroundColor: hc.fillFor(accent),
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 14,

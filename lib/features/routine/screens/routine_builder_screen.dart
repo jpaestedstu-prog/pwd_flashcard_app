@@ -150,7 +150,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
             child: Text(l ? 'Magpatuloy sa pag-edit' : 'Keep editing'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(backgroundColor: HCColor.of(context).fillFor(AppColors.error)),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(l ? 'Itapon' : 'Discard'),
           ),

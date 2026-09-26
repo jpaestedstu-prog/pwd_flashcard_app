@@ -102,8 +102,8 @@ class _ClassroomDashboardScreenState
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                     child: Row(
                       children: [
-                        const Icon(Icons.people_rounded,
-                            color: AppColors.primary, size: 22),
+                        Icon(Icons.people_rounded,
+                            color: HCColor.of(context).primary, size: 22),
                         const SizedBox(width: 8),
                         Flexible(child: Text(AppLocalizations.of(context)!.students,
                             style: AppTypography.titleSmall

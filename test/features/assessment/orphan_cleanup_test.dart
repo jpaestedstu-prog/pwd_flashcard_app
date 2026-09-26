@@ -12,6 +12,7 @@ import 'package:pwdpwdpwd/features/assessment/models/assessment_media.dart';
 import 'package:pwdpwdpwd/features/assessment/models/assessment_models.dart';
 import 'package:pwdpwdpwd/features/assessment/services/assessment_service.dart';
 import 'package:pwdpwdpwd/features/assessment/services/deleted_learner_cleanup.dart';
+import 'package:pwdpwdpwd/features/assessment/services/shared_media_sweep.dart';
 import 'package:pwdpwdpwd/features/routine/models/routine_models.dart';
 import 'package:pwdpwdpwd/features/routine/services/routine_media_store.dart';
 import 'package:pwdpwdpwd/features/routine/services/routine_service.dart';
@@ -260,6 +261,111 @@ void main() {
             reason: 'Ben\'s copy of the routine still shows it');
         expect(HiveService.getCachedRoutine('ra'), isNull);
         expect(HiveService.getCachedRoutine('rc'), isNotNull);
+      });
+
+      test('the sweep deletes only old files nothing refers to', () async {
+        final abandoned = await _share('teacher-9', 'lost.jpg');
+        final fresh = await _share('teacher-9', 'fresh.jpg');
+        final inTest = await _share('teacher-9', 'q.jpg');
+        final inRoutine = await _share('teacher-9', 'r.jpg');
+        final inCloudRoutine = await _share('teacher-9', 'c.jpg');
+        final inResult = await _share('teacher-9', 'v.mp4');
+
+        await AssessmentService.saveAssessment(
+          'teacher-9',
+          Assessment(
+            id: 'sw-a',
+            title: 'Sweep',
+            type: AssessmentType.custom,
+            questions: [
+              AssessmentQuestion(
+                id: 'q',
+                questionText: 'Q',
+                correctAnswer: 'A',
+                choices: const ['A', 'B'],
+                media: AssessmentMedia(photo: inTest),
+              ),
+            ],
+            createdBy: 'teacher-9',
+            createdAt: DateTime(2026, 9),
+          ),
+        );
+        await HiveService.cacheRoutine(
+          _routine('sw-r', 'kid', photo: inRoutine),
+          cloudSynced: true,
+        );
+        await AssessmentService.saveResult(
+          'kid-9',
+          AssessmentResult(
+            id: 'sw-res',
+            assessmentId: 'sw-a',
+            profileId: 'kid-9',
+            type: AssessmentType.custom,
+            score: 0,
+            totalQuestions: 0,
+            answers: [
+              QuestionAnswer(
+                questionId: 'v',
+                givenAnswer: inResult,
+                isCorrect: false,
+                responseTimeMs: 1,
+                needsReview: true,
+              ),
+            ],
+            completedAt: DateTime(2026, 9, 20),
+            durationSeconds: 1,
+          ),
+        );
+        RoutineService.debugSharedInUse = (value, except) async =>
+            value == inCloudRoutine;
+        final now = DateTime(2026, 9, 26, 12);
+        final old = now.subtract(const Duration(days: 2));
+        SharedMediaSweep.debugOwned = (_) async => [
+          for (final v in [abandoned, inTest, inRoutine, inCloudRoutine, inResult])
+            (id: SharedMediaService.idOf(v), createdAt: old),
+          (id: SharedMediaService.idOf(fresh), createdAt: now),
+        ];
+        addTearDown(() => SharedMediaSweep.debugOwned = null);
+
+        final removed = await const SharedMediaSweep().run(
+          'teacher-9',
+          now: now,
+        );
+
+        expect(removed, 1);
+        expect(_inCloud(abandoned), isFalse);
+        expect(_inCloud(fresh), isTrue, reason: 'may be an open editor');
+        expect(_inCloud(inTest), isTrue);
+        expect(_inCloud(inRoutine), isTrue);
+        expect(_inCloud(inCloudRoutine), isTrue);
+        expect(_inCloud(inResult), isTrue);
+      });
+
+      test('the sweep does nothing when this tablet may not hold every '
+          'result', () async {
+        final orphan = await _share('kid-full', 'x.mp4');
+        for (var i = 0; i < AssessmentService.resultsKept; i++) {
+          await AssessmentService.saveResult(
+            'kid-full',
+            AssessmentResult(
+              id: 'full-$i',
+              assessmentId: 'a',
+              profileId: 'kid-full',
+              type: AssessmentType.custom,
+              score: 1,
+              totalQuestions: 1,
+              answers: const [],
+              completedAt: DateTime(2026, 9).add(Duration(minutes: i)),
+              durationSeconds: 1,
+            ),
+          );
+        }
+        SharedMediaSweep.debugOwned = (_) async => [
+          (id: SharedMediaService.idOf(orphan), createdAt: DateTime(2026)),
+        ];
+        addTearDown(() => SharedMediaSweep.debugOwned = null);
+        expect(await const SharedMediaSweep().run('kid-full'), 0);
+        expect(_inCloud(orphan), isTrue);
       });
 
       test('a learner whose profile is on this tablet is never counted as '

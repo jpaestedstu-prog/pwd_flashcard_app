@@ -467,7 +467,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            style: TextButton.styleFrom(foregroundColor: HCColor.of(context).errorText),
             child: Text(_t(context).delete),
           ),
         ],
