@@ -468,7 +468,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
                             Text(
                               '$_score',
                               style: AppTypography.labelLarge.copyWith(
-                                color: AppColors.warning,
+                                color: HCColor.of(context).warningText,
                               ),
                             ),
                           ],
@@ -757,7 +757,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
         child: Text(
           l10n.allPiecesPlaced,
           style: AppTypography.titleMedium.copyWith(
-            color: AppColors.success,
+            color: HCColor.of(context).successText,
             fontWeight: FontWeight.w700,
           ),
         ).animate().fadeIn().scale(),

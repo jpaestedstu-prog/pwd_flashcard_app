@@ -544,7 +544,7 @@ class _QuestionReviewTile extends StatelessWidget {
                 child: Text(
                   '$index',
                   style: AppTypography.labelSmall.copyWith(
-                    color: AppColors.info,
+                    color: HCColor.of(context).infoText,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

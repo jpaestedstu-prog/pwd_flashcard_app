@@ -162,7 +162,7 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
                 Text(
                   _t(context).rcFormatHint,
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: HCColor.of(context).textSecondary,
                   ),
                 ),
                 if (_error != null) ...[
@@ -257,7 +257,7 @@ class _Hero extends StatelessWidget {
         Text(
           _t(context).rcIntro,
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
+            color: HCColor.of(context).textSecondary,
           ),
           textAlign: TextAlign.center,
         ),
@@ -294,7 +294,8 @@ class _CodeField extends StatelessWidget {
         hintStyle: AppTypography.headlineSmall.copyWith(
           fontFamily: 'monospace',
           letterSpacing: 3,
-          color: AppColors.textSecondary.withValues(alpha: 0.4),
+          // The example format must read too (1.7:1 at 40%).
+          color: HCColor.of(context).textSecondary,
         ),
         prefixIcon: const Icon(Icons.vpn_key_rounded),
         suffixIcon: controller.text.isNotEmpty

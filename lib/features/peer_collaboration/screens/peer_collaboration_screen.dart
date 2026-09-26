@@ -935,7 +935,7 @@ class _PeerCollaborationScreenState
               textAlign: TextAlign.center,
               style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppColors.primary,
+                color: HCColor.of(context).primary,
               ),
             ),
             const SizedBox(height: 24),
@@ -976,7 +976,7 @@ class _PeerCollaborationScreenState
                       '+',
                       style: AppTypography.titleMedium.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                        color: HCColor.of(context).primary,
                       ),
                     ),
                   ),
@@ -1155,7 +1155,7 @@ class _AdaptationNote extends StatelessWidget {
               note,
               textAlign: TextAlign.center,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.primary,
+                color: HCColor.of(context).primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1971,7 +1971,7 @@ class _ScoreColumn extends StatelessWidget {
           '$score',
           style: AppTypography.headlineMedium.copyWith(
             fontWeight: FontWeight.bold,
-            color: AppColors.primary,
+            color: HCColor.of(context).primary,
           ),
         ),
       ],

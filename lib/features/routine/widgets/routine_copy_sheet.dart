@@ -262,7 +262,7 @@ class _RoutineCopySheetState extends State<RoutineCopySheet> {
                                     ? 'Mayroon nang routine na $name'
                                     : 'Already has a routine called $name',
                                 style: AppTypography.labelSmall.copyWith(
-                                  color: AppColors.warning,
+                                  color: HCColor.of(context).warningText,
                                   fontWeight: FontWeight.w600,
                                 ),
                               )

@@ -334,7 +334,12 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
               ),
               child: Text(
                 _t(context).english,
-                style: AppTypography.labelSmall.copyWith(color: hc.primary),
+                style: AppTypography.labelSmall.copyWith(
+                  color: hc.readableOver(
+                    hc.primary,
+                    hc.primary.withValues(alpha: 0.2),
+                  ),
+                ),
               ),
             ),
           ],

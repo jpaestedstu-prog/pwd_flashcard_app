@@ -107,7 +107,9 @@ class PhotoResultsPanel extends StatelessWidget {
                 height: scaledControlHeight(context, 56),
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.bannerWordHuntStart,
+                    backgroundColor: HCColor.of(
+                      context,
+                    ).fillFor(AppColors.bannerWordHuntStart),
                     foregroundColor: Colors.white,
                     textStyle: const TextStyle(
                       fontSize: 18,
@@ -143,7 +145,7 @@ class _FoundItBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.success,
+        color: HCColor.of(context).fillFor(AppColors.success),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
@@ -234,7 +236,9 @@ class _WordCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.bannerWordHuntStart,
+                      color: HCColor.of(
+                        context,
+                      ).fillFor(AppColors.bannerWordHuntStart),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(

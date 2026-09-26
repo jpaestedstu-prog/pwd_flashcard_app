@@ -369,7 +369,7 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: HCColor.of(context).background,
           appBar: AppBar(
             title: Text(title),
             backgroundColor: Colors.transparent,

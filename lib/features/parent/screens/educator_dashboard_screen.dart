@@ -617,7 +617,12 @@ class _ChildCard extends ConsumerWidget {
                                   Text(
                                     filipino ? 'Aktibo' : 'Active',
                                     style: AppTypography.labelSmall.copyWith(
-                                      color: AppColors.success,
+                                      color: hc.readableOver(
+                                        AppColors.success,
+                                        AppColors.success.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                      ),
                                       fontSize: 9,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -691,7 +696,10 @@ class _ChildCard extends ConsumerWidget {
                           '${child.streakDays}',
                           style: AppTypography.labelMedium.copyWith(
                             fontWeight: FontWeight.w800,
-                            color: AppColors.warning,
+                            color: hc.readableOver(
+                              AppColors.warning,
+                              AppColors.warning.withValues(alpha: 0.2),
+                            ),
                           ),
                         ),
                       ],
@@ -806,8 +814,8 @@ class _ChildCard extends ConsumerWidget {
                         style: AppTypography.labelSmall.copyWith(
                           fontWeight: FontWeight.w700,
                           color: weekChange >= 0
-                              ? AppColors.success
-                              : AppColors.error,
+                              ? hc.successText
+                              : hc.errorText,
                         ),
                       ),
                     ],
@@ -1000,7 +1008,7 @@ class _MoodRow extends ConsumerWidget {
               Text(
                 isFilipino ? 'Tingnan' : 'Check in',
                 style: AppTypography.labelSmall.copyWith(
-                  color: AppColors.warning,
+                  color: HCColor.of(context).warningText,
                   fontWeight: FontWeight.w700,
                 ),
               ),

@@ -661,7 +661,11 @@ class ProActionTile extends StatelessWidget {
               caption!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(color: hc.textHint),
+              // Secondary, not hint: a caption on a tinted tile in the dark
+              // theme was 3:1 in the hint grey.
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: hc.readableOver(hc.textSecondary, fillStrong),
+              ),
             ),
           ],
         ],

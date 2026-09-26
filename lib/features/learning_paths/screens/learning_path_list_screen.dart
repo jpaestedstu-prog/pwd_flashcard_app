@@ -153,7 +153,7 @@ class _OverallProgressBar extends StatelessWidget {
               child: Text(
                 '$completedCount',
                 style: AppTypography.titleLarge.copyWith(
-                  color: AppColors.primary,
+                  color: HCColor.of(context).primary,
                   fontWeight: FontWeight.w800,
                 ),
               ),

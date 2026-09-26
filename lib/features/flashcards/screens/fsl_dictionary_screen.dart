@@ -343,7 +343,6 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                           selected: _selectedCategory == null,
                           onSelected: (_) =>
                               setState(() => _selectedCategory = null),
-                          selectedColor: AppColors.primaryLight,
                         ),
                       ),
                       ...FlashcardCategory.values.map((cat) {
@@ -404,7 +403,7 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                             ),
                             textAlign: TextAlign.end,
                             style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.secondary,
+                              color: HCColor.of(context).readable(AppColors.secondary),
                               fontWeight: FontWeight.w600,
                             ),
                           ),

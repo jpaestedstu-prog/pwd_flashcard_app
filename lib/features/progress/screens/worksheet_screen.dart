@@ -80,10 +80,8 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
                 return ChoiceChip(
                   label: Text(cat.labelOf(_t(context))),
                   selected: selected,
-                  selectedColor: hc.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
-                    color: selected ? hc.primary : hc.textSecondary,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
                   ),
                   onSelected: (_) => setState(() => _selectedCategory = cat),
                 );
@@ -330,15 +328,17 @@ class _DifficultyButton extends StatelessWidget {
               FitText(
                 difficulty.labelOf(AppLocalizations.of(context)!),
                 maxLines: 1,
+                // The border says which is chosen; the words stay the
+                // strongest colour the theme has on this tinted page.
                 style: AppTypography.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? hc.primary : hc.textPrimary,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  color: hc.textPrimary,
                 ),
               ),
               Text(
                 wordCount,
                 style: AppTypography.bodySmall.copyWith(
-                  color: hc.textSecondary,
+                  color: hc.textPrimary,
                   fontSize: 11,
                 ),
               ),

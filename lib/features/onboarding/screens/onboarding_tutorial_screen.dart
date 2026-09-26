@@ -244,7 +244,10 @@ class _OnboardingTutorialScreenState
                 child: Text(
                   '${_currentPage + 1} of ${pages.length}',
                   style: AppTypography.bodySmall.copyWith(
-                    color: page.color,
+                    color: HCColor.of(context).readableOver(
+                      page.color,
+                      page.color.withValues(alpha: 0.1),
+                    ),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -271,7 +274,9 @@ class _OnboardingTutorialScreenState
                     child: ElevatedButton(
                       onPressed: _next,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: page.color,
+                        backgroundColor: HCColor.of(
+                          context,
+                        ).fillFor(page.color),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(

@@ -49,11 +49,19 @@ class ShowcaseDetailScreen extends ConsumerWidget {
               ),
               background: Container(
                 decoration: BoxDecoration(
+                  // The type's colour, deepened just enough for the white
+                  // title and pill (a gold header under white was 1.4:1).
                   gradient: LinearGradient(
                     colors: [
-                      item.type.color,
-                      item.type.color.withValues(alpha: 0.7),
-                      const Color(0xFF536DFE),
+                      hc.fillFor(item.type.color),
+                      hc.fillFor(
+                        Color.lerp(
+                          item.type.color,
+                          const Color(0xFF536DFE),
+                          0.4,
+                        )!,
+                      ),
+                      hc.fillFor(const Color(0xFF536DFE)),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -71,7 +79,7 @@ class ShowcaseDetailScreen extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: Colors.black.withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(

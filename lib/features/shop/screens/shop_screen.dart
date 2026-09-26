@@ -137,7 +137,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                   label: Text(
                     '$balance',
                     style: AppTypography.labelLarge.copyWith(
-                      color: AppColors.warning,
+                      color: HCColor.of(context).warningText,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -177,9 +177,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                   return TabBar(
                     controller: _tabController,
                     isScrollable: !fits,
-                    labelColor: AppColors.primary,
+                    labelColor: HCColor.of(context).primary,
                     unselectedLabelColor: HCColor.of(context).textSecondary,
-                    indicatorColor: AppColors.primary,
+                    indicatorColor: HCColor.of(context).primary,
                     // Filled tabs are centred in their own share of the bar;
                     // a scrolling strip starts at the left so tab one is
                     // still the one you see first.
@@ -420,7 +420,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                   child: Text(
                     '${item.cost} ${AppLocalizations.of(context)!.stars}',
                     style: AppTypography.titleMedium.copyWith(
-                      color: AppColors.warning,
+                      color: HCColor.of(context).warningText,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

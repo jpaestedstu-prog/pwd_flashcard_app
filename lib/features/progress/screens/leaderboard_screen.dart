@@ -675,7 +675,7 @@ class _ChipSelector<T> extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: AppTypography.bodySmall.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+                  color: HCColor.of(context).primary,
                 ),
               ),
             ),
@@ -869,7 +869,7 @@ class _LeaderboardTile extends StatelessWidget {
                             Text(
                               title,
                               style: AppTypography.labelSmall.copyWith(
-                                color: AppColors.primary,
+                                color: HCColor.of(context).primary,
                                 fontWeight: FontWeight.w700,
                               ),
                               maxLines: 1,
@@ -890,7 +890,7 @@ class _LeaderboardTile extends StatelessWidget {
                         child: Text(
                           _t(context).lbYou,
                           style: AppTypography.labelSmall.copyWith(
-                            color: AppColors.primary,
+                            color: HCColor.of(context).primary,
                             fontWeight: FontWeight.w700,
                             fontSize: 10,
                           ),
@@ -930,7 +930,7 @@ class _LeaderboardTile extends StatelessWidget {
               _sortStat(context),
               style: AppTypography.bodySmall.copyWith(
                 fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+                color: HCColor.of(context).primary,
               ),
             ),
           ),

@@ -634,7 +634,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
                     Text(
                       '$_gotItCount',
                       style: AppTypography.labelLarge.copyWith(
-                        color: AppColors.success,
+                        color: HCColor.of(context).successText,
                       ),
                     ),
                   ],

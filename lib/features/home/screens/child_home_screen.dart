@@ -572,7 +572,7 @@ class _KidStatsStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    final onGrad = hc.textOnPrimary;
+    final onGrad = hc.onGradient;
     return Semantics(
       label: _t(context).childStatsSemantics(streak, words, stars),
       child: Container(
@@ -648,9 +648,7 @@ class _KidStat extends StatelessWidget {
           ),
           Text(
             label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: color.withValues(alpha: 0.85),
-            ),
+            style: theme.textTheme.labelSmall?.copyWith(color: color),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/models/enums.dart';
+import 'accessible_theme.dart';
 import 'theme_marker.dart';
 
 /// App color palette — Soft & Playful (Pastel) theme
@@ -144,8 +145,10 @@ class AppColors {
   static const Color gameQuiz = Color(0xFFB39DDB); // Purple
 
   // ─── Gradients ──────────────────────────────────────
+  /// Deep purple to deep teal — the palette's two colours at a depth white
+  /// words read on (the pastel pair was 2.4:1 and 1.9:1).
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFFB39DDB), Color(0xFF80CBC4)],
+    colors: [Color(0xFF7E57C2), Color(0xFF00796B)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -440,6 +443,55 @@ class HCColor {
   Color get error => hc ? AppColors.hcError : AppColors.error;
   Color get warning => hc ? AppColors.hcWarning : AppColors.warning;
   Color get info => hc ? AppColors.hcInfo : AppColors.info;
+
+  /// [color] as the colour of WORDS on this theme's page and cards: itself
+  /// when it reads there at 4.5:1, otherwise the same hue deepened (light
+  /// themes) or lightened (dark themes) just enough. The palette's soft
+  /// colours are right for fills and wrong for text — a yellow star count
+  /// on cream was 1.3:1.
+  Color readable(Color color) => readableOn(_pages, preferred: color);
+
+  /// [color] as the colour of words on [ground] — a tinted badge, a chip.
+  /// A translucent [ground] is judged over each page colour it can sit on.
+  Color readableOver(Color color, Color ground) {
+    if (ground.a > 0.99) return readableOn([ground], preferred: color);
+    return readableOn(
+      [
+        for (final page in _pages) ...[
+          Color.alphaBlend(ground, page),
+          // A tinted pill on a card tinted the same way — the card faces of
+          // the quizzes are — is the tint twice over.
+          Color.alphaBlend(ground, Color.alphaBlend(ground, page)),
+        ],
+      ],
+      preferred: color,
+    );
+  }
+
+  /// Every colour words can sit on here: the page, the surfaces, and the
+  /// page under the soft gradient wash most screens paint over it — a shade
+  /// darker in light themes, lighter in dark ones.
+  List<Color> get _pages {
+    Color solid(Color c) => c.a > 0.99 ? c : Color.alphaBlend(c, background);
+    final wash = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.07);
+    return [
+      solid(background),
+      solid(surface),
+      solid(cardBackground),
+      Color.alphaBlend(wash, solid(background)),
+    ];
+  }
+
+  /// A fill for white (or [label]) words in [color]'s hue — see
+  /// [readableFill].
+  Color fillFor(Color color, {Color label = Colors.white}) =>
+      readableFill(color, label: label);
+
+  /// The status colours as words.
+  Color get successText => readable(success);
+  Color get errorText => readable(error);
+  Color get warningText => readable(warning);
+  Color get infoText => readable(info);
   Color get border => switch (_kind) {
     ThemeKind.highContrast => AppColors.hcBorder,
     ThemeKind.dark => const Color(0xFF3A3A4E),
@@ -541,21 +593,29 @@ class HCColor {
     ),
     ThemeKind.dark => LinearGradient(
       colors: [
-        _scheme?.primaryContainer ?? const Color(0xFF3D2E5E),
-        Color.alphaBlend(
-          (_scheme?.secondary ?? AppColors.secondary).withValues(alpha: 0.35),
-          _scheme?.surface ?? const Color(0xFF1E1E2A),
+        readableFill(_scheme?.primaryContainer ?? const Color(0xFF3D2E5E)),
+        readableFill(
+          Color.alphaBlend(
+            (_scheme?.secondary ?? AppColors.secondary).withValues(alpha: 0.35),
+            _scheme?.surface ?? const Color(0xFF1E1E2A),
+          ),
         ),
       ],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
+    // The theme's own two colours, each deepened just enough that the white
+    // words painted over the card read (the pastel teal end was 1.9:1).
     _ => LinearGradient(
-      colors: [primary, secondary],
+      colors: [readableFill(primary), readableFill(secondary)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
   };
+
+  /// The colour for words painted over [primaryGradient] or [heroGradient]:
+  /// white on the deepened stops, black on high contrast's bright ones.
+  Color get onGradient => hc ? Colors.black : Colors.white;
 
   /// Spotlight gradient for the home's hero cards (Player Profile, level badge,
   /// Daily Challenge). Follows the active group theme instead of a fixed hue.
@@ -567,17 +627,19 @@ class HCColor {
     ),
     ThemeKind.dark => LinearGradient(
       colors: [
-        _scheme?.primaryContainer ?? const Color(0xFF3D2E5E),
-        Color.alphaBlend(
-          (_scheme?.tertiary ?? AppColors.accent).withValues(alpha: 0.40),
-          _scheme?.surface ?? const Color(0xFF1E1E2A),
+        readableFill(_scheme?.primaryContainer ?? const Color(0xFF3D2E5E)),
+        readableFill(
+          Color.alphaBlend(
+            (_scheme?.tertiary ?? AppColors.accent).withValues(alpha: 0.40),
+            _scheme?.surface ?? const Color(0xFF1E1E2A),
+          ),
         ),
       ],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     _ => LinearGradient(
-      colors: [primary, accent],
+      colors: [readableFill(primary), readableFill(accent)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),

@@ -588,7 +588,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                               Text(
                                 '$_score',
                                 style: AppTypography.labelLarge.copyWith(
-                                  color: AppColors.warning,
+                                  color: HCColor.of(context).warningText,
                                 ),
                               ),
                             ],

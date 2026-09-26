@@ -707,7 +707,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                               Text(
                                 '$_score',
                                 style: AppTypography.labelLarge.copyWith(
-                                  color: AppColors.warning,
+                                  color: HCColor.of(context).warningText,
                                 ),
                               ),
                             ],

@@ -246,8 +246,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.primary,
-                    AppColors.primary.withValues(alpha: 0.85),
+                    HCColor.of(context).primary,
+                    HCColor.of(context).primary.withValues(alpha: 0.92),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -261,14 +261,14 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
               ),
               child: TextButton.icon(
                 onPressed: () => _saveNote(isFilipino),
-                icon: const Icon(
+                icon: Icon(
                   Icons.check_rounded,
-                  color: AppColors.textOnPrimary,
+                  color: HCColor.of(context).textOnPrimary,
                 ),
                 label: Text(
                   isFilipino ? 'I-save' : 'Save',
                   style: AppTypography.labelMedium.copyWith(
-                    color: AppColors.textOnPrimary,
+                    color: HCColor.of(context).textOnPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

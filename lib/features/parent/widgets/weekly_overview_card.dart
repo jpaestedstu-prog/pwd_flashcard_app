@@ -333,7 +333,7 @@ class _ChildMinutesRow extends StatelessWidget {
             '${child.studyMinutesThisWeek}m',
             style: AppTypography.labelMedium.copyWith(
               fontWeight: FontWeight.w700,
-              color: AppColors.primary,
+              color: HCColor.of(context).primary,
             ),
           ),
         ),

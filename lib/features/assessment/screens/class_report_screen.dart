@@ -502,7 +502,7 @@ class _ItemCard extends StatelessWidget {
                         'Your strongest learners did no better on this one — '
                             'worth rereading the wording.',
                     style: AppTypography.labelSmall.copyWith(
-                      color: AppColors.warning,
+                      color: HCColor.of(context).warningText,
                     ),
                   ),
                 ],

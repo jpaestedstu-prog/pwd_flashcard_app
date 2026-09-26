@@ -490,7 +490,10 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                         child: Text(
                           '${_currentIndex + 1} / ${_cards.length}',
                           style: AppTypography.labelMedium.copyWith(
-                            color: widget.category.darkColor,
+                            color: HCColor.of(context).readableOver(
+                              widget.category.darkColor,
+                              widget.category.color.withValues(alpha: 0.2),
+                            ),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -680,7 +683,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                                     child: Text(
                                       AppLocalizations.of(context)!.customCard,
                                       style: AppTypography.labelSmall.copyWith(
-                                        color: AppColors.info,
+                                        color: HCColor.of(context).infoText,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -1546,7 +1549,9 @@ class _ActionButton extends StatelessWidget {
                 child: Text(
                   label,
                   maxLines: 1,
-                  style: AppTypography.labelSmall.copyWith(color: c),
+                  style: AppTypography.labelSmall.copyWith(
+                    color: enabled ? HCColor.of(context).readable(c) : c,
+                  ),
                 ),
               ),
             ),

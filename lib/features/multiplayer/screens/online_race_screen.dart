@@ -363,7 +363,7 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: HCColor.of(context).background,
           appBar: AppBar(
             title: Text('${widget.room.mode.emoji} '
                 '${isFilipino ? widget.room.mode.labelFilipino : widget.room.mode.label}'),
@@ -671,7 +671,7 @@ class _OpponentStrip extends StatelessWidget {
             child: Text(
               name.isNotEmpty ? name[0].toUpperCase() : '?',
               style: AppTypography.titleSmall.copyWith(
-                color: AppColors.error,
+                color: HCColor.of(context).errorText,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -698,7 +698,7 @@ class _OpponentStrip extends StatelessWidget {
                           ? (isFilipino ? 'Tapos na ✓' : 'Done ✓')
                           : '$score',
                       style: AppTypography.labelMedium.copyWith(
-                        color: AppColors.error,
+                        color: HCColor.of(context).errorText,
                         fontWeight: FontWeight.w800,
                       ),
                     ),

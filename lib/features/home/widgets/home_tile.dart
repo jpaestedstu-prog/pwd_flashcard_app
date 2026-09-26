@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/depth_3d.dart';
 import '../../../widgets/shared_widgets.dart';
+import '../../../core/theme/accessible_theme.dart';
 
 /// A colorful, icon-first tile for the game-style Home hub.
 ///
@@ -98,7 +99,7 @@ class HomeTile extends StatelessWidget {
                 child: Text(
                   count > 99 ? '99+' : '$count',
                   style: AppTypography.labelSmall.copyWith(
-                    color: gradient.first,
+                    color: readableFill(gradient.first),
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -118,8 +119,12 @@ class HomeTile extends StatelessWidget {
 
     return AppCard(
       onTap: onTap,
+      // Each tile keeps its colour, deepened just enough for its white label
+      // (a mid-blue tile under white was 3.8:1).
       gradient: LinearGradient(
-        colors: gradient,
+        // Extra headroom: the tile's gloss lightens the colour under the
+        // label a little.
+        colors: [for (final c in gradient) readableFill(c, target: 5.4)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),

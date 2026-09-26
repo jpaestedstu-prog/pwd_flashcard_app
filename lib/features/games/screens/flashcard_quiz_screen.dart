@@ -616,7 +616,9 @@ class _ActionButton extends StatelessWidget {
                 Text(
                   label,
                   textAlign: TextAlign.center,
-                  style: AppTypography.labelSmall.copyWith(color: color),
+                  style: AppTypography.labelSmall.copyWith(
+                    color: HCColor.of(context).readable(color),
+                  ),
                 ),
               ],
             );
@@ -662,7 +664,10 @@ class _StatChip extends StatelessWidget {
             Text(
               '$value',
               style: AppTypography.labelLarge.copyWith(
-                color: color,
+                color: HCColor.of(context).readableOver(
+                  color,
+                  color.withValues(alpha: 0.12),
+                ),
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -766,7 +771,10 @@ class _QuizCard extends StatelessWidget {
                               maxLines: 1,
                               textAlign: TextAlign.center,
                               style: AppTypography.titleLarge.copyWith(
-                                color: cat.color,
+                                color: HCColor.of(context).readableOver(
+                                  cat.color,
+                                  cat.color.withValues(alpha: 0.15),
+                                ),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -785,8 +793,11 @@ class _QuizCard extends StatelessWidget {
                               FitText(
                                 '“${card.exampleSentence}”',
                                 textAlign: TextAlign.center,
+                                // Primary: the card face is tinted with the
+                                // category, and the secondary grey sank to
+                                // 3.5:1 on it in the dark theme.
                                 style: AppTypography.bodySmall.copyWith(
-                                  color: HCColor.of(context).textSecondary,
+                                  color: HCColor.of(context).textPrimary,
                                   fontStyle: FontStyle.italic,
                                 ),
                               ),
@@ -858,7 +869,12 @@ class _CategoryBadge extends StatelessWidget {
               category.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.labelSmall.copyWith(color: category.color),
+              style: AppTypography.labelSmall.copyWith(
+                color: HCColor.of(context).readableOver(
+                  category.color,
+                  category.color.withValues(alpha: 0.15),
+                ),
+              ),
             ),
           ),
         ],

@@ -129,7 +129,9 @@ class SquareActionButton extends StatelessWidget {
                   child: Text(
                     label,
                     maxLines: 1,
-                    style: AppTypography.labelSmall.copyWith(color: c),
+                    style: AppTypography.labelSmall.copyWith(
+                    color: enabled ? HCColor.of(context).readable(c) : c,
+                  ),
                   ),
                 ),
               ),

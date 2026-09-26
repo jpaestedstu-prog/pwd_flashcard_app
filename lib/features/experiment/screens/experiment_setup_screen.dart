@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/accessibility/haptic_service.dart'
@@ -499,7 +500,9 @@ class _QuickPresetButton extends StatelessWidget {
                 Text(
                   label,
                   style: AppTypography.labelSmall.copyWith(
-                    color: color,
+                    color: HCColor.of(
+                      context,
+                    ).readableOver(color, color.withValues(alpha: 0.08)),
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,

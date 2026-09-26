@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
@@ -41,7 +42,10 @@ class AccessibilityCategoryChip extends StatelessWidget {
       child: Text(
         '${type.emoji} ${type.labelOf(AppLocalizations.of(context))}',
         style: AppTypography.labelMedium.copyWith(
-          color: type.color,
+          color: HCColor.of(context).readableOver(
+            type.color,
+            type.color.withValues(alpha: 0.15),
+          ),
           fontWeight: FontWeight.w600,
         ),
       ),

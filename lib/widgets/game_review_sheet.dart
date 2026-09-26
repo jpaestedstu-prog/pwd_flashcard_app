@@ -311,7 +311,7 @@ class _ReviewCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.labelSmall.copyWith(
-                            color: AppColors.error,
+                            color: HCColor.of(context).errorText,
                             fontWeight: FontWeight.w600,
                             decoration: TextDecoration.lineThrough,
                           ),

@@ -521,7 +521,7 @@ class _MasterySection extends StatelessWidget {
                     '${(masteryPct * 100).round()}%',
                     style: AppTypography.titleLarge.copyWith(
                       fontWeight: FontWeight.w900,
-                      color: AppColors.primary,
+                      color: HCColor.of(context).primary,
                     ),
                   ),
                   Text(
@@ -791,7 +791,7 @@ class _InsightCard extends StatelessWidget {
                         child: Text(
                           recommendation,
                           style: AppTypography.labelSmall.copyWith(
-                            color: AppColors.primary,
+                            color: HCColor.of(context).primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

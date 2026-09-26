@@ -168,7 +168,7 @@ class SurveyResultsScreen extends ConsumerWidget {
                     child: Text(
                       isFilipino ? 'Pinakabago' : 'Latest',
                       style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.primary,
+                        color: HCColor.of(context).primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

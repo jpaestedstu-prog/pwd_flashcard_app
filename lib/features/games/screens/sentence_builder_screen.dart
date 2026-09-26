@@ -533,7 +533,7 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
                             Text(
                               '$_score',
                               style: AppTypography.labelLarge.copyWith(
-                                color: AppColors.warning,
+                                color: HCColor.of(context).warningText,
                               ),
                             ),
                           ],

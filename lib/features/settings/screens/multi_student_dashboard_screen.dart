@@ -304,7 +304,7 @@ class _StudentCard extends StatelessWidget {
                                   child: Text(
                                     tag,
                                     style: AppTypography.labelSmall.copyWith(
-                                      color: AppColors.primary,
+                                      color: HCColor.of(context).primary,
                                     ),
                                   ),
                                 ))

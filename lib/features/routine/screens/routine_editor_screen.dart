@@ -147,7 +147,7 @@ class RoutineEditorScreen extends ConsumerWidget {
                   l ? 'Hindi ma-load: $e' : 'Could not load: $e',
                   textAlign: TextAlign.center,
                   style: AppTypography.bodyMedium
-                      .copyWith(color: AppColors.error),
+                      .copyWith(color: HCColor.of(context).errorText),
                 ),
               ),
             ),
@@ -869,7 +869,7 @@ class _RoutineCard extends StatelessWidget {
                           Flexible(
                             child: Text(
                               l ? 'Burahin' : 'Delete',
-                              style: const TextStyle(color: AppColors.error),
+                              style: TextStyle(color: HCColor.of(context).errorText),
                             ),
                           ),
                         ],

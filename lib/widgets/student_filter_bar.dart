@@ -184,7 +184,7 @@ class _StudentFilterBarState extends ConsumerState<StudentFilterBar> {
                   child: Text(
                     _t(context).sfClearAll,
                     style: AppTypography.labelSmall.copyWith(
-                      color: AppColors.primary,
+                      color: HCColor.of(context).primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -250,7 +250,10 @@ class _SortButton extends ConsumerWidget {
             Text(
               _sortLabel(_t(context), filter.sortField),
               style: AppTypography.labelSmall.copyWith(
-                color: AppColors.primary,
+                color: HCColor.of(context).readableOver(
+                  AppColors.primary,
+                  AppColors.primary.withValues(alpha: 0.08),
+                ),
                 fontWeight: FontWeight.w600,
               ),
             ),

@@ -631,7 +631,7 @@ class _QuestionCard extends StatelessWidget {
                   child: Text(
                     '${index + 1}',
                     style: AppTypography.labelSmall
-                        .copyWith(color: AppColors.primary),
+                        .copyWith(color: HCColor.of(context).primary),
                   ),
                 ),
                 const SizedBox(width: 10),

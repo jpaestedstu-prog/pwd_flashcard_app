@@ -594,7 +594,7 @@ class _QNumberPill extends StatelessWidget {
         child: Text(
           _t(context).lsQuestionNofM(number, total),
           style: AppTypography.labelMedium.copyWith(
-            color: AppColors.primary,
+            color: HCColor.of(context).primary,
             fontWeight: FontWeight.w700,
           ),
         ),

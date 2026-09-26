@@ -289,7 +289,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                     card.category.labelOf(_t(context)),
                     maxLines: 1,
                     style: AppTypography.labelSmall.copyWith(
-                      color: card.category.color,
+                      color: hc.readable(card.category.color),
                     ),
                   ),
                   secondary: Icon(card.category.icon,
@@ -312,7 +312,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                 child: Text(
                   _t(context).qbAtLeast3,
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.error,
+                    color: HCColor.of(context).errorText,
                   ),
                 ),
               ),

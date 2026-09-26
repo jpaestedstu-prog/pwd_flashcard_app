@@ -432,7 +432,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 Text(
                   _t(context).epTapAvatar,
                   style: AppTypography.bodySmall
-                      .copyWith(color: hc.textSecondary),
+                      .copyWith(color: hc.textPrimary),
                 ),
               ],
             ),
@@ -578,7 +578,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                     const EdgeInsets.symmetric(
                                         horizontal: 4, vertical: 1),
                                 decoration: BoxDecoration(
-                                  color: AppColors.accent,
+                                  color: HCColor.of(
+                                    context,
+                                  ).fillFor(AppColors.accent),
                                   borderRadius:
                                       BorderRadius.circular(8),
                                 ),

@@ -769,7 +769,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                             Text(
                               '$_score',
                               style: AppTypography.labelLarge.copyWith(
-                                color: AppColors.warning,
+                                color: HCColor.of(context).warningText,
                               ),
                             ),
                           ],
@@ -911,7 +911,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                               Text(
                                 l10n.correct,
                                 style: AppTypography.titleMedium.copyWith(
-                                  color: AppColors.success,
+                                  color: HCColor.of(context).successText,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ).animate().fadeIn().scale(
@@ -984,7 +984,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                                         used ? '' : _scrambledLetters[i],
                                         style: AppTypography.titleLarge
                                             .copyWith(
-                                              color: AppColors.primary,
+                                              color: HCColor.of(context).primary,
                                               fontWeight: FontWeight.w800,
                                             ),
                                       ),

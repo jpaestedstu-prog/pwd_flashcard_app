@@ -447,8 +447,8 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                 onPressed: () => _showAddFriendDialog(profile, isFilipino),
                 icon: const Icon(Icons.person_add_alt_1_rounded),
                 label: Text(isFilipino ? 'Magdagdag' : 'Add Friend'),
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                backgroundColor: HCColor.of(context).primary,
+                foregroundColor: HCColor.of(context).textOnPrimary,
               )
             : null,
         body: _activeConversation != null
@@ -1074,7 +1074,7 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
                       ? message.senderName[0].toUpperCase()
                       : '?',
                   style: AppTypography.labelMedium.copyWith(
-                    color: AppColors.primary,
+                    color: HCColor.of(context).primary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

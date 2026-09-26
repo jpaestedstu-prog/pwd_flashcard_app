@@ -283,7 +283,7 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
                       child: Text(
                         '$_correctCount / $_totalItems',
                         style: AppTypography.titleMedium.copyWith(
-                          color: AppColors.primary,
+                          color: HCColor.of(context).primary,
                         ),
                       ),
                     ),
@@ -464,7 +464,14 @@ class _WordChip extends StatelessWidget {
       ),
       child: Text(
         word,
-        style: AppTypography.labelLarge.copyWith(color: AppColors.primary),
+        // The chip is the soft primary in every theme; its words are the
+        // same hue, deepened until they read on it.
+        style: AppTypography.labelLarge.copyWith(
+          color: HCColor.of(context).readableOver(
+            AppColors.primary,
+            AppColors.primaryLight,
+          ),
+        ),
       ),
     );
   }
@@ -562,7 +569,7 @@ class _DropTargetRow extends StatelessWidget {
                   Text(
                     matchedWord ?? '',
                     style: AppTypography.labelLarge.copyWith(
-                      color: AppColors.success,
+                      color: HCColor.of(context).successText,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

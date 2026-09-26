@@ -284,7 +284,7 @@ class _CategoryRow extends ConsumerWidget {
                             '${coverage.bytes > 0 ? ' · ${formatPackBytes(coverage.bytes)}' : ''}',
                   style: AppTypography.labelSmall.copyWith(
                     color: coverage.isComplete && !busyHere
-                        ? hc.success
+                        ? hc.successText
                         : hc.textSecondary,
                   ),
                 ),

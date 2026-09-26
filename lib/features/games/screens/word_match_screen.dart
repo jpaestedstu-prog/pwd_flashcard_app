@@ -561,7 +561,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                               Text(
                                 '$_score',
                                 style: AppTypography.labelLarge.copyWith(
-                                  color: AppColors.warning,
+                                  color: HCColor.of(context).warningText,
                                 ),
                               ),
                             ],

@@ -405,8 +405,8 @@ class _MultiplayerLobbyScreenState
                   me: profile, isFilipino: isFilipino),
               icon: const Icon(Icons.person_add_alt_1_rounded),
               label: Text(isFilipino ? 'Magdagdag' : 'Add Friend'),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              backgroundColor: HCColor.of(context).primary,
+              foregroundColor: HCColor.of(context).textOnPrimary,
             )
           : null,
       body: SafeArea(
@@ -553,7 +553,12 @@ class _MultiplayerLobbyScreenState
                         isFilipino ? mode.labelFilipino : mode.label,
                         style: AppTypography.titleSmall.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: selected ? color : hc.textPrimary,
+                          color: selected
+                              ? hc.readableOver(
+                                  color,
+                                  color.withValues(alpha: 0.12),
+                                )
+                              : hc.textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -765,8 +770,12 @@ class _PlayOptionButton extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: AppTypography.bodySmall
-                          .copyWith(color: hc.textSecondary),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: hc.readableOver(
+                          hc.textSecondary,
+                          color.withValues(alpha: 0.10),
+                        ),
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -902,7 +911,7 @@ class _FriendPickerSheet extends StatelessWidget {
                           AppColors.primary.withValues(alpha: 0.15),
                       child: Text(
                         f.name.isNotEmpty ? f.name[0].toUpperCase() : '?',
-                        style: const TextStyle(color: AppColors.primary),
+                        style: TextStyle(color: HCColor.of(context).primary),
                       ),
                     ),
                     title: Text(f.name),

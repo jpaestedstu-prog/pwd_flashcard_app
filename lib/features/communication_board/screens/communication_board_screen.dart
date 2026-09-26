@@ -1000,7 +1000,7 @@ class _CategoryChip extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTypography.labelMedium.copyWith(
-                  color: isActive ? AppColors.textOnPrimary : hc.textPrimary,
+                  color: isActive ? hc.textOnPrimary : hc.textPrimary,
                   fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),

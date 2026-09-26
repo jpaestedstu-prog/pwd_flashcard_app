@@ -441,7 +441,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
                       child: Text(
                         '${_currentIndex + 1} / $_totalItems',
                         style: AppTypography.titleMedium.copyWith(
-                          color: AppColors.primary,
+                          color: HCColor.of(context).primary,
                         ),
                       ),
                     ),

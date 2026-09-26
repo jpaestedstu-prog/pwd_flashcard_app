@@ -184,7 +184,7 @@ class _StudentProfileListScreenState
                     child: Text(
                       _t(context).splNoStudentsBody,
                       style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textHint,
+                        color: HCColor.of(context).textSecondary,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -195,8 +195,8 @@ class _StudentProfileListScreenState
                     icon: const Icon(Icons.qr_code_2_rounded),
                     label: Text(_t(context).splShareCode),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                      backgroundColor: HCColor.of(context).primary,
+                      foregroundColor: HCColor.of(context).textOnPrimary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -397,7 +397,7 @@ class _DetailChip extends StatelessWidget {
           Text(
             label,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.primary,
+              color: HCColor.of(context).primary,
               fontWeight: FontWeight.w600,
             ),
           ),

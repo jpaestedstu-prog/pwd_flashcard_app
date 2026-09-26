@@ -496,7 +496,9 @@ class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
                 OutlinedButton.icon(
                   onPressed: _busy == null ? () => _add(kind) : null,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: assessmentMediaColor(kind),
+                    foregroundColor: HCColor.of(
+                      context,
+                    ).readable(assessmentMediaColor(kind)),
                     side: BorderSide(
                       color: assessmentMediaColor(kind).withValues(alpha: 0.5),
                     ),

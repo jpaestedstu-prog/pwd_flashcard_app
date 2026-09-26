@@ -125,7 +125,7 @@ class _ConnectivityIndicatorState extends State<ConnectivityIndicator>
                 Text(
                   _t(context).csxOffline,
                   style: AppTypography.labelSmall.copyWith(
-                    color: AppColors.warning,
+                    color: HCColor.of(context).warningText,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

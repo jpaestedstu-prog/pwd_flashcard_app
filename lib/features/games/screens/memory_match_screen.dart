@@ -584,7 +584,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                             Text(
                               l10n.matched(_matchedPairs, _pairs),
                               style: AppTypography.titleMedium.copyWith(
-                                color: AppColors.primary,
+                                color: HCColor.of(context).primary,
                               ),
                             ),
                           ],

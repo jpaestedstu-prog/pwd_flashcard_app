@@ -104,10 +104,13 @@ class ProgressScreen extends ConsumerWidget {
     final headerGradient = useTheme
         ? theme.gradient
         : LinearGradient(
+            // Deepened just enough for the white title on it.
             colors: [
-              AppColors.primary,
-              AppColors.primary.withValues(alpha: 0.85),
-              AppColors.secondary.withValues(alpha: 0.7),
+              HCColor.of(context).fillFor(AppColors.primary),
+              HCColor.of(context).fillFor(
+                Color.lerp(AppColors.primary, AppColors.secondary, 0.5)!,
+              ),
+              HCColor.of(context).fillFor(AppColors.secondary),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -921,7 +924,7 @@ class _StarGrid extends StatelessWidget {
                 AppLocalizations.of(context)!.progStarsCollected(totalStars),
                 style: AppTypography.labelLarge.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: AppColors.warning,
+                  color: HCColor.of(context).warningText,
                 ),
               ),
             ),

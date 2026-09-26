@@ -132,7 +132,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                           '${(_config.accuracyThreshold * 100).round()}%',
                           style: AppTypography.titleSmall.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                            color: HCColor.of(context).primary,
                           ),
                         ),
                       ],
@@ -171,7 +171,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                           _t(context).asDays(_config.inactivityDays),
                           style: AppTypography.titleSmall.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                            color: HCColor.of(context).primary,
                           ),
                         ),
                       ],
@@ -275,7 +275,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                     child: Text(
                       _t(context).tcClear,
                       style: AppTypography.labelSmall
-                          .copyWith(color: AppColors.error),
+                          .copyWith(color: HCColor.of(context).errorText),
                     ),
                   ),
               ],

@@ -18,6 +18,7 @@ import '../services/gamepad_announcer.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/theme/accessible_theme.dart';
 
 /// A place to press every button and be told what it does, with nothing at
 /// stake.
@@ -206,7 +207,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
                         child: Text(
                           _t(context).gppNoController,
                           style: TextStyle(
-                            color: theme.colorScheme.onErrorContainer,
+                            color: bestOn(theme.colorScheme.errorContainer),
                           ),
                         ),
                       ),

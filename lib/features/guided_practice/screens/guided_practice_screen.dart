@@ -262,8 +262,8 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
                   onPressed: _showResult ? _nextStep : _checkAnswer,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _showResult
-                        ? AppColors.primary
-                        : AppColors.secondary,
+                        ? hc.primary
+                        : hc.fillFor(AppColors.secondary),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -363,7 +363,7 @@ class _ReviewContent extends StatelessWidget {
             const SizedBox(height: 8),
             Text(card.wordFilipino,
                 style: AppTypography.titleLarge.copyWith(
-                    color: AppColors.primary, fontWeight: FontWeight.w600)),
+                    color: HCColor.of(context).primary, fontWeight: FontWeight.w600)),
             if (card.exampleSentence != null) ...[
               const SizedBox(height: 16),
               Text(card.exampleSentence!,
@@ -422,7 +422,7 @@ class _ListenContent extends StatelessWidget {
           const SizedBox(height: 8),
           Text(card.wordFilipino,
               style: AppTypography.titleMedium.copyWith(
-                  color: AppColors.primary)),
+                  color: HCColor.of(context).primary)),
           const SizedBox(height: 16),
           Text(
             isFilipino
@@ -470,7 +470,7 @@ class _FillBlankContent extends StatelessWidget {
           const SizedBox(height: 16),
           Text(card.wordFilipino,
               style: AppTypography.headlineMedium.copyWith(
-                  fontWeight: FontWeight.w800, color: AppColors.primary)),
+                  fontWeight: FontWeight.w800, color: HCColor.of(context).primary)),
           if (hint != null) ...[
             const SizedBox(height: 8),
             Text('${isFilipino ? 'Pahiwatig' : 'Hint'}: $hint',
@@ -508,7 +508,7 @@ class _FillBlankContent extends StatelessWidget {
             Text(
               '${isFilipino ? 'Tamang sagot' : 'Correct answer'}: ${card.wordEnglish}',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.success,
+                color: HCColor.of(context).successText,
                 fontWeight: FontWeight.w600,
               ),
             ),

@@ -183,13 +183,17 @@ class _AccessibilitySetupScreenState
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        // The light wash only in a light theme: under the dark theme's light
+        // words it left the "Skip" link at 1.9:1.
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFFF0F4FF),
-              Color(0xFFF5F0FF),
-              AppColors.background,
-            ],
+            colors: HCColor.of(context).isDark
+                ? [HCColor.of(context).background, HCColor.of(context).surface]
+                : const [
+                    Color(0xFFF0F4FF),
+                    Color(0xFFF5F0FF),
+                    AppColors.background,
+                  ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -340,8 +344,8 @@ class _AccessibilitySetupScreenState
               icon: const Icon(Icons.arrow_forward_rounded),
               label: Text(AppLocalizations.of(context)!.continueButton),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                backgroundColor: HCColor.of(context).primary,
+                foregroundColor: HCColor.of(context).textOnPrimary,
                 disabledBackgroundColor: AppColors.primary.withValues(
                   alpha: 0.3,
                 ),
@@ -564,8 +568,8 @@ class _AccessibilitySetupScreenState
               icon: const Icon(Icons.arrow_forward_rounded),
               label: Text(AppLocalizations.of(context)!.applyAndContinue),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                backgroundColor: HCColor.of(context).primary,
+                foregroundColor: HCColor.of(context).textOnPrimary,
                 textStyle: AppTypography.buttonText,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -708,8 +712,8 @@ class _AccessibilitySetupScreenState
                           : AppLocalizations.of(context)!.letsStartLearning,
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                      backgroundColor: HCColor.of(context).primary,
+                      foregroundColor: HCColor.of(context).textOnPrimary,
                       textStyle: AppTypography.buttonText.copyWith(
                         fontSize: 18,
                       ),

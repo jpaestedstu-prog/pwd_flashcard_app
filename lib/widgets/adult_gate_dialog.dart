@@ -251,7 +251,7 @@ class _AdultGateDialogState extends State<AdultGateDialog> {
                 Text(
                   _error!,
                   style: AppTypography.bodySmall
-                      .copyWith(color: AppColors.error),
+                      .copyWith(color: HCColor.of(context).errorText),
                 ),
               ],
             ],

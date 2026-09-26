@@ -1314,7 +1314,7 @@ class _DailyLoginRewardDialog extends StatelessWidget {
           Text(
             t.homeDayNumber(streakDay),
             style: AppTypography.titleLarge.copyWith(
-              color: AppColors.primary,
+              color: HCColor.of(context).primary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1332,7 +1332,7 @@ class _DailyLoginRewardDialog extends StatelessWidget {
               Text(
                 '+$starsEarned',
                 style: AppTypography.headlineMedium.copyWith(
-                  color: AppColors.warning,
+                  color: HCColor.of(context).warningText,
                   fontWeight: FontWeight.w900,
                 ),
               ),

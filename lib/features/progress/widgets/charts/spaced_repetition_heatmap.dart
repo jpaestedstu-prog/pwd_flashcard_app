@@ -63,7 +63,7 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
                   '${activityMap.values.where((v) => v > 0).length} active days',
                   style: AppTypography.labelSmall.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: AppColors.success,
+                    color: HCColor.of(context).successText,
                     fontSize: 10,
                   ),
                 ),

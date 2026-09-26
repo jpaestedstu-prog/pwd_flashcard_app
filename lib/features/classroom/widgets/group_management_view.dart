@@ -579,7 +579,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Text(
           _tr(context).gmRosterError(_reason(context, e)),
-          style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+          style: AppTypography.bodySmall.copyWith(color: HCColor.of(context).errorText),
         ),
       ),
       data: (members) {
@@ -1072,7 +1072,7 @@ class _MemberRow extends StatelessWidget {
               ? member.displayName[0].toUpperCase()
               : '?',
           style: AppTypography.labelLarge.copyWith(
-            color: accent,
+            color: hc.readableOver(accent, accent.withValues(alpha: 0.15)),
             fontWeight: FontWeight.w700,
           ),
         ),

@@ -111,9 +111,12 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
                   ),
                   child: Text(
                     starAwarded ? l10n.wordHuntNewWord : l10n.wordHuntGreatFind,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.bannerWordHuntEnd,
+                      color: HCColor.of(context).readableOver(
+                        AppColors.bannerWordHuntEnd,
+                        AppColors.bannerWordHuntStart.withValues(alpha: 0.15),
+                      ),
                     ),
                   ),
                 ),
@@ -130,19 +133,19 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
               FitText(
                 card.wordEnglish,
                 maxLines: 1,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: HCColor.of(context).textPrimary,
                 ),
                 textAlign: TextAlign.center,
               ),
               FitText(
                 card.wordFilipino,
                 maxLines: 1,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
-                  color: AppColors.textSecondary,
+                  color: HCColor.of(context).textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -150,9 +153,9 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
                 const SizedBox(height: 10),
                 Text(
                   '${l10n.wordHuntMeaning}: ${card.definition}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
-                    color: AppColors.textPrimary,
+                    color: HCColor.of(context).textPrimary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -161,10 +164,10 @@ class _DiscoveredWordSheetState extends ConsumerState<DiscoveredWordSheet> {
                 const SizedBox(height: 6),
                 Text(
                   '${l10n.example}: ${card.exampleSentence}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontStyle: FontStyle.italic,
-                    color: AppColors.textSecondary,
+                    color: HCColor.of(context).textSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -370,10 +373,10 @@ class _SheetAction extends StatelessWidget {
               Flexible(
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
-                    color: AppColors.textPrimary,
+                    color: HCColor.of(context).textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

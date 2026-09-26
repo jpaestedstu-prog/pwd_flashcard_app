@@ -365,7 +365,7 @@ class _ParentalControlsScreenState
                   color: AppColors.error),
               label: Text(
                 _t(context).pcReset,
-                style: const TextStyle(color: AppColors.error),
+                style: TextStyle(color: HCColor.of(context).errorText),
               ),
             ),
           ),

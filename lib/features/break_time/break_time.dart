@@ -119,7 +119,9 @@ class GameBreakButton extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final hc = HCColor.of(context);
     final bool highContrast = hc.hc;
-    final Color bg = highContrast ? Colors.black : const Color(0xFF26A69A);
+    final Color bg = highContrast
+        ? Colors.black
+        : hc.fillFor(const Color(0xFF26A69A));
     final Color fg = highContrast ? const Color(0xFFFFEB3B) : Colors.white;
 
     return Positioned.fill(

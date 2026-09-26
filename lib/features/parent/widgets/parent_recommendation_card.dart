@@ -131,7 +131,7 @@ class ParentRecommendationCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.labelSmall.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: color,
+                        color: HCColor.of(context).readable(color),
                       ),
                     ),
                   ),

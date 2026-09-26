@@ -3,6 +3,7 @@ import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:pwdpwdpwd/widgets/celebration_confetti.dart';
+import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/services/xp_level_service.dart';
@@ -251,8 +252,11 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
                             opacity: _titleOpacity.value,
                             child: Text(
                               t.levelUpTitle,
+                              // The level's own colour, deepened until it
+                              // reads on the pale celebration wash — white
+                              // there all but vanished.
                               style: AppTypography.displaySmall.copyWith(
-                                color: Colors.white,
+                                color: HCColor.of(context).readable(color),
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 4,
                                 shadows: [
@@ -308,8 +312,10 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                       colors: [
-                                        color,
-                                        color.withValues(alpha: 0.7),
+                                        HCColor.of(context).fillFor(color),
+                                        HCColor.of(context).fillFor(
+                                          Color.lerp(color, Colors.white, 0.2)!,
+                                        ),
                                       ],
                                     ),
                                     boxShadow: [

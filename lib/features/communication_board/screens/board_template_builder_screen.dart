@@ -742,8 +742,8 @@ class _BoardTemplateBuilderScreenState
           onPressed: _save,
           icon: const Icon(Icons.save_rounded),
           label: Text(_t(context).bbSaveBoard),
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: HCColor.of(context).primary,
+          foregroundColor: HCColor.of(context).textOnPrimary,
         ),
       ),
     );
@@ -891,7 +891,7 @@ class _CustomTileDialogState extends State<_CustomTileDialog> {
                 Text(
                   _error!,
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.error,
+                    color: HCColor.of(context).errorText,
                   ),
                 ),
               ],

@@ -101,7 +101,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                     child: Text(
                       _t(context).brLastBackup(_formatDate(context, _lastBackupDate!)),
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.success,
+                        color: HCColor.of(context).successText,
                       ),
                     ),
                   ),
@@ -175,7 +175,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                   child: Text(
                     _t(context).brWarning,
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.warning,
+                      color: HCColor.of(context).readableOver(
+                        AppColors.warning,
+                        AppColors.warning.withValues(alpha: 0.1),
+                      ),
                     ),
                   ),
                 ),

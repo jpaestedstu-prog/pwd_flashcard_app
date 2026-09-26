@@ -105,7 +105,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
         icon: const Icon(Icons.add_rounded),
         label: Text(isFilipino ? 'Bagong Tala' : 'New Note'),
         backgroundColor: HCColor.of(context).primary,
-        foregroundColor: Colors.white,
+        foregroundColor: HCColor.of(context).textOnPrimary,
       ),
       body: Column(
         children: [

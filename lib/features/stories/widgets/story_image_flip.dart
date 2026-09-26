@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/services/story_image_service.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/local/seed_stories.dart' show StoryImagePair;
 import '../../../l10n/app_localizations.dart';
@@ -316,7 +317,10 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
   Widget _tapHintPill() {
     // Darken the accent a touch so the caption stays legible on its own
     // 12%-tinted pill, regardless of how light the category colour is.
-    final textColor = Color.lerp(widget.color, Colors.black, 0.25)!;
+    final textColor = HCColor.of(context).readableOver(
+      widget.color,
+      widget.color.withValues(alpha: 0.12),
+    );
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: widget.compact ? 12 : 16,

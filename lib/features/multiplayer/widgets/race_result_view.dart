@@ -58,7 +58,7 @@ class RaceResultView extends StatelessWidget {
                     : (isFilipino ? '$winnerName ang panalo!' : '$winnerName wins!'),
                 style: AppTypography.displaySmall.copyWith(
                   fontWeight: FontWeight.w900,
-                  color: AppColors.primary,
+                  color: HCColor.of(context).primary,
                 ),
                 textAlign: TextAlign.center,
               ),

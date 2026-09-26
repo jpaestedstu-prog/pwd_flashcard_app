@@ -230,7 +230,7 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                       : 16 / 9,
                   child: _hasError
                       ? Container(
-                          color: AppColors.surfaceVariant,
+                          color: hc.surfaceVariant,
                           child: Center(
                             child: Text(
                               AppLocalizations.of(context)!.unableToLoadVideo,
@@ -380,7 +380,7 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                         ),
                         decoration: BoxDecoration(
                           color: isActive
-                              ? AppColors.secondary
+                              ? hc.fillFor(AppColors.secondary)
                               : hc.surfaceVariant,
                           borderRadius: BorderRadius.circular(8),
                         ),

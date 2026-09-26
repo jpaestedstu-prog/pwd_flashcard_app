@@ -635,7 +635,9 @@ class _ViewerCount extends StatelessWidget {
             count == 0
                 ? _t(context).tcWaitingTv
                 : _t(context).tcViewers(count),
-            style: AppTypography.labelMedium.copyWith(color: color),
+            style: AppTypography.labelMedium.copyWith(
+              color: HCColor.of(context).readable(color),
+            ),
           ),
         ),
       ],

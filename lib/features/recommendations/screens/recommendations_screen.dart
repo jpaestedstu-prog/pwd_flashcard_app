@@ -169,7 +169,7 @@ class _SummaryRow extends StatelessWidget {
                     Text(
                       '${snapshot.categoriesExplored}/${snapshot.totalCategories}',
                       style: AppTypography.headlineMedium.copyWith(
-                        color: AppColors.primary,
+                        color: HCColor.of(context).primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

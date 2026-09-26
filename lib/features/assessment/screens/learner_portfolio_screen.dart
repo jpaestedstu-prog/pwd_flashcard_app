@@ -470,7 +470,7 @@ class _ResultCard extends StatelessWidget {
                         Text(
                           t.assessSentForReview,
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.info,
+                            color: HCColor.of(context).infoText,
                             fontWeight: FontWeight.w700,
                           ),
                         )
@@ -478,7 +478,7 @@ class _ResultCard extends StatelessWidget {
                         Text(
                           t.assessToReview(score.pending),
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.info,
+                            color: HCColor.of(context).infoText,
                             fontWeight: FontWeight.w700,
                           ),
                         ),

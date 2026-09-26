@@ -170,7 +170,7 @@ class _TrailHeader extends StatelessWidget {
             '$completedCount/$totalSteps',
             style: AppTypography.labelLarge.copyWith(
               fontWeight: FontWeight.w800,
-              color: categoryColor,
+              color: HCColor.of(context).readable(categoryColor),
             ),
           ),
         ],

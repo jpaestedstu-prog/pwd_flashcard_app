@@ -419,7 +419,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                         label: Text(
                           AppLocalizations.of(context)!.stillLearning,
                           style: AppTypography.buttonText.copyWith(
-                            color: AppColors.error,
+                            color: HCColor.of(context).errorText,
                           ),
                         ),
                         style: OutlinedButton.styleFrom(

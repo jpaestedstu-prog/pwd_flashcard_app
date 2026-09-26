@@ -445,7 +445,7 @@ class _StudyTimeChart30 extends StatelessWidget {
                 child: Text(
                   _t(context).ptAvgPerDay(avgMinutes.round()),
                   style: AppTypography.labelSmall.copyWith(
-                    color: AppColors.success,
+                    color: HCColor.of(context).successText,
                     fontWeight: FontWeight.w700,
                     fontSize: 11,
                   ),

@@ -216,7 +216,7 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateGoalDialog,
-        backgroundColor: AppColors.primary,
+        backgroundColor: HCColor.of(context).primary,
         icon: Icon(Icons.add_rounded, color: HCColor.of(context).textOnPrimary),
         label: Text(
           _t(context).goalsNew,

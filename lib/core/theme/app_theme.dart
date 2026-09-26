@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../data/models/enums.dart';
 import 'app_colors.dart';
+import 'accessible_theme.dart';
 import 'app_typography.dart';
 import 'semantic_colors.dart';
 import 'theme_marker.dart';
@@ -32,7 +33,7 @@ class AppTheme {
   static final ThemeData _lightTheme = _buildLightTheme();
   static ThemeData get light => _lightTheme;
 
-  static ThemeData _buildLightTheme() => ThemeData(
+  static ThemeData _buildLightTheme() => accessibleTheme(ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
 
@@ -234,7 +235,7 @@ class AppTheme {
     // SemanticColors.of(context) always resolves on the active theme,
     // plus the marker that tells HCColor which theme family is active.
     extensions: const [SemanticColors.defaults, ThemeMarker.light],
-  );
+  ));
 
   // ─── High Contrast Theme (Accessibility) ─────────────
   //
@@ -270,7 +271,7 @@ class AppTheme {
     });
   }
 
-  static ThemeData _buildHighContrastTheme(Color accent) => light.copyWith(
+  static ThemeData _buildHighContrastTheme(Color accent) => accessibleTheme(light.copyWith(
     brightness: Brightness.dark,
     scaffoldBackgroundColor: AppColors.hcBackground,
     extensions: const [SemanticColors.highContrast, ThemeMarker.highContrast],
@@ -452,7 +453,7 @@ class AppTheme {
       color: accent,
       linearTrackColor: AppColors.hcBorder,
     ),
-  );
+  ));
 
   // ─── Dark Theme ──────────────────────────────────────
   static final ThemeData _darkTheme = _buildDarkTheme();
@@ -468,7 +469,7 @@ class AppTheme {
   static const Color _dkAccent = Color(0xFFF9A8C8); // Lighter pastel pink
   static const Color _dkSecondary = Color(0xFF99DDD6); // Lighter teal
 
-  static ThemeData _buildDarkTheme() => ThemeData(
+  static ThemeData _buildDarkTheme() => accessibleTheme(ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     // Tap reliability + first-tap jank: see _buildLightTheme.
@@ -651,7 +652,7 @@ class AppTheme {
       },
     ),
     extensions: const [SemanticColors.defaults, ThemeMarker.dark],
-  );
+  ));
 
   // ─── Dyslexia-Friendly Theme ─────────────────────────
   //
@@ -662,7 +663,7 @@ class AppTheme {
   static final ThemeData _dyslexiaTheme = _buildDyslexiaTheme();
   static ThemeData get dyslexia => _dyslexiaTheme;
 
-  static ThemeData _buildDyslexiaTheme() => ThemeData(
+  static ThemeData _buildDyslexiaTheme() => accessibleTheme(ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
         // Tap reliability + first-tap jank: see _buildLightTheme.
@@ -813,7 +814,7 @@ class AppTheme {
           space: 24,
         ),
         extensions: const [SemanticColors.dyslexia, ThemeMarker.dyslexia],
-      );
+      ));
 
   // ─── Shop Themes ─────────────────────────────────────
 
@@ -1162,7 +1163,7 @@ class AppTheme {
     required Color card,
     SemanticColors semantic = SemanticColors.defaults,
   }) {
-    return light.copyWith(
+    return accessibleTheme(light.copyWith(
       extensions: [semantic, ThemeMarker.light],
       colorScheme: ColorScheme.light(
         primary: primary,
@@ -1279,7 +1280,7 @@ class AppTheme {
           color: AppColors.textPrimary,
         ),
       ),
-    );
+    ));
   }
 
   // ─── Dark Shop Themes ────────────────────────────────
@@ -1350,7 +1351,7 @@ class AppTheme {
     const onPrimary = Color(0xFF1A1A1A);
     const textOnDark = Color(0xFFE8E8F0);
     const textSecondaryOnDark = Color(0xFFB0B0C8);
-    return ThemeData(
+    return accessibleTheme(ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       // Tap reliability + first-tap jank: see _buildLightTheme.
@@ -1507,7 +1508,7 @@ class AppTheme {
         thumbColor: primary,
       ),
       extensions: [semantic, ThemeMarker.dark],
-    );
+    ));
   }
 
   /// Replace a theme's page transitions with an instant fade — used

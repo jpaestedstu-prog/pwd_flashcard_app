@@ -175,7 +175,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
       child: Stack(
         children: [
           Scaffold(
-            backgroundColor: AppColors.background,
+            backgroundColor: HCColor.of(context).background,
             body: SafeArea(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
@@ -637,7 +637,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                   '🔵 ${_player1Controller.text}: $_player1Score',
                   style: AppTypography.labelMedium.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: AppColors.info,
+                    color: HCColor.of(context).infoText,
                   ),
   maxLines: 2,
   overflow: TextOverflow.ellipsis,
@@ -646,7 +646,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                   '🔴 ${_player2Controller.text}: $_player2Score',
                   style: AppTypography.labelMedium.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: AppColors.error,
+                    color: HCColor.of(context).errorText,
                   ),
                 ),
               ],

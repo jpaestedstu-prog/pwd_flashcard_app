@@ -620,7 +620,7 @@ class _ActionChip extends StatelessWidget {
         ),
         label: Text(
           label,
-          style: AppTypography.labelMedium.copyWith(color: AppColors.primary),
+          style: AppTypography.labelMedium.copyWith(color: HCColor.of(context).primary),
         ),
         backgroundColor: AppColors.primaryLight,
         side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),

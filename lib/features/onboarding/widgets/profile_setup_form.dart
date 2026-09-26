@@ -153,7 +153,7 @@ class ProfileSetupForm extends StatelessWidget {
               child: Text(
                 l10n.suggestedLevel(suggestedLevel!.label),
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.success,
+                  color: HCColor.of(context).successText,
                   fontStyle: FontStyle.italic,
                 ),
               ),

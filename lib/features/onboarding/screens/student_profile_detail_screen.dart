@@ -271,7 +271,7 @@ class _ProfileHeader extends StatelessWidget {
                 Text(
                   _t(context).spdPinProtected,
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.warning,
+                    color: HCColor.of(context).warningText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -727,7 +727,7 @@ class _ScoreRow extends StatelessWidget {
                 Text(
                   '${score.starsEarned}',
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.accent,
+                    color: HCColor.of(context).readable(AppColors.accent),
                     fontWeight: FontWeight.w600,
                   ),
                 ),

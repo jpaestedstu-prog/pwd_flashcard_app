@@ -210,7 +210,7 @@ class RoutineStepTimerState extends State<RoutineStepTimer> {
               l ? 'Tapos na ang oras — magaling!' : 'Time is up — well done!',
               textAlign: TextAlign.center,
               style: AppTypography.titleSmall.copyWith(
-                color: AppColors.success,
+                color: HCColor.of(context).successText,
                 fontWeight: FontWeight.w800,
               ),
             ),

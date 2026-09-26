@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/accessible_theme.dart';
 
 /// A selectable cosmetic skin for the Progress dashboard.
 ///
@@ -40,8 +41,13 @@ class ProgressTheme {
   });
 
   /// Convenience LinearGradient for headers and swatches.
+  ///
+  /// Each colour is moved only as far as [onHeader] needs to read on it: a
+  /// lavender skin under white words was 2.3:1.
   LinearGradient get gradient => LinearGradient(
-        colors: headerGradient,
+        colors: [
+          for (final c in headerGradient) readableFill(c, label: onHeader),
+        ],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );

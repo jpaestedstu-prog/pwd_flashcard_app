@@ -280,7 +280,7 @@ class ChildDetailSheet extends ConsumerWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.labelSmall.copyWith(
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.warning,
+                                    color: HCColor.of(context).warningText,
                                   ),
                                 ),
                               ),

@@ -439,9 +439,19 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
                                                           : AppTypography
                                                                 .bodyLarge)
                                                       .copyWith(
-                                                        color: _story!
-                                                            .category
-                                                            .darkColor,
+                                                        color: HCColor.of(
+                                                          context,
+                                                        ).readableOver(
+                                                          _story!
+                                                              .category
+                                                              .darkColor,
+                                                          _story!
+                                                              .category
+                                                              .color
+                                                              .withValues(
+                                                                alpha: 0.12,
+                                                              ),
+                                                        ),
                                                         fontWeight:
                                                             FontWeight.w600,
                                                         height: 1.5,

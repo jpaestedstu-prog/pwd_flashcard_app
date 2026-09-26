@@ -714,7 +714,7 @@ class _FslUrlField extends StatelessWidget {
             child: Text(
               _t(context).tlNoClip,
               style: AppTypography.labelSmall.copyWith(
-                color: AppColors.warning,
+                color: HCColor.of(context).warningText,
               ),
             ),
           ),

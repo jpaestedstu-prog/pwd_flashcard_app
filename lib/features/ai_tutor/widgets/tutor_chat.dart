@@ -487,7 +487,7 @@ class _BubbleAction extends StatelessWidget {
               Text(
                 label,
                 style:
-                    AppTypography.labelSmall.copyWith(color: AppColors.primary),
+                    AppTypography.labelSmall.copyWith(color: HCColor.of(context).primary),
               ),
             ],
           ),

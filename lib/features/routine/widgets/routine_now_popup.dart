@@ -344,7 +344,7 @@ class _RoutineNowDialogState extends State<_RoutineNowDialog> {
         Text(
           isFilipino ? 'Mahusay! ✅' : 'Nice work! ✅',
           style: AppTypography.titleSmall.copyWith(
-            color: AppColors.success,
+            color: HCColor.of(context).successText,
             fontWeight: FontWeight.w800,
           ),
           textAlign: TextAlign.center,

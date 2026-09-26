@@ -45,7 +45,7 @@ class GamepadSettingsScreen extends ConsumerWidget {
               label: Text(_t(context).gpPractiseButtons),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
-                backgroundColor: AppColors.primary,
+                
               ),
             ),
           ),
@@ -310,11 +310,11 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
-          color: AppColors.primaryDark,
+          color: HCColor.of(context).readable(AppColors.primaryDark),
         ),
       ),
     );
@@ -369,9 +369,9 @@ class _SliderTile extends StatelessWidget {
               ),
               Text(
                 valueLabel,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+                  color: HCColor.of(context).primary,
                 ),
               ),
             ],

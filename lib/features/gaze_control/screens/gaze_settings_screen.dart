@@ -51,7 +51,7 @@ class GazeSettingsScreen extends ConsumerWidget {
               label: Text(_t(context).gzsTryIt),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
-                backgroundColor: AppColors.primary,
+                
               ),
             ),
           ),
@@ -203,8 +203,12 @@ class _IntroCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primaryDark, AppColors.primary],
+        // Deepened just enough for the white words on it.
+        gradient: LinearGradient(
+          colors: [
+            HCColor.of(context).fillFor(AppColors.primaryDark),
+            HCColor.of(context).fillFor(AppColors.primary),
+          ],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
@@ -232,7 +236,7 @@ class _NavScopeHint extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         _t(context).gzsScopeHint,
-        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        style: TextStyle(color: HCColor.of(context).textSecondary, fontSize: 13),
       ),
     );
   }
@@ -310,8 +314,8 @@ class _NavScopeOption extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           subtitle,
-                          style: const TextStyle(
-                              color: AppColors.textSecondary, fontSize: 13),
+                          style: TextStyle(
+                              color: HCColor.of(context).textSecondary, fontSize: 13),
                         ),
                       ],
                     ),
@@ -335,7 +339,7 @@ class _CalibrationHint extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         _t(context).gzsCalibrationHint,
-        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        style: TextStyle(color: HCColor.of(context).textSecondary, fontSize: 13),
       ),
     );
   }
@@ -351,11 +355,11 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
-          color: AppColors.primaryDark,
+          color: HCColor.of(context).readable(AppColors.primaryDark),
         ),
       ),
     );
@@ -403,8 +407,11 @@ class _SliderTile extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(valueLabel,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: HCColor.of(context).readable(
+                        AppColors.primaryDark,
+                      ))),
             ],
           ),
           Slider(
@@ -419,8 +426,8 @@ class _SliderTile extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 34, bottom: 4),
             child: Text(help,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 13)),
+                style: TextStyle(
+                    color: HCColor.of(context).textSecondary, fontSize: 13)),
           ),
         ],
       ),

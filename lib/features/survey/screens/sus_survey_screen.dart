@@ -165,7 +165,7 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
                   Text(
                     '${(answeredCount * 10)}%',
                     style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.primary,
+                      color: HCColor.of(context).primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -406,7 +406,7 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
                     'Q${i + 1}. ',
                     style: AppTypography.labelMedium.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                      color: HCColor.of(context).primary,
                     ),
                   ),
                   Expanded(

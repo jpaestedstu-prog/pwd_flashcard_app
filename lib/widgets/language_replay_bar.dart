@@ -81,7 +81,8 @@ class _LanguageButton extends StatelessWidget {
         child: FilledButton.icon(
           onPressed: onTap,
           style: FilledButton.styleFrom(
-            backgroundColor: color,
+            // The language's own colour, deepened just enough for white.
+            backgroundColor: HCColor.of(context).fillFor(color),
             foregroundColor: Colors.white,
             // 56dp floor keeps the target comfortably above the 48dp
             // accessibility minimum; the icon + label still grow with the

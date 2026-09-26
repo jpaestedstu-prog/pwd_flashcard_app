@@ -350,7 +350,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.labelMedium.copyWith(
-                    color: AppColors.accent,
+                    color: HCColor.of(context).readable(AppColors.accent),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -660,7 +660,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
               child: Text(
                 allCorrect ? _t(context).dcPerfect : _t(context).dcComplete,
                 style: AppTypography.titleMedium.copyWith(
-                  color: AppColors.success,
+                  color: HCColor.of(context).successText,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -700,7 +700,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
               Text(
                 _t(context).dcTodayDone,
                 style: AppTypography.titleSmall.copyWith(
-                  color: AppColors.success,
+                  color: HCColor.of(context).successText,
                   fontWeight: FontWeight.w700,
                 ),
               ),

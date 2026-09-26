@@ -307,7 +307,7 @@ class _NeedHelpAlert extends StatelessWidget {
                   audience.needHelpTitle(filipino: isFilipino),
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: AppColors.error,
+                    color: HCColor.of(context).errorText,
                   ),
                 ),
                 Text(
@@ -383,7 +383,7 @@ class _CategoryChart extends StatelessWidget {
                   Text(
                     ' $strongest',
                     style: AppTypography.bodySmall
-                        .copyWith(color: AppColors.success, fontSize: 11),
+                        .copyWith(color: HCColor.of(context).successText, fontSize: 11),
                   ),
                   const SizedBox(width: 12),
                 ],
@@ -393,7 +393,7 @@ class _CategoryChart extends StatelessWidget {
                   Text(
                     ' $weakest',
                     style: AppTypography.bodySmall
-                        .copyWith(color: AppColors.error, fontSize: 11),
+                        .copyWith(color: HCColor.of(context).errorText, fontSize: 11),
                   ),
                 ],
               ],
@@ -557,7 +557,10 @@ class _StudentRow extends StatelessWidget {
                           : '?',
                       style: AppTypography.labelMedium.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: AppColors.primaryDark,
+                        color: HCColor.of(context).readableOver(
+                          AppColors.primaryDark,
+                          AppColors.primaryLight,
+                        ),
                       ),
                     ),
                   ),
@@ -666,7 +669,9 @@ class _StatChip extends StatelessWidget {
           Text(
             text,
             style: AppTypography.labelSmall.copyWith(
-              color: color,
+              color: HCColor.of(
+                context,
+              ).readableOver(color, color.withValues(alpha: 0.08)),
               fontSize: 10,
               fontWeight: FontWeight.w600,
             ),

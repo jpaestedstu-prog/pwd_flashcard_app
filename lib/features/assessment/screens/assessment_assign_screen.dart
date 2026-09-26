@@ -544,7 +544,10 @@ class _AssessmentAssignScreenState
                           child: Text(
                             s.name.isNotEmpty ? s.name[0].toUpperCase() : '?',
                             style: AppTypography.titleSmall.copyWith(
-                              color: AppColors.primary,
+                              color: HCColor.of(context).readableOver(
+                                AppColors.primary,
+                                AppColors.primary.withValues(alpha: 0.15),
+                              ),
                               fontWeight: FontWeight.w700,
                             ),
                           ),

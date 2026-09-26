@@ -195,7 +195,7 @@ class DetailedAnalyticsScreen extends ConsumerWidget {
                   '${avgMin.toStringAsFixed(0)}m',
                   style: AppTypography.headlineSmall.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: AppColors.info,
+                    color: HCColor.of(context).infoText,
                   ),
                 ),
               ],

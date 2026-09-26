@@ -181,7 +181,7 @@ class _Header extends StatelessWidget {
         Text(
           _t(context).erIntro,
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
+            color: HCColor.of(context).textSecondary,
           ),
         ),
       ],

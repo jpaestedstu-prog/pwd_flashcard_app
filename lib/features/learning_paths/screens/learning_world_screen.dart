@@ -190,7 +190,7 @@ class _WorldHeader extends StatelessWidget {
             '$completedRegions/$totalRegions',
             style: AppTypography.labelLarge.copyWith(
               fontWeight: FontWeight.w800,
-              color: AppColors.primary,
+              color: HCColor.of(context).primary,
             ),
           ),
         ],

@@ -754,7 +754,7 @@ class _StrengthsWeaknessTable extends StatelessWidget {
                               Text(
                                 ' ${_categoryName(_t(context), s.strongestCategory!)}',
                                 style: AppTypography.bodySmall.copyWith(
-                                  color: AppColors.success,
+                                  color: HCColor.of(context).successText,
                                   fontSize: 11,
                                 ),
                               ),
@@ -769,7 +769,7 @@ class _StrengthsWeaknessTable extends StatelessWidget {
                               Text(
                                 ' ${_categoryName(_t(context), s.weakestCategory!)}',
                                 style: AppTypography.bodySmall.copyWith(
-                                  color: AppColors.error,
+                                  color: HCColor.of(context).errorText,
                                   fontSize: 11,
                                 ),
                               ),

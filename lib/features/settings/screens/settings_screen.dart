@@ -1025,7 +1025,7 @@ class SettingsScreen extends ConsumerWidget {
                   label: Text(
                     AppLocalizations.of(context)?.resetAllData ??
                         'Reset All Data',
-                    style: const TextStyle(color: AppColors.error),
+                    style: TextStyle(color: HCColor.of(context).errorText),
                   ),
                 ),
               ),
@@ -1256,7 +1256,7 @@ class _SetPinDialogState extends State<_SetPinDialog> {
               child: Text(
                 _error!,
                 style: AppTypography.labelSmall.copyWith(
-                  color: AppColors.error,
+                  color: HCColor.of(context).errorText,
                 ),
               ),
             ),
@@ -1268,7 +1268,7 @@ class _SetPinDialogState extends State<_SetPinDialog> {
             onPressed: () => Navigator.of(context).pop(''), // remove PIN
             child: Text(
               _t(context).epRemovePin,
-              style: const TextStyle(color: AppColors.error),
+              style: TextStyle(color: HCColor.of(context).errorText),
             ),
           ),
         TextButton(
@@ -1590,7 +1590,9 @@ class _SizePresetButton extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: isActive ? AppColors.primary : HCColor.of(context).surface,
+              color: isActive
+                  ? HCColor.of(context).primary
+                  : HCColor.of(context).surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isActive
@@ -1612,7 +1614,7 @@ class _SizePresetButton extends StatelessWidget {
               label,
               style: AppTypography.labelLarge.copyWith(
                 color: isActive
-                    ? Colors.white
+                    ? HCColor.of(context).textOnPrimary
                     : HCColor.of(context).textSecondary,
                 fontWeight: FontWeight.w700,
               ),

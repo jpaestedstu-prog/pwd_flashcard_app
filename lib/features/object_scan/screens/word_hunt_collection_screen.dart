@@ -221,11 +221,16 @@ class _ProgressHeader extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final complete = total > 0 && found >= total;
     final nextMilestone = nextHuntMilestone(found);
+    final hc = HCColor.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.bannerWordHuntStart, AppColors.bannerWordHuntEnd],
+        // The banner's own orange, deepened just enough for white words.
+        gradient: LinearGradient(
+          colors: [
+            hc.fillFor(AppColors.bannerWordHuntStart),
+            hc.fillFor(AppColors.bannerWordHuntEnd),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -305,7 +310,10 @@ class _ProgressHeader extends StatelessWidget {
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: AppColors.bannerWordHuntEnd,
+                foregroundColor: hc.readableOver(
+                  AppColors.bannerWordHuntEnd,
+                  Colors.white,
+                ),
                 minimumSize: const Size.fromHeight(52),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -347,8 +355,10 @@ class _HeaderChip extends StatelessWidget {
       constraints: BoxConstraints(maxWidth: maxWidth),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        // A shade darker than the banner, not lighter: white words on a
+        // white-washed chip were 2.3:1.
         decoration: BoxDecoration(
-          color: Colors.white24,
+          color: Colors.black.withValues(alpha: 0.16),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(

@@ -718,7 +718,12 @@ class _DurationChip extends StatelessWidget {
                 isFilipino ? duration.labelFilipino : duration.label,
                 style: AppTypography.labelLarge.copyWith(
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? hc.primary : hc.textPrimary,
+                  color: isSelected
+                      ? hc.readableOver(
+                          hc.primary,
+                          hc.primary.withValues(alpha: 0.2),
+                        )
+                      : hc.textPrimary,
                 ),
               ),
             ],

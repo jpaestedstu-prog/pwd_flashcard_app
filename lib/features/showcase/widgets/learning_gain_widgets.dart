@@ -413,7 +413,7 @@ class CategoryGainList extends StatelessWidget {
                     child: Text(
                       '$pre%',
                       style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.info,
+                        color: HCColor.of(context).infoText,
                         fontWeight: FontWeight.w700,
                       ),
                       textAlign: TextAlign.right,
@@ -433,7 +433,7 @@ class CategoryGainList extends StatelessWidget {
                     child: Text(
                       '$post%',
                       style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.success,
+                        color: HCColor.of(context).successText,
                         fontWeight: FontWeight.w700,
                       ),
                       textAlign: TextAlign.right,

@@ -203,11 +203,6 @@ class _SignCheckScreenState extends ConsumerState<SignCheckScreen> {
                         label: Text(_t(context).scOnlyUnchecked),
                         selected: _pendingOnly,
                         onSelected: (v) => setState(() => _pendingOnly = v),
-                        selectedColor: AppColors.primary,
-                        checkmarkColor: Colors.white,
-                        labelStyle: _pendingOnly
-                            ? const TextStyle(color: Colors.white)
-                            : null,
                       ),
                     ],
                   ],
@@ -265,7 +260,9 @@ class _Pill extends StatelessWidget {
     child: Text(
       label,
       style: AppTypography.labelSmall.copyWith(
-        color: color,
+        color: HCColor.of(
+          context,
+        ).readableOver(color, color.withValues(alpha: 0.15)),
         fontWeight: FontWeight.w700,
       ),
     ),

@@ -523,14 +523,14 @@ class _PinEntryDialogState extends State<_PinEntryDialog> {
               const SizedBox(height: 12),
               Text(
                 l10n.pinLockedTryAgainIn(_formatDuration(_remainingLockout!)),
-                style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+                style: AppTypography.bodySmall.copyWith(color: HCColor.of(context).errorText),
                 textAlign: TextAlign.center,
               ),
             ] else if (_hasError) ...[
               const SizedBox(height: 12),
               Text(
                 l10n.wrongPin,
-                style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+                style: AppTypography.bodySmall.copyWith(color: HCColor.of(context).errorText),
               ),
             ],
 
@@ -864,7 +864,7 @@ class _EducatorOverrideSheetState extends State<_EducatorOverrideSheet> {
             if (_educators.isEmpty)
               Text(
                 l10n.recoveryNoEducator,
-                style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+                style: AppTypography.bodySmall.copyWith(color: HCColor.of(context).errorText),
                 textAlign: TextAlign.center,
               )
             else ...[
@@ -979,7 +979,7 @@ class _InfoChip extends StatelessWidget {
           Text(
             label,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.primary,
+              color: HCColor.of(context).primary,
               fontWeight: FontWeight.w600,
             ),
           ),

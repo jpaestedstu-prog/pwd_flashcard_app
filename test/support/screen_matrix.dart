@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 
+import 'dart:io';
+
+import 'contrast.dart';
 import 'device_matrix.dart';
 import 'readability.dart';
 import 'package:pwdpwdpwd/core/theme/app_theme.dart';
@@ -88,6 +91,15 @@ Future<void> expectScreenNoOverflowAcrossDevices(
   // combination index, so every run sees exactly the same ones.
   final priorSeed = debugContentRandomSeed;
   addTearDown(() => debugContentRandomSeed = priorSeed);
+
+  // Report-only contrast sweep (`--dart-define=CONTRAST_REPORT=true`): the
+  // screen under the app's own light and dark themes, every piece of text
+  // read against what is painted behind it, failures appended to
+  // build/contrast_report.txt. The matrix below renders Flutter's default
+  // theme, which is not what a learner sees.
+  if (const bool.fromEnvironment('CONTRAST_REPORT')) {
+    await _reportContrast(tester, build, overrides);
+  }
 
   var combination = 0;
   for (final device in devices) {
@@ -207,4 +219,51 @@ Future<void> expectScreenSurvivesThemes(
       settle: settle,
     );
   }
+}
+
+Future<void> _reportContrast(
+  WidgetTester tester,
+  Widget Function() build,
+  List<Override> overrides,
+) async {
+  final out = File('build/contrast_report.txt');
+  for (final theme in <String, ThemeData Function()>{
+    'light': () => AppTheme.light,
+    'dark': () => AppTheme.dark,
+  }.entries) {
+    tester.view.physicalSize = const Size(1200, 1920);
+    tester.view.devicePixelRatio = 1.5;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: overrides,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme.value(),
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: build(),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 800));
+    while (tester.takeException() != null) {}
+    final screen = find.byType(MaterialApp).evaluate().isEmpty
+        ? '?'
+        : build().runtimeType.toString();
+    final lines = <String>{
+      for (final r in readAllText(tester))
+        if (!r.passes) '$screen [${theme.key}] $r',
+    };
+    if (lines.isNotEmpty) {
+      out.parent.createSync(recursive: true);
+      out.writeAsStringSync('${lines.join('\n')}\n', mode: FileMode.append);
+    }
+    await tester.pumpWidget(const SizedBox.shrink());
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+  }
+  tester.view.resetPhysicalSize();
+  tester.view.resetDevicePixelRatio();
 }

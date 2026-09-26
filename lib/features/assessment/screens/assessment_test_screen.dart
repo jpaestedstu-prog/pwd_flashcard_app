@@ -793,7 +793,10 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                         '${_answers.where((a) => a.isCorrect).length}/'
                         '${_answers.where((a) => !a.needsReview).length}',
                         style: AppTypography.labelLarge.copyWith(
-                          color: hc.primary,
+                          color: hc.readableOver(
+                            hc.primary,
+                            hc.primary.withValues(alpha: 0.15),
+                          ),
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -1468,7 +1471,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                     ),
                   ),
                   style: AppTypography.labelMedium.copyWith(
-                    color: AppColors.success,
+                    color: HCColor.of(context).successText,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

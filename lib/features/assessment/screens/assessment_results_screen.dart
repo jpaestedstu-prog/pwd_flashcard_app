@@ -1056,7 +1056,7 @@ class _AttemptRow extends StatelessWidget {
                         AppLocalizations.of(context)?.assessAttemptCounts ??
                             'Counts',
                         style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.success,
+                          color: HCColor.of(context).successText,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1074,7 +1074,7 @@ class _AttemptRow extends StatelessWidget {
                       child: Text(
                         '${a.emoji} ${a.shortLabelOf(AppLocalizations.of(context))}',
                         style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.info,
+                          color: HCColor.of(context).infoText,
                           fontWeight: FontWeight.w700,
                         ),
                       ),

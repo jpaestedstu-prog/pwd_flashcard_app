@@ -156,8 +156,9 @@ class _ClassroomDashboardScreenState
                     child: Center(
                       child: Text(
                         _t(context).cdLastUpdated(_formatTime(snapshot.timestamp)),
-                        style: AppTypography.labelSmall
-                            .copyWith(color: AppColors.textHint),
+                        style: AppTypography.labelSmall.copyWith(
+                          color: HCColor.of(context).textSecondary,
+                        ),
                       ),
                     ),
                   ),
