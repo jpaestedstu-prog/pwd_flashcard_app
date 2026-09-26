@@ -402,7 +402,7 @@ class _TooltipContent extends StatelessWidget {
                   Text(
                     step.actionHint!,
                     style: AppTypography.labelSmall.copyWith(
-                      color: step.color,
+                      color: HCColor.of(context).readableOver(step.color, step.color.withValues(alpha: 0.1)),
                       fontWeight: FontWeight.w700,
                     ),
                   ),

@@ -21085,6 +21085,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'That assessment could not be found. It may have been deleted.'**
   String get assessEditNotFound;
+
+  /// No description provided for @assessMediaWouldNotPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'This {kind} is here but would not play on this tablet.'**
+  String assessMediaWouldNotPlay(String kind);
 }
 
 class _AppLocalizationsDelegate

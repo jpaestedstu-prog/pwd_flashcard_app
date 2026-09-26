@@ -221,7 +221,7 @@ class SurveyResultsScreen extends ConsumerWidget {
                   child: Text(
                     result.gradeLabel,
                     style: AppTypography.labelLarge.copyWith(
-                      color: scoreColor,
+                      color: HCColor.of(context).readableOver(scoreColor, scoreColor.withValues(alpha: 0.12)),
                       fontWeight: FontWeight.bold,
                     ),
                   ),

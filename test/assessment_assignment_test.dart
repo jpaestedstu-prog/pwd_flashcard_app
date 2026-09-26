@@ -131,6 +131,67 @@ void main() {
 
   // ─── StudentAssignmentStatus ─────────────────────────
 
+  // ─── Times across tablets ──────────────────────────
+
+  group('times cross tablets in UTC', () {
+    // Found on two tablets in different time zones: a local ISO string has
+    // no offset, so a Manila "17:30" was read as 17:30 somewhere else — eight
+    // hours off — and a finished test looked older than its assignment.
+    final assigned = DateTime.utc(2026, 9, 26, 9, 30).toLocal();
+
+    AssessmentAssignment task() => AssessmentAssignment(
+      id: 'as1',
+      assessmentId: 'a1',
+      assessmentTitle: 'Final check',
+      assignedBy: 'teacher-1',
+      studentIds: const ['s1'],
+      assignedAt: assigned,
+      deadline: assigned.add(const Duration(days: 3)),
+    );
+
+    test('are written with their offset and read back as the same moment', () {
+      final json = task().toJson();
+      expect(json['assignedAt'], endsWith('Z'));
+      expect(json['deadline'], endsWith('Z'));
+
+      final back = AssessmentAssignment.fromJson(json);
+      expect(back.assignedAt, assigned);
+      expect(back.assignedAt.isUtc, isFalse, reason: 'shown in local time');
+    });
+
+    test('a result from another zone answers the assignment it came after', () {
+      final result = AssessmentResult(
+        id: 'r1',
+        assessmentId: 'a1',
+        profileId: 's1',
+        type: AssessmentType.custom,
+        score: 1,
+        totalQuestions: 1,
+        answers: const [],
+        completedAt: DateTime.utc(2026, 9, 26, 9, 45),
+        durationSeconds: 60,
+      );
+      final fromCloud = AssessmentAssignment.fromJson(task().toJson());
+      final resultFromCloud = AssessmentResult.fromJson(result.toJson());
+      expect(fromCloud.isAnsweredBy(resultFromCloud), isTrue);
+
+      final earlier = AssessmentResult.fromJson({
+        ...result.toJson(),
+        'completedAt': DateTime.utc(2026, 9, 25, 9).toIso8601String(),
+      });
+      expect(fromCloud.isAnsweredBy(earlier), isFalse);
+    });
+
+    test('a time saved before this change still reads as local time', () {
+      final json = task().toJson()
+        ..['assignedAt'] = '2026-09-26T17:30:00.000';
+      expect(
+        AssessmentAssignment.fromJson(json).assignedAt,
+        DateTime(2026, 9, 26, 17, 30),
+      );
+    });
+  });
+
   group('StudentAssignmentStatus', () {
     test('stores required fields', () {
       const status = StudentAssignmentStatus(

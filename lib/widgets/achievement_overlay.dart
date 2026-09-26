@@ -118,7 +118,7 @@ class _AchievementUnlockedOverlayState
                   child: Text(
                     '🏆 Achievement Unlocked!',
                     style: AppTypography.labelLarge.copyWith(
-                      color: achievement.color,
+                      color: HCColor.of(context).readableOver(achievement.color, achievement.color.withValues(alpha: 0.1)),
                       fontWeight: FontWeight.w700,
                     ),
                   ),

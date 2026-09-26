@@ -436,9 +436,9 @@ class _BoardTemplateBuilderScreenState
                                             ? () => _editCustomTile(index)
                                             : null,
                                         trailing: IconButton(
-                                          icon: const Icon(
+                                          icon: Icon(
                                             Icons.remove_circle_rounded,
-                                            color: AppColors.error,
+                                            color: HCColor.of(context).graphic(AppColors.error),
                                           ),
                                           tooltip: _t(context).bbRemove(tile.label),
                                           onPressed: () => _removeTile(index),
@@ -693,7 +693,7 @@ class _BoardTemplateBuilderScreenState
                                               .copyWith(
                                                 fontWeight: FontWeight.w600,
                                                 color: isAdded
-                                                    ? AppColors.success
+                                                    ? HCColor.of(context).successText
                                                     : hc.textPrimary,
                                               ),
                                           textAlign: TextAlign.center,
@@ -712,12 +712,12 @@ class _BoardTemplateBuilderScreenState
                                         ),
                                       ),
                                       if (isAdded)
-                                        const Padding(
-                                          padding: EdgeInsets.only(top: 4),
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4),
                                           child: Icon(
                                             Icons.check_circle_rounded,
                                             size: 18,
-                                            color: AppColors.success,
+                                            color: HCColor.of(context).graphic(AppColors.success),
                                           ),
                                         ),
                                     ],

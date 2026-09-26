@@ -31,7 +31,7 @@ class CustomQuiz {
     'difficulty': difficulty.index,
     'timeLimitMinutes': timeLimitMinutes,
     'createdBy': createdBy,
-    'createdAt': createdAt.toIso8601String(),
+    'createdAt': createdAt.toUtc().toIso8601String(),
   };
 
   factory CustomQuiz.fromJson(Map<String, dynamic> json) {
@@ -50,7 +50,7 @@ class CustomQuiz {
           : GameDifficulty.medium,
       timeLimitMinutes: json['timeLimitMinutes'] as int?,
       createdBy: json['createdBy'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
     );
   }
 }

@@ -552,10 +552,10 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                           ),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.star_rounded,
                                 size: 20,
-                                color: AppColors.warning,
+                                color: HCColor.of(context).graphic(AppColors.warning),
                               ),
                               const SizedBox(width: 4),
                               Text(

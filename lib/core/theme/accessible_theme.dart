@@ -214,21 +214,26 @@ Color bestOn(Color c) => contrastOf(c, Colors.white) >= contrastOf(c, Colors.bla
     ? Colors.white
     : const Color(0xFF1A1A1A);
 
-/// [preferred] when it reads at 4.5:1 on every one of [grounds]; otherwise
-/// the nearest of it, darkened or lightened, that does.
-Color readableOn(List<Color> grounds, {required Color preferred}) {
+/// [preferred] when it reads at 4.5:1 (or [target]) on every one of
+/// [grounds]; otherwise the nearest of it, darkened or lightened, that does.
+Color readableOn(
+  List<Color> grounds, {
+  required Color preferred,
+  double target = 4.6,
+}) {
   // Asked from build methods on every frame, with a handful of distinct
   // inputs per theme: remember the answers.
   final key = Object.hashAll([
     'on',
     preferred.toARGB32(),
+    target,
     for (final g in grounds) g.toARGB32(),
   ]);
-  return _memo.putIfAbsent(key, () => _readableOn(grounds, preferred));
+  return _memo.putIfAbsent(key, () => _readableOn(grounds, preferred, target));
 }
 
-Color _readableOn(List<Color> grounds, Color preferred) {
-  bool ok(Color c) => grounds.every((g) => contrastOf(c, g) >= 4.6);
+Color _readableOn(List<Color> grounds, Color preferred, double target) {
+  bool ok(Color c) => grounds.every((g) => contrastOf(c, g) >= target);
   if (ok(preferred)) return preferred;
   final darkGround = grounds.map(luminance).reduce(math.max) < 0.2;
   return _shift(preferred, towardLight: darkGround, until: ok) ??

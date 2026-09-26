@@ -416,8 +416,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                 color: AppColors.warning.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.emoji_events_rounded,
-                  color: AppColors.warning, size: 20),
+              child: Icon(Icons.emoji_events_rounded,
+                  color: HCColor.of(context).graphic(AppColors.warning), size: 20),
             ),
             const SizedBox(width: 10),
             Flexible(
@@ -563,7 +563,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   style: AppTypography.bodySmall.copyWith(
                     fontWeight: isMe ? FontWeight.bold : FontWeight.w600,
                     color: isMe
-                        ? AppColors.primary
+                        ? HCColor.of(context).primary
                         : HCColor.of(context).textPrimary,
                   ),
                   maxLines: 1,

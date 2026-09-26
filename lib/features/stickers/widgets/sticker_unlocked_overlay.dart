@@ -136,7 +136,7 @@ class _StickerUnlockedOverlayState extends State<StickerUnlockedOverlay> {
                             ? '🌟 Bagong Sticker!'
                             : '🌟 New Sticker!',
                         style: AppTypography.labelLarge.copyWith(
-                          color: accent,
+                          color: HCColor.of(context).readableOver(accent, accent.withValues(alpha: 0.12)),
                           fontWeight: FontWeight.w700,
                         ),
                       ),

@@ -287,7 +287,7 @@ class _InsightCard extends StatelessWidget {
                 maxLines: 1,
                 style: AppTypography.titleMedium.copyWith(
                   fontWeight: FontWeight.w800,
-                  color: color,
+                  color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.25)),
                 ),
               ),
             ),
@@ -490,7 +490,7 @@ class _SessionStatsCard extends StatelessWidget {
               value,
               style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.w800,
-                color: color,
+                color: hc.readableOver(color, color.withValues(alpha: 0.1)),
               ),
             ),
             Text(

@@ -647,7 +647,7 @@ class _NextStepRow extends StatelessWidget {
                       ? Icons.running_with_errors_rounded
                       : Icons.schedule_rounded,
                   size: 14,
-                  color: late ? AppColors.error : hc.textSecondary,
+                  color: late ? HCColor.of(context).graphic(AppColors.error) : hc.textSecondary,
                 ),
                 const SizedBox(width: 4),
               ],
@@ -664,7 +664,7 @@ class _NextStepRow extends StatelessWidget {
                             '${_clock(step)}'
                       : '${isFilipino ? 'Susunod' : 'Next'}: $title',
                   style: AppTypography.labelSmall.copyWith(
-                    color: late ? AppColors.error : hc.textSecondary,
+                    color: late ? HCColor.of(context).errorText : hc.textSecondary,
                     fontWeight: late ? FontWeight.w700 : FontWeight.w500,
                   ),
                   maxLines: 2,

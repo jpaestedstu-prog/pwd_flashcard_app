@@ -201,7 +201,7 @@ class RoutineStepTimerState extends State<RoutineStepTimer> {
               textAlign: TextAlign.center,
               style: AppTypography.displaySmall.copyWith(
                 fontWeight: FontWeight.w700,
-                color: done ? AppColors.success : hc.textPrimary,
+                color: done ? HCColor.of(context).successText : hc.textPrimary,
               ),
             ),
           if (done) ...[

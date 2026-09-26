@@ -199,7 +199,7 @@ class RoutineMediaPlaceholder extends StatelessWidget {
                         maxLines: compact ? 2 : 3,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.labelMedium.copyWith(
-                          color: style.color,
+                          color: HCColor.of(context).readableOver(style.color, style.color.withValues(alpha: 0.35)),
                           fontWeight: FontWeight.w700,
                         ),
                       ),

@@ -423,7 +423,7 @@ class _ScrambleRacePlayerState extends State<ScrambleRacePlayer> {
                       letter.toUpperCase(),
                       style: AppTypography.titleLarge.copyWith(
                         fontWeight: FontWeight.w900,
-                        color: feedbackColor,
+                        color: HCColor.of(context).readableOver(feedbackColor, feedbackColor.withValues(alpha: 0.15)),
                       ),
                     ),
                   ),

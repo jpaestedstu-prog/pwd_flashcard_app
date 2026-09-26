@@ -1071,7 +1071,7 @@ class _ResumeCard extends StatelessWidget {
                   l10n.resumeBadge,
                   style: AppTypography.labelSmall.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: accent,
+                    color: HCColor.of(context).readableOver(accent, accent.withValues(alpha: 0.18)),
                   ),
                 ),
               ),
@@ -1227,7 +1227,7 @@ class _StatusBar extends StatelessWidget {
                 '${session.teamScore}',
                 style: AppTypography.titleMedium.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: accent,
+                  color: HCColor.of(context).readableOver(accent, accent.withValues(alpha: 0.15)),
                 ),
               ),
               Text(
@@ -1287,7 +1287,7 @@ class _TurnBanner extends StatelessWidget {
               textAlign: TextAlign.center,
               style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w600,
-                color: color,
+                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.1)),
               ),
             ),
           ),

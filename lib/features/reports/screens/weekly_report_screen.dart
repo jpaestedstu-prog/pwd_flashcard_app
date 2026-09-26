@@ -667,7 +667,7 @@ class _ReportStatChip extends StatelessWidget {
           Text(
             text,
             style: AppTypography.labelSmall.copyWith(
-              color: color,
+              color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.1)),
               fontSize: 10,
               fontWeight: FontWeight.w600,
             ),

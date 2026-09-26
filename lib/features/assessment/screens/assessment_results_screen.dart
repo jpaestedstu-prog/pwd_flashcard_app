@@ -303,7 +303,7 @@ class _PrePostComparisonChart extends StatelessWidget {
                 improved
                     ? Icons.trending_up_rounded
                     : Icons.trending_flat_rounded,
-                color: improved ? AppColors.success : AppColors.warning,
+                color: improved ? HCColor.of(context).graphic(AppColors.success) : HCColor.of(context).graphic(AppColors.warning),
                 size: 28,
               ),
               const SizedBox(width: 10),
@@ -333,7 +333,7 @@ class _PrePostComparisonChart extends StatelessWidget {
                 child: Text(
                   '${gain >= 0 ? "+" : ""}$gain%',
                   style: AppTypography.labelLarge.copyWith(
-                    color: improved ? AppColors.success : AppColors.warning,
+                    color: improved ? HCColor.of(context).successText : HCColor.of(context).warningText,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -476,7 +476,7 @@ class _PrePostComparisonChart extends StatelessWidget {
                     Text(
                       '${positive ? "+" : ""}$gain%',
                       style: AppTypography.labelMedium.copyWith(
-                        color: positive ? AppColors.success : AppColors.error,
+                        color: positive ? HCColor.of(context).successText : HCColor.of(context).errorText,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -872,23 +872,23 @@ class _HistoryTile extends StatelessWidget {
                   Semantics(
                     label: (AppLocalizations.of(context) ?? AppLocalizationsEn())
                         .assessSentForReview,
-                    child: const Icon(
+                    child: Icon(
                       Icons.videocam_rounded,
-                      color: AppColors.info,
+                      color: HCColor.of(context).graphic(AppColors.info),
                     ),
                   )
                 else
                 Text(
                   '$pct%',
                   style: AppTypography.titleMedium.copyWith(
-                    color: _scoreColor(result.percentage),
+                    color: HCColor.of(context).readableOver(_scoreColor(result.percentage), _scoreColor(result.percentage).withValues(alpha: 0.15)),
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 Text(
                   result.gradeOf(AppLocalizations.of(context)),
                   style: AppTypography.labelSmall.copyWith(
-                    color: _scoreColor(result.percentage),
+                    color: HCColor.of(context).readableOver(_scoreColor(result.percentage), _scoreColor(result.percentage).withValues(alpha: 0.15)),
                     fontSize: 10,
                   ),
                 ),

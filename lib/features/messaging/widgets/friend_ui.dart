@@ -703,9 +703,9 @@ class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
               ),
               ListTile(
                 enabled: !_busy,
-                leading: const Icon(
+                leading: Icon(
                   Icons.block_rounded,
-                  color: AppColors.error,
+                  color: HCColor.of(context).graphic(AppColors.error),
                 ),
                 title: Text(fil ? 'I-block' : 'Block'),
                 subtitle: Text(
@@ -721,7 +721,7 @@ class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
             ],
             ListTile(
               enabled: !_busy,
-              leading: const Icon(Icons.flag_rounded, color: AppColors.error),
+              leading: Icon(Icons.flag_rounded, color: HCColor.of(context).graphic(AppColors.error)),
               title: Text(fil ? 'I-report' : 'Report'),
               subtitle: Text(
                 fil

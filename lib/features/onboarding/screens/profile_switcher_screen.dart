@@ -331,10 +331,10 @@ class _ProfileCard extends StatelessWidget {
                   color: AppColors.warning.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.lock_rounded,
                   size: 20,
-                  color: AppColors.warning,
+                  color: HCColor.of(context).graphic(AppColors.warning),
                 ),
               )
             else

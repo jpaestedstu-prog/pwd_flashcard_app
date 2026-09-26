@@ -802,7 +802,7 @@ class _ResultBanner extends StatelessWidget {
                   : _t(context).lsKeepGoing,
               style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w700,
-                color: color,
+                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.4)),
               ),
             ),
           ),

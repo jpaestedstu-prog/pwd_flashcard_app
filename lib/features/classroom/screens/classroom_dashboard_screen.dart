@@ -348,7 +348,7 @@ class _StudentCard extends StatelessWidget {
                   _activityLabel(_t(context), student.currentActivity),
                   style: AppTypography.bodySmall.copyWith(
                     color: student.isActive
-                        ? AppColors.success
+                        ? HCColor.of(context).successText
                         : hc.textSecondary,
                     fontStyle: FontStyle.italic,
                   ),
@@ -363,8 +363,8 @@ class _StudentCard extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.star_rounded,
-                      size: 16, color: AppColors.warning),
+                  Icon(Icons.star_rounded,
+                      size: 16, color: HCColor.of(context).graphic(AppColors.warning)),
                   const SizedBox(width: 2),
                   Flexible(child: Text('${student.starsEarned}',
                       style: AppTypography.labelMedium,
@@ -377,7 +377,7 @@ class _StudentCard extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.percent_rounded, size: 14, color: AppColors.info),
+                  Icon(Icons.percent_rounded, size: 14, color: HCColor.of(context).graphic(AppColors.info)),
                   const SizedBox(width: 2),
                   Flexible(child: Text('$accuracy%', style: AppTypography.labelMedium,
   maxLines: 2,

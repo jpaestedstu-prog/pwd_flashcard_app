@@ -560,9 +560,9 @@ class _DropTargetRow extends StatelessWidget {
 
                 // Drop zone / matched word
                 if (target.isCorrect) ...[
-                  const Icon(
+                  Icon(
                     Icons.check_circle_rounded,
-                    color: AppColors.success,
+                    color: HCColor.of(context).graphic(AppColors.success),
                     size: 24,
                   ),
                   const SizedBox(width: 8),
@@ -592,7 +592,7 @@ class _DropTargetRow extends StatelessWidget {
                       matchedWord ?? '???',
                       style: AppTypography.labelMedium.copyWith(
                         color: matchedWord != null
-                            ? AppColors.error
+                            ? HCColor.of(context).errorText
                             : AppColors.textHint,
                       ),
                     ),

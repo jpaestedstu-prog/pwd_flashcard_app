@@ -347,7 +347,7 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
               child: Text(
                 sticker.rarity.labelOf(isFilipino: isFilipino),
                 style: AppTypography.labelSmall.copyWith(
-                  color: sticker.rarity.color,
+                  color: HCColor.of(context).readableOver(sticker.rarity.color, sticker.rarity.color.withValues(alpha: 0.15)),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -362,7 +362,7 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
                       ? Icons.check_circle_rounded
                       : Icons.info_outline_rounded,
                   size: 18,
-                  color: isOwned ? AppColors.success : hc.textSecondary,
+                  color: isOwned ? HCColor.of(context).graphic(AppColors.success) : hc.textSecondary,
                 ),
                 const SizedBox(width: 6),
                 Flexible(
@@ -371,7 +371,7 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
                         ? (isFilipino ? 'Na-unlock na!' : 'Unlocked!')
                         : sticker.unlockDescriptionOf(isFilipino: isFilipino),
                     style: AppTypography.bodyMedium.copyWith(
-                      color: isOwned ? AppColors.success : hc.textSecondary,
+                      color: isOwned ? HCColor.of(context).successText : hc.textSecondary,
                     ),
                     textAlign: TextAlign.center,
                   ),

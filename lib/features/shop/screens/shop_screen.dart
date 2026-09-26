@@ -132,8 +132,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
               Padding(
                 padding: const EdgeInsets.only(right: 16),
                 child: Chip(
-                  avatar: const Icon(Icons.star_rounded,
-                      size: 18, color: AppColors.warning),
+                  avatar: Icon(Icons.star_rounded,
+                      size: 18, color: HCColor.of(context).graphic(AppColors.warning)),
                   label: Text(
                     '$balance',
                     style: AppTypography.labelLarge.copyWith(
@@ -392,8 +392,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.info_outline_rounded,
-                        size: 18, color: AppColors.info),
+                    Icon(Icons.info_outline_rounded,
+                        size: 18, color: HCColor.of(context).graphic(AppColors.info)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -410,8 +410,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.star_rounded,
-                    size: 20, color: AppColors.warning),
+                Icon(Icons.star_rounded,
+                    size: 20, color: HCColor.of(context).graphic(AppColors.warning)),
                 const SizedBox(width: 4),
                 // Flexible because the price line is now localised: "45
                 // bituin" is wider than "45 stars", and wider again at 2.0x
@@ -859,9 +859,9 @@ class _ShopItemCard extends StatelessWidget {
                         style: AppTypography.titleSmall.copyWith(
                           fontWeight: FontWeight.w700,
                           color: isEquipped
-                              ? AppColors.primary
+                              ? HCColor.of(context).primary
                               : owned
-                                  ? AppColors.success
+                                  ? HCColor.of(context).successText
                                   : HCColor.of(context).textPrimary,
                         ),
                         textAlign: TextAlign.center,
@@ -890,8 +890,8 @@ class _ShopItemCard extends StatelessWidget {
                   right: 8,
                   child: Tooltip(
                     message: adviceLine,
-                    child: const Icon(Icons.info_outline_rounded,
-                        size: 18, color: AppColors.info),
+                    child: Icon(Icons.info_outline_rounded,
+                        size: 18, color: HCColor.of(context).graphic(AppColors.info)),
                   ),
                 ),
               if (recommended)
@@ -900,8 +900,8 @@ class _ShopItemCard extends StatelessWidget {
                   left: 8,
                   child: Tooltip(
                     message: l10n.recommendedForYou,
-                    child: const Icon(Icons.thumb_up_rounded,
-                        size: 16, color: AppColors.success),
+                    child: Icon(Icons.thumb_up_rounded,
+                        size: 16, color: HCColor.of(context).graphic(AppColors.success)),
                   ),
                 ),
             ],

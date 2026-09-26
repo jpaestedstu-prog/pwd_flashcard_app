@@ -370,7 +370,7 @@ class _EnhancedCreateFlashcardScreenState
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: hc.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: hc.textOnPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),

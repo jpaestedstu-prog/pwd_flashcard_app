@@ -108,7 +108,7 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                         Text(
                           '$pctDisplay%',
                           style: AppTypography.displayMedium.copyWith(
-                            color: _scoreColor(pct),
+                            color: HCColor.of(context).readableOver(_scoreColor(pct), _scoreColor(pct).withValues(alpha: 0.15)),
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -175,7 +175,7 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.videocam_rounded, color: AppColors.info),
+                    Icon(Icons.videocam_rounded, color: HCColor.of(context).graphic(AppColors.info)),
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
@@ -282,7 +282,7 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: hc.primary,
-                            foregroundColor: Colors.white,
+                            foregroundColor: hc.textOnPrimary,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
@@ -487,8 +487,8 @@ class _QuestionReviewTile extends StatelessWidget {
                   '$index',
                   style: AppTypography.labelSmall.copyWith(
                     color: answer.isCorrect
-                        ? AppColors.success
-                        : AppColors.error,
+                        ? HCColor.of(context).successText
+                        : HCColor.of(context).errorText,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -510,7 +510,7 @@ class _QuestionReviewTile extends StatelessWidget {
               answer.isCorrect
                   ? Icons.check_circle_rounded
                   : Icons.cancel_rounded,
-              color: answer.isCorrect ? AppColors.success : AppColors.error,
+              color: answer.isCorrect ? HCColor.of(context).graphic(AppColors.success) : HCColor.of(context).graphic(AppColors.error),
               size: 20,
             ),
           ],
@@ -558,7 +558,7 @@ class _QuestionReviewTile extends StatelessWidget {
                 style: AppTypography.bodySmall.copyWith(color: hc.textPrimary),
               ),
             ),
-            const Icon(Icons.videocam_rounded, color: AppColors.info, size: 20),
+            Icon(Icons.videocam_rounded, color: HCColor.of(context).graphic(AppColors.info), size: 20),
           ],
         ),
       ),

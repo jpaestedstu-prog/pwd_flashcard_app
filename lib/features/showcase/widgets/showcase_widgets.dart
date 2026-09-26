@@ -128,7 +128,7 @@ class ShowcaseCard extends StatelessWidget {
                                 Text(
                                   item.type.labelOf(_t(context)),
                                   style: AppTypography.labelSmall.copyWith(
-                                    color: typeColor,
+                                    color: HCColor.of(context).readableOver(typeColor, typeColor.withValues(alpha: 0.15)),
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 0.3,
                                   ),
@@ -233,7 +233,7 @@ class ShowcaseCard extends StatelessWidget {
                                   Text(
                                     '${item.score}/${item.total}',
                                     style: AppTypography.labelSmall.copyWith(
-                                      color: typeColor,
+                                      color: HCColor.of(context).readableOver(typeColor, typeColor.withValues(alpha: 0.15)),
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -253,7 +253,7 @@ class ShowcaseCard extends StatelessWidget {
                                 child: Text(
                                   '${(item.masteryPercent! * 100).round()}%',
                                   style: AppTypography.labelSmall.copyWith(
-                                    color: _masteryColor(item.masteryPercent!),
+                                    color: HCColor.of(context).readableOver(_masteryColor(item.masteryPercent!), _masteryColor(item.masteryPercent!).withValues(alpha: 0.15)),
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),

@@ -625,10 +625,10 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.check_circle_rounded,
                       size: 20,
-                      color: AppColors.success,
+                      color: HCColor.of(context).graphic(AppColors.success),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -767,7 +767,7 @@ class _WordPrompt extends StatelessWidget {
           Text(
             card.wordFilipino,
             style: AppTypography.titleSmall.copyWith(
-              color: const Color(0xFF7C4DFF),
+              color: HCColor.of(context).readableOver(const Color(0xFF7C4DFF), const Color(0xFF7C4DFF).withValues(alpha: 0.15)),
             ),
           ),
         ],
@@ -1071,7 +1071,7 @@ class _PracticePanel extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.labelMedium.copyWith(
-                            color: accent,
+                            color: HCColor.of(context).readableOver(accent, accent.withValues(alpha: 0.3)),
                             fontWeight: FontWeight.w700,
                           ),
                         ),

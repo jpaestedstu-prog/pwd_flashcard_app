@@ -55,6 +55,18 @@ void main() {
     expect(contrastOf(label, light), greaterThanOrEqualTo(4.5));
   });
 
+  test('an icon is moved only to 3:1 — brighter than words, same hue', () {
+    for (final c in pastels) {
+      final icon = readableOn([cream, Colors.white], preferred: c, target: 3.3);
+      final ink = readableOn([cream, Colors.white], preferred: c);
+      expect(contrastOf(icon, cream), greaterThanOrEqualTo(3.0), reason: '$c');
+      expect(contrastOf(icon, Colors.white), greaterThanOrEqualTo(3.0));
+      expect((hue(icon) - hue(c)).abs(), lessThan(1.5), reason: 'hue of $c');
+      // Never darker than the colour words would need.
+      expect(luminance(icon), greaterThanOrEqualTo(luminance(ink)));
+    }
+  });
+
   test('the same question gives the same answer (it is remembered)', () {
     final a = readableOn([cream], preferred: AppColors.info);
     final b = readableOn([cream], preferred: AppColors.info);

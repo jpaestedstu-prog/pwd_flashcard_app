@@ -73,7 +73,7 @@ class RoutineOwnershipBanner extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.cloud_off_rounded, color: AppColors.warning),
+          Icon(Icons.cloud_off_rounded, color: HCColor.of(context).graphic(AppColors.warning)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

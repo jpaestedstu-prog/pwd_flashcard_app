@@ -474,7 +474,7 @@ class _DictateButton extends StatelessWidget {
         onPressed: onPressed,
         icon: Icon(
           listening ? Icons.stop_circle_rounded : Icons.mic_rounded,
-          color: listening ? AppColors.error : hc.primary,
+          color: listening ? HCColor.of(context).graphic(AppColors.error) : hc.primary,
         ),
         label: Text(label),
         style: OutlinedButton.styleFrom(

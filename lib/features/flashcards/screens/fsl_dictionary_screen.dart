@@ -599,7 +599,7 @@ class _FslWordCard extends StatelessWidget {
                         hasVideo
                             ? Icons.play_circle_rounded
                             : Icons.videocam_off_rounded,
-                        color: hasVideo ? AppColors.secondary : hc.textHint,
+                        color: hasVideo ? HCColor.of(context).graphic(AppColors.secondary) : hc.textHint,
                         size: context.scaleIcon(22),
                       ),
                     ],

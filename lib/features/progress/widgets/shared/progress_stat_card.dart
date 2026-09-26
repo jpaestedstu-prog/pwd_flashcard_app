@@ -102,7 +102,7 @@ class ProgressStatCard extends StatelessWidget {
                 maxLines: 1,
                 style: AppTypography.titleLarge.copyWith(
                   fontWeight: FontWeight.w800,
-                  color: color,
+                  color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.3)),
                 ),
               ),
             ),

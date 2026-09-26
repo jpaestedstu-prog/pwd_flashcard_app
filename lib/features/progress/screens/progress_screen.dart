@@ -936,7 +936,7 @@ class _StarGrid extends StatelessWidget {
               return Icon(
                 earned ? Icons.star_rounded : Icons.star_border_rounded,
                 size: 32,
-                color: earned ? AppColors.warning : HCColor.of(context).border,
+                color: earned ? HCColor.of(context).graphic(AppColors.warning) : HCColor.of(context).border,
               );
             }),
           ),
@@ -1124,7 +1124,7 @@ class _RecentGameTile extends StatelessWidget {
                     earned ? Icons.star_rounded : Icons.star_border_rounded,
                     size: 20,
                     color: earned
-                        ? AppColors.warning
+                        ? HCColor.of(context).graphic(AppColors.warning)
                         : HCColor.of(context).border,
                   ),
                 );

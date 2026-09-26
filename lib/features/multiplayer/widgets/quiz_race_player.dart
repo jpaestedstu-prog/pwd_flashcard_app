@@ -378,11 +378,11 @@ class _QuizRacePlayerState extends State<QuizRacePlayer> {
                 if (isCorrect) {
                   bg = AppColors.success.withValues(alpha: 0.15);
                   border = AppColors.success;
-                  fg = AppColors.success;
+                  fg = hc.readableOver(AppColors.success, bg);
                 } else if (isSelected) {
                   bg = AppColors.error.withValues(alpha: 0.15);
                   border = AppColors.error;
-                  fg = AppColors.error;
+                  fg = hc.readableOver(AppColors.error, bg);
                 }
               } else if (isSelected) {
                 bg = widget.accentColor.withValues(alpha: 0.1);

@@ -452,10 +452,10 @@ class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
+                Icon(
                   Icons.tips_and_updates_rounded,
                   size: 18,
-                  color: AppColors.warning,
+                  color: HCColor.of(context).graphic(AppColors.warning),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -571,6 +571,7 @@ class _FilledSlot extends StatelessWidget {
     final onDevice = RoutineMediaStore.isDeviceFile(value);
     final shared = SharedMediaService.isShared(value);
     final progress = sharing;
+    final ground = Color.alphaBlend(color.withValues(alpha: 0.06), hc.surface);
     final String where;
     final Color whereColor;
     if (progress != null) {
@@ -578,10 +579,10 @@ class _FilledSlot extends StatelessWidget {
       whereColor = hc.textSecondary;
     } else if (shared) {
       where = t.assessMediaShared;
-      whereColor = AppColors.success;
+      whereColor = hc.readableOver(AppColors.success, ground);
     } else if (onDevice) {
       where = canShare ? t.assessMediaNotShared : t.assessMediaOnDevice;
-      whereColor = AppColors.warning;
+      whereColor = hc.readableOver(AppColors.warning, ground);
     } else {
       where = t.assessMediaLinkReaches;
       whereColor = hc.textSecondary;
@@ -590,7 +591,7 @@ class _FilledSlot extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
       decoration: BoxDecoration(
-        color: Color.alphaBlend(color.withValues(alpha: 0.06), hc.surface),
+        color: ground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
@@ -616,10 +617,10 @@ class _FilledSlot extends StatelessWidget {
                     Row(
                       children: [
                         if (shared) ...[
-                          const Icon(
+                          Icon(
                             Icons.cloud_done_rounded,
                             size: 14,
-                            color: AppColors.success,
+                            color: whereColor,
                           ),
                           const SizedBox(width: 4),
                         ],
@@ -673,7 +674,9 @@ class _FilledSlot extends StatelessWidget {
               ),
               TextButton.icon(
                 onPressed: onRemove,
-                style: TextButton.styleFrom(foregroundColor: hc.error),
+                style: TextButton.styleFrom(
+                  foregroundColor: hc.readableOver(hc.error, ground),
+                ),
                 icon: const Icon(Icons.delete_outline_rounded, size: 18),
                 label: Text(t.assessMediaRemove),
               ),
@@ -870,7 +873,7 @@ class _MediaSourceSheetState extends State<_MediaSourceSheet> {
                     )
                   : t.assessMediaOnDevice,
               style: AppTypography.labelSmall.copyWith(
-                color: widget.willShare ? hc.textSecondary : AppColors.warning,
+                color: widget.willShare ? hc.textSecondary : hc.warningText,
               ),
             ),
             const SizedBox(height: 20),

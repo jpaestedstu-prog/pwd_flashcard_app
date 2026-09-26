@@ -296,8 +296,8 @@ class _NeedHelpAlert extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded,
-              color: AppColors.error, size: 28),
+          Icon(Icons.warning_amber_rounded,
+              color: HCColor.of(context).graphic(AppColors.error), size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -378,8 +378,8 @@ class _CategoryChart extends StatelessWidget {
             Row(
               children: [
                 if (strongest != null) ...[
-                  const Icon(Icons.arrow_upward_rounded,
-                      size: 14, color: AppColors.success),
+                  Icon(Icons.arrow_upward_rounded,
+                      size: 14, color: HCColor.of(context).graphic(AppColors.success)),
                   Text(
                     ' $strongest',
                     style: AppTypography.bodySmall
@@ -388,8 +388,8 @@ class _CategoryChart extends StatelessWidget {
                   const SizedBox(width: 12),
                 ],
                 if (weakest != null) ...[
-                  const Icon(Icons.arrow_downward_rounded,
-                      size: 14, color: AppColors.error),
+                  Icon(Icons.arrow_downward_rounded,
+                      size: 14, color: HCColor.of(context).graphic(AppColors.error)),
                   Text(
                     ' $weakest',
                     style: AppTypography.bodySmall
@@ -624,7 +624,7 @@ class _StudentRow extends StatelessWidget {
               child: Text(
                 accuracyLabel,
                 style: AppTypography.labelSmall.copyWith(
-                  color: accuracyColor,
+                  color: HCColor.of(context).readableOver(accuracyColor, accuracyColor.withValues(alpha: 0.25)),
                   fontWeight: FontWeight.w800,
                 ),
               ),

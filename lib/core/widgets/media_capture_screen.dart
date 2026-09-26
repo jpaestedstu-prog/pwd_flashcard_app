@@ -725,7 +725,7 @@ class _RecordingBar extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.fiber_manual_record_rounded, color: AppColors.error),
+                  Icon(Icons.fiber_manual_record_rounded, color: HCColor.of(context).graphic(AppColors.error)),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(

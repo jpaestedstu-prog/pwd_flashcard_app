@@ -451,6 +451,13 @@ class HCColor {
   /// on cream was 1.3:1.
   Color readable(Color color) => readableOn(_pages, preferred: color);
 
+  /// [color] as the colour of an icon or other graphic that means
+  /// something (a tick, a warning sign): WCAG asks 3:1 of those, not the
+  /// 4.5:1 of words, so it keeps more of the palette's brightness. A yellow
+  /// warning icon was 1.4:1 on white.
+  Color graphic(Color color) =>
+      readableOn(_pages, preferred: color, target: 3.3);
+
   /// [color] as the colour of words on [ground] — a tinted badge, a chip.
   /// A translucent [ground] is judged over each page colour it can sit on.
   Color readableOver(Color color, Color ground) {

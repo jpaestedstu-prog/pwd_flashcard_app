@@ -430,7 +430,10 @@ class _AssignmentCard extends StatelessWidget {
                               ? s.studentName[0].toUpperCase()
                               : '?',
                           style: AppTypography.labelSmall.copyWith(
-                            color: _statusColor(s.status),
+                            color: hc.readableOver(
+                              _statusColor(s.status),
+                              _statusColor(s.status).withValues(alpha: 0.15),
+                            ),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -454,7 +457,7 @@ class _AssignmentCard extends StatelessWidget {
                           '${(fraction * 100).round()}%',
                           style: AppTypography.labelMedium.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: _scoreColor(fraction),
+                            color: hc.readable(_scoreColor(fraction)),
                           ),
                         )
                       else if (s.result != null)
@@ -463,7 +466,7 @@ class _AssignmentCard extends StatelessWidget {
                         Text(
                           s.status.label,
                           style: AppTypography.labelSmall.copyWith(
-                            color: _statusColor(s.status),
+                            color: hc.readable(_statusColor(s.status)),
                           ),
                         ),
                       const SizedBox(width: 8),
@@ -474,7 +477,7 @@ class _AssignmentCard extends StatelessWidget {
                         size: 20,
                         color: feedback == null
                             ? hc.textSecondary
-                            : AppColors.info,
+                            : HCColor.of(context).graphic(AppColors.info),
                       ),
                     ],
                   ),

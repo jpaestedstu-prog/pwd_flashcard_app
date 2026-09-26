@@ -393,7 +393,7 @@ class _Metric extends StatelessWidget {
       child: Text(
         '$label $value',
         style: AppTypography.labelSmall.copyWith(
-          color: color,
+          color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12)),
           fontWeight: FontWeight.w700,
         ),
       ),

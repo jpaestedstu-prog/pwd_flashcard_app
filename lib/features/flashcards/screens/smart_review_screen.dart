@@ -149,10 +149,10 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.check_circle_rounded,
                   size: 80,
-                  color: AppColors.success,
+                  color: HCColor.of(context).graphic(AppColors.success),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -323,8 +323,10 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                                                   style: AppTypography
                                                       .labelSmall
                                                       .copyWith(
-                                                        color:
-                                                            AppColors.primary,
+                                                        color: hc.readableOver(
+                                                            hc.primary,
+                                                            AppColors.primaryLight.withValues(alpha: 0.3),
+                                                            ),
                                                         fontWeight:
                                                             FontWeight.w600,
                                                       ),
@@ -338,8 +340,10 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                                                     style: AppTypography
                                                         .headlineMedium
                                                         .copyWith(
-                                                          color:
-                                                              AppColors.primary,
+                                                          color: hc.readableOver(
+                                                              hc.primary,
+                                                              AppColors.primaryLight.withValues(alpha: 0.3),
+                                                              ),
                                                           fontWeight:
                                                               FontWeight.w800,
                                                         ),
@@ -412,9 +416,9 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                       height: scaledControlHeight(context, 56),
                       child: OutlinedButton.icon(
                         onPressed: _answerDontKnow,
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.close_rounded,
-                          color: AppColors.error,
+                          color: HCColor.of(context).graphic(AppColors.error),
                         ),
                         label: Text(
                           AppLocalizations.of(context)!.stillLearning,
@@ -477,7 +481,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
               Icon(
                 pct >= 0.7 ? Icons.emoji_events_rounded : Icons.refresh_rounded,
                 size: 80,
-                color: pct >= 0.7 ? AppColors.warning : AppColors.primary,
+                color: pct >= 0.7 ? HCColor.of(context).graphic(AppColors.warning) : HCColor.of(context).primary,
               ).animate().scale(
                 begin: const Offset(0.5, 0.5),
                 end: const Offset(1.0, 1.0),
@@ -511,7 +515,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                   return Icon(
                         earned ? Icons.star_rounded : Icons.star_border_rounded,
                         size: 48,
-                        color: earned ? AppColors.warning : AppColors.border,
+                        color: earned ? HCColor.of(context).graphic(AppColors.warning) : AppColors.border,
                       )
                       .animate(delay: Duration(milliseconds: 200 + i * 150))
                       .scale(

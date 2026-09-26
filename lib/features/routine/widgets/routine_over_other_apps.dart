@@ -70,7 +70,7 @@ class RoutineOverOtherAppsRow extends ConsumerWidget {
                   Icon(
                     granted ? Icons.check_circle_rounded : Icons.info_rounded,
                     size: 18,
-                    color: granted ? AppColors.success : AppColors.warning,
+                    color: granted ? HCColor.of(context).graphic(AppColors.success) : HCColor.of(context).graphic(AppColors.warning),
                   ),
                   const SizedBox(width: 4),
                   Expanded(
@@ -139,7 +139,7 @@ class RoutineOverOtherAppsBanner extends ConsumerWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.layers_rounded, color: AppColors.warning),
+            Icon(Icons.layers_rounded, color: HCColor.of(context).graphic(AppColors.warning)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

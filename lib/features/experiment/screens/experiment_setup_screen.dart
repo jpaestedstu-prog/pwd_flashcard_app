@@ -323,7 +323,7 @@ class _ExperimentSetupScreenState
           child: Text(
             profile.name.substring(0, 1).toUpperCase(),
             style: TextStyle(
-              color: groupColor,
+              color: HCColor.of(context).readableOver(groupColor, groupColor.withValues(alpha: 0.15)),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -348,7 +348,7 @@ class _ExperimentSetupScreenState
               child: Text(
                 groupText,
                 style: AppTypography.labelSmall.copyWith(
-                  color: groupColor,
+                  color: HCColor.of(context).readableOver(groupColor, groupColor.withValues(alpha: 0.12)),
                   fontWeight: FontWeight.bold,
                 ),
               ),

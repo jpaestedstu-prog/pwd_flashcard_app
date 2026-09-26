@@ -128,7 +128,7 @@ class FslEmptyStateScaffold extends ConsumerWidget {
                             Text(
                               cat.labelOf(l10n),
                               style: AppTypography.labelMedium.copyWith(
-                                color: cat.darkColor,
+                                color: HCColor.of(context).readableOver(cat.darkColor, cat.darkColor.withValues(alpha: 0.4)),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),

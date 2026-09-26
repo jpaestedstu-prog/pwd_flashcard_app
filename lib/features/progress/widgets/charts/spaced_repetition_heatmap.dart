@@ -41,8 +41,8 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.calendar_month_rounded,
-                  color: AppColors.accent, size: 22),
+              Icon(Icons.calendar_month_rounded,
+                  color: HCColor.of(context).graphic(AppColors.accent), size: 22),
               const SizedBox(width: 8),
               Expanded(
                 child: FitText(

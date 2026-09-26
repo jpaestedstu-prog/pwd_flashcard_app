@@ -463,20 +463,20 @@ class CategoryGainList extends StatelessWidget {
                                     : Icons.trending_down_rounded,
                             size: 14,
                             color: isPositive
-                                ? AppColors.success
+                                ? HCColor.of(context).graphic(AppColors.success)
                                 : gain == 0
                                     ? hc.textHint
-                                    : AppColors.error,
+                                    : HCColor.of(context).graphic(AppColors.error),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             '${gain >= 0 ? '+' : ''}$gain%',
                             style: AppTypography.labelSmall.copyWith(
                               color: isPositive
-                                  ? AppColors.success
+                                  ? HCColor.of(context).successText
                                   : gain == 0
                                       ? hc.textHint
-                                      : AppColors.error,
+                                      : HCColor.of(context).errorText,
                               fontWeight: FontWeight.w700,
                             ),
                           ),

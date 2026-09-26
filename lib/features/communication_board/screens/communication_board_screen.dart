@@ -697,8 +697,8 @@ class _PhraseStrip extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (phrase.pinned) ...[
-                      const Icon(Icons.star_rounded,
-                          size: 16, color: AppColors.warning),
+                      Icon(Icons.star_rounded,
+                          size: 16, color: HCColor.of(context).graphic(AppColors.warning)),
                       const SizedBox(width: 4),
                     ],
                     Text(

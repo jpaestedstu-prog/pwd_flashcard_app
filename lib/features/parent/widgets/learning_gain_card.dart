@@ -52,8 +52,8 @@ class LearningGainCard extends StatelessWidget {
               Icon(
                 Icons.trending_up_rounded,
                 color: report.hasImproved
-                    ? AppColors.success
-                    : AppColors.warning,
+                    ? HCColor.of(context).graphic(AppColors.success)
+                    : HCColor.of(context).graphic(AppColors.warning),
                 size: 22,
               ),
               const SizedBox(width: 8),
@@ -82,8 +82,8 @@ class LearningGainCard extends StatelessWidget {
                   style: AppTypography.labelSmall.copyWith(
                     fontWeight: FontWeight.w800,
                     color: report.hasImproved
-                        ? AppColors.success
-                        : AppColors.warning,
+                        ? HCColor.of(context).successText
+                        : HCColor.of(context).warningText,
                   ),
                 ),
               ),
@@ -290,7 +290,7 @@ class _ComparisonBar extends StatelessWidget {
             '$value%',
             style: AppTypography.labelSmall.copyWith(
               fontWeight: FontWeight.w700,
-              color: color,
+              color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12)),
             ),
             textAlign: TextAlign.right,
           ),

@@ -183,7 +183,7 @@ class _StatChip extends StatelessWidget {
                 value,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w800,
-                  color: color,
+                  color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.25)),
                 ),
               ),
               Text(

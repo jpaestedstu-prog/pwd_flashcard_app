@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_typography.dart';
@@ -323,7 +324,7 @@ class _InlineCloudError extends StatelessWidget {
                 child: Text(
                   msg.title,
                   style: AppTypography.labelLarge.copyWith(
-                    color: msg.color,
+                    color: HCColor.of(context).readableOver(msg.color, msg.color.withValues(alpha: 0.4)),
                     fontWeight: FontWeight.w700,
                   ),
                 ),

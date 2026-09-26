@@ -334,7 +334,7 @@ class _Chip extends StatelessWidget {
         children: [
           Icon(icon, size: 13, color: color),
           const SizedBox(width: 4),
-          Text(label, style: AppTypography.labelSmall.copyWith(color: color)),
+          Text(label, style: AppTypography.labelSmall.copyWith(color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12)))),
         ],
       ),
     );

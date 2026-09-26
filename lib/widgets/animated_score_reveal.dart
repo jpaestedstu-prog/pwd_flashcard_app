@@ -602,7 +602,7 @@ class _StarIcon extends StatelessWidget {
         isEarned ? Icons.star_rounded : Icons.star_border_rounded,
         size: size,
         color: isEarned
-            ? AppColors.warning
+            ? HCColor.of(context).graphic(AppColors.warning)
             : HCColor.of(context).textSecondary.withValues(alpha: 0.3),
       ),
     );

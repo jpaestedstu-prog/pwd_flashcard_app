@@ -1056,7 +1056,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                       onPressed: _nextQuestion,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: hc.primary,
-                        foregroundColor: Colors.white,
+                        foregroundColor: hc.textOnPrimary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -1185,11 +1185,11 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                       ),
                     ),
                     if (_answered && isCorrectAnswer)
-                      const Icon(Icons.check_circle_rounded,
-                          color: AppColors.success, size: 22),
+                      Icon(Icons.check_circle_rounded,
+                          color: HCColor.of(context).graphic(AppColors.success), size: 22),
                     if (_answered && isSelected && !_isCorrect)
-                      const Icon(Icons.cancel_rounded,
-                          color: AppColors.error, size: 22),
+                      Icon(Icons.cancel_rounded,
+                          color: HCColor.of(context).graphic(AppColors.error), size: 22),
                   ],
                 ),
               ),
@@ -1319,15 +1319,15 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                       ),
                     ),
                     if (_answered && isCorrectAnswer)
-                      const Icon(
+                      Icon(
                         Icons.check_circle_rounded,
-                        color: AppColors.success,
+                        color: HCColor.of(context).graphic(AppColors.success),
                         size: 22,
                       ),
                     if (_answered && isSelected && !_isCorrect)
-                      const Icon(
+                      Icon(
                         Icons.cancel_rounded,
-                        color: AppColors.error,
+                        color: HCColor.of(context).graphic(AppColors.error),
                         size: 22,
                       ),
                   ],
@@ -1417,13 +1417,13 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                     _isCorrect
                         ? Icons.check_circle_rounded
                         : Icons.cancel_rounded,
-                    color: _isCorrect ? AppColors.success : AppColors.error,
+                    color: _isCorrect ? HCColor.of(context).graphic(AppColors.success) : HCColor.of(context).graphic(AppColors.error),
                   )
                 : null,
           ),
           style: AppTypography.titleMedium.copyWith(
             color: _answered
-                ? (_isCorrect ? AppColors.success : AppColors.error)
+                ? (_isCorrect ? HCColor.of(context).successText : HCColor.of(context).errorText)
                 : hc.textPrimary,
           ),
           onSubmitted: (_) => _submitFillIn(),
@@ -1437,7 +1437,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
               onPressed: _submitFillIn,
               style: ElevatedButton.styleFrom(
                 backgroundColor: hc.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: hc.textOnPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -1459,8 +1459,8 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.check_circle_rounded,
-                    color: AppColors.success, size: 20),
+                Icon(Icons.check_circle_rounded,
+                    color: HCColor.of(context).graphic(AppColors.success), size: 20),
                 const SizedBox(width: 8),
                 Text(
                   _t.testHintAnswer(
@@ -1540,7 +1540,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                   _isCorrect ? _t.testCorrect : _t.testNotQuite,
                   style: AppTypography.titleSmall.copyWith(
                     color:
-                        _isCorrect ? AppColors.success : AppColors.error,
+                        _isCorrect ? HCColor.of(context).successText : HCColor.of(context).errorText,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1617,7 +1617,7 @@ class _TimeRemainingChip extends StatelessWidget {
             Text(
               '$minutes:${seconds.toString().padLeft(2, '0')}',
               style: AppTypography.labelMedium.copyWith(
-                color: color,
+                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12)),
                 fontWeight: FontWeight.w700,
               ),
             ),

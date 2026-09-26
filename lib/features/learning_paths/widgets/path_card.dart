@@ -175,8 +175,8 @@ class PathCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.check_circle_rounded,
-                      color: AppColors.success, size: 22),
+                  child: Icon(Icons.check_circle_rounded,
+                      color: HCColor.of(context).graphic(AppColors.success), size: 22),
                 )
               else if (!isUnlocked)
                 Container(

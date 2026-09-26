@@ -577,7 +577,7 @@ class _AlreadyTakenNotice extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_rounded, color: AppColors.info),
+          Icon(Icons.info_rounded, color: HCColor.of(context).graphic(AppColors.info)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -653,8 +653,8 @@ class _QuestionCard extends StatelessWidget {
                 const SizedBox(width: 4),
                 IconButton(
                   tooltip: _t(context).hubDelete,
-                  icon: const Icon(Icons.delete_outline_rounded,
-                      size: 18, color: AppColors.error),
+                  icon: Icon(Icons.delete_outline_rounded,
+                      size: 18, color: HCColor.of(context).graphic(AppColors.error)),
                   onPressed: onDelete,
                   constraints: const BoxConstraints(),
                   padding: EdgeInsets.zero,
@@ -720,7 +720,7 @@ class _MiniChip extends StatelessWidget {
       child: Text(
         label,
         style: AppTypography.labelSmall.copyWith(
-          color: color,
+          color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12)),
           fontSize: 10,
           fontWeight: FontWeight.w600,
         ),
@@ -1021,8 +1021,8 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                           if (_format == QuestionFormat.multipleChoice &&
                               _choiceControllers.length > 2)
                             IconButton(
-                              icon: const Icon(Icons.remove_circle_outline,
-                                  color: AppColors.error, size: 20),
+                              icon: Icon(Icons.remove_circle_outline,
+                                  color: HCColor.of(context).graphic(AppColors.error), size: 20),
                               onPressed: () {
                                 setState(() {
                                   _choiceControllers[i].dispose();

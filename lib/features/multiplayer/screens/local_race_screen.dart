@@ -531,7 +531,7 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
                 child: Text(
                   isFilipino ? 'Pindutin para magsimula' : 'Tap to start',
                   style: AppTypography.titleMedium
-                      .copyWith(color: color, fontWeight: FontWeight.w700),
+                      .copyWith(color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.15)), fontWeight: FontWeight.w700),
                 ),
               ),
             ],

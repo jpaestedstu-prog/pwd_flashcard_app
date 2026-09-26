@@ -8667,5 +8667,13 @@
   },
   "assessEditDiscardTitle": "Discard your changes?",
   "assessEditDiscardBody": "The saved assessment stays as it was.",
-  "assessEditNotFound": "That assessment could not be found. It may have been deleted."
+  "assessEditNotFound": "That assessment could not be found. It may have been deleted.",
+  "assessMediaWouldNotPlay": "This {kind} is here but would not play on this tablet.",
+  "@assessMediaWouldNotPlay": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  }
 }

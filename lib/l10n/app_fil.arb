@@ -3497,5 +3497,6 @@
   "assessEditedOn": "Binago noong {date}",
   "assessEditDiscardTitle": "Itapon ang mga pagbabago?",
   "assessEditDiscardBody": "Mananatili ang naka-save na pagsusulit gaya ng dati.",
-  "assessEditNotFound": "Hindi makita ang pagsusulit na iyon. Maaaring nabura na ito."
+  "assessEditNotFound": "Hindi makita ang pagsusulit na iyon. Maaaring nabura na ito.",
+  "assessMediaWouldNotPlay": "Nandito na ang {kind} pero ayaw mag-play sa tablet na ito."
 }

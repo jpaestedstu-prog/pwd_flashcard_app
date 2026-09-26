@@ -145,9 +145,9 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.science_rounded,
-                  color: AppColors.info,
+                  color: HCColor.of(context).graphic(AppColors.info),
                   size: 32,
                 ),
                 const SizedBox(width: 12),

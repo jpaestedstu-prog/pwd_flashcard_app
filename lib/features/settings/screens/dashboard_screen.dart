@@ -473,7 +473,7 @@ class _MetricCard extends StatelessWidget {
               value,
               style: AppTypography.titleLarge.copyWith(
                 fontWeight: FontWeight.w800,
-                color: color,
+                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.2)),
               ),
             ),
             // Three metric cards share the row, so each label gets a third
@@ -686,7 +686,7 @@ class _CategoryBar extends StatelessWidget {
                       child: Text(
                         '$pctRound%',
                         style: AppTypography.labelSmall.copyWith(
-                          color: statusColor,
+                          color: HCColor.of(context).readableOver(statusColor, statusColor.withValues(alpha: 0.15)),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -886,7 +886,7 @@ class _ActivityTile extends StatelessWidget {
                 return Icon(
                   earned ? Icons.star_rounded : Icons.star_border_rounded,
                   size: 16,
-                  color: earned ? AppColors.warning : AppColors.border,
+                  color: earned ? HCColor.of(context).graphic(AppColors.warning) : AppColors.border,
                 );
               }),
             ),

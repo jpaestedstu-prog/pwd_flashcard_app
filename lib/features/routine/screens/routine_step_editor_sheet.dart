@@ -950,9 +950,9 @@ class _MediaFieldState extends State<_MediaField> {
                             : 'A link reaches every device.'),
                   style: AppTypography.labelSmall.copyWith(
                     color: shared
-                        ? AppColors.success
+                        ? HCColor.of(context).successText
                         : onDevice
-                        ? AppColors.warning
+                        ? HCColor.of(context).warningText
                         : hc.textSecondary,
                   ),
                 ),
@@ -1112,7 +1112,7 @@ class _SignStatus extends StatelessWidget {
         Icon(
           ok ? Icons.check_circle_rounded : Icons.info_outline_rounded,
           size: 18,
-          color: ok ? AppColors.success : AppColors.warning,
+          color: ok ? HCColor.of(context).graphic(AppColors.success) : HCColor.of(context).graphic(AppColors.warning),
         ),
         const SizedBox(width: 8),
         Expanded(

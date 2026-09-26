@@ -412,8 +412,8 @@ class _ListenContent extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Icon(Icons.volume_up_rounded,
-                size: 48, color: AppColors.secondary),
+            child: Icon(Icons.volume_up_rounded,
+                size: 48, color: HCColor.of(context).graphic(AppColors.secondary)),
           ),
           const SizedBox(height: 20),
           Text(card.wordEnglish,
@@ -485,7 +485,7 @@ class _FillBlankContent extends StatelessWidget {
             style: AppTypography.titleLarge.copyWith(
               fontWeight: FontWeight.w700,
               color: showResult
-                  ? (wasCorrect == true ? AppColors.success : AppColors.error)
+                  ? (wasCorrect == true ? HCColor.of(context).successText : HCColor.of(context).errorText)
                   : hc.textPrimary,
             ),
             decoration: InputDecoration(
@@ -522,8 +522,8 @@ class _FillBlankContent extends StatelessWidget {
                     : Icons.cancel_rounded,
                 size: 48,
                 color: wasCorrect == true
-                    ? AppColors.success
-                    : AppColors.error,
+                    ? HCColor.of(context).graphic(AppColors.success)
+                    : HCColor.of(context).graphic(AppColors.error),
               ),
             ),
         ],
@@ -620,11 +620,11 @@ class _QuizContent extends StatelessWidget {
                         ),
                       ),
                       if (showResult && isCorrect)
-                        const Icon(Icons.check_circle_rounded,
-                            color: AppColors.success, size: 22),
+                        Icon(Icons.check_circle_rounded,
+                            color: HCColor.of(context).graphic(AppColors.success), size: 22),
                       if (showResult && isSelected && !isCorrect)
-                        const Icon(Icons.cancel_rounded,
-                            color: AppColors.error, size: 22),
+                        Icon(Icons.cancel_rounded,
+                            color: HCColor.of(context).graphic(AppColors.error), size: 22),
                     ],
                   ),
                 ),

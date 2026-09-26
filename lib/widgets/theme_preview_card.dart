@@ -194,8 +194,8 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
                           right: 6,
                           child: Tooltip(
                             message: advice,
-                            child: const Icon(Icons.info_outline_rounded,
-                                size: 18, color: AppColors.info),
+                            child: Icon(Icons.info_outline_rounded,
+                                size: 18, color: HCColor.of(context).graphic(AppColors.info)),
                           ),
                         ),
                     ],

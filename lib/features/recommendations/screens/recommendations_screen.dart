@@ -193,7 +193,7 @@ class _SummaryRow extends StatelessWidget {
                     Text(
                       '${snapshot.wordsNeedingReview}',
                       style: AppTypography.headlineMedium.copyWith(
-                        color: const Color(0xFFFFA726),
+                        color: HCColor.of(context).readableOver(const Color(0xFFFFA726), const Color(0xFFFFA726).withValues(alpha: 0.15)),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -312,7 +312,7 @@ class _RecommendationCard extends ConsumerWidget {
                                   ? rec.priorityLabelFilipino
                                   : rec.priorityLabel,
                               style: AppTypography.labelSmall.copyWith(
-                                color: rec.priorityColor,
+                                color: HCColor.of(context).readableOver(rec.priorityColor, rec.priorityColor.withValues(alpha: 0.15)),
                                 fontWeight: FontWeight.w600,
                                 fontSize: 10,
                               ),

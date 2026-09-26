@@ -250,9 +250,9 @@ class _CodeDisplay extends StatelessWidget {
           ),
           child: Column(
             children: [
-              const Icon(
+              Icon(
                 Icons.verified_user_rounded,
-                color: AppColors.success,
+                color: HCColor.of(context).graphic(AppColors.success),
                 size: 32,
               ),
               const SizedBox(height: 8),
@@ -303,9 +303,9 @@ class _CodeDisplay extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
+              Icon(
                 Icons.warning_amber_rounded,
-                color: AppColors.warning,
+                color: HCColor.of(context).graphic(AppColors.warning),
                 size: 20,
               ),
               const SizedBox(width: 10),
@@ -361,7 +361,7 @@ class _ErrorCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppColors.error),
+          Icon(Icons.error_outline_rounded, color: HCColor.of(context).graphic(AppColors.error)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

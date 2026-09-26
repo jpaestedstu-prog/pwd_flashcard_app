@@ -410,9 +410,9 @@ class _GoalCard extends StatelessWidget {
                   ),
                 ),
                 if (isCompleted)
-                  const Icon(
+                  Icon(
                     Icons.check_circle_rounded,
-                    color: AppColors.success,
+                    color: HCColor.of(context).graphic(AppColors.success),
                     size: 28,
                   ),
                 if (isExpired)
@@ -447,7 +447,7 @@ class _GoalCard extends StatelessWidget {
                   Text(
                     _formatDeadline(_t(context), goal.deadline!),
                     style: AppTypography.labelSmall.copyWith(
-                      color: isExpired ? AppColors.error : hc.textSecondary,
+                      color: isExpired ? HCColor.of(context).errorText : hc.textSecondary,
                     ),
                   ),
                 ],

@@ -466,7 +466,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                           ? Icons.pause_circle_rounded
                           : Icons.play_circle_rounded,
                       color: _autoPlay
-                          ? AppColors.accent
+                          ? HCColor.of(context).graphic(AppColors.accent)
                           : HCColor.of(context).textSecondary,
                     ),
                     onPressed: _toggleAutoPlay,
@@ -1160,7 +1160,7 @@ class _FlipCard extends StatelessWidget {
                           Text(
                             AppLocalizations.of(context)!.details,
                             style: AppTypography.labelMedium.copyWith(
-                              color: category.darkColor,
+                              color: HCColor.of(context).readableOver(category.darkColor, category.darkColor.withValues(alpha: 0.15)),
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1.5,
                             ),
@@ -1443,7 +1443,7 @@ class _MiniListenButton extends StatelessWidget {
               Text(
                 label,
                 style: AppTypography.labelMedium.copyWith(
-                  color: color,
+                  color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12)),
                   fontWeight: FontWeight.w600,
                 ),
               ),

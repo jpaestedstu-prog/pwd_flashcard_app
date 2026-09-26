@@ -263,14 +263,14 @@ class StreakMilestoneBadges extends StatelessWidget {
                 Text(
                   label,
                   style: AppTypography.labelSmall.copyWith(
-                    color: achieved ? AppColors.success : hc.textHint,
+                    color: achieved ? HCColor.of(context).successText : hc.textHint,
                     fontWeight: achieved ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
                 if (achieved) ...[
                   const SizedBox(width: 4),
-                  const Icon(Icons.check_circle_rounded,
-                      size: 14, color: AppColors.success),
+                  Icon(Icons.check_circle_rounded,
+                      size: 14, color: HCColor.of(context).graphic(AppColors.success)),
                 ],
               ],
             ),

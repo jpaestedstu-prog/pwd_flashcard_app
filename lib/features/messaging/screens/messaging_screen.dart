@@ -1185,7 +1185,7 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
                                   : Icons.done_rounded,
                               size: 14,
                               color: message.isRead
-                                  ? AppColors.primary
+                                  ? HCColor.of(context).primary
                                   : hc.textSecondary,
                             ),
                           ),

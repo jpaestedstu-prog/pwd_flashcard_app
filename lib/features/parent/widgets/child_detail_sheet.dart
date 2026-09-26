@@ -233,7 +233,7 @@ class ChildDetailSheet extends ConsumerWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.labelSmall.copyWith(
                                     color: child.isRecentlyActive
-                                        ? AppColors.success
+                                        ? HCColor.of(context).successText
                                         : hc.textSecondary,
                                   ),
                                 ),
@@ -771,20 +771,20 @@ class _RecentGameRow extends StatelessWidget {
                     style: AppTypography.labelSmall.copyWith(
                       fontWeight: FontWeight.w700,
                       color: pct >= 70
-                          ? AppColors.success
+                          ? HCColor.of(context).successText
                           : pct >= 40
-                          ? AppColors.warning
-                          : AppColors.error,
+                          ? HCColor.of(context).warningText
+                          : HCColor.of(context).errorText,
                     ),
                   ),
                 ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.star_rounded,
                       size: 14,
-                      color: AppColors.warning,
+                      color: HCColor.of(context).graphic(AppColors.warning),
                     ),
                     const SizedBox(width: 2),
                     Text(

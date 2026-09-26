@@ -863,8 +863,8 @@ class _RoutineCard extends StatelessWidget {
                       value: 'delete',
                       child: Row(
                         children: [
-                          const Icon(Icons.delete_outline_rounded,
-                              size: 18, color: AppColors.error),
+                          Icon(Icons.delete_outline_rounded,
+                              size: 18, color: HCColor.of(context).graphic(AppColors.error)),
                           const SizedBox(width: 10),
                           Flexible(
                             child: Text(
@@ -894,10 +894,10 @@ class _RoutineCard extends StatelessWidget {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.lock_clock_rounded,
                     size: 15,
-                    color: AppColors.warning,
+                    color: HCColor.of(context).graphic(AppColors.warning),
                   ),
                   const SizedBox(width: 6),
                   Expanded(

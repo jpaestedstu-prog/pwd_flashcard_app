@@ -235,7 +235,7 @@ class _PathHeader extends StatelessWidget {
                 '$completedSteps/$totalSteps',
                 style: AppTypography.labelLarge.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: categoryColor,
+                  color: HCColor.of(context).readableOver(categoryColor, categoryColor.withValues(alpha: 0.15)),
                 ),
               ),
             ],
@@ -402,7 +402,7 @@ class _StepTile extends StatelessWidget {
                             child: Text(
                               '${(bestScore! * 100).round()}%',
                               style: AppTypography.labelSmall.copyWith(
-                                color: _scoreColor(bestScore!),
+                                color: HCColor.of(context).readableOver(_scoreColor(bestScore!), _scoreColor(bestScore!).withValues(alpha: 0.15)),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),

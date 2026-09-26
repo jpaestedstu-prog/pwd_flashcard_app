@@ -68,28 +68,34 @@ void main() {
     required List<String> studentIds,
     DateTime? deadline,
     String title = 'Animals Quiz',
+    DateTime? assignedAt,
   }) => AssessmentAssignment(
     id: id,
     assessmentId: assessmentId,
     assessmentTitle: title,
     assignedBy: 'teacher-1',
     studentIds: studentIds,
-    assignedAt: DateTime(2026, 8),
+    assignedAt: assignedAt ?? DateTime(2026, 8),
     deadline: deadline,
   );
 
-  Future<void> completeAssessment(String profileId, String assessmentId) {
+  Future<void> completeAssessment(
+    String profileId,
+    String assessmentId, {
+    DateTime? at,
+  }) {
+    final when = at ?? DateTime(2026, 8, 2);
     return AssessmentService.saveResult(
       profileId,
       AssessmentResult(
-        id: 'result-$assessmentId-$profileId',
+        id: 'result-$assessmentId-$profileId-${when.millisecondsSinceEpoch}',
         assessmentId: assessmentId,
         profileId: profileId,
         type: AssessmentType.custom,
         score: 1,
         totalQuestions: 1,
         answers: const [],
-        completedAt: DateTime(2026, 8, 2),
+        completedAt: when,
         durationSeconds: 30,
       ),
     );
@@ -204,6 +210,53 @@ void main() {
       expect(AssessmentService.getOpenableAssignments('student-1'), isEmpty);
     });
 
+    test('a saved test assigned again reopens — an earlier sitting does not '
+        'answer the new assignment', () async {
+      // Found on two tablets: the teacher assigned a finished test again and
+      // the learner never saw it, because any result for the test counted.
+      await AssessmentService.saveAssessment('teacher-1', template('a1'));
+      await AssessmentService.saveAssignment(
+        'teacher-1',
+        assignment('as1', assessmentId: 'a1', studentIds: ['student-1']),
+      );
+      await completeAssessment('student-1', 'a1', at: DateTime(2026, 8, 2));
+      await AssessmentService.saveAssignment(
+        'teacher-1',
+        assignment(
+          'as2',
+          assessmentId: 'a1',
+          studentIds: ['student-1'],
+          assignedAt: DateTime(2026, 8, 9),
+        ),
+      );
+
+      final open = AssessmentService.getOpenableAssignments('student-1');
+      expect(open.map((o) => o.assignment.id), ['as2']);
+
+      await completeAssessment('student-1', 'a1', at: DateTime(2026, 8, 10));
+      expect(AssessmentService.getOpenableAssignments('student-1'), isEmpty);
+    });
+
+    test('a result a slow clock stamped just before the assignment still '
+        'answers it', () async {
+      await AssessmentService.saveAssessment('teacher-1', template('a1'));
+      await AssessmentService.saveAssignment(
+        'teacher-1',
+        assignment(
+          'as1',
+          assessmentId: 'a1',
+          studentIds: ['student-1'],
+          assignedAt: DateTime(2026, 8, 9, 10),
+        ),
+      );
+      await completeAssessment(
+        'student-1',
+        'a1',
+        at: DateTime(2026, 8, 9, 9, 58),
+      );
+      expect(AssessmentService.getOpenableAssignments('student-1'), isEmpty);
+    });
+
     test('drops an assignment whose template was deleted', () async {
       await AssessmentService.saveAssessment('teacher-1', template('a1'));
       await AssessmentService.saveAssignment(
@@ -306,6 +359,28 @@ void main() {
   // ─── Tracking side of the same loop ─────────────────────
 
   group('getAssignmentStatuses', () {
+    test('a test assigned again reads pending until it is sat again, and '
+        'then shows the new result', () async {
+      await AssessmentService.saveAssessment('teacher-1', template('a1'));
+      await completeAssessment('student-1', 'a1', at: DateTime(2026, 8, 2));
+      final again = assignment(
+        'as2',
+        assessmentId: 'a1',
+        studentIds: ['student-1'],
+        assignedAt: DateTime(2026, 8, 9),
+      );
+
+      expect(
+        AssessmentService.getAssignmentStatuses(again).single.status,
+        AssignmentStatus.pending,
+      );
+
+      await completeAssessment('student-1', 'a1', at: DateTime(2026, 8, 10));
+      final status = AssessmentService.getAssignmentStatuses(again).single;
+      expect(status.status, AssignmentStatus.completed);
+      expect(status.result?.completedAt, DateTime(2026, 8, 10));
+    });
+
     test('flips to completed once the learner sits the assignment', () async {
       await AssessmentService.saveAssessment('teacher-1', template('a1'));
       final task = assignment(

@@ -227,8 +227,8 @@ class _StudentProfileListScreenState
                       color: AppColors.error.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Icon(Icons.delete_rounded,
-                        color: AppColors.error, size: 28),
+                    child: Icon(Icons.delete_rounded,
+                        color: HCColor.of(context).graphic(AppColors.error), size: 28),
                   ),
                   child: GestureDetector(
                     onTap: () => context.push(
@@ -354,10 +354,10 @@ class _StudentProfileCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (profile.hasPinProtection)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
                       child: Icon(Icons.lock_rounded,
-                          size: 16, color: AppColors.warning),
+                          size: 16, color: HCColor.of(context).graphic(AppColors.warning)),
                     ),
                   GestureDetector(
                     onTap: onDelete,

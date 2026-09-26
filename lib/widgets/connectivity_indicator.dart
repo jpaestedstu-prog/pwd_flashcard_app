@@ -116,10 +116,10 @@ class _ConnectivityIndicatorState extends State<ConnectivityIndicator>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.wifi_off_rounded,
                   size: 16,
-                  color: AppColors.warning,
+                  color: HCColor.of(context).graphic(AppColors.warning),
                 ),
                 const SizedBox(width: 4),
                 Text(

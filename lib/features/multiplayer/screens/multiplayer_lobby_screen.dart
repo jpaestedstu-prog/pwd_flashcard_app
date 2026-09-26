@@ -628,8 +628,8 @@ class _AdaptationNote extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.accessibility_new_rounded,
-              size: 18, color: AppColors.success),
+          Icon(Icons.accessibility_new_rounded,
+              size: 18, color: HCColor.of(context).graphic(AppColors.success)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -808,7 +808,7 @@ class _OfflineNote extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.wifi_off_rounded, color: AppColors.warning),
+          Icon(Icons.wifi_off_rounded, color: HCColor.of(context).graphic(AppColors.warning)),
           const SizedBox(width: 12),
           Expanded(
             child: Text(

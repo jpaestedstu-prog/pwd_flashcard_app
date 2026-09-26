@@ -254,8 +254,8 @@ class _StudentSelector extends StatelessWidget {
                   style: AppTypography.labelSmall.copyWith(
                     fontWeight: FontWeight.w700,
                     color: selectedIds.length >= 2
-                        ? AppColors.success
-                        : AppColors.primary,
+                        ? HCColor.of(context).successText
+                        : HCColor.of(context).primary,
                     fontSize: 11,
                   ),
                 ),
@@ -748,9 +748,9 @@ class _StrengthsWeaknessTable extends StatelessWidget {
                         Row(
                           children: [
                             if (s.strongestCategory != null) ...[
-                              const Icon(Icons.arrow_upward_rounded,
+                              Icon(Icons.arrow_upward_rounded,
                                   size: 12,
-                                  color: AppColors.success),
+                                  color: HCColor.of(context).graphic(AppColors.success)),
                               Text(
                                 ' ${_categoryName(_t(context), s.strongestCategory!)}',
                                 style: AppTypography.bodySmall.copyWith(
@@ -763,9 +763,9 @@ class _StrengthsWeaknessTable extends StatelessWidget {
                                 s.weakestCategory != null)
                               const SizedBox(width: 10),
                             if (s.weakestCategory != null) ...[
-                              const Icon(Icons.arrow_downward_rounded,
+                              Icon(Icons.arrow_downward_rounded,
                                   size: 12,
-                                  color: AppColors.error),
+                                  color: HCColor.of(context).graphic(AppColors.error)),
                               Text(
                                 ' ${_categoryName(_t(context), s.weakestCategory!)}',
                                 style: AppTypography.bodySmall.copyWith(

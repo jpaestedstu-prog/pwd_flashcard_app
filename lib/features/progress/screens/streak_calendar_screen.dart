@@ -218,7 +218,7 @@ class _MiniStat extends StatelessWidget {
                 value,
                 style: AppTypography.labelLarge.copyWith(
                   fontWeight: FontWeight.w800,
-                  color: color,
+                  color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.2)),
                 ),
               ),
               Text(

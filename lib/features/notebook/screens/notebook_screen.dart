@@ -368,7 +368,7 @@ class _NoteCard extends StatelessWidget {
                       child: Text(
                         note.category!.labelOf(_t(context)),
                         style: AppTypography.labelSmall.copyWith(
-                          color: catColor,
+                          color: HCColor.of(context).readableOver(catColor, catColor.withValues(alpha: 0.12)),
                           fontWeight: FontWeight.w600,
                         ),
                       ),

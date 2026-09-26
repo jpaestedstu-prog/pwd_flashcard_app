@@ -388,7 +388,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                 _t(context).mqTurn(name),
                 style: AppTypography.displayMedium.copyWith(
                   fontWeight: FontWeight.w900,
-                  color: color,
+                  color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.08)),
                 ),
               ).animate().fadeIn(duration: 500.ms),
               const SizedBox(height: 8),
@@ -411,7 +411,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                     child: Text(
                       _t(context).mqTapStart,
                       style: AppTypography.titleMedium.copyWith(
-                        color: color,
+                        color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.15)),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -460,7 +460,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                     '${isP1 ? "🔵" : "🔴"} $playerName',
                     style: AppTypography.labelMedium.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: color,
+                      color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.15)),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -491,7 +491,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                     style: AppTypography.titleLarge.copyWith(
                       fontWeight: FontWeight.w900,
                       color: _timeRemaining <= 3
-                          ? AppColors.error
+                          ? HCColor.of(context).errorText
                           : HCColor.of(context).textPrimary,
                     ),
                   ),
@@ -582,11 +582,15 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                 if (isCorrect) {
                   bgColor = AppColors.success.withValues(alpha: 0.15);
                   borderColor = AppColors.success;
-                  textColor = AppColors.success;
+                  textColor = HCColor.of(
+                    context,
+                  ).readableOver(AppColors.success, bgColor);
                 } else if (isSelected && !isCorrect) {
                   bgColor = AppColors.error.withValues(alpha: 0.15);
                   borderColor = AppColors.error;
-                  textColor = AppColors.error;
+                  textColor = HCColor.of(
+                    context,
+                  ).readableOver(AppColors.error, bgColor);
                 }
               } else if (isSelected) {
                 bgColor = color.withValues(alpha: 0.1);
@@ -672,7 +676,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
           Icon(
             isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
             size: context.scaleIcon(80),
-            color: isCorrect ? AppColors.success : AppColors.error,
+            color: isCorrect ? HCColor.of(context).graphic(AppColors.success) : HCColor.of(context).graphic(AppColors.error),
           ).animate().scale(
             begin: const Offset(0, 0),
             end: const Offset(1, 1),
@@ -684,7 +688,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
             isCorrect ? 'Correct! 🎉' : 'Wrong! 😅',
             style: AppTypography.displaySmall.copyWith(
               fontWeight: FontWeight.w800,
-              color: isCorrect ? AppColors.success : AppColors.error,
+              color: isCorrect ? HCColor.of(context).successText : HCColor.of(context).errorText,
             ),
           ),
           const SizedBox(height: 8),
@@ -1078,7 +1082,7 @@ class _PlayerSetupCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
-              color: color,
+              color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.3)),
             ),
             decoration: InputDecoration(
               isDense: true,
@@ -1147,7 +1151,7 @@ class _PlayerResultCard extends StatelessWidget {
               name,
               style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.w700,
-                color: color,
+                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.1)),
               ),
             ),
             const SizedBox(height: 12),
@@ -1155,7 +1159,7 @@ class _PlayerResultCard extends StatelessWidget {
               '$score',
               style: AppTypography.displayMedium.copyWith(
                 fontWeight: FontWeight.w900,
-                color: color,
+                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.1)),
               ),
             ),
             Text(

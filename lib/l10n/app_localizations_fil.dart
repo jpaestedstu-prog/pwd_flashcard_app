@@ -12567,4 +12567,9 @@ class AppLocalizationsFil extends AppLocalizations {
   @override
   String get assessEditNotFound =>
       'Hindi makita ang pagsusulit na iyon. Maaaring nabura na ito.';
+
+  @override
+  String assessMediaWouldNotPlay(String kind) {
+    return 'Nandito na ang $kind pero ayaw mag-play sa tablet na ito.';
+  }
 }

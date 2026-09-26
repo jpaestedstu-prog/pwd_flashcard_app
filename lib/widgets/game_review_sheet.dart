@@ -208,7 +208,7 @@ class _SummaryBadge extends StatelessWidget {
           Text(
             label,
             style: AppTypography.labelMedium.copyWith(
-              color: color,
+              color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.2)),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -268,7 +268,7 @@ class _ReviewCard extends StatelessWidget {
             ),
             child: Icon(
               item.isCorrect ? Icons.check_rounded : Icons.close_rounded,
-              color: item.isCorrect ? AppColors.success : AppColors.error,
+              color: item.isCorrect ? HCColor.of(context).graphic(AppColors.success) : HCColor.of(context).graphic(AppColors.error),
               size: 22,
             ),
           ),

@@ -563,7 +563,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                 _isCorrect
                     ? Icons.celebration_rounded
                     : Icons.lightbulb_rounded,
-                color: _isCorrect ? AppColors.success : AppColors.error,
+                color: _isCorrect ? HCColor.of(context).graphic(AppColors.success) : HCColor.of(context).graphic(AppColors.error),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -573,7 +573,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                     Text(
                       _isCorrect ? _t(context).dcCorrect : _t(context).dcNotQuite,
                       style: AppTypography.titleSmall.copyWith(
-                        color: _isCorrect ? AppColors.success : AppColors.error,
+                        color: _isCorrect ? HCColor.of(context).successText : HCColor.of(context).errorText,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -652,7 +652,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
               allCorrect
                   ? Icons.emoji_events_rounded
                   : Icons.check_circle_rounded,
-              color: AppColors.success,
+              color: HCColor.of(context).graphic(AppColors.success),
               size: 28,
             ),
             const SizedBox(width: 12),
@@ -687,9 +687,9 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
     final hc = HCColor.of(context);
     return Row(
       children: [
-        const Icon(
+        Icon(
           Icons.check_circle_rounded,
-          color: AppColors.success,
+          color: HCColor.of(context).graphic(AppColors.success),
           size: 28,
         ),
         const SizedBox(width: 12),

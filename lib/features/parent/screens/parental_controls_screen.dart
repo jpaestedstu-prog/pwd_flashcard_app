@@ -361,8 +361,8 @@ class _ParentalControlsScreenState
               onPressed: () {
                 _update(const ParentalControls());
               },
-              icon: const Icon(Icons.restart_alt_rounded,
-                  color: AppColors.error),
+              icon: Icon(Icons.restart_alt_rounded,
+                  color: HCColor.of(context).graphic(AppColors.error)),
               label: Text(
                 _t(context).pcReset,
                 style: TextStyle(color: HCColor.of(context).errorText),

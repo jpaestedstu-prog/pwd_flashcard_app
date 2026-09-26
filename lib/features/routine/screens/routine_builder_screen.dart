@@ -961,7 +961,7 @@ class _LockSummary extends StatelessWidget {
           Icon(
             n == 0 ? Icons.info_outline_rounded : Icons.lock_outline_rounded,
             size: 16,
-            color: n == 0 ? AppColors.warning : hc.textSecondary,
+            color: n == 0 ? HCColor.of(context).graphic(AppColors.warning) : hc.textSecondary,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1061,7 +1061,7 @@ class _OpenByItselfRowState extends State<_OpenByItselfRow> {
                 Icon(
                   _granted! ? Icons.check_circle_rounded : Icons.info_rounded,
                   size: 18,
-                  color: _granted! ? AppColors.success : AppColors.warning,
+                  color: _granted! ? HCColor.of(context).graphic(AppColors.success) : HCColor.of(context).graphic(AppColors.warning),
                 ),
                 const SizedBox(width: 4),
                 Expanded(

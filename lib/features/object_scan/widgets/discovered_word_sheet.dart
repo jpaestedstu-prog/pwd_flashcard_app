@@ -301,7 +301,7 @@ class _BadgeUnlockedChip extends StatelessWidget {
                   filipino: Localizations.localeOf(context).languageCode == 'fil',
                 ),
               ),
-              style: TextStyle(fontWeight: FontWeight.bold, color: badge.color),
+              style: TextStyle(fontWeight: FontWeight.bold, color: HCColor.of(context).readableOver(badge.color, badge.color.withValues(alpha: 0.15))),
               maxLines: 2,
               textAlign: TextAlign.center,
             ),

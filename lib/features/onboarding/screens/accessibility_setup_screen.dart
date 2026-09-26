@@ -417,7 +417,7 @@ class _AccessibilitySetupScreenState
                     Text(
                       type.labelOf(AppLocalizations.of(context)),
                       style: AppTypography.titleMedium.copyWith(
-                        color: type.color,
+                        color: HCColor.of(context).readableOver(type.color, type.color.withValues(alpha: 0.3)),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -512,9 +512,9 @@ class _AccessibilitySetupScreenState
                                     ],
                                   ),
                                 ),
-                                const Icon(
+                                Icon(
                                   Icons.check_circle_rounded,
-                                  color: AppColors.success,
+                                  color: HCColor.of(context).graphic(AppColors.success),
                                   size: 22,
                                 ),
                               ],
@@ -607,10 +607,10 @@ class _AccessibilitySetupScreenState
                     color: AppColors.success.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.check_circle_rounded,
                     size: 72,
-                    color: AppColors.success,
+                    color: HCColor.of(context).graphic(AppColors.success),
                   ),
                 )
                 .animate()

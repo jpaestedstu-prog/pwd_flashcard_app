@@ -415,7 +415,7 @@ class _ReviewedLine extends StatelessWidget {
                 Text(
                   correct ? t.assessReviewedCorrect : t.assessReviewedNotYet,
                   style: AppTypography.labelLarge.copyWith(
-                    color: color,
+                    color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.1)),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -587,7 +587,7 @@ class _FeedbackEditorSheetState extends State<_FeedbackEditorSheet> {
             Text(
               _scoreLine(t, result),
               style: AppTypography.labelLarge.copyWith(
-                color: result == null ? hc.textSecondary : AppColors.success,
+                color: result == null ? hc.textSecondary : HCColor.of(context).successText,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -595,7 +595,7 @@ class _FeedbackEditorSheetState extends State<_FeedbackEditorSheet> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  const Icon(Icons.videocam_rounded, color: AppColors.info),
+                  Icon(Icons.videocam_rounded, color: HCColor.of(context).graphic(AppColors.info)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(

@@ -1152,7 +1152,7 @@ class _CategoryMasteryCard extends StatelessWidget {
                 Text(
                   _tr(context).hubBest((bestScore! * 100).round()),
                   style: AppTypography.labelSmall.copyWith(
-                    color: catColor,
+                    color: HCColor.of(context).readableOver(catColor, catColor.withValues(alpha: 0.3)),
                     fontWeight: FontWeight.w700,
                   ),
                 )
@@ -1435,9 +1435,9 @@ class _FeedbackTile extends StatelessWidget {
                       color: AppColors.info.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.rate_review_rounded,
-                      color: AppColors.info,
+                      color: HCColor.of(context).graphic(AppColors.info),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -1686,16 +1686,16 @@ class _RecentResultTile extends StatelessWidget {
                     ? Text(
                         '$pct%',
                         style: AppTypography.labelLarge.copyWith(
-                          color: _scoreColor(result.percentage),
+                          color: HCColor.of(context).readableOver(_scoreColor(result.percentage), _scoreColor(result.percentage).withValues(alpha: 0.15)),
                           fontWeight: FontWeight.w800,
                         ),
                       )
                     // Answered only on video: waiting for a person, not 0%.
                     : Semantics(
                         label: _tr(context).assessSentForReview,
-                        child: const Icon(
+                        child: Icon(
                           Icons.videocam_rounded,
-                          color: AppColors.info,
+                          color: HCColor.of(context).graphic(AppColors.info),
                           size: 20,
                         ),
                       ),
@@ -1865,8 +1865,8 @@ class _LearnerGainTile extends StatelessWidget {
                       gainLabel,
                       style: AppTypography.labelSmall.copyWith(
                         color: gain >= 0
-                            ? AppColors.success
-                            : AppColors.warning,
+                            ? HCColor.of(context).successText
+                            : HCColor.of(context).warningText,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1914,7 +1914,7 @@ class _ReadinessPill extends StatelessWidget {
             child: Text(
               readiness.educatorSummaryOf(AppLocalizations.of(context)),
               style: AppTypography.labelSmall.copyWith(
-                color: color,
+                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.4)),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1957,7 +1957,7 @@ class _StatePill extends StatelessWidget {
           Text(
             label,
             style: AppTypography.labelSmall.copyWith(
-              color: color,
+              color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.4)),
               fontWeight: FontWeight.w700,
             ),
           ),

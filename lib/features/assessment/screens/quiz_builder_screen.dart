@@ -360,14 +360,14 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.play_arrow_rounded,
-                              color: AppColors.success),
+                          icon: Icon(Icons.play_arrow_rounded,
+                              color: HCColor.of(context).graphic(AppColors.success)),
                           tooltip: _t(context).qbStart,
                           onPressed: () => _startQuiz(quiz),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded,
-                              color: AppColors.error),
+                          icon: Icon(Icons.delete_outline_rounded,
+                              color: HCColor.of(context).graphic(AppColors.error)),
                           tooltip: _t(context).delete,
                           onPressed: () => _confirmDeleteQuiz(quiz),
                         ),

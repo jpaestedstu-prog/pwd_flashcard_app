@@ -504,10 +504,10 @@ class _ResultCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: fraction == null
-                      ? const Icon(
+                      ? Icon(
                           Icons.videocam_rounded,
                           size: 20,
-                          color: AppColors.info,
+                          color: HCColor.of(context).graphic(AppColors.info),
                         )
                       // Dark words on the tint: the pastel score colour on
                       // its own tint was too faint to read.
@@ -609,8 +609,8 @@ Future<void> _showVideoAnswers(BuildContext context, PortfolioEntry entry) {
                             : Icons.replay_rounded,
                         size: 20,
                         color: marks[answer.questionId]!
-                            ? AppColors.success
-                            : AppColors.warning,
+                            ? HCColor.of(context).graphic(AppColors.success)
+                            : HCColor.of(context).graphic(AppColors.warning),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -719,9 +719,9 @@ class _FeedbackCard extends StatelessWidget {
                       color: AppColors.info.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.rate_review_rounded,
-                      color: AppColors.info,
+                      color: HCColor.of(context).graphic(AppColors.info),
                     ),
                   ),
                   const SizedBox(width: 12),

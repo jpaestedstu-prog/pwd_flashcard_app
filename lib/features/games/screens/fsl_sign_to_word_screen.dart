@@ -579,10 +579,10 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                           ),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.star_rounded,
                                 size: 20,
-                                color: AppColors.warning,
+                                color: HCColor.of(context).graphic(AppColors.warning),
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -659,7 +659,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                                   Text(
                                     l10n.fslWhatWordIsThisSign,
                                     style: AppTypography.titleMedium.copyWith(
-                                      color: const Color(0xFF7C4DFF),
+                                      color: HCColor.of(context).readableOver(const Color(0xFF7C4DFF), const Color(0xFF7C4DFF).withValues(alpha: 0.15)),
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),

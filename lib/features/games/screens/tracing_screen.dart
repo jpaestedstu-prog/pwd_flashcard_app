@@ -545,8 +545,8 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
                   : Icons.cancel_rounded,
               size: 32,
               color: (_wordResults[card.id] ?? false)
-                  ? AppColors.success
-                  : AppColors.error,
+                  ? HCColor.of(context).graphic(AppColors.success)
+                  : HCColor.of(context).graphic(AppColors.error),
             ),
         ],
       ),

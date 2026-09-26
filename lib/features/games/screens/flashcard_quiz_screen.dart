@@ -923,7 +923,7 @@ class _SwipeStamp extends StatelessWidget {
               Text(
                 label,
                 style: AppTypography.labelLarge.copyWith(
-                  color: color,
+                  color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12)),
                   fontWeight: FontWeight.w800,
                 ),
               ),

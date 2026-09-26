@@ -427,7 +427,7 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
                     child: Text(
                       '${_responses[i]}/5',
                       style: AppTypography.labelMedium.copyWith(
-                        color: _likertColor(_responses[i], i.isEven),
+                        color: HCColor.of(context).readableOver(_likertColor(_responses[i], i.isEven), _likertColor(_responses[i], i.isEven).withValues(alpha: 0.15)),
                         fontWeight: FontWeight.bold,
                       ),
                     ),

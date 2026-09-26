@@ -2504,7 +2504,7 @@ class _StoryFslReadyStatusState extends State<_StoryFslReadyStatus> {
               child: Text(
                 _t(context).tcReadyToPlay,
                 style: AppTypography.labelSmall.copyWith(
-                  color: const Color(0xFF4CAF50),
+                  color: HCColor.of(context).readableOver(const Color(0xFF4CAF50), const Color(0xFF4CAF50).withValues(alpha: 0.15)),
                 ),
               ),
             ),
@@ -3168,7 +3168,7 @@ class _FslReadyStatusState extends State<_FslReadyStatus> {
             child: Text(
               _t(context).tcReadyToPlay,
               style: AppTypography.labelSmall.copyWith(
-                color: const Color(0xFF4CAF50),
+                color: HCColor.of(context).readableOver(const Color(0xFF4CAF50), const Color(0xFF4CAF50).withValues(alpha: 0.15)),
               ),
             ),
           ),

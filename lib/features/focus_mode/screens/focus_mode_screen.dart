@@ -659,7 +659,7 @@ class _StatsCard extends StatelessWidget {
             value,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
-              color: color,
+              color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.2)),
             ),
           ),
           Text(

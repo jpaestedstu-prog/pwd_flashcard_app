@@ -118,8 +118,8 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Row(
                       children: [
-                        const Icon(Icons.percent_rounded,
-                            size: 18, color: AppColors.warning),
+                        Icon(Icons.percent_rounded,
+                            size: 18, color: HCColor.of(context).graphic(AppColors.warning)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -157,8 +157,8 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Row(
                       children: [
-                        const Icon(Icons.timer_off_rounded,
-                            size: 18, color: AppColors.info),
+                        Icon(Icons.timer_off_rounded,
+                            size: 18, color: HCColor.of(context).graphic(AppColors.info)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(

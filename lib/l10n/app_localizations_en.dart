@@ -12660,4 +12660,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get assessEditNotFound =>
       'That assessment could not be found. It may have been deleted.';
+
+  @override
+  String assessMediaWouldNotPlay(String kind) {
+    return 'This $kind is here but would not play on this tablet.';
+  }
 }

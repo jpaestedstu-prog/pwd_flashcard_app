@@ -137,7 +137,7 @@ class _AchievementToastWidgetState extends State<_AchievementToastWidget> {
                         Text(
                           '🏆  Achievement Unlocked!',
                           style: AppTypography.labelSmall.copyWith(
-                            color: a.color,
+                            color: HCColor.of(context).readableOver(a.color, a.color.withValues(alpha: 0.15)),
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.5,
                           ),

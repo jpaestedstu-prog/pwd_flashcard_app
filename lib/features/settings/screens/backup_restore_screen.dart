@@ -95,7 +95,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_rounded, color: AppColors.success),
+                  Icon(Icons.check_circle_rounded, color: HCColor.of(context).graphic(AppColors.success)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -169,7 +169,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+                Icon(Icons.warning_amber_rounded, color: HCColor.of(context).graphic(AppColors.warning)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

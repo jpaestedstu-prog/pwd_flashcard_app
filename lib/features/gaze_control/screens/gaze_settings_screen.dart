@@ -287,7 +287,7 @@ class _NavScopeOption extends StatelessWidget {
                         ? Icons.radio_button_checked_rounded
                         : Icons.radio_button_unchecked_rounded,
                     color: selected
-                        ? AppColors.primary
+                        ? HCColor.of(context).primary
                         : AppColors.textSecondary,
                     size: 22,
                   ),

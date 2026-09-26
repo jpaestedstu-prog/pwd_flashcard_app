@@ -180,7 +180,7 @@ class _ScoreCard extends StatelessWidget {
           Text(
             name,
             style: AppTypography.titleSmall
-                .copyWith(fontWeight: FontWeight.w800, color: color),
+                .copyWith(fontWeight: FontWeight.w800, color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12))),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -192,7 +192,7 @@ class _ScoreCard extends StatelessWidget {
               '$score',
               style: AppTypography.displayMedium.copyWith(
                 fontWeight: FontWeight.w900,
-                color: color,
+                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12)),
               ),
             ),
           ),

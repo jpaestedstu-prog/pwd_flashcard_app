@@ -623,7 +623,7 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
                     Icon(
                       Icons.timer_rounded,
                       color: _timedMode
-                          ? AppColors.warning
+                          ? HCColor.of(context).graphic(AppColors.warning)
                           : AppColors.textHint,
                       size: context.scaleIcon(24),
                     ),
@@ -637,7 +637,7 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
                             style: AppTypography.labelLarge.copyWith(
                               fontWeight: FontWeight.w700,
                               color: _timedMode
-                                  ? AppColors.warning
+                                  ? HCColor.of(context).warningText
                                   : hc.textPrimary,
                             ),
                           ),
@@ -815,7 +815,7 @@ class _DifficultyCardState extends State<_DifficultyCard> {
                               diff.labelOf(l10n),
                               style: AppTypography.titleMedium.copyWith(
                                 fontWeight: FontWeight.w800,
-                                color: diff.color,
+                                color: HCColor.of(context).readableOver(diff.color, diff.color.withValues(alpha: 0.2)),
                               ),
                             ),
                             if (widget.lastPlayed)
@@ -831,7 +831,7 @@ class _DifficultyCardState extends State<_DifficultyCard> {
                                 child: Text(
                                   AppLocalizations.of(context)!.lastPlayed,
                                   style: AppTypography.labelSmall.copyWith(
-                                    color: diff.color,
+                                    color: HCColor.of(context).readableOver(diff.color, diff.color.withValues(alpha: 0.18)),
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -955,7 +955,7 @@ class _AutoDifficultyCard extends StatelessWidget {
                         _t(context).gwAuto,
                         style: AppTypography.titleMedium.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: autoColor,
+                          color: HCColor.of(context).readableOver(autoColor, autoColor.withValues(alpha: 0.15)),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -971,7 +971,7 @@ class _AutoDifficultyCard extends StatelessWidget {
                         child: Text(
                           '→ ${suggested.labelOf(l10n)}',
                           style: AppTypography.labelSmall.copyWith(
-                            color: suggested.color,
+                            color: HCColor.of(context).readableOver(suggested.color, suggested.color.withValues(alpha: 0.15)),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -1029,7 +1029,7 @@ class AnimatedScoreDisplay extends StatelessWidget {
               TextSpan(
                 text: '$value',
                 style: AppTypography.gameScore.copyWith(
-                  color: color ?? AppColors.primary,
+                  color: color ?? HCColor.of(context).primary,
                 ),
               ),
               TextSpan(
@@ -1100,7 +1100,7 @@ class GameTimerWidget extends StatelessWidget {
             child: Text(
               '$remainingSeconds',
               style: AppTypography.titleMedium.copyWith(
-                color: _timerColor,
+                color: HCColor.of(context).readableOver(_timerColor, _timerColor.withValues(alpha: 0.15)),
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -1264,7 +1264,7 @@ class StarRating extends StatelessWidget {
               earned ? Icons.star_rounded : Icons.star_border_rounded,
               size: size,
               color: earned
-                  ? AppColors.warning
+                  ? HCColor.of(context).graphic(AppColors.warning)
                   : HCColor.of(context).textSecondary.withValues(alpha: 0.3),
             ),
           );

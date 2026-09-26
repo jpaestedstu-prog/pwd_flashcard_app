@@ -12,6 +12,7 @@ import 'package:pwdpwdpwd/features/routine/models/routine_models.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 import 'package:pwdpwdpwd/providers/mood_provider.dart';
 import 'package:pwdpwdpwd/providers/routine_provider.dart';
+import 'package:pwdpwdpwd/providers/wall_clock_provider.dart';
 
 /// The Home "Today" card — Mood Check-In and My Day in one card, both halves
 /// live **and** actionable in place.
@@ -430,6 +431,10 @@ void main() {
     testWidgets('the next step names itself and its clock time', (
       tester,
     ) async {
+      // Noon, pinned: on the real clock this failed whenever the suite
+      // reached it after 6:05 PM, when the 6:05 step is no longer next.
+      final today = DateTime.now();
+      final noon = DateTime(today.year, today.month, today.day, 12);
       await _pump(
         tester,
         routines: [
@@ -439,6 +444,9 @@ void main() {
           ]),
         ],
         done: {'s1'},
+        extra: [
+          wallClockTickerProvider.overrideWith((ref) => Stream.value(noon)),
+        ],
       );
 
       expect(find.textContaining('Brushing Teeth'), findsOneWidget);

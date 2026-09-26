@@ -155,7 +155,7 @@ class WeeklyOverviewCard extends StatelessWidget {
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
                             color: isToday
-                                ? AppColors.primary
+                                ? HCColor.of(context).primary
                                 : hc.textSecondary,
                           ),
                         ),
@@ -418,7 +418,7 @@ class _WeekStatChip extends StatelessWidget {
             value,
             style: AppTypography.labelMedium.copyWith(
               fontWeight: FontWeight.w700,
-              color: color,
+              color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.2)),
             ),
           ),
         ],

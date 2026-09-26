@@ -112,10 +112,10 @@ class _FriendlyErrorWidget extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.sentiment_dissatisfied_rounded,
               size: 48,
-              color: AppColors.error,
+              color: HCColor.of(context).graphic(AppColors.error),
             ),
             const SizedBox(height: 12),
             Text(

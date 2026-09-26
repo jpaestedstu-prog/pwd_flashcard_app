@@ -993,8 +993,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           else if (_removingPin)
             Row(
               children: [
-                const Icon(Icons.info_outline_rounded, size: 18,
-                    color: AppColors.warning),
+                Icon(Icons.info_outline_rounded, size: 18,
+                    color: HCColor.of(context).graphic(AppColors.warning)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(_t(context).epPinRemovedOnSave),

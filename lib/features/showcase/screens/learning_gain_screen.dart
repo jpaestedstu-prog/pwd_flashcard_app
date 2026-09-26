@@ -350,7 +350,7 @@ class _AverageScoresCard extends StatelessWidget {
                       Text(
                         '$pct%',
                         style: AppTypography.titleMedium.copyWith(
-                          color: _typeColor(e.key),
+                          color: HCColor.of(context).readableOver(_typeColor(e.key), _typeColor(e.key).withValues(alpha: 0.15)),
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -469,7 +469,7 @@ class _AssessmentHistoryCard extends StatelessWidget {
                     child: Text(
                       '$pct% (${r.score}/${r.totalQuestions})',
                       style: AppTypography.labelSmall.copyWith(
-                        color: _scoreColor(pct),
+                        color: HCColor.of(context).readableOver(_scoreColor(pct), _scoreColor(pct).withValues(alpha: 0.15)),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -573,7 +573,7 @@ class _RecommendationsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.lightbulb_rounded, size: 22, color: AppColors.warning),
+              Icon(Icons.lightbulb_rounded, size: 22, color: HCColor.of(context).graphic(AppColors.warning)),
               const SizedBox(width: 8),
               Text(
                 _t(context).lgRecommendations,

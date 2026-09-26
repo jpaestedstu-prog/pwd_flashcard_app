@@ -1018,9 +1018,9 @@ class SettingsScreen extends ConsumerWidget {
               Center(
                 child: TextButton.icon(
                   onPressed: () => _showResetDialog(context, ref),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.delete_outline_rounded,
-                    color: AppColors.error,
+                    color: HCColor.of(context).graphic(AppColors.error),
                   ),
                   label: Text(
                     AppLocalizations.of(context)?.resetAllData ??

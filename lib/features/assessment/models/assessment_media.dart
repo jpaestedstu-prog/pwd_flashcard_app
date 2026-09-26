@@ -237,13 +237,13 @@ class AssessmentFeedback {
     if (note.trim().isNotEmpty) 'note': note.trim(),
     if (!media.isEmpty) 'media': media.toJson(),
     if (reviews.isNotEmpty) 'reviews': reviews,
-    'updatedAt': updatedAt.toIso8601String(),
+    'updatedAt': updatedAt.toUtc().toIso8601String(),
   };
 
   /// Null for anything unreadable, so one bad entry cannot hide the rest.
   static AssessmentFeedback? tryFromJson(Object? raw) {
     if (raw is! Map) return null;
-    final at = DateTime.tryParse(raw['updatedAt']?.toString() ?? '');
+    final at = DateTime.tryParse(raw['updatedAt']?.toString() ?? '')?.toLocal();
     final note = raw['note'];
     final reviews = raw['reviews'];
     final feedback = AssessmentFeedback(

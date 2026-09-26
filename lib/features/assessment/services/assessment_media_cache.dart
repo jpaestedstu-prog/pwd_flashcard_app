@@ -24,6 +24,10 @@ enum MediaAvailability {
   /// A link or a shared file that could not be downloaded (offline, a dead
   /// link, or today's free quota used up).
   unreachable,
+
+  /// On this device, but this tablet could not play it — a decoder that
+  /// would not start, or a format it lacks. Going online would not help.
+  unplayable,
 }
 
 /// Downloads linked assessment media once and replays it from disk.

@@ -1050,7 +1050,7 @@ class _QuickFilterChip extends StatelessWidget {
               Text(
                 label,
                 style: AppTypography.labelSmall.copyWith(
-                  color: color,
+                  color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.1)),
                   fontWeight: FontWeight.w600,
                 ),
               ),

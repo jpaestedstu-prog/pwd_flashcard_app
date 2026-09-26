@@ -52,9 +52,9 @@ class DifficultyHistoryChart extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.trending_up_rounded,
-                color: AppColors.info,
+                color: HCColor.of(context).graphic(AppColors.info),
                 size: 22,
               ),
               const SizedBox(width: 8),

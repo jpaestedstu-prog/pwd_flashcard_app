@@ -1308,11 +1308,8 @@ class AssessmentService {
       String studentId) {
     final assignments = getAssignmentsForStudent(studentId);
     final results = getResults(studentId);
-    final completedAssessmentIds =
-        results.map((r) => r.assessmentId).toSet();
-
     return assignments
-        .where((a) => !completedAssessmentIds.contains(a.assessmentId))
+        .where((a) => !results.any(a.isAnsweredBy))
         .toList();
   }
 
@@ -1442,9 +1439,7 @@ class AssessmentService {
               : 'Unknown');
 
       final results = getResults(studentId);
-      final matchingResult = results
-          .where((r) => r.assessmentId == assignment.assessmentId)
-          .toList();
+      final matchingResult = results.where(assignment.isAnsweredBy).toList();
 
       AssignmentStatus status;
       AssessmentResult? result;

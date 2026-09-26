@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart' show AppColors;
+import '../../../core/theme/app_colors.dart' show AppColors, HCColor;
 import '../../../core/theme/app_typography.dart' show AppTypography;
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
@@ -42,7 +42,7 @@ Future<bool> confirmHandsFreePause(
     builder: (dialogContext) => AlertDialog(
       title: Row(
         children: [
-          const Icon(Icons.front_hand_rounded, color: AppColors.warning),
+          Icon(Icons.front_hand_rounded, color: HCColor.of(context).graphic(AppColors.warning)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

@@ -454,11 +454,17 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                 alpha: 0.12,
                               );
                               borderColor = AppColors.success;
-                              textColor = AppColors.success;
+                              textColor = hc.readableOver(
+                                AppColors.success,
+                                bgColor,
+                              );
                             } else if (isSelected && !isCorrect) {
                               bgColor = AppColors.error.withValues(alpha: 0.12);
                               borderColor = AppColors.error;
-                              textColor = AppColors.error;
+                              textColor = hc.readableOver(
+                                AppColors.error,
+                                bgColor,
+                              );
                             } else {
                               bgColor = hc.surface;
                               borderColor = AppColors.border;
@@ -588,7 +594,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                             if (_answered && isCorrect)
                                               Icon(
                                                 Icons.check_circle_rounded,
-                                                color: AppColors.success,
+                                                color: HCColor.of(context).graphic(AppColors.success),
                                                 size: context.scaleIcon(24),
                                               ),
                                             if (_answered &&
@@ -596,7 +602,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                                 !isCorrect)
                                               Icon(
                                                 Icons.cancel_rounded,
-                                                color: AppColors.error,
+                                                color: HCColor.of(context).graphic(AppColors.error),
                                                 size: context.scaleIcon(24),
                                               ),
                                           ],

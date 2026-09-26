@@ -284,8 +284,8 @@ class Assessment {
     'difficulty': difficulty.index,
     'timeLimitMinutes': timeLimitMinutes,
     'createdBy': createdBy,
-    'createdAt': createdAt.toIso8601String(),
-    if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
+    'createdAt': createdAt.toUtc().toIso8601String(),
+    if (updatedAt != null) 'updatedAt': updatedAt!.toUtc().toIso8601String(),
   };
 
   /// A copy with [questions] in place of this assessment's own — the same
@@ -327,8 +327,8 @@ class Assessment {
           : GameDifficulty.medium,
       timeLimitMinutes: json['timeLimitMinutes'] as int?,
       createdBy: json['createdBy'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+      updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '')?.toLocal(),
     );
   }
 }
@@ -505,7 +505,7 @@ class AssessmentResult {
     'score': score,
     'totalQuestions': totalQuestions,
     'answers': answers.map((a) => a.toJson()).toList(),
-    'completedAt': completedAt.toIso8601String(),
+    'completedAt': completedAt.toUtc().toIso8601String(),
     'durationSeconds': durationSeconds,
     'categories': categories.map((c) => c.index).toList(),
     'categoryScores': categoryScores,
@@ -526,7 +526,7 @@ class AssessmentResult {
       answers: (json['answers'] as List)
           .map((a) => QuestionAnswer.fromJson(Map<String, dynamic>.from(a as Map)))
           .toList(),
-      completedAt: DateTime.parse(json['completedAt'] as String),
+      completedAt: DateTime.parse(json['completedAt'] as String).toLocal(),
       durationSeconds: json['durationSeconds'] as int? ?? 0,
       categories: (json['categories'] as List? ?? [])
           .map((c) => c as int)
@@ -691,6 +691,19 @@ class AssessmentAssignment {
     assessmentEditedAt: assessmentEditedAt,
   );
 
+  /// How far two tablets' clocks may disagree: a result stamped a little
+  /// before [assignedAt] by a learner's slow clock still answers it.
+  static const Duration clockAllowance = Duration(minutes: 5);
+
+  /// Whether [result] answers this assignment: the same test, finished after
+  /// it was set. A result from an earlier sitting does not — assigning a test
+  /// again is how a teacher reopens it ("Already done — ask your teacher to
+  /// reopen it"), and matching on the test alone left a second assignment of
+  /// a saved test hidden from the learner and marked done for the teacher.
+  bool isAnsweredBy(AssessmentResult result) =>
+      result.assessmentId == assessmentId &&
+      !result.completedAt.isBefore(assignedAt.subtract(clockAllowance));
+
   /// A copy without [learnerIds]: their places and their feedback removed —
   /// for learners who have deleted their profiles.
   AssessmentAssignment withoutLearners(Set<String> learnerIds) =>
@@ -787,8 +800,8 @@ class AssessmentAssignment {
     'assessmentTitle': assessmentTitle,
     'assignedBy': assignedBy,
     'studentIds': studentIds,
-    'assignedAt': assignedAt.toIso8601String(),
-    'deadline': deadline?.toIso8601String(),
+    'assignedAt': assignedAt.toUtc().toIso8601String(),
+    'deadline': deadline?.toUtc().toIso8601String(),
     'instructions': instructions,
     if (!media.isEmpty) 'media': media.toJson(),
     if (feedback.isNotEmpty)
@@ -796,7 +809,7 @@ class AssessmentAssignment {
         for (final e in feedback.entries) e.key: e.value.toJson(),
       },
     if (assessmentEditedAt != null)
-      'assessmentEditedAt': assessmentEditedAt!.toIso8601String(),
+      'assessmentEditedAt': assessmentEditedAt!.toUtc().toIso8601String(),
   };
 
   factory AssessmentAssignment.fromJson(Map<String, dynamic> json) {
@@ -806,16 +819,16 @@ class AssessmentAssignment {
       assessmentTitle: json['assessmentTitle'] as String? ?? '',
       assignedBy: json['assignedBy'] as String,
       studentIds: List<String>.from(json['studentIds'] as List),
-      assignedAt: DateTime.parse(json['assignedAt'] as String),
+      assignedAt: DateTime.parse(json['assignedAt'] as String).toLocal(),
       deadline: json['deadline'] != null
-          ? DateTime.parse(json['deadline'] as String)
+          ? DateTime.parse(json['deadline'] as String).toLocal()
           : null,
       instructions: json['instructions'] as String?,
       media: AssessmentMedia.fromJson(json['media']),
       feedback: _feedbackFromJson(json['feedback']),
       assessmentEditedAt: DateTime.tryParse(
         json['assessmentEditedAt'] as String? ?? '',
-      ),
+      )?.toLocal(),
     );
   }
 

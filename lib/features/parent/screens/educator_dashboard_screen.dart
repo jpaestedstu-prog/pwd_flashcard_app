@@ -204,8 +204,8 @@ class _EducatorDashboardScreenState
                       padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
                       child: Row(
                         children: [
-                          const Icon(Icons.lightbulb_rounded,
-                              color: AppColors.warning, size: 22),
+                          Icon(Icons.lightbulb_rounded,
+                              color: HCColor.of(context).graphic(AppColors.warning), size: 22),
                           const SizedBox(width: 8),
                           Text(
                             l ? 'Mga Rekomendasyon' : 'Recommendations',
@@ -805,8 +805,8 @@ class _ChildCard extends ConsumerWidget {
                             : Icons.trending_down_rounded,
                         size: 14,
                         color: weekChange >= 0
-                            ? AppColors.success
-                            : AppColors.error,
+                            ? HCColor.of(context).graphic(AppColors.success)
+                            : HCColor.of(context).graphic(AppColors.error),
                       ),
                       const SizedBox(width: 3),
                       Text(
@@ -853,7 +853,7 @@ class _ChildCard extends ConsumerWidget {
                           '$minutesToday/${limit.dailyLimitMinutes}m',
                           style: AppTypography.labelSmall.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: pillColor,
+                            color: HCColor.of(context).readableOver(pillColor, pillColor.withValues(alpha: 0.4)),
                           ),
                         ),
                       ],
@@ -999,10 +999,10 @@ class _MoodRow extends ConsumerWidget {
             ),
             if (attention) ...[
               const SizedBox(width: 6),
-              const Icon(
+              Icon(
                 Icons.favorite_rounded,
                 size: 14,
-                color: AppColors.warning,
+                color: HCColor.of(context).graphic(AppColors.warning),
               ),
               const SizedBox(width: 4),
               Text(

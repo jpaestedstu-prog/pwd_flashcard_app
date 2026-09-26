@@ -81,6 +81,11 @@ class AssessmentMediaPanel extends ConsumerStatefulWidget {
   /// Test seam for the video plugin. Null in the app.
   static AssessmentVideoBuilder? debugVideoBuilder;
 
+  /// Test seam for starting a video — stands in for
+  /// `VideoPlayerController.initialize`. Null in the app.
+  static Future<void> Function(VideoPlayerController controller)?
+  debugVideoInitialize;
+
   const AssessmentMediaPanel({
     super.key,
     required this.media,
@@ -311,13 +316,21 @@ class _MediaUnavailable extends StatelessWidget {
   final AssessmentMediaKind kind;
   final MediaAvailability availability;
 
-  const _MediaUnavailable({required this.kind, required this.availability});
+  /// Offered as Try Again when given.
+  final VoidCallback? onRetry;
+
+  const _MediaUnavailable({
+    required this.kind,
+    required this.availability,
+    this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final t = _tr(context);
     final otherDevice = availability == MediaAvailability.otherDevice;
+    final unplayable = availability == MediaAvailability.unplayable;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -330,7 +343,11 @@ class _MediaUnavailable extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            otherDevice ? Icons.tablet_android_rounded : Icons.wifi_off_rounded,
+            otherDevice
+                ? Icons.tablet_android_rounded
+                : unplayable
+                ? Icons.videocam_off_rounded
+                : Icons.wifi_off_rounded,
             size: 30,
             color: hc.textHint,
           ),
@@ -338,10 +355,20 @@ class _MediaUnavailable extends StatelessWidget {
           Text(
             otherDevice
                 ? t.assessMediaOnOtherDevice(kind.labelOf(t))
+                : unplayable
+                ? t.assessMediaWouldNotPlay(kind.labelOf(t))
                 : t.assessMediaCouldNotLoad(kind.labelOf(t)),
             textAlign: TextAlign.center,
             style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
           ),
+          if (onRetry != null) ...[
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(t.tryAgain),
+            ),
+          ],
         ],
       ),
     );
@@ -726,9 +753,12 @@ class _MediaVideoState extends State<_MediaVideo> {
     if (AssessmentMediaPanel.debugVideoBuilder == null) _open();
   }
 
-  Future<void> _open() async {
+  Future<void> _open({bool retried = false}) async {
     final v = widget.value.trim();
     VideoPlayerController? controller;
+    // Whether the clip is on this tablet: then a failure is in playing it,
+    // not in reaching it.
+    var local = true;
     try {
       if (RoutineMediaStore.isDeviceFile(v)) {
         final f = File(RoutineMediaStore.pathOf(v));
@@ -745,11 +775,13 @@ class _MediaVideoState extends State<_MediaVideo> {
           if (mounted) setState(() => _failed = MediaAvailability.unreachable);
           return;
         }
+        local = file != null;
         controller = file != null
             ? VideoPlayerController.file(file)
             : VideoPlayerController.networkUrl(Uri.parse(v));
       }
-      await controller.initialize();
+      final start = AssessmentMediaPanel.debugVideoInitialize;
+      await (start != null ? start(controller) : controller.initialize());
       if (!mounted) {
         await controller.dispose();
         return;
@@ -760,8 +792,25 @@ class _MediaVideoState extends State<_MediaVideo> {
       setState(() => _controller = controller);
     } on Object {
       await controller?.dispose();
-      if (mounted) setState(() => _failed = MediaAvailability.unreachable);
+      if (!mounted) return;
+      // A decoder the system took back a moment ago often starts on a second
+      // try (found on a tablet: an FSL clip's sound decoder would not start).
+      if (!retried) {
+        await Future<void>.delayed(const Duration(milliseconds: 700));
+        if (mounted) await _open(retried: true);
+        return;
+      }
+      setState(
+        () => _failed = local
+            ? MediaAvailability.unplayable
+            : MediaAvailability.unreachable,
+      );
     }
+  }
+
+  void _retry() {
+    setState(() => _failed = null);
+    _open();
   }
 
   /// Repaints the play overlay when a one-shot video reaches its end.
@@ -804,7 +853,11 @@ class _MediaVideoState extends State<_MediaVideo> {
     }
     final failed = _failed;
     if (failed != null) {
-      return _MediaUnavailable(kind: widget.kind, availability: failed);
+      return _MediaUnavailable(
+        kind: widget.kind,
+        availability: failed,
+        onRetry: _retry,
+      );
     }
     final hc = HCColor.of(context);
     final t = _tr(context);

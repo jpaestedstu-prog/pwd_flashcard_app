@@ -343,7 +343,7 @@ class _ErrorCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppColors.error),
+          Icon(Icons.error_outline_rounded, color: HCColor.of(context).graphic(AppColors.error)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(message, style: AppTypography.bodyMedium),

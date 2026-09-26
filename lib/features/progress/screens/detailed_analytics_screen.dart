@@ -169,8 +169,8 @@ class DetailedAnalyticsScreen extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.insights_rounded,
-                    color: AppColors.info, size: 28),
+                Icon(Icons.insights_rounded,
+                    color: HCColor.of(context).graphic(AppColors.info), size: 28),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -239,7 +239,7 @@ class _MiniStat extends StatelessWidget {
               value,
               style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.w800,
-                color: color,
+                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12)),
               ),
             ),
             // The caption naming the number above it, in a third of a row:

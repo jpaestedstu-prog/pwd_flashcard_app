@@ -266,7 +266,7 @@ class _ProfileHeader extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.lock_rounded, size: 14, color: AppColors.warning),
+                Icon(Icons.lock_rounded, size: 14, color: HCColor.of(context).graphic(AppColors.warning)),
                 const SizedBox(width: 4),
                 Text(
                   _t(context).spdPinProtected,
@@ -305,7 +305,7 @@ class _HeaderChip extends StatelessWidget {
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 4),
           Text(label, style: AppTypography.bodySmall.copyWith(
-            color: color,
+            color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.15)),
             fontWeight: FontWeight.w700,
           )),
         ],
@@ -406,7 +406,7 @@ class _CategoryProgressSection extends StatelessWidget {
                       '${(totalProgress * 100).round()}%',
                       style: AppTypography.labelSmall.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: accent,
+                        color: HCColor.of(context).readableOver(accent, accent.withValues(alpha: 0.15)),
                       ),
                     ),
                   ],
@@ -722,7 +722,7 @@ class _ScoreRow extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.star_rounded, size: 14, color: AppColors.accent),
+                Icon(Icons.star_rounded, size: 14, color: HCColor.of(context).graphic(AppColors.accent)),
                 const SizedBox(width: 2),
                 Text(
                   '${score.starsEarned}',
@@ -963,7 +963,7 @@ class _TagsRow extends StatelessWidget {
                 child: Text(
                   tag,
                   style: AppTypography.bodySmall.copyWith(
-                    color: accent,
+                    color: HCColor.of(context).readableOver(accent, accent.withValues(alpha: 0.1)),
                     fontWeight: FontWeight.w600,
                   ),
                 ),

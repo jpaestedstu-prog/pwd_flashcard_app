@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -226,6 +227,58 @@ void main() {
       sign: _sign,
       description: _description,
     );
+
+    testWidgets('a clip that arrived but will not play says so — not "go '
+        'online" — tries once more by itself, and offers Try Again', (
+      tester,
+    ) async {
+      // Found on a tablet: an FSL clip's sound decoder would not start, and
+      // the learner was told to try again when online — while online.
+      var starts = 0;
+      AssessmentMediaPanel.debugVideoBuilder = null;
+      AssessmentMediaCache.debugFetch = (_) async => File('clip.mp4');
+      AssessmentMediaPanel.debugVideoInitialize = (_) async {
+        starts++;
+        throw StateError('decoder would not start');
+      };
+      addTearDown(() => AssessmentMediaPanel.debugVideoInitialize = null);
+
+      await pumpTest(tester, _test(const AssessmentMedia(sign: _sign)));
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pump();
+
+      expect(starts, 2, reason: 'one quiet second try');
+      expect(
+        find.text('This FSL video is here but would not play on this tablet.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('when you are online'), findsNothing);
+
+      await tester.tap(find.text('Try Again'));
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pump();
+      expect(starts, 4, reason: 'Try Again starts it afresh');
+    });
+
+    testWidgets('a clip that never arrived still says to go online', (
+      tester,
+    ) async {
+      AssessmentMediaPanel.debugVideoBuilder = null;
+      AssessmentMediaCache.debugFetch = (_) async => null;
+      await pumpTest(
+        tester,
+        _test(const AssessmentMedia(sign: 'shared://missing-clip')),
+      );
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pump();
+      expect(
+        find.text(
+          'This FSL video could not be loaded. Try again when you are online.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Try Again'), findsOneWidget);
+    });
 
     testWidgets('a Deaf learner meets the signed version first, playing, '
         'with the description as a caption', (tester) async {

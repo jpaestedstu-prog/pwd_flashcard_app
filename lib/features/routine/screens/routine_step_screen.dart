@@ -843,7 +843,7 @@ class _InfoPill extends StatelessWidget {
           Text(
             label,
             style: AppTypography.labelMedium.copyWith(
-              color: color,
+              color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.35)),
               fontWeight: FontWeight.w700,
             ),
           ),

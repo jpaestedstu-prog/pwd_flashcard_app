@@ -1323,9 +1323,9 @@ class _DailyLoginRewardDialog extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.star_rounded,
-                color: AppColors.warning,
+                color: HCColor.of(context).graphic(AppColors.warning),
                 size: 32,
               ),
               const SizedBox(width: 4),
@@ -1363,10 +1363,10 @@ class _DailyLoginRewardDialog extends StatelessWidget {
                     ),
                     alignment: Alignment.center,
                     child: isPast
-                        ? const Icon(
+                        ? Icon(
                             Icons.check_rounded,
                             size: 16,
-                            color: AppColors.success,
+                            color: HCColor.of(context).graphic(AppColors.success),
                           )
                         : Text(
                             '${rewards[i]}',
@@ -1384,7 +1384,7 @@ class _DailyLoginRewardDialog extends StatelessWidget {
                     style: AppTypography.labelSmall.copyWith(
                       fontSize: 9,
                       color: isCurrent
-                          ? AppColors.warning
+                          ? HCColor.of(context).warningText
                           : HCColor.of(context).textSecondary,
                       fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
                     ),

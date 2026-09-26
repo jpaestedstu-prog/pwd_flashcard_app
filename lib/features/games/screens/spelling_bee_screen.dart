@@ -760,10 +760,10 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                       child: Center(
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.star_rounded,
                               size: 20,
-                              color: AppColors.warning,
+                              color: HCColor.of(context).graphic(AppColors.warning),
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -1033,8 +1033,8 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.bodySmall.copyWith(
                                     color: _isListening
-                                        ? AppColors.info
-                                        : AppColors.error,
+                                        ? HCColor.of(context).infoText
+                                        : HCColor.of(context).errorText,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),

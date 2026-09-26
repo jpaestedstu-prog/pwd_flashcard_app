@@ -677,10 +677,10 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                           ),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.star_rounded,
                                 size: 20,
-                                color: AppColors.warning,
+                                color: HCColor.of(context).graphic(AppColors.warning),
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -746,13 +746,13 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                                 round.correctCard.wordEnglish,
                                 style: AppTypography.headlineMedium.copyWith(
                                   fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF00695C),
+                                  color: HCColor.of(context).readableOver(const Color(0xFF00695C), const Color(0xFF00695C).withValues(alpha: 0.15)),
                                 ),
                               ),
                               Text(
                                 round.correctCard.wordFilipino,
                                 style: AppTypography.titleMedium.copyWith(
-                                  color: const Color(0xFF00897B),
+                                  color: HCColor.of(context).readableOver(const Color(0xFF00897B), const Color(0xFF00897B).withValues(alpha: 0.15)),
                                 ),
                               ),
                             ],
@@ -920,9 +920,9 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                                               Icons.sign_language_rounded,
                                               size: iconSize,
                                               color: showCorrect
-                                                  ? AppColors.success
+                                                  ? HCColor.of(context).graphic(AppColors.success)
                                                   : showWrong
-                                                  ? AppColors.error
+                                                  ? HCColor.of(context).graphic(AppColors.error)
                                                   : hc.textSecondary,
                                             ),
                                             const SizedBox(height: 4),
@@ -969,8 +969,8 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                                               ? Icons.check_circle_rounded
                                               : Icons.cancel_rounded,
                                           color: showCorrect
-                                              ? AppColors.success
-                                              : AppColors.error,
+                                              ? HCColor.of(context).graphic(AppColors.success)
+                                              : HCColor.of(context).graphic(AppColors.error),
                                           size: iconSize,
                                         ),
                                       ),

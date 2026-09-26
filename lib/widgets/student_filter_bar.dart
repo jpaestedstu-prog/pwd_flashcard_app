@@ -215,7 +215,7 @@ class _SortButton extends ConsumerWidget {
                   children: [
                     Icon(f.icon, size: 18,
                         color: f == filter.sortField
-                            ? AppColors.primary
+                            ? HCColor.of(context).primary
                             : null),
                     const SizedBox(width: 8),
                     Text(_sortLabel(_t(context), f),
