@@ -263,4 +263,92 @@ void main() {
       expect(roleSlugFromIndex(999), 'student');
     });
   });
+
+  group('home-group parent (the child side)', () {
+    // A Child joins a parent's home group, and the inbox used to look only at
+    // `classroomId` — the parent who enrolled them never appeared.
+    const parent = 'parent-id';
+
+    test('the home-group owner joins the inbox as a parent', () async {
+      final assembler = LearnerInboxAssembler(
+        lookup: (_) async => const <String, DirectoryEntry>{},
+      );
+      addTearDown(assembler.dispose);
+      final emissions = <List<Conversation>>[];
+      assembler.stream.listen(emissions.add);
+
+      await assembler.setGroupOwners(const [parent]);
+      await pumpEventQueue();
+
+      expect(emissions.last.single.otherProfileId, parent);
+      expect(emissions.last.single.otherProfileRole, 'parent');
+    });
+
+    test('parent and teacher both sort above friends', () async {
+      final directory = {
+        ..._directory,
+        parent: _entry(parent, 'Mommy', UserRole.parent),
+      };
+      final assembler = LearnerInboxAssembler(
+        lookup: (ids) async => {
+          for (final id in ids)
+            if (directory[id] != null) id: directory[id]!,
+        },
+      );
+      addTearDown(assembler.dispose);
+      final emissions = <List<Conversation>>[];
+      assembler.stream.listen(emissions.add);
+
+      await assembler.setFriends(const [_friend]);
+      await assembler.setTeachers(const [_teacher]);
+      await assembler.setGroupOwners(const [parent]);
+      await pumpEventQueue();
+
+      expect(
+        emissions.last.map((c) => c.otherProfileRole),
+        ['parent', 'teacher', 'player'],
+      );
+    });
+
+    test('a blocked owner stays out (the block filter covers every leg)',
+        () async {
+      final assembler = LearnerInboxAssembler(lookup: _immediateLookup);
+      addTearDown(assembler.dispose);
+      final emissions = <List<Conversation>>[];
+      assembler.stream.listen(emissions.add);
+
+      await assembler.setGroupOwners(const [parent]);
+      await assembler.setBlocked(const {parent});
+      await pumpEventQueue();
+
+      expect(emissions.last, isEmpty);
+    });
+
+    test('the directory carries the peer accessibility category', () async {
+      final assembler = LearnerInboxAssembler(
+        lookup: (_) async => {
+          _friend: DirectoryEntry(
+            username: 'f-1',
+            profileId: _friend,
+            name: 'Friend',
+            roleIndex: UserRole.student.index,
+            ownerUid: 'u',
+            updatedAt: DateTime(2026),
+            disabilityIndex: DisabilityType.hearing.index,
+          ),
+        },
+      );
+      addTearDown(assembler.dispose);
+      final emissions = <List<Conversation>>[];
+      assembler.stream.listen(emissions.add);
+
+      await assembler.setFriends(const [_friend]);
+      await pumpEventQueue();
+
+      expect(
+        emissions.last.single.otherDisabilityIndex,
+        DisabilityType.hearing.index,
+      );
+    });
+  });
 }

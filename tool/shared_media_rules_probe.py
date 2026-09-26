@@ -12,7 +12,7 @@ anyone signed in can read it, and that the size limits which keep one upload
 from eating the free quota hold.
 
 Runs against **production** rules. Every doc it writes is removed on the way
-out; the anonymous auth accounts remain (harmless). Standard library only.
+out; the throwaway anonymous accounts are deleted too. Standard library only.
 """
 
 import base64
@@ -82,6 +82,31 @@ def check(name, got, want):
     print(("PASS " if ok else "FAIL ") + f"{name} (got {got}, want {want})")
 
 
+# Every throwaway account this run signs in, deleted again on the way out.
+_accounts = []
+
+
+def delete_anon_accounts():
+    """Delete the probe's anonymous accounts. An account may always delete
+    itself with its own token, so this needs no admin access, and a run
+    leaves nothing behind in Authentication either."""
+    removed = 0
+    for token in _accounts:
+        req = urllib.request.Request(
+            f"https://identitytoolkit.googleapis.com/v1/accounts:delete?key={API_KEY}",
+            data=json.dumps({"idToken": token}).encode(),
+            method="POST",
+        )
+        req.add_header("Content-Type", "application/json")
+        try:
+            with urllib.request.urlopen(req) as r:
+                if r.status == 200:
+                    removed += 1
+        except urllib.error.HTTPError:
+            pass
+    print(f"cleanup: {removed}/{len(_accounts)} throwaway accounts deleted")
+
+
 def signin_anon():
     req = urllib.request.Request(
         f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={API_KEY}",
@@ -91,6 +116,7 @@ def signin_anon():
     req.add_header("Content-Type", "application/json")
     with urllib.request.urlopen(req) as r:
         body = json.loads(r.read())
+    _accounts.append(body["idToken"])
     return body["localId"], body["idToken"]
 
 
@@ -169,4 +195,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        delete_anon_accounts()

@@ -492,7 +492,7 @@ class _QuickActions extends ConsumerWidget {
     // Unread messages from the educator's learners, badged onto the Messages
     // tile so a teacher doesn't have to open the inbox to discover that a
     // student wrote to them.
-    final unreadMessages = ref.watch(unreadMessageCountProvider);
+    final unreadMessages = ref.watch(messagesTileBadgeProvider);
     if (isParent) {
       return _buildParentChips(context, unreadMessages);
     }

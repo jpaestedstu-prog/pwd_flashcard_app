@@ -51,6 +51,13 @@ class CloudMessageRepository {
   /// updates the local Hive cache immediately so the sender sees their
   /// own message without waiting for the round-trip.
   ///
+  /// Completes once the message is cached locally, **not** when the server
+  /// acknowledges it: a Firestore `set()` made offline does not complete
+  /// until the device reconnects, so awaiting it left the screen's
+  /// after-send work (the haptic, the scroll to the new bubble) stuck for as
+  /// long as the tablet stayed offline. Firestore still delivers the write
+  /// when the network returns.
+  ///
   /// Idempotent: the doc id is the message's own [LocalMessage.id], so
   /// retries don't duplicate.
   Future<void> sendMessage(LocalMessage message) async {
@@ -61,22 +68,51 @@ class CloudMessageRepository {
     final uid = FirebaseService.currentUid;
     if (uid == null) return;
 
-    try {
-      await _col.doc(message.id).set({
-        'id': message.id,
-        'sender_profile_id': message.senderId,
-        'recipient_profile_id': message.recipientId,
-        'sender_name': message.senderName,
-        'content': message.content,
-        'type': message.type.index,
-        'timestamp': message.timestamp.toIso8601String(),
-        'sender_uid': uid,
-        'is_read': message.isRead,
-      });
-    } catch (e, stack) {
+    // ignore: discarded_futures
+    _col.doc(message.id).set(_toDoc(message, uid)).catchError((
+      Object e,
+      StackTrace stack,
+    ) {
       ErrorHandler.report(e, stack, 'CloudMessageRepository.sendMessage');
+    });
+  }
+
+  /// Send several messages at once — an educator's "message the whole
+  /// class". Each is an ordinary one-to-one message (it lands in that
+  /// learner's own thread), written in batched commits so a class of 30 is
+  /// one round-trip, not 30.
+  Future<void> sendMessages(List<LocalMessage> messages) async {
+    for (final message in messages) {
+      await _persistLocally(message);
+    }
+    if (messages.isEmpty || !FirebaseService.isConfigured) return;
+    final uid = FirebaseService.currentUid;
+    if (uid == null) return;
+
+    for (var i = 0; i < messages.length; i += 400) {
+      final batch = FirebaseService.db.batch();
+      for (final message in messages.skip(i).take(400)) {
+        batch.set(_col.doc(message.id), _toDoc(message, uid));
+      }
+      // ignore: discarded_futures
+      batch.commit().catchError((Object e, StackTrace stack) {
+        ErrorHandler.report(e, stack, 'CloudMessageRepository.sendMessages');
+      });
     }
   }
+
+  Map<String, dynamic> _toDoc(LocalMessage message, String uid) => {
+    'id': message.id,
+    'sender_profile_id': message.senderId,
+    'recipient_profile_id': message.recipientId,
+    'sender_name': message.senderName,
+    'content': message.content,
+    'type': message.type.index,
+    'timestamp': message.timestamp.toIso8601String(),
+    'sender_uid': uid,
+    'is_read': message.isRead,
+    'caption': ?message.caption,
+  };
 
   /// Mark a received message as read. Updates Firestore (so the sender's
   /// dashboard reflects the read state on their next sync) AND the local
@@ -262,6 +298,7 @@ class CloudMessageRepository {
       timestamp:
           DateTime.tryParse(r['timestamp'] as String? ?? '') ?? DateTime.now(),
       isRead: r['is_read'] as bool? ?? false,
+      caption: r['caption'] as String?,
     );
   }
 

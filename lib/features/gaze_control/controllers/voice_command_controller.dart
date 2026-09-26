@@ -37,9 +37,14 @@ class VoiceCommandController extends ChangeNotifier {
     required SttService stt,
     required this.locale,
     required this.onCommand,
-  }) : _stt = stt;
+    MicLease? lease,
+  }) : _stt = stt,
+       _lease = lease ?? dictationMicLease;
 
   final SttService _stt;
+
+  /// Taken by speak-to-type; while held this loop stands down.
+  final MicLease _lease;
 
   /// 'en-US' or 'fil-PH'.
   final String locale;
@@ -108,8 +113,11 @@ class VoiceCommandController extends ChangeNotifier {
   /// the [SttService.reset] recovery.
   int _rejectionsSinceReset = 0;
 
-  bool get isListening => _stt.isListening;
+  bool get isListening => !pausedForDictation && _stt.isListening;
   bool get available => _available;
+
+  /// Stood down because someone is dictating a message (see [MicLease]).
+  bool get pausedForDictation => _lease.isHeld;
 
   /// True when init finished and the microphone is definitely not usable
   /// (permission denied / no recognizer) — lets the status chip say so instead
@@ -119,6 +127,7 @@ class VoiceCommandController extends ChangeNotifier {
   String get lastHeard => _lastHeard;
 
   Future<void> start() async {
+    _lease.addListener(_onLease);
     _available = await _stt.init();
     _initDone = true;
     if (_disposed || !_available) {
@@ -130,7 +139,30 @@ class VoiceCommandController extends ChangeNotifier {
     _notify();
   }
 
+  /// Dictation took (or gave back) the microphone.
+  void _onLease() {
+    if (_disposed) return;
+    if (_lease.isHeld) {
+      // Drop whatever was half-heard: it must never fire as a command once
+      // the learner starts speaking their message.
+      _stable?.cancel();
+      _stable = null;
+      _pending = '';
+      _armed = false;
+      if (_stt.isListening) _stt.cancel();
+    } else {
+      // Let the recogniser settle after the dictation session before the
+      // next listen — re-arming at once provokes `error_client`.
+      _cooldownTicks = 2;
+      _lastHeard = '';
+    }
+    _notify();
+  }
+
   void _tick() {
+    // While dictation holds the microphone its session is the one running:
+    // counting it as a zombie would cancel the learner's message mid-word.
+    if (_lease.isHeld) return;
     if (_stt.isListening) {
       _ticksAlive++;
       if (!_gotResult && _ticksAlive > _zombieTicks) {
@@ -180,7 +212,13 @@ class VoiceCommandController extends ChangeNotifier {
     // _arming keeps poll ticks from stacking a second listen() on top of one
     // still starting up — the platform answers that with a busy error and can
     // wedge the whole session loop.
-    if (_arming || _disposed || !_available || _stt.isListening) return;
+    if (_arming ||
+        _disposed ||
+        !_available ||
+        _lease.isHeld ||
+        _stt.isListening) {
+      return;
+    }
     _arming = true;
     try {
       // Re-listening isn't recovering the recogniser — recreate it from
@@ -275,9 +313,11 @@ class VoiceCommandController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _lease.removeListener(_onLease);
     _poll?.cancel();
     _stable?.cancel();
-    _stt.cancel();
+    // Never cancel a dictation session this loop does not own.
+    if (!_lease.isHeld) _stt.cancel();
     super.dispose();
   }
 }

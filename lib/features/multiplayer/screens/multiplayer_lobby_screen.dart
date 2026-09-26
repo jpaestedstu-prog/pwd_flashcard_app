@@ -104,7 +104,9 @@ class _MultiplayerLobbyScreenState
         .watchIncomingRequests(profile.id)
         .listen((reqs) {
       if (!mounted) return;
-      setState(() => _requestCount = reqs.length);
+      // Only the ones still theirs to answer — not those waiting on a
+      // grown-up.
+      setState(() => _requestCount = reqs.where((r) => r.isActionable).length);
     });
 
     _invitesSub = MultiplayerService.instance
@@ -392,7 +394,7 @@ class _MultiplayerLobbyScreenState
               count: _requestCount,
               onTap: () => showFriendRequestsSheet(
                 context,
-                myProfileId: profile.id,
+                me: profile,
                 isFilipino: isFilipino,
                 initialRequests: const [],
               ),

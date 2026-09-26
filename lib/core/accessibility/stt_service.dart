@@ -1,5 +1,6 @@
 import 'dart:math';
-import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
+import 'package:flutter/foundation.dart'
+    show ChangeNotifier, debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -203,3 +204,35 @@ final sttServiceProvider = Provider<SttService>((ref) {
   ref.onDispose(() => service.dispose());
   return service;
 });
+
+/// Who is using the microphone for **dictation** right now.
+///
+/// There is one speech recogniser on the device, and the gaze voice-command
+/// loop keeps it busy in short bursts for as long as a gaze scope is open.
+/// Speak-to-type needs the same recogniser for one longer session, so it
+/// takes this lease first: every [VoiceCommandController] listening to it
+/// cancels its session and stops re-arming while the lease is held, then
+/// resumes on release. Without it the two would fight — the command loop
+/// cancels any session it did not start ("zombie session"), cutting the
+/// dictation off mid-word, and a phrase meant for the message could fire as
+/// a command.
+class MicLease extends ChangeNotifier {
+  int _holders = 0;
+
+  /// Someone is dictating; voice commands stand down.
+  bool get isHeld => _holders > 0;
+
+  void acquire() {
+    _holders++;
+    if (_holders == 1) notifyListeners();
+  }
+
+  void release() {
+    if (_holders == 0) return;
+    _holders--;
+    if (_holders == 0) notifyListeners();
+  }
+}
+
+/// The app's one dictation lease — see [MicLease].
+final MicLease dictationMicLease = MicLease();

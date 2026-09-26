@@ -14,8 +14,7 @@ from inside the app, because AssessmentCloudService swallows sync failures by
 design so a hiccup never interrupts a lesson.
 
 The two anonymous users and every doc it writes are cleaned up on the way out;
-the anonymous auth accounts themselves remain (harmless, and Firebase prunes
-them). Needs only the Python standard library.
+the throwaway anonymous accounts are deleted too. Needs only the Python standard library.
 """
 
 import json
@@ -84,11 +83,37 @@ def check(name, got, want):
     print(("PASS " if ok else "FAIL ") + f"{name} (got {got}, want {want})")
 
 
+# Every throwaway account this run signs in, deleted again on the way out.
+_accounts = []
+
+
+def delete_anon_accounts():
+    """Delete the probe's anonymous accounts. An account may always delete
+    itself with its own token, so this needs no admin access, and a run
+    leaves nothing behind in Authentication either."""
+    removed = 0
+    for token in _accounts:
+        req = urllib.request.Request(
+            f"https://identitytoolkit.googleapis.com/v1/accounts:delete?key={API_KEY}",
+            data=json.dumps({"idToken": token}).encode(),
+            method="POST",
+        )
+        req.add_header("Content-Type", "application/json")
+        try:
+            with urllib.request.urlopen(req) as r:
+                if r.status == 200:
+                    removed += 1
+        except urllib.error.HTTPError:
+            pass
+    print(f"cleanup: {removed}/{len(_accounts)} throwaway accounts deleted")
+
+
 def signin_anon():
     r = post(
         f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={API_KEY}",
         {"returnSecureToken": True},
     )
+    _accounts.append(r["idToken"])
     return r["localId"], r["idToken"]
 
 
@@ -185,4 +210,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        delete_anon_accounts()

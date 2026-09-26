@@ -237,4 +237,121 @@ void main() {
       });
     });
   });
+
+  group('speak-to-type lease', () {
+    // Messages' speak-to-type needs the one recogniser for a whole sentence,
+    // while a gaze scope's command loop keeps it busy in bursts. The lease
+    // makes the loop stand down and come back — without it, the loop killed
+    // the dictation as a "zombie session" and could fire the message's words
+    // as commands.
+    void runLeased(
+      void Function(FakeAsync fake, _FakeStt stt, MicLease lease,
+              VoiceCommandController voice, List<String> fired)
+          body,
+    ) {
+      fakeAsync((fake) {
+        final stt = _FakeStt();
+        final lease = MicLease();
+        final fired = <String>[];
+        final voice = VoiceCommandController(
+          stt: stt,
+          locale: 'en-US',
+          onCommand: fired.add,
+          lease: lease,
+        );
+        voice.start();
+        fake.flushMicrotasks();
+        expect(stt.listening, isTrue);
+        body(fake, stt, lease, voice, fired);
+        voice.dispose();
+      });
+    }
+
+    test('taking the lease stops the command session at once', () {
+      runLeased((fake, stt, lease, voice, fired) {
+        final before = stt.cancels;
+        lease.acquire();
+        expect(stt.cancels, before + 1);
+        expect(stt.listening, isFalse);
+        expect(voice.pausedForDictation, isTrue);
+        expect(voice.isListening, isFalse);
+      });
+    });
+
+    test('a half-heard phrase is dropped, never fired, when dictation starts',
+        () {
+      runLeased((fake, stt, lease, voice, fired) {
+        stt.emit('send', isFinal: false);
+        lease.acquire();
+        fake.elapse(const Duration(seconds: 2));
+        expect(fired, isEmpty);
+      });
+    });
+
+    test('while held, the loop neither re-arms nor kills the dictation', () {
+      runLeased((fake, stt, lease, voice, fired) {
+        lease.acquire();
+        final sessions = stt.sessions;
+        final cancels = stt.cancels;
+        // The dictation's own session: long, and silent for a while.
+        stt.listening = true;
+        fake.elapse(const Duration(seconds: 30));
+        expect(stt.sessions, sessions, reason: 'no command session started');
+        expect(stt.cancels, cancels,
+            reason: 'the dictation must not be cancelled as a zombie');
+        expect(stt.listening, isTrue);
+      });
+    });
+
+    test('releasing the lease brings voice commands back', () {
+      runLeased((fake, stt, lease, voice, fired) {
+        lease.acquire();
+        stt.listening = false;
+        final sessions = stt.sessions;
+        lease.release();
+        expect(voice.pausedForDictation, isFalse);
+        fake.elapse(const Duration(seconds: 2));
+        expect(stt.sessions, greaterThan(sessions));
+        expect(stt.listening, isTrue);
+        stt.emit('next', isFinal: true);
+        expect(fired, ['next']);
+      });
+    });
+
+    test('the lease counts holders, so a nested release keeps it', () {
+      final lease = MicLease();
+      var notified = 0;
+      lease.addListener(() => notified++);
+      lease.acquire();
+      lease.acquire();
+      lease.release();
+      expect(lease.isHeld, isTrue);
+      lease.release();
+      expect(lease.isHeld, isFalse);
+      lease.release(); // extra release is harmless
+      expect(lease.isHeld, isFalse);
+      expect(notified, 2);
+    });
+
+    test('disposing a paused loop does not cancel the dictation', () {
+      fakeAsync((fake) {
+        final stt = _FakeStt();
+        final lease = MicLease();
+        final voice = VoiceCommandController(
+          stt: stt,
+          locale: 'en-US',
+          onCommand: (_) {},
+          lease: lease,
+        );
+        voice.start();
+        fake.flushMicrotasks();
+        lease.acquire();
+        stt.listening = true; // the dictation
+        final cancels = stt.cancels;
+        voice.dispose();
+        expect(stt.cancels, cancels);
+        expect(stt.listening, isTrue);
+      });
+    });
+  });
 }

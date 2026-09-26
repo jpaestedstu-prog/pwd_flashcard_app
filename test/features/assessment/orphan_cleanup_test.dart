@@ -322,10 +322,18 @@ void main() {
             value == inCloudRoutine;
         final now = DateTime(2026, 9, 26, 12);
         final old = now.subtract(const Duration(days: 2));
+        // A photo sent in Messages: named by a message, not by anything the
+        // sweep can see, and expired on its own schedule instead.
+        final inMessage = await _share('teacher-9', 'message.jpg');
         SharedMediaSweep.debugOwned = (_) async => [
           for (final v in [abandoned, inTest, inRoutine, inCloudRoutine, inResult])
-            (id: SharedMediaService.idOf(v), createdAt: old),
-          (id: SharedMediaService.idOf(fresh), createdAt: now),
+            (id: SharedMediaService.idOf(v), createdAt: old, purpose: null),
+          (id: SharedMediaService.idOf(fresh), createdAt: now, purpose: null),
+          (
+            id: SharedMediaService.idOf(inMessage),
+            createdAt: old,
+            purpose: SharedMediaMeta.purposeMessage,
+          ),
         ];
         addTearDown(() => SharedMediaSweep.debugOwned = null);
 
@@ -341,6 +349,8 @@ void main() {
         expect(_inCloud(inRoutine), isTrue);
         expect(_inCloud(inCloudRoutine), isTrue);
         expect(_inCloud(inResult), isTrue);
+        expect(_inCloud(inMessage), isTrue,
+            reason: "a message photo is not the sweep's to remove");
       });
 
       test('the sweep does nothing when this tablet may not hold every '
@@ -363,7 +373,11 @@ void main() {
           );
         }
         SharedMediaSweep.debugOwned = (_) async => [
-          (id: SharedMediaService.idOf(orphan), createdAt: DateTime(2026)),
+          (
+            id: SharedMediaService.idOf(orphan),
+            createdAt: DateTime(2026),
+            purpose: null,
+          ),
         ];
         addTearDown(() => SharedMediaSweep.debugOwned = null);
         expect(await const SharedMediaSweep().run('kid-full'), 0);

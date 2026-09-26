@@ -75,6 +75,19 @@ class ErrorHandler {
     // from the Hive cache, and a learner must never be shown an error banner
     // for a safeguarding feature quietly running in the background.
     'FriendService.watchBlocked:silent',
+    // Classmate suggestions in the Add Friend dialog. A convenience list on
+    // top of the username field: offline or refused, the learner can still
+    // type a username, so a failure here is never theirs to see.
+    'FriendService.suggestClassmates:silent',
+    // The unfriend inside a block. Often there is no friendship left to
+    // delete (the peer already unfriended you, or you are re-blocking after
+    // an unblock), and the rules refuse to delete a missing doc — while the
+    // block itself, the part that matters, has already succeeded.
+    'FriendService.blockUnfriend:silent',
+    // Finishing a friendship every parent approved runs in the background on
+    // whichever learner's device sees it first. The other device's attempt
+    // can be refused (the friendship is already there), which is expected.
+    'FriendService.finishApproved:silent',
     // Every routine path. All twelve already name themselves ":silent" but
     // none was registered, so the suffix was a claim the set never honoured —
     // see silent_source_convention_test.dart, which now enforces the two

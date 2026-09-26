@@ -1,19 +1,29 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
+import '../../../core/accessibility/tts_service.dart' show ttsServiceProvider;
+import '../../../core/accessibility/stt_service.dart'
+    show SttService, dictationMicLease, sttServiceProvider;
+import '../../../core/services/shared_media_service.dart';
+import '../../../core/widgets/media_capture_screen.dart';
 import '../../../data/local/local_repository.dart';
+import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/firestore_stream_helpers.dart'
+    show homeGroupsByOwnerStreamProvider;
 import '../../gaze_control/services/gaze_detector.dart';
 import '../../gaze_control/widgets/gaze_dpad_scope.dart';
 import '../models/friend_models.dart';
@@ -25,6 +35,10 @@ import '../services/friend_service.dart';
 import '../services/profile_directory_service.dart';
 import '../widgets/friend_ui.dart';
 import '../models/composer_presentation.dart';
+import '../services/message_media.dart';
+import '../widgets/broadcast_sheet.dart';
+import '../widgets/inline_pickers.dart';
+import '../widgets/message_media_view.dart';
 import '../widgets/composer_pickers.dart';
 import '../../../data/local/seed_data.dart';
 import '../../ai_tutor/services/tutor_sign_launcher.dart';
@@ -48,8 +62,11 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
   List<LocalMessage> _allMessages = [];
   List<Conversation> _peerSkeletons = [];
   List<Conversation> _conversations = [];
-  List<FriendRequest> _incomingRequests = [];
   List<FriendRequest> _outgoingRequests = [];
+
+  /// Educator inbox filters: a name search and one class / home group.
+  String _search = '';
+  String? _groupFilter;
 
   /// profileId → display name for the people I've asked, resolved from the
   /// directory (the request doc only carries the sender's own name).
@@ -59,8 +76,34 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
   final _scrollController = ScrollController();
 
   StreamSubscription<List<Conversation>>? _convosSub;
-  StreamSubscription<List<FriendRequest>>? _requestsSub;
   StreamSubscription<List<FriendRequest>>? _outgoingSub;
+
+  /// Requests this device has already tried to finish, so a stream that
+  /// re-emits does not start the same write twice.
+  final Set<String> _finishing = {};
+
+  // ─── Speak-to-type ───
+  bool _dictating = false;
+  String _beforeDictation = '';
+
+  /// The recogniser the current dictation runs on — kept so [dispose] can
+  /// stop it without reading a provider after the widget is gone.
+  SttService? _dictationStt;
+  Timer? _dictationWatch;
+  int _dictationTicks = 0;
+
+  // ─── Pickers drawn in the thread for gaze ───
+  _InlinePicker _inlinePicker = _InlinePicker.none;
+  FlashcardCategory? _signTopic;
+  List<Flashcard>? _signable;
+
+  /// Gaze is running on this screen (from the scope's last build). Decides
+  /// whether a picker opens as a sheet (touch) or in the thread (gaze).
+  bool _gazeActive = false;
+
+  /// A photo or video is uploading; the composer shows its progress.
+  MessageType? _uploading;
+  double _uploadProgress = 0;
   String? _watchedProfileId;
 
   @override
@@ -71,8 +114,14 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
 
   @override
   void dispose() {
+    _dictationWatch?.cancel();
+    if (_dictating) {
+      // Give the microphone back to gaze voice commands.
+      // ignore: discarded_futures
+      _dictationStt?.cancel();
+      dictationMicLease.release();
+    }
     _convosSub?.cancel();
-    _requestsSub?.cancel();
     _outgoingSub?.cancel();
     _textController.dispose();
     _scrollController.dispose();
@@ -86,7 +135,6 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
 
     // Tear down any previous subscriptions if the active profile changed.
     await _convosSub?.cancel();
-    await _requestsSub?.cancel();
     await _outgoingSub?.cancel();
     _watchedProfileId = profile.id;
 
@@ -99,6 +147,11 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     //    already swallows cloud failures.
     // ignore: discarded_futures
     const LocalRepository().saveProfile(profile);
+
+    // Expire this profile's own message photos and videos after a week —
+    // what keeps them inside the free plan. Once per session, never blocks.
+    // ignore: discarded_futures
+    const MessageMediaRetention().run(profile.id);
 
     // 1. Paint the Hive cache for instant initial render. The live message
     //    stream itself comes from [activeProfileMessagesProvider], shared
@@ -125,20 +178,17 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       });
     });
 
-    // 3. Friend requests, both directions (friend-capable learners only).
+    // 3. Outgoing friend requests (friend-capable learners only). Incoming
+    //    ones come from [incomingFriendRequestsProvider], shared with the Home
+    //    tile's badge.
     if (profileUsesFriends(profile)) {
-      _requestsSub = FriendService.instance
-          .watchIncomingRequests(profile.id)
-          .listen((reqs) {
-            if (!mounted) return;
-            setState(() => _incomingRequests = reqs);
-          });
       _outgoingSub = FriendService.instance
           .watchOutgoingRequests(profile.id)
           .listen((reqs) async {
             // The request doc only carries the *sender's* display name, so the
             // recipient has to be resolved through the directory — otherwise the
             // strip shows a raw UUID, which means nothing to a child.
+            _finishApproved(profile, reqs);
             final resolved = await ProfileDirectoryService.instance.lookupMany(
               reqs.map((r) => r.toProfileId).toSet(),
             );
@@ -158,78 +208,54 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     final profile = ref.read(profileProvider);
     if (profile == null) return;
 
-    // Group messages by the other party so we can attach them to the
-    // matching peer skeleton.
-    final grouped = <String, List<LocalMessage>>{};
-    for (final msg in _allMessages) {
-      final otherId = msg.senderId == profile.id
-          ? msg.recipientId
-          : msg.senderId;
-      grouped.putIfAbsent(otherId, () => []).add(msg);
-    }
-
-    final convos = <Conversation>[];
-    for (final skel in _peerSkeletons) {
-      final msgs = grouped[skel.otherProfileId] ?? const <LocalMessage>[];
-      final sorted = [...msgs]
-        ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-      convos.add(
-        Conversation(
-          otherProfileId: skel.otherProfileId,
-          otherProfileName: skel.otherProfileName,
-          otherProfileRole: skel.otherProfileRole,
-          messages: sorted,
-        ),
-      );
-    }
-
-    // Surface any messages from peers we don't know about yet — covers
-    // the brief window between a friendship being accepted on the other
-    // side and the directory entry propagating to this device. A peer the
-    // directory has *removed* (blocked / unfriended) must not reappear here,
-    // so only threads with an inbound message qualify.
-    final knownIds = convos.map((c) => c.otherProfileId).toSet();
-    for (final entry in grouped.entries) {
-      if (knownIds.contains(entry.key)) continue;
-      final inbound = entry.value
-          .where((m) => m.senderId == entry.key)
-          .toList();
-      if (inbound.isEmpty) continue;
-      final name = inbound.first.senderName.isEmpty
-          ? 'User'
-          : inbound.first.senderName;
-      final sorted = [...entry.value]
-        ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-      convos.add(
-        Conversation(
-          otherProfileId: entry.key,
-          otherProfileName: name,
-          otherProfileRole: 'student',
-          messages: sorted,
-        ),
-      );
-    }
-
-    // Sort: conversations with the most recent message first; empty
-    // threads fall to the bottom alphabetically.
-    convos.sort((a, b) {
-      final aLast = a.lastMessage?.timestamp;
-      final bLast = b.lastMessage?.timestamp;
-      if (aLast != null && bLast != null) return bLast.compareTo(aLast);
-      if (aLast != null) return -1;
-      if (bLast != null) return 1;
-      return a.otherProfileName.toLowerCase().compareTo(
-        b.otherProfileName.toLowerCase(),
-      );
-    });
-
-    _conversations = convos;
+    _conversations = assembleInbox(
+      myProfileId: profile.id,
+      peers: _peerSkeletons,
+      messages: _allMessages,
+      blockedIds:
+          ref.read(blockedProfileIdsProvider).valueOrNull ?? const <String>{},
+    );
     // Keep the open thread bound to the same peer across rebuilds.
     if (_activeConversation != null) {
       final id = _activeConversation!.otherProfileId;
       final next = _conversations.where((c) => c.otherProfileId == id);
       _activeConversation = next.isEmpty ? null : next.first;
     }
+  }
+
+  /// Makes the friendship for any request whose parents have all said yes.
+  /// A parent's device cannot write it, so the learners' devices do.
+  void _finishApproved(UserProfile me, List<FriendRequest> requests) {
+    for (final r in requests) {
+      if (!r.readyToFinish || !_finishing.add(r.id)) continue;
+      // ignore: discarded_futures
+      FriendService.instance.finishApproved(me, r);
+    }
+  }
+
+  /// The educator inbox after the search box and group filter.
+  List<Conversation> get _visibleConversations {
+    final q = _search.trim().toLowerCase();
+    final group = _groupFilter;
+    if (q.isEmpty && group == null) return _conversations;
+    return [
+      for (final c in _conversations)
+        if ((q.isEmpty || c.otherProfileName.toLowerCase().contains(q)) &&
+            (group == null || c.groups.any((g) => g.id == group)))
+          c,
+    ];
+  }
+
+  /// Every class / home group represented in the educator's inbox, by name.
+  /// Sorted rather than in inbox order: the inbox reorders on every new
+  /// message, and filter chips that jump about are hard to hit.
+  List<InboxGroup> get _groups {
+    final seen = <String>{};
+    return [
+      for (final c in _conversations)
+        for (final g in c.groups)
+          if (g.name.isNotEmpty && seen.add(g.id)) g,
+    ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   }
 
   /// Open a thread: bind it, mark everything in it read, and land the learner
@@ -287,8 +313,11 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     String content,
     MessageType type, {
     bool fromComposer = false,
+    String? caption,
   }) async {
     if (content.isEmpty || _activeConversation == null) return;
+    // History-only threads have no composer; this is the backstop.
+    if (!_activeConversation!.isConnected) return;
     final profile = ref.read(profileProvider);
     if (profile == null) return;
 
@@ -300,6 +329,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       content: content,
       type: type,
       timestamp: DateTime.now(),
+      caption: caption,
     );
 
     setState(() {
@@ -309,8 +339,81 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     if (fromComposer) _textController.clear();
 
     await CloudMessageRepository.instance.sendMessage(message);
+    if (!mounted) return;
     ref.read(hapticServiceProvider).lightTap();
     _jumpToLatest();
+  }
+
+  /// The type a quick-reply chip is sent as — see [QuickEncouragements.typeFor].
+  MessageType get _chipType => QuickEncouragements.typeFor(
+    senderRole: ref.read(profileProvider)?.role.name ?? 'student',
+  );
+
+  /// Speak one message aloud, in the app's language.
+  void _readAloud(LocalMessage message, bool isFilipino) {
+    final words = MessageWording.speakable(message, isFilipino: isFilipino);
+    if (words.isEmpty) return;
+    final tts = ref.read(ttsServiceProvider);
+    // ignore: discarded_futures
+    isFilipino ? tts.speakFilipino(words) : tts.speakEnglish(words);
+  }
+
+  /// Educator: open "message the whole class".
+  Future<void> _openBroadcast(UserProfile me, bool isFilipino) async {
+    final sent = await showBroadcastSheet(
+      context,
+      me: me,
+      conversations: _conversations.where((c) => c.isConnected).toList(),
+      groups: _groups,
+      initialGroupId: _groupFilter,
+      isFilipino: isFilipino,
+    );
+    if (sent == null || sent == 0 || !mounted) return;
+    ref.read(hapticServiceProvider).lightTap();
+    final isParent = me.role == UserRole.parent;
+    final who = isFilipino
+        ? (isParent ? 'anak' : 'mag-aaral')
+        : isParent
+        ? (sent == 1 ? 'child' : 'children')
+        : (sent == 1 ? 'learner' : 'learners');
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(
+          isFilipino ? 'Naipadala sa $sent $who.' : 'Sent to $sent $who.',
+        ),
+      ),
+    );
+  }
+
+  /// Educator: jump from a thread to the learner's progress page.
+  Future<void> _seeProgress(Conversation convo) async {
+    final me = ref.read(profileProvider);
+    if (me == null) return;
+    final isFilipino = ref.read(settingsProvider).locale == 'fil';
+    UserProfile? learner;
+    try {
+      final roster = await ref.read(educatorRosterProvider(me.id).future);
+      for (final pair in roster) {
+        if (pair.$1.id == convo.otherProfileId) learner = pair.$1;
+      }
+    } catch (_) {
+      learner = null;
+    }
+    if (!mounted) return;
+    if (learner == null) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(
+            isFilipino
+                ? 'Hindi pa makuha ang progreso. Subukan ulit kapag may internet.'
+                : "Their progress isn't available yet. Try again when you're online.",
+          ),
+        ),
+      );
+      return;
+    }
+    // ignore: discarded_futures
+    context.push('/student-profile-detail', extra: learner);
   }
 
   Future<void> _unsend(LocalMessage message) async {
@@ -344,6 +447,11 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       _rebuildConversations();
     });
     await CloudMessageRepository.instance.deleteMessage(message);
+    // An unsent photo or video leaves nothing behind in the cloud.
+    if (message.isMedia) {
+      // ignore: discarded_futures
+      const SharedMediaService().delete(message.content);
+    }
   }
 
   @override
@@ -368,17 +476,54 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       _markActiveRead();
     });
 
-    final showFriendTools = profile != null && profileUsesFriends(profile);
+    // A block (or unblock) re-filters the inbox immediately.
+    ref.listen<AsyncValue<Set<String>>>(blockedProfileIdsProvider, (_, next) {
+      if (!mounted || next.valueOrNull == null) return;
+      setState(_rebuildConversations);
+    });
+    final incomingRequests =
+        ref.watch(incomingFriendRequestsProvider).valueOrNull ??
+        const <FriendRequest>[];
+    ref.listen<AsyncValue<List<FriendRequest>>>(incomingFriendRequestsProvider, (
+      _,
+      next,
+    ) {
+      final me = ref.read(profileProvider);
+      final list = next.valueOrNull;
+      if (me != null && list != null) _finishApproved(me, list);
+    });
+    final actionableRequests = incomingRequests
+        .where((r) => r.isActionable)
+        .length;
 
-    return GazeDpadScope(
+    final showFriendTools = profile != null && profileUsesFriends(profile);
+    final isEducator =
+        profile != null &&
+        inboxKindFor(profile) == InboxKind.educatorRoster;
+
+    // Back steps out one level at a time: an open picker, then the thread,
+    // then Messages. Without this, Android's Back — and a spoken "close" or
+    // "go back", which the voice resolver turns into a pop — left Messages
+    // entirely from inside a thread, or from a picker a gaze learner had just
+    // opened.
+    final inner =
+        _inlinePicker != _InlinePicker.none || _activeConversation != null;
+    return PopScope(
+      canPop: !inner,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _stepBack();
+      },
+      child: GazeDpadScope(
       rows: _gazeRows(isFilipino),
       // The way out. A hands-free learner who cannot reach a touch target
       // cannot reach the app bar's back arrow either — without this the
       // Messages screen was a room with no door for exactly the learners the
       // gaze D-pad exists to serve.
       onExit: () {
-        if (_activeConversation != null) {
-          _closeConversation();
+        if (_inlinePicker != _InlinePicker.none ||
+            _activeConversation != null) {
+          _stepBack();
         } else {
           context.popOrGo('/home');
         }
@@ -386,7 +531,9 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       exitLabel: isFilipino ? 'Bumalik' : 'Back',
       camerasLoader: widget.camerasLoader,
       detectorFactory: widget.detectorFactory,
-      builder: (context, gaze) => Scaffold(
+      builder: (context, gaze) {
+        _gazeActive = gaze.active;
+        return Scaffold(
         appBar: AppBar(
           title: _activeConversation != null
               ? Row(
@@ -420,10 +567,24 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                 isFilipino: isFilipino,
                 onManage: () => _showPeerActions(_activeConversation!),
               )
+            else if (isEducator &&
+                _conversations.any((c) => c.isConnected))
+              IconButton(
+                tooltip: profile.role == UserRole.parent
+                    ? (isFilipino
+                          ? 'Magpadala sa buong pamilya'
+                          : 'Message the whole family')
+                    : (isFilipino
+                          ? 'Magpadala sa buong klase'
+                          : 'Message the whole class'),
+                icon: const Icon(Icons.campaign_rounded),
+                onPressed: () => _openBroadcast(profile, isFilipino),
+              )
             else if (showFriendTools) ...[
               FriendRequestsBadgeButton(
-                count: _incomingRequests.length,
-                onTap: () => _showRequestsSheet(profile, isFilipino),
+                count: actionableRequests,
+                onTap: () =>
+                    _showRequestsSheet(profile, isFilipino, incomingRequests),
               ),
               // The only route back from a block: blocked peers are filtered
               // out of the inbox, so without this entry there is nowhere left
@@ -454,8 +615,19 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
         body: _activeConversation != null
             ? _buildThread(isFilipino, padding, gaze)
             : _buildInbox(isFilipino, padding, profile, showFriendTools, gaze),
+        );
+      },
       ),
     );
+  }
+
+  /// One level out: close an open picker, else the open thread.
+  void _stepBack() {
+    if (_inlinePicker != _InlinePicker.none) {
+      _closeInlinePicker();
+    } else if (_activeConversation != null) {
+      _closeConversation();
+    }
   }
 
   // ─── Gaze D-pad wiring ────────────────────────────────
@@ -468,7 +640,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     if (convo == null) {
       final profile = ref.read(profileProvider);
       final rows = <List<GazeDpadCell>>[
-        for (final c in _conversations)
+        for (final c in _visibleConversations)
           [
             GazeDpadCell(
               label: c.otherProfileName,
@@ -487,10 +659,20 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       return rows;
     }
 
+    // A history-only thread has nothing to send — only the way out.
+    if (!convo.isConnected) return const [];
+
+    // A picker open in the thread: its tiles are the only cells, so the walk
+    // stays inside it until a pick or Close.
+    final panel = _inlinePanelRows(isFilipino);
+    if (panel != null) return panel;
+
     // Inside a thread the chips *are* the composer for a hands-free learner —
     // there is no on-screen keyboard they can drive — so every quick reply
     // gets its own cell.
     final quickReplies = _quickRepliesFor(convo);
+    final composer = ComposerPresentation.forProfile(ref.read(profileProvider));
+    final layout = _ComposerGaze.of(composer, quickReplies.length);
     return [
       for (var i = 0; i < quickReplies.length; i += 2)
         [
@@ -499,11 +681,116 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
               label: isFilipino ? item['fil']! : item['en']!,
               onActivate: () => _sendMessage(
                 isFilipino ? item['fil']! : item['en']!,
-                MessageType.encouragement,
+                _chipType,
               ),
             ),
         ],
+      // The sign and sticker pickers — each opens in the thread, where its
+      // tiles become cells.
+      if (layout.toolsRow != null)
+        [
+          if (layout.signTool)
+            GazeDpadCell(
+              label: isFilipino ? 'Magpadala ng senyas' : 'Send a sign',
+              onActivate: () => _openSignPicker(isFilipino),
+            ),
+          if (layout.stickerTool)
+            GazeDpadCell(
+              label: isFilipino ? 'Magpadala ng sticker' : 'Send a sticker',
+              onActivate: () => _openStickerPicker(isFilipino),
+            ),
+        ],
+      // Speak-to-type and Send: with voice commands on, "speak a message"
+      // starts dictation and "send" sends what it wrote.
+      if (layout.textRow != null)
+        [
+          if (layout.micCell)
+            GazeDpadCell(
+              label: _dictating
+                  ? (isFilipino ? 'Itigil ang pagsasalita' : 'Stop speaking')
+                  : (isFilipino ? 'Magsalita ng mensahe' : 'Speak a message'),
+              onActivate: () => _toggleDictation(isFilipino),
+            ),
+          GazeDpadCell(
+            label: isFilipino ? 'Ipadala' : 'Send',
+            enabled: _textController.text.trim().isNotEmpty,
+            onActivate: () => _sendMessage(
+              _textController.text.trim(),
+              MessageType.text,
+              fromComposer: true,
+            ),
+          ),
+        ],
     ];
+  }
+
+  /// The gaze rows of an open in-thread picker, or null when none is open.
+  List<List<GazeDpadCell>>? _inlinePanelRows(bool isFilipino) {
+    final close = GazeDpadCell(
+      label: isFilipino ? 'Isara' : 'Close',
+      onActivate: _closeInlinePicker,
+    );
+    switch (_inlinePicker) {
+      case _InlinePicker.none:
+        return null;
+      case _InlinePicker.sticker:
+        const stickers = MessageStickers.all;
+        return [
+          for (var i = 0; i < stickers.length; i += kStickerColumns)
+            [
+              for (final sticker in stickers.skip(i).take(kStickerColumns))
+                GazeDpadCell(
+                  label:
+                      MessageStickerNames.nameOf(sticker, isFilipino: isFilipino) ??
+                      sticker,
+                  onActivate: () {
+                    _closeInlinePicker();
+                    _sendSticker(sticker);
+                  },
+                ),
+            ],
+          [close],
+        ];
+      case _InlinePicker.sign:
+        final signable = _signable;
+        if (signable == null) return [[close]];
+        final topic = _signTopic;
+        if (topic == null) {
+          final topics = InlineSignPanel.topicsOf(signable);
+          return [
+            for (var i = 0; i < topics.length; i += kSignColumns)
+              [
+                for (final t in topics.skip(i).take(kSignColumns))
+                  GazeDpadCell(
+                    label: isFilipino ? t.labelFilipino : t.label,
+                    onActivate: () => setState(() => _signTopic = t),
+                  ),
+              ],
+            [close],
+          ];
+        }
+        final words = InlineSignPanel.wordsIn(signable, topic);
+        return [
+          for (var i = 0; i < words.length; i += kSignColumns)
+            [
+              for (final w in words.skip(i).take(kSignColumns))
+                GazeDpadCell(
+                  label: w.wordEnglish,
+                  onActivate: () {
+                    _closeInlinePicker();
+                    _sendSign(w.wordEnglish);
+                  },
+                ),
+            ],
+          [
+            GazeDpadCell(
+              label: isFilipino ? 'Ibang paksa' : 'Other topics',
+              onActivate: () => setState(() => _signTopic = null),
+            ),
+            close,
+          ],
+        ];
+    }
   }
 
   List<Map<String, String>> _quickRepliesFor(Conversation convo) {
@@ -529,13 +816,197 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
   void _sendSign(String word) => _sendMessage(word, MessageType.sign);
 
   Future<void> _openStickerPicker(bool isFilipino) async {
+    if (_gazeActive) {
+      setState(() => _inlinePicker = _InlinePicker.sticker);
+      return;
+    }
     final choice = await showMessageStickerPicker(context, isFilipino: isFilipino);
     if (choice != null) _sendSticker(choice);
   }
 
   Future<void> _openSignPicker(bool isFilipino) async {
+    if (_gazeActive) {
+      setState(() {
+        _inlinePicker = _InlinePicker.sign;
+        _signTopic = null;
+      });
+      if (_signable == null) {
+        final cards = await loadSignableCards();
+        if (mounted) setState(() => _signable = cards);
+      }
+      return;
+    }
     final choice = await showMessageSignPicker(context, isFilipino: isFilipino);
     if (choice != null) _sendSign(choice);
+  }
+
+  void _closeInlinePicker() => setState(() {
+    _inlinePicker = _InlinePicker.none;
+    _signTopic = null;
+  });
+
+  // ─── Speak-to-type ────────────────────────────────────
+
+  /// Starts or stops dictation into the text field.
+  ///
+  /// Takes [dictationMicLease] first, so the gaze voice-command loop stands
+  /// down for the length of the message and resumes after — one recogniser,
+  /// never two sessions fighting over it. The session is watched rather than
+  /// trusted to report its end: a recogniser that times out on silence ends
+  /// without a final result, and the lease must still come back.
+  Future<void> _toggleDictation(bool isFilipino) async {
+    final stt = ref.read(sttServiceProvider);
+    if (_dictating) {
+      await stt.stopListening();
+      _endDictation();
+      return;
+    }
+    final available = await stt.init();
+    if (!mounted) return;
+    if (!available) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(
+            isFilipino
+                ? 'Hindi available ang mikropono sa device na ito.'
+                : 'Speech input is not available on this device.',
+          ),
+        ),
+      );
+      return;
+    }
+    dictationMicLease.acquire();
+    // Drop any command session still holding the recogniser, and let it
+    // settle — starting straight after a cancel is refused as "busy".
+    await stt.cancel();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted) {
+      dictationMicLease.release();
+      return;
+    }
+    _beforeDictation = _textController.text;
+    _dictationStt = stt;
+    setState(() => _dictating = true);
+    _dictationTicks = 0;
+    await stt.startListening(
+      locale: isFilipino ? 'fil-PH' : 'en-US',
+      listenFor: const Duration(seconds: 30),
+      pauseFor: const Duration(seconds: 4),
+      onResult: (text, isFinal) {
+        if (!mounted || !_dictating) return;
+        if (text.isNotEmpty) {
+          final before = _beforeDictation;
+          final sep = before.isEmpty || before.endsWith(' ') ? '' : ' ';
+          _textController.text = '$before$sep$text';
+          _textController.selection = TextSelection.collapsed(
+            offset: _textController.text.length,
+          );
+          setState(() {});
+        }
+        if (isFinal) _endDictation();
+      },
+    );
+    _dictationWatch?.cancel();
+    _dictationWatch = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      if (!_dictating) return;
+      // Give the platform two seconds to report the session as live before
+      // reading "not listening" as "finished".
+      _dictationTicks++;
+      if (_dictationTicks >= 4 && !stt.isListening) _endDictation();
+    });
+  }
+
+  void _endDictation() {
+    _dictationWatch?.cancel();
+    _dictationWatch = null;
+    if (!_dictating) return;
+    dictationMicLease.release();
+    if (mounted) setState(() => _dictating = false);
+  }
+
+  // ─── Photos and sign videos ───────────────────────────
+
+  /// Takes a photo or records a clip with the in-app camera, shares it
+  /// through the free Firestore-chunk store, and sends it. Whatever is typed
+  /// in the text field goes with it as the caption — what the sign means,
+  /// for someone who does not sign.
+  Future<void> _sendMedia(MessageType type, bool isFilipino) async {
+    final me = ref.read(profileProvider);
+    final convo = _activeConversation;
+    if (me == null || convo == null || !convo.isConnected) return;
+    if (_uploading != null) return;
+    if (!MessageMedia.canSendMore(_allMessages, me.id)) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(
+            isFilipino
+                ? 'Nakapagpadala ka na ng ${MessageMedia.dailyLimit} larawan at video ngayon. Subukan ulit bukas.'
+                : "You've sent ${MessageMedia.dailyLimit} photos and videos today. Try again tomorrow.",
+          ),
+        ),
+      );
+      return;
+    }
+    final isVideo = type == MessageType.video;
+    final path = await captureMedia(
+      context,
+      mode: isVideo ? CaptureMode.video : CaptureMode.photo,
+      maxDuration: MessageMedia.maxVideo,
+      title: isVideo
+          ? (isFilipino ? 'Mag-record ng senyas' : 'Record a sign')
+          : (isFilipino ? 'Kumuha ng larawan' : 'Take a photo'),
+      prompt: isVideo
+          ? (isFilipino
+                ? 'I-senyas ang iyong mensahe. Hanggang 10 segundo.'
+                : 'Sign your message. Up to 10 seconds.')
+          : null,
+    );
+    if (path == null || !mounted) return;
+
+    setState(() {
+      _uploading = type;
+      _uploadProgress = 0;
+    });
+    final file = File(path);
+    final dot = path.lastIndexOf('.');
+    final ext = dot >= 0 ? path.substring(dot + 1) : (isVideo ? 'mp4' : 'jpg');
+    final result = await const SharedMediaService().upload(
+      file,
+      ownerProfileId: me.id,
+      ext: ext,
+      purpose: SharedMediaMeta.purposeMessage,
+      onProgress: (p) {
+        if (mounted) setState(() => _uploadProgress = p);
+      },
+    );
+    try {
+      await file.delete();
+    } on Object {
+      // The camera's temp file; the OS clears it eventually.
+    }
+    if (!mounted) return;
+    setState(() => _uploading = null);
+
+    final value = result.value;
+    if (value == null) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(
+            result.status == SharedUploadStatus.tooLarge
+                ? (isFilipino
+                      ? 'Masyadong malaki ang file.'
+                      : 'That file is too big to send.')
+                : (isFilipino
+                      ? 'Hindi naipadala. Tingnan ang internet at subukan ulit.'
+                      : "Couldn't send it. Check the internet and try again."),
+          ),
+        ),
+      );
+      return;
+    }
+    final caption = _textController.text.trim();
+    await _sendMessage(value, type, caption: caption.isEmpty ? null : caption);
+    if (caption.isNotEmpty) _textController.clear();
   }
 
   // ─── Inbox ────────────────────────────────────────────
@@ -551,6 +1022,9 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     final kind = profile == null
         ? InboxKind.learnerWithFriends
         : inboxKindFor(profile);
+    final isEducator = kind == InboxKind.educatorRoster;
+    final visible = isEducator ? _visibleConversations : _conversations;
+    final groups = isEducator ? _groups : const <InboxGroup>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -569,10 +1043,37 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
               await FriendService.instance.cancelRequest(r.id);
             },
           ),
+        if (profile != null && profile.role == UserRole.parent)
+          _ParentApprovalsCard(isFilipino: isFilipino, parent: profile),
+        if (isEducator && _conversations.length > 1)
+          _EducatorInboxFilters(
+            groups: groups,
+            selectedGroupId: _groupFilter,
+            isFilipino: isFilipino,
+            onSearch: (v) => setState(() => _search = v),
+            onGroup: (id) => setState(() => _groupFilter = id),
+          ),
         Expanded(
-          child: _conversations.isEmpty
+          child: _conversations.isNotEmpty && visible.isEmpty
               ? Center(
                   child: Padding(
+                    padding: EdgeInsets.all(padding),
+                    child: Text(
+                      isFilipino
+                          ? 'Walang tugma. Subukan ang ibang pangalan o grupo.'
+                          : 'No one matches. Try another name or group.',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: hc.textSecondary,
+                      ),
+                    ),
+                  ),
+                )
+              : _conversations.isEmpty
+              ? Center(
+                  // Scrollable: at 2x text on a small phone the educator copy
+                  // runs past the bottom of the screen.
+                  child: SingleChildScrollView(
                     padding: EdgeInsets.all(padding),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -580,7 +1081,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                         const Text('💬', style: TextStyle(fontSize: 56)),
                         const SizedBox(height: 16),
                         Text(
-                          _emptyInboxCopy(kind, isFilipino),
+                          _emptyInboxCopy(kind, isFilipino, profile),
                           textAlign: TextAlign.center,
                           style: AppTypography.bodyMedium.copyWith(
                             color: hc.textSecondary,
@@ -592,10 +1093,10 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                 )
               : ListView.separated(
                   padding: EdgeInsets.all(padding),
-                  itemCount: _conversations.length,
+                  itemCount: visible.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
-                    final convo = _conversations[index];
+                    final convo = visible[index];
                     return _ConversationTile(
                       conversation: convo,
                       isFilipino: isFilipino,
@@ -618,9 +1119,20 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
   /// A guest player is neither an educator nor friend-capable: they used to
   /// fall through to the educator branch and were told "no students in your
   /// classes yet", which is nonsense for a child in Player mode.
-  String _emptyInboxCopy(InboxKind kind, bool isFilipino) {
+  String _emptyInboxCopy(
+    InboxKind kind,
+    bool isFilipino,
+    UserProfile? profile,
+  ) {
     switch (kind) {
       case InboxKind.educatorRoster:
+        // A parent's learners join a home group, not a class — the teacher
+        // copy told Mommy about "class codes" she has never seen.
+        if (profile?.role == UserRole.parent) {
+          return isFilipino
+              ? 'Wala pang anak sa iyong grupo.\nKapag sumali sila gamit ang code ng grupo, lalabas sila dito.'
+              : 'No children in your home group yet.\nThey appear here once they join with your group code.';
+        }
         return isFilipino
             ? 'Wala pang mag-aaral sa iyong klase.\nKapag sumali ang estudyante gamit ang code, lalabas sila dito.'
             : 'No students in your classes yet.\nThey appear here once they join with the class code.';
@@ -630,8 +1142,8 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
             : 'Player mode stays on this device.\nJoin a class or home group to message other people.';
       case InboxKind.learnerWithFriends:
         return isFilipino
-            ? 'Wala pang kaibigan.\nPindutin ang + para magdagdag gamit ang username.'
-            : 'No friends yet.\nTap + to add one with their username.';
+            ? 'Wala pang kaibigan.\nPindutin ang Magdagdag para humanap ng kaibigan.'
+            : 'No friends yet.\nTap Add Friend to find one.';
     }
   }
 
@@ -641,11 +1153,34 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     final profile = ref.read(profileProvider);
     final composer = ComposerPresentation.forProfile(profile);
     final hc = HCColor.of(context);
-    final messages = _activeConversation!.messages;
-    final quickReplies = _quickRepliesFor(_activeConversation!);
+    final convo = _activeConversation!;
+    final messages = convo.messages;
+    final connected = convo.isConnected;
+    final quickReplies = connected
+        ? _quickRepliesFor(convo)
+        : const <Map<String, String>>[];
+    final isEducator =
+        profile != null && inboxKindFor(profile) == InboxKind.educatorRoster;
+    final hint = isEducator && connected
+        ? RecipientHint.forLearner(
+            convo.otherDisabilityIndex,
+            isFilipino: isFilipino,
+          )
+        : null;
 
     return Column(
       children: [
+        if (hint != null)
+          _RecipientHintBar(
+            hint: hint,
+            isFilipino: isFilipino,
+            onSign: () => _openSignPicker(isFilipino),
+            onSticker: () => _openStickerPicker(isFilipino),
+            onRecord: composer.signVideos
+                ? () => _sendMedia(MessageType.video, isFilipino)
+                : null,
+          ),
+        if (connected)
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: EdgeInsets.symmetric(horizontal: padding, vertical: 4),
@@ -656,17 +1191,21 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                   padding: const EdgeInsets.only(right: 6),
                   child: _QuickReplyChip(
                     text: isFilipino ? item['fil']! : item['en']!,
-                    focused: gaze.isFocused(i ~/ 2, i % 2),
+                    // While a picker is open its tiles own the gaze rows, so
+                    // the same row/column here is not the chip.
+                    focused:
+                        _inlinePicker == _InlinePicker.none &&
+                        gaze.isFocused(i ~/ 2, i % 2),
                     onPressed: () => _sendMessage(
                       isFilipino ? item['fil']! : item['en']!,
-                      MessageType.encouragement,
+                      _chipType,
                     ),
                   ),
                 ),
             ],
           ),
         ),
-        const Divider(height: 1),
+        if (connected) const Divider(height: 1),
         Expanded(
           child: messages.isEmpty
               ? Center(
@@ -704,96 +1243,337 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                           message: msg,
                           isMine: isMine,
                           isFilipino: isFilipino,
+                          otherName: convo.otherProfileName,
                           onUnsend: isMine ? () => _unsend(msg) : null,
+                          onReadAloud: composer.readAloud
+                              ? () => _readAloud(msg, isFilipino)
+                              : null,
                         ),
                       ],
                     );
                   },
                 ),
         ),
-        Container(
-          padding: EdgeInsets.fromLTRB(padding, 8, padding, 8),
-          decoration: BoxDecoration(
-            color: hc.surface,
-            border: Border(top: BorderSide(color: hc.border)),
+        if (!connected)
+          _DisconnectedBar(
+            isFilipino: isFilipino,
+            isEducator: isEducator,
+            padding: padding,
+          )
+        else if (_inlinePicker == _InlinePicker.sticker)
+          InlineStickerPanel(
+            isFilipino: isFilipino,
+            isFocused: (i) => gaze.isFocused(
+              i ~/ kStickerColumns,
+              i % kStickerColumns,
+            ),
+            closeFocused: gaze.isFocused(
+              (MessageStickers.all.length / kStickerColumns).ceil(),
+              0,
+            ),
+            onPick: (sticker) {
+              _closeInlinePicker();
+              _sendSticker(sticker);
+            },
+            onClose: _closeInlinePicker,
+          )
+        else if (_inlinePicker == _InlinePicker.sign)
+          _buildInlineSignPanel(isFilipino, gaze)
+        else
+          _buildComposer(composer, quickReplies.length, isFilipino, padding, gaze),
+      ],
+    );
+  }
+
+  Widget _buildInlineSignPanel(bool isFilipino, GazeDpadState gaze) {
+    final signable = _signable;
+    final topic = _signTopic;
+    final count = signable == null
+        ? 0
+        : topic == null
+        ? InlineSignPanel.topicsOf(signable).length
+        : InlineSignPanel.wordsIn(signable, topic).length;
+    final lastRow = signable == null ? 0 : (count / kSignColumns).ceil();
+    return InlineSignPanel(
+      isFilipino: isFilipino,
+      signable: signable,
+      category: topic,
+      isFocused: (i) => gaze.isFocused(i ~/ kSignColumns, i % kSignColumns),
+      // The last row is [Close] on the topic list, [Other topics, Close] in
+      // a topic.
+      closeFocused: gaze.isFocused(lastRow, topic == null ? 0 : 1),
+      backFocused: topic != null && gaze.isFocused(lastRow, 0),
+      onCategory: (t) => setState(() => _signTopic = t),
+      onWord: (word) {
+        _closeInlinePicker();
+        _sendSign(word);
+      },
+      onBack: () => setState(() => _signTopic = null),
+      onClose: _closeInlinePicker,
+    );
+  }
+
+  /// The composer: a row of labelled tools (sign, sticker, photo, sign
+  /// video), then the text field with its microphone and Send.
+  ///
+  /// The tools used to be bare icons squeezed beside the field. With photos
+  /// and videos added there are up to four, and a row of named buttons is
+  /// both easier to hit and easier to understand for a child who does not
+  /// know what a smiley icon does.
+  Widget _buildComposer(
+    ComposerPresentation composer,
+    int quickReplyCount,
+    bool isFilipino,
+    double padding,
+    GazeDpadState gaze,
+  ) {
+    final hc = HCColor.of(context);
+    final layout = _ComposerGaze.of(composer, quickReplyCount);
+    final uploading = _uploading;
+    var toolCol = 0;
+
+    Widget tool({
+      required IconData icon,
+      required String label,
+      required String semantics,
+      required VoidCallback onPressed,
+      bool gazeCell = false,
+    }) {
+      final focused =
+          gazeCell &&
+          layout.toolsRow != null &&
+          gaze.isFocused(layout.toolsRow!, toolCol);
+      if (gazeCell) toolCol++;
+      return Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: Semantics(
+          button: true,
+          label: semantics,
+          excludeSemantics: true,
+          child: Tooltip(
+            message: semantics,
+            child: OutlinedButton.icon(
+              onPressed: uploading == null ? onPressed : null,
+              icon: Icon(icon, color: hc.graphic(AppColors.primary)),
+              label: Text(label),
+              style: OutlinedButton.styleFrom(
+                side: focused
+                    ? const BorderSide(color: AppColors.accent, width: 3)
+                    : BorderSide(color: hc.border),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
           ),
-          child: Row(
-            children: [
-              if (composer.allowsSigns)
-                IconButton(
-                    tooltip: isFilipino ? 'Magpadala ng senyas' : 'Send a sign',
-                    onPressed: () => _openSignPicker(isFilipino),
-                    icon: const Icon(Icons.sign_language_rounded),
-                    color: AppColors.primary,
-                  ),
-              if (composer.allowsStickers)
-                IconButton(
-                    tooltip: isFilipino ? 'Magpadala ng sticker' : 'Send a sticker',
-                    onPressed: () => _openStickerPicker(isFilipino),
-                    icon: const Icon(Icons.emoji_emotions_rounded),
-                    color: AppColors.primary,
-                  ),
-              if (composer.allowsText)
-                Expanded(
-                  child: Semantics(
-                    label: isFilipino ? 'I-type ang mensahe' : 'Type a message',
-                    child: TextField(
-                    controller: _textController,
-                    onSubmitted: (v) => _sendMessage(
-                      v.trim(),
-                      MessageType.text,
-                      fromComposer: true,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: isFilipino
-                          ? 'Mag-type ng mensahe...'
-                          : 'Type a message...',
-                      filled: true,
-                      fillColor: hc.surface,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(color: hc.border),
+        ),
+      );
+    }
+
+    final tools = <Widget>[
+      if (composer.allowsSigns)
+        tool(
+          icon: Icons.sign_language_rounded,
+          label: isFilipino ? 'Senyas' : 'Sign',
+          semantics: isFilipino ? 'Magpadala ng senyas' : 'Send a sign',
+          onPressed: () => _openSignPicker(isFilipino),
+          gazeCell: true,
+        ),
+      if (composer.allowsStickers)
+        tool(
+          icon: Icons.emoji_emotions_rounded,
+          label: 'Sticker',
+          semantics: isFilipino ? 'Magpadala ng sticker' : 'Send a sticker',
+          onPressed: () => _openStickerPicker(isFilipino),
+          gazeCell: true,
+        ),
+      if (composer.signVideos)
+        tool(
+          icon: Icons.videocam_rounded,
+          label: isFilipino ? 'Video' : 'Video',
+          semantics: isFilipino
+              ? 'Mag-record ng senyas o video'
+              : 'Record a sign or video',
+          onPressed: () => _sendMedia(MessageType.video, isFilipino),
+        ),
+      if (composer.photos)
+        tool(
+          icon: Icons.photo_camera_rounded,
+          label: isFilipino ? 'Larawan' : 'Photo',
+          semantics: isFilipino ? 'Kumuha ng larawan' : 'Take a photo',
+          onPressed: () => _sendMedia(MessageType.photo, isFilipino),
+        ),
+    ];
+
+    final micFocused =
+        layout.textRow != null && layout.micCell && gaze.isFocused(layout.textRow!, 0);
+    final sendFocused =
+        layout.textRow != null &&
+        gaze.isFocused(layout.textRow!, layout.micCell ? 1 : 0);
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(padding, 8, padding, 8),
+      decoration: BoxDecoration(
+        color: hc.surface,
+        border: Border(top: BorderSide(color: hc.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (uploading != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Semantics(
+                  liveRegion: true,
+                  label: uploading == MessageType.video
+                      ? (isFilipino
+                            ? 'Ipinapadala ang video'
+                            : 'Sending your video')
+                      : (isFilipino
+                            ? 'Ipinapadala ang larawan'
+                            : 'Sending your photo'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        uploading == MessageType.video
+                            ? (isFilipino
+                                  ? 'Ipinapadala ang video…'
+                                  : 'Sending your video…')
+                            : (isFilipino
+                                  ? 'Ipinapadala ang larawan…'
+                                  : 'Sending your photo…'),
+                        style: AppTypography.labelMedium.copyWith(
+                          color: hc.textSecondary,
+                        ),
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(color: hc.border),
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(
+                        value: _uploadProgress > 0 ? _uploadProgress : null,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                    ),
+                    ],
                   ),
                 ),
               ),
-              // Without a text field there is nothing to send from, and the
-              // chips and pickers post on tap — so the send button goes with it.
-              if (composer.allowsText) ...[
-                const SizedBox(width: 8),
-                Semantics(
-                  button: true,
-                  label: isFilipino ? 'Ipadala' : 'Send',
-                  child: IconButton.filled(
-                    onPressed: () => _sendMessage(
-                      _textController.text.trim(),
-                      MessageType.text,
-                      fromComposer: true,
-                    ),
-                    icon: const Icon(Icons.send_rounded),
-                    style: IconButton.styleFrom(
-                      backgroundColor: HCColor.of(context).primary,
-                      foregroundColor: HCColor.of(context).textOnPrimary,
+            if (tools.isNotEmpty)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(children: tools),
+              ),
+            if (composer.allowsText) ...[
+              if (tools.isNotEmpty) const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Semantics(
+                      label: isFilipino ? 'I-type ang mensahe' : 'Type a message',
+                      child: TextField(
+                        controller: _textController,
+                        minLines: 1,
+                        maxLines: 4,
+                        onChanged: (_) => setState(() {}),
+                        onSubmitted: (v) => _sendMessage(
+                          v.trim(),
+                          MessageType.text,
+                          fromComposer: true,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: _dictating
+                              ? (isFilipino
+                                    ? 'Nakikinig… magsalita na'
+                                    : 'Listening… speak now')
+                              : (isFilipino
+                                    ? 'Mag-type ng mensahe...'
+                                    : 'Type a message...'),
+                          filled: true,
+                          fillColor: hc.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(color: hc.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(color: hc.border),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ] else
-                // Pickers alone can leave the row unbalanced; a spacer keeps
-                // the buttons left-aligned instead of stretched.
-                const Spacer(),
+                  if (composer.dictation) ...[
+                    const SizedBox(width: 6),
+                    Semantics(
+                      button: true,
+                      toggled: _dictating,
+                      label: _dictating
+                          ? (isFilipino
+                                ? 'Nakikinig. Pindutin para itigil'
+                                : 'Listening. Tap to stop')
+                          : (isFilipino
+                                ? 'Magsalita ng mensahe'
+                                : 'Speak a message'),
+                      excludeSemantics: true,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: micFocused
+                              ? Border.all(color: AppColors.accent, width: 3)
+                              : null,
+                        ),
+                        child: IconButton(
+                          tooltip: _dictating
+                              ? (isFilipino ? 'Itigil' : 'Stop')
+                              : (isFilipino
+                                    ? 'Magsalita ng mensahe'
+                                    : 'Speak a message'),
+                          onPressed: () => _toggleDictation(isFilipino),
+                          icon: Icon(
+                            _dictating
+                                ? Icons.stop_circle_rounded
+                                : Icons.mic_rounded,
+                            color: _dictating
+                                ? hc.graphic(AppColors.error)
+                                : hc.graphic(AppColors.primary),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 6),
+                  Semantics(
+                    button: true,
+                    label: isFilipino ? 'Ipadala' : 'Send',
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: sendFocused
+                            ? Border.all(color: AppColors.accent, width: 3)
+                            : null,
+                      ),
+                      child: IconButton.filled(
+                        onPressed: () => _sendMessage(
+                          _textController.text.trim(),
+                          MessageType.text,
+                          fromComposer: true,
+                        ),
+                        icon: const Icon(Icons.send_rounded),
+                        style: IconButton.styleFrom(
+                          backgroundColor: HCColor.of(context).primary,
+                          foregroundColor: HCColor.of(context).textOnPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -806,12 +1586,16 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     return showAddFriendDialog(context, me: me, isFilipino: isFilipino);
   }
 
-  Future<void> _showRequestsSheet(UserProfile me, bool isFilipino) {
+  Future<void> _showRequestsSheet(
+    UserProfile me,
+    bool isFilipino,
+    List<FriendRequest> incoming,
+  ) {
     return showFriendRequestsSheet(
       context,
-      myProfileId: me.id,
+      me: me,
       isFilipino: isFilipino,
-      initialRequests: _incomingRequests,
+      initialRequests: incoming,
     );
   }
 
@@ -825,17 +1609,64 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     if (profile == null) return;
     final isFilipino = ref.read(settingsProvider).locale == 'fil';
 
+    final isEducator = inboxKindFor(profile) == InboxKind.educatorRoster;
     await showPeerActionsSheet(
       context,
       me: profile,
       conversation: convo,
       isFilipino: isFilipino,
+      // A learner's report goes to their own teacher and parent.
+      grownUps: isEducator
+          ? const []
+          : _conversations.where((c) => c.isEducatorPeer).toList(),
+      onSeeProgress: isEducator ? () => _seeProgress(convo) : null,
       onDone: () {
         if (!mounted) return;
         // The peer is gone from the directory now; drop the open thread so we
         // don't leave the learner staring at a conversation they just left.
         _closeConversation();
       },
+    );
+  }
+}
+
+/// Which picker is open inside the thread (gaze only).
+enum _InlinePicker { none, sticker, sign }
+
+/// Where the composer's gaze cells sit, shared by the scope's rows and the
+/// widgets that draw the focus rings — so the two can never disagree.
+class _ComposerGaze {
+  /// Row of the sign / sticker tools, when there is one.
+  final int? toolsRow;
+  final bool signTool;
+  final bool stickerTool;
+
+  /// Row of [Speak a message] and [Send], when there is a text field.
+  final int? textRow;
+  final bool micCell;
+
+  const _ComposerGaze({
+    required this.toolsRow,
+    required this.signTool,
+    required this.stickerTool,
+    required this.textRow,
+    required this.micCell,
+  });
+
+  /// Photos and videos are touch-only: the capture screen takes over the
+  /// camera the gaze D-pad itself runs on.
+  factory _ComposerGaze.of(ComposerPresentation composer, int quickReplies) {
+    var row = (quickReplies / 2).ceil();
+    final sign = composer.allowsSigns;
+    final sticker = composer.allowsStickers;
+    final toolsRow = sign || sticker ? row++ : null;
+    final textRow = composer.allowsText ? row++ : null;
+    return _ComposerGaze(
+      toolsRow: toolsRow,
+      signTool: sign,
+      stickerTool: sticker,
+      textRow: textRow,
+      micCell: composer.dictation,
     );
   }
 }
@@ -864,15 +1695,31 @@ class _ConversationTile extends StatelessWidget {
     final unread = conversation.unreadCount;
     final hasUnread = unread > 0;
 
+    final hasReport = conversation.hasUnreadReport;
+    final preview = last == null
+        ? null
+        : MessageWording.preview(last, isFilipino: isFilipino);
+
     final tile = Semantics(
       button: true,
+      // The row used to say only name, role and a count — a screen-reader
+      // user had to open every thread to learn what was in it.
       label: [
         conversation.otherProfileName,
-        conversation.otherProfileRole,
+        _roleWord(conversation.otherProfileRole, isFilipino),
+        if (hasReport)
+          isFilipino ? 'may ulat pangkaligtasan' : 'safety report waiting',
         if (hasUnread)
           isFilipino
               ? '$unread hindi pa nabasang mensahe'
+              : unread == 1
+              ? '1 unread message'
               : '$unread unread messages',
+        if (preview != null)
+          '${isFilipino ? 'Huling mensahe' : 'Last message'}: $preview, '
+              '${MessageTime.relative(last!.timestamp, isFilipino: isFilipino)}',
+        if (!conversation.isConnected)
+          isFilipino ? 'hindi na makakapagpadala' : 'read only',
       ].join(', '),
       excludeSemantics: true,
       child: ListTile(
@@ -900,9 +1747,9 @@ class _ConversationTile extends StatelessWidget {
             color: hc.textPrimary,
           ),
         ),
-        subtitle: last != null
+        subtitle: preview != null
             ? Text(
-                last.content,
+                preview,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTypography.bodySmall.copyWith(
@@ -931,19 +1778,37 @@ class _ConversationTile extends StatelessWidget {
               ),
             if (hasUnread) ...[
               const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  unread > 99 ? '99+' : '$unread',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasReport) ...[
+                    Icon(
+                      Icons.flag_rounded,
+                      size: 16,
+                      color: hc.graphic(AppColors.error),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      // White on the raw lavender was under 3:1 — a count a
+                      // low-vision learner could not read.
+                      color: hc.fillFor(AppColors.primary),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      unread > 99 ? '99+' : '$unread',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ],
@@ -976,6 +1841,310 @@ class _ConversationTile extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// "2 friend requests need your OK" — a parent's way into
+/// [ParentApprovalsSheet]. Hidden when nothing is waiting.
+class _ParentApprovalsCard extends ConsumerWidget {
+  final bool isFilipino;
+  final UserProfile parent;
+
+  const _ParentApprovalsCard({required this.isFilipino, required this.parent});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final requests =
+        ref.watch(parentApprovalsProvider).valueOrNull ??
+        const <FriendRequest>[];
+    if (requests.isEmpty) return const SizedBox.shrink();
+    final hc = HCColor.of(context);
+    final n = requests.length;
+    final text = isFilipino
+        ? '$n kahilingang makipagkaibigan ang naghihintay ng iyong pahintulot'
+        : n == 1
+        ? '1 friend request needs your OK'
+        : '$n friend requests need your OK';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      child: Material(
+        color: hc.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: hc.graphic(AppColors.success), width: 1.5),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            final groups =
+                ref
+                    .read(homeGroupsByOwnerStreamProvider(parent.id))
+                    .valueOrNull ??
+                const [];
+            showParentApprovalsSheet(
+              context,
+              requests: requests,
+              myGroupIds: {for (final g in groups) g.id},
+              isFilipino: isFilipino,
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                const ExcludeSemantics(
+                  child: Text('🤝', style: TextStyle(fontSize: 24)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    text,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: hc.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: hc.textSecondary),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A role slug as a word in the app's language, for screen-reader labels.
+String _roleWord(String role, bool isFilipino) {
+  switch (role.toLowerCase()) {
+    case 'teacher':
+      return isFilipino ? 'guro' : 'teacher';
+    case 'parent':
+      return isFilipino ? 'magulang' : 'parent';
+    case 'child':
+      return isFilipino ? 'anak' : 'child';
+    case 'player':
+      return 'player';
+    default:
+      return isFilipino ? 'mag-aaral' : 'student';
+  }
+}
+
+/// The educator inbox's search box and class / home-group filter.
+///
+/// A teacher with six classes had one flat alphabetical list of every
+/// learner and no way to narrow it.
+class _EducatorInboxFilters extends StatefulWidget {
+  final List<InboxGroup> groups;
+  final String? selectedGroupId;
+  final bool isFilipino;
+  final ValueChanged<String> onSearch;
+  final ValueChanged<String?> onGroup;
+
+  const _EducatorInboxFilters({
+    required this.groups,
+    required this.selectedGroupId,
+    required this.isFilipino,
+    required this.onSearch,
+    required this.onGroup,
+  });
+
+  @override
+  State<_EducatorInboxFilters> createState() => _EducatorInboxFiltersState();
+}
+
+class _EducatorInboxFiltersState extends State<_EducatorInboxFilters> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fil = widget.isFilipino;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _controller,
+            onChanged: (v) {
+              widget.onSearch(v);
+              setState(() {});
+            },
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              isDense: true,
+              prefixIcon: const Icon(Icons.search_rounded),
+              hintText: fil ? 'Hanapin ang pangalan' : 'Search by name',
+              suffixIcon: _controller.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: fil ? 'Burahin' : 'Clear',
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () {
+                        _controller.clear();
+                        widget.onSearch('');
+                        setState(() {});
+                      },
+                    ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+          if (widget.groups.length > 1) ...[
+            const SizedBox(height: 6),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(fil ? 'Lahat' : 'All'),
+                      selected: widget.selectedGroupId == null,
+                      onSelected: (_) => widget.onGroup(null),
+                    ),
+                  ),
+                  for (final g in widget.groups)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ChoiceChip(
+                        avatar: Text(g.isHomeGroup ? '🏠' : '🏫'),
+                        label: Text(g.name),
+                        selected: widget.selectedGroupId == g.id,
+                        onSelected: (on) => widget.onGroup(on ? g.id : null),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// What an educator's message should look like for *this* learner — see
+/// [RecipientHint].
+class _RecipientHintBar extends StatelessWidget {
+  final RecipientHint hint;
+  final bool isFilipino;
+  final VoidCallback onSign;
+  final VoidCallback onSticker;
+
+  /// Record a sign video — the most direct way to reach a Deaf learner.
+  final VoidCallback? onRecord;
+
+  const _RecipientHintBar({
+    required this.hint,
+    required this.isFilipino,
+    required this.onSign,
+    required this.onSticker,
+    this.onRecord,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: hc.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: hc.border),
+      ),
+      child: Row(
+        children: [
+          ExcludeSemantics(
+            child: Text(hint.emoji, style: const TextStyle(fontSize: 18)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              hint.text,
+              style: AppTypography.bodySmall.copyWith(color: hc.textPrimary),
+            ),
+          ),
+          if (hint.suggestsSign)
+            TextButton.icon(
+              onPressed: onSign,
+              icon: const Icon(Icons.sign_language_rounded, size: 18),
+              label: Text(isFilipino ? 'Senyas' : 'Sign'),
+            ),
+          if (hint.suggestsSign && onRecord != null)
+            TextButton.icon(
+              onPressed: onRecord,
+              icon: const Icon(Icons.videocam_rounded, size: 18),
+              label: Text(isFilipino ? 'I-record' : 'Record'),
+            ),
+          if (hint.suggestsSticker)
+            TextButton.icon(
+              onPressed: onSticker,
+              icon: const Icon(Icons.emoji_emotions_rounded, size: 18),
+              label: const Text('Sticker'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Stands where the composer was, in a thread that is only history.
+class _DisconnectedBar extends StatelessWidget {
+  final bool isFilipino;
+  final bool isEducator;
+  final double padding;
+
+  const _DisconnectedBar({
+    required this.isFilipino,
+    required this.isEducator,
+    required this.padding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final text = isEducator
+        ? (isFilipino
+              ? 'Wala na siya sa iyong klase o grupo, kaya hindi ka na makakapagpadala ng mensahe dito.'
+              : "They're no longer in your class or group, so you can't send messages here.")
+        : (isFilipino
+              ? 'Hindi na kayo magkaibigan, kaya hindi ka na makakapagpadala ng mensahe dito. Pwede mo siyang i-add ulit.'
+              : "You're not friends anymore, so you can't send messages here. You can add them again.");
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(padding, 12, padding, 12),
+      decoration: BoxDecoration(
+        color: hc.surface,
+        border: Border(top: BorderSide(color: hc.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Icon(Icons.lock_outline_rounded, color: hc.textSecondary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                style: AppTypography.bodySmall.copyWith(
+                  color: hc.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1040,20 +2209,49 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
   final bool isMine;
   final bool isFilipino;
 
+  /// The other person in the thread, so a screen reader names the sender
+  /// instead of reading the avatar's initial.
+  final String otherName;
+
   /// Non-null only for the sender's own messages — long-press to unsend.
   final VoidCallback? onUnsend;
+
+  /// Speaks the message. Null where the composer policy turns read-aloud
+  /// off (Deaf / hard-of-hearing learners).
+  final VoidCallback? onReadAloud;
 
   const _MessageBubbleMsgScreen({
     required this.message,
     required this.isMine,
     required this.isFilipino,
+    required this.otherName,
     this.onUnsend,
+    this.onReadAloud,
   });
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     final isEncouragement = message.type == MessageType.encouragement;
+    final isReport = message.type == MessageType.report;
+    final readAloud = onReadAloud;
+    // Beside the bubble rather than inside it, so the sign bubble's own tap
+    // target (play the clip) stays whole.
+    final Widget? speaker =
+        readAloud != null &&
+            MessageWording.speakable(message, isFilipino: isFilipino)
+                .isNotEmpty
+        ? IconButton(
+            tooltip: isFilipino ? 'Basahin nang malakas' : 'Read aloud',
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              Icons.volume_up_rounded,
+              size: 20,
+              color: hc.graphic(AppColors.primary),
+            ),
+            onPressed: readAloud,
+          )
+        : null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -1063,10 +2261,14 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
             : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          // My own bubbles hug the right edge, so their speaker sits on the
+          // inner side, mirroring the one beside a received bubble.
+          if (isMine && speaker != null) speaker,
           if (!isMine)
             Padding(
               padding: const EdgeInsets.only(right: 6, bottom: 2),
-              child: CircleAvatar(
+              child: ExcludeSemantics(
+                child: CircleAvatar(
                 radius: 14,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                 child: Text(
@@ -1079,9 +2281,21 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              ),
             ),
           Flexible(
-            child: GestureDetector(
+            child: Semantics(
+              container: true,
+              label: MessageWording.bubbleLabel(
+                message,
+                isMine: isMine,
+                otherName: otherName,
+                isFilipino: isFilipino,
+              ),
+              onLongPressHint: onUnsend == null
+                  ? null
+                  : (isFilipino ? 'Bawiin ang mensahe' : 'Unsend message'),
+              child: GestureDetector(
               onLongPress: onUnsend,
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -1089,7 +2303,9 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: isEncouragement
+                  color: isReport
+                      ? AppColors.error.withValues(alpha: 0.10)
+                      : isEncouragement
                       ? Colors.pink.withValues(alpha: 0.08)
                       : isMine
                       ? AppColors.primary.withValues(alpha: 0.12)
@@ -1105,16 +2321,50 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
                         : const Radius.circular(16),
                   ),
                   border: Border.all(
-                    color: isEncouragement
+                    width: isReport ? 1.5 : 1,
+                    color: isReport
+                        ? hc.graphic(AppColors.error)
+                        : isEncouragement
                         ? Colors.pink.withValues(alpha: 0.2)
                         : isMine
                         ? AppColors.primary.withValues(alpha: 0.2)
                         : hc.border,
                   ),
                 ),
-                child: Column(
+                // The bubble's own Semantics label says it all, in order;
+                // the pieces below would repeat it word by word. A sign keeps
+                // its children: its "play the sign" button must stay
+                // reachable to a screen reader.
+                child: ExcludeSemantics(
+                  excluding:
+                      message.type != MessageType.sign && !message.isMedia,
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (isReport)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.flag_rounded,
+                              size: 14,
+                              color: hc.graphic(AppColors.error),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isFilipino
+                                  ? 'Ulat pangkaligtasan'
+                                  : 'Safety report',
+                              style: AppTypography.labelSmall.copyWith(
+                                color: hc.readable(AppColors.error),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     if (isEncouragement)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
@@ -1130,7 +2380,7 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
                             Text(
                               isFilipino ? 'Pagpapalakas' : 'Encouragement',
                               style: AppTypography.labelSmall.copyWith(
-                                color: Colors.pink,
+                                color: hc.readable(Colors.pink),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1140,16 +2390,18 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
                     // A sticker is the whole message, so it renders at picture
                     // size rather than as body text a learner has to squint at.
                     if (message.type == MessageType.sticker)
-                      Semantics(
-                        label: message.content,
-                        child: Text(
-                          message.content,
-                          style: const TextStyle(fontSize: 44),
-                        ),
+                      Text(
+                        message.content,
+                        style: const TextStyle(fontSize: 44),
                       )
                     else if (message.type == MessageType.sign)
                       _SignMessageBody(
                         word: message.content,
+                        isFilipino: isFilipino,
+                      )
+                    else if (message.isMedia)
+                      MessageMediaBody(
+                        message: message,
                         isFilipino: isFilipino,
                       )
                     else
@@ -1175,28 +2427,26 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
                         ),
                         if (isMine) ...[
                           const SizedBox(width: 4),
-                          Semantics(
-                            label: message.isRead
-                                ? (isFilipino ? 'Nabasa na' : 'Read')
-                                : (isFilipino ? 'Naipadala' : 'Sent'),
-                            child: Icon(
-                              message.isRead
-                                  ? Icons.done_all_rounded
-                                  : Icons.done_rounded,
-                              size: 14,
-                              color: message.isRead
-                                  ? HCColor.of(context).primary
-                                  : hc.textSecondary,
-                            ),
+                          Icon(
+                            message.isRead
+                                ? Icons.done_all_rounded
+                                : Icons.done_rounded,
+                            size: 14,
+                            color: message.isRead
+                                ? HCColor.of(context).primary
+                                : hc.textSecondary,
                           ),
                         ],
                       ],
                     ),
                   ],
                 ),
+                ),
               ),
             ),
+            ),
           ),
+          if (!isMine && speaker != null) speaker,
         ],
       ),
     ).animate().fadeIn(duration: 200.ms);
@@ -1250,15 +2500,34 @@ class _OutgoingRequestsStrip extends StatelessWidget {
                 const Icon(Icons.schedule_rounded, size: 16),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    names[r.toProfileId] ??
-                        '${isFilipino ? 'Gumagamit' : 'User'} '
-                            '${r.toProfileId.substring(0, r.toProfileId.length.clamp(0, 6))}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: hc.textPrimary,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        names[r.toProfileId] ??
+                            '${isFilipino ? 'Gumagamit' : 'User'} '
+                                '${r.toProfileId.substring(0, r.toProfileId.length.clamp(0, 6))}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: hc.textPrimary,
+                        ),
+                      ),
+                      if (r.status == FriendRequestStatus.awaitingParent ||
+                          r.fromNeedsParent)
+                        Text(
+                          r.status == FriendRequestStatus.awaitingParent
+                              ? (isFilipino
+                                    ? 'Pumayag na sila. Hinihintay ang isang nakatatanda.'
+                                    : 'They said yes. Waiting for a grown-up.')
+                              : (isFilipino
+                                    ? 'Kailangan ding pumayag ng isang nakatatanda.'
+                                    : 'A grown-up will need to say yes too.'),
+                          style: AppTypography.labelSmall.copyWith(
+                            color: hc.textSecondary,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 TextButton(

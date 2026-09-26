@@ -74,6 +74,8 @@ mixin VoiceControlMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     if (voice == null) return null;
     final text = voice.unavailable
         ? 'Microphone unavailable'
+        : voice.pausedForDictation
+        ? 'Paused while you speak your message'
         : voice.lastHeard.isNotEmpty
             ? voice.lastHeard
             : (voice.isListening ? 'Listening…' : 'Voice ready');

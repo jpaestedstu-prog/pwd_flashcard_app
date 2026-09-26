@@ -61,9 +61,34 @@ class ComposerPresentation {
   /// and for a gaze learner every extra chip is another cell to walk past.
   final int maxQuickReplies;
 
+  /// Whether bubbles carry a read-aloud button. Off for Deaf / hard-of-
+  /// hearing learners only — a speaker icon on every bubble is clutter to
+  /// someone who cannot use it. Everyone else benefits: a learner who reads
+  /// below their spoken language, a low-vision learner, a tired one.
+  final bool readAloud;
+
+  /// Speak-to-type: a microphone beside the text field. Only where there is
+  /// a text field, and not for Deaf / hard-of-hearing learners, whose speech
+  /// a recogniser tuned to hearing voices reads poorly — for them the sign
+  /// channels are the fast way in.
+  final bool dictation;
+
+  /// Take a photo and send it. Off for low vision: a picture the sender
+  /// cannot check, sent to someone who may not see it either, is noise.
+  final bool photos;
+
+  /// Record yourself signing (or saying something) and send the clip. The
+  /// most direct channel a Deaf learner has — their own FSL, not a word
+  /// picked from a list. Off for low vision, like [photos].
+  final bool signVideos;
+
   const ComposerPresentation({
     required this.modes,
     required this.maxQuickReplies,
+    this.readAloud = true,
+    this.dictation = false,
+    this.photos = true,
+    this.signVideos = true,
   });
 
   bool get allowsText => modes.contains(ComposerMode.text);
@@ -83,10 +108,14 @@ class ComposerPresentation {
           ComposerMode.text,
         ],
         maxQuickReplies: 8,
+        readAloud: false,
       ),
       DisabilityType.visual => const ComposerPresentation(
         modes: [ComposerMode.quickReply, ComposerMode.text],
         maxQuickReplies: 8,
+        dictation: true,
+        photos: false,
+        signVideos: false,
       ),
       DisabilityType.motor => const ComposerPresentation(
         modes: [
@@ -96,6 +125,7 @@ class ComposerPresentation {
           ComposerMode.text,
         ],
         maxQuickReplies: 6,
+        dictation: true,
       ),
       DisabilityType.cognitive || DisabilityType.multiple =>
         const ComposerPresentation(
@@ -110,6 +140,7 @@ class ComposerPresentation {
           ComposerMode.sign,
         ],
         maxQuickReplies: 8,
+        dictation: true,
       ),
     };
   }
@@ -125,6 +156,71 @@ class ComposerPresentation {
       return ComposerPresentation.forType(DisabilityType.none);
     }
     return ComposerPresentation.forType(profile.disabilityType);
+  }
+}
+
+/// A one-line nudge for an educator writing to one learner: the channel
+/// that learner can actually receive.
+///
+/// Educators get the full composer whatever their learner needs, so the
+/// composer itself cannot adapt — but the teacher of a Deaf child should not
+/// have to remember that a typed paragraph is the least useful thing they can
+/// send. Null when there is nothing to say (no category, or no needs).
+class RecipientHint {
+  final String emoji;
+  final String text;
+
+  /// Offer a "Send a sign" shortcut next to the hint.
+  final bool suggestsSign;
+
+  /// Offer a "Send a sticker" shortcut next to the hint.
+  final bool suggestsSticker;
+
+  const RecipientHint({
+    required this.emoji,
+    required this.text,
+    this.suggestsSign = false,
+    this.suggestsSticker = false,
+  });
+
+  static RecipientHint? forLearner(
+    int? disabilityIndex, {
+    required bool isFilipino,
+  }) {
+    if (disabilityIndex == null ||
+        disabilityIndex < 0 ||
+        disabilityIndex >= DisabilityType.values.length) {
+      return null;
+    }
+    return switch (DisabilityType.values[disabilityIndex]) {
+      DisabilityType.hearing => RecipientHint(
+        emoji: '🤟',
+        text: isFilipino
+            ? 'Bingi o mahina ang pandinig — pinakamalinaw ang senyas.'
+            : 'Deaf or hard of hearing — a sign says it best.',
+        suggestsSign: true,
+      ),
+      DisabilityType.visual => RecipientHint(
+        emoji: '🔊',
+        text: isFilipino
+            ? 'Mahina ang paningin — maaaring pakinggan nila ito. Maikli at malinaw.'
+            : 'Low vision — they may listen to this. Keep it short and clear.',
+      ),
+      DisabilityType.cognitive || DisabilityType.multiple => RecipientHint(
+        emoji: '🧩',
+        text: isFilipino
+            ? 'Pinakamabuti ang maiikling salita o isang sticker.'
+            : 'Short words or a sticker work best.',
+        suggestsSticker: true,
+      ),
+      DisabilityType.motor => RecipientHint(
+        emoji: '✋',
+        text: isFilipino
+            ? 'Sumasagot sila gamit ang mga isang-pindot na sagot — magtanong ng oo o hindi.'
+            : 'They reply with one-tap answers — ask yes-or-no questions.',
+      ),
+      DisabilityType.none => null,
+    };
   }
 }
 

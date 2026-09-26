@@ -7,9 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/error_handler.dart';
+import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
+import 'package:uuid/uuid.dart';
+
 import '../models/friend_models.dart';
 import '../models/messaging_models.dart';
+import '../services/cloud_message_repository.dart';
+import '../providers/messaging_providers.dart' show parentApprovalsProvider;
 import '../services/friend_service.dart';
 import '../services/profile_directory_service.dart';
 import '../../../l10n/app_localizations.dart';
@@ -35,10 +40,15 @@ Future<bool> showAddFriendDialog(
     builder: (ctx) => AddFriendDialog(me: me, isFilipino: isFilipino),
   );
   if (sent == true && context.mounted) {
+    final needsParent = FriendService.needsParentApproval(me);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          isFilipino ? 'Naipadala ang request.' : 'Friend request sent.',
+          needsParent
+              ? (isFilipino
+                    ? 'Naipadala ang request. Kailangan ding pumayag ng isang nakatatanda.'
+                    : 'Friend request sent. A grown-up will need to say yes too.')
+              : (isFilipino ? 'Naipadala ang request.' : 'Friend request sent.'),
         ),
       ),
     );
@@ -49,7 +59,7 @@ Future<bool> showAddFriendDialog(
 /// Show the incoming friend-requests bottom sheet.
 Future<void> showFriendRequestsSheet(
   BuildContext context, {
-  required String myProfileId,
+  required UserProfile me,
   required bool isFilipino,
   required List<FriendRequest> initialRequests,
 }) {
@@ -61,7 +71,7 @@ Future<void> showFriendRequestsSheet(
         MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: true,
     builder: (ctx) => FriendRequestsSheet(
-      myProfileId: myProfileId,
+      me: me,
       isFilipino: isFilipino,
       initialRequests: initialRequests,
     ),
@@ -71,13 +81,17 @@ Future<void> showFriendRequestsSheet(
 /// Show the unfriend / block / report sheet for one conversation peer.
 ///
 /// [onDone] fires after an action that removes the peer, so the caller can
-/// close whatever thread was open on them.
+/// close whatever thread was open on them. [grownUps] are the learner's own
+/// teacher / parent threads — where a report is delivered. [onSeeProgress]
+/// is the educator's route to the learner's progress.
 Future<void> showPeerActionsSheet(
   BuildContext context, {
   required UserProfile me,
   required Conversation conversation,
   required bool isFilipino,
   required VoidCallback onDone,
+  List<Conversation> grownUps = const [],
+  VoidCallback? onSeeProgress,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -91,6 +105,8 @@ Future<void> showPeerActionsSheet(
       conversation: conversation,
       isFilipino: isFilipino,
       onDone: onDone,
+      grownUps: grownUps,
+      onSeeProgress: onSeeProgress,
     ),
   );
 }
@@ -173,10 +189,16 @@ class UsernameHeaderCard extends StatelessWidget {
 class AddFriendDialog extends StatefulWidget {
   final UserProfile me;
   final bool isFilipino;
+
+  /// Classmate suggestions. Injectable for tests; production asks
+  /// [FriendService.suggestClassmates].
+  final Future<List<DirectoryEntry>> Function(UserProfile me)? suggestions;
+
   const AddFriendDialog({
     super.key,
     required this.me,
     required this.isFilipino,
+    this.suggestions,
   });
 
   @override
@@ -188,14 +210,44 @@ class _AddFriendDialogState extends State<AddFriendDialog> {
   bool _busy = false;
   String? _errorText;
 
+  /// Null while loading; empty when there is nobody to suggest.
+  List<DirectoryEntry>? _classmates;
+
+  bool get _hasGroup =>
+      (widget.me.classroomId?.isNotEmpty ?? false) ||
+      (widget.me.homeGroupId?.isNotEmpty ?? false);
+
+  @override
+  void initState() {
+    super.initState();
+    if (_hasGroup) {
+      _loadClassmates();
+    } else {
+      _classmates = const [];
+    }
+  }
+
+  Future<void> _loadClassmates() async {
+    List<DirectoryEntry> found;
+    try {
+      found = await (widget.suggestions ??
+          FriendService.instance.suggestClassmates)(widget.me);
+    } catch (_) {
+      found = const [];
+    }
+    if (!mounted) return;
+    setState(() => _classmates = found);
+  }
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    final target = _controller.text.trim();
+  Future<void> _submit() => _send(_controller.text.trim());
+
+  Future<void> _send(String target) async {
     if (target.isEmpty || _busy) return;
     setState(() {
       _busy = true;
@@ -234,6 +286,8 @@ class _AddFriendDialogState extends State<AddFriendDialog> {
     return PopScope(
       canPop: !_busy,
       child: AlertDialog(
+        // Large text plus the classmate list is taller than a small phone.
+        scrollable: true,
         title: Text(isFilipino ? 'Magdagdag ng kaibigan' : 'Add a friend'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -248,7 +302,9 @@ class _AddFriendDialogState extends State<AddFriendDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _controller,
-              autofocus: true,
+              // With classmates to pick from, an open keyboard would cover
+              // the easier path.
+              autofocus: !_hasGroup,
               enabled: !_busy,
               onChanged: (_) {
                 if (_errorText != null) {
@@ -262,6 +318,15 @@ class _AddFriendDialogState extends State<AddFriendDialog> {
                 errorText: _errorText,
               ),
             ),
+            if (_hasGroup) ...[
+              const SizedBox(height: 16),
+              _ClassmateSuggestions(
+                classmates: _classmates,
+                isFilipino: isFilipino,
+                busy: _busy,
+                onAsk: (entry) => _send(entry.username),
+              ),
+            ],
           ],
         ),
         actions: [
@@ -288,6 +353,102 @@ class _AddFriendDialogState extends State<AddFriendDialog> {
   }
 }
 
+/// The "People in your class" list inside [AddFriendDialog]: each classmate
+/// by name with one button, so a learner who cannot type a username can
+/// still make a friend.
+class _ClassmateSuggestions extends StatelessWidget {
+  final List<DirectoryEntry>? classmates;
+  final bool isFilipino;
+  final bool busy;
+  final ValueChanged<DirectoryEntry> onAsk;
+
+  const _ClassmateSuggestions({
+    required this.classmates,
+    required this.isFilipino,
+    required this.busy,
+    required this.onAsk,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final list = classmates;
+    final heading = Text(
+      isFilipino ? 'O pumili sa iyong klase' : 'Or pick someone from your class',
+      style: AppTypography.labelMedium.copyWith(
+        color: hc.textSecondary,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    if (list == null) {
+      return Row(
+        children: [
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 10),
+          Flexible(child: heading),
+        ],
+      );
+    }
+    if (list.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        heading,
+        const SizedBox(height: 6),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 220),
+          // Not a ListView: AlertDialog measures its content's intrinsic
+          // width, which a viewport cannot report.
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+              for (final entry in list)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  // A Wrap, not a Row: at large text the name and the button
+                  // do not fit side by side in a dialog, so the button drops
+                  // under the name instead of running off the edge.
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      Text(
+                        '🧑‍🎓 ${entry.name}',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: hc.textPrimary,
+                        ),
+                      ),
+                      Semantics(
+                        button: true,
+                        label: isFilipino
+                            ? 'Hilingin na maging kaibigan si ${entry.name}'
+                            : 'Ask ${entry.name} to be friends',
+                        excludeSemantics: true,
+                        child: OutlinedButton(
+                          onPressed: busy ? null : () => onAsk(entry),
+                          child: Text(isFilipino ? 'Hilingin' : 'Ask'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// A friend-requests inbox icon with an unread-count badge.
 class FriendRequestsBadgeButton extends StatelessWidget {
   final int count;
@@ -300,15 +461,23 @@ class FriendRequestsBadgeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final name = _t(context).frRequests;
+    // The badge's number used to *replace* the button's name for a screen
+    // reader, which announced a bare "1".
     return Padding(
       padding: const EdgeInsets.only(right: 4),
-      child: IconButton(
-        tooltip: _t(context).frRequests,
-        onPressed: onTap,
-        icon: Badge(
-          isLabelVisible: count > 0,
-          label: Text(count.toString()),
-          child: const Icon(Icons.person_outline_rounded),
+      child: Semantics(
+        button: true,
+        label: count > 0 ? '$name, $count' : name,
+        excludeSemantics: true,
+        child: IconButton(
+          tooltip: name,
+          onPressed: onTap,
+          icon: Badge(
+            isLabelVisible: count > 0,
+            label: Text(count.toString()),
+            child: const Icon(Icons.person_outline_rounded),
+          ),
         ),
       ),
     );
@@ -486,11 +655,20 @@ class _BlockedPeopleSheetState extends ConsumerState<BlockedPeopleSheet> {
 /// removed or blocked — that would silently cut a learner off from their
 /// teacher — but they can still be reported, which is the one route a child
 /// has if an adult behaves badly.
+///
+/// An **educator** looking at their own learner gets a different sheet: no
+/// friend actions (they are not friends — the link is the class or home
+/// group), and no "tells a grown-up" report (they *are* the grown-up).
+/// Teachers used to be offered "Remove friend" and "Block" on their own
+/// students; both reported success and did nothing, because the roster
+/// comes from the class, not a friendship or a block list.
 class PeerActionsSheet extends ConsumerStatefulWidget {
   final UserProfile me;
   final Conversation conversation;
   final bool isFilipino;
   final VoidCallback onDone;
+  final List<Conversation> grownUps;
+  final VoidCallback? onSeeProgress;
 
   const PeerActionsSheet({
     super.key,
@@ -498,6 +676,8 @@ class PeerActionsSheet extends ConsumerStatefulWidget {
     required this.conversation,
     required this.isFilipino,
     required this.onDone,
+    this.grownUps = const [],
+    this.onSeeProgress,
   });
 
   @override
@@ -507,10 +687,10 @@ class PeerActionsSheet extends ConsumerStatefulWidget {
 class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
   bool _busy = false;
 
-  bool get _isEducatorPeer {
-    final role = widget.conversation.otherProfileRole.toLowerCase();
-    return role == 'teacher' || role == 'parent';
-  }
+  bool get _isEducatorPeer => widget.conversation.isEducatorPeer;
+
+  bool get _iAmEducator =>
+      widget.me.role == UserRole.teacher || widget.me.role == UserRole.parent;
 
   Future<bool> _confirm({
     required String title,
@@ -626,24 +806,83 @@ class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
 
     // A classroom educator is never auto-blocked — see reportUser's doc.
     final alsoBlock = !_isEducatorPeer;
-    await _run(
-      () => FriendService.instance.reportUser(
+    // Quote what *they* wrote. The thread's last message is often the
+    // reporter's own reply, which says nothing about what went wrong.
+    final quote = widget.conversation.lastInbound;
+    final recipients = SafetyReport.recipients(
+      grownUps: widget.grownUps,
+      reportedId: widget.conversation.otherProfileId,
+    );
+    final quoteText = quote == null
+        ? null
+        : MessageWording.preview(quote, isFilipino: fil);
+    await _run(() async {
+      await FriendService.instance.reportUser(
         myProfileId: widget.me.id,
         myDisplayName: widget.me.name,
         reportedProfileId: widget.conversation.otherProfileId,
         reportedDisplayName: name,
         reason: reason,
         alsoBlock: alsoBlock,
-        lastMessageContent: widget.conversation.lastMessage?.content,
-      ),
-      alsoBlock
-          ? (fil
-                ? 'Naipadala sa isang nakatatanda. Na-block na rin si $name.'
-                : 'Sent to a grown-up. $name is blocked too.')
-          : (fil
-                ? 'Naipadala sa isang nakatatanda. Titingnan nila ito.'
-                : "Sent to a grown-up. They'll look into it."),
-    );
+        lastMessageContent: quoteText,
+      );
+      if (recipients.isEmpty) return;
+      const uuid = Uuid();
+      await CloudMessageRepository.instance.sendMessages(
+        SafetyReport.messages(
+          reporterId: widget.me.id,
+          reporterName: widget.me.name,
+          recipients: recipients,
+          content: SafetyReport.content(
+            reportedName: name,
+            reason: reason,
+            quote: quoteText,
+            isFilipino: fil,
+          ),
+          newId: uuid.v4,
+        ),
+      );
+    }, _reportToast(recipients, name, alsoBlock: alsoBlock));
+  }
+
+  /// Says who the report actually reached — or, when the learner has no
+  /// teacher or parent in the app, says so instead of promising a grown-up
+  /// who does not exist.
+  String _reportToast(
+    List<Conversation> recipients,
+    String name, {
+    required bool alsoBlock,
+  }) {
+    final fil = widget.isFilipino;
+    final who = recipients.map((r) => r.otherProfileName).toList();
+    final String sent;
+    if (who.isEmpty) {
+      sent = fil
+          ? 'Naitala ang ulat. Sabihin din ito sa isang nakatatandang pinagkakatiwalaan mo.'
+          : 'Report saved. Please also tell a grown-up you trust.';
+    } else {
+      final names = who.length == 1
+          ? who.first
+          : '${who.sublist(0, who.length - 1).join(', ')} ${fil ? 'at' : 'and'} ${who.last}';
+      sent = fil ? 'Naipadala kay $names.' : 'Sent to $names.';
+    }
+    if (!alsoBlock) return sent;
+    return fil ? '$sent Na-block na rin si $name.' : '$sent $name is blocked too.';
+  }
+
+  /// Names the grown-ups a report will reach, so "tells a grown-up" is a
+  /// promise the app can keep.
+  String _reportSubtitle(bool fil) {
+    final who = SafetyReport.recipients(
+      grownUps: widget.grownUps,
+      reportedId: widget.conversation.otherProfileId,
+    ).map((g) => g.otherProfileName).toList();
+    if (who.isEmpty) {
+      return fil
+          ? 'Itatala ito. Sabihin din sa isang nakatatanda.'
+          : 'Saves a report. Tell a grown-up too.';
+    }
+    return fil ? 'Sasabihin kay ${who.join(', ')}.' : 'Tells ${who.join(', ')}.';
   }
 
   static List<String> _reportReasons(bool fil) => fil
@@ -660,11 +899,87 @@ class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
           'Something else',
         ];
 
+  /// The educator's own sheet for one of their learners.
+  Widget _buildForEducator(BuildContext context) {
+    final hc = HCColor.of(context);
+    final fil = widget.isFilipino;
+    final convo = widget.conversation;
+    final groups = convo.groups.where((g) => g.name.isNotEmpty).toList();
+    final inHomeGroup = groups.isNotEmpty && groups.every((g) => g.isHomeGroup);
+    final where = groups.isEmpty
+        ? null
+        : groups.map((g) => g.name).join(', ');
+
+    final String explain;
+    if (!convo.isConnected) {
+      explain = fil
+          ? 'Wala na siya sa iyong klase o grupo, kaya hindi na kayo makakapagpadala ng mensahe. Makikita mo pa rin ang dating usapan.'
+          : "They're no longer in your class or group, so you can't message each other. The old chat stays here to read.";
+    } else if (inHomeGroup) {
+      explain = fil
+          ? 'Kasama siya sa iyong pamilya${where == null ? '' : ' ($where)'}. Para ihinto ang mga mensahe, alisin siya sa grupo sa Manage Groups.'
+          : 'They\'re in your family group${where == null ? '' : ' ($where)'}. To stop messages, remove them from the group in Manage Groups.';
+    } else {
+      explain = fil
+          ? 'Kasama siya sa iyong klase${where == null ? '' : ' ($where)'}. Para ihinto ang mga mensahe, alisin siya sa klase sa Manage Classes.'
+          : 'They\'re in your class${where == null ? '' : ' ($where)'}. To stop messages, remove them from the class in Manage Classes.';
+    }
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: Text(
+                convo.otherProfileName,
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Text(
+                explain,
+                style: AppTypography.bodySmall.copyWith(
+                  color: hc.textSecondary,
+                ),
+              ),
+            ),
+            if (widget.onSeeProgress != null && convo.isConnected)
+              ListTile(
+                leading: Icon(
+                  Icons.insights_rounded,
+                  color: hc.graphic(AppColors.primary),
+                ),
+                title: Text(fil ? 'Tingnan ang progreso' : 'See their progress'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  widget.onSeeProgress!();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_iAmEducator) return _buildForEducator(context);
     final hc = HCColor.of(context);
     final fil = widget.isFilipino;
     final name = widget.conversation.otherProfileName;
+    final peerIsParent =
+        widget.conversation.otherProfileRole.toLowerCase() == 'parent';
+    // Removing and blocking only mean something for a friendship. A thread
+    // that is only history (they unfriended or blocked you) can still be
+    // reported, and blocked so they stay gone.
+    final isFriend = !_isEducatorPeer && widget.conversation.isConnected;
 
     return SafeArea(
       child: Padding(
@@ -686,21 +1001,26 @@ class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                 child: Text(
-                  fil
-                      ? 'Kasama mo siya sa klase, kaya hindi siya pwedeng alisin. Pwede mo pa rin siyang i-report.'
-                      : "They're in your class, so they can't be removed. You can still report them.",
+                  peerIsParent
+                      ? (fil
+                            ? 'Kasama mo siya sa iyong pamilya, kaya hindi siya pwedeng alisin. Pwede mo pa rin siyang i-report.'
+                            : "They're in your family group, so they can't be removed. You can still report them.")
+                      : (fil
+                            ? 'Kasama mo siya sa klase, kaya hindi siya pwedeng alisin. Pwede mo pa rin siyang i-report.'
+                            : "They're in your class, so they can't be removed. You can still report them."),
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),
                 ),
               ),
-            if (!_isEducatorPeer) ...[
+            if (isFriend)
               ListTile(
                 enabled: !_busy,
                 leading: const Icon(Icons.person_remove_alt_1_rounded),
                 title: Text(fil ? 'Alisin sa kaibigan' : 'Remove friend'),
                 onTap: _remove,
               ),
+            if (!_isEducatorPeer)
               ListTile(
                 enabled: !_busy,
                 leading: Icon(
@@ -718,15 +1038,12 @@ class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
                 ),
                 onTap: _block,
               ),
-            ],
             ListTile(
               enabled: !_busy,
               leading: Icon(Icons.flag_rounded, color: HCColor.of(context).graphic(AppColors.error)),
               title: Text(fil ? 'I-report' : 'Report'),
               subtitle: Text(
-                fil
-                    ? 'Sasabihin sa isang nakatatanda.'
-                    : 'Tells a grown-up about this.',
+                _reportSubtitle(fil),
                 style: AppTypography.bodySmall.copyWith(
                   color: hc.textSecondary,
                 ),
@@ -747,12 +1064,12 @@ class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
 
 /// Bottom sheet listing incoming friend requests with accept / reject actions.
 class FriendRequestsSheet extends ConsumerStatefulWidget {
-  final String myProfileId;
+  final UserProfile me;
   final bool isFilipino;
   final List<FriendRequest> initialRequests;
   const FriendRequestsSheet({
     super.key,
-    required this.myProfileId,
+    required this.me,
     required this.isFilipino,
     required this.initialRequests,
   });
@@ -771,7 +1088,7 @@ class _FriendRequestsSheetState extends ConsumerState<FriendRequestsSheet> {
     super.initState();
     _requests = widget.initialRequests;
     _sub = FriendService.instance
-        .watchIncomingRequests(widget.myProfileId)
+        .watchIncomingRequests(widget.me.id)
         .listen((list) {
           if (!mounted) return;
           setState(() => _requests = list);
@@ -821,6 +1138,7 @@ class _FriendRequestsSheetState extends ConsumerState<FriendRequestsSheet> {
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (ctx, i) {
                     final r = _requests[i];
+                    final waiting = !r.isActionable;
                     return ListTile(
                       leading: const CircleAvatar(
                         child: Icon(Icons.person_outline_rounded),
@@ -829,14 +1147,23 @@ class _FriendRequestsSheetState extends ConsumerState<FriendRequestsSheet> {
                         r.fromDisplayName.isEmpty ? 'User' : r.fromDisplayName,
                       ),
                       subtitle: Text(
-                        widget.isFilipino
-                            ? 'Gustong maging kaibigan'
-                            : 'Wants to be friends',
+                        waiting
+                            ? (widget.isFilipino
+                                  ? 'Pumayag ka na. Hinihintay ang isang nakatatanda.'
+                                  : 'You said yes. Waiting for a grown-up.')
+                            : (widget.isFilipino
+                                  ? 'Gustong maging kaibigan'
+                                  : 'Wants to be friends'),
                         style: AppTypography.bodySmall.copyWith(
                           color: hc.textSecondary,
                         ),
                       ),
-                      trailing: Row(
+                      trailing: waiting
+                          ? Icon(
+                              Icons.hourglass_top_rounded,
+                              color: hc.textSecondary,
+                            )
+                          : Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
@@ -856,11 +1183,219 @@ class _FriendRequestsSheetState extends ConsumerState<FriendRequestsSheet> {
                               color: Colors.green,
                             ),
                             onPressed: () async {
-                              await FriendService.instance.acceptRequest(
-                                myProfileId: widget.myProfileId,
-                                requestId: r.id,
-                              );
+                              final outcome = await FriendService.instance
+                                  .acceptRequest(me: widget.me, requestId: r.id);
+                              if (!context.mounted) return;
+                              if (outcome == AcceptOutcome.awaitingParent) {
+                                ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      widget.isFilipino
+                                          ? 'Halos magkaibigan na! Kailangan munang pumayag ng isang nakatatanda.'
+                                          : "Almost friends! A grown-up needs to say yes first.",
+                                    ),
+                                  ),
+                                );
+                              }
                             },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Show the "say yes to your child's new friend" sheet for a parent.
+Future<void> showParentApprovalsSheet(
+  BuildContext context, {
+  required List<FriendRequest> requests,
+  required Set<String> myGroupIds,
+  required bool isFilipino,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => ParentApprovalsSheet(
+      initialRequests: requests,
+      myGroupIds: myGroupIds,
+      isFilipino: isFilipino,
+    ),
+  );
+}
+
+/// A parent's list of their children's friend requests to approve.
+///
+/// A Child could previously befriend anyone who knew their username, with
+/// no grown-up in the loop. Now a Child's new friendship waits here: the
+/// parent sees who their child wants to be friends with and says yes or
+/// no. The rules check the parent really owns the child's home group, so
+/// nobody else can say yes for them.
+class ParentApprovalsSheet extends ConsumerStatefulWidget {
+  final List<FriendRequest> initialRequests;
+  final Set<String> myGroupIds;
+  final bool isFilipino;
+
+  /// Resolves profile ids to names. Injectable for tests.
+  final Future<Map<String, DirectoryEntry>> Function(Set<String>)? lookup;
+
+  const ParentApprovalsSheet({
+    super.key,
+    required this.initialRequests,
+    required this.myGroupIds,
+    required this.isFilipino,
+    this.lookup,
+  });
+
+  @override
+  ConsumerState<ParentApprovalsSheet> createState() =>
+      _ParentApprovalsSheetState();
+}
+
+class _ParentApprovalsSheetState extends ConsumerState<ParentApprovalsSheet> {
+  Map<String, String> _names = const {};
+  final Set<String> _answered = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveNames(widget.initialRequests);
+  }
+
+  Future<void> _resolveNames(List<FriendRequest> requests) async {
+    final ids = {
+      for (final r in requests) ...[r.fromProfileId, r.toProfileId],
+    };
+    Map<String, DirectoryEntry> found;
+    try {
+      found = await (widget.lookup ??
+          ProfileDirectoryService.instance.lookupMany)(ids);
+    } catch (_) {
+      found = const {};
+    }
+    if (!mounted) return;
+    setState(() {
+      _names = {
+        for (final r in requests) r.fromProfileId: r.fromDisplayName,
+        for (final e in found.entries)
+          if (e.value.name.isNotEmpty) e.key: e.value.name,
+      };
+    });
+  }
+
+  String _name(String id) {
+    final n = _names[id];
+    if (n != null && n.isNotEmpty) return n;
+    return widget.isFilipino ? 'Isang mag-aaral' : 'A learner';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final fil = widget.isFilipino;
+    final live = ref.watch(parentApprovalsProvider).valueOrNull;
+    final requests = (live ?? widget.initialRequests)
+        .where((r) => !_answered.contains(r.id))
+        .toList();
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              fil ? 'Mga bagong kaibigan ng anak mo' : "Your child's new friends",
+              style: AppTypography.titleMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                color: hc.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              fil
+                  ? 'Magiging magkaibigan lang sila kapag pumayag ka.'
+                  : 'They only become friends once you say yes.',
+              style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            if (requests.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  fil ? 'Wala nang naghihintay.' : 'Nothing waiting.',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: hc.textSecondary,
+                  ),
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: requests.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, i) {
+                    final r = requests[i];
+                    final mineIsSender = r.fromHomeGroupId != null &&
+                        widget.myGroupIds.contains(r.fromHomeGroupId);
+                    final child = mineIsSender ? r.fromProfileId : r.toProfileId;
+                    final other = mineIsSender ? r.toProfileId : r.fromProfileId;
+                    final line = mineIsSender
+                        ? (fil
+                              ? 'Gustong makipagkaibigan ni ${_name(child)} kay ${_name(other)}.'
+                              : '${_name(child)} wants to be friends with ${_name(other)}.')
+                        : (fil
+                              ? 'Pumayag si ${_name(child)} na maging kaibigan si ${_name(other)}.'
+                              : '${_name(child)} said yes to being friends with ${_name(other)}.');
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            line,
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: hc.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            alignment: WrapAlignment.end,
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              OutlinedButton(
+                                onPressed: () {
+                                  setState(() => _answered.add(r.id));
+                                  FriendService.instance.declineAsParent(r);
+                                },
+                                child: Text(fil ? 'Huwag' : 'Not now'),
+                              ),
+                              FilledButton(
+                                onPressed: () {
+                                  setState(() => _answered.add(r.id));
+                                  FriendService.instance.approveAsParent(
+                                    r,
+                                    widget.myGroupIds,
+                                  );
+                                },
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: hc.fillFor(AppColors.success),
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: Text(fil ? 'Pumayag' : 'Say yes'),
+                              ),
+                            ],
                           ),
                         ],
                       ),

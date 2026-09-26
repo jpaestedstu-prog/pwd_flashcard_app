@@ -31,10 +31,9 @@ class SharedMediaSweep {
   /// comfortably longer than anyone keeps an editor open.
   static const Duration grace = Duration(hours: 24);
 
-  /// Test seam: the files [ownerProfileId] shared, with when.
-  static Future<List<({String id, DateTime? createdAt})>> Function(
-    String ownerProfileId,
-  )?
+  /// Test seam: the files [ownerProfileId] shared, with when and what for.
+  static Future<List<({String id, DateTime? createdAt, String? purpose})>>
+  Function(String ownerProfileId)?
   debugOwned;
 
   /// Returns how many files it deleted. Never throws.
@@ -52,7 +51,13 @@ class SharedMediaSweep {
       final cutoff = (now ?? DateTime.now()).subtract(grace);
       final candidates = [
         for (final o in owned)
-          if (o.createdAt != null && o.createdAt!.isBefore(cutoff))
+          // A photo or sign video sent in Messages is referred to by a
+          // message, not by anything this sweep can see — it would look
+          // abandoned a day after it was sent. Those expire on their own
+          // schedule (MessageMediaRetention).
+          if (o.purpose != SharedMediaMeta.purposeMessage &&
+              o.createdAt != null &&
+              o.createdAt!.isBefore(cutoff))
             '${SharedMediaService.prefix}${o.id}',
       ];
       if (candidates.isEmpty) return 0;
@@ -76,9 +81,8 @@ class SharedMediaSweep {
     }
   }
 
-  static Future<List<({String id, DateTime? createdAt})>> _owned(
-    String ownerProfileId,
-  ) async {
+  static Future<List<({String id, DateTime? createdAt, String? purpose})>>
+  _owned(String ownerProfileId) async {
     final snap = await FirebaseService.db
         .collection(SharedMediaService.collection)
         .where('owner_profile_id', isEqualTo: ownerProfileId)
@@ -88,6 +92,7 @@ class SharedMediaSweep {
         (
           id: d.id,
           createdAt: (d.data()['created_at'] as Timestamp?)?.toDate(),
+          purpose: d.data()['purpose'] as String?,
         ),
     ];
   }

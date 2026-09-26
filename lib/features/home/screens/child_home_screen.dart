@@ -90,7 +90,7 @@ class ChildHomeScreen extends ConsumerWidget {
 
     // Unread messages, so a child sees that their parent or teacher wrote to
     // them without having to open Messages and check.
-    final unreadMessages = ref.watch(unreadMessageCountProvider);
+    final unreadMessages = ref.watch(messagesTileBadgeProvider);
 
     // Stickers earned but never shown. A Child profile never passes through
     // the Student home, so without the [StickerSweep] mounted below their

@@ -82,6 +82,24 @@ Future<String?> showMessageStickerPicker(
   );
 }
 
+/// The words a sign message can carry, A to Z: only words that actually have
+/// a clip. 34 of the 177 seed cards have no sign recorded yet, and letting a
+/// Deaf learner pick one only to be told "no video available" turns their own
+/// language into a dead end. Shared by the sheet and the gaze panel.
+Future<List<Flashcard>> loadSignableCards() async {
+  await FslAssetsService.load();
+  final signable = <Flashcard>[];
+  final seen = <String>{};
+  for (final card in SeedData.allFlashcards) {
+    if (card.wordEnglish.isEmpty) continue;
+    if (!FslAssetsService.hasAnyVideoSource(card)) continue;
+    if (!seen.add(card.wordEnglish.toLowerCase())) continue;
+    signable.add(card);
+  }
+  signable.sort((a, b) => a.wordEnglish.compareTo(b.wordEnglish));
+  return signable;
+}
+
 /// Lets the learner pick a word to send as a Filipino Sign Language message.
 ///
 /// The list is the vocabulary the app already teaches, so a sign message is
@@ -92,22 +110,7 @@ Future<String?> showMessageSignPicker(
   BuildContext context, {
   required bool isFilipino,
 }) async {
-  // Only words that actually have a clip are offered. 34 of the 177 seed cards
-  // have no sign recorded yet, and letting a Deaf learner pick one only to be
-  // told "no video available" turns their own language into a dead end.
-  await FslAssetsService.load();
-  if (!context.mounted) return null;
-
-  final signable = <Flashcard>[];
-  final seen = <String>{};
-  for (final card in SeedData.allFlashcards) {
-    if (card.wordEnglish.isEmpty) continue;
-    if (!FslAssetsService.hasAnyVideoSource(card)) continue;
-    if (!seen.add(card.wordEnglish.toLowerCase())) continue;
-    signable.add(card);
-  }
-  signable.sort((a, b) => a.wordEnglish.compareTo(b.wordEnglish));
-
+  final signable = await loadSignableCards();
   if (!context.mounted) return null;
   return showModalBottomSheet<String>(
     context: context,
@@ -117,62 +120,129 @@ Future<String?> showMessageSignPicker(
         MaterialLocalizations.of(context).modalBarrierDismissLabel,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (context) {
-      final hc = HCColor.of(context);
+    builder: (context) => _SignPickerSheet(
+      signable: signable,
+      isFilipino: isFilipino,
+    ),
+  );
+}
 
-      return SafeArea(
-        child: FractionallySizedBox(
-          heightFactor: 0.7,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isFilipino ? 'Magpadala ng senyas' : 'Send a sign',
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: hc.textPrimary,
+/// The sign picker's body: a search box over the signable words.
+///
+/// 140-odd words in one alphabetical list meant a long scroll to reach
+/// "Water"; typing two letters now gets there. Matches either language, since
+/// a teacher may think of the English word and a learner of the Filipino one.
+class _SignPickerSheet extends StatefulWidget {
+  final List<Flashcard> signable;
+  final bool isFilipino;
+
+  const _SignPickerSheet({required this.signable, required this.isFilipino});
+
+  @override
+  State<_SignPickerSheet> createState() => _SignPickerSheetState();
+}
+
+class _SignPickerSheetState extends State<_SignPickerSheet> {
+  String _query = '';
+
+  List<Flashcard> get _matches {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return widget.signable;
+    return [
+      for (final card in widget.signable)
+        if (card.wordEnglish.toLowerCase().contains(q) ||
+            card.wordFilipino.toLowerCase().contains(q))
+          card,
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final isFilipino = widget.isFilipino;
+    final matches = _matches;
+
+    return SafeArea(
+      child: FractionallySizedBox(
+        heightFactor: 0.7,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            0,
+            16,
+            16 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isFilipino ? 'Magpadala ng senyas' : 'Send a sign',
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: hc.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                isFilipino
+                    ? 'Pumili ng salita — makikita nila ang senyas nito.'
+                    : 'Pick a word — they will see the sign for it.',
+                style: AppTypography.bodySmall.copyWith(
+                  color: hc.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                onChanged: (v) => setState(() => _query = v),
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  hintText: isFilipino ? 'Hanapin ang salita' : 'Find a word',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  isFilipino
-                      ? 'Pipiliin ang salita, at makikita ng kaibigan mo ang senyas.'
-                      : 'Pick a word — your friend sees the sign for it.',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: hc.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: signable.length,
-                    itemBuilder: (context, index) {
-                      final card = signable[index];
-                      return ListTile(
-                        leading: const Icon(Icons.sign_language_rounded),
-                        title: Text(
-                          card.wordEnglish,
-                          style: AppTypography.bodyMedium,
-                        ),
-                        subtitle: Text(
-                          card.wordFilipino,
-                          style: AppTypography.labelSmall.copyWith(
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: matches.isEmpty
+                    ? Center(
+                        child: Text(
+                          isFilipino
+                              ? 'Walang senyas para diyan pa.'
+                              : 'No sign for that word yet.',
+                          style: AppTypography.bodyMedium.copyWith(
                             color: hc.textSecondary,
                           ),
                         ),
-                        onTap: () =>
-                            Navigator.of(context).pop(card.wordEnglish),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+                      )
+                    : ListView.builder(
+                        itemCount: matches.length,
+                        itemBuilder: (context, index) {
+                          final card = matches[index];
+                          return ListTile(
+                            leading: const Icon(Icons.sign_language_rounded),
+                            title: Text(
+                              card.wordEnglish,
+                              style: AppTypography.bodyMedium,
+                            ),
+                            subtitle: Text(
+                              card.wordFilipino,
+                              style: AppTypography.labelSmall.copyWith(
+                                color: hc.textSecondary,
+                              ),
+                            ),
+                            onTap: () =>
+                                Navigator.of(context).pop(card.wordEnglish),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
         ),
-      );
-    },
-  );
+      ),
+    );
+  }
 }

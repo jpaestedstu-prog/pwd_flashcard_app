@@ -769,7 +769,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // Unread messages, so a learner sees that someone wrote to them without
     // having to open Messages and check.
-    final unreadMessages = ref.watch(unreadMessageCountProvider);
+    final unreadMessages = ref.watch(messagesTileBadgeProvider);
 
     // Stickers earned but not yet seen, for the same reason.
     final unseenStickers = ref.watch(unseenStickerCountProvider);

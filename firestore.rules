@@ -60,6 +60,24 @@ service cloud.firestore {
         );
     }
 
+    // [blocker] has blocked [blocked] — the directional `blocks` doc the
+    // learner's Block button writes. Used to refuse messages and friend
+    // requests from someone the recipient has blocked: a block used to be a
+    // client-side filter only, so an older build (or a crafted write) could
+    // still deliver to the child who had blocked them.
+    function hasBlocked(blocker, blocked) {
+      return exists(/databases/$(database)/documents/blocks/$(blocker + '_' + blocked));
+    }
+
+    // A teacher (1) or parent (2) profile. Learners cannot block educators
+    // (the app never offers it — it would cut a child off from their own
+    // class), so an educator's messages skip the block lookup. That also
+    // keeps a class broadcast — one batch of many messages — inside the
+    // per-request limit on document lookups.
+    function isEducatorProfile(profileId) {
+      return get(/databases/$(database)/documents/profiles/$(profileId)).data.role in [1, 2];
+    }
+
     function ownsHomeGroupOwner(groupId) {
       return signedIn()
         && exists(/databases/$(database)/documents/home_groups/$(groupId))
@@ -600,11 +618,15 @@ service cloud.firestore {
     //   • Update: ONLY the message recipient may patch `is_read`, and
     //     ONLY `is_read` may change.
     //   • Delete: the sender (owner of `sender_profile_id`) may delete.
+    //   • Create is refused when the recipient has blocked the sender.
     match /messages/{messageId} {
       allow read: if signedIn();
       allow create: if signedIn()
         && request.resource.data.sender_uid == request.auth.uid
-        && ownsProfile(request.resource.data.sender_profile_id);
+        && ownsProfile(request.resource.data.sender_profile_id)
+        && (isEducatorProfile(request.resource.data.sender_profile_id)
+            || !hasBlocked(request.resource.data.recipient_profile_id,
+                           request.resource.data.sender_profile_id));
       allow update: if signedIn()
         && ownsProfile(resource.data.recipient_profile_id)
         && request.resource.data.diff(resource.data).affectedKeys()
@@ -640,20 +662,56 @@ service cloud.firestore {
     // stamp from_owner_uid); the recipient or the sender may patch
     // `status` (recipient accepts/rejects; sender cancels) — and ONLY
     // `status` and `updated_at` may change. Sender may delete.
+    //
+    // Parent approval (Children in a home group): a child's side of a
+    // request carries `from_home_group_id` / `to_home_group_id`, and the
+    // friendship waits in `awaiting_parent` until that group's owner sets
+    // `from_approved` / `to_approved`. The rules check the approver really is
+    // the owner of the child's actual home group — through the membership
+    // doc `home_group_members/{group}_{child}` — so naming some other group
+    // gets nobody's approval. A parent may also decline (`parent_declined`).
+    // The recipient may stamp `to_home_group_id` when accepting.
     match /friend_requests/{requestId} {
       allow read: if signedIn();
       allow create: if signedIn()
         && request.resource.data.from_owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.from_profile_id)
-        && request.resource.data.status == 'pending';
+        && request.resource.data.status == 'pending'
+        && !hasBlocked(request.resource.data.to_profile_id,
+                       request.resource.data.from_profile_id);
       allow update: if signedIn() && (
-          ownsProfile(resource.data.to_profile_id)
-          || ownsProfile(resource.data.from_profile_id)
-        )
-        && request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['status', 'updated_at']);
+          (
+            (ownsProfile(resource.data.to_profile_id)
+              || ownsProfile(resource.data.from_profile_id))
+            && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'updated_at', 'to_home_group_id'])
+          )
+          || parentApproval()
+        );
       allow delete: if signedIn()
         && ownsProfile(resource.data.from_profile_id);
+
+      function parentOf(groupField, profileField) {
+        return resource.data.get(groupField, '') is string
+          && resource.data.get(groupField, '') != ''
+          && exists(/databases/$(database)/documents/home_group_members/$(resource.data.get(groupField, '') + '_' + resource.data.get(profileField, '')))
+          && ownsHomeGroupOwner(resource.data.get(groupField, ''));
+      }
+
+      function changes(field) {
+        return request.resource.data.get(field, false) != resource.data.get(field, false);
+      }
+
+      function parentApproval() {
+        return request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['from_approved', 'to_approved', 'status', 'updated_at'])
+          && (request.resource.data.status == resource.data.status
+              || request.resource.data.status == 'parent_declined')
+          && (!changes('from_approved') || parentOf('from_home_group_id', 'from_profile_id'))
+          && (!changes('to_approved') || parentOf('to_home_group_id', 'to_profile_id'))
+          && (parentOf('from_home_group_id', 'from_profile_id')
+              || parentOf('to_home_group_id', 'to_profile_id'));
+      }
     }
 
     // ─── Friendships (accepted, sorted-pair doc id) ───────

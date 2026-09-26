@@ -25,9 +25,15 @@ String roleSlugFromIndex(int idx) {
   }
 }
 
-/// Assembles a learner's inbox peer list from three independent sources:
+/// Assembles a learner's inbox peer list from four independent sources:
 /// their accepted friendships, the teacher of any classroom they've joined,
-/// and the set of profiles they've blocked.
+/// the parent who owns any home group they've joined, and the set of
+/// profiles they've blocked.
+///
+/// The home-group leg was missing entirely: a Child's inbox never listed the
+/// parent who enrolled them, and (in [EducatorInboxAssembler]) the parent's
+/// inbox never listed the child, so the one family pairing the app is built
+/// around could not message at all.
 ///
 /// Extracted from `ConversationDirectoryService` so the merge — and in
 /// particular its **stale-result guard** — can be driven directly in tests
@@ -53,6 +59,7 @@ class LearnerInboxAssembler {
 
   List<String> _friendIds = const [];
   List<String> _teacherIds = const [];
+  List<String> _groupOwnerIds = const [];
   Set<String> _blockedIds = const {};
 
   /// Monotonic run counter. A rebuild whose number is no longer the newest
@@ -74,6 +81,12 @@ class LearnerInboxAssembler {
     return _rebuild();
   }
 
+  /// The owners (parents) of the home groups this learner has joined.
+  Future<void> setGroupOwners(List<String> ids) {
+    _groupOwnerIds = ids;
+    return _rebuild();
+  }
+
   Future<void> setBlocked(Set<String> ids) {
     _blockedIds = ids;
     return _rebuild();
@@ -85,13 +98,14 @@ class LearnerInboxAssembler {
     // Blocked peers drop out of the inbox even if the friendship delete hasn't
     // propagated yet — the block is the learner's safeguarding switch, so it
     // must take effect on this device immediately.
-    final allIds = <String>{..._friendIds, ..._teacherIds}
+    final allIds = <String>{..._friendIds, ..._teacherIds, ..._groupOwnerIds}
       ..removeWhere(_blockedIds.contains);
 
     final resolved = await lookup(allIds);
     if (mine != _generation) return;
 
     final teacherIds = _teacherIds;
+    final ownerIds = _groupOwnerIds;
     final convos = <Conversation>[];
     for (final id in allIds) {
       final entry = resolved[id];
@@ -102,7 +116,11 @@ class LearnerInboxAssembler {
           Conversation(
             otherProfileId: id,
             otherProfileName: 'User',
-            otherProfileRole: teacherIds.contains(id) ? 'teacher' : 'student',
+            otherProfileRole: teacherIds.contains(id)
+                ? 'teacher'
+                : ownerIds.contains(id)
+                ? 'parent'
+                : 'student',
           ),
         );
       } else {
@@ -111,6 +129,7 @@ class LearnerInboxAssembler {
             otherProfileId: entry.profileId,
             otherProfileName: entry.name,
             otherProfileRole: roleSlugFromIndex(entry.roleIndex),
+            otherDisabilityIndex: entry.disabilityIndex,
           ),
         );
       }

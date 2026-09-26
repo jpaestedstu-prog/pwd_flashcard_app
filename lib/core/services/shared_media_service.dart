@@ -105,6 +105,7 @@ class SharedMediaService {
     required String ownerProfileId,
     required String ext,
     void Function(double progress)? onProgress,
+    String? purpose,
   }) async {
     final backend = _backend;
     if (backend == null) return const SharedUploadResult.unavailable();
@@ -129,6 +130,7 @@ class SharedMediaService {
       chunkCount: count,
       sha256: sha256.convert(bytes).toString(),
       ready: false,
+      purpose: purpose,
     );
     var written = 0;
     try {
@@ -332,6 +334,14 @@ class SharedMediaMeta {
   final String sha256;
   final bool ready;
 
+  /// What the file is for, when that decides its lifetime. `message` files
+  /// (a photo or sign video sent in Messages) expire on their own schedule
+  /// ([purposeMessage]); files with no purpose live as long as something in
+  /// an assessment or routine points at them.
+  final String? purpose;
+
+  static const String purposeMessage = 'message';
+
   const SharedMediaMeta({
     required this.id,
     required this.ownerProfileId,
@@ -340,6 +350,7 @@ class SharedMediaMeta {
     required this.chunkCount,
     required this.sha256,
     required this.ready,
+    this.purpose,
   });
 
   SharedMediaMeta asReady() => SharedMediaMeta(
@@ -350,6 +361,7 @@ class SharedMediaMeta {
     chunkCount: chunkCount,
     sha256: sha256,
     ready: true,
+    purpose: purpose,
   );
 
   Map<String, dynamic> toJson() => {
@@ -359,6 +371,7 @@ class SharedMediaMeta {
     'chunk_count': chunkCount,
     'sha256': sha256,
     'status': ready ? 'ready' : 'uploading',
+    'purpose': ?purpose,
   };
 
   static SharedMediaMeta? tryFromJson(String id, Map<String, dynamic>? json) {
@@ -374,6 +387,7 @@ class SharedMediaMeta {
       chunkCount: count,
       sha256: json['sha256']?.toString() ?? '',
       ready: json['status'] == 'ready',
+      purpose: json['purpose']?.toString(),
     );
   }
 }

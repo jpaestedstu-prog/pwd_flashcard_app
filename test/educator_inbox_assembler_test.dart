@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/data/models/classroom_member.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
+import 'package:pwdpwdpwd/data/models/home_group_member.dart';
 import 'package:pwdpwdpwd/features/messaging/models/friend_models.dart';
 import 'package:pwdpwdpwd/features/messaging/models/messaging_models.dart';
 import 'package:pwdpwdpwd/features/messaging/services/educator_inbox_assembler.dart';
@@ -347,6 +348,105 @@ void main() {
       await pumpEventQueue();
 
       expect(emissions.last, isEmpty);
+    });
+  });
+
+  group('home groups (the parent side)', () {
+    // A parent owns home groups, not classrooms, and the inbox used to read
+    // only `classroom_members` — so Mommy's Messages said "No students in
+    // your classes yet" with six children enrolled.
+    HomeGroupMember child(String groupId, String profileId) => HomeGroupMember(
+          homeGroupId: groupId,
+          profileId: profileId,
+          displayName: profileId,
+          joinedAt: DateTime(2026, 9, 2),
+        );
+
+    test('home-group members appear in the inbox', () async {
+      final assembler = _assembler();
+      addTearDown(assembler.dispose);
+      final emissions = <List<Conversation>>[];
+      assembler.stream.listen(emissions.add);
+
+      await assembler.setHomeGroupMembers('family', [child('family', 'anak')]);
+      await pumpEventQueue();
+
+      expect(emissions.last.single.otherProfileId, 'anak');
+      expect(emissions.last.single.otherProfileRole, 'child');
+      expect(assembler.homeGroupIds, {'family'});
+    });
+
+    test('an unresolved home-group member reads as a child', () async {
+      final assembler = EducatorInboxAssembler(
+        myProfileId: _me,
+        lookup: (_) async => const <String, DirectoryEntry>{},
+      );
+      addTearDown(assembler.dispose);
+      final emissions = <List<Conversation>>[];
+      assembler.stream.listen(emissions.add);
+
+      await assembler.setHomeGroupMembers('family', [child('family', 'x')]);
+      await pumpEventQueue();
+
+      expect(emissions.last.single.otherProfileRole, 'child');
+    });
+
+    test('classes and home groups merge, tagged with every group', () async {
+      final assembler = _assembler();
+      addTearDown(assembler.dispose);
+      final emissions = <List<Conversation>>[];
+      assembler.stream.listen(emissions.add);
+
+      await assembler.setGroupNames({
+        'class-a': 'Hearing Class',
+        'family': 'Our Family',
+      });
+      await assembler.setMembers('class-a', [
+        _member('class-a', 'deaf'),
+        _member('class-a', 'anak'),
+      ]);
+      await assembler.setHomeGroupMembers('family', [child('family', 'anak')]);
+      await pumpEventQueue();
+
+      final latest = emissions.last;
+      expect(latest, hasLength(2));
+      final anak = latest.firstWhere((c) => c.otherProfileId == 'anak');
+      expect(anak.groups.map((g) => g.name), ['Hearing Class', 'Our Family']);
+      expect(anak.groups.last.isHomeGroup, isTrue);
+      final deaf = latest.firstWhere((c) => c.otherProfileId == 'deaf');
+      expect(deaf.groups.single.isHomeGroup, isFalse);
+    });
+
+    test('removing a home group drops only its members', () async {
+      final assembler = _assembler();
+      addTearDown(assembler.dispose);
+      final emissions = <List<Conversation>>[];
+      assembler.stream.listen(emissions.add);
+
+      await assembler.setMembers('class-a', [_member('class-a', 'deaf')]);
+      await assembler.setHomeGroupMembers('family', [child('family', 'anak')]);
+      await assembler.removeHomeGroup('family');
+      await pumpEventQueue();
+
+      expect(emissions.last.map((c) => c.otherProfileId), ['deaf']);
+      expect(assembler.homeGroupIds, isEmpty);
+      expect(assembler.classroomIds, {'class-a'});
+    });
+
+    test('renaming a group only rebuilds when the name changed', () async {
+      final assembler = _assembler();
+      addTearDown(assembler.dispose);
+      final emissions = <List<Conversation>>[];
+      assembler.stream.listen(emissions.add);
+
+      await assembler.setMembers('class-a', [_member('class-a', 'deaf')]);
+      await assembler.setGroupNames({'class-a': 'A'});
+      await pumpEventQueue();
+      final before = emissions.length;
+      await assembler.setGroupNames({'class-a': 'A'});
+      await pumpEventQueue();
+      expect(emissions.length, before);
+      expect(emissions.last.single.groups.single.name, 'A');
     });
   });
 }

@@ -3,7 +3,17 @@
 // the JSON keys mirror the Firestore document shape exactly.
 
 /// Status of a friend request between two profiles.
-enum FriendRequestStatus { pending, accepted, rejected, cancelled }
+///
+/// [awaitingParent]: both learners said yes, and a Child's parent still has
+/// to. [parentDeclined]: that parent said no.
+enum FriendRequestStatus {
+  pending,
+  accepted,
+  rejected,
+  cancelled,
+  awaitingParent,
+  parentDeclined,
+}
 
 extension FriendRequestStatusExt on FriendRequestStatus {
   String get wire {
@@ -16,6 +26,10 @@ extension FriendRequestStatusExt on FriendRequestStatus {
         return 'rejected';
       case FriendRequestStatus.cancelled:
         return 'cancelled';
+      case FriendRequestStatus.awaitingParent:
+        return 'awaiting_parent';
+      case FriendRequestStatus.parentDeclined:
+        return 'parent_declined';
     }
   }
 
@@ -27,6 +41,10 @@ extension FriendRequestStatusExt on FriendRequestStatus {
         return FriendRequestStatus.rejected;
       case 'cancelled':
         return FriendRequestStatus.cancelled;
+      case 'awaiting_parent':
+        return FriendRequestStatus.awaitingParent;
+      case 'parent_declined':
+        return FriendRequestStatus.parentDeclined;
       case 'pending':
       default:
         return FriendRequestStatus.pending;
@@ -47,6 +65,20 @@ class FriendRequest {
   final DateTime createdAt;
   final DateTime? updatedAt;
 
+  /// The home group of a Child on the sending side, whose parent must say
+  /// yes. Null when the sender needs no approval.
+  final String? fromHomeGroupId;
+
+  /// The home group of a Child on the receiving side, stamped when they
+  /// accept. Null when the recipient needs no approval.
+  final String? toHomeGroupId;
+
+  /// The sending child's parent said yes.
+  final bool fromApproved;
+
+  /// The receiving child's parent said yes.
+  final bool toApproved;
+
   const FriendRequest({
     required this.id,
     required this.fromProfileId,
@@ -56,10 +88,48 @@ class FriendRequest {
     required this.status,
     required this.createdAt,
     this.updatedAt,
+    this.fromHomeGroupId,
+    this.toHomeGroupId,
+    this.fromApproved = false,
+    this.toApproved = false,
   });
 
   static String makeId(String fromProfileId, String toProfileId) =>
       '${fromProfileId}_$toProfileId';
+
+  /// Still open — shown in the learners' request lists.
+  bool get isOpen =>
+      status == FriendRequestStatus.pending ||
+      status == FriendRequestStatus.awaitingParent;
+
+  /// Something the recipient can still answer.
+  bool get isActionable => status == FriendRequestStatus.pending;
+
+  /// The sending child's parent has not said yes yet.
+  bool get fromNeedsParent =>
+      (fromHomeGroupId?.isNotEmpty ?? false) && !fromApproved;
+
+  /// The receiving child's parent has not said yes yet.
+  bool get toNeedsParent =>
+      (toHomeGroupId?.isNotEmpty ?? false) && !toApproved;
+
+  /// Both learners agreed and every parent involved has said yes — the
+  /// friendship can be made.
+  bool get readyToFinish =>
+      status == FriendRequestStatus.awaitingParent &&
+      !fromNeedsParent &&
+      !toNeedsParent;
+
+  /// Whether a parent who owns [groupIds] still has to answer this request.
+  /// The sending child's parent may answer as soon as it is sent; the
+  /// receiving child's parent once that child has accepted.
+  bool awaitsParentIn(Set<String> groupIds) {
+    if (!isOpen) return false;
+    final from = fromHomeGroupId;
+    final to = toHomeGroupId;
+    return (from != null && groupIds.contains(from) && !fromApproved) ||
+        (to != null && groupIds.contains(to) && !toApproved);
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -70,6 +140,10 @@ class FriendRequest {
         'status': status.wire,
         'created_at': createdAt.toIso8601String(),
         if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+        'from_home_group_id': ?fromHomeGroupId,
+        'to_home_group_id': ?toHomeGroupId,
+        if (fromApproved) 'from_approved': true,
+        if (toApproved) 'to_approved': true,
       };
 
   factory FriendRequest.fromJson(Map<String, dynamic> j) => FriendRequest(
@@ -84,6 +158,10 @@ class FriendRequest {
         updatedAt: j['updated_at'] != null
             ? DateTime.tryParse(j['updated_at'] as String)
             : null,
+        fromHomeGroupId: j['from_home_group_id'] as String?,
+        toHomeGroupId: j['to_home_group_id'] as String?,
+        fromApproved: j['from_approved'] as bool? ?? false,
+        toApproved: j['to_approved'] as bool? ?? false,
       );
 }
 
