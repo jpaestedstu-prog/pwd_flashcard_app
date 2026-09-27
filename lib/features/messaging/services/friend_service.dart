@@ -66,6 +66,15 @@ class FriendService {
       );
     }
 
+    // A Child's friendships need their parent's yes, and the rules refuse
+    // one without it — so a Child who is in no family group (and so has no
+    // parent in the app to ask) is told that, rather than hitting an error.
+    if (isChildWithoutGroup(me)) {
+      throw const FriendActionException(
+        'A grown-up needs to add you to their family group before you can make friends.',
+      );
+    }
+
     final raw = targetUsernameOrId.trim();
     if (raw.isEmpty) {
       throw const FriendActionException('Enter a username or profile ID.');
@@ -196,6 +205,12 @@ class FriendService {
       profile.role == UserRole.child &&
       (profile.homeGroupId?.isNotEmpty ?? false);
 
+  /// A Child in no family group: there is no parent in the app who could
+  /// approve a friendship, so the rules refuse every one.
+  static bool isChildWithoutGroup(UserProfile profile) =>
+      profile.role == UserRole.child &&
+      !(profile.homeGroupId?.isNotEmpty ?? false);
+
   /// Recipient accepts a pending request.
   ///
   /// When no parent needs asking, writes the friendships doc and marks the
@@ -208,6 +223,7 @@ class FriendService {
     required String requestId,
   }) async {
     if (!FirebaseService.isConfigured) return AcceptOutcome.failed;
+    if (isChildWithoutGroup(me)) return AcceptOutcome.needsGroup;
     try {
       final doc = await _requests.doc(requestId).get();
       if (!doc.exists) return AcceptOutcome.failed;
@@ -251,7 +267,9 @@ class FriendService {
       createdAt: DateTime.now(),
     );
     final batch = FirebaseService.db.batch();
-    batch.set(_friendships.doc(fid), friendship.toJson());
+    // `request_id` lets the rules check a Child's parent really said yes —
+    // the friendship is refused otherwise.
+    batch.set(_friendships.doc(fid), {...friendship.toJson(), 'request_id': r.id});
     batch.update(_requests.doc(r.id), {
       'status': FriendRequestStatus.accepted.wire,
       'updated_at': DateTime.now().toIso8601String(),
@@ -879,6 +897,11 @@ const _friendErrorFilipino = {
           'sabihin sa guro mo.',
   "Couldn't send the request. Try again in a moment.":
       'Hindi maipadala ang hiling. Subukan ulit mamaya.',
+  "You're almost friends — a grown-up still needs to say yes.":
+      'Halos magkaibigan na kayo — kailangan pang pumayag ng isang nakatatanda.',
+  'A grown-up needs to add you to their family group before you can make friends.':
+      'Kailangan ka munang idagdag ng isang nakatatanda sa kanilang pamilya bago '
+          'ka makipagkaibigan.',
 };
 
 /// What happened when a learner said yes to a friend request.
@@ -891,4 +914,7 @@ enum AcceptOutcome {
 
   /// Nothing changed (offline, already answered, not theirs).
   failed,
+
+  /// A Child in no family group — no parent in the app can approve.
+  needsGroup,
 }

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/multiplayer/models/multiplayer_models.dart';
+import 'package:pwdpwdpwd/features/multiplayer/services/multiplayer_service.dart';
 import 'package:pwdpwdpwd/features/multiplayer/widgets/memory_race_player.dart';
 import 'package:pwdpwdpwd/features/multiplayer/widgets/scramble_race_player.dart';
 
@@ -359,6 +360,57 @@ void main() {
       expect(
           base(mode: MpGameMode.memoryRace, layout: [card, card]).totalSteps,
           1);
+    });
+  });
+
+  group('abandoned rooms', () {
+    // A match cut short (app closed mid-game) never reaches the host's purge,
+    // so its room stayed in the cloud for good. The host's lobby now clears
+    // rooms nobody has touched for a day.
+    GameRoom room(DateTime updatedAt, GameRoomStatus status) => GameRoom(
+          id: 'r',
+          hostProfileId: 'host',
+          hostName: 'Ana',
+          hostUid: 'u',
+          hostAvatarIndex: 0,
+          invitedProfileId: 'guest',
+          mode: MpGameMode.quizRace,
+          status: status,
+          rounds: 3,
+          createdAt: updatedAt,
+          updatedAt: updatedAt,
+          ownerUid: 'u',
+        );
+    final now = DateTime(2026, 9, 27, 12);
+
+    test('a room untouched for over a day is stale, whatever its status', () {
+      for (final status in GameRoomStatus.values) {
+        expect(
+          MultiplayerService.isStale(
+            room(now.subtract(const Duration(hours: 25)), status),
+            now,
+          ),
+          isTrue,
+          reason: status.name,
+        );
+      }
+    });
+
+    test('a room in use today is left alone', () {
+      expect(
+        MultiplayerService.isStale(
+          room(now.subtract(const Duration(hours: 2)), GameRoomStatus.active),
+          now,
+        ),
+        isFalse,
+      );
+      expect(
+        MultiplayerService.isStale(
+          room(now.subtract(const Duration(minutes: 5)), GameRoomStatus.waiting),
+          now,
+        ),
+        isFalse,
+      );
     });
   });
 }

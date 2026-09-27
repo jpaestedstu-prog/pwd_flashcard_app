@@ -1186,6 +1186,18 @@ class _FriendRequestsSheetState extends ConsumerState<FriendRequestsSheet> {
                               final outcome = await FriendService.instance
                                   .acceptRequest(me: widget.me, requestId: r.id);
                               if (!context.mounted) return;
+                              if (outcome == AcceptOutcome.needsGroup) {
+                                ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      widget.isFilipino
+                                          ? 'Kailangan ka munang idagdag ng isang nakatatanda sa kanilang pamilya bago ka makipagkaibigan.'
+                                          : 'A grown-up needs to add you to their family group before you can make friends.',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
                               if (outcome == AcceptOutcome.awaitingParent) {
                                 ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                                   SnackBar(

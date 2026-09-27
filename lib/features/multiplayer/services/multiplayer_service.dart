@@ -210,8 +210,9 @@ class MultiplayerService {
   }
 
   /// Host-only cleanup: delete the player docs then the room doc so finished /
-  /// abandoned rooms don't accumulate. Best-effort.
-  Future<void> purgeRoom(String roomId) async {
+  /// abandoned rooms don't accumulate. Best-effort. [quiet] is for the
+  /// background sweep, which must never put an error in front of anyone.
+  Future<void> purgeRoom(String roomId, {bool quiet = false}) async {
     if (!isOnlineAvailable) return;
     try {
       final players = await _players(roomId).get();
@@ -220,7 +221,49 @@ class MultiplayerService {
       }
       await _rooms.doc(roomId).delete();
     } catch (e, st) {
-      ErrorHandler.report(e, st, 'MultiplayerService.purgeRoom');
+      ErrorHandler.report(
+        e,
+        st,
+        quiet
+            ? 'MultiplayerService.purgeStaleRooms:silent'
+            : 'MultiplayerService.purgeRoom',
+      );
+    }
+  }
+
+  /// How long a room must sit untouched before its host's lobby clears it.
+  static const Duration staleAfter = Duration(hours: 24);
+
+  /// Whether [room] was abandoned: nobody has touched it for [staleAfter].
+  ///
+  /// A match that ends normally is purged by its host straight away, but one
+  /// cut short — the app closed mid-game, the tablet switched off — never
+  /// reaches that code, and its room stayed in the cloud for good (one found
+  /// from June, still `active` four months later).
+  static bool isStale(GameRoom room, DateTime now) =>
+      now.difference(room.updatedAt) > staleAfter;
+
+  /// Host-side sweep, run when the lobby opens: purge this host's own rooms
+  /// that were abandoned. Only a room's host may delete it, so each tablet
+  /// clears its own. Silent and best-effort; returns how many it cleared.
+  Future<int> purgeStaleRooms(String hostProfileId, {DateTime? now}) async {
+    if (!isOnlineAvailable || hostProfileId.isEmpty) return 0;
+    try {
+      final snap = await _rooms
+          .where('host_profile_id', isEqualTo: hostProfileId)
+          .get()
+          .timeout(_timeout);
+      final t = now ?? DateTime.now();
+      var cleared = 0;
+      for (final d in snap.docs) {
+        if (!isStale(GameRoom.fromJson(d.data()), t)) continue;
+        await purgeRoom(d.id, quiet: true);
+        cleared++;
+      }
+      return cleared;
+    } catch (e, st) {
+      ErrorHandler.report(e, st, 'MultiplayerService.purgeStaleRooms:silent');
+      return 0;
     }
   }
 

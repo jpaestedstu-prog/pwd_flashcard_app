@@ -194,6 +194,35 @@ void main() {
       expect(plain.containsKey('from_approved'), isFalse);
     });
 
+    test('a Child in no family group is told, not refused with an error', () {
+      expect(
+        FriendService.isChildWithoutGroup(_profile(UserRole.child)),
+        isTrue,
+      );
+      expect(
+        FriendService.isChildWithoutGroup(
+          _profile(UserRole.child, homeGroupId: 'g'),
+        ),
+        isFalse,
+      );
+      expect(
+        FriendService.isChildWithoutGroup(_profile(UserRole.student)),
+        isFalse,
+      );
+    });
+
+    test('the new friend messages have Filipino wording', () {
+      for (final english in [
+        "You're almost friends — a grown-up still needs to say yes.",
+        'A grown-up needs to add you to their family group before you can '
+            'make friends.',
+      ]) {
+        final fil = FriendActionException(english).messageOf(filipino: true);
+        expect(fil, isNot(english), reason: english);
+        expect(fil, isNotEmpty);
+      }
+    });
+
     test('only a Child in a home group needs a parent', () {
       expect(
         FriendService.needsParentApproval(
@@ -788,6 +817,25 @@ void main() {
         expect(find.text('hello teacher'), findsOneWidget);
         expect(dictationMicLease.isHeld, isFalse,
             reason: 'a final result gives the microphone back');
+        await settle(tester);
+      });
+
+      testWidgets('a double tap starts ONE dictation and gives the mic back',
+          (tester) async {
+        final stt = _FakeStt();
+        final voice = await pumpGazeThread(tester, stt: stt);
+        // Two activations in quick succession — a double tap, or a gaze dwell
+        // that fires twice — before the first has finished starting.
+        voice.onVoiceCommand('speak a message');
+        voice.onVoiceCommand('speak a message');
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(dictationMicLease.isHeld, isTrue);
+
+        stt.onResult!('hello', true);
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(dictationMicLease.isHeld, isFalse,
+            reason: 'taken once, given back once: voice commands resume');
         await settle(tester);
       });
 

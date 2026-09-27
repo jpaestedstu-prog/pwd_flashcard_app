@@ -7,8 +7,11 @@ Checks, against production rules, that
   * a message or friend request from someone the recipient has **blocked** is
     refused by the server (a block used to be a client-side filter only);
   * the blocker can still write, and an unblock lets messages through again;
-  * a teacher's "message the whole class" — one batched commit of many
-    messages — fits inside the per-request lookup limit;
+  * a teacher's "message the whole class" — sent in batches of 8, as the app
+    does — fits inside the per-batch lookup limit;
+  * no one gets round a block by editing their own profile's role, and a block
+    cannot be filed under someone else's pair;
+  * a friendship with a Child is refused until their parent has said yes;
   * only the **real parent** of a Child (the owner of the home group the child
     is actually a member of) can approve or decline that child's friend
     request, and only the approval fields can change that way.
@@ -168,6 +171,7 @@ def main():
     parent = profile("parent", uid["parent"], tok["parent"], 2)
     child = profile("child", uid["child"], tok["child"], 3)
     parent2 = profile("parent2", uid["parent2"], tok["parent2"], 2)
+    stranger = profile("stranger", uid["stranger"], tok["stranger"], 0)
 
     # ── blocking ─────────────────────────────────────────
     p, f = message(learner, blocker, uid["learner"], tok["learner"])
@@ -188,20 +192,47 @@ def main():
     p, f = message(learner, child, uid["learner"], tok["learner"])
     check("a block on one person does not stop messages to others", write(p, f, tok["learner"]), 200)
 
+    # No exemption by role: a profile's owner can edit their own `role`, so a
+    # "teachers skip the check" rule would be a way round any block.
+    tblock = f"blocks/{blocker}_{teacher}"
+    check("the blocker can block a teacher profile too", write(tblock, {
+        "blocker_profile_id": s(blocker), "blocked_profile_id": s(teacher),
+        "blocker_uid": s(uid["blocker"]), "created_at": s("x"),
+    }, tok["blocker"]), 200)
+    p, f = message(teacher, blocker, uid["teacher"], tok["teacher"])
+    check("a blocked profile is refused even with a teacher role", write(p, f, tok["teacher"]), 403)
+    check("(unblock the teacher again)", delete(tblock, tok["blocker"]), 200)
+    created[:] = [c for c in created if c[0] != tblock]
+
+    # A block must be filed under its own pair: hasBlocked() reads it by id.
+    check("a block filed under SOMEONE ELSE'S pair is refused",
+          write(f"blocks/{child}_{learner}", {
+              "blocker_profile_id": s(stranger), "blocked_profile_id": s(learner),
+              "blocker_uid": s(uid["stranger"]), "created_at": s("x"),
+          }, tok["stranger"]), 403)
+    check("a block whose id does not match its contents is refused",
+          write(f"blocks/{stranger}_{child}", {
+              "blocker_profile_id": s(stranger), "blocked_profile_id": s(learner),
+              "blocker_uid": s(uid["stranger"]), "created_at": s("x"),
+          }, tok["stranger"]), 403)
+
     check("the blocker can unblock", delete(block, tok["blocker"]), 200)
     created[:] = [c for c in created if c[0] != block]
     p, f = message(learner, blocker, uid["learner"], tok["learner"])
     check("after an unblock, messages go through again", write(p, f, tok["learner"]), 200)
 
-    # ── a class broadcast: one batch of 25 messages ──────
-    writes = []
-    for n in range(25):
-        p, f = message(teacher, f"rulesprobe-kid{n}-{uid['teacher'][:8]}", uid["teacher"], tok["teacher"])
-        writes.append({"update": {"name": f"{ROOT}/{p}", "fields": f}, "currentDocument": {"exists": False}})
-    status = commit(writes, tok["teacher"])
-    check("a teacher's 25-message broadcast batch is accepted", status, 200)
-    if status == 200:
-        created.extend((w["update"]["name"].split("/documents/")[1], tok["teacher"]) for w in writes)
+    # ── a class broadcast: 24 messages in batches of 8 (the app's size) ──
+    for batch_no in range(3):
+        writes = []
+        for n in range(8):
+            p, f = message(teacher, f"rulesprobe-kid{batch_no}{n}-{uid['teacher'][:8]}",
+                           uid["teacher"], tok["teacher"])
+            writes.append({"update": {"name": f"{ROOT}/{p}", "fields": f},
+                           "currentDocument": {"exists": False}})
+        status = commit(writes, tok["teacher"])
+        check(f"a teacher's broadcast batch {batch_no + 1} of 8 messages is accepted", status, 200)
+        if status == 200:
+            created.extend((w["update"]["name"].split("/documents/")[1], tok["teacher"]) for w in writes)
     # A learner's report goes to two grown-ups in one batch.
     writes = []
     for rec in [teacher, parent]:
@@ -246,6 +277,33 @@ def main():
                 mask=["from_approved", "updated_at"]), 200)
     check("then a learner device can finish it (status accepted)",
           write(req, {"status": s("accepted"), "updated_at": s("z")}, tok["learner"], mask=["status", "updated_at"]), 200)
+    lo, hi = sorted([child, learner])
+    friendship = f"friendships/{lo}_{hi}"
+    check("with the parent's yes, the child's device can write the friendship",
+          write(friendship, {"id": s(f"{lo}_{hi}"), "profile_a": s(lo), "profile_b": s(hi),
+                             "created_at": s("x"), "request_id": s(req.split("/")[1])}, tok["child"]), 200)
+    check("(and remove it again)", delete(friendship, tok["child"]), 200)
+    created[:] = [c for c in created if c[0] != friendship]
+
+    # Without the parent's yes the server now refuses the friendship itself.
+    req_x, f = request(child, stranger, uid["child"], {"from_home_group_id": s(group)})
+    check("a child asks another learner", write(req_x, f, tok["child"]), 200)
+    check("the learner says yes (awaiting_parent)",
+          write(req_x, {"status": s("awaiting_parent")}, tok["stranger"], mask=["status"]), 200)
+    lo, hi = sorted([child, stranger])
+    check("a child CANNOT write the friendship before the parent says yes",
+          write(f"friendships/{lo}_{hi}", {"id": s(f"{lo}_{hi}"), "profile_a": s(lo), "profile_b": s(hi),
+                "created_at": s("x"), "request_id": s(req_x.split("/")[1])}, tok["child"]), 403)
+    check("nor with no request named at all",
+          write(f"friendships/{lo}_{hi}", {"id": s(f"{lo}_{hi}"), "profile_a": s(lo), "profile_b": s(hi),
+                "created_at": s("x")}, tok["child"]), 403)
+    check("nor from the other learner's device",
+          write(f"friendships/{lo}_{hi}", {"id": s(f"{lo}_{hi}"), "profile_a": s(lo), "profile_b": s(hi),
+                "created_at": s("x"), "request_id": s(req_x.split("/")[1])}, tok["stranger"]), 403)
+    lo, hi = sorted([learner, blocker])
+    check("two ordinary learners still become friends as before (no request needed)",
+          write(f"friendships/{lo}_{hi}", {"id": s(f"{lo}_{hi}"), "profile_a": s(lo), "profile_b": s(hi),
+                "created_at": s("x")}, tok["learner"]), 200)
 
     # Learner → child: the child stamps their group when accepting.
     req2, f = request(learner, child, uid["learner"])

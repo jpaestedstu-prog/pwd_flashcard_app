@@ -89,9 +89,11 @@ class CloudMessageRepository {
     final uid = FirebaseService.currentUid;
     if (uid == null) return;
 
-    for (var i = 0; i < messages.length; i += 400) {
+    // Small batches: the rules look up one `blocks` doc per message, and a
+    // batched write may make at most 20 such lookups in total.
+    for (var i = 0; i < messages.length; i += _batchSize) {
       final batch = FirebaseService.db.batch();
-      for (final message in messages.skip(i).take(400)) {
+      for (final message in messages.skip(i).take(_batchSize)) {
         batch.set(_col.doc(message.id), _toDoc(message, uid));
       }
       // ignore: discarded_futures
@@ -100,6 +102,9 @@ class CloudMessageRepository {
       });
     }
   }
+
+  /// Messages per batched commit — see [sendMessages].
+  static const int _batchSize = 8;
 
   Map<String, dynamic> _toDoc(LocalMessage message, String uid) => {
     'id': message.id,

@@ -69,13 +69,11 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/blocks/$(blocker + '_' + blocked));
     }
 
-    // A teacher (1) or parent (2) profile. Learners cannot block educators
-    // (the app never offers it — it would cut a child off from their own
-    // class), so an educator's messages skip the block lookup. That also
-    // keeps a class broadcast — one batch of many messages — inside the
-    // per-request limit on document lookups.
-    function isEducatorProfile(profileId) {
-      return get(/databases/$(database)/documents/profiles/$(profileId)).data.role in [1, 2];
+    // A Child (role 3) profile. Read from the profile doc — used where a
+    // Child's safeguards apply. (Not trusted to grant anything: a profile's
+    // owner can edit their own `role`, so it only ever adds a check.)
+    function isChildProfile(profileId) {
+      return get(/databases/$(database)/documents/profiles/$(profileId)).data.get('role', -1) == 3;
     }
 
     function ownsHomeGroupOwner(groupId) {
@@ -618,15 +616,18 @@ service cloud.firestore {
     //   • Update: ONLY the message recipient may patch `is_read`, and
     //     ONLY `is_read` may change.
     //   • Delete: the sender (owner of `sender_profile_id`) may delete.
-    //   • Create is refused when the recipient has blocked the sender.
+    //   • Create is refused when the recipient has blocked the sender. No
+    //     exemption by role: a profile's owner can edit their own `role`, so
+    //     "educators skip the check" was a way round any block. (Class
+    //     broadcasts are sent in small batches to stay inside the per-batch
+    //     lookup limit instead.)
     match /messages/{messageId} {
       allow read: if signedIn();
       allow create: if signedIn()
         && request.resource.data.sender_uid == request.auth.uid
         && ownsProfile(request.resource.data.sender_profile_id)
-        && (isEducatorProfile(request.resource.data.sender_profile_id)
-            || !hasBlocked(request.resource.data.recipient_profile_id,
-                           request.resource.data.sender_profile_id));
+        && !hasBlocked(request.resource.data.recipient_profile_id,
+                       request.resource.data.sender_profile_id);
       allow update: if signedIn()
         && ownsProfile(resource.data.recipient_profile_id)
         && request.resource.data.diff(resource.data).affectedKeys()
@@ -725,12 +726,48 @@ service cloud.firestore {
     // the writer owning at least one of the two profiles in the pair
     // — typically the acceptor, who batches this create alongside the
     // request status update.
+    //
+    // A friendship that includes a Child (role 3) must name the friend
+    // request it comes from (`request_id`), and that request must carry the
+    // Child's home group and their parent's yes — checked through the real
+    // membership doc, so no one but the parent can have approved it. Without
+    // this a Child's device could skip the approval and write the friendship
+    // itself.
     match /friendships/{friendshipId} {
       allow read: if signedIn();
       allow create: if signedIn() && (
         ownsProfile(request.resource.data.profile_a)
         || ownsProfile(request.resource.data.profile_b)
-      );
+      ) && parentsAgreed(request.resource.data);
+
+      function childSideApproved(req, side, profileId) {
+        return req.get(side + '_profile_id', '') == profileId
+          && req.get(side + '_home_group_id', '') is string
+          && req.get(side + '_home_group_id', '') != ''
+          && req.get(side + '_approved', false) == true
+          && exists(/databases/$(database)/documents/home_group_members/$(req.get(side + '_home_group_id', '') + '_' + profileId));
+      }
+
+      function approvedFor(req, profileId) {
+        return childSideApproved(req, 'from', profileId)
+          || childSideApproved(req, 'to', profileId);
+      }
+
+      function parentsAgreed(data) {
+        return (!isChildProfile(data.profile_a) && !isChildProfile(data.profile_b))
+          || (data.get('request_id', '') is string
+              && data.get('request_id', '') != ''
+              && requestAllows(
+                   get(/databases/$(database)/documents/friend_requests/$(data.get('request_id', ''))).data,
+                   data.profile_a, data.profile_b));
+      }
+
+      function requestAllows(req, a, b) {
+        return ((req.from_profile_id == a && req.to_profile_id == b)
+                || (req.from_profile_id == b && req.to_profile_id == a))
+          && (!isChildProfile(a) || approvedFor(req, a))
+          && (!isChildProfile(b) || approvedFor(req, b));
+      }
       allow delete: if signedIn() && (
         ownsProfile(resource.data.profile_a)
         || ownsProfile(resource.data.profile_b)
@@ -745,11 +782,19 @@ service cloud.firestore {
     // bully would go looking for. The client queries its own blocks
     // with a single-field `where('blocker_profile_id', ==)`, which the
     // read rule below permits because the blocker owns that profile.
+    //
+    // The id must be exactly `{blocker_profile_id}_{blocked_profile_id}`:
+    // hasBlocked() reads blocks by id, so a block filed under someone else's
+    // pair (a bully writing `blocks/{childA}_{childB}` under their own
+    // profile) would otherwise silence childB to childA with neither child
+    // able to see or remove it.
     match /blocks/{blockId} {
       allow read: if signedIn() && ownsProfile(resource.data.blocker_profile_id);
       allow create, update: if signedIn()
         && request.resource.data.blocker_uid == request.auth.uid
-        && ownsProfile(request.resource.data.blocker_profile_id);
+        && ownsProfile(request.resource.data.blocker_profile_id)
+        && blockId == request.resource.data.blocker_profile_id + '_'
+             + request.resource.data.blocked_profile_id;
       allow delete: if signedIn()
         && ownsProfile(resource.data.blocker_profile_id);
     }

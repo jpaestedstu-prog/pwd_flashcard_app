@@ -84,6 +84,15 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
 
   // ─── Speak-to-type ───
   bool _dictating = false;
+
+  /// Set synchronously the moment a dictation starts, before any await — so
+  /// a double tap (or a repeated gaze dwell) cannot start a second one and
+  /// take the microphone lease twice.
+  bool _dictationStarting = false;
+
+  /// Whether this screen holds [dictationMicLease]; it gives back exactly
+  /// what it took.
+  bool _holdsMicLease = false;
   String _beforeDictation = '';
 
   /// The recogniser the current dictation runs on — kept so [dispose] can
@@ -116,11 +125,12 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
   void dispose() {
     _dictationWatch?.cancel();
     if (_dictating) {
-      // Give the microphone back to gaze voice commands.
       // ignore: discarded_futures
       _dictationStt?.cancel();
-      dictationMicLease.release();
     }
+    // Give the microphone back to gaze voice commands, whatever state the
+    // dictation was in when the screen closed.
+    _giveBackMicLease();
     _convosSub?.cancel();
     _outgoingSub?.cancel();
     _textController.dispose();
@@ -309,23 +319,30 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
   /// [fromComposer] distinguishes the text field from a one-tap chip: only a
   /// composer send may clear the draft. Clearing unconditionally meant tapping
   /// a quick reply silently threw away whatever the learner had typed.
-  Future<void> _sendMessage(
+  Future<bool> _sendMessage(
     String content,
     MessageType type, {
     bool fromComposer = false,
     String? caption,
+    String? toProfileId,
   }) async {
-    if (content.isEmpty || _activeConversation == null) return;
-    // History-only threads have no composer; this is the backstop.
-    if (!_activeConversation!.isConnected) return;
+    // [toProfileId] pins the recipient for a send that finishes later (a
+    // photo or video uploads for a while, and the learner may open another
+    // thread meanwhile). Otherwise it is the thread on screen.
+    final recipientId = toProfileId ?? _activeConversation?.otherProfileId;
+    if (content.isEmpty || recipientId == null) return false;
+    // History-only threads have no composer; this is the backstop — checked
+    // against the live inbox, not a thread object captured earlier.
+    final target = _conversations.where((c) => c.otherProfileId == recipientId);
+    if (target.isEmpty || !target.first.isConnected) return false;
     final profile = ref.read(profileProvider);
-    if (profile == null) return;
+    if (profile == null) return false;
 
     final message = LocalMessage(
       id: _uuid.v4(),
       senderId: profile.id,
       senderName: profile.name,
-      recipientId: _activeConversation!.otherProfileId,
+      recipientId: recipientId,
       content: content,
       type: type,
       timestamp: DateTime.now(),
@@ -339,9 +356,10 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     if (fromComposer) _textController.clear();
 
     await CloudMessageRepository.instance.sendMessage(message);
-    if (!mounted) return;
+    if (!mounted) return true;
     ref.read(hapticServiceProvider).lightTap();
-    _jumpToLatest();
+    if (_activeConversation?.otherProfileId == recipientId) _jumpToLatest();
+    return true;
   }
 
   /// The type a quick-reply chip is sent as — see [QuickEncouragements.typeFor].
@@ -861,6 +879,16 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       _endDictation();
       return;
     }
+    if (_dictationStarting) return;
+    _dictationStarting = true;
+    try {
+      await _startDictation(stt, isFilipino);
+    } finally {
+      _dictationStarting = false;
+    }
+  }
+
+  Future<void> _startDictation(SttService stt, bool isFilipino) async {
     final available = await stt.init();
     if (!mounted) return;
     if (!available) {
@@ -875,13 +903,13 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       );
       return;
     }
-    dictationMicLease.acquire();
+    _takeMicLease();
     // Drop any command session still holding the recogniser, and let it
     // settle — starting straight after a cancel is refused as "busy".
     await stt.cancel();
     await Future<void>.delayed(const Duration(milliseconds: 300));
     if (!mounted) {
-      dictationMicLease.release();
+      _giveBackMicLease();
       return;
     }
     _beforeDictation = _textController.text;
@@ -920,8 +948,20 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     _dictationWatch?.cancel();
     _dictationWatch = null;
     if (!_dictating) return;
-    dictationMicLease.release();
+    _giveBackMicLease();
     if (mounted) setState(() => _dictating = false);
+  }
+
+  void _takeMicLease() {
+    if (_holdsMicLease) return;
+    _holdsMicLease = true;
+    dictationMicLease.acquire();
+  }
+
+  void _giveBackMicLease() {
+    if (!_holdsMicLease) return;
+    _holdsMicLease = false;
+    dictationMicLease.release();
   }
 
   // ─── Photos and sign videos ───────────────────────────
@@ -935,6 +975,10 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     final convo = _activeConversation;
     if (me == null || convo == null || !convo.isConnected) return;
     if (_uploading != null) return;
+    // Who it is for is decided now, while the learner is looking at that
+    // thread — not whichever thread happens to be open when the upload ends.
+    final recipientId = convo.otherProfileId;
+    final captionAtCapture = _textController.text.trim();
     if (!MessageMedia.canSendMore(_allMessages, me.id)) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         SnackBar(
@@ -1004,9 +1048,38 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       );
       return;
     }
-    final caption = _textController.text.trim();
-    await _sendMessage(value, type, caption: caption.isEmpty ? null : caption);
-    if (caption.isNotEmpty) _textController.clear();
+    final sent = await _sendMessage(
+      value,
+      type,
+      caption: captionAtCapture.isEmpty ? null : captionAtCapture,
+      toProfileId: recipientId,
+    );
+    if (!sent) {
+      // They stopped being connected while it uploaded (unfriended,
+      // blocked, left the class): nothing was delivered, so nothing may be
+      // left behind in the cloud either.
+      // ignore: discarded_futures
+      const SharedMediaService().delete(value);
+      if (mounted) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(
+            content: Text(
+              isFilipino
+                  ? 'Hindi naipadala — hindi na kayo magkaugnay.'
+                  : "Not sent — you're no longer connected.",
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    // The caption travelled with it; clear it only if it is still what the
+    // field holds in the same thread.
+    if (captionAtCapture.isNotEmpty &&
+        _activeConversation?.otherProfileId == recipientId &&
+        _textController.text.trim() == captionAtCapture) {
+      _textController.clear();
+    }
   }
 
   // ─── Inbox ────────────────────────────────────────────

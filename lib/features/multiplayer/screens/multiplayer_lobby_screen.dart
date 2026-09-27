@@ -75,6 +75,11 @@ class _MultiplayerLobbyScreenState
     await _requestsSub?.cancel();
     _watchedId = profile.id;
 
+    // Clear this host's abandoned rooms (a match cut short never purges its
+    // own). Background, silent.
+    // ignore: discarded_futures
+    MultiplayerService.instance.purgeStaleRooms(profile.id);
+
     _friendsSub =
         FriendService.instance.watchFriends(profile.id).listen((list) async {
       final ids = list.map((f) => f.otherProfileFor(profile.id)).toList();

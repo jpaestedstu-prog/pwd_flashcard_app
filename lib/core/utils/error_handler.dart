@@ -88,6 +88,9 @@ class ErrorHandler {
     // whichever learner's device sees it first. The other device's attempt
     // can be refused (the friendship is already there), which is expected.
     'FriendService.finishApproved:silent',
+    // The lobby's sweep of this host's abandoned game rooms. Housekeeping on
+    // open — nobody asked for it, so a failure is never theirs to see.
+    'MultiplayerService.purgeStaleRooms:silent',
     // Every routine path. All twelve already name themselves ":silent" but
     // none was registered, so the suffix was a claim the set never honoured —
     // see silent_source_convention_test.dart, which now enforces the two
