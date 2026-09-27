@@ -17,6 +17,9 @@ void main() {
       'classroom_members',
       'home_group_members',
       'friend_directory_cache',
+      'progress',
+      'friends_cache',
+      'friend_requests_cache',
     ]) {
       if (!Hive.isBoxOpen(name)) await Hive.openBox(name);
     }
@@ -61,5 +64,25 @@ void main() {
     final before = classes.keys.toSet();
     await HiveService.removeMembershipsLocal('nobody');
     expect(classes.keys.toSet(), before);
+  });
+
+  test("the profile's Messages caches go with it, and only its own", () async {
+    final progress = Hive.box('progress');
+    final friends = Hive.box('friends_cache');
+    final requests = Hive.box('friend_requests_cache');
+    await progress.put('messages_copykid', [<String, dynamic>{'id': 'm1'}]);
+    await progress.put('messages_ana', [<String, dynamic>{'id': 'm2'}]);
+    await friends.put('copykid', [<String, dynamic>{'id': 'f1'}]);
+    await friends.put('blocked_copykid', ['bully']);
+    await friends.put('ana', [<String, dynamic>{'id': 'f2'}]);
+    await requests.put('copykid', [<String, dynamic>{'id': 'r1'}]);
+    await requests.put('ana', [<String, dynamic>{'id': 'r2'}]);
+
+    await HiveService.removeMessagingCachesLocal('copykid');
+
+    expect(progress.containsKey('messages_copykid'), isFalse);
+    expect(progress.containsKey('messages_ana'), isTrue);
+    expect(friends.keys.toSet(), {'ana'});
+    expect(requests.keys.toSet(), {'ana'});
   });
 }

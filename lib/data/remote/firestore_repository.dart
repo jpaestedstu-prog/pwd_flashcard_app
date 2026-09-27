@@ -186,6 +186,33 @@ class FirestoreRepository implements DataRepository {
     await deleteMatching('routines', 'setter_profile_id');
     await deleteMatching('routine_actions', 'setter_profile_id');
     await deleteMatching('routine_logs', 'profile_id');
+    // Messages. Its friendships (so it leaves every friend's inbox), the
+    // friend requests it sent, the blocks it made, and the messages it sent
+    // — a friendship left behind named a profile that no longer exists, and
+    // an open request to it left another child "Waiting for a reply" for
+    // good. Requests still open TO it are closed rather than deleted: the
+    // rules let only a request's sender delete it, and its recipient may
+    // answer it. Messages others sent to it stay — they are the sender's own
+    // history, and only a sender may delete a message.
+    await deleteMatching('friendships', 'profile_a');
+    await deleteMatching('friendships', 'profile_b');
+    await deleteMatching('friend_requests', 'from_profile_id');
+    await attempt(() async {
+      final incoming = await _db
+          .collection('friend_requests')
+          .where('to_profile_id', isEqualTo: profileId)
+          .get();
+      for (final d in incoming.docs) {
+        final status = d.data()['status'];
+        if (status != 'pending' && status != 'awaiting_parent') continue;
+        await attempt(() => d.reference.update({
+              'status': 'rejected',
+              'updated_at': DateTime.now().toIso8601String(),
+            }));
+      }
+    });
+    await deleteMatching('blocks', 'blocker_profile_id');
+    await deleteMatching('messages', 'sender_profile_id');
     // Its study-time records, and its recovery code — a code left behind
     // still named a profile that no longer exists. Before the profile
     // document: the time logs' rule reads it.

@@ -12,6 +12,7 @@ Checks, against production rules, that
   * no one gets round a block by editing their own profile's role, and a block
     cannot be filed under someone else's pair;
   * a friendship with a Child is refused until their parent has said yes;
+  * a profile's own device can clear its Messages records when it is deleted;
   * only the **real parent** of a Child (the owner of the home group the child
     is actually a member of) can approve or decline that child's friend
     request, and only the approval fields can change that way.
@@ -327,6 +328,36 @@ def main():
     check("the parent can decline it",
           write(req4, {"status": s("parent_declined"), "updated_at": s("d")}, tok["parent"],
                 mask=["status", "updated_at"]), 200)
+
+    # ── deleting a profile clears its Messages records ───
+    # FirestoreRepository.deleteProfile does each of these as the deleted
+    # profile's own device, before the profile doc goes.
+    gone = stranger
+    lo, hi = sorted([gone, learner])
+    fr = f"friendships/{lo}_{hi}"
+    check("(setup) a friendship for the profile being deleted",
+          write(fr, {"id": s(f"{lo}_{hi}"), "profile_a": s(lo), "profile_b": s(hi),
+                     "created_at": s("x")}, tok["stranger"]), 200)
+    sent_req, f = request(gone, teacher, uid["stranger"])
+    check("(setup) a request it sent", write(sent_req, f, tok["stranger"]), 200)
+    got_req, f = request(blocker, gone, uid["blocker"])
+    check("(setup) a request sent to it", write(got_req, f, tok["blocker"]), 200)
+    its_block = f"blocks/{gone}_{child}"
+    check("(setup) a block it made", write(its_block, {
+        "blocker_profile_id": s(gone), "blocked_profile_id": s(child),
+        "blocker_uid": s(uid["stranger"]), "created_at": s("x"),
+    }, tok["stranger"]), 200)
+    its_msg, f = message(gone, learner, uid["stranger"], tok["stranger"])
+    check("(setup) a message it sent", write(its_msg, f, tok["stranger"]), 200)
+
+    check("cascade: its device can drop the friendship", delete(fr, tok["stranger"]), 200)
+    check("cascade: its device can delete the request it sent", delete(sent_req, tok["stranger"]), 200)
+    check("cascade: its device can close a request sent to it",
+          write(got_req, {"status": s("rejected"), "updated_at": s("x")}, tok["stranger"],
+                mask=["status", "updated_at"]), 200)
+    check("cascade: its device can delete the block it made", delete(its_block, tok["stranger"]), 200)
+    check("cascade: its device can delete the message it sent", delete(its_msg, tok["stranger"]), 200)
+    created[:] = [c for c in created if c[0] not in (fr, sent_req, its_block, its_msg)]
 
     # ── clean up (children first) ────────────────────────
     owner_of = {tok[k]: k for k in tok}

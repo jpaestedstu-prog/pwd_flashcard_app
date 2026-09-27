@@ -300,6 +300,24 @@ class HiveService {
     await progressBox.delete('achievements_$profileId');
     await removeMembershipsLocal(profileId);
     await removeCachedDirectoryEntry(profileId);
+    await removeMessagingCachesLocal(profileId);
+  }
+
+  /// Drops this device's Messages caches for [profileId]: its message list,
+  /// friends, friend requests and block list. Tolerates a closed box — a
+  /// profile that never opened Messages here has none of these.
+  static Future<void> removeMessagingCachesLocal(String profileId) async {
+    await _progBox.delete('messages_$profileId');
+    for (final entry in {
+      _friendsCacheBox: [profileId, 'blocked_$profileId'],
+      _friendRequestsCacheBox: [profileId],
+    }.entries) {
+      if (!Hive.isBoxOpen(entry.key)) continue;
+      final box = Hive.box(entry.key);
+      for (final key in entry.value) {
+        await box.delete(key);
+      }
+    }
   }
 
   /// Drops every class and family-group row on this device that names
