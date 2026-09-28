@@ -988,7 +988,7 @@ class SettingsScreen extends ConsumerWidget {
                     'FlashLearn PWD',
                 subtitle:
                     AppLocalizations.of(context)?.version ??
-                    'Version 1.1.0 • Thesis Capstone Project',
+                    'Version 1.2.0 • Thesis Capstone Project',
                 trailing: const SizedBox.shrink(),
               ),
 
