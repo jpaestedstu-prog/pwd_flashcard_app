@@ -316,7 +316,20 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
           builder: (context, gaze) => Stack(
             children: [
               Scaffold(
-                body: RepaintBoundary(child: widget.child),
+                // The shell's own navigator reports "nothing to pop" on a
+                // hub, and the root navigator passes that on unchanged — it
+                // ignores the PopScope above. On Android's predictive back
+                // that tells the engine the app does not want Back, so the
+                // PopScope never ran on a device. Claim Back here instead.
+                body: NotificationListener<NavigationNotification>(
+                  onNotification: (notification) {
+                    if (atHome || notification.canHandlePop) return false;
+                    const NavigationNotification(canHandlePop: true)
+                        .dispatch(context);
+                    return true;
+                  },
+                  child: RepaintBoundary(child: widget.child),
+                ),
                 floatingActionButtonLocation:
                     FloatingActionButtonLocation.startFloat,
                 // "Home" in both languages — the app's Filipino UI calls that

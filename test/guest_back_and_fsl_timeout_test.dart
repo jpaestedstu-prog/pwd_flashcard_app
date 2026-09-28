@@ -101,13 +101,22 @@ void main() {
   group('Guest Player hubs lead back home', () {
     late GoRouter router;
     late bool appClosed;
+    // What the framework last told the engine about Back. On Android's
+    // predictive back the engine only delivers Back to Flutter while this is
+    // true; handlePopRoute() below skips that gate, so it is asserted apart.
+    bool? frameworkHandlesBack;
 
     Future<void> pumpShell(WidgetTester tester, {required bool guest}) async {
       appClosed = false;
+      frameworkHandlesBack = null;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
         (call) async {
           if (call.method == 'SystemNavigator.pop') appClosed = true;
+          if (call.method == 'SystemNavigator.setFrameworkHandlesBack') {
+            frameworkHandlesBack = call.arguments as bool;
+          }
           return null;
         },
       );
@@ -159,11 +168,15 @@ void main() {
       router.go('/games');
       await tester.pumpAndSettle();
       expect(find.text('games-screen'), findsOneWidget);
+      expect(frameworkHandlesBack, isTrue,
+          reason: 'else the device never hands Back to the app on a hub');
 
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(appClosed, isFalse);
       expect(find.text('home-screen'), findsOneWidget);
+      expect(frameworkHandlesBack, isFalse,
+          reason: 'on the guest home, Back belongs to the system again');
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
