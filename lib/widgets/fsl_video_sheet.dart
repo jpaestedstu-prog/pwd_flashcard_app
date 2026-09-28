@@ -134,10 +134,12 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
   @override
   void initState() {
     super.initState();
-    // A clip the device cannot decode (an emulator, or a low-end tablet with
-    // no 1080p60 decoder) never finishes initializing and never errors: the
-    // player keeps retrying the codec. Without a limit the sheet shimmered
-    // forever; the timeout lands it on "Unable to load video" instead.
+    // A clip that stalls while opening never finishes initializing and never
+    // errors (seen on an emulator: over a minute of shimmer while the player
+    // kept re-creating its codec; the same clip played on a later try). Weak
+    // school Wi-Fi can stall a first download the same way. Without a limit
+    // the sheet shimmered forever; the timeout lands it on "Unable to load
+    // video" instead.
     _controller = widget.videoSource.createController()
       ..initialize()
           .timeout(FslVideoSheet.initTimeout)

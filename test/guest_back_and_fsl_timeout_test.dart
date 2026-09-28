@@ -21,9 +21,9 @@ import 'package:video_player/video_player.dart';
 /// 1. A Guest Player has no tab bar, and its home opens Games and Cards with
 ///    `go()` — tab roots, which cannot be pushed — so nothing sat behind them:
 ///    no on-screen way home, and system Back closed the app.
-/// 2. The FSL sheet waited forever on a clip the device could not decode (the
-///    player retries the codec and never errors), shimmering instead of
-///    saying the video could not load.
+/// 2. The FSL sheet waited forever on a clip that stalled while opening (the
+///    player never finished and never errored), shimmering instead of saying
+///    the video could not load.
 
 class _StubProfile extends ProfileNotifier {
   _StubProfile({required this.guest});
@@ -63,7 +63,7 @@ GoRouter _router() => GoRouter(
       ],
     );
 
-/// A player that never finishes opening — what the emulator's decoder did.
+/// A player that never finishes opening — what the stalled clip did.
 class _HangingController extends VideoPlayerController {
   _HangingController() : super.networkUrl(Uri.parse('https://example.com/x.mp4'));
 
