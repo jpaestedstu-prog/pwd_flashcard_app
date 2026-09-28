@@ -88,6 +88,10 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
   /// The level that triggered the celebration overlay, or null if hidden.
   PlayerLevel? _celebratingLevel;
 
+  /// Guest only: a sheet or page is stacked on the hub inside the shell's
+  /// navigator, so the floating Home button is hidden rather than drawn on it.
+  bool _guestHubCovered = false;
+
   /// Stable identity for this shell's tenure as the publisher of
   /// [gamepadSections], so an outgoing shell disposing *after* an incoming
   /// one has published (which happens on a role switch) cannot wipe the newer
@@ -323,6 +327,15 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
                 // PopScope never ran on a device. Claim Back here instead.
                 body: NotificationListener<NavigationNotification>(
                   onNotification: (notification) {
+                    // The same report says when something is stacked on the
+                    // hub inside this navigator — a bottom sheet such as a
+                    // game's difficulty picker. The Home button floats above
+                    // this navigator, so it would cover that sheet.
+                    if (notification.canHandlePop != _guestHubCovered) {
+                      setState(
+                        () => _guestHubCovered = notification.canHandlePop,
+                      );
+                    }
                     if (atHome || notification.canHandlePop) return false;
                     const NavigationNotification(canHandlePop: true)
                         .dispatch(context);
@@ -334,7 +347,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
                     FloatingActionButtonLocation.startFloat,
                 // "Home" in both languages — the app's Filipino UI calls that
                 // screen Home too (see _studentNavItems).
-                floatingActionButton: atHome || !navShown
+                floatingActionButton: atHome || !navShown || _guestHubCovered
                     ? null
                     : FloatingActionButton.extended(
                         heroTag: 'guest-home',

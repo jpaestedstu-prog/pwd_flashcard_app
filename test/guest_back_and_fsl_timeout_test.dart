@@ -162,6 +162,30 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
+    // A game's difficulty picker is a bottom sheet on the shell's own
+    // navigator; the Home button floats above that navigator and covered the
+    // picker's "Hard" option on the emulator.
+    testWidgets('the Home button steps aside while a sheet is open',
+        (tester) async {
+      await pumpShell(tester, guest: true);
+      router.go('/games');
+      await tester.pumpAndSettle();
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+
+      showModalBottomSheet<void>(
+        context: tester.element(find.text('games-screen')),
+        builder: (_) => const SizedBox(height: 200, child: Text('picker')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('picker'), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsNothing);
+
+      Navigator.of(tester.element(find.text('picker'))).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
     testWidgets('system Back from Games returns home instead of closing',
         (tester) async {
       await pumpShell(tester, guest: true);
