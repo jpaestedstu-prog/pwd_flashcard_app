@@ -104,6 +104,10 @@ class FslVideoSheet extends StatefulWidget {
   /// FSL Dictionary — where the unit really is one word — passes it.
   final ValueChanged<SignMastery>? onMasteryChanged;
 
+  /// How long a clip may take to open before the sheet gives up and says
+  /// "Unable to load video".
+  static const initTimeout = Duration(seconds: 20);
+
   const FslVideoSheet({
     super.key,
     required this.videoSource,
@@ -130,8 +134,13 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
   @override
   void initState() {
     super.initState();
+    // A clip the device cannot decode (an emulator, or a low-end tablet with
+    // no 1080p60 decoder) never finishes initializing and never errors: the
+    // player keeps retrying the codec. Without a limit the sheet shimmered
+    // forever; the timeout lands it on "Unable to load video" instead.
     _controller = widget.videoSource.createController()
       ..initialize()
+          .timeout(FslVideoSheet.initTimeout)
           .then((_) {
             if (mounted) {
               setState(() => _initialized = true);

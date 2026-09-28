@@ -7,6 +7,7 @@ import '../core/theme/app_colors.dart';
 import '../core/services/celebration_service.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/services/xp_level_service.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/app_providers.dart';
 import '../providers/fullscreen_provider.dart';
 import '../providers/level_up_provider.dart';
@@ -297,21 +298,47 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       // A guest has no tab bar, so there are no sections to offer. The
       // gamepad still drives the home screen's buttons via the published grid.
       _publishSections(const [], 0);
-      return NavGazeScope(
-        currentIndex: 0,
-        itemCount: 0,
-        enabled: navShown,
-        onCommit: (_) {},
-        builder: (context, gaze) => Stack(
-          children: [
-            Scaffold(body: RepaintBoundary(child: widget.child)),
-            if (_celebratingLevel != null)
-              LevelUpCelebrationScreen(
-                newLevel: _celebratingLevel!,
-                reducedMotion: ref.read(settingsProvider).reducedMotion,
-                onDismiss: () => setState(() => _celebratingLevel = null),
+      // The guest home opens Games and Cards with go(): they are tab roots and
+      // cannot be pushed, so nothing sits behind them. Without a tab bar the
+      // learner had no way back — system Back closed the app. Back from a hub
+      // now returns to the guest home, and a Home button shows the way.
+      final atHome = location.startsWith('/home');
+      return PopScope(
+        canPop: atHome,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) context.go('/home');
+        },
+        child: NavGazeScope(
+          currentIndex: 0,
+          itemCount: 0,
+          enabled: navShown,
+          onCommit: (_) {},
+          builder: (context, gaze) => Stack(
+            children: [
+              Scaffold(
+                body: RepaintBoundary(child: widget.child),
+                floatingActionButtonLocation:
+                    FloatingActionButtonLocation.startFloat,
+                // "Home" in both languages — the app's Filipino UI calls that
+                // screen Home too (see _studentNavItems).
+                floatingActionButton: atHome || !navShown
+                    ? null
+                    : FloatingActionButton.extended(
+                        heroTag: 'guest-home',
+                        tooltip: AppLocalizations.of(context)?.nfGoHome,
+                        onPressed: () => context.go('/home'),
+                        icon: const Icon(Icons.home_rounded),
+                        label: const Text('Home'),
+                      ),
               ),
-          ],
+              if (_celebratingLevel != null)
+                LevelUpCelebrationScreen(
+                  newLevel: _celebratingLevel!,
+                  reducedMotion: ref.read(settingsProvider).reducedMotion,
+                  onDismiss: () => setState(() => _celebratingLevel = null),
+                ),
+            ],
+          ),
         ),
       );
     }
