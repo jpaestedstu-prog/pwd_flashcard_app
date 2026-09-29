@@ -750,6 +750,29 @@ class HiveService {
     await _settBox.put('hasSeenWelcome', true);
   }
 
+  // ─── Update check (device-wide) ───────────────────────
+
+  /// The last `version.json` the update check read from the website, and
+  /// when — so the app asks at most once a day (see [UpdateCheckService]).
+  static String? getUpdateCheckPayload() =>
+      _settBox.get('updateCheckPayload') as String?;
+
+  static DateTime? getUpdateCheckedAt() =>
+      DateTime.tryParse(_settBox.get('updateCheckedAt') as String? ?? '');
+
+  static Future<void> saveUpdateCheck(String payload, DateTime at) async {
+    await _settBox.put('updateCheckPayload', payload);
+    await _settBox.put('updateCheckedAt', at.toIso8601String());
+  }
+
+  /// The newest version an educator dismissed the "update available" card
+  /// for; a later version shows the card again.
+  static String? getDismissedUpdateVersion() =>
+      _settBox.get('dismissedUpdateVersion') as String?;
+
+  static Future<void> dismissUpdateVersion(String version) =>
+      _settBox.put('dismissedUpdateVersion', version);
+
   // ─── Collapsed Categories ─────────────────────────────
 
   static Set<String> getCollapsedCategories(String profileId) {

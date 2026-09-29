@@ -21091,6 +21091,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This {kind} is here but would not play on this tablet.'**
   String assessMediaWouldNotPlay(String kind);
+
+  /// No description provided for @updateCheckTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get updateCheckTitle;
+
+  /// No description provided for @updateCheckTap.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to see if a newer version is on the website.'**
+  String get updateCheckTap;
+
+  /// No description provided for @updateCheckChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the website…'**
+  String get updateCheckChecking;
+
+  /// No description provided for @updateCheckLatest.
+  ///
+  /// In en, this message translates to:
+  /// **'This tablet has the newest version ({version}).'**
+  String updateCheckLatest(String version);
+
+  /// No description provided for @updateCheckAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is ready — tap to see how to update.'**
+  String updateCheckAvailable(String version);
+
+  /// No description provided for @updateCheckUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check just now. Connect to the internet and tap to try again.'**
+  String get updateCheckUnknown;
+
+  /// No description provided for @updateCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A new version of FlashLearn PWD is ready'**
+  String get updateCardTitle;
+
+  /// No description provided for @updateCardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is on the website. Installing it over this one keeps every profile on this tablet.'**
+  String updateCardBody(String version);
+
+  /// No description provided for @updateCardGet.
+  ///
+  /// In en, this message translates to:
+  /// **'How to update'**
+  String get updateCardGet;
+
+  /// No description provided for @updateCardLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get updateCardLater;
+
+  /// No description provided for @updateOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Open {url} in a browser to get the new version.'**
+  String updateOpenFailed(String url);
 }
 
 class _AppLocalizationsDelegate

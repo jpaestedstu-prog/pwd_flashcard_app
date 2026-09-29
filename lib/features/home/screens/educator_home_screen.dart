@@ -13,6 +13,7 @@ import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/connectivity_indicator.dart';
 import '../../../widgets/rich_empty_states.dart';
+import '../../../widgets/update_available_card.dart';
 import '../../../providers/student_list_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
@@ -139,6 +140,15 @@ class EducatorHomeScreen extends ConsumerWidget {
                                 .rotate(begin: -0.1, end: 0, duration: 500.ms),
                           ],
                         ),
+                      ),
+                    ),
+
+                    // ─── A newer APK on the website ───────
+                    // Educators install the app, so this is where they learn
+                    // there is a new version. Empty when up to date/offline.
+                    SliverToBoxAdapter(
+                      child: UpdateAvailableCard(
+                        padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
                       ),
                     ),
 

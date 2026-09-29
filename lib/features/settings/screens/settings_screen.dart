@@ -11,6 +11,8 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/review_reminder_service.dart';
+import '../../../core/services/update_check_service.dart';
+import '../../../widgets/update_available_card.dart' show openUpdatePage;
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -992,6 +994,10 @@ class SettingsScreen extends ConsumerWidget {
                 trailing: const SizedBox.shrink(),
               ),
 
+              // The app comes as an APK, so nothing else tells a tablet a
+              // newer one exists.
+              const _UpdateCheckTile(),
+
               _SettingsTile(
                 icon: Icons.school_rounded,
                 title: l10n?.settingPurposeTitle ?? 'Purpose',
@@ -1329,6 +1335,75 @@ class _SectionHeader extends StatelessWidget {
 // ────────────────────────────────────────
 // Settings Tile
 // ────────────────────────────────────────
+/// "Check for updates": what the website's `version.json` says, and the way to
+/// the download page when a newer APK is there.
+class _UpdateCheckTile extends ConsumerStatefulWidget {
+  const _UpdateCheckTile();
+
+  @override
+  ConsumerState<_UpdateCheckTile> createState() => _UpdateCheckTileState();
+}
+
+class _UpdateCheckTileState extends ConsumerState<_UpdateCheckTile> {
+  /// Null until the first answer arrives.
+  UpdateStatus? _status;
+  bool _checking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // The once-a-day answer, so the row says something useful on open.
+    ref.read(updateStatusProvider.future).then((status) {
+      if (mounted) setState(() => _status = status);
+    }, onError: (_) {});
+  }
+
+  Future<void> _onTap() async {
+    final status = _status;
+    if (status is UpdateAvailable) {
+      await openUpdatePage(context, status.release);
+      return;
+    }
+    setState(() => _checking = true);
+    final result = await ref
+        .read(updateCheckServiceProvider)
+        .check(force: true);
+    if (!mounted) return;
+    ref.invalidate(updateStatusProvider);
+    setState(() {
+      _status = result;
+      _checking = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context) ?? AppLocalizationsEn();
+    final subtitle = _checking
+        ? l10n.updateCheckChecking
+        : switch (_status) {
+            UpdateAvailable(:final release) =>
+              l10n.updateCheckAvailable(release.version),
+            UpToDate(:final installedVersion) =>
+              l10n.updateCheckLatest(installedVersion),
+            UpdateUnknown() => l10n.updateCheckUnknown,
+            null => l10n.updateCheckTap,
+          };
+    return _SettingsTile(
+      icon: Icons.system_update_rounded,
+      title: l10n.updateCheckTitle,
+      subtitle: subtitle,
+      onTap: _checking ? null : _onTap,
+      trailing: _checking
+          ? const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+    );
+  }
+}
+
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;

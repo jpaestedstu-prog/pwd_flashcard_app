@@ -12572,4 +12572,47 @@ class AppLocalizationsFil extends AppLocalizations {
   String assessMediaWouldNotPlay(String kind) {
     return 'Nandito na ang $kind pero ayaw mag-play sa tablet na ito.';
   }
+
+  @override
+  String get updateCheckTitle => 'Tingnan kung may update';
+
+  @override
+  String get updateCheckTap =>
+      'I-tap para malaman kung may mas bagong bersyon sa website.';
+
+  @override
+  String get updateCheckChecking => 'Tinitingnan ang website…';
+
+  @override
+  String updateCheckLatest(String version) {
+    return 'Pinakabagong bersyon na ang nasa tablet na ito ($version).';
+  }
+
+  @override
+  String updateCheckAvailable(String version) {
+    return 'Handa na ang bersyon $version — i-tap para makita kung paano mag-update.';
+  }
+
+  @override
+  String get updateCheckUnknown =>
+      'Hindi makapag-check ngayon. Kumonekta sa internet at i-tap para subukan ulit.';
+
+  @override
+  String get updateCardTitle => 'May bagong bersyon ng FlashLearn PWD';
+
+  @override
+  String updateCardBody(String version) {
+    return 'Nasa website na ang bersyon $version. Kapag in-install ito sa ibabaw ng kasalukuyan, mananatili ang lahat ng profile sa tablet na ito.';
+  }
+
+  @override
+  String get updateCardGet => 'Paano mag-update';
+
+  @override
+  String get updateCardLater => 'Mamaya na';
+
+  @override
+  String updateOpenFailed(String url) {
+    return 'Buksan ang $url sa browser para makuha ang bagong bersyon.';
+  }
 }

@@ -3498,5 +3498,16 @@
   "assessEditDiscardTitle": "Itapon ang mga pagbabago?",
   "assessEditDiscardBody": "Mananatili ang naka-save na pagsusulit gaya ng dati.",
   "assessEditNotFound": "Hindi makita ang pagsusulit na iyon. Maaaring nabura na ito.",
-  "assessMediaWouldNotPlay": "Nandito na ang {kind} pero ayaw mag-play sa tablet na ito."
+  "assessMediaWouldNotPlay": "Nandito na ang {kind} pero ayaw mag-play sa tablet na ito.",
+  "updateCheckTitle": "Tingnan kung may update",
+  "updateCheckTap": "I-tap para malaman kung may mas bagong bersyon sa website.",
+  "updateCheckChecking": "Tinitingnan ang website…",
+  "updateCheckLatest": "Pinakabagong bersyon na ang nasa tablet na ito ({version}).",
+  "updateCheckAvailable": "Handa na ang bersyon {version} — i-tap para makita kung paano mag-update.",
+  "updateCheckUnknown": "Hindi makapag-check ngayon. Kumonekta sa internet at i-tap para subukan ulit.",
+  "updateCardTitle": "May bagong bersyon ng FlashLearn PWD",
+  "updateCardBody": "Nasa website na ang bersyon {version}. Kapag in-install ito sa ibabaw ng kasalukuyan, mananatili ang lahat ng profile sa tablet na ito.",
+  "updateCardGet": "Paano mag-update",
+  "updateCardLater": "Mamaya na",
+  "updateOpenFailed": "Buksan ang {url} sa browser para makuha ang bagong bersyon."
 }

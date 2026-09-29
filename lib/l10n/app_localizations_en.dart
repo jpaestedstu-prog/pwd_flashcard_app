@@ -12665,4 +12665,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String assessMediaWouldNotPlay(String kind) {
     return 'This $kind is here but would not play on this tablet.';
   }
+
+  @override
+  String get updateCheckTitle => 'Check for updates';
+
+  @override
+  String get updateCheckTap =>
+      'Tap to see if a newer version is on the website.';
+
+  @override
+  String get updateCheckChecking => 'Checking the website…';
+
+  @override
+  String updateCheckLatest(String version) {
+    return 'This tablet has the newest version ($version).';
+  }
+
+  @override
+  String updateCheckAvailable(String version) {
+    return 'Version $version is ready — tap to see how to update.';
+  }
+
+  @override
+  String get updateCheckUnknown =>
+      'Couldn\'t check just now. Connect to the internet and tap to try again.';
+
+  @override
+  String get updateCardTitle => 'A new version of FlashLearn PWD is ready';
+
+  @override
+  String updateCardBody(String version) {
+    return 'Version $version is on the website. Installing it over this one keeps every profile on this tablet.';
+  }
+
+  @override
+  String get updateCardGet => 'How to update';
+
+  @override
+  String get updateCardLater => 'Later';
+
+  @override
+  String updateOpenFailed(String url) {
+    return 'Open $url in a browser to get the new version.';
+  }
 }

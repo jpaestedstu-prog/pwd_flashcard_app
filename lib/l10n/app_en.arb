@@ -8675,5 +8675,44 @@
         "type": "String"
       }
     }
+  },
+  "updateCheckTitle": "Check for updates",
+  "updateCheckTap": "Tap to see if a newer version is on the website.",
+  "updateCheckChecking": "Checking the website…",
+  "updateCheckLatest": "This tablet has the newest version ({version}).",
+  "@updateCheckLatest": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updateCheckAvailable": "Version {version} is ready — tap to see how to update.",
+  "@updateCheckAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updateCheckUnknown": "Couldn't check just now. Connect to the internet and tap to try again.",
+  "updateCardTitle": "A new version of FlashLearn PWD is ready",
+  "updateCardBody": "Version {version} is on the website. Installing it over this one keeps every profile on this tablet.",
+  "@updateCardBody": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updateCardGet": "How to update",
+  "updateCardLater": "Later",
+  "updateOpenFailed": "Open {url} in a browser to get the new version.",
+  "@updateOpenFailed": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
   }
 }
