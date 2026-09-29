@@ -31,31 +31,93 @@ class ShellModalObserver extends NavigatorObserver {
   /// means something genuinely covers the hub.
   bool get isCovering => _depth > 0;
 
+  /// [isCovering] for widgets that must redraw when it changes — the AI
+  /// Tutor bubble floats above every navigator and would otherwise sit on top
+  /// of a game's difficulty sheet.
+  ///
+  /// Updated after the frame: navigator callbacks can arrive while a
+  /// declarative page change is being built, where notifying listeners that
+  /// call setState would throw.
+  final ValueNotifier<bool> covering = ValueNotifier<bool>(false);
+
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     // The base page arrives with no previous route; everything after it is a
     // layer on top.
-    if (previousRoute != null) _depth++;
+    if (previousRoute != null) {
+      _depth++;
+      _sync();
+    }
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (_depth > 0) _depth--;
+    if (_depth > 0) {
+      _depth--;
+      _sync();
+    }
   }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (_depth > 0) _depth--;
+    if (_depth > 0) {
+      _depth--;
+      _sync();
+    }
   }
 
   /// A replace swaps one layer for another, so the depth is unchanged.
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {}
 
+  void _sync() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      covering.value = isCovering;
+    });
+    WidgetsBinding.instance.scheduleFrame();
+  }
+
   /// Test seam — one test's leftover depth must not cover the next one's shell.
   @visibleForTesting
-  void reset() => _depth = 0;
+  void reset() {
+    _depth = 0;
+    covering.value = false;
+  }
+}
+
+/// Counts only dialogs and sheets on the **root** navigator. Full pages there
+/// (games, the full AI Tutor) already take the bubble away by location; a
+/// dialog or a root-level sheet over a hub does not change the location, so
+/// without this the bubble floated over the Daily Reward and achievement
+/// dialogs.
+class PopupObserver extends ShellModalObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PopupRoute) {
+      _depth++;
+      _sync();
+    }
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PopupRoute && _depth > 0) {
+      _depth--;
+      _sync();
+    }
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PopupRoute && _depth > 0) {
+      _depth--;
+      _sync();
+    }
+  }
 }
 
 /// The single observer installed on the shell's navigator (see `app_router`).
 final ShellModalObserver shellModalObserver = ShellModalObserver();
+
+/// The single popup observer installed on the root navigator (see `app_router`).
+final ShellModalObserver rootPopupObserver = PopupObserver();

@@ -19,6 +19,7 @@ import '../controllers/companion_controller.dart';
 import '../models/companion_presentation.dart';
 import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
+import '../../gaze_control/widgets/shell_modal_observer.dart';
 
 /// Mounts the floating AI Companion above the whole app. Placed in the
 /// `MaterialApp.builder` (below the lock / eviction gates) so the companion
@@ -80,6 +81,8 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
     final isOpen =
         ref.watch(companionControllerProvider.select((s) => s.isOpen));
     final router = ref.watch(routerProvider);
+    // Re-anchor on a profile switch: a guest's launcher sits lower.
+    ref.watch(profileProvider.select((p) => p?.isGuestPlayer));
 
     // Rebuild on navigation so the companion appears/disappears with the route.
     //
@@ -93,11 +96,22 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
     // list's own uri stays on the shell location while something is pushed
     // above it, which would float the companion over the full-screen tutor.
     return ListenableBuilder(
-      listenable: router.routerDelegate,
+      // A sheet or dialog over a hub (a game's difficulty picker, the Daily
+      // Reward) leaves the location unchanged, and this overlay sits above
+      // every navigator — so without the two observers the launcher floated
+      // on top of them, over the picker's options.
+      listenable: Listenable.merge([
+        router.routerDelegate,
+        shellModalObserver.covering,
+        rootPopupObserver.covering,
+      ]),
       builder: (context, _) {
         final loc =
             router.routerDelegate.currentConfiguration.last.matchedLocation;
-        if (!_shellRoots.any(loc.startsWith)) {
+        final covered = !isOpen &&
+            (shellModalObserver.covering.value ||
+                rootPopupObserver.covering.value);
+        if (!_shellRoots.any(loc.startsWith) || covered) {
           // Off the hubs the launcher is not drawn, so it must not linger in
           // the controller's item list either.
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -163,9 +177,12 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
     final launcher = presentation.launcherSize * scale;
 
     // Default anchor: bottom-right, lifted clear of the ~72px bottom nav bar.
+    // A Guest Player has no bar, and the lift put the bubble on top of the
+    // guest home's "Join group" button — so a guest's sits in the corner.
+    final hasTabBar = !(ref.read(profileProvider)?.isGuestPlayer ?? false);
     final defaultPos = Offset(
       size.width - launcher - 12,
-      size.height - launcher - safeBottom - 84,
+      size.height - launcher - safeBottom - (hasTabBar ? 84 : 16),
     );
     final pos = _dragPos ?? defaultPos;
 

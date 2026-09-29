@@ -171,6 +171,96 @@ void main() {
     expect(shellModalObserver.isCovering, isFalse);
   });
 
+  // The AI Tutor bubble floats above every navigator and redraws from
+  // `covering`, so the listenable must follow a real sheet both ways.
+  testWidgets('covering notifies when a sheet opens and closes', (
+    tester,
+  ) async {
+    late BuildContext hostContext;
+    final seen = <bool>[];
+    void record() => seen.add(shellModalObserver.covering.value);
+    shellModalObserver.covering.addListener(record);
+    addTearDown(() => shellModalObserver.covering.removeListener(record));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorObservers: [shellModalObserver],
+        home: Builder(
+          builder: (context) {
+            hostContext = context;
+            return const Scaffold(body: Text('hub'));
+          },
+        ),
+      ),
+    );
+    unawaited(
+      showModalBottomSheet<void>(
+        context: hostContext,
+        builder: (_) => const SizedBox(height: 120, child: Text('picker')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(shellModalObserver.covering.value, isTrue);
+
+    Navigator.of(hostContext).pop();
+    await tester.pumpAndSettle();
+    expect(shellModalObserver.covering.value, isFalse);
+    expect(seen, [true, false]);
+  });
+
+  group('root popup observer', () {
+    setUp(rootPopupObserver.reset);
+    tearDown(rootPopupObserver.reset);
+
+    Future<BuildContext> pumpRoot(WidgetTester tester) async {
+      late BuildContext hostContext;
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorObservers: [rootPopupObserver],
+          home: Builder(
+            builder: (context) {
+              hostContext = context;
+              return const Scaffold(body: Text('hub'));
+            },
+          ),
+        ),
+      );
+      return hostContext;
+    }
+
+    testWidgets('a dialog over a hub counts', (tester) async {
+      final context = await pumpRoot(tester);
+      unawaited(
+        showDialog<void>(
+          context: context,
+          builder: (_) => const AlertDialog(content: Text('Collect!')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(rootPopupObserver.covering.value, isTrue);
+
+      Navigator.of(context).pop();
+      await tester.pumpAndSettle();
+      expect(rootPopupObserver.covering.value, isFalse);
+    });
+
+    testWidgets('a full page pushed on the root navigator does not', (
+      tester,
+    ) async {
+      // Games and the full tutor are pages there; the bubble already leaves
+      // those by location, and counting them would strand it hidden.
+      final context = await pumpRoot(tester);
+      unawaited(
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const Text('game')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(rootPopupObserver.isCovering, isFalse);
+      expect(rootPopupObserver.covering.value, isFalse);
+    });
+  });
+
   testWidgets('NavGazeScope stands down when the observer reports covering', (
     tester,
   ) async {

@@ -309,7 +309,13 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
-    observers: [?tracker, VoiceNavigationObserver(voiceAnnouncer)],
+    // rootPopupObserver: the AI Tutor bubble hides while a dialog or sheet
+    // on this navigator covers a hub (see [PopupObserver]).
+    observers: [
+      ?tracker,
+      VoiceNavigationObserver(voiceAnnouncer),
+      rootPopupObserver,
+    ],
     redirect: (context, state) {
       final profile = ref.read(profileProvider);
       if (profile == null) return null; // not logged in yet
