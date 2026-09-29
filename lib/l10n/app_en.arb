@@ -5585,7 +5585,7 @@
   "setPinRemoved": "PIN removed",
   "setPinSet": "PIN set successfully!",
   "setEnterPin": "Enter PIN",
-  "setNoDataLeaves": "No data leaves this device",
+  "setNoDataLeaves": "No usage statistics or crash reports are sent",
   "brTitle": "Backup & Restore",
   "brKeepSafe": "Keep Your Data Safe",
   "brIntro": "Back up all profiles, progress, achievements, shop purchases, settings, and custom flashcards. Restore on any device.",

@@ -7780,7 +7780,8 @@ class AppLocalizationsFil extends AppLocalizations {
   String get setEnterPin => 'Ilagay ang PIN';
 
   @override
-  String get setNoDataLeaves => 'Walang datos na lumalabas sa device na ito';
+  String get setNoDataLeaves =>
+      'Walang ipinapadalang usage statistics o crash report';
 
   @override
   String get brTitle => 'Backup at Pagbalik';

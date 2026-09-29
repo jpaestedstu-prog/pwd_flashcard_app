@@ -2144,7 +2144,7 @@
   "setPinRemoved": "Inalis ang PIN",
   "setPinSet": "Naitakda ang PIN!",
   "setEnterPin": "Ilagay ang PIN",
-  "setNoDataLeaves": "Walang datos na lumalabas sa device na ito",
+  "setNoDataLeaves": "Walang ipinapadalang usage statistics o crash report",
   "brTitle": "Backup at Pagbalik",
   "brKeepSafe": "Panatilihing Ligtas ang Iyong Datos",
   "brIntro": "I-back up ang lahat ng profile, progreso, nakamit, biniling item, setting, at sariling flashcard. Maibabalik ito sa kahit anong device.",

@@ -7851,7 +7851,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setEnterPin => 'Enter PIN';
 
   @override
-  String get setNoDataLeaves => 'No data leaves this device';
+  String get setNoDataLeaves => 'No usage statistics or crash reports are sent';
 
   @override
   String get brTitle => 'Backup & Restore';

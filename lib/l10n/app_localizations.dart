@@ -12965,7 +12965,7 @@ abstract class AppLocalizations {
   /// No description provided for @setNoDataLeaves.
   ///
   /// In en, this message translates to:
-  /// **'No data leaves this device'**
+  /// **'No usage statistics or crash reports are sent'**
   String get setNoDataLeaves;
 
   /// No description provided for @brTitle.
