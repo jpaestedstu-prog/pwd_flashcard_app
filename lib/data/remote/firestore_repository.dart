@@ -218,7 +218,22 @@ class FirestoreRepository implements DataRepository {
     // document: the time logs' rule reads it.
     await deleteMatching('active_time_logs', 'child_profile_id');
     await deleteMatching('session_logs', 'profile_id');
-    await deleteMatching('recovery_codes', 'profile_id');
+    // Recovery codes may only be listed by the tablet that issued them (the
+    // doc id is the code itself), so this query carries the owner filter the
+    // rules demand.
+    final codeOwner = _uid;
+    if (codeOwner != null) {
+      await attempt(() async {
+        final snap = await _db
+            .collection('recovery_codes')
+            .where('profile_owner_uid', isEqualTo: codeOwner)
+            .where('profile_id', isEqualTo: profileId)
+            .get();
+        for (final d in snap.docs) {
+          await attempt(() => d.reference.delete());
+        }
+      });
+    }
     // Every file shared as this profile: pictures, videos and sounds on the
     // tests, feedback and routines just deleted, and the learner's own video
     // answers. Before the profile document, which the rules read.

@@ -286,9 +286,15 @@ class RecoveryCodeService {
     String profileId,
   ) async {
     if (!FirebaseService.isConfigured) return null;
+    final uid = FirebaseService.currentUid;
+    if (uid == null) return null;
     try {
+      // Filtered to this tablet's own codes: the rules refuse any listing
+      // that could return someone else's, because the doc id IS the code
+      // and a listed code could be redeemed to take over the profile.
       final snap = await FirebaseService.db
           .collection('recovery_codes')
+          .where('profile_owner_uid', isEqualTo: uid)
           .where('profile_id', isEqualTo: profileId)
           .where('used_at', isNull: true)
           .limit(1)

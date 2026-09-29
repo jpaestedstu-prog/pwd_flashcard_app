@@ -867,17 +867,30 @@ service cloud.firestore {
     // post-lookup. Used in tandem with [claimingViaRecovery] on
     // profiles / progress / custom_cards / shop_equipped / app_state.
     match /recovery_codes/{code} {
-      allow read: if signedIn();
+      // Look-up by the exact code only. Reads used to be open to any
+      // signed-in user, and a *list* is a read: any copy of the app could
+      // list the collection, and since the doc id IS the code (the hash
+      // check is client-side only), redeem every unused code through
+      // [claimingViaRecovery] and take those profiles over. Listing is now
+      // limited to the issuing tablet's own codes — the app's queries
+      // (show my code, delete cascade) filter on profile_owner_uid for it.
+      allow get: if signedIn();
+      allow list: if signedIn()
+        && resource.data.profile_owner_uid == request.auth.uid;
       allow create: if signedIn()
         && request.resource.data.profile_owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.profile_id);
       // Updates are restricted to marking the code redeemed
-      // (`used_at` + `redeemed_by_uid`). The code itself, profile_id,
-      // and hash cannot be mutated post-creation.
+      // (`used_at` + `redeemed_by_uid`), and only by the redeemer in the
+      // same commit that hands them the profile — so nobody can burn
+      // someone else's code without actually claiming with it. The code
+      // itself, profile_id, and hash cannot be mutated post-creation.
       allow update: if signedIn()
         && resource.data.used_at == null
         && request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['used_at', 'redeemed_by_uid']);
+           .hasOnly(['used_at', 'redeemed_by_uid'])
+        && request.resource.data.redeemed_by_uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/profiles/$(resource.data.profile_id)).data.owner_uid == request.auth.uid;
       // Owner may revoke; the redeeming party may not delete.
       allow delete: if signedIn()
         && resource.data.profile_owner_uid == request.auth.uid;
