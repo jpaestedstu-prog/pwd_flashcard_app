@@ -755,7 +755,7 @@ abstract class AppLocalizations {
   /// No description provided for @version.
   ///
   /// In en, this message translates to:
-  /// **'Version 1.2.0 • Thesis Capstone Project'**
+  /// **'Version 1.2.1 • Thesis Capstone Project'**
   String get version;
 
   /// No description provided for @flashLearnPwd.
@@ -4764,7 +4764,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingResearchDataOffDesc.
   ///
   /// In en, this message translates to:
-  /// **'Off — no data leaves this device'**
+  /// **'Off — no usage statistics or crash reports are sent'**
   String get settingResearchDataOffDesc;
 
   /// No description provided for @settingDailyMissionDesc.

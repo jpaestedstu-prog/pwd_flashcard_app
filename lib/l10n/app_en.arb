@@ -186,7 +186,7 @@
   "openDashboard": "Open progress dashboard",
   "openSettings": "Open settings",
   "openShop": "Open star shop",
-  "version": "Version 1.2.0 • Thesis Capstone Project",
+  "version": "Version 1.2.1 • Thesis Capstone Project",
   "flashLearnPwd": "FlashLearn PWD",
   "animals": "Animals",
   "colorsAndShapes": "Colors & Shapes",
@@ -1759,7 +1759,7 @@
   "settingReplayTutorialsDesc": "Show tutorial guides again on all screens",
   "settingPurposeDesc": "Interactive vocabulary building app for PWD students using flashcards, games, and Filipino Sign Language.",
   "settingResearchDataOnDesc": "Sending anonymous crash & usage data to the research team",
-  "settingResearchDataOffDesc": "Off — no data leaves this device",
+  "settingResearchDataOffDesc": "Off — no usage statistics or crash reports are sent",
   "settingDailyMissionDesc": "{count} words per day",
   "@settingDailyMissionDesc": {
     "placeholders": {

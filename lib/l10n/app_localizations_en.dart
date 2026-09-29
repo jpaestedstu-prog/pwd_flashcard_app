@@ -364,7 +364,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openShop => 'Open star shop';
 
   @override
-  String get version => 'Version 1.2.0 • Thesis Capstone Project';
+  String get version => 'Version 1.2.1 • Thesis Capstone Project';
 
   @override
   String get flashLearnPwd => 'FlashLearn PWD';
@@ -2681,7 +2681,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sending anonymous crash & usage data to the research team';
 
   @override
-  String get settingResearchDataOffDesc => 'Off — no data leaves this device';
+  String get settingResearchDataOffDesc =>
+      'Off — no usage statistics or crash reports are sent';
 
   @override
   String settingDailyMissionDesc(int count) {

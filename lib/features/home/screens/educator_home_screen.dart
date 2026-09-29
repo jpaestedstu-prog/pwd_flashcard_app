@@ -949,6 +949,10 @@ class _StudentCard extends StatelessWidget {
 
   String _timeAgo(AppLocalizations t, DateTime dt) {
     final diff = DateTime.now().difference(dt);
+    // A learner tablet with its clock ahead stamps activity in the future;
+    // on the Honor that read "-51864m ago". Anything not yet a minute old —
+    // including the future — is "just now".
+    if (diff.inMinutes < 1) return t.gmJustNow;
     if (diff.inMinutes < 60) return t.gmMinutesAgo(diff.inMinutes);
     if (diff.inHours < 24) return t.gmHoursAgo(diff.inHours);
     if (diff.inDays < 7) return t.gmDaysAgo(diff.inDays);

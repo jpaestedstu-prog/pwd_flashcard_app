@@ -438,6 +438,8 @@ class _AlertTile extends StatelessWidget {
   String _formatTimestamp(BuildContext context, DateTime t) {
     final l = _t(context);
     final diff = DateTime.now().difference(t);
+    // Future stamps (a tablet's clock ahead) read as "just now", not "-5m ago".
+    if (diff.inMinutes < 1) return l.gmJustNow;
     if (diff.inMinutes < 60) return l.asMinutesAgo(diff.inMinutes);
     if (diff.inHours < 24) return l.asHoursAgo(diff.inHours);
     if (diff.inDays < 7) return l.asDaysAgo(diff.inDays);

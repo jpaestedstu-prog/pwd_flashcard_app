@@ -990,7 +990,7 @@ class SettingsScreen extends ConsumerWidget {
                     'FlashLearn PWD',
                 subtitle:
                     AppLocalizations.of(context)?.version ??
-                    'Version 1.2.0 • Thesis Capstone Project',
+                    'Version 1.2.1 • Thesis Capstone Project',
                 trailing: const SizedBox.shrink(),
               ),
 
@@ -1620,7 +1620,7 @@ class _TelemetryToggleState extends State<_TelemetryToggle> {
           ? l10n?.settingResearchDataOnDesc ??
                       'Sending anonymous crash & usage data to the research team'
           : l10n?.settingResearchDataOffDesc ??
-                      'Off — no data leaves this device',
+                      'Off — no usage statistics or crash reports are sent',
       onTap: () => (_set)(!(_enabled)),
       toggled: _enabled,
       // The visible subtitle already leads with "Off —"; spoken after the

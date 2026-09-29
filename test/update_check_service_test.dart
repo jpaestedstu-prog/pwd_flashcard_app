@@ -150,6 +150,15 @@ void main() {
     expect(store.saves, 0);
   });
 
+  test('split-per-ABI version codes compare by their build number', () {
+    // The 64-bit APK of build 5 reports 2005; raw, it always looked newer
+    // than the website's 5 and never heard of an update.
+    expect(UpdateCheckService.baseBuild(2005), 5);
+    expect(UpdateCheckService.baseBuild(1005), 5);
+    expect(UpdateCheckService.baseBuild(4005), 5);
+    expect(UpdateCheckService.baseBuild(5), 5);
+  });
+
   test('an unreadable installed version is unknown', () async {
     final status = await UpdateCheckService(
       installed: () async => throw StateError('no platform'),

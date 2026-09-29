@@ -366,7 +366,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get openShop => 'Buksan ang tindahan ng bituin';
 
   @override
-  String get version => 'Bersyon 1.2.0 • Thesis Capstone Project';
+  String get version => 'Bersyon 1.2.1 • Thesis Capstone Project';
 
   @override
   String get flashLearnPwd => 'FlashLearn PWD';
@@ -2722,7 +2722,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get settingResearchDataOffDesc =>
-      'Naka-off — walang datos na umaalis sa device na ito';
+      'Naka-off — walang ipinapadalang usage statistics o crash report';
 
   @override
   String settingDailyMissionDesc(int count) {

@@ -127,7 +127,14 @@ class UpdateCheckService {
         _now = now ?? DateTime.now;
 
   static final Uri versionUrl = Uri.parse(
-    'https://jpaestedstu-prog.github.io/pwd_flashcard_app/version.json',
+    const String.fromEnvironment(
+      // Test seam for trying the "update available" path on a device before
+      // a newer release exists: `--dart-define=UPDATE_CHECK_URL=http://...`.
+      // Release builds never set it.
+      'UPDATE_CHECK_URL',
+      defaultValue:
+          'https://jpaestedstu-prog.github.io/pwd_flashcard_app/version.json',
+    ),
   );
 
   /// How long a fetched answer is trusted before asking again.
@@ -171,8 +178,20 @@ class UpdateCheckService {
 
   static Future<({String version, int build})> _platformVersion() async {
     final info = await PackageInfo.fromPlatform();
-    return (version: info.version, build: int.tryParse(info.buildNumber) ?? 0);
+    return (
+      version: info.version,
+      build: baseBuild(int.tryParse(info.buildNumber) ?? 0),
+    );
   }
+
+  /// The pubspec build number behind an Android versionCode.
+  ///
+  /// `flutter build apk --split-per-abi` prefixes each ABI: the 64-bit APK of
+  /// build 5 reports 2005, the 32-bit one 1005, x86_64 4005, while the
+  /// universal APK reports 5. Compared raw, a split install always looked
+  /// newer than the website's build and never heard of an update. Build
+  /// numbers stay below 1000, so the prefix is everything above that.
+  static int baseBuild(int versionCode) => versionCode % 1000;
 
   static Future<String?> _httpGet(Uri url) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);

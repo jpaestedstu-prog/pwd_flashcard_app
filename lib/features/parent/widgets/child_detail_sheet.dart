@@ -705,10 +705,14 @@ class _RecentGameRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = score.total > 0 ? (score.score / score.total * 100).round() : 0;
     final diff = DateTime.now().difference(score.date);
+    // A score stamped by a tablet whose clock was ahead is in the future:
+    // "just now", never "-5m ago".
     final timeAgo = diff.inDays > 0
         ? _t(context).gmDaysAgo(diff.inDays)
         : diff.inHours > 0
         ? _t(context).gmHoursAgo(diff.inHours)
+        : diff.inMinutes < 1
+        ? _t(context).gmJustNow
         : _t(context).gmMinutesAgo(diff.inMinutes);
 
     return Container(
