@@ -1,0 +1,48 @@
+{
+  "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
+  "releases": [
+    {
+      "version": "1.2.1",
+      "build": 5,
+      "date": "2026-09-29",
+      "summary_en": "Safety and polish. The app now tells teachers and parents when a newer version is on this website (<strong>Settings → Check for updates</strong>, and a card on their home screen). Profile recovery codes are better protected. Usage statistics and crash reports stay off until a teacher or parent turns them on, and the app no longer carries the advertising ID permission. The AI Tutor bubble no longer covers pop-ups, pickers or buttons. Installs over v1.2.0 and keeps your profiles.",
+      "summary_fil": "Kaligtasan at pagpapaganda. Sasabihin na ng app sa mga guro at magulang kapag may mas bagong bersyon sa website na ito (<strong>Settings → Tingnan kung may update</strong>, at isang card sa kanilang home screen). Mas protektado na ang mga recovery code ng profile. Nakapatay ang usage statistics at crash reports hanggang buksan ito ng guro o magulang, at wala na sa app ang advertising ID permission. Hindi na tinatakpan ng AI Tutor bubble ang mga pop-up, picker o button. Nai-i-install sa ibabaw ng v1.2.0 at nananatili ang inyong mga profile.",
+      "notes_en": "Update notices for teachers and parents, safer recovery codes, analytics off until an adult turns it on, and the AI Tutor bubble no longer covers pop-ups.",
+      "notes_fil": "Paalala ng update para sa guro at magulang, mas ligtas na recovery code, nakapatay ang analytics hanggang buksan ng matanda, at hindi na tinatakpan ng AI Tutor bubble ang mga pop-up.",
+      "bullets_en": [
+        "**Check for updates** in Settings, and a \"new version\" card on teacher and parent homes",
+        "Profile recovery codes can no longer be listed by other tablets",
+        "Usage statistics and crash reports stay off until a teacher or parent turns them on; no advertising ID",
+        "The AI Tutor bubble no longer covers pop-ups, pickers or the guest home's buttons"
+      ]
+    },
+    {
+      "version": "1.2.0",
+      "build": 4,
+      "date": "2026-09-28",
+      "summary_en": "Second public release. New: <strong>My Day</strong> picture schedules with reminders, set up by a teacher or parent; the <strong>Talk Board</strong> for speaking by tapping pictures; a daily mood check-in; class <strong>pre- and post-tests</strong> with pictures, sound, FSL video and video answers, plus a learner portfolio PDF for parents; <strong>Messages</strong> between teachers, parents and children, with blocking and reporting; offline sign packs; a Progress tab shaped to each learner; and a complete Filipino interface. Text on every theme now meets WCAG AA contrast, along with many fixes from classroom testing. Installs over v1.0.0 and keeps your profiles.",
+      "summary_fil": "Ikalawang pampublikong labas. Bago: <strong>My Day</strong> — larawang iskedyul na may paalala na inihahanda ng guro o magulang; ang <strong>Talk Board</strong> para magsalita sa pag-tap ng larawan; araw-araw na mood check-in; <strong>pre-test at post-test</strong> ng klase na may larawan, tunog, FSL video at sagot na video, pati portfolio PDF para sa magulang; <strong>Messages</strong> sa pagitan ng guro, magulang at bata, na may block at report; offline sign packs; Progress tab na angkop sa bawat mag-aaral; at buong Filipino na interface. Pasado na sa WCAG AA contrast ang teksto sa bawat tema, kasama ang maraming ayos mula sa pagsubok sa klase. Nai-i-install sa ibabaw ng v1.0.0 at nananatili ang inyong mga profile.",
+      "notes_en": "My Day routines, the Talk Board, mood check-ins, class pre/post tests with media, Messages, offline sign packs and a full Filipino interface.",
+      "notes_fil": "My Day, Talk Board, mood check-in, pre/post test ng klase na may media, Messages, offline sign packs at buong Filipino na interface.",
+      "bullets_en": [
+        "**My Day**: picture schedules with reminders, set up by a teacher or parent",
+        "**Talk Board**: speak by tapping pictures",
+        "A daily mood check-in on the home screen",
+        "Class **pre- and post-tests** with pictures, sound, FSL video and video answers, plus a learner portfolio PDF for parents",
+        "**Messages** between teachers, parents and children, with blocking and reporting",
+        "Offline sign packs, a Progress tab shaped to each learner, and a complete Filipino interface",
+        "Text on every theme meets WCAG AA contrast, plus many fixes from classroom testing"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "build": 1,
+      "date": "2026-07-09",
+      "summary_en": "First public release: 177 bilingual words in 13 decks, 15 learning games, stories with comprehension questions, FSL practice, AI learning companion, and the full accessibility suite (high contrast, dyslexia-friendly, reduced motion, voice-guided navigation, gaze &amp; voice control).",
+      "summary_fil": "Unang pampublikong labas: 177 salita sa 13 deck, 15 laro, mga kuwento na may tanong, FSL practice, AI learning companion, at kumpletong accessibility suite (high contrast, dyslexia-friendly, reduced motion, voice-guided navigation, gaze at voice control).",
+      "notes_en": "First public release.",
+      "notes_fil": "Unang pampublikong labas.",
+      "bullets_en": []
+    }
+  ]
+}

@@ -1,11 +1,12 @@
 /* FlashLearn PWD site service worker — offline support for the core pages. */
-const CACHE = 'flp-site-v9';
+const CACHE = 'flp-site-v10';
 const CORE = [
   './',
   'index.html',
   'teachers-guide.html',
   'fsl-dictionary.html',
   'games.html',
+  'privacy.html',
   'manifest.webmanifest',
   'assets/site.js',
   'assets/fsl-dict.js',
@@ -21,14 +22,6 @@ const CORE = [
   'assets/fonts/Nunito-ExtraBold.ttf',
   'assets/fonts/Lexend-Regular.ttf',
   'assets/fonts/Lexend-SemiBold.ttf',
-  'assets/screenshots/01-choose-profile.png',
-  'assets/screenshots/02-home.png',
-  'assets/screenshots/03-cards-decks.png',
-  'assets/screenshots/04-flashcard-viewer.png',
-  'assets/screenshots/05-games.png',
-  'assets/screenshots/06-stories.png',
-  'assets/screenshots/07-progress.png',
-  'assets/screenshots/08-settings.png'
 ];
 
 self.addEventListener('install', (e) => {
@@ -45,7 +38,10 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== location.origin) return;
+  // The release manifest must always be fresh — never answer it from cache.
+  if (url.pathname.endsWith('/version.json')) return;
 
   // Pages: network first (fresh content), fall back to cache when offline.
   if (req.mode === 'navigate') {

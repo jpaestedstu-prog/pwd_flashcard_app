@@ -52,8 +52,92 @@ def parse_dict_js(text):
     return cats, entries
 
 
+SEED = ROOT / "lib" / "data" / "local" / "seed_data.dart"
+
+# The app's categories in `FlashcardCategory` order. The first twelve are the
+# dictionary's FSL_CATS in the same order; Actions has no signs yet, so it only
+# appears among the words still being recorded.
+SEED_CATEGORY_ORDER = [
+    "animals", "colorsAndShapes", "numbers", "bodyParts", "foodAndDrinks",
+    "familyAndGreetings", "clothing", "weather", "classroom", "transportation",
+    "emotions", "daysAndTime", "actions",
+]
+ACTIONS = {"en": "Actions", "fil": "Mga Kilos", "e": "🏃"}
+
+
+def parse_seed_words(text):
+    """(category, English, Filipino) for every flashcard the app ships."""
+    words = re.findall(
+        r"wordEnglish: '((?:[^'\\]|\\.)*)', wordFilipino: '((?:[^'\\]|\\.)*)'"
+        r".*?category: FlashcardCategory\.(\w+)",
+        text,
+    )
+    if len(words) < 150:
+        sys.exit(f"read only {len(words)} words from seed_data.dart — has its format changed?")
+    return [(c, en.replace("\\'", "'"), fil.replace("\\'", "'")) for en, fil, c in words]
+
+
+def coming_soon(cats, entries):
+    """App words with no sign on the site yet, grouped by category.
+
+    A word signed under another category counts as covered — the app plays the
+    same clip for it (e.g. Walk under Actions uses the Transportation sign).
+    No placeholder clips: these are listed as words, nothing more.
+    """
+    signed = {e["en"].lower() for e in entries}
+    groups = {}
+    for cat, en, fil in parse_seed_words(SEED.read_text(encoding="utf-8")):
+        if cat not in SEED_CATEGORY_ORDER:
+            sys.exit(f"seed_data.dart uses an unknown category: {cat}")
+        if en.lower() not in signed:
+            groups.setdefault(cat, []).append((en, fil))
+    out = []
+    for cat in SEED_CATEGORY_ORDER:
+        if cat not in groups:
+            continue
+        idx = SEED_CATEGORY_ORDER.index(cat)
+        label = cats[idx] if idx < len(cats) else ACTIONS
+        out.append((label, groups[cat]))
+    return out
+
+
+def render_coming_soon(groups):
+    total = sum(len(words) for _, words in groups)
+    if not total:
+        return ""
+    blocks = []
+    for label, words in groups:
+        items = "".join(
+            f'<li><span class="soon-en">{html.escape(en)}</span>'
+            f'<span class="soon-fil">{html.escape(fil)}</span></li>'
+            for en, fil in words
+        )
+        blocks.append(
+            '<div class="soon-group">'
+            f'<h3><span aria-hidden="true">{label["e"]}</span> '
+            f'<span class="en">{html.escape(label["en"])}</span>'
+            f'<span class="fil">{html.escape(label["fil"])}</span>'
+            f' <span class="soon-n">{len(words)}</span></h3>'
+            f'<ul>{items}</ul></div>'
+        )
+    return (
+        '<section class="coming-soon" aria-labelledby="soonTitle">\n'
+        '      <h2 id="soonTitle"><span class="en">Signs coming soon</span>'
+        '<span class="fil">Mga senyas na paparating</span></h2>\n'
+        f'      <p class="soon-lead"><span class="en">The app teaches {total} more words that do not '
+        'have a recorded sign yet. We would rather show nothing than a guessed sign, so '
+        'these are listed here until a Deaf signer records them.</span>'
+        f'<span class="fil">May {total} pang salita sa app na wala pang naka-record na senyas. '
+        'Mas mabuting walang ipakita kaysa sa hulang senyas, kaya nakalista muna ang mga ito '
+        'dito hanggang ma-record ng isang Deaf signer.</span></p>\n'
+        '      <div class="soon-grid">\n        ' + "\n        ".join(blocks) + "\n      </div>\n"
+        "    </section>"
+    )
+
+
 def main():
     cats, entries = parse_dict_js(DICT_JS.read_text(encoding="utf-8"))
+    soon = coming_soon(cats, entries)
 
     missing = [e["f"] for e in entries if not (CLIPS / f'{e["f"]}.mp4').exists()]
     if missing:
@@ -127,6 +211,7 @@ def main():
         "<!--CARDS-->": "\n  ".join(cards),
         "<!--CHIPS-->": "\n    ".join(chips),
         "<!--JSONLD-->": json.dumps(jsonld, ensure_ascii=False, indent=1),
+        "<!--COMING-->": render_coming_soon(soon),
         "__COUNT__": str(len(entries)),
         "__CATCOUNT__": str(len([c for i, c in enumerate(cats) if counts.get(i)])),
     }
@@ -139,6 +224,8 @@ def main():
     print(f"wrote {OUT.relative_to(ROOT)}")
     print(f"  {len(entries)} signs across {replacements['__CATCOUNT__']} categories")
     print(f"  every referenced clip exists in {CLIPS.relative_to(ROOT)}")
+    print(f"  {sum(len(w) for _, w in soon)} app words listed as coming soon "
+          f"({', '.join(f'{l['en']} {len(w)}' for l, w in soon)})")
 
 
 if __name__ == "__main__":
