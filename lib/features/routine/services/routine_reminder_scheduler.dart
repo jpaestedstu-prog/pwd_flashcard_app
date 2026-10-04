@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart'
+    show AppLifecycleListener, AppLifecycleState;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
@@ -143,6 +145,19 @@ class RoutineReminderScheduler {
   /// re-checked without re-reading routines.
   static List<RoutineReminder> _plan = const [];
   static String? _profileId;
+
+  /// The learner's routines as last seen and the language they are said in,
+  /// so a [suspend] can be undone without re-reading anything.
+  static List<Routine>? _latestRoutines;
+  static bool _latestFilipino = false;
+
+  /// A profile the reminders are not for is using the app (see [suspend]).
+  static bool _blocked = false;
+
+  /// Whether the app is on screen. A suspension only holds while it is, so
+  /// the learner never misses a step because somebody left the app open.
+  static bool _foreground = true;
+  static AppLifecycleListener? _lifecycle;
 
   static const _ownerKey = 'routine_reminders';
 
@@ -294,7 +309,10 @@ class RoutineReminderScheduler {
     required bool filipino,
   }) async {
     await _initPlugin();
+    _watchLifecycle();
     await _sub?.cancel();
+    _blocked = false;
+    _latestRoutines = null;
     await cancelAll();
     _profileId = profileId;
     try {
@@ -353,12 +371,83 @@ class RoutineReminderScheduler {
     _watchedDay = '';
     _plan = const [];
     _profileId = null;
+    _latestRoutines = null;
+    _blocked = false;
     _suppressedToday.clear();
     await cancelAll();
     try {
       await HiveService.setScheduleOwner(_ownerKey, null);
     } catch (_) {}
   }
+
+  /// Holds the learner's reminders — and the locks they launch — back while
+  /// a profile they are not for uses the app on a shared tablet (see
+  /// `ScheduleOwnership.forRoutines`). They come back on [resume], and
+  /// whenever the app goes to the background.
+  static Future<void> suspend() async {
+    if (profileId == null) return;
+    _watchLifecycle();
+    if (_blocked) return;
+    _blocked = true;
+    if (_foreground) await cancelAll();
+  }
+
+  /// Puts the reminders back after a [suspend].
+  static Future<void> resume() async {
+    if (!_blocked) return;
+    _blocked = false;
+    await _restore();
+  }
+
+  /// Re-schedules the learner's reminders from what was last seen — or, if
+  /// this run of the app never loaded them, from the device's copy.
+  static Future<void> _restore() async {
+    final owner = profileId;
+    if (owner == null) return;
+    final loaded = _latestRoutines;
+    final profile = HiveService.getProfileById(owner);
+    _profileId ??= owner;
+    await rescheduleAll(
+      loaded ?? HiveService.getRoutinesForChild(owner),
+      accessibility: loaded != null
+          ? _accessibility
+          : (profile?.disabilityType ?? DisabilityType.none),
+      filipino: loaded != null
+          ? _latestFilipino
+          : HiveService.getSettings(profileId: owner).locale == 'fil',
+    );
+  }
+
+  /// Follows the app in and out of the foreground: a suspension lifts in
+  /// the background and returns when the app is back on screen.
+  static void _watchLifecycle() {
+    if (_lifecycle != null) return;
+    try {
+      _lifecycle = AppLifecycleListener(
+        onStateChange: (state) {
+          final foreground = state == AppLifecycleState.resumed ||
+              state == AppLifecycleState.inactive;
+          if (foreground == _foreground) return;
+          _foreground = foreground;
+          if (!_blocked) return;
+          unawaited((foreground ? cancelAll() : _restore())
+              .catchError((Object e) {
+            if (kDebugMode) debugPrint('RoutineReminderScheduler: $e');
+          }));
+        },
+      );
+    } catch (_) {
+      // No widgets binding (plain unit tests): always in the foreground.
+    }
+  }
+
+  /// Whether the reminders should be with the OS right now.
+  @visibleForTesting
+  static bool shouldSchedule({
+    required bool blocked,
+    required bool foreground,
+  }) =>
+      !(blocked && foreground);
 
   /// Cancels the reminders when [id] — the profile they are for — is deleted
   /// from this device.
@@ -372,10 +461,16 @@ class RoutineReminderScheduler {
     required DisabilityType accessibility,
     required bool filipino,
   }) async {
+    _latestRoutines = routines;
+    _latestFilipino = filipino;
+    _accessibility = accessibility;
     await cancelAll();
+    if (!shouldSchedule(blocked: _blocked, foreground: _foreground)) {
+      _plan = const [];
+      return;
+    }
     final reminders = plan(routines, filipino: filipino);
     _plan = reminders;
-    _accessibility = accessibility;
     final today = DateTime.now();
     final id = _profileId;
     if (id != null) _watchToday(id);

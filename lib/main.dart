@@ -357,10 +357,13 @@ class FlashLearnApp extends ConsumerWidget {
         // reminders.
         if (ref.read(profileProvider.notifier).isViewingAsStudent) return;
         final next = ref.read(profileProvider);
+        final routineOwner = RoutineReminderScheduler.profileId;
         final change = ScheduleOwnership.forRoutines(
           next: next,
           featureOn: ref.read(routineFeatureProvider),
-          scheduledFor: RoutineReminderScheduler.profileId,
+          scheduledFor: routineOwner,
+          responsibleEducators:
+              AlarmScheduler.responsibleEducatorsFor(routineOwner),
         );
         if (next != null && change == ScheduleChange.start) {
           RoutineReminderScheduler.onReminderTapped = (routineId, stepId) {
@@ -411,11 +414,18 @@ class FlashLearnApp extends ConsumerWidget {
           );
         } else {
           RoutineReminderScheduler.onReminderTapped = null;
-          // Only the profile the reminders are for can switch them off. An
-          // educator or the profile picker on screen leaves them running.
-          if (change == ScheduleChange.stop) {
-            unawaited(RoutineReminderScheduler.shutdown());
-          }
+          // Only the profile the reminders are for can switch them off. The
+          // educator who set the routine and the profile picker leave them
+          // running; anyone else on a shared tablet holds them back while
+          // they use the app.
+          final pending = switch (change) {
+            ScheduleChange.stop => RoutineReminderScheduler.shutdown(),
+            ScheduleChange.suspend => RoutineReminderScheduler.suspend(),
+            _ => RoutineReminderScheduler.resume(),
+          };
+          unawaited(pending.catchError((Object e, StackTrace s) {
+            ErrorHandler.report(e, s, 'RoutineReminderScheduler:silent');
+          }));
         }
       } catch (e, s) {
         ErrorHandler.report(e, s, 'applyRoutineLifecycle:silent');

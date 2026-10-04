@@ -62,13 +62,25 @@ class ScheduleOwnership {
   /// on screen with My Day switched off — a Player turning the feature off
   /// must not cancel a Student's reminders, and an educator cannot turn off a
   /// learner's.
+  ///
+  /// Like child alarms, they are held back ([ScheduleChange.suspend]) while
+  /// somebody else uses a shared tablet — an educator who did not set the
+  /// learner's routine or alarms, or a Player with My Day off — so a child's
+  /// "Please have your lunch now" (and its lock) never lands in their
+  /// session. The responsible educator and the profile picker keep them.
   static ScheduleChange forRoutines({
     required UserProfile? next,
     required bool featureOn,
     required String? scheduledFor,
+    Set<String> responsibleEducators = const {},
   }) {
     if (next == null) return ScheduleChange.keep;
     if (featureOn) return ScheduleChange.start;
-    return next.id == scheduledFor ? ScheduleChange.stop : ScheduleChange.keep;
+    if (next.id == scheduledFor) return ScheduleChange.stop;
+    if (scheduledFor == null) return ScheduleChange.keep;
+    if (next.role.isEducator && responsibleEducators.contains(next.id)) {
+      return ScheduleChange.keep;
+    }
+    return ScheduleChange.suspend;
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/core/services/schedule_ownership.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
+import 'package:pwdpwdpwd/features/routine/services/routine_reminder_scheduler.dart';
 
 /// Alarms and routine reminders belong to the learner who uses the device.
 /// Found on the tablet: a child's 1:20 PM alarms vanished while a teacher was
@@ -70,11 +71,13 @@ void main() {
   });
 
   group('routine reminders', () {
-    ScheduleChange change(UserProfile? next, {bool on = false, String? for_}) =>
+    ScheduleChange change(UserProfile? next,
+            {bool on = false, String? for_, Set<String> responsible = const {}}) =>
         ScheduleOwnership.forRoutines(
           next: next,
           featureOn: on,
           scheduledFor: for_,
+          responsibleEducators: responsible,
         );
 
     test('a profile with My Day on schedules its own', () {
@@ -82,9 +85,22 @@ void main() {
       expect(change(pia, on: true, for_: 'ana'), ScheduleChange.start);
     });
 
-    test("an educator on screen keeps the learner's reminders", () {
-      expect(change(rose, for_: 'ana'), ScheduleChange.keep);
-      expect(change(mom, for_: 'ana'), ScheduleChange.keep);
+    test("the educator who set the routine keeps the learner's reminders", () {
+      expect(change(rose, for_: 'ana', responsible: {'rose'}), ScheduleChange.keep);
+      expect(change(mom, for_: 'ana', responsible: {'mom', 'rose'}), ScheduleChange.keep);
+    });
+
+    // A shared tablet: the learner's "Please have your lunch now" — and the
+    // lock it launches — must not land in somebody else's session.
+    test('anyone else on the tablet holds them back', () {
+      expect(change(rose, for_: 'ana'), ScheduleChange.suspend);
+      expect(change(mom, for_: 'ana', responsible: {'rose'}), ScheduleChange.suspend);
+      expect(change(pia, for_: 'ana'), ScheduleChange.suspend);
+      expect(change(guest, for_: 'ana'), ScheduleChange.suspend);
+    });
+
+    test('a Player is never "responsible", whatever the set says', () {
+      expect(change(pia, for_: 'ana', responsible: {'pia'}), ScheduleChange.suspend);
     });
 
     test('the profile picker keeps them', () {
@@ -93,7 +109,14 @@ void main() {
 
     test('a Player turning My Day off stops only their own', () {
       expect(change(pia, for_: 'pia'), ScheduleChange.stop);
-      expect(change(pia, for_: 'ana'), ScheduleChange.keep);
+      // Ana's are never cancelled — only held back while the Player plays.
+      expect(change(pia, for_: 'ana'), ScheduleChange.suspend);
+    });
+
+    test('suspended reminders are with the OS only while the app is away', () {
+      expect(RoutineReminderScheduler.shouldSchedule(blocked: false, foreground: true), isTrue);
+      expect(RoutineReminderScheduler.shouldSchedule(blocked: true, foreground: true), isFalse);
+      expect(RoutineReminderScheduler.shouldSchedule(blocked: true, foreground: false), isTrue);
     });
 
     test('a guest with nothing scheduled changes nothing', () {
