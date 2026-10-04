@@ -1273,6 +1273,30 @@ html.hc .sign{ border-color:#12122A; }
 }
 .empty .big{ font-size:2.4rem; display:block; margin-bottom:8px; }
 
+/* ============ Words whose signs are not recorded yet ============ */
+/* Plain text, dashed and muted: nothing here looks like a playable card. */
+.coming-soon{ margin-top:48px; }
+.coming-soon h2{ font-family:var(--font-head); font-size:1.45rem; text-align:center; }
+.soon-lead{ color:var(--ink-soft); text-align:center; max-width:64ch; margin:8px auto 0; }
+.soon-grid{
+  display:grid; gap:14px; margin-top:20px;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+}
+.soon-group{
+  background:var(--bg-soft); border:2px dashed rgba(124,111,222,.35); border-radius:20px;
+  padding:14px 16px;
+}
+.soon-group h3{ font-family:var(--font-head); font-size:1.02rem; color:var(--ink); margin:0 0 8px; }
+.soon-n{ color:var(--ink-soft); font-weight:700; font-size:.85em; }
+.soon-group ul{ list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px; }
+.soon-group li{
+  background:var(--card); border-radius:999px; padding:4px 11px; font-size:.9em;
+  display:inline-flex; gap:6px; align-items:baseline;
+}
+.soon-en{ color:var(--ink); font-weight:700; }
+.soon-fil{ color:var(--ink-soft); }
+html.hc .soon-group{ border-color:#12122A; }
+
 /* ============ Video dialog (same look as the Try-It dialog on the home page) ============ */
 dialog.lightbox{
   border:none; border-radius:22px; padding:10px; background:#1E1B2E; max-width:min(92vw,560px); width:auto;
@@ -1559,6 +1583,17 @@ html.hc .foot-bottom{ border-top-color:#fff; }
          <span class="fil">Subukan ang mas maikling salita, o tingnan ang spelling. Maaari ka ring mag-browse ng kategorya sa itaas.</span></p>
     </div>
 
+    <section class="coming-soon" aria-labelledby="soonTitle">
+      <h2 id="soonTitle"><span class="en">Signs coming soon</span><span class="fil">Mga senyas na paparating</span></h2>
+      <p class="soon-lead"><span class="en">The app teaches 33 more words that do not have a recorded sign yet. We would rather show nothing than a guessed sign, so these are listed here until a Deaf signer records them.</span><span class="fil">May 33 pang salita sa app na wala pang naka-record na senyas. Mas mabuting walang ipakita kaysa sa hulang senyas, kaya nakalista muna ang mga ito dito hanggang ma-record ng isang Deaf signer.</span></p>
+      <div class="soon-grid">
+        <div class="soon-group"><h3><span aria-hidden="true">🎨</span> <span class="en">Colors &amp; Shapes</span><span class="fil">Mga Kulay at Hugis</span> <span class="soon-n">2</span></h3><ul><li><span class="soon-en">Green</span><span class="soon-fil">Berde</span></li><li><span class="soon-en">Flower</span><span class="soon-fil">Bulaklak</span></li></ul></div>
+        <div class="soon-group"><h3><span aria-hidden="true">🍎</span> <span class="en">Food &amp; Drinks</span><span class="fil">Pagkain at Inumin</span> <span class="soon-n">5</span></h3><ul><li><span class="soon-en">Bottle</span><span class="soon-fil">Bote</span></li><li><span class="soon-en">Cup</span><span class="soon-fil">Tasa</span></li><li><span class="soon-en">Spoon</span><span class="soon-fil">Kutsara</span></li><li><span class="soon-en">Fork</span><span class="soon-fil">Tinidor</span></li><li><span class="soon-en">Plate</span><span class="soon-fil">Plato</span></li></ul></div>
+        <div class="soon-group"><h3><span aria-hidden="true">🏫</span> <span class="en">Classroom</span><span class="fil">Silid-aralan</span> <span class="soon-n">7</span></h3><ul><li><span class="soon-en">Table</span><span class="soon-fil">Mesa</span></li><li><span class="soon-en">Paper</span><span class="soon-fil">Papel</span></li><li><span class="soon-en">Ball</span><span class="soon-fil">Bola</span></li><li><span class="soon-en">Door</span><span class="soon-fil">Pinto</span></li><li><span class="soon-en">Window</span><span class="soon-fil">Bintana</span></li><li><span class="soon-en">Television</span><span class="soon-fil">Telebisyon</span></li><li><span class="soon-en">Phone</span><span class="soon-fil">Telepono</span></li></ul></div>
+        <div class="soon-group"><h3><span aria-hidden="true">🏃</span> <span class="en">Actions</span><span class="fil">Mga Kilos</span> <span class="soon-n">19</span></h3><ul><li><span class="soon-en">Run</span><span class="soon-fil">Tumakbo</span></li><li><span class="soon-en">Jump</span><span class="soon-fil">Tumalon</span></li><li><span class="soon-en">Eat</span><span class="soon-fil">Kumain</span></li><li><span class="soon-en">Drink</span><span class="soon-fil">Uminom</span></li><li><span class="soon-en">Sleep</span><span class="soon-fil">Matulog</span></li><li><span class="soon-en">Read</span><span class="soon-fil">Magbasa</span></li><li><span class="soon-en">Write</span><span class="soon-fil">Magsulat</span></li><li><span class="soon-en">Sing</span><span class="soon-fil">Kumanta</span></li><li><span class="soon-en">Dance</span><span class="soon-fil">Sumayaw</span></li><li><span class="soon-en">Clap</span><span class="soon-fil">Pumalakpak</span></li><li><span class="soon-en">Sit</span><span class="soon-fil">Umupo</span></li><li><span class="soon-en">Stand</span><span class="soon-fil">Tumayo</span></li><li><span class="soon-en">Open</span><span class="soon-fil">Magbukas</span></li><li><span class="soon-en">Close</span><span class="soon-fil">Magsara</span></li><li><span class="soon-en">Wave</span><span class="soon-fil">Kumaway</span></li><li><span class="soon-en">Cry</span><span class="soon-fil">Umiyak</span></li><li><span class="soon-en">Laugh</span><span class="soon-fil">Tumawa</span></li><li><span class="soon-en">Swim</span><span class="soon-fil">Lumangoy</span></li><li><span class="soon-en">Play</span><span class="soon-fil">Maglaro</span></li></ul></div>
+      </div>
+    </section>
+
     <div class="note">
       <b><span class="en">About these clips.</span><span class="fil">Tungkol sa mga clip.</span></b>
       <span class="en">Every clip was recorded for this project and shows one sign at natural speed; use 🐢 Slow motion to study the handshape. FSL has regional variations — treat these as a starting point, and defer to your local Deaf community. 12 categories are covered; the app itself teaches 177 words in total.</span>
@@ -1613,6 +1648,7 @@ html.hc .foot-bottom{ border-top-color:#fff; }
           <li><a href="fsl-dictionary.html"><span class="en">FSL Sign Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a></li>
           <li><a href="teachers-guide.html"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></a></li>
           <li><a href="index.html#faq"><span class="en">FAQ</span><span class="fil">Mga Madalas Itanong</span></a></li>
+          <li><a href="privacy.html"><span class="en">Privacy &amp; data</span><span class="fil">Privacy at datos</span></a></li>
           <li><a href="index.html#about"><span class="en">About the team</span><span class="fil">Tungkol sa pangkat</span></a></li>
           <li><a href="index.html#feedback"><span class="en">Send feedback</span><span class="fil">Magpadala ng feedback</span></a></li>
           <li><a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app" rel="noopener">GitHub</a></li>

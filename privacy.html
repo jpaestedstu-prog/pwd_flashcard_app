@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en"
+      data-title-en="Privacy &amp; Data — FlashLearn PWD"
+      data-title-fil="Privacy at Datos — FlashLearn PWD">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy &amp; Data — FlashLearn PWD</title>
+<meta name="description" content="What the FlashLearn PWD app keeps on the tablet and online, who can see it, the other services it uses, and how to delete a profile and its data.">
+<meta name="theme-color" content="#6C5CE7">
+<link rel="canonical" href="https://jpaestedstu-prog.github.io/pwd_flashcard_app/privacy.html">
+<!-- Social sharing previews (Facebook / Messenger / X / chat apps) -->
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/privacy.html">
+<meta property="og:site_name" content="FlashLearn PWD">
+<meta property="og:title" content="Privacy &amp; Data — FlashLearn PWD">
+<meta property="og:description" content="What the FlashLearn PWD app keeps on the tablet and online, who can see it, the other services it uses, and how to delete a profile and its data.">
+<meta property="og:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="FlashLearn PWD — free bilingual flashcard app for students with disabilities. Learning made joyful, for every child.">
+<meta property="og:locale" content="en_PH">
+<meta property="og:locale:alternate" content="fil_PH">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Privacy &amp; Data — FlashLearn PWD">
+<meta name="twitter:description" content="What the FlashLearn PWD app keeps on the tablet and online, who can see it, the other services it uses, and how to delete a profile and its data.">
+<meta name="twitter:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<style>
+/* ============ Fonts (bundled from the app itself) ============ */
+@font-face { font-family:'Fredoka'; src:url('assets/fonts/Fredoka-SemiBold.ttf') format('truetype'); font-weight:600; font-display:swap; }
+@font-face { font-family:'Fredoka'; src:url('assets/fonts/Fredoka-Medium.ttf') format('truetype'); font-weight:500; font-display:swap; }
+@font-face { font-family:'Nunito'; src:url('assets/fonts/Nunito-Regular.ttf') format('truetype'); font-weight:400; font-display:swap; }
+@font-face { font-family:'Nunito'; src:url('assets/fonts/Nunito-Bold.ttf') format('truetype'); font-weight:700; font-display:swap; }
+@font-face { font-family:'Nunito'; src:url('assets/fonts/Nunito-ExtraBold.ttf') format('truetype'); font-weight:800; font-display:swap; }
+@font-face { font-family:'Lexend'; src:url('assets/fonts/Lexend-Regular.ttf') format('truetype'); font-weight:400; font-display:swap; }
+@font-face { font-family:'Lexend'; src:url('assets/fonts/Lexend-SemiBold.ttf') format('truetype'); font-weight:600; font-display:swap; }
+
+/* ============ Design tokens (shared with index.html) ============ */
+:root{
+  --bg:#FFF9EF;
+  --bg-soft:#FDF3FA;
+  --card:#FFFFFF;
+  --ink:#3A3A55;
+  --ink-soft:#6B6B85;
+  --purple:#7C6FDE;
+  --purple-deep:#5B4DBE;
+  --pink:#E9739F;
+  --teal:#4DB6AC;
+  --orange:#EF8A3C;
+  --blue:#4D9DE0;
+  --green:#5CB85C;
+  --gold:#F2B705;
+  --radius:26px;
+  --shadow-soft:0 10px 30px rgba(124,111,222,.14), 0 3px 8px rgba(58,58,85,.08);
+  --shadow-lift:0 18px 44px rgba(124,111,222,.22), 0 6px 14px rgba(58,58,85,.10);
+  --font-head:'Fredoka','Nunito',system-ui,sans-serif;
+  --font-body:'Nunito',system-ui,sans-serif;
+  --fs-base:1rem;
+}
+/* Dark mode follows the device setting; High Contrast (html.hc) always wins. */
+@media (prefers-color-scheme:dark){
+  html:not(.hc):not(.dys){
+    --bg:#221D36; --bg-soft:#262040; --card:#2E284A;
+    --ink:#EFEBFF; --ink-soft:#BCB4DC;
+    --purple:#9C8CF2; --purple-deep:#C6BCFA; --pink:#F291B5;
+    --shadow-soft:0 10px 30px rgba(0,0,0,.45), 0 3px 8px rgba(0,0,0,.3);
+    --shadow-lift:0 18px 44px rgba(0,0,0,.55), 0 6px 14px rgba(0,0,0,.35);
+  }
+}
+html.fs-lg{ --fs-base:1.14rem; }
+html.fs-xl{ --fs-base:1.3rem; }
+html.dys body{ font-family:'Lexend',var(--font-body); letter-spacing:.03em; word-spacing:.08em; line-height:1.85; }
+html.dys{ --bg:#FBF3E4; --bg-soft:#FBF3E4; }
+html.hc{
+  --bg:#FFFFFF; --bg-soft:#FFFFFF; --card:#FFFFFF;
+  --ink:#12122A; --ink-soft:#2E2E4E;
+  --purple:#4A38C7; --purple-deep:#32229E; --pink:#B2124F; --teal:#0B6E63;
+  --orange:#A85300; --blue:#0F5FA8; --green:#1C7A1C; --gold:#8A6400;
+  --shadow-soft:0 0 0 2px #12122A; --shadow-lift:0 0 0 3px #12122A;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+@media (prefers-reduced-motion:reduce){ html{ scroll-behavior:auto; } *,*::before,*::after{ animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+body{
+  font-family:var(--font-body); font-size:var(--fs-base); color:var(--ink);
+  background:var(--bg); line-height:1.7; overflow-x:hidden;
+}
+/* Language toggle: html.fil shows Filipino, default shows English */
+html:not(.fil) .fil{ display:none !important; }
+html.fil .en{ display:none !important; }
+img{ max-width:100%; display:block; }
+h1,h2,h3{ font-family:var(--font-head); font-weight:600; line-height:1.25; }
+a{ color:var(--purple-deep); }
+.wrap{ max-width:860px; margin:0 auto; padding:0 20px 60px; }
+:focus-visible{ outline:3px solid var(--purple-deep); outline-offset:2px; }
+
+/* ============ Skip link ============ */
+.skip{ position:absolute; left:-999px; top:8px; background:var(--purple-deep); color:#fff; padding:10px 18px; border-radius:12px; z-index:200; }
+.skip:focus{ left:8px; }
+html.hc .skip{ color:#fff; }
+
+/* ============ Header (shared with index.html) ============ */
+header.site{
+  position:sticky; top:0; z-index:100;
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(124,111,222,.15);
+}
+html.hc header.site{ background:#fff; border-bottom:3px solid #12122A; }
+/* One row, always — see index.html. The links strip is the only flexible
+   part: it shrinks and scrolls rather than wrapping, so the header keeps a
+   fixed height at every width and at every font-size setting. */
+.nav{ display:flex; align-items:center; gap:16px; padding:12px 20px; max-width:1240px; margin:0 auto; flex-wrap:nowrap; }
+@media (max-width:900px){
+  /* Too narrow for brand + links + a11y on one line: brand and the a11y
+     buttons share row 1, the scrolling links strip takes row 2. */
+  .nav{ gap:8px 10px; padding:10px 14px; flex-wrap:wrap; }
+  /* The brand shares row 1 with the a11y buttons, so it has to be the part
+     that gives: shrinkable and smaller, rather than wrapping to its own row
+     and making the sticky header three rows tall.
+     `.nav .brand` / `.nav .a11y-bar`, not the bare classes: the unconditional
+     rules below are later in the sheet and a media query adds no specificity
+     (same trap as `.nav nav.links`). */
+  .nav .brand{ order:1; flex:0 1 auto; min-width:0; font-size:1.05rem; gap:8px; }
+  .nav .brand .logo{ width:34px; height:34px; border-radius:11px; font-size:1.05rem; }
+  .nav .a11y-bar{ order:2; margin-left:auto; }
+}
+/* Phones: the wordmark is what gives, so the logo and the accessibility
+   buttons still share one row instead of the header growing to three.
+   Hidden visually, never from screen readers - the link keeps its name. */
+@media (max-width:430px){
+  .nav .brand-name{
+    position:absolute; width:1px; height:1px; overflow:hidden;
+    clip-path:inset(50%); white-space:nowrap;
+  }
+  /* `.nav nav.links` (not plain `nav.links`) on purpose — see index.html: the
+     unconditional rule below is later in the sheet and a media query adds no
+     specificity, so a matching selector would lose and the links would stack. */
+  .nav nav.links{ order:3; flex-basis:100%; margin-left:0; padding-bottom:4px; }
+  nav.links a{ padding:6px 10px; font-size:.9em; }
+}
+.brand{ display:flex; align-items:center; gap:10px; font-family:var(--font-head); font-size:1.25rem; color:var(--purple-deep); text-decoration:none; flex:0 0 auto; white-space:nowrap; }
+.brand .brand-name b{ color:var(--pink); font-weight:inherit; }
+.brand .logo{
+  width:42px; height:42px; flex:0 0 auto; border-radius:14px; display:grid; place-items:center; font-size:1.3rem;
+  background:linear-gradient(145deg,#8F7BF0 0%,#6C5CE7 55%,#5B4DBE 100%);
+  box-shadow:inset 0 2px 3px rgba(255,255,255,.45), inset 0 -3px 5px rgba(0,0,0,.18), 0 6px 14px rgba(108,92,231,.4);
+}
+nav.links{
+  display:flex; gap:2px; margin-left:auto; flex-wrap:nowrap;
+  min-width:0; overflow-x:auto; overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none;
+}
+nav.links::-webkit-scrollbar{ display:none; }
+nav.links a{
+  text-decoration:none; color:var(--ink-soft); font-weight:700; padding:8px 11px; border-radius:12px;
+  font-size:.95em; white-space:nowrap; flex:0 0 auto;
+}
+nav.links a:hover,nav.links a:focus-visible{ background:#EFE9FF; color:#5B4DBE; }
+nav.links a[aria-current]{ background:#EFE9FF; color:#5B4DBE; }
+@media (prefers-color-scheme:dark){
+  html:not(.hc):not(.dys) nav.links a:hover,
+  html:not(.hc):not(.dys) nav.links a:focus-visible,
+  html:not(.hc):not(.dys) nav.links a[aria-current]{ background:#3A3260; color:#D8CFFF; }
+}
+html.hc nav.links a{ color:#12122A; text-decoration:underline; }
+html.hc nav.links a[aria-current]{ background:#12122A; color:#fff; }
+.a11y-bar{ display:flex; gap:6px; margin-left:8px; flex:0 0 auto; }
+.a11y-bar button{
+  font-family:var(--font-body); font-weight:800; font-size:.85em; cursor:pointer;
+  border:2px solid rgba(124,111,222,.35); background:var(--card); color:var(--purple-deep);
+  border-radius:10px; padding:6px 10px; min-width:40px; min-height:40px;
+}
+.a11y-bar button[aria-pressed="true"]{ background:var(--purple-deep); color:#fff; border-color:var(--purple-deep); }
+@media (prefers-color-scheme:dark){ html:not(.hc):not(.dys) .a11y-bar button[aria-pressed="true"]{ background:#6C5CE7; border-color:#6C5CE7; } }
+.a11y-bar button:hover{ border-color:var(--purple-deep); }
+
+/* ============ Guide content ============ */
+header.top{ padding:36px 0 8px; }
+.eyebrow{
+  display:inline-flex; align-items:center; gap:.5em; font-family:var(--font-head);
+  background:linear-gradient(135deg,#EFE9FF,#FDE9F3); color:#5B4DBE;
+  padding:.35em 1em; border-radius:999px; font-size:.95em; box-shadow:var(--shadow-soft); margin-bottom:14px;
+}
+html.hc .eyebrow{ background:#fff; color:var(--purple-deep); }
+h1{ font-size:clamp(1.8rem,5vw,2.6rem); }
+h2{ font-size:1.4rem; color:var(--purple-deep); margin:38px 0 12px; }
+h3{ font-size:1.08rem; margin:20px 0 6px; }
+p,li{ color:var(--ink-soft); }
+strong{ color:var(--ink); }
+p.lead{ margin-top:8px; }
+.box{ background:var(--card); border-radius:22px; padding:22px 26px; box-shadow:var(--shadow-soft); margin:16px 0; }
+.box ul,.box ol{ margin:8px 0 0 1.3em; }
+.box li{ margin:.4em 0; }
+/* A table can't shrink past its min-content: at 320px with the A++ text
+   setting it used to push the whole page sideways. Scroll the table instead. */
+.table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:16px; box-shadow:var(--shadow-soft); }
+table{ width:100%; min-width:340px; border-collapse:collapse; background:var(--card); border-radius:16px; overflow:hidden; font-size:.95em; }
+th,td{ text-align:left; padding:12px 14px; border-bottom:1px solid rgba(124,111,222,.18); vertical-align:top; }
+th{ font-family:var(--font-head); color:var(--purple-deep); }
+.actions{ display:flex; gap:12px; margin:22px 0; flex-wrap:wrap; }
+.btn{ display:inline-flex; align-items:center; gap:.5em; text-decoration:none; cursor:pointer; border:none;
+  font-family:var(--font-head); font-size:1em; padding:12px 22px; border-radius:15px; }
+.btn-primary{ color:#fff; background:linear-gradient(160deg,#8F7BF0,#5B4DBE);
+  box-shadow:inset 0 2px 3px rgba(255,255,255,.4), inset 0 -3px 5px rgba(0,0,0,.16), 0 8px 18px rgba(108,92,231,.4); }
+.btn-ghost{ color:var(--purple-deep); background:var(--card); border:2px solid rgba(124,111,222,.4); box-shadow:var(--shadow-soft); }
+.tip{ border-left:5px solid var(--pink); background:var(--card); border-radius:14px; padding:12px 18px; margin:14px 0; box-shadow:var(--shadow-soft); font-size:.95em; }
+html.hc .tip{ border-left-color:var(--pink); }
+/* ============ Footer (identical on all three pages) ============ */
+footer{
+  padding:52px 0 40px; color:#EFEAFE;
+  background:linear-gradient(160deg,#6C5CE7 0%,#5B4DBE 55%,#41338F 100%);
+}
+html.hc footer{ background:#12122A; }
+footer .wrap{ display:block; max-width:1100px; padding:0 20px; }
+footer a{ color:#fff; }
+.foot-top{ display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:34px; }
+@media (max-width:760px){ .foot-top{ grid-template-columns:1fr; gap:26px; } }
+/* Every colour here is explicit: the sub-pages set their own `p,li` and
+   `strong` colours, which otherwise bleed in and put dark text on purple. */
+.foot-brand strong{ font-family:var(--font-head); font-size:1.2rem; display:block; margin-bottom:8px; color:#fff; }
+.foot-brand p{ font-size:.95em; color:#EFEAFE; opacity:.92; max-width:32em; }
+.foot-col h3{ font-family:var(--font-head); font-size:1rem; color:#fff; margin:0 0 12px; }
+.foot-col li{ color:#EFEAFE; }
+.foot-bottom span,.foot-bottom small{ color:#EFEAFE; }
+.foot-col ul{ list-style:none; display:grid; gap:9px; }
+.foot-col a{ text-decoration:none; font-weight:700; font-size:.95em; color:#EFEAFE; }
+.foot-col a:hover,.foot-col a:focus-visible{ text-decoration:underline; color:#fff; }
+.foot-bottom{
+  margin-top:32px; padding-top:18px; border-top:1px solid rgba(255,255,255,.25);
+  display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+}
+.foot-bottom small{ opacity:.85; }
+html.hc footer a{ text-decoration:underline; }
+html.hc .foot-bottom{ border-top-color:#fff; }
+@media print{
+  body{ background:#fff; color:#000; font-size:11pt; }
+  header.site,.actions,.no-print,footer{ display:none !important; }
+  .box,table,.tip{ box-shadow:none; border:1px solid #ccc; }
+  .table-scroll{ overflow:visible; box-shadow:none; }
+  table{ min-width:0; }
+  h2{ break-after:avoid; }
+  .box,tr{ break-inside:avoid; }
+  a{ color:#000; text-decoration:none; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main"><span class="en">Skip to main content</span><span class="fil">Laktawan papunta sa nilalaman</span></a>
+
+<header class="site">
+  <div class="nav">
+    <a class="brand" href="index.html"><span class="logo" aria-hidden="true">🎴</span><span class="brand-name">FlashLearn <b>PWD</b></span></a>
+    <nav class="links" aria-label="Main navigation">
+      <a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a>
+      <a href="index.html#try"><span class="en">Try It</span><span class="fil">Subukan</span></a>
+      <a href="index.html#download"><span class="en">Download</span><span class="fil">I-download</span></a>
+      <a href="index.html#how"><span class="en">How to Use</span><span class="fil">Paano Gamitin</span></a>
+      <a href="games.html"><span class="en">Games</span><span class="fil">Mga Laro</span></a>
+      <a href="fsl-dictionary.html"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a>
+      <a href="teachers-guide.html"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></a>
+      <a href="index.html#faq"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></a>
+    </nav>
+    <div class="a11y-bar" role="group" aria-label="Accessibility and language options">
+      <button id="btnFont" aria-pressed="false" title="Larger text">A+</button>
+      <button id="btnDys" aria-pressed="false" title="Dyslexia-friendly font">Dys</button>
+      <button id="btnHC" aria-pressed="false" title="High contrast">HC</button>
+      <button id="btnLang" aria-pressed="false" title="Filipino / English">FIL</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">🔒 <span class="en">Privacy &amp; data</span><span class="fil">Privacy at data</span></span>
+  <h1><span class="en">What FlashLearn PWD keeps, and who can see it</span><span class="fil">Ano ang itinatago ng FlashLearn PWD, at sino ang nakakakita nito</span></h1>
+  <p class="lead"><span class="en">Plain answers for parents, teachers and learners. Last updated 29 September 2026, for app version 1.2.1.</span><span class="fil">Simpleng sagot para sa mga magulang, guro at mag-aaral. Huling binago noong 29 Setyembre 2026, para sa app version 1.2.1.</span></p>
+</header>
+
+<h2>1. <span class="en">The short version</span><span class="fil">Ang maikling bersyon</span></h2>
+<div class="box">
+  <ul>
+    <li><span class="en">No account, no email, no phone number and <strong>no ads</strong>. We never sell data or use it for advertising.</span><span class="fil">Walang account, email, numero ng telepono at <strong>walang ads</strong>. Hindi namin ibinebenta ang datos o ginagamit para sa advertising.</span></li>
+    <li><span class="en">A <strong>Guest Player</strong> profile stays on the tablet. Nothing about it goes online.</span><span class="fil">Ang <strong>Guest Player</strong> na profile ay nananatili sa tablet. Walang anumang tungkol dito ang napupunta online.</span></li>
+    <li><span class="en">Every other profile is <strong>also saved online</strong>, so a learner can join a class or home group, send messages, and be moved to a new tablet.</span><span class="fil">Ang lahat ng iba pang profile ay <strong>naka-save din online</strong>, para makasali ang mag-aaral sa klase o home group, makapagpadala ng mensahe, at mailipat sa bagong tablet.</span></li>
+    <li><span class="en">Mood check-ins, notebook pages and saved Talk Board phrases <strong>stay on the tablet</strong>.</span><span class="fil">Ang mood check-in, mga pahina ng notebook at naka-save na parirala sa Talk Board ay <strong>nananatili sa tablet</strong>.</span></li>
+    <li><span class="en">Usage statistics and crash reports are <strong>off</strong> unless a teacher or parent turns them on.</span><span class="fil">Ang usage statistics at crash reports ay <strong>naka-off</strong> maliban kung buksan ito ng guro o magulang.</span></li>
+    <li><span class="en">You can <strong>delete a profile and its online records</strong> from inside the app — see section 6.</span><span class="fil">Maaari mong <strong>burahin ang profile at ang mga record nito online</strong> mula mismo sa app — tingnan ang ika-6 na bahagi.</span></li>
+  </ul>
+</div>
+
+<h2>2. <span class="en">What stays only on the tablet</span><span class="fil">Ano ang nananatili lang sa tablet</span></h2>
+<div class="box">
+  <ul>
+    <li><span class="en">Everything a Guest Player does.</span><span class="fil">Lahat ng ginagawa ng isang Guest Player.</span></li>
+    <li><span class="en">Mood check-ins and their notes. A teacher or parent sees them only on the same shared tablet.</span><span class="fil">Ang mga mood check-in at ang mga note nito. Makikita lang ito ng guro o magulang sa parehong tablet na pinagsasaluhan.</span></li>
+    <li><span class="en">Notebook pages and saved Talk Board phrases.</span><span class="fil">Mga pahina ng notebook at mga naka-save na parirala sa Talk Board.</span></li>
+    <li><span class="en">Reports, certificates, worksheets and research exports (PDF and CSV files). They are made on the tablet and go only where you send them yourself.</span><span class="fil">Mga report, certificate, worksheet at research export (PDF at CSV). Ginagawa ang mga ito sa tablet at napupunta lang kung saan mo mismo ipapadala.</span></li>
+    <li><span class="en">Sign videos and photos already watched, kept so they play offline.</span><span class="fil">Mga napanood nang sign video at larawan, itinatago para mag-play kahit offline.</span></li>
+  </ul>
+</div>
+
+<h2>3. <span class="en">What goes online, and why</span><span class="fil">Ano ang napupunta online, at bakit</span></h2>
+<p><span class="en">For every profile except a Guest Player, these are saved in Google's Cloud Firestore database, on its free plan. The tablet signs in anonymously — there is no email or password.</span><span class="fil">Para sa bawat profile maliban sa Guest Player, naka-save ang mga ito sa Cloud Firestore database ng Google, sa libreng plan nito. Anonymous na nagsa-sign in ang tablet — walang email o password.</span></p>
+<div class="table-scroll">
+<table>
+  <tr><th><span class="en">What</span><span class="fil">Ano</span></th><th><span class="en">Why</span><span class="fil">Bakit</span></th></tr>
+  <tr><td><span class="en">Profile: name, avatar, role, disability type and support options, class or home group, username</span><span class="fil">Profile: pangalan, avatar, papel, uri ng kapansanan at mga suporta, klase o home group, username</span></td><td><span class="en">So a teacher or parent sees who is in their class, the app sets itself up for the learner, and friends can find each other in Messages.</span><span class="fil">Para makita ng guro o magulang kung sino ang nasa klase nila, ma-set up ang app para sa mag-aaral, at magkahanapan ang magkakaibigan sa Messages.</span></td></tr>
+  <tr><td><span class="en">Learning progress and study time (learners in a class or home group)</span><span class="fil">Progreso sa pag-aaral at oras ng pag-aaral (mag-aaral na nasa klase o home group)</span></td><td><span class="en">So the teacher or parent can follow progress from their own tablet.</span><span class="fil">Para masubaybayan ng guro o magulang ang progreso mula sa sarili nilang tablet.</span></td></tr>
+  <tr><td><span class="en">Tests a teacher or parent assigns, and the learner's answers — including video answers</span><span class="fil">Mga pagsusulit na ibinibigay ng guro o magulang, at ang mga sagot ng mag-aaral — pati mga sagot na video</span></td><td><span class="en">Marking, feedback and class reports.</span><span class="fil">Pagmamarka, feedback at report ng klase.</span></td></tr>
+  <tr><td><span class="en">My Day routines, step history and alerts</span><span class="fil">Mga routine sa My Day, kasaysayan ng mga hakbang at mga alerto</span></td><td><span class="en">An adult sets the routine up; the learner's tablet follows it.</span><span class="fil">Inihahanda ng matanda ang routine; sinusunod ito ng tablet ng mag-aaral.</span></td></tr>
+  <tr><td><span class="en">Messages, including photos and short sign videos</span><span class="fil">Mga mensahe, pati larawan at maiikling sign video</span></td><td><span class="en">To deliver them. The sender's tablet deletes the photos and videos from the database 7 days after sending.</span><span class="fil">Para maihatid ang mga ito. Binubura ng tablet ng nagpadala ang mga larawan at video sa database 7 araw pagkatapos ipadala.</span></td></tr>
+  <tr><td><span class="en">Notes between teachers and parents</span><span class="fil">Mga note sa pagitan ng guro at magulang</span></td><td><span class="en">So home and school can share how a learner is doing.</span><span class="fil">Para magkaalaman ang tahanan at paaralan kung kumusta ang mag-aaral.</span></td></tr>
+  <tr><td><span class="en">Pictures, sounds and sign videos a teacher attaches to a test or routine</span><span class="fil">Mga larawan, tunog at sign video na idinadagdag ng guro sa pagsusulit o routine</span></td><td><span class="en">So the learner's tablet can show them.</span><span class="fil">Para maipakita ang mga ito sa tablet ng mag-aaral.</span></td></tr>
+  <tr><td><span class="en">A recovery code (stored hashed)</span><span class="fil">Recovery code (naka-hash)</span></td><td><span class="en">To move a profile to a new tablet.</span><span class="fil">Para mailipat ang profile sa bagong tablet.</span></td></tr>
+  <tr><td><span class="en">App settings such as text size and colours</span><span class="fil">Mga setting ng app gaya ng laki ng teksto at kulay</span></td><td><span class="en">Restored on the same tablet. Only that tablet can read them.</span><span class="fil">Ibinabalik sa parehong tablet. Ang tablet lang na iyon ang nakakabasa nito.</span></td></tr>
+</table>
+</div>
+
+<h2>4. <span class="en">Who can see it</span><span class="fil">Sino ang nakakakita nito</span></h2>
+<div class="box">
+  <ul>
+    <li><span class="en"><strong>In the app,</strong> a learner's records appear on their own tablet and to the teacher or parent whose class or home group they joined.</span><span class="fil"><strong>Sa app,</strong> lumalabas ang mga record ng mag-aaral sa sarili nilang tablet at sa guro o magulang na may-ari ng klase o home group na sinalihan nila.</span></li>
+    <li><span class="en">Classmates see only a name and avatar on the class leaderboard — and only if the teacher turns the leaderboard on. It starts off.</span><span class="fil">Pangalan at avatar lang ang nakikita ng mga kaklase sa leaderboard ng klase — at kung bubuksan lang ito ng guro. Naka-off ito sa simula.</span></li>
+    <li><span class="en">In Messages, people see the name, avatar and username of those they talk to. A child in a home group needs their parent's approval before a new friend can message them, and anyone can be blocked or reported.</span><span class="fil">Sa Messages, nakikita ng mga tao ang pangalan, avatar at username ng kausap nila. Kailangan ng pahintulot ng magulang bago makapagmensahe ang bagong kaibigan sa batang nasa home group, at maaaring i-block o i-report ang sinuman.</span></li>
+    <li><span class="en"><strong>Only the tablet that owns a profile can change or delete its records.</strong> Behind the app, the database still lets any signed-in copy of FlashLearn PWD <em>read</em> most records, which the app uses for class lists and Messages. We are narrowing reading to the same people the app shows it to in a coming version. Until then, a first name or nickname works just as well as a full name.</span><span class="fil"><strong>Ang tablet lang na may-ari ng profile ang makakapagbago o makakapagbura ng mga record nito.</strong> Sa likod ng app, pinapayagan pa ng database ang anumang naka-sign-in na kopya ng FlashLearn PWD na <em>basahin</em> ang karamihan ng record, na ginagamit ng app para sa listahan ng klase at Messages. Lilimitahan namin ang pagbasa sa parehong mga taong pinagpapakitaan ng app sa susunod na bersyon. Hanggang doon, mabuti na rin ang unang pangalan o palayaw sa halip na buong pangalan.</span></li>
+    <li><span class="en">The FlashLearn PWD research team can see the database to keep it running and to carry out deletion requests.</span><span class="fil">Nakikita ng research team ng FlashLearn PWD ang database para mapanatili itong gumagana at para gawin ang mga kahilingang magbura.</span></li>
+  </ul>
+</div>
+
+<h2>5. <span class="en">Other services the app talks to</span><span class="fil">Iba pang serbisyong kinakausap ng app</span></h2>
+<div class="box">
+  <ul>
+    <li><span class="en"><strong>Cloudinary</strong> hosts the sign videos and word photos. Each one is downloaded the first time it is shown, then kept on the tablet. Like any website, it sees the tablet's internet address.</span><span class="fil">Nasa <strong>Cloudinary</strong> ang mga sign video at larawan ng salita. Dina-download ang bawat isa sa unang pagpapakita nito, at itinatago sa tablet. Tulad ng anumang website, nakikita nito ang internet address ng tablet.</span></li>
+    <li><span class="en"><strong>GitHub</strong> hosts this website and the app downloads. Once a day the app reads a small file here to see whether a newer version exists; nothing about the learner is sent.</span><span class="fil">Nasa <strong>GitHub</strong> ang website na ito at ang mga download ng app. Isang beses bawat araw, binabasa ng app ang isang maliit na file dito para malaman kung may mas bagong bersyon; walang anumang tungkol sa mag-aaral ang ipinapadala.</span></li>
+    <li><span class="en"><strong>Speech:</strong> voice commands and speaking games use the tablet's own speech recognizer — Google's on most Android tablets — which may process the spoken words online.</span><span class="fil"><strong>Pananalita:</strong> ginagamit ng voice commands at mga larong may pagsasalita ang speech recognizer ng tablet — kay Google sa karamihan ng Android tablet — na maaaring magproseso ng mga salita online.</span></li>
+    <li><span class="en"><strong>Camera:</strong> gaze control and Word Hunt look at the camera picture on the tablet itself; no video is sent anywhere. A photo or sign video leaves the tablet only when you add it to a test answer or a message.</span><span class="fil"><strong>Camera:</strong> sinusuri ng gaze control at Word Hunt ang larawan mula sa camera sa mismong tablet; walang video na ipinapadala. Umaalis lang sa tablet ang larawan o sign video kapag idinagdag mo ito sa sagot sa pagsusulit o sa mensahe.</span></li>
+    <li><span class="en"><strong>Google Firebase Analytics and Crashlytics</strong> are used only if a teacher or parent turns on <strong>Settings → Help improve the app</strong>. They are off until then, and the app does not collect the advertising ID.</span><span class="fil">Ginagamit lang ang <strong>Google Firebase Analytics at Crashlytics</strong> kung bubuksan ng guro o magulang ang <strong>Settings → Tumulong na mapabuti ang app</strong>. Naka-off ito hanggang doon, at hindi kinukuha ng app ang advertising ID.</span></li>
+    <li><span class="en">The <strong>AI Tutor</strong> runs on the tablet. The published app sends nothing to AI services.</span><span class="fil">Tumatakbo sa tablet ang <strong>AI Tutor</strong>. Walang ipinapadala ang app sa mga AI service.</span></li>
+    <li><span class="en"><strong>TV Cast</strong> shows the lesson on a TV through a code-protected page that the tablet itself serves over the room's Wi-Fi. It does not go through the internet.</span><span class="fil">Ipinapakita ng <strong>TV Cast</strong> ang aralin sa TV sa pamamagitan ng pahinang protektado ng code na mismong tablet ang naghahain sa Wi-Fi ng silid. Hindi ito dumadaan sa internet.</span></li>
+  </ul>
+</div>
+
+<h2>6. <span class="en">How to delete a profile and its data</span><span class="fil">Paano burahin ang profile at ang datos nito</span></h2>
+<div class="box">
+  <ol>
+    <li><span class="en"><strong>A learner's or player's profile:</strong> open a Teacher or Parent profile on the same tablet → <strong>Settings → Data → Manage Profiles</strong> → delete. The profile is removed from the tablet, and its online records are deleted: progress, class and home-group membership, test results, routines, message records, shared files and recovery codes.</span><span class="fil"><strong>Profile ng mag-aaral o player:</strong> magbukas ng Teacher o Parent profile sa parehong tablet → <strong>Settings → Data → Manage Profiles</strong> → burahin. Mawawala ang profile sa tablet, at mabubura ang mga record nito online: progreso, pagiging miyembro ng klase at home group, resulta ng pagsusulit, mga routine, record ng mensahe, mga ibinahaging file at recovery code.</span></li>
+    <li><span class="en"><strong>A Teacher or Parent profile:</strong> first delete your classes or home groups (each one's ⋮ menu → Delete), then delete the profile the same way from another Teacher or Parent profile on that tablet. A profile cannot delete itself.</span><span class="fil"><strong>Teacher o Parent na profile:</strong> burahin muna ang inyong mga klase o home group (⋮ menu ng bawat isa → Delete), saka burahin ang profile sa parehong paraan mula sa ibang Teacher o Parent profile sa tablet na iyon. Hindi maaaring burahin ng profile ang sarili nito.</span></li>
+    <li><span class="en"><strong>A Guest Player</strong> never went online. To remove it, clear the app's storage (Android Settings → Apps → FlashLearn PWD → Storage → Clear storage) — this removes <em>every</em> profile on that tablet.</span><span class="fil"><strong>Ang Guest Player</strong> ay hindi kailanman napunta online. Para alisin ito, i-clear ang storage ng app (Android Settings → Apps → FlashLearn PWD → Storage → Clear storage) — inaalis nito ang <em>lahat</em> ng profile sa tablet na iyon.</span></li>
+  </ol>
+</div>
+<div class="tip">⚠️ <span class="en"><strong>Uninstalling the app does not delete the online copy.</strong> Delete profiles in the app first. Lost the tablet, or can't open it any more? Write to us through the <a href="index.html#feedback">feedback form</a> with the profile's name and class or home-group code, and we will delete the online records by hand.</span><span class="fil"><strong>Hindi nabubura ang kopya online kapag in-uninstall ang app.</strong> Burahin muna ang mga profile sa app. Nawala ang tablet, o hindi na ito mabuksan? Sumulat sa amin sa <a href="index.html#feedback">feedback form</a> kasama ang pangalan ng profile at ang code ng klase o home group, at buburahin namin nang mano-mano ang mga record online.</span></div>
+
+<h2>7. <span class="en">Children, disability information and the law</span><span class="fil">Mga bata, impormasyon sa kapansanan at ang batas</span></h2>
+<div class="box">
+  <ul>
+    <li><span class="en">Under the <strong>Data Privacy Act of 2012 (RA 10173)</strong>, learners and their parents or guardians may ask what is kept about them, ask for corrections, and ask for it to be deleted. Use the <a href="index.html#feedback">feedback form</a>.</span><span class="fil">Sa ilalim ng <strong>Data Privacy Act of 2012 (RA 10173)</strong>, maaaring itanong ng mag-aaral at ng kanilang magulang o tagapag-alaga kung ano ang nakatago tungkol sa kanila, humiling ng pagwawasto, at humiling na burahin ito. Gamitin ang <a href="index.html#feedback">feedback form</a>.</span></li>
+    <li><span class="en">Disability information is sensitive. The app uses it only to set up accessibility for the learner and to show their teacher or parent which supports they use.</span><span class="fil">Sensitibo ang impormasyon tungkol sa kapansanan. Ginagamit lang ito ng app para i-set up ang accessibility ng mag-aaral at ipakita sa kanilang guro o magulang kung anong mga suporta ang ginagamit nila.</span></li>
+    <li><span class="en">Research exports for the thesis study are made on the teacher's or parent's tablet and use coded IDs in place of names. The app does not upload them.</span><span class="fil">Ang mga research export para sa pag-aaral ng thesis ay ginagawa sa tablet ng guro o magulang at gumagamit ng coded ID sa halip na pangalan. Hindi ito ina-upload ng app.</span></li>
+  </ul>
+</div>
+
+<p class="no-print" style="margin-top:30px"><a href="index.html">← <span class="en">Back to the FlashLearn PWD site</span><span class="fil">Bumalik sa FlashLearn PWD site</span></a></p>
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <strong>🎴 FlashLearn PWD</strong>
+        <p><span class="en">Interactive flashcard app for PWD students — a college thesis / capstone project (2023–2027). Free, offline, and built with Filipino learners first.</span><span class="fil">Interactive flashcard app para sa mga mag-aaral na PWD — isang college thesis / capstone project (2023–2027). Libre, offline, at ginawa para sa mga mag-aaral na Pilipino.</span></p>
+      </div>
+      <nav class="foot-col" aria-label="Site sections">
+        <h3><span class="en">Explore</span><span class="fil">Tuklasin</span></h3>
+        <ul>
+          <li><a href="index.html#try"><span class="en">Try a flashcard</span><span class="fil">Sumubok ng flashcard</span></a></li>
+          <li><a href="index.html#download"><span class="en">Download the app</span><span class="fil">I-download ang app</span></a></li>
+          <li><a href="index.html#how"><span class="en">How to use it</span><span class="fil">Paano gamitin</span></a></li>
+          <li><a href="games.html"><span class="en">The 15 games</span><span class="fil">Ang 15 laro</span></a></li>
+          <li><a href="index.html#features"><span class="en">Features</span><span class="fil">Mga Tampok</span></a></li>
+          <li><a href="index.html#awareness"><span class="en">PWD Awareness</span><span class="fil">Kamalayang PWD</span></a></li>
+        </ul>
+      </nav>
+      <nav class="foot-col" aria-label="Resources and contact">
+        <h3><span class="en">Resources</span><span class="fil">Mga Sanggunian</span></h3>
+        <ul>
+          <li><a href="fsl-dictionary.html"><span class="en">FSL Sign Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a></li>
+          <li><a href="teachers-guide.html"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></a></li>
+          <li><a href="index.html#faq"><span class="en">FAQ</span><span class="fil">Mga Madalas Itanong</span></a></li>
+          <li><a href="privacy.html"><span class="en">Privacy &amp; data</span><span class="fil">Privacy at datos</span></a></li>
+          <li><a href="index.html#about"><span class="en">About the team</span><span class="fil">Tungkol sa pangkat</span></a></li>
+          <li><a href="index.html#feedback"><span class="en">Send feedback</span><span class="fil">Magpadala ng feedback</span></a></li>
+          <li><a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app" rel="noopener">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="foot-bottom">
+      <span><span class="en">Made with 💜 for inclusive education in the Philippines.</span><span class="fil">Ginawa nang may 💜 para sa inklusibong edukasyon sa Pilipinas.</span></span>
+      <small>© 2026 FlashLearn PWD. <span class="en">Screenshots and demo video are from the actual app running on an Android tablet.</span><span class="fil">Ang mga screenshot at demo video ay mula sa totoong app na tumatakbo sa Android tablet.</span></small>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/site.js"></script>
+</body>
+</html>
