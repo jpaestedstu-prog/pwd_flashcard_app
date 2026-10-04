@@ -328,6 +328,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           .read(profileProvider.notifier)
           .isViewingAsStudent;
 
+      // ── Home safety net ──────────────────────────────────
+      // An educator viewing a learner who lands on Home — a tab, a deep
+      // link, a "go home" — gets their own profile back. This used to sit in
+      // /home's page builder, which also runs whenever the stack *under* the
+      // learner's dashboard is rebuilt (switching to the learner's theme
+      // does it), so opening a learner from Home's "All Students" tile
+      // snapped back to the teacher within a second and showed the teacher's
+      // own empty "Teacher Dashboard".
+      if (isViewingAsStudent && state.uri.path == '/home') {
+        Future.microtask(
+          ref.read(profileProvider.notifier).restoreEducatorProfile,
+        );
+      }
+
       // ── Lock-state redirect ──────────────────────────────
       // Active learner with a non-null LockReason → force the
       // Time-Up lock screen. The lock screen route itself is
@@ -749,11 +763,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               final profile = ref.read(profileProvider);
               final role = profile?.role;
               final isViewingAsStudent = profileNotifier.isViewingAsStudent;
-              // Safety net: if an educator was viewing a student and
-              // reaches home without explicit restoration, restore now.
-              if (isViewingAsStudent) {
-                profileNotifier.restoreEducatorProfile();
-              }
+              // No restoring here: see the Home safety net in `redirect`.
               // Educator-as-student preview overrides the role switch.
               if (isViewingAsStudent) {
                 return AppPageTransitions.fade(
