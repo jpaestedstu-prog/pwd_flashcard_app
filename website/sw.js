@@ -1,5 +1,5 @@
 /* FlashLearn PWD site service worker — offline support for the core pages. */
-const CACHE = 'flp-site-v12';
+const CACHE = 'flp-site-v13';
 const CORE = [
   './',
   'index.html',
