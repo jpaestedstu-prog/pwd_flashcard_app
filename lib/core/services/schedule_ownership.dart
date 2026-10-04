@@ -11,6 +11,11 @@ enum ScheduleChange {
 
   /// Cancel it: the profile it was for turned it off.
   stop,
+
+  /// Hold it back while this profile is on screen, then bring it back
+  /// unchanged: the schedule still belongs to the device's learner, but the
+  /// profile now in use is somebody else's.
+  suspend,
 }
 
 /// Child alarms and routine reminders belong to **the learner who uses this
@@ -32,10 +37,25 @@ class ScheduleOwnership {
       (p.role == UserRole.student || p.role == UserRole.child) &&
       !p.isGuestPlayer;
 
-  /// Child alarms: a learner signing in schedules theirs; anyone else leaves
-  /// the last learner's alarms in place.
-  static ScheduleChange forAlarms(UserProfile? next) =>
-      isLearner(next) ? ScheduleChange.start : ScheduleChange.keep;
+  /// Child alarms: a learner signing in schedules theirs. The educators
+  /// responsible for the alarms' learner ([owner]) — whoever set one of
+  /// their alarms or routines — and the profile picker leave them in place.
+  /// Anyone else on a shared tablet suspends them while they are on screen:
+  /// another learner, an unrelated Teacher or Parent, or a Player. Found on
+  /// the tablet: a child's "Time to take a moment" alarm popped up in the
+  /// middle of a different student's lesson.
+  static ScheduleChange forAlarms(
+    UserProfile? next, {
+    String? owner,
+    Set<String> responsibleEducators = const {},
+  }) {
+    if (isLearner(next)) return ScheduleChange.start;
+    if (next == null || owner == null) return ScheduleChange.keep;
+    if (next.role.isEducator && responsibleEducators.contains(next.id)) {
+      return ScheduleChange.keep;
+    }
+    return ScheduleChange.suspend;
+  }
 
   /// Routine reminders run for any profile with My Day switched on, a Player
   /// included. They stop only when the very profile they are scheduled for is

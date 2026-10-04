@@ -272,8 +272,14 @@ class FlashLearnApp extends ConsumerWidget {
     // [ErrorHandler.report] under the silent source 'applyLifecycle:silent'.
     void applyLifecycle(UserProfile? next) {
       try {
-        if (next != null &&
-            ScheduleOwnership.forAlarms(next) == ScheduleChange.start) {
+        final alarmOwner = AlarmScheduler.scheduledFor;
+        final alarmChange = ScheduleOwnership.forAlarms(
+          next,
+          owner: alarmOwner,
+          responsibleEducators:
+              AlarmScheduler.responsibleEducatorsFor(alarmOwner),
+        );
+        if (next != null && alarmChange == ScheduleChange.start) {
           // Wire alarm tap → "Time's Up" lock screen for `lockScreen`
           // actions; for `endSession`, just route home; `notifyOnly`
           // does nothing extra.
@@ -315,9 +321,20 @@ class FlashLearnApp extends ConsumerWidget {
           // and shutting them down here cancelled a child's 1:20 PM alarm the
           // moment an educator — or just the profile picker — opened. Another
           // learner signing in replaces them; deleting the learner cancels
-          // them (LocalRepository.deleteProfile).
+          // them (LocalRepository.deleteProfile). Somebody else using a
+          // shared tablet — an unrelated educator or a Player — holds them
+          // back until they leave, so a child's alarm never pops up in their
+          // session.
           AlarmScheduler.onAlarmFired = null;
           ActiveTimeTracker.stopActive();
+          unawaited(
+            (alarmChange == ScheduleChange.suspend
+                    ? AlarmScheduler.suspend()
+                    : AlarmScheduler.resume())
+                .catchError((Object e, StackTrace s) {
+              ErrorHandler.report(e, s, 'AlarmScheduler:silent');
+            }),
+          );
         }
       } catch (e, s) {
         ErrorHandler.report(e, s, 'applyLifecycle:silent');

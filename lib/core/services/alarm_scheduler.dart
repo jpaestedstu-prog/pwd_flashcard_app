@@ -4,6 +4,8 @@ import 'dart:async';
 import 'dart:ui' show Locale;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart'
+    show AppLifecycleListener, AppLifecycleState;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
@@ -27,6 +29,11 @@ import '../../l10n/app_localizations.dart';
 ///     idempotent across stream emissions.
 ///   • Payload format: `alarm:{alarmId}` — the tap handler in `main.dart`
 ///     dispatches based on this prefix.
+///
+/// The alarms belong to one learner at a time — the device's learner, see
+/// `ScheduleOwnership.forAlarms`. On a shared tablet they are held back
+/// ([suspend]) while somebody else uses the app, and they carry the
+/// learner's name so nobody mistakes whose they are.
 ///
 /// The plugin instance here is independent of `NotificationService`'s.
 /// Both wrap the same OS notification subsystem so there's no conflict —
@@ -59,6 +66,20 @@ class AlarmScheduler {
   /// the profile picker is on screen — see `ScheduleOwnership`.
   static String? _profileId;
 
+  /// The learner's alarms as last seen (stream or cache), so they can be put
+  /// back after a [suspend].
+  static List<ChildAlarm>? _latest;
+
+  /// A profile the alarms are not for is using the app (see [suspend]).
+  static bool _blocked = false;
+
+  /// Whether the app is on screen. A suspension only holds while it is: in
+  /// the background nobody is "using" a profile, and the device's learner
+  /// must not miss an alarm because a teacher left the app open.
+  static bool _foreground = true;
+
+  static AppLifecycleListener? _lifecycle;
+
   static const _ownerKey = 'child_alarms';
 
   /// The learner the device's alarms belong to, surviving a restart.
@@ -68,6 +89,23 @@ class AlarmScheduler {
       return HiveService.getScheduleOwner(_ownerKey);
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Educators responsible for [learnerId]'s alarms on this device: whoever
+  /// set one of their alarms or routines. They may see the alarms; any other
+  /// educator on a shared tablet does not (`ScheduleOwnership.forAlarms`).
+  static Set<String> responsibleEducatorsFor(String? learnerId) {
+    if (learnerId == null) return const {};
+    try {
+      return {
+        for (final a in HiveService.getChildAlarmsForChild(learnerId))
+          a.setterProfileId,
+        for (final r in HiveService.getRoutinesForChild(learnerId))
+          r.setterProfileId,
+      }..removeWhere((id) => id.isEmpty);
+    } catch (_) {
+      return const {};
     }
   }
 
@@ -83,15 +121,23 @@ class AlarmScheduler {
   /// Initialise the plugin and start streaming the alarms for [profileId].
   ///
   /// Safe to call multiple times — each call cancels the prior
-  /// subscription. Cancels every previously-scheduled alarm for the
-  /// previous profile so a profile switch doesn't leak.
+  /// subscription. Cancels every alarm already scheduled on the device —
+  /// including ones an earlier run of the app scheduled for another learner,
+  /// whose ids are not in memory — so a profile switch doesn't leak.
   static Future<void> init(String profileId) async {
     await _initPlugin();
+    _watchLifecycle();
 
-    // Cancel old listener and clear any previously-scheduled IDs so a
-    // profile switch doesn't fire the previous child's alarms here.
     await _sub?.cancel();
-    await _cancelAllAlarmIds();
+    final previous = scheduledFor;
+    _blocked = false;
+    // Only [_activeNotificationIds] used to be cancelled here, and after a
+    // restart that set is empty: the previous learner's alarms stayed with
+    // the OS and fired in this learner's lesson. Their shown notifications
+    // go too — they were never this learner's.
+    await _cancelDeviceAlarms(
+      includeShown: previous != null && previous != profileId,
+    );
     _profileId = profileId;
     try {
       await HiveService.setScheduleOwner(_ownerKey, profileId);
@@ -99,10 +145,8 @@ class AlarmScheduler {
 
     // Pre-warm with whatever's in Hive so the very first OS reboot
     // doesn't lose alarms while Firestore takes its time.
-    final cached = HiveService.getChildAlarmsForChild(profileId);
-    if (cached.isNotEmpty) {
-      await rescheduleAll(profileId, cached);
-    }
+    _latest = HiveService.getChildAlarmsForChild(profileId);
+    await _reconcile();
 
     _sub = const ChildAlarmService().watchForChild(profileId).listen(
       (alarms) {
@@ -125,6 +169,35 @@ class AlarmScheduler {
     );
   }
 
+  /// Holds the learner's alarms back while a profile they are not for is on
+  /// screen — another learner, an unrelated educator or a Player on a shared
+  /// tablet. They come back on [resume], or whenever the app goes to the
+  /// background. Shown alarm notifications are cleared too.
+  static Future<void> suspend() async {
+    final owner = scheduledFor;
+    if (owner == null) return;
+    _profileId ??= owner;
+    await _initPlugin();
+    _watchLifecycle();
+    _blocked = true;
+    await _reconcile();
+  }
+
+  /// Puts the learner's alarms back: after a [suspend], or the first time
+  /// this run of the app reaches the profile picker or a responsible
+  /// educator — which also restores alarms a suspension cancelled before the
+  /// app was closed.
+  static Future<void> resume() async {
+    final owner = scheduledFor;
+    if (owner == null) return;
+    if (!_blocked && _profileId != null) return;
+    _profileId ??= owner;
+    await _initPlugin();
+    _watchLifecycle();
+    _blocked = false;
+    await _reconcile();
+  }
+
   /// Stop listening and cancel every scheduled alarm. Used on sign-out
   /// or when the active profile loses its student/child role.
   static Future<void> shutdown() async {
@@ -132,6 +205,8 @@ class AlarmScheduler {
     _sub = null;
     await _cancelAllAlarmIds();
     _profileId = null;
+    _latest = null;
+    _blocked = false;
     try {
       await HiveService.setScheduleOwner(_ownerKey, null);
     } catch (_) {}
@@ -145,42 +220,65 @@ class AlarmScheduler {
     await shutdown();
     try {
       await _initPlugin();
-      for (final p in await _plugin.pendingNotificationRequests()) {
-        if (p.payload?.startsWith('alarm:') ?? false) {
-          await _plugin.cancel(p.id);
-        }
-      }
+      await _cancelDeviceAlarms(includeShown: true);
     } catch (_) {}
   }
 
-  /// Cancel every prior alarm-id and re-schedule [alarms].
+  /// Replace the learner's alarms with [alarms] and re-schedule them.
   ///
   /// Public so the editor screen can call it after a manual save when
   /// the live stream hasn't yet emitted — keeps the UX snappy without
-  /// waiting for the round-trip.
+  /// waiting for the round-trip. Ignored for any learner but the device's:
+  /// alarms an educator edits on their own tablet are not theirs to ring.
   static Future<void> rescheduleAll(
       String profileId, List<ChildAlarm> alarms) async {
-    await _cancelAllAlarmIds();
-
-    // Cap to 32 enabled alarms — keeps iOS pending notifications well
-    // under its 64-slot ceiling even when an alarm repeats on 7 days
-    // (which is one notification per day under `dayOfWeekAndTime`).
-    final enabled = alarms.where((a) => a.enabled).take(32).toList();
-    for (final a in enabled) {
-      // If the alarm has no specific days, schedule one per day so the
-      // OS reliably matches "every day at HH:mm" via dayOfWeekAndTime.
-      final days = a.daysOfWeek.isEmpty ? const {1, 2, 3, 4, 5, 6, 7} : a.daysOfWeek;
-      for (final day in days) {
-        await _scheduleOne(a, day);
-      }
-    }
-
-    if (kDebugMode) {
-      debugPrint(
-          'AlarmScheduler: scheduled ${_activeNotificationIds.length} '
-          'pending notifications for profile $profileId');
-    }
+    final owner = scheduledFor;
+    if (owner != null && owner != profileId) return;
+    _latest = alarms;
+    await _reconcile();
   }
+
+  // ── pure rules (tested) ──
+
+  /// Whether the learner's alarms should be with the OS right now.
+  @visibleForTesting
+  static bool shouldSchedule({
+    required String? owner,
+    required bool blocked,
+    required bool foreground,
+  }) =>
+      owner != null && !(blocked && foreground);
+
+  /// The notifications on the device that are child alarms: scheduled ones
+  /// carry an `alarm:` payload; shown ones sit on the child-alarm channel.
+  @visibleForTesting
+  static Set<int> alarmNotificationIds({
+    required Iterable<PendingNotificationRequest> pending,
+    Iterable<ActiveNotification> shown = const [],
+  }) =>
+      {
+        for (final p in pending)
+          if (p.payload?.startsWith('alarm:') ?? false) p.id,
+        for (final s in shown)
+          if (s.id != null &&
+              (s.channelId == _channelId ||
+                  (s.payload?.startsWith('alarm:') ?? false)))
+            s.id!,
+      };
+
+  /// The title, naming the learner so a shared tablet's other users can see
+  /// whose alarm it is.
+  @visibleForTesting
+  static String titleWithLearner(String base, String? learnerName) {
+    final name = learnerName?.trim() ?? '';
+    return name.isEmpty ? base : '$base · $name';
+  }
+
+  /// Whether a tapped alarm may act for [learnerId]: one left over from
+  /// another learner (shown before a switch) must not lock this one's app.
+  @visibleForTesting
+  static bool tapActsFor(ChildAlarm? alarm, String? learnerId) =>
+      alarm == null || alarm.childProfileId == learnerId;
 
   // ── private ──
 
@@ -222,6 +320,72 @@ class AlarmScheduler {
     _pluginInitialised = true;
   }
 
+  /// Follows the app in and out of the foreground, so a suspension lifts
+  /// while the app is in the background.
+  static void _watchLifecycle() {
+    if (_lifecycle != null) return;
+    try {
+      _lifecycle = AppLifecycleListener(
+        onStateChange: (state) {
+          final foreground = state == AppLifecycleState.resumed ||
+              state == AppLifecycleState.inactive;
+          if (foreground == _foreground) return;
+          _foreground = foreground;
+          if (_blocked) {
+            unawaited(_reconcile().catchError((Object e) {
+              if (kDebugMode) debugPrint('AlarmScheduler lifecycle: $e');
+            }));
+          }
+        },
+      );
+    } catch (_) {
+      // No widgets binding (plain unit tests): always in the foreground.
+    }
+  }
+
+  /// Make the OS's alarms match [_latest] for the learner, or hold them back.
+  static Future<void> _reconcile() async {
+    final owner = _profileId;
+    if (!shouldSchedule(
+      owner: owner,
+      blocked: _blocked,
+      foreground: _foreground,
+    )) {
+      await _cancelDeviceAlarms(includeShown: _blocked && _foreground);
+      if (kDebugMode) {
+        debugPrint('AlarmScheduler: alarms for $owner held back');
+      }
+      return;
+    }
+
+    // Everything pending goes first — the ids of an earlier run are not in
+    // memory — then the learner's current alarms are scheduled afresh.
+    await _cancelDeviceAlarms(includeShown: false);
+
+    // Cap to 32 enabled alarms — keeps iOS pending notifications well
+    // under its 64-slot ceiling even when an alarm repeats on 7 days
+    // (which is one notification per day under `dayOfWeekAndTime`).
+    final alarms = _latest ?? HiveService.getChildAlarmsForChild(owner!);
+    final enabled = alarms
+        .where((a) => a.enabled && a.childProfileId == owner)
+        .take(32)
+        .toList();
+    for (final a in enabled) {
+      // If the alarm has no specific days, schedule one per day so the
+      // OS reliably matches "every day at HH:mm" via dayOfWeekAndTime.
+      final days = a.daysOfWeek.isEmpty ? const {1, 2, 3, 4, 5, 6, 7} : a.daysOfWeek;
+      for (final day in days) {
+        await _scheduleOne(a, day);
+      }
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+          'AlarmScheduler: scheduled ${_activeNotificationIds.length} '
+          'pending notifications for profile $owner');
+    }
+  }
+
   static void _onTap(NotificationResponse response) {
     final payload = response.payload;
     if (payload == null || !payload.startsWith('alarm:')) return;
@@ -229,6 +393,7 @@ class AlarmScheduler {
     // Look up locally — Firestore may not have streamed yet if the app
     // was launched cold from the notification.
     final alarm = HiveService.getChildAlarmById(alarmId);
+    if (_blocked || !tapActsFor(alarm, scheduledFor)) return;
     onAlarmFired?.call(alarm);
   }
 
@@ -276,8 +441,12 @@ class AlarmScheduler {
   }
 
   static String _titleFor(ChildAlarm a) {
-    if (a.label.isNotEmpty) return '⏰ ${a.label}';
-    return _strings().asAlarm;
+    final base = a.label.isNotEmpty ? '⏰ ${a.label}' : _strings().asAlarm;
+    String? name;
+    try {
+      name = HiveService.getProfileById(a.childProfileId)?.name;
+    } catch (_) {}
+    return titleWithLearner(base, name);
   }
 
   static String _bodyFor(ChildAlarm a) {
@@ -332,5 +501,20 @@ class AlarmScheduler {
       } catch (_) {}
     }
     _activeNotificationIds.clear();
+  }
+
+  /// Cancels every child alarm the OS holds — this run's and any earlier
+  /// run's — and, with [includeShown], clears ones already on screen.
+  static Future<void> _cancelDeviceAlarms({required bool includeShown}) async {
+    await _cancelAllAlarmIds();
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      final shown = includeShown
+          ? await _plugin.getActiveNotifications()
+          : const <ActiveNotification>[];
+      for (final id in alarmNotificationIds(pending: pending, shown: shown)) {
+        await _plugin.cancel(id);
+      }
+    } catch (_) {}
   }
 }

@@ -28,10 +28,44 @@ void main() {
       expect(ScheduleOwnership.forAlarms(ben), ScheduleChange.start);
     });
 
-    test('an educator, a Player or the profile picker leaves them alone', () {
+    test('with nothing scheduled, nobody else changes anything', () {
       for (final p in [rose, mom, pia, guest, null]) {
         expect(ScheduleOwnership.forAlarms(p), ScheduleChange.keep, reason: '$p');
       }
+    });
+
+    // A shared tablet: a child's "Time to take a moment" alarm popped up in
+    // the middle of a different student's lesson.
+    group('on a shared tablet', () {
+      ScheduleChange change(UserProfile? next, {Set<String> responsible = const {'mom'}}) =>
+          ScheduleOwnership.forAlarms(
+            next,
+            owner: 'ben',
+            responsibleEducators: responsible,
+          );
+
+      test('another learner signing in takes them over', () {
+        expect(change(ana), ScheduleChange.start);
+      });
+
+      test('the educator who set the alarms keeps seeing them', () {
+        expect(change(mom), ScheduleChange.keep);
+        expect(change(rose, responsible: {'rose'}), ScheduleChange.keep);
+      });
+
+      test('an unrelated educator or a Player holds them back', () {
+        expect(change(rose), ScheduleChange.suspend);
+        expect(change(pia), ScheduleChange.suspend);
+        expect(change(guest), ScheduleChange.suspend);
+      });
+
+      test('a Player is never "responsible", whatever the set says', () {
+        expect(change(pia, responsible: {'pia'}), ScheduleChange.suspend);
+      });
+
+      test('the profile picker brings them back', () {
+        expect(change(null), ScheduleChange.keep);
+      });
     });
   });
 
