@@ -103,8 +103,13 @@
     markSpy();
   }
 
-  // PWA: register the service worker (http/https only)
+  // PWA: register the service worker (http/https only) once the page has
+  // finished loading. Its install downloads the offline copy of the whole site
+  // (about a megabyte), and started straight away it competed with the
+  // screenshots on a first visit over a slow connection.
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
-    navigator.serviceWorker.register('sw.js').catch(function(){});
+    var registerSw = function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); };
+    if (document.readyState === 'complete') registerSw();
+    else addEventListener('load', registerSw);
   }
 })();

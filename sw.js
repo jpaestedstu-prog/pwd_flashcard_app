@@ -1,5 +1,5 @@
 /* FlashLearn PWD site service worker — offline support for the core pages. */
-const CACHE = 'flp-site-v15';
+const CACHE = 'flp-site-v18';
 const CORE = [
   './',
   'index.html',
@@ -13,7 +13,6 @@ const CORE = [
   'assets/videos/app-demo.en.vtt',
   'assets/videos/app-demo.fil.vtt',
   'assets/icon-192.png',
-  'assets/icon-512.png',
   'assets/qr-site.png',
   'assets/fonts/Fredoka-SemiBold.ttf',
   'assets/fonts/Fredoka-Medium.ttf',
