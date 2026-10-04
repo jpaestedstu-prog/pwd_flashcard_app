@@ -171,13 +171,37 @@ class FirestoreRepository implements DataRepository {
     // a row that is permanently "Unknown · Pending". The rules pin these
     // writes to the assigning educator, so a refusal here is expected on a
     // shared project and must not stop the delete.
+    //
+    // Found by this device's uid (`student_uids`, the lookup the rules will
+    // keep allowing) as well as the older `studentIds` one, which the rules
+    // are due to close — see AssessmentCloudService.studentUidsField.
     await attempt(() async {
-      final naming = await _db
-          .collection('assessment_assignments')
-          .where('studentIds', arrayContains: profileId)
-          .get();
-      for (final d in naming.docs) {
-        await attempt(() => d.reference.update({
+      final assignments = _db.collection('assessment_assignments');
+      final naming = <String, DocumentReference<Map<String, dynamic>>>{};
+      final uid = _uid;
+      if (uid != null) {
+        await attempt(() async {
+          final mine = await assignments
+              .where('student_uids', arrayContains: uid)
+              .get();
+          for (final d in mine.docs) {
+            final learners = d.data()['studentIds'];
+            if (learners is List && learners.contains(profileId)) {
+              naming[d.id] = d.reference;
+            }
+          }
+        });
+      }
+      await attempt(() async {
+        final legacy = await assignments
+            .where('studentIds', arrayContains: profileId)
+            .get();
+        for (final d in legacy.docs) {
+          naming[d.id] = d.reference;
+        }
+      });
+      for (final ref in naming.values) {
+        await attempt(() => ref.update({
               'studentIds': FieldValue.arrayRemove([profileId]),
             }));
       }

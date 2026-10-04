@@ -417,9 +417,13 @@ service cloud.firestore {
     // Who was set what, by whom, and when it is due. Only the assigning
     // educator may write; `studentIds` is the learner's arrayContains index.
     match /assessment_assignments/{assignmentId} {
-      // Still open: a learner finds theirs with `studentIds` array-contains,
-      // and no rule can hold an array-contains query to one learner. Closing
-      // it needs the assignment to carry the learners' uids (next release).
+      // Still open, for now: a learner on 1.2.1 or older finds theirs with
+      // `studentIds` array-contains, and no rule can hold that query to one
+      // learner. Since 1.2.2 every assignment also carries `student_uids`
+      // and learners look theirs up by their own uid. Once every tablet runs
+      // 1.2.2+ (and each educator has opened their dashboard, which fills in
+      // older work), replace the next line with the uid rule tested as
+      // "[next]" in tool/firestore_read_rules_emulator_test.py.
       allow read: if signedIn();
       allow create: if signedIn()
         && ownsProfile(request.resource.data.assignedBy);

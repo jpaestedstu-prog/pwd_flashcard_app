@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
@@ -21,8 +23,12 @@ export '../../../core/services/cloud_sync_outcome.dart'
 ///
 /// * `assessments/{assessmentId}` — the template. Readable by any signed-in
 ///   user because a learner has to fetch a template their educator wrote.
-/// * `assessment_assignments/{assignmentId}` — carries `studentIds`, so a
-///   learner finds their own work with one `arrayContains` query.
+/// * `assessment_assignments/{assignmentId}` — carries `studentIds` and, since
+///   1.2.2, `student_uids` (the learners' device uids). A learner finds their
+///   own work by their uid — a query the rules can hold to that one learner,
+///   which `studentIds` (profile ids) never can be. The older `studentIds`
+///   lookup still runs alongside, for work an educator tablet set before it
+///   updated, until the rules close it (see firestore.rules).
 /// * `assessment_results/{resultId}` — the learner's answers, which the
 ///   educator reads back to fill in Assignment Tracking.
 ///
@@ -65,6 +71,53 @@ class AssessmentCloudService {
 
   /// Firestore's cap on the values of a `whereIn` / `arrayContainsAny` filter.
   static const int _whereInLimit = 30;
+
+  /// The assigned learners' device uids, beside `studentIds`.
+  static const String studentUidsField = 'student_uids';
+
+  /// Profile id → owning device uid, looked up this run.
+  static final Map<String, String> _ownerUidCache = {};
+
+  /// The device uids that own [learnerIds]' profiles, sorted. Best-effort and
+  /// never throws: a profile that cannot be read right now is left out, and
+  /// the educator's next hydrate fills it in.
+  Future<List<String>> _ownerUidsOf(Iterable<String> learnerIds) async {
+    final ids = learnerIds.toSet();
+    final missing = ids.where((id) => !_ownerUidCache.containsKey(id));
+    await Future.wait(missing.map((id) async {
+      try {
+        final doc = await _db
+            .collection('profiles')
+            .doc(id)
+            .get()
+            .timeout(remoteTimeout);
+        final uid = doc.data()?['owner_uid'];
+        if (uid is String && uid.isNotEmpty) _ownerUidCache[id] = uid;
+      } catch (_) {}
+    }));
+    return {
+      for (final id in ids)
+        if (_ownerUidCache[id] != null) _ownerUidCache[id]!,
+    }.toList()
+      ..sort();
+  }
+
+  /// [learnerId]'s assignments out of the two lookups — by this device's uid,
+  /// and the older `studentIds` one ([byLegacy] is null once the rules refuse
+  /// it) — each once, and only theirs: a tablet shared by two learners gets
+  /// both learners' work back from the uid lookup.
+  @visibleForTesting
+  static List<AssessmentAssignment> assignmentsForLearner(
+    String learnerId, {
+    required List<AssessmentAssignment> byUid,
+    required List<AssessmentAssignment>? byLegacy,
+  }) {
+    final byId = <String, AssessmentAssignment>{};
+    for (final a in [...byUid, ...?byLegacy]) {
+      if (a.studentIds.contains(learnerId)) byId[a.id] = a;
+    }
+    return byId.values.toList();
+  }
 
   /// How long any single Firestore call may take before it is treated as
   /// "did not reach the cloud".
@@ -162,11 +215,13 @@ class AssessmentCloudService {
     await AssessmentService.saveAssignment(educatorId, assignment);
     if (!_enabled) return CloudSyncOutcome.localOnly;
     try {
+      final learnerUids = await _ownerUidsOf(assignment.studentIds);
       await _db
           .collection(assignmentsCollection)
           .doc(assignment.id)
           .set({
             ...assignment.toJson(),
+            studentUidsField: learnerUids,
             'owner_uid': FirebaseService.currentUid,
           })
           .timeout(remoteTimeout);
@@ -280,6 +335,7 @@ class AssessmentCloudService {
       final cloudAssignments =
           _decode(assignmentDocs.docs, AssessmentAssignment.fromJson);
       await AssessmentService.mergeAssignments(educatorId, cloudAssignments);
+      await _backfillLearnerUids(assignmentDocs.docs);
 
       // Everyone this educator has ever set work for. Their results are what
       // turns a tracking row from Pending into a score.
@@ -331,18 +387,13 @@ class AssessmentCloudService {
   Future<bool> hydrateLearner(String learnerId) async {
     if (!_enabled || learnerId.isEmpty) return true;
     try {
-      final snap = await _db
-          .collection(assignmentsCollection)
-          .where('studentIds', arrayContains: learnerId)
-          .get()
-          .timeout(remoteTimeout);
-      final assignments =
-          _decode(snap.docs, AssessmentAssignment.fromJson);
+      final mine = await _queryLearnerAssignments(learnerId);
+      final assignments = mine.assignments;
 
       // Work withdrawn elsewhere has to stop nagging here. Only a
       // server-sourced snapshot may be read as "this is all of their work" —
       // see [classifyLocalRows] for why a cached answer cannot be trusted.
-      if (!snap.metadata.isFromCache) {
+      if (mine.complete) {
         await AssessmentService.withdrawLearnerFromAssignmentsExcept(
           learnerId,
           assignments.map((a) => a.id).toSet(),
@@ -397,18 +448,62 @@ class AssessmentCloudService {
   /// the learner already has — an FSL video telling a Deaf child how they
   /// did — also arrives while the app is open. Compared against the same key
   /// computed from this device's copy, so an unchanged row costs nothing.
+  ///
+  /// Two listeners — by this device's uid, and the older `studentIds` one —
+  /// merged. The older one being refused (the rules closing it) is expected
+  /// and only silences it; any other error ends the stream, as before.
   Stream<Set<String>> watchLearnerAssignmentIds(String learnerId) {
     if (!_enabled || learnerId.isEmpty) return const Stream.empty();
-    return _db
-        .collection(assignmentsCollection)
-        .where('studentIds', arrayContains: learnerId)
-        .snapshots()
-        .map(
-          (snap) => {
-            for (final a in _decode(snap.docs, AssessmentAssignment.fromJson))
-              revisionKey(a, learnerId),
-          },
-        );
+    final uid = FirebaseService.currentUid;
+    final out = StreamController<Set<String>>();
+    var byUid = const <AssessmentAssignment>[];
+    List<AssessmentAssignment>? byLegacy = const [];
+    final subs = <StreamSubscription<Object?>>[];
+    void emit() {
+      if (out.isClosed) return;
+      out.add({
+        for (final a in assignmentsForLearner(
+          learnerId,
+          byUid: byUid,
+          byLegacy: byLegacy,
+        ))
+          revisionKey(a, learnerId),
+      });
+    }
+
+    out.onListen = () {
+      if (uid != null) {
+        subs.add(_db
+            .collection(assignmentsCollection)
+            .where(studentUidsField, arrayContains: uid)
+            .snapshots()
+            .listen((snap) {
+              byUid = _decode(snap.docs, AssessmentAssignment.fromJson);
+              emit();
+            }, onError: out.addError));
+      }
+      subs.add(_db
+          .collection(assignmentsCollection)
+          .where('studentIds', arrayContains: learnerId)
+          .snapshots()
+          .listen((snap) {
+            byLegacy = _decode(snap.docs, AssessmentAssignment.fromJson);
+            emit();
+          }, onError: (Object e, StackTrace s) {
+            if (e is FirebaseException && e.code == 'permission-denied') {
+              byLegacy = null;
+              emit();
+              return;
+            }
+            out.addError(e, s);
+          }));
+    };
+    out.onCancel = () async {
+      for (final s in subs) {
+        await s.cancel();
+      }
+    };
+    return out.stream;
   }
 
   /// `<id>@<this learner's feedback>@<shared media>` — the parts of an
@@ -428,6 +523,86 @@ class AssessmentCloudService {
   }
 
   // ─── Internals ──────────────────────────────────────────
+
+  /// Gives this educator's assignments the learner uids they are missing:
+  /// work set before 1.2.2, or a learner whose profile moved to another
+  /// tablet. The rules can only close the old `studentIds` lookup once every
+  /// educator tablet has run this. Best-effort, on its own: a refused or
+  /// offline update must not stop the rest of the hydrate.
+  Future<void> _backfillLearnerUids(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) async {
+    try {
+      // Fresh lookups: a learner restored elsewhere has a new uid.
+      _ownerUidCache.clear();
+      final updates = <(DocumentReference<Map<String, dynamic>>, List<String>)>[];
+      for (final d in docs) {
+        final data = d.data();
+        final learners =
+            (data['studentIds'] as List?)?.whereType<String>() ?? const [];
+        final want = await _ownerUidsOf(learners);
+        final have = [
+          ...?(data[studentUidsField] as List?)?.whereType<String>(),
+        ]..sort();
+        if (want.isEmpty || listEquals(want, have)) continue;
+        updates.add((d.reference, want));
+      }
+      for (var i = 0; i < updates.length; i += 400) {
+        final batch = _db.batch();
+        for (final (ref, uids) in updates.skip(i).take(400)) {
+          batch.update(ref, {studentUidsField: uids});
+        }
+        await batch.commit().timeout(remoteTimeout);
+      }
+    } catch (e, s) {
+      _log('backfillLearnerUids', e, s);
+    }
+  }
+
+  /// [learnerId]'s assignments from both lookups. `complete` only when every
+  /// lookup that ran answered from the server (or was refused by the rules,
+  /// which is an answer too) — the condition for treating the list as all of
+  /// their work.
+  Future<({List<AssessmentAssignment> assignments, bool complete})>
+  _queryLearnerAssignments(String learnerId) async {
+    final uid = FirebaseService.currentUid;
+    QuerySnapshot<Map<String, dynamic>>? byUid;
+    if (uid != null) {
+      byUid = await _db
+          .collection(assignmentsCollection)
+          .where(studentUidsField, arrayContains: uid)
+          .get()
+          .timeout(remoteTimeout);
+    }
+    QuerySnapshot<Map<String, dynamic>>? byLegacy;
+    var legacyRefused = false;
+    try {
+      byLegacy = await _db
+          .collection(assignmentsCollection)
+          .where('studentIds', arrayContains: learnerId)
+          .get()
+          .timeout(remoteTimeout);
+    } on FirebaseException catch (e) {
+      if (e.code != 'permission-denied') rethrow;
+      legacyRefused = true;
+    }
+    final assignments = assignmentsForLearner(
+      learnerId,
+      byUid: byUid == null
+          ? const []
+          : _decode(byUid.docs, AssessmentAssignment.fromJson),
+      byLegacy: byLegacy == null
+          ? null
+          : _decode(byLegacy.docs, AssessmentAssignment.fromJson),
+    );
+    final uidAnswered = byUid != null && !byUid.metadata.isFromCache;
+    final legacyAnswered =
+        legacyRefused || (byLegacy != null && !byLegacy.metadata.isFromCache);
+    return (
+      assignments: assignments,
+      complete: legacyAnswered && (uidAnswered || (uid == null && !legacyRefused)),
+    );
+  }
 
   List<T> _decode<T>(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
@@ -652,7 +827,11 @@ class AssessmentCloudService {
       if (!assignmentPlan.toPush.contains(a.id)) continue;
       writes.add((
         _db.collection(assignmentsCollection).doc(a.id),
-        {...a.toJson(), 'owner_uid': uid},
+        {
+          ...a.toJson(),
+          studentUidsField: await _ownerUidsOf(a.studentIds),
+          'owner_uid': uid,
+        },
       ));
     }
 

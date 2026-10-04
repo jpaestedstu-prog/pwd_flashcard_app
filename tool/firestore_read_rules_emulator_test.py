@@ -61,11 +61,14 @@ def put(path, fields):
     assert st == 200, (path, st, body)
 
 
-def load_rules():
+def load_rules(next_assignments=False):
+    text = RULES.read_text(encoding="utf-8").replace("\r\n", "\n")
+    if next_assignments:
+        assert text.count(CURRENT_ASSIGNMENTS_READ) == 1, "assignments read rule moved"
+        text = text.replace(CURRENT_ASSIGNMENTS_READ, NEXT_ASSIGNMENTS_READ)
     r = urllib.request.Request(
         f"http://127.0.0.1:8080/emulator/v1/projects/{PROJECT}:securityRules", method="PUT",
-        data=json.dumps({"rules": {"files": [{"name": "firestore.rules",
-                                                "content": RULES.read_text(encoding="utf-8")}]}}).encode(),
+        data=json.dumps({"rules": {"files": [{"name": "firestore.rules", "content": text}]}}).encode(),
         headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(r, timeout=20) as resp:
         assert resp.status == 200
@@ -100,6 +103,24 @@ def get(uid, path):
     st, _ = req("GET", f"{BASE}/{path}", None, uid)
     return st
 
+
+CURRENT_ASSIGNMENTS_READ = (
+    '"[next]" in tool/firestore_read_rules_emulator_test.py.\n'
+    "      allow read: if signedIn();\n"
+)
+
+# The next step (NOT deployed yet): learners read their assignments by their
+# own uid (`student_uids`, written since 1.2.2), so the old `studentIds`
+# array-contains lookup — which no rule can hold to one learner — closes.
+# Deploy only once every study tablet runs 1.2.2+ and every educator has
+# opened their dashboard once (that backfills student_uids on old work).
+NEXT_ASSIGNMENTS_READ = (
+    '"[next]" in tool/firestore_read_rules_emulator_test.py.\n'
+    "      allow get: if ownsProfile(resource.data.assignedBy)\n"
+    "        || request.auth.uid in resource.data.get('student_uids', []);\n"
+    "      allow list: if ownsProfile(resource.data.assignedBy)\n"
+    "        || request.auth.uid in resource.data.student_uids;\n"
+)
 
 passed, failed = 0, []
 
@@ -267,6 +288,23 @@ def main():
     denied("someone else's templates", query("uX", "assessments", ("created_by_profile_id", "EQUAL", "pT")))
     denied("someone else's live sessions", query("uX", "live_sessions", ("owner_uid", "EQUAL", "uT")))
     denied("a stranger's progress audit", get("uX", "progress_audit/pS1/events/e1"))
+
+    # ── the next step for assignments (not deployed): by learner uid only ──
+    load_rules(next_assignments=True)
+    put("assessment_assignments/as1",
+        {"assignedBy": "pT", "studentIds": ["pS1"], "student_uids": ["uS1"], "assessmentId": "a1"})
+    allowed("[next] learner finds their work by uid",
+            query("uS1", "assessment_assignments", ("student_uids", "ARRAY_CONTAINS", "uS1")))
+    allowed("[next] educator's assignments",
+            query("uT", "assessment_assignments", ("assignedBy", "EQUAL", "pT")))
+    allowed("[next] learner reads their assignment", get("uS1", "assessment_assignments/as1"))
+    denied("[next] the old studentIds lookup is closed",
+           query("uS1", "assessment_assignments", ("studentIds", "ARRAY_CONTAINS", "pS1")))
+    denied("[next] someone else's uid",
+           query("uX", "assessment_assignments", ("student_uids", "ARRAY_CONTAINS", "uS1")))
+    denied("[next] sweep assignments", query("uX", "assessment_assignments"))
+    denied("[next] a stranger reads an assignment", get("uX", "assessment_assignments/as1"))
+    load_rules()
 
     print(f"{passed} passed, {len(failed)} failed")
     for f in failed:
