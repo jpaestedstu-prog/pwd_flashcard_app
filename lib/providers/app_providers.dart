@@ -305,6 +305,19 @@ final profileProvider = NotifierProvider<ProfileNotifier, UserProfile?>(
   ProfileNotifier.new,
 );
 
+/// The person actually at the tablet.
+///
+/// "View as student" makes the learner the active profile so the dashboards
+/// show their data, but the learner did not sign in. Their screen time, the
+/// tablet's alarms and reminders, and study sessions stay the educator's —
+/// a teacher opening a dashboard used to start the learner's time limit,
+/// take the alarms off the device's own learner, and log the teacher's
+/// viewing as the learner's study time.
+UserProfile? profileAtTablet(UserProfile? active, ProfileNotifier notifier) =>
+    notifier.isViewingAsStudent
+        ? (notifier.savedEducatorProfile ?? active)
+        : active;
+
 // ─── Flashcard Data Provider ───────────────────────────
 
 final allFlashcardsProvider = Provider<List<Flashcard>>((ref) {
@@ -970,7 +983,11 @@ final educatorRosterProvider =
 final sessionTrackerProvider = Provider<SessionTracker?>((ref) {
   final profile = ref.watch(profileProvider);
   if (profile == null) return null;
-  final tracker = SessionTracker(profileId: profile.id);
+  // An educator viewing a learner's dashboard is still the one sitting at
+  // the tablet: the sitting is theirs, not the learner's study time.
+  final sitter =
+      profileAtTablet(profile, ref.read(profileProvider.notifier)) ?? profile;
+  final tracker = SessionTracker(profileId: sitter.id);
   ref.onDispose(() => tracker.dispose());
   return tracker;
 });

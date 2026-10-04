@@ -270,8 +270,12 @@ class FlashLearnApp extends ConsumerWidget {
     // the user-facing artefact reported after a successful join. The
     // error is still persisted to the Hive diagnostics log via
     // [ErrorHandler.report] under the silent source 'applyLifecycle:silent'.
-    void applyLifecycle(UserProfile? next) {
+    void applyLifecycle(UserProfile? active) {
       try {
+        // "View as student" is still the educator at the tablet: the learner
+        // whose dashboard is open did not sign in (see [profileAtTablet]).
+        final next =
+            profileAtTablet(active, ref.read(profileProvider.notifier));
         final alarmOwner = AlarmScheduler.scheduledFor;
         final alarmChange = ScheduleOwnership.forAlarms(
           next,
@@ -349,6 +353,9 @@ class FlashLearnApp extends ConsumerWidget {
     // profile listener alone would never notice.
     void applyRoutineLifecycle() {
       try {
+        // An educator peeking at a learner's dashboard changes nobody's
+        // reminders.
+        if (ref.read(profileProvider.notifier).isViewingAsStudent) return;
         final next = ref.read(profileProvider);
         final change = ScheduleOwnership.forRoutines(
           next: next,
@@ -423,8 +430,11 @@ class FlashLearnApp extends ConsumerWidget {
       applyRoutineLifecycle();
       // A Teacher's or Parent's start/end alerts are theirs: once a learner
       // (or nobody) is signed in on this device they must not keep arriving.
-      // The dashboard re-plans them when an educator is back.
-      if (next == null || !next.role.isEducator) {
+      // The dashboard re-plans them when an educator is back. Viewing a
+      // learner's dashboard keeps them: the educator is still at the tablet.
+      final atTablet =
+          profileAtTablet(next, ref.read(profileProvider.notifier));
+      if (atTablet == null || !atTablet.role.isEducator) {
         unawaited(RoutineReminderScheduler.cancelEducatorAlerts());
       }
     });
