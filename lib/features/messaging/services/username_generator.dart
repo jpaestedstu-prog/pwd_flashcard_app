@@ -6,9 +6,14 @@ import 'profile_directory_service.dart';
 
 /// Generates the auto-handle used to add friends in messaging.
 ///
-/// The handle is human-shareable (e.g. `maria-1947`) so a learner can
-/// tell their friend their username out loud. Collisions are resolved by
-/// rolling a fresh 4-digit suffix; the [generateUniqueHandle] entry point
+/// The handle is human-shareable (e.g. `maria-194735`) so a learner can
+/// tell their friend their username out loud. Six digits, not four: every
+/// handle is a public `profile_directory` entry naming its learner (and
+/// their disability), and four digits left 10,000 per first name — few
+/// enough for a stranger to try them all. A million is not.
+///
+/// Collisions are resolved by rolling a fresh suffix; the
+/// [generateUniqueHandle] entry point
 /// retries up to [_maxAttempts] times against the live directory and
 /// then falls back to an 8-char UUID suffix that is effectively unique.
 class UsernameGenerator {
@@ -36,12 +41,12 @@ class UsernameGenerator {
     return s.isEmpty ? 'user' : s;
   }
 
-  /// Random 4-digit suffix as a zero-padded string ("0042").
-  static String suffix4() => _rng.nextInt(10000).toString().padLeft(4, '0');
+  /// Random 6-digit suffix as a zero-padded string ("004213").
+  static String suffix() => _rng.nextInt(1000000).toString().padLeft(6, '0');
 
   /// Single attempt — does not check the directory.
   static String generateHandle(String name) =>
-      '${slug(name)}-${suffix4()}';
+      '${slug(name)}-${suffix()}';
 
   /// Generates a handle and confirms (via [ProfileDirectoryService]) that
   /// no other profile has claimed it. Falls back to a UUID-short suffix
@@ -50,7 +55,7 @@ class UsernameGenerator {
   static Future<String> generateUniqueHandle(String name) async {
     final base = slug(name);
     for (var i = 0; i < _maxAttempts; i++) {
-      final candidate = '$base-${suffix4()}';
+      final candidate = '$base-${suffix()}';
       final taken =
           await ProfileDirectoryService.instance.isUsernameTaken(candidate);
       if (!taken) return candidate;

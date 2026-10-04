@@ -26,9 +26,9 @@ export '../../../core/services/cloud_sync_outcome.dart'
 /// * `assessment_assignments/{assignmentId}` — carries `studentIds` and, since
 ///   1.2.2, `student_uids` (the learners' device uids). A learner finds their
 ///   own work by their uid — a query the rules can hold to that one learner,
-///   which `studentIds` (profile ids) never can be. The older `studentIds`
-///   lookup still runs alongside, for work an educator tablet set before it
-///   updated, until the rules close it (see firestore.rules).
+///   which `studentIds` (profile ids) never can be. The rules closed the
+///   older `studentIds` lookup on 2026-10-04 (see firestore.rules); the
+///   educator's hydrate fills `student_uids` in on work set before 1.2.2.
 /// * `assessment_results/{resultId}` — the learner's answers, which the
 ///   educator reads back to fill in Assignment Tracking.
 ///
@@ -457,7 +457,6 @@ class AssessmentCloudService {
     final uid = FirebaseService.currentUid;
     final out = StreamController<Set<String>>();
     var byUid = const <AssessmentAssignment>[];
-    List<AssessmentAssignment>? byLegacy = const [];
     final subs = <StreamSubscription<Object?>>[];
     void emit() {
       if (out.isClosed) return;
@@ -465,7 +464,7 @@ class AssessmentCloudService {
         for (final a in assignmentsForLearner(
           learnerId,
           byUid: byUid,
-          byLegacy: byLegacy,
+          byLegacy: null,
         ))
           revisionKey(a, learnerId),
       });
@@ -482,21 +481,8 @@ class AssessmentCloudService {
               emit();
             }, onError: out.addError));
       }
-      subs.add(_db
-          .collection(assignmentsCollection)
-          .where('studentIds', arrayContains: learnerId)
-          .snapshots()
-          .listen((snap) {
-            byLegacy = _decode(snap.docs, AssessmentAssignment.fromJson);
-            emit();
-          }, onError: (Object e, StackTrace s) {
-            if (e is FirebaseException && e.code == 'permission-denied') {
-              byLegacy = null;
-              emit();
-              return;
-            }
-            out.addError(e, s);
-          }));
+      // The older `studentIds` lookup is closed by the rules (2026-10-04):
+      // asking would only ever be refused.
     };
     out.onCancel = () async {
       for (final s in subs) {
@@ -526,8 +512,8 @@ class AssessmentCloudService {
 
   /// Gives this educator's assignments the learner uids they are missing:
   /// work set before 1.2.2, or a learner whose profile moved to another
-  /// tablet. The rules can only close the old `studentIds` lookup once every
-  /// educator tablet has run this. Best-effort, on its own: a refused or
+  /// tablet — a learner finds their work only by uid since the rules closed
+  /// the old `studentIds` lookup. Best-effort, on its own: a refused or
   /// offline update must not stop the rest of the hydrate.
   Future<void> _backfillLearnerUids(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
@@ -559,10 +545,10 @@ class AssessmentCloudService {
     }
   }
 
-  /// [learnerId]'s assignments from both lookups. `complete` only when every
-  /// lookup that ran answered from the server (or was refused by the rules,
-  /// which is an answer too) — the condition for treating the list as all of
-  /// their work.
+  /// [learnerId]'s assignments, found by this device's uid (`student_uids`;
+  /// the older `studentIds` lookup is closed by the rules since 2026-10-04).
+  /// `complete` only when the server answered — the condition for treating
+  /// the list as all of their work.
   Future<({List<AssessmentAssignment> assignments, bool complete})>
   _queryLearnerAssignments(String learnerId) async {
     final uid = FirebaseService.currentUid;
@@ -574,33 +560,16 @@ class AssessmentCloudService {
           .get()
           .timeout(remoteTimeout);
     }
-    QuerySnapshot<Map<String, dynamic>>? byLegacy;
-    var legacyRefused = false;
-    try {
-      byLegacy = await _db
-          .collection(assignmentsCollection)
-          .where('studentIds', arrayContains: learnerId)
-          .get()
-          .timeout(remoteTimeout);
-    } on FirebaseException catch (e) {
-      if (e.code != 'permission-denied') rethrow;
-      legacyRefused = true;
-    }
     final assignments = assignmentsForLearner(
       learnerId,
       byUid: byUid == null
           ? const []
           : _decode(byUid.docs, AssessmentAssignment.fromJson),
-      byLegacy: byLegacy == null
-          ? null
-          : _decode(byLegacy.docs, AssessmentAssignment.fromJson),
+      byLegacy: null,
     );
-    final uidAnswered = byUid != null && !byUid.metadata.isFromCache;
-    final legacyAnswered =
-        legacyRefused || (byLegacy != null && !byLegacy.metadata.isFromCache);
     return (
       assignments: assignments,
-      complete: legacyAnswered && (uidAnswered || (uid == null && !legacyRefused)),
+      complete: byUid != null && !byUid.metadata.isFromCache,
     );
   }
 

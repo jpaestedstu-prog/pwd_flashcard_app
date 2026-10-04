@@ -72,10 +72,21 @@
         android:resizeable="true"
         android:anyDensity="true"/>
 
+    <!-- No Android backup of the app's data: learner profiles, notes and
+         progress (a child's disability among them) must not leave the
+         tablet for the device owner's Google account, nor be copied to a new
+         phone set up from this one, carrying this tablet's sign-in with it.
+         Moving a profile is the app's own job (recovery code, Backup &
+         Restore), which also moves its cloud ownership. allowBackup covers
+         cloud backup; the extraction rules also stop device-to-device
+         transfer on Android 12+. -->
     <application
         android:label="FlashLearn PWD"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
 
         <!-- Portrait-only on large screens too. Android 16 (API 36) ignores an
              app's orientation/resizability request on displays ≥ sw600dp by

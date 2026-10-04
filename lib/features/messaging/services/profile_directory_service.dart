@@ -146,6 +146,29 @@ class ProfileDirectoryService {
     }
   }
 
+  /// Whether the server's entry for [handle] names [profileId]. Asks the
+  /// server, never the cache, and **throws** when it cannot be reached —
+  /// for callers that must know a write landed (the strong-handle migration).
+  Future<bool> namesProfileOnServer(String handle, String profileId) async {
+    final doc = await _col
+        .doc(handle.trim().toLowerCase())
+        .get(const GetOptions(source: Source.server))
+        .timeout(_lookupTimeout);
+    return doc.exists && doc.data()?['profile_id'] == profileId;
+  }
+
+  /// Deletes the entry for [handle] while it still names [profileId] (one
+  /// somebody else has since claimed is theirs). Unlike [remove] it
+  /// **throws** on failure, so a caller can retry until the server confirms.
+  Future<void> deleteIfNamesProfile(String handle, String profileId) async {
+    if (await namesProfileOnServer(handle, profileId)) {
+      await _col
+          .doc(handle.trim().toLowerCase())
+          .delete()
+          .timeout(_lookupTimeout);
+    }
+  }
+
   /// Resolve a username -> DirectoryEntry. Null if Firebase is offline
   /// or the handle isn't claimed.
   Future<DirectoryEntry?> lookupByUsername(String username) async {

@@ -345,7 +345,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get confirmResetMessage =>
-      'Tatanggalin nito ang lahat ng profile, progreso, at mga setting. Hindi na ito maibabalik.';
+      'Buburahin nito ang bawat profile sa tablet na ito — mga mag-aaral, guro at magulang — kasama ang lahat ng progreso at setting nila. Hindi na ito maibabalik. Hindi nabubura ang mga kopya online: para matanggal din ang mga record online ng isang profile, burahin muna ito sa Manage Profiles.';
 
   @override
   String get dailyWordChallenge => 'Araw-araw na Hamon sa Salita';
@@ -366,7 +366,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get openShop => 'Buksan ang tindahan ng bituin';
 
   @override
-  String get version => 'Bersyon 1.2.2 • Thesis Capstone Project';
+  String get version => 'Bersyon 1.2.3 • Thesis Capstone Project';
 
   @override
   String get flashLearnPwd => 'FlashLearn PWD';

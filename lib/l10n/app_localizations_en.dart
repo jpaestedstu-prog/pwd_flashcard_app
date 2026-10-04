@@ -343,7 +343,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confirmResetMessage =>
-      'This will delete all profiles, progress, and settings. This cannot be undone.';
+      'This erases every profile on this tablet — learners, teachers and parents — with all their progress and settings. It cannot be undone. Online copies are not erased: to remove a profile\'s online records too, delete it in Manage Profiles first.';
 
   @override
   String get dailyWordChallenge => 'Daily Word Challenge';
@@ -364,7 +364,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openShop => 'Open star shop';
 
   @override
-  String get version => 'Version 1.2.2 • Thesis Capstone Project';
+  String get version => 'Version 1.2.3 • Thesis Capstone Project';
 
   @override
   String get flashLearnPwd => 'FlashLearn PWD';

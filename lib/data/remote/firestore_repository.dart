@@ -172,9 +172,9 @@ class FirestoreRepository implements DataRepository {
     // writes to the assigning educator, so a refusal here is expected on a
     // shared project and must not stop the delete.
     //
-    // Found by this device's uid (`student_uids`, the lookup the rules will
-    // keep allowing) as well as the older `studentIds` one, which the rules
-    // are due to close — see AssessmentCloudService.studentUidsField.
+    // Found by this device's uid (`student_uids`) — the older `studentIds`
+    // lookup is closed by the rules (see
+    // AssessmentCloudService.studentUidsField).
     await attempt(() async {
       final assignments = _db.collection('assessment_assignments');
       final naming = <String, DocumentReference<Map<String, dynamic>>>{};
@@ -192,14 +192,6 @@ class FirestoreRepository implements DataRepository {
           }
         });
       }
-      await attempt(() async {
-        final legacy = await assignments
-            .where('studentIds', arrayContains: profileId)
-            .get();
-        for (final d in legacy.docs) {
-          naming[d.id] = d.reference;
-        }
-      });
       for (final ref in naming.values) {
         await attempt(() => ref.update({
               'studentIds': FieldValue.arrayRemove([profileId]),

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../data/local/hive_service.dart';
 import '../../data/local/local_repository.dart';
+import '../../features/messaging/services/profile_directory_service.dart';
 import '../services/firebase_service.dart';
 
 /// Migration that mints a `username` for every existing profile **and**
@@ -30,6 +33,8 @@ import '../services/firebase_service.dart';
 class UsernameMigration {
   static const String _migrationFlagKey = 'username_migration_v1_done';
   static const String _backfillFlagKey = 'username_migration_v2_done';
+  static const String _strongHandlesFlagKey = 'username_migration_v3_done';
+  static bool _strengthening = false;
   static const String _settingsBox = 'settings';
 
   static Future<void> runIfNeeded() async {
@@ -81,6 +86,71 @@ class UsernameMigration {
       if (kDebugMode) {
         debugPrint('UsernameMigration v2: backfilled $backfilled profile(s)');
       }
+    }
+
+    // Not awaited: a round trip or more per profile, and startup waits on
+    // this method before it opens the sync pipes. It retries by itself.
+    unawaited(_strengthenHandles(settings));
+  }
+
+  /// A handle minted before 1.2.3: four digits after the name. That left
+  /// 10,000 handles per first name, and every directory entry names its
+  /// learner and their disability — few enough for a stranger to try them
+  /// all. The six-digit ones (and the UUID fallback) are not matched.
+  static bool hasWeakHandle(String? username) =>
+      username != null && RegExp(r'-\d{4}$').hasMatch(username);
+
+  /// Phase 3 (1.2.3): gives every profile this device owns a six-digit
+  /// handle in place of a four-digit one, and takes the old handle out of
+  /// the public directory. Flagged done only once the server has confirmed
+  /// every step — an offline launch leaves the old entry findable, so it
+  /// simply tries again next time.
+  static Future<void> _strengthenHandles(Box<dynamic> settings) async {
+    if (_strengthening) return;
+    if (settings.get(_strongHandlesFlagKey, defaultValue: false) == true) {
+      return;
+    }
+    if (!FirebaseService.isConfigured) return;
+    final uid = FirebaseService.currentUid;
+    if (uid == null) return;
+    _strengthening = true;
+    const repo = LocalRepository();
+    final directory = ProfileDirectoryService.instance;
+    try {
+      var replaced = 0;
+      for (final data in HiveService.getProfiles()) {
+        final id = data['id'] as String?;
+        if (id == null) continue;
+        var profile = HiveService.getProfileById(id);
+        if (profile == null || profile.isGuestPlayer) continue;
+        // A profile another device owns, cached here: its owner replaces it.
+        if (profile.ownerUid != null && profile.ownerUid != uid) continue;
+        final old = profile.username;
+        if (hasWeakHandle(old)) {
+          await directory.deleteIfNamesProfile(old!, profile.id);
+          await HiveService.saveProfile(profile.copyWith(username: () => null));
+          // Re-publishing mints the new handle and claims its entry.
+          await repo.saveProfile(HiveService.getProfileById(id)!);
+          profile = HiveService.getProfileById(id)!;
+          replaced++;
+        }
+        final handle = profile.username;
+        if (handle == null || handle.isEmpty) continue;
+        if (!await directory.namesProfileOnServer(handle, profile.id)) {
+          await directory.upsert(profile);
+          if (!await directory.namesProfileOnServer(handle, profile.id)) {
+            throw StateError('no directory entry for ${profile.id} yet');
+          }
+        }
+      }
+      await settings.put(_strongHandlesFlagKey, true);
+      if (kDebugMode) {
+        debugPrint('UsernameMigration v3: replaced $replaced handle(s)');
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('UsernameMigration v3: retry next launch ($e)');
+    } finally {
+      _strengthening = false;
     }
   }
 

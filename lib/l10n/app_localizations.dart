@@ -713,7 +713,7 @@ abstract class AppLocalizations {
   /// No description provided for @confirmResetMessage.
   ///
   /// In en, this message translates to:
-  /// **'This will delete all profiles, progress, and settings. This cannot be undone.'**
+  /// **'This erases every profile on this tablet — learners, teachers and parents — with all their progress and settings. It cannot be undone. Online copies are not erased: to remove a profile\'s online records too, delete it in Manage Profiles first.'**
   String get confirmResetMessage;
 
   /// No description provided for @dailyWordChallenge.
@@ -755,7 +755,7 @@ abstract class AppLocalizations {
   /// No description provided for @version.
   ///
   /// In en, this message translates to:
-  /// **'Version 1.2.2 • Thesis Capstone Project'**
+  /// **'Version 1.2.3 • Thesis Capstone Project'**
   String get version;
 
   /// No description provided for @flashLearnPwd.

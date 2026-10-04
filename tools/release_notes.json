@@ -2,6 +2,20 @@
   "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
   "releases": [
     {
+      "version": "1.2.3",
+      "build": 7,
+      "date": "2026-10-05",
+      "summary_en": "Privacy. Every learner's username now ends in six random digits instead of four — far too many for a stranger to guess their way to a learner — and older usernames are replaced automatically the first time the tablet is online. Android's own backup no longer copies the app's data off the tablet, and assigned tests are found only by the learner's own tablet. Installs over v1.2.2 and keeps your profiles.",
+      "summary_fil": "Privacy. Anim na random na numero na ang dulo ng username ng bawat mag-aaral sa halip na apat — napakarami para mahulaan ng estranghero ang daan papunta sa isang mag-aaral — at awtomatikong napapalitan ang mga lumang username sa unang pag-online ng tablet. Hindi na kinokopya ng sariling backup ng Android ang data ng app palabas ng tablet, at ang sariling tablet lang ng mag-aaral ang nakakahanap ng mga pagsusulit na ibinigay sa kanya. Nai-i-install sa ibabaw ng v1.2.2 at nananatili ang inyong mga profile.",
+      "notes_en": "Usernames can no longer be guessed, and Android's backup no longer copies the app's data off the tablet.",
+      "notes_fil": "Hindi na mahuhulaan ang mga username, at hindi na kinokopya ng backup ng Android ang data ng app palabas ng tablet.",
+      "bullets_en": [
+        "Usernames end in six random digits instead of four; older ones are replaced automatically",
+        "Android's own backup and phone-to-phone transfer leave the app's data on the tablet",
+        "Assigned tests are found only by the learner's own tablet — the old lookup is closed"
+      ]
+    },
+    {
       "version": "1.2.2",
       "build": 6,
       "date": "2026-10-04",

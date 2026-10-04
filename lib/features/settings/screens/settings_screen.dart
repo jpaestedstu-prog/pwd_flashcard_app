@@ -1021,20 +1021,21 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 40),
 
               // ─── Reset button ──────────────────
-              Center(
-                child: TextButton.icon(
-                  onPressed: () => _showResetDialog(context, ref),
-                  icon: Icon(
-                    Icons.delete_outline_rounded,
-                    color: HCColor.of(context).graphic(AppColors.error),
-                  ),
-                  label: Text(
-                    AppLocalizations.of(context)?.resetAllData ??
-                        'Reset All Data',
-                    style: TextStyle(color: HCColor.of(context).errorText),
+              if (canResetAllData(profile))
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () => _showResetDialog(context, ref),
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      color: HCColor.of(context).graphic(AppColors.error),
+                    ),
+                    label: Text(
+                      AppLocalizations.of(context)?.resetAllData ??
+                          'Reset All Data',
+                      style: TextStyle(color: HCColor.of(context).errorText),
+                    ),
                   ),
                 ),
-              ),
 
               const SizedBox(height: 20),
             ],
@@ -1086,7 +1087,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
         content: Text(
           AppLocalizations.of(context)?.confirmResetMessage ??
-              'This will clear your profile, progress, and all custom flashcards. This cannot be undone.',
+              'This erases every profile on this tablet — learners, teachers and parents — with all their progress and settings. It cannot be undone. Online copies are not erased: to remove a profile’s online records too, delete it in Manage Profiles first.',
         ),
         actions: [
           TextButton(
@@ -1112,6 +1113,13 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 }
+
+/// Whether [profile] may reset the whole tablet: a Teacher or a Parent only.
+/// Reset erases EVERY profile on the device, not just the signed-in one, so
+/// on a shared study tablet a learner — one mis-tap, or a gaze dwell — must
+/// never reach it. (It used to show for every profile.)
+bool canResetAllData(UserProfile? profile) =>
+    profile?.role == UserRole.teacher || profile?.role == UserRole.parent;
 
 // ────────────────────────────────────────
 // PIN Setup Dialog
