@@ -4,7 +4,7 @@
     {
       "version": "1.2.3",
       "build": 7,
-      "date": "2026-10-05",
+      "date": "2026-10-04",
       "summary_en": "Privacy. Every learner's username now ends in six random digits instead of four — far too many for a stranger to guess their way to a learner — and older usernames are replaced automatically the first time the tablet is online. Android's own backup no longer copies the app's data off the tablet, and assigned tests are found only by the learner's own tablet. Installs over v1.2.2 and keeps your profiles.",
       "summary_fil": "Privacy. Anim na random na numero na ang dulo ng username ng bawat mag-aaral sa halip na apat — napakarami para mahulaan ng estranghero ang daan papunta sa isang mag-aaral — at awtomatikong napapalitan ang mga lumang username sa unang pag-online ng tablet. Hindi na kinokopya ng sariling backup ng Android ang data ng app palabas ng tablet, at ang sariling tablet lang ng mag-aaral ang nakakahanap ng mga pagsusulit na ibinigay sa kanya. Nai-i-install sa ibabaw ng v1.2.2 at nananatili ang inyong mga profile.",
       "notes_en": "Usernames can no longer be guessed, and Android's backup no longer copies the app's data off the tablet.",
