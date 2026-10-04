@@ -360,7 +360,14 @@ class FlashLearnApp extends ConsumerWidget {
         final routineOwner = RoutineReminderScheduler.profileId;
         final change = ScheduleOwnership.forRoutines(
           next: next,
-          featureOn: ref.read(routineFeatureProvider),
+          // From the profile itself and its own stored settings — never
+          // routineFeatureProvider, which can still hold the previous
+          // profile's answer while a switch is being delivered.
+          featureOn: routineFeatureOnFor(
+            next,
+            playerRoutineEnabled: next != null &&
+                HiveService.getSettings(profileId: next.id).routineEnabled,
+          ),
           scheduledFor: routineOwner,
           responsibleEducators:
               AlarmScheduler.responsibleEducatorsFor(routineOwner),
@@ -407,7 +414,8 @@ class FlashLearnApp extends ConsumerWidget {
             RoutineReminderScheduler.init(
               next.id,
               accessibility: next.disabilityType,
-              filipino: ref.read(settingsProvider).locale == 'fil',
+              filipino:
+                  HiveService.getSettings(profileId: next.id).locale == 'fil',
             ).catchError((e, s) {
               ErrorHandler.report(e, s, 'RoutineReminderScheduler:silent');
             }),

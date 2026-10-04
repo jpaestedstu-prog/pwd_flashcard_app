@@ -2,6 +2,7 @@ import '../../../providers/lock_state_provider.dart' show canBeLockedByRoutine;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/enums.dart';
+import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/routine_provider.dart';
 import '../../../providers/wall_clock_provider.dart';
@@ -171,13 +172,31 @@ class TodayRoutine {
 ///    `routineListProvider` — see `RoutineScreen`, which never consults this.
 final routineFeatureProvider = Provider<bool>((ref) {
   final profile = ref.watch(profileProvider);
-  if (profile == null) return false;
-  if (profile.isGuestPlayer) return false;
-  if (profile.role == UserRole.player) {
-    return ref.watch(settingsProvider.select((s) => s.routineEnabled));
-  }
-  return profile.role.isEnrollableLearner;
+  return routineFeatureOnFor(
+    profile,
+    playerRoutineEnabled: profile?.role == UserRole.player
+        ? ref.watch(settingsProvider.select((s) => s.routineEnabled))
+        : false,
+  );
 });
+
+/// Whether [profile] has My Day at all. A Player has it when their own
+/// setting says so ([playerRoutineEnabled]); a Student or Child always does;
+/// a guest and an educator never do.
+///
+/// Pure, so the code reacting to a profile switch can ask about the profile
+/// it was handed. Reading [routineFeatureProvider] there could still return
+/// the *previous* profile's answer: a teacher signing in straight after a
+/// learner was taken for someone with My Day, took the learner's reminders
+/// over and could shut them down.
+bool routineFeatureOnFor(
+  UserProfile? profile, {
+  required bool playerRoutineEnabled,
+}) {
+  if (profile == null || profile.isGuestPlayer) return false;
+  if (profile.role == UserRole.player) return playerRoutineEnabled;
+  return profile.role.isEnrollableLearner;
+}
 
 /// The signed-in learner's day, live.
 ///
