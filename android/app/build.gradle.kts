@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -6,6 +9,28 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// The signing key. It lives OUTSIDE the project folder (zipping or sharing the
+// project never shares it), in ~/.flashlearn-signing — see docs/signing.md.
+// It is the key every published FlashLearn APK was signed with, so installed
+// copies keep accepting updates; FLASHLEARN_SIGNING_PROPERTIES may point
+// elsewhere (a restored backup on another PC).
+val signingPropertiesFile = file(
+    System.getenv("FLASHLEARN_SIGNING_PROPERTIES")
+        ?: "${System.getProperty("user.home")}/.flashlearn-signing/key.properties",
+)
+// No key, no build: an APK signed with any other key could never update the
+// copies already installed — and when `flutter run` meets a signature
+// mismatch it UNINSTALLS the app, wiping every profile on a study tablet.
+if (!signingPropertiesFile.isFile) {
+    throw GradleException(
+        "FlashLearn's signing key was not found at $signingPropertiesFile. " +
+            "Restore it from the backup first - see docs/signing.md.",
+    )
+}
+val signingProperties = Properties().apply {
+    FileInputStream(signingPropertiesFile).use { load(it) }
 }
 
 android {
@@ -35,11 +60,23 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("flashlearn") {
+            storeFile = file(signingProperties.getProperty("storeFile"))
+            storePassword = signingProperties.getProperty("storePassword")
+            keyAlias = signingProperties.getProperty("keyAlias")
+            keyPassword = signingProperties.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
+        // Every build type — debug, profile and release — carries the
+        // published app's signature, so any of them installs over a tablet's
+        // real copy (keeping its profiles) instead of failing the check.
+        configureEach {
+            signingConfig = signingConfigs.getByName("flashlearn")
+        }
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
 
             // Enable R8 code shrinking, obfuscation, and resource shrinking
             // for smaller APK and faster class loading.
