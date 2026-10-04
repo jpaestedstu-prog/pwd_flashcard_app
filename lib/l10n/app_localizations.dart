@@ -17474,6 +17474,12 @@ abstract class AppLocalizations {
   /// **'Enabled'**
   String get alEnabled;
 
+  /// No description provided for @alUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm'**
+  String get alUnnamed;
+
   /// No description provided for @tlEnforce.
   ///
   /// In en, this message translates to:

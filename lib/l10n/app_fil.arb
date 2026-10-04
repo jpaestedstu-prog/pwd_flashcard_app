@@ -2896,6 +2896,7 @@
   "alDeleteTitle": "Burahin ang “{label}”?",
   "alLabel": "Pangalan",
   "alEnabled": "Naka-on",
+  "alUnnamed": "Alarma",
   "tlEnforce": "Ipatupad ang limitasyon bawat araw",
   "tlSaved": "Na-save.",
   "pcSaveFailed": "Hindi ma-save ang mga kontrol ng magulang. Pakisubukan ulit.",

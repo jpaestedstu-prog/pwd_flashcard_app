@@ -100,7 +100,8 @@ class ChildAlarmsScreen extends ConsumerWidget {
                   return await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: Text(_t(context).alDeleteTitle(a.label)),
+                          title: Text(_t(context).alDeleteTitle(
+                              a.label.isEmpty ? _t(context).alUnnamed : a.label)),
                           actions: [
                             TextButton(
                               onPressed: () =>
@@ -131,7 +132,7 @@ class ChildAlarmsScreen extends ConsumerWidget {
                           ? Theme.of(context).colorScheme.primary
                           : Colors.grey,
                     ),
-                    title: Text(a.label.isEmpty ? 'Alarm' : a.label),
+                    title: Text(a.label.isEmpty ? _t(context).alUnnamed : a.label),
                     subtitle: Text(_subtitleFor(context, a)),
                     trailing: Switch(
                       value: a.enabled,

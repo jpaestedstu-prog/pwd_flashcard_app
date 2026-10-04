@@ -7243,6 +7243,7 @@
   },
   "alLabel": "Label",
   "alEnabled": "Enabled",
+  "alUnnamed": "Alarm",
   "tlEnforce": "Enforce a daily limit",
   "tlSaved": "Saved.",
   "pcSaveFailed": "Couldn’t save parental controls. Please try again.",

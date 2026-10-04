@@ -10479,6 +10479,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alEnabled => 'Enabled';
 
   @override
+  String get alUnnamed => 'Alarm';
+
+  @override
   String get tlEnforce => 'Enforce a daily limit';
 
   @override

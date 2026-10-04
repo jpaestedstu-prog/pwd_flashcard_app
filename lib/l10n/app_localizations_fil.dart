@@ -10413,6 +10413,9 @@ class AppLocalizationsFil extends AppLocalizations {
   String get alEnabled => 'Naka-on';
 
   @override
+  String get alUnnamed => 'Alarma';
+
+  @override
   String get tlEnforce => 'Ipatupad ang limitasyon bawat araw';
 
   @override
