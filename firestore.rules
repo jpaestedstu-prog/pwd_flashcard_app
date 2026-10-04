@@ -3,9 +3,23 @@ rules_version = '2';
 // PHASE A — Anonymous-auth + owner-scoped writes.
 //
 // Every owner-scoped doc carries `owner_uid` (the writer's
-// FirebaseAuth.currentUser.uid). Reads stay open to any signed-in user
-// for now (teacher dashboards need to fetch student profiles); writes
-// are pinned to the owner.
+// FirebaseAuth.currentUser.uid). Writes are pinned to the owner.
+//
+// PHASE B (2026-10-04) — reads narrowed. Every install of the app is an
+// anonymous user, so "any signed-in user" meant anyone with the APK could
+// download every learner's profile, messages and files. Now:
+//   • A *list* (a query) must be scoped: to the caller's own data, or to
+//     one named learner / class / group / owner — never the whole
+//     collection. [scopedTo] and [byDocId] hold queries to that without a
+//     single lookup; the rules engine checks them against the query's own
+//     filters.
+//   • Messages, friend requests, friendships and game rooms are readable
+//     only by the profiles in them.
+//   • A *get* by id stays open where another device needs it (a teacher's
+//     roster, a parent's dashboard, a friend's name, the recovery flow):
+//     ids are random, and the lists that used to hand them out are closed.
+// Kept compatible with every query the released app makes, so already
+// installed copies keep working.
 //
 // To deploy: enable Anonymous sign-in in the Firebase console
 // (Authentication → Sign-in method → Anonymous → Enable), then
@@ -19,6 +33,20 @@ service cloud.firestore {
 
     function isOwner(uid) {
       return signedIn() && request.auth.uid == uid;
+    }
+
+    // A query that names one value for [field] — an equality or `in`
+    // filter — so it reads one learner's (or class's, or group's) rows and
+    // never sweeps the collection. No lookups: the rules engine proves it
+    // from the query's own filters, and refuses a query without one.
+    function scopedTo(field) {
+      return signedIn() && resource.data[field] is string;
+    }
+
+    // A query for named documents (`FieldPath.documentId` in [...]) — no
+    // wider than reading them one by one.
+    function byDocId() {
+      return signedIn() && resource.id is string;
     }
 
     // True when the existing doc has no owner_uid (legacy/migrated) and
@@ -93,8 +121,10 @@ service cloud.firestore {
     }
 
     // ─── Profiles ──────────────────────────────────────
-    // Reads are open to any signed-in user (educator dashboards need
-    // roster lookups). Writes are owner-scoped, with two extra paths:
+    // A profile is read by id (a teacher's roster, a parent's dashboard, a
+    // friend's name, the recovery flow). A list is limited to the caller's
+    // own profiles or to named ids, so nobody can sweep every learner's
+    // name, age and disability. Writes are owner-scoped, with two extra paths:
     //   • student / child profiles cannot mutate their own `learning_level`
     //     — only an educator override (run from the teacher / parent device,
     //     which writes from a different uid) may change it.
@@ -104,7 +134,8 @@ service cloud.firestore {
     //     with their own `actor_uid`. Implemented via [educatorRenamePatch]
     //     so the rule stays O(1) (no listing of subcollections).
     match /profiles/{profileId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if isOwner(resource.data.owner_uid) || byDocId();
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid;
       allow update: if (isOwner(resource.data.owner_uid)
@@ -167,7 +198,8 @@ service cloud.firestore {
 
     // ─── Progress ──────────────────────────────────────
     match /progress/{profileId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if isOwner(resource.data.owner_uid);
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid;
       allow update: if isOwner(resource.data.owner_uid)
@@ -182,7 +214,10 @@ service cloud.firestore {
     // hint lets the rule verify the recovering uid actually possesses
     // a valid code for the profile that owns the card.
     match /custom_cards/{cardId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      // One owner's cards at a time — the recovery flow lists the old
+      // tablet's by its uid.
+      allow list: if scopedTo('owner_uid');
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid;
       allow update: if isOwner(resource.data.owner_uid)
@@ -203,8 +238,9 @@ service cloud.firestore {
     }
 
     // ─── Session analytics ─────────────────────────────
+    // Personal study analytics: only the learner's own device reads them.
     match /session_logs/{autoId} {
-      allow read: if signedIn();
+      allow read: if ownsProfile(resource.data.profile_id);
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid;
       allow update, delete: if isOwner(resource.data.owner_uid);
@@ -227,7 +263,8 @@ service cloud.firestore {
     // a write when the requester possesses a valid code for the profile
     // referenced by `profile_id` on the doc.
     match /shop_equipped/{docId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if scopedTo('profile_id');
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid;
       allow update: if isOwner(resource.data.owner_uid)
@@ -249,7 +286,8 @@ service cloud.firestore {
     // matches the recovery code's `profile_owner_uid` — the same
     // pre-condition we use on `custom_cards`.
     match /app_state/{key} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if isOwner(resource.data.owner_uid);
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid;
       allow update: if isOwner(resource.data.owner_uid)
@@ -265,11 +303,14 @@ service cloud.firestore {
     }
 
     // ─── Classrooms ────────────────────────────────────
-    // Reads are open to any signed-in user so students can look up by
-    // code at join time. Writes are gated on the writer owning the
+    // Read by id. Listed only as a teacher's own classes, or looked up by
+    // one exact join code — so the codes that let anyone join a class can
+    // no longer be listed. Writes are gated on the writer owning the
     // teacher profile referenced by `teacher_id`.
     match /classrooms/{classroomId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if ownsProfile(resource.data.teacher_id)
+        || (scopedTo('code') && request.query.limit <= 1);
       allow create: if signedIn()
         && ownsProfile(request.resource.data.teacher_id);
       allow update, delete: if signedIn()
@@ -280,7 +321,11 @@ service cloud.firestore {
     // The teacher of the classroom may add/remove anyone; a profile
     // owner may add/remove themselves (student-initiated join/leave).
     match /classroom_members/{memberId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      // One class's roster (whoever knows the class), or the caller's own
+      // memberships.
+      allow list: if scopedTo('classroom_id')
+        || ownsProfile(resource.data.profile_id);
       allow create: if signedIn() && (
         ownsClassroomTeacher(request.resource.data.classroom_id)
         || ownsProfile(request.resource.data.profile_id)
@@ -314,7 +359,7 @@ service cloud.firestore {
     //   the Blaze plan — on the free Spark plan we ship without it.
     //   The rule stays so clients can never forge audit rows.
     match /progress_audit/{profileId}/events/{eventId} {
-      allow read: if signedIn();
+      allow read: if ownsProfile(profileId);
       allow write: if false;
     }
 
@@ -358,7 +403,11 @@ service cloud.firestore {
     // than read from the model's `createdBy`, which legacy rows set to the
     // literal string 'teacher'.
     match /assessments/{assessmentId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      // The educator's own templates, or the ones a learner was assigned
+      // (fetched by id).
+      allow list: if ownsProfile(resource.data.created_by_profile_id)
+        || byDocId();
       allow create: if signedIn()
         && ownsProfile(request.resource.data.created_by_profile_id);
       allow update, delete: if signedIn()
@@ -368,6 +417,9 @@ service cloud.firestore {
     // Who was set what, by whom, and when it is due. Only the assigning
     // educator may write; `studentIds` is the learner's arrayContains index.
     match /assessment_assignments/{assignmentId} {
+      // Still open: a learner finds theirs with `studentIds` array-contains,
+      // and no rule can hold an array-contains query to one learner. Closing
+      // it needs the assignment to carry the learners' uids (next release).
       allow read: if signedIn();
       allow create: if signedIn()
         && ownsProfile(request.resource.data.assignedBy);
@@ -383,7 +435,8 @@ service cloud.firestore {
     // clean up after itself; no screen offers it, and an educator deleting a
     // learner's score is still refused.
     match /assessment_results/{resultId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if scopedTo('profileId');
       allow create: if signedIn()
         && ownsProfile(request.resource.data.profileId);
       allow update, delete: if signedIn()
@@ -391,11 +444,13 @@ service cloud.firestore {
     }
 
     // ─── Home Groups (parent-owned, parallel to classrooms) ──
-    // Reads are open so children can look up by code at join time.
-    // Writes are gated on the writer owning the parent profile that
-    // owns the group.
+    // Read by id; listed only as a parent's own groups or looked up by one
+    // exact code, like classrooms. Writes are gated on the writer owning
+    // the parent profile that owns the group.
     match /home_groups/{groupId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if ownsProfile(resource.data.owner_profile_id)
+        || (scopedTo('code') && request.query.limit <= 1);
       allow create: if signedIn()
         && ownsProfile(request.resource.data.owner_profile_id);
       allow update, delete: if signedIn()
@@ -406,7 +461,9 @@ service cloud.firestore {
     // The owning parent may add/remove anyone; a profile owner may
     // add/remove themselves (child-initiated join/leave).
     match /home_group_members/{memberId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if scopedTo('home_group_id')
+        || ownsProfile(resource.data.profile_id);
       allow create: if signedIn() && (
         ownsHomeGroupOwner(request.resource.data.home_group_id)
         || ownsProfile(request.resource.data.profile_id)
@@ -426,7 +483,8 @@ service cloud.firestore {
     // Only the host (classroom teacher OR home-group owner) may create /
     // update / end it; any signed-in user can read (learners subscribe).
     match /live_sessions/{sessionKey} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if isOwner(resource.data.owner_uid);
       allow create: if signedIn()
         && ownsLiveSession(sessionKey)
         && request.resource.data.owner_uid == request.auth.uid;
@@ -473,7 +531,8 @@ service cloud.firestore {
     // need to see what they configured). Writes require ownership
     // of the educator profile referenced by setter_profile_id.
     match /child_time_limits/{childProfileId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if scopedTo('setter_profile_id');
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.setter_profile_id);
@@ -484,7 +543,9 @@ service cloud.firestore {
     // ─── Per-child alarms ──────────────────────────────
     // Many docs per child. Same write semantics as child_time_limits.
     match /child_alarms/{alarmId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if scopedTo('child_profile_id')
+        || scopedTo('setter_profile_id');
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.setter_profile_id);
@@ -499,7 +560,9 @@ service cloud.firestore {
     // instruction to a child and a learner must not be able to
     // rewrite their own bedtime.
     match /routines/{routineId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if scopedTo('child_profile_id')
+        || scopedTo('setter_profile_id');
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.setter_profile_id);
@@ -517,7 +580,8 @@ service cloud.firestore {
     // writes it only for a learner whose profile they own (which is
     // what makes "start today over" work from the educator side).
     match /routine_logs/{logId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if scopedTo('profile_id');
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.profile_id);
@@ -533,7 +597,9 @@ service cloud.firestore {
     // child_unlock_overrides — the writer must own the profile named by
     // setter_profile_id.
     match /routine_actions/{actionId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if scopedTo('child_profile_id')
+        || scopedTo('setter_profile_id');
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.setter_profile_id);
@@ -547,7 +613,8 @@ service cloud.firestore {
     // bounded window. Same write semantics as child_time_limits —
     // the writer must own the setter_profile_id.
     match /child_unlock_overrides/{childProfileId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if scopedTo('setter_profile_id');
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.setter_profile_id);
@@ -562,7 +629,7 @@ service cloud.firestore {
     // the config on their own device); only the owning teacher writes.
     // Mirrors the read-open / owner-write shape of child_time_limits.
     match /leaderboard_config_classroom/{classroomId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
         && ownsClassroomTeacher(classroomId);
@@ -574,7 +641,7 @@ service cloud.firestore {
     // Parallel to the classroom config — one doc per home group, id ==
     // homeGroupId. Only the owning parent writes.
     match /leaderboard_config_homegroup/{groupId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
         && ownsHomeGroupOwner(groupId);
@@ -587,7 +654,8 @@ service cloud.firestore {
     // on other devices read for the dashboard "X / Y min today"
     // pill. Owner is the child profile (the writer must own it).
     match /active_time_logs/{logId} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if scopedTo('child_profile_id');
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.child_profile_id);
@@ -602,15 +670,12 @@ service cloud.firestore {
     //   sender_name, content, type, timestamp, is_read
     //
     // Visibility model:
-    //   • Read: any signed-in user. Threads are scoped client-side via
-    //     `where('sender_profile_id', ...)` / `where('recipient_profile_id', ...)`.
-    //     We deliberately don't tighten reads further because the
-    //     profile-↔-profile pairing already constrains what the client
-    //     queries, and many educator devices read on behalf of multiple
-    //     profiles they own. Tightening would require composite indexes
-    //     keyed on owner_uid + profile_id which the Spark console can't
-    //     auto-create without manual intervention. Acceptable for a
-    //     classroom-scoped pilot; revisit if the deployment grows.
+    //   • Read: only the two profiles in the message — the device that owns
+    //     the sender or the recipient. The app's two listeners
+    //     (`where('sender_profile_id', ==)` / `where('recipient_profile_id',
+    //     ==)` for a profile the device owns) satisfy it as they are, with
+    //     no new index. Any copy of the app used to be able to read every
+    //     child's messages.
     //   • Create: writer must stamp their own uid as `sender_uid` and
     //     must own the `sender_profile_id` (no impersonation).
     //   • Update: ONLY the message recipient may patch `is_read`, and
@@ -622,7 +687,8 @@ service cloud.firestore {
     //     broadcasts are sent in small batches to stay inside the per-batch
     //     lookup limit instead.)
     match /messages/{messageId} {
-      allow read: if signedIn();
+      allow read: if ownsProfile(resource.data.sender_profile_id)
+        || ownsProfile(resource.data.recipient_profile_id);
       allow create: if signedIn()
         && request.resource.data.sender_uid == request.auth.uid
         && ownsProfile(request.resource.data.sender_profile_id)
@@ -643,7 +709,8 @@ service cloud.firestore {
     // own the profile referenced by `profile_id` and to stamp themselves
     // as `owner_uid`.
     match /profile_directory/{username} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if scopedTo('profile_id');
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.profile_id);
@@ -673,7 +740,18 @@ service cloud.firestore {
     // gets nobody's approval. A parent may also decline (`parent_declined`).
     // The recipient may stamp `to_home_group_id` when accepting.
     match /friend_requests/{requestId} {
-      allow read: if signedIn();
+      // The two profiles in the request, or the parent who must approve a
+      // child's side. A request that does not exist yet reads as "none", so
+      // `sendRequest` can check before it writes.
+      allow get: if signedIn() && (resource == null
+        || ownsProfile(resource.data.from_profile_id)
+        || ownsProfile(resource.data.to_profile_id)
+        || parentOf('from_home_group_id', 'from_profile_id')
+        || parentOf('to_home_group_id', 'to_profile_id'));
+      allow list: if ownsProfile(resource.data.from_profile_id)
+        || ownsProfile(resource.data.to_profile_id)
+        || ownsHomeGroupOwner(resource.data.from_home_group_id)
+        || ownsHomeGroupOwner(resource.data.to_home_group_id);
       allow create: if signedIn()
         && request.resource.data.from_owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.from_profile_id)
@@ -734,7 +812,11 @@ service cloud.firestore {
     // this a Child's device could skip the approval and write the friendship
     // itself.
     match /friendships/{friendshipId} {
-      allow read: if signedIn();
+      allow get: if signedIn() && (resource == null
+        || ownsProfile(resource.data.profile_a)
+        || ownsProfile(resource.data.profile_b));
+      allow list: if ownsProfile(resource.data.profile_a)
+        || ownsProfile(resource.data.profile_b);
       allow create: if signedIn() && (
         ownsProfile(request.resource.data.profile_a)
         || ownsProfile(request.resource.data.profile_b)
@@ -828,7 +910,13 @@ service cloud.firestore {
     //     guest may update (status transitions + guest fields + cancel).
     //   • Delete: host only (cleanup after the match).
     match /game_rooms/{roomId} {
-      allow read: if signedIn();
+      // The host, the invited friend, and the guest who joined.
+      allow get: if ownsProfile(resource.data.host_profile_id)
+        || ownsProfile(resource.data.invited_profile_id)
+        || (resource.data.get('guest_profile_id', null) is string
+            && ownsProfile(resource.data.guest_profile_id));
+      allow list: if ownsProfile(resource.data.host_profile_id)
+        || ownsProfile(resource.data.invited_profile_id);
       allow create: if signedIn()
         && request.resource.data.host_uid == request.auth.uid
         && request.resource.data.owner_uid == request.auth.uid
@@ -932,7 +1020,11 @@ service cloud.firestore {
     }
 
     match /shared_media/{mediaId} {
-      allow read: if signedIn();
+      // A file is fetched by its random id, from the assessment, message
+      // or routine that names it. Only the device that owns the profile may
+      // list that profile's files.
+      allow get: if signedIn();
+      allow list: if ownsProfile(resource.data.owner_profile_id);
       allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
         && request.resource.data.owner_profile_id is string

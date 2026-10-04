@@ -34,10 +34,13 @@ class FirestoreRepository implements DataRepository {
 
   // ─── Profiles ──────────────────────────────────────────
 
+  /// This device's own profiles. It used to read the whole collection —
+  /// every learner on every tablet — which the rules now refuse.
   @override
   Future<List<UserProfile>> getProfiles() async {
-    final snap = await _db.collection('profiles').get();
-    return snap.docs.map((d) => _profileFromMap(d.data())).toList();
+    final uid = _uid;
+    if (uid == null) return const [];
+    return getProfilesForOwner(uid);
   }
 
   @override
@@ -512,9 +515,17 @@ class FirestoreRepository implements DataRepository {
 
   // ─── Custom Cards ──────────────────────────────────────
 
+  /// This device's own custom cards. It used to read every card on every
+  /// tablet, so restoring a backup copied other families' and classes'
+  /// cards into the restored decks; the rules now refuse an unscoped read.
   @override
   Future<List<Flashcard>> getCustomCards() async {
-    final snap = await _db.collection('custom_cards').get();
+    final uid = _uid;
+    if (uid == null) return const [];
+    final snap = await _db
+        .collection('custom_cards')
+        .where('owner_uid', isEqualTo: uid)
+        .get();
     return snap.docs.map((d) {
       final r = d.data();
       return Flashcard(
