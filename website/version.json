@@ -5,23 +5,23 @@
     "build": 6,
     "date": "2026-10-04",
     "page": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/#download",
-    "notes_en": "Alarms ring only for the child they are for on shared tablets, teachers' All Students opens the right dashboard, and backups restore only your own cards.",
-    "notes_fil": "Para lang sa tamang bata ang alarma sa magkakasamang tablet, tamang dashboard na ang bumubukas sa All Students ng guro, at sariling card lang ang naibabalik ng backup.",
+    "notes_en": "Alarms and My Day reminders reach only the right child on shared tablets, teachers' All Students opens the right dashboard, and backups restore only your own cards.",
+    "notes_fil": "Para lang sa tamang bata ang alarma at paalala ng My Day sa magkakasamang tablet, tamang dashboard na ang bumubukas sa All Students ng guro, at sariling card lang ang naibabalik ng backup.",
     "apks": {
       "arm64": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.2.2/FlashLearnPWD-v1.2.2-arm64.apk",
-        "bytes": 76325942,
-        "sha256": "094516a97f45dc113906d016156ad60511ff84253d47c88fad88f930fcd2ad44"
+        "bytes": 76391478,
+        "sha256": "ce4f4d18a4dd2e434133b5eb73ac9592f97b95c2da546b8caf0cf5b24e181bba"
       },
       "arm32": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.2.2/FlashLearnPWD-v1.2.2-arm32.apk",
-        "bytes": 68574890,
-        "sha256": "df10b09e35620d5800720e9e9cfdc40b8ce9fefc894a480042d3f9fa74e6705c"
+        "bytes": 68591274,
+        "sha256": "4c00847cccf8f64863b2a238dce81fdefe954602fb418d8669e602af49be7bdd"
       },
       "universal": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.2.2/FlashLearnPWD-v1.2.2-universal.apk",
-        "bytes": 178022732,
-        "sha256": "55e5f51c39091241296317116a2ec76ecdcae57ac792a8bd80d3fac339c36360"
+        "bytes": 178104652,
+        "sha256": "be059c309b6abc45c7debed2d59039aaeb6f9e2e375f9d949172b240c2ec4dde"
       }
     }
   }
