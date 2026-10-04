@@ -10,7 +10,9 @@ user is an unsigned emulator token, like an anonymous sign-in.
 What it pins (reads narrowed 2026-10-04): every query the app makes still
 works — rosters, a parent's dashboard, join codes, messages, recovery — while
 a copy of the app can no longer sweep a collection or read a stranger's
-messages, friend requests, game rooms or file lists.
+messages, friend requests, game rooms or file lists. Assignments followed
+the same day: learners find theirs by their own uid (`student_uids`) and
+the old `studentIds` lookup is closed.
 """
 import base64, json, sys, time, urllib.error, urllib.request
 from pathlib import Path
@@ -61,11 +63,8 @@ def put(path, fields):
     assert st == 200, (path, st, body)
 
 
-def load_rules(next_assignments=False):
+def load_rules():
     text = RULES.read_text(encoding="utf-8").replace("\r\n", "\n")
-    if next_assignments:
-        assert text.count(CURRENT_ASSIGNMENTS_READ) == 1, "assignments read rule moved"
-        text = text.replace(CURRENT_ASSIGNMENTS_READ, NEXT_ASSIGNMENTS_READ)
     r = urllib.request.Request(
         f"http://127.0.0.1:8080/emulator/v1/projects/{PROJECT}:securityRules", method="PUT",
         data=json.dumps({"rules": {"files": [{"name": "firestore.rules", "content": text}]}}).encode(),
@@ -104,23 +103,6 @@ def get(uid, path):
     return st
 
 
-CURRENT_ASSIGNMENTS_READ = (
-    '"[next]" in tool/firestore_read_rules_emulator_test.py.\n'
-    "      allow read: if signedIn();\n"
-)
-
-# The next step (NOT deployed yet): learners read their assignments by their
-# own uid (`student_uids`, written since 1.2.2), so the old `studentIds`
-# array-contains lookup — which no rule can hold to one learner — closes.
-# Deploy only once every study tablet runs 1.2.2+ and every educator has
-# opened their dashboard once (that backfills student_uids on old work).
-NEXT_ASSIGNMENTS_READ = (
-    '"[next]" in tool/firestore_read_rules_emulator_test.py.\n'
-    "      allow get: if ownsProfile(resource.data.assignedBy)\n"
-    "        || request.auth.uid in resource.data.get('student_uids', []);\n"
-    "      allow list: if ownsProfile(resource.data.assignedBy)\n"
-    "        || request.auth.uid in resource.data.student_uids;\n"
-)
 
 passed, failed = 0, []
 
@@ -161,7 +143,8 @@ def seed():
     put("messages/m1", {"sender_profile_id": "pS1", "recipient_profile_id": "pT", "content": "hi"})
     put("messages/m2", {"sender_profile_id": "pP", "recipient_profile_id": "pC", "content": "hello"})
     put("assessments/a1", {"created_by_profile_id": "pT", "title": "Pre-test"})
-    put("assessment_assignments/as1", {"assignedBy": "pT", "studentIds": ["pS1"], "assessmentId": "a1"})
+    put("assessment_assignments/as1",
+        {"assignedBy": "pT", "studentIds": ["pS1"], "student_uids": ["uS1"], "assessmentId": "a1"})
     put("assessment_results/r1", {"profileId": "pS1", "assessmentId": "a1", "score": 8})
     put("live_sessions/c1", {"owner_uid": "uT", "active": True})
     put("child_time_limits/pC", {"setter_profile_id": "pP", "owner_uid": "uP", "minutes": 60})
@@ -193,6 +176,10 @@ def main():
     # ── what the app does: must keep working ──
     allowed("my profiles (sign-in)", query("uT", "profiles", ("owner_uid", "EQUAL", "uT")))
     allowed("profiles by id (deleted-learner check)", query("uT", "profiles", ("__name__", "IN", ["pS1", "pS2"])))
+    # The check exists to find profiles that are GONE: a missing id among the
+    # names must not refuse the whole query (production evaluates each name).
+    allowed("deleted-learner check with a deleted learner",
+            query("uT", "profiles", ("__name__", "IN", ["pS1", "pGone"])))
     allowed("roster reads a student's profile", get("uT", "profiles/pS1"))
     allowed("recovery reads the profile it claims", get("uNew", "profiles/pS1"))
     allowed("teacher reads a student's progress", get("uT", "progress/pS1"))
@@ -215,7 +202,11 @@ def main():
     allowed("child's own group memberships", query("uC", "home_group_members", ("profile_id", "EQUAL", "pC")))
     allowed("educator's templates", query("uT", "assessments", ("created_by_profile_id", "EQUAL", "pT")))
     allowed("learner fetches assigned templates by id", query("uS1", "assessments", ("__name__", "IN", ["a1"])))
-    allowed("learner's assignments", query("uS1", "assessment_assignments", ("studentIds", "ARRAY_CONTAINS", "pS1")))
+    allowed("an assigned template that was deleted",
+            query("uS1", "assessments", ("__name__", "IN", ["a1", "aGone"])))
+    allowed("learner finds their work by uid",
+            query("uS1", "assessment_assignments", ("student_uids", "ARRAY_CONTAINS", "uS1")))
+    allowed("learner reads their assignment", get("uS1", "assessment_assignments/as1"))
     allowed("educator's assignments", query("uT", "assessment_assignments", ("assignedBy", "EQUAL", "pT")))
     allowed("educator reads assignees' results", query("uT", "assessment_results", ("profileId", "IN", ["pS1", "pS2"])))
     allowed("learner's results (cascade)", query("uS1", "assessment_results", ("profileId", "EQUAL", "pS1")))
@@ -267,7 +258,7 @@ def main():
                  "assessment_results", "live_sessions", "child_time_limits", "child_unlock_overrides",
                  "child_alarms", "routines", "routine_logs", "routine_actions", "active_time_logs",
                  "messages", "profile_directory", "friend_requests", "friendships", "game_rooms",
-                 "shared_media", "leaderboard_config_classroom"]:
+                 "shared_media", "leaderboard_config_classroom", "assessment_assignments"]:
         denied(f"sweep {coll}", query("uX", coll))
     denied("someone else's profiles", query("uX", "profiles", ("owner_uid", "EQUAL", "uT")))
     denied("class codes without a code", query("uX", "classrooms", ("teacher_id", "EQUAL", "pT")))
@@ -289,22 +280,12 @@ def main():
     denied("someone else's live sessions", query("uX", "live_sessions", ("owner_uid", "EQUAL", "uT")))
     denied("a stranger's progress audit", get("uX", "progress_audit/pS1/events/e1"))
 
-    # ── the next step for assignments (not deployed): by learner uid only ──
-    load_rules(next_assignments=True)
-    put("assessment_assignments/as1",
-        {"assignedBy": "pT", "studentIds": ["pS1"], "student_uids": ["uS1"], "assessmentId": "a1"})
-    allowed("[next] learner finds their work by uid",
-            query("uS1", "assessment_assignments", ("student_uids", "ARRAY_CONTAINS", "uS1")))
-    allowed("[next] educator's assignments",
-            query("uT", "assessment_assignments", ("assignedBy", "EQUAL", "pT")))
-    allowed("[next] learner reads their assignment", get("uS1", "assessment_assignments/as1"))
-    denied("[next] the old studentIds lookup is closed",
+    # Assignments (closed 2026-10-04): by learner uid only.
+    denied("the old studentIds lookup is closed",
            query("uS1", "assessment_assignments", ("studentIds", "ARRAY_CONTAINS", "pS1")))
-    denied("[next] someone else's uid",
+    denied("someone else's uid",
            query("uX", "assessment_assignments", ("student_uids", "ARRAY_CONTAINS", "uS1")))
-    denied("[next] sweep assignments", query("uX", "assessment_assignments"))
-    denied("[next] a stranger reads an assignment", get("uX", "assessment_assignments/as1"))
-    load_rules()
+    denied("a stranger reads an assignment", get("uX", "assessment_assignments/as1"))
 
     print(f"{passed} passed, {len(failed)} failed")
     for f in failed:

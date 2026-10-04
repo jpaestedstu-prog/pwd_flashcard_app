@@ -33,6 +33,18 @@ def eq(field, value):
                             "value": {"stringValue": value}}}
 
 
+def contains(field, value):
+    return {"fieldFilter": {"field": {"fieldPath": field}, "op": "ARRAY_CONTAINS",
+                            "value": {"stringValue": value}}}
+
+
+def named(coll, *ids):
+    root = FS.split("/v1/", 1)[1]
+    return {"fieldFilter": {"field": {"fieldPath": "__name__"}, "op": "IN",
+                            "value": {"arrayValue": {"values": [
+                                {"referenceValue": f"{root}/{coll}/{i}"} for i in ids]}}}}
+
+
 def query(token, coll, where=None):
     q = {"from": [{"collectionId": coll}], "limit": 1}
     if where:
@@ -44,7 +56,8 @@ def query(token, coll, where=None):
 SWEEPS = ["profiles", "progress", "messages", "shared_media", "classrooms", "classroom_members",
           "home_groups", "home_group_members", "assessment_results", "session_logs",
           "friend_requests", "friendships", "game_rooms", "profile_directory", "child_alarms",
-          "routines", "routine_logs", "custom_cards", "app_state", "active_time_logs"]
+          "routines", "routine_logs", "custom_cards", "app_state", "active_time_logs",
+          "assessment_assignments", "assessments"]
 
 
 def main():
@@ -68,11 +81,21 @@ def main():
                query(token, "messages", eq("recipient_profile_id", "not-my-profile")), allowed=False)
         expect("someone else's file list refused",
                query(token, "shared_media", eq("owner_profile_id", "not-my-profile")), allowed=False)
+        expect("old assignments lookup (by learner profile id) refused",
+               query(token, "assessment_assignments", contains("studentIds", "not-my-profile")),
+               allowed=False)
         # The app's own shapes keep working (they return nothing for this new user).
         expect("my profiles (sign-in) allowed", query(token, "profiles", eq("owner_uid", uid)), allowed=True)
         expect("join-by-code lookup allowed", query(token, "classrooms", eq("code", "ZZZZZZ")), allowed=True)
         expect("one class's roster allowed",
                query(token, "classroom_members", eq("classroom_id", "no-such-class")), allowed=True)
+        expect("my assignments (by my uid) allowed",
+               query(token, "assessment_assignments", contains("student_uids", uid)), allowed=True)
+        # Named-id lookups must survive a deleted document among the names.
+        expect("templates by id, one deleted, allowed",
+               query(token, "assessments", named("assessments", "no-such-template-x9")), allowed=True)
+        expect("deleted-learner check allowed",
+               query(token, "profiles", named("profiles", "no-such-profile-x9")), allowed=True)
         expect("username lookup allowed",
                call("GET", f"{FS}/profile_directory/no-such-user-x9", None, token)[0], allowed=True)
     finally:
