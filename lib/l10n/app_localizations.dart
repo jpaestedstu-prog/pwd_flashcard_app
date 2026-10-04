@@ -755,7 +755,7 @@ abstract class AppLocalizations {
   /// No description provided for @version.
   ///
   /// In en, this message translates to:
-  /// **'Version 1.2.1 • Thesis Capstone Project'**
+  /// **'Version 1.2.2 • Thesis Capstone Project'**
   String get version;
 
   /// No description provided for @flashLearnPwd.

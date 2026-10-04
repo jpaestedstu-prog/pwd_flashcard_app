@@ -2,6 +2,21 @@
   "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
   "releases": [
     {
+      "version": "1.2.2",
+      "build": 6,
+      "date": "2026-10-04",
+      "summary_en": "Shared tablets and privacy. A child's alarm now rings only for that child and the grown-up who set it: another learner, teacher or parent using the same tablet no longer sees it, alarms left behind by older versions are cleared, and the notification shows the child's name. Restoring a backup brings back only your own custom cards, and the app asks the cloud only for this tablet's own profiles. Installs over v1.2.1 and keeps your profiles.",
+      "summary_fil": "Para sa magkakasamang tablet at privacy. Tumutunog na lang ang alarma ng isang bata para sa batang iyon at sa nakatatandang nag-set nito: hindi na ito makikita ng ibang mag-aaral, guro o magulang na gumagamit ng parehong tablet, nabubura ang mga alarmang naiwan ng lumang bersyon, at nakasulat na sa notification ang pangalan ng bata. Kapag nag-restore ng backup, sariling custom card lang ang bumabalik, at sariling profile lang ng tablet na ito ang hinihingi ng app sa cloud. Nai-i-install sa ibabaw ng v1.2.1 at nananatili ang inyong mga profile.",
+      "notes_en": "Alarms ring only for the child they are for on shared tablets, and backups restore only your own cards.",
+      "notes_fil": "Sa magkakasamang tablet, para lang sa tamang bata ang alarma, at sariling card lang ang naibabalik ng backup.",
+      "bullets_en": [
+        "A child's alarm rings only for that child (and the grown-up who set it), never in another learner's, teacher's or parent's session",
+        "Alarms left behind by older versions are cleared when another learner signs in",
+        "Alarm notifications show the child's name",
+        "Restoring a backup brings back only your own custom cards"
+      ]
+    },
+    {
       "version": "1.2.1",
       "build": 5,
       "date": "2026-09-29",
