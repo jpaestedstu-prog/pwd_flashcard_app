@@ -26,6 +26,7 @@ import '../../../providers/firestore_stream_helpers.dart'
     show homeGroupsByOwnerStreamProvider;
 import '../../gaze_control/services/gaze_detector.dart';
 import '../../gaze_control/widgets/gaze_dpad_scope.dart';
+import '../../gaze_control/widgets/gaze_keyboard.dart';
 import '../models/friend_models.dart';
 import '../models/messaging_models.dart';
 import '../providers/messaging_providers.dart';
@@ -718,10 +719,15 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
               onActivate: () => _openStickerPicker(isFilipino),
             ),
         ],
-      // Speak-to-type and Send: with voice commands on, "speak a message"
-      // starts dictation and "send" sends what it wrote.
+      // Type, speak-to-type and Send: "type a message" opens the gaze
+      // keyboard over the message field; with voice commands on, "speak a
+      // message" starts dictation and "send" sends what either wrote.
       if (layout.textRow != null)
         [
+          GazeDpadCell(
+            label: isFilipino ? 'Mag-type ng mensahe' : 'Type a message',
+            onActivate: () => _typeWithGaze(isFilipino),
+          ),
           if (layout.micCell)
             GazeDpadCell(
               label: _dictating
@@ -740,6 +746,20 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
           ),
         ],
     ];
+  }
+
+  /// The gaze keyboard over the message field. The system keyboard cannot be
+  /// steered by gaze, so without this a hands-free learner's only words were
+  /// the quick replies.
+  Future<void> _typeWithGaze(bool isFilipino) async {
+    await GazeKeyboard.show(
+      context,
+      controller: _textController,
+      hint: isFilipino ? 'Mag-type ng mensahe...' : 'Type a message...',
+    );
+    // The keyboard writes through the controller, which does not run the
+    // field's onChanged — refresh so Send lights up.
+    if (mounted) setState(() {});
   }
 
   /// The gaze rows of an open in-thread picker, or null when none is open.
@@ -1476,11 +1496,13 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
         ),
     ];
 
+    final typeFocused =
+        layout.textRow != null && gaze.isFocused(layout.textRow!, 0);
     final micFocused =
-        layout.textRow != null && layout.micCell && gaze.isFocused(layout.textRow!, 0);
+        layout.textRow != null && layout.micCell && gaze.isFocused(layout.textRow!, 1);
     final sendFocused =
         layout.textRow != null &&
-        gaze.isFocused(layout.textRow!, layout.micCell ? 1 : 0);
+        gaze.isFocused(layout.textRow!, layout.micCell ? 2 : 1);
 
     return Container(
       padding: EdgeInsets.fromLTRB(padding, 8, padding, 8),
@@ -1567,7 +1589,12 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide(color: hc.border),
+                            borderSide: typeFocused
+                                ? const BorderSide(
+                                    color: AppColors.accent,
+                                    width: 3,
+                                  )
+                                : BorderSide(color: hc.border),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,

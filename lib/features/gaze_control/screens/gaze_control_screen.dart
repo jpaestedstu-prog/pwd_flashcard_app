@@ -15,6 +15,8 @@ import '../models/gaze_settings.dart';
 import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_settings_provider.dart';
 import '../services/gaze_detector.dart';
+import '../widgets/gaze_hints.dart';
+import '../widgets/gaze_session.dart';
 import '../widgets/gaze_widgets.dart';
 import '../widgets/voice_control_mixin.dart';
 import '../../../l10n/app_localizations.dart';
@@ -42,10 +44,15 @@ class GazeControlScreen extends ConsumerStatefulWidget {
   final Future<List<CameraDescription>> Function() camerasLoader;
   final GazeDetector Function()? detectorFactory;
 
+  /// Practise with these settings instead of the signed-in profile's — a
+  /// teacher or parent trying a learner's setup from their own profile.
+  final GazeSettings? settingsOverride;
+
   const GazeControlScreen({
     super.key,
     this.camerasLoader = availableCameras,
     this.detectorFactory,
+    this.settingsOverride,
   });
 
   @override
@@ -62,7 +69,7 @@ const List<GazeZone> _kTargets = [
 ];
 
 class _GazeControlScreenState extends ConsumerState<GazeControlScreen>
-    with VoiceControlMixin {
+    with VoiceControlMixin, GazeSessionMixin {
   GazeController? _gaze;
   GazeSettings _settings = const GazeSettings();
   Object? _cameraToken;
@@ -81,16 +88,21 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen>
 
   bool get _scanning => _settings.scanMode;
 
+  /// Whether this learner picks with something other than look-up — a
+  /// blink, a switch, or keeping still — which is then part of the practice.
+  bool get _hasPickGesture => !_settings.lookUpSelects;
+
   /// Every gesture this learner's settings use has been tried. Scanning picks
-  /// with a blink, so its four picks already include it.
+  /// with its pick gesture, so its four picks already include it.
   bool get _complete =>
       _done.length == _kTargets.length &&
-      (_scanning || !_settings.blinkSelects || _blinkDone);
+      (_scanning || !_hasPickGesture || _blinkDone);
 
   @override
   void initState() {
     super.initState();
-    final settings = ref.read(gazeSettingsProvider);
+    final GazeSettings settings =
+        widget.settingsOverride ?? ref.read(gazeSettingsProvider);
     _settings = settings;
     final gaze = GazeController(
       settings: settings,
@@ -99,16 +111,20 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen>
     );
     gaze.onSelect = _onHold;
     gaze.onBlink = _onBlink;
+    // Keeping still and a switch press are this learner's "blink".
+    gaze.onRest = _onBlink;
     gaze.addListener(_onGazeUpdate);
     _gaze = gaze;
     // Claim the single camera so the shell's background nav-gaze stands down
     // while this full-screen preview owns it.
     _cameraToken = gazeCameraOwners.acquire();
     gaze.start();
+    beginGazeSession(settings, onSwitch: _onBlink);
     if (settings.scanMode) {
       _scanTimer = Timer.periodic(settings.scanStepDuration, (_) {
         if (!mounted) return;
         setState(() => _scanIndex = (_scanIndex + 1) % _kTargets.length);
+        sayHighlight(_targetLabel(_kTargets[_scanIndex]));
       });
     }
     // The shell's microphone stood down with its camera, so listen here —
@@ -118,6 +134,7 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen>
 
   @override
   void dispose() {
+    endGazeSession();
     _scanTimer?.cancel();
     disposeVoiceControl();
     _gaze?.removeListener(_onGazeUpdate);
@@ -142,15 +159,27 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen>
     // Scanning is for learners who cannot move their head.
     if (_scanning || zone == GazeZone.none) return;
     // With blinks off, looking up is the way back once everything is done.
-    if (_complete && !_settings.blinkSelects && zone == GazeZone.up) {
+    if (_complete && !_hasPickGesture && zone == GazeZone.up) {
       _leave();
       return;
     }
     _done.add(zone);
     _confirm(_actionFor(zone));
+    _gaze?.armRestSelect();
   }
 
+  /// The practice target's name, as its label reads.
+  String _targetLabel(GazeZone zone) => switch (zone) {
+    GazeZone.up => _t(context).gzHearWord,
+    GazeZone.down => _t(context).gzFlipCard,
+    GazeZone.left => _t(context).vgPrevious,
+    GazeZone.right => _t(context).next,
+    GazeZone.none => '',
+  };
+
   void _onBlink() {
+    // Whatever picked, a keep-still still pending must not pick again.
+    _gaze?.disarmRestSelect();
     if (_complete) {
       _leave();
       return;
@@ -230,6 +259,9 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen>
         children: [
           if (ready && controller != null)
             GazeCameraView(controller: controller)
+          else if (ready && !gaze.usesCamera)
+            // Switch scanning: no camera to show, only the targets.
+            const ColoredBox(color: Colors.black)
           else
             _FallbackState(status: gaze.status, onRetry: gaze.start),
           if (ready) ...[
@@ -370,12 +402,24 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen>
   String? _instruction() {
     final t = _t(context);
     if (_complete) {
-      final how = _settings.blinkSelects ? t.gzLeaveBlink : t.gzLeaveLookUp;
+      final how = _settings.blinkSelects
+          ? t.gzLeaveBlink
+          : _settings.switchSelects
+          ? t.gzLeaveSwitch
+          : _settings.restSelects
+          ? t.gzLeaveRest
+          : t.gzLeaveLookUp;
       return '${t.gzPracticeDone}\n$how';
     }
-    if (_scanning) return t.gzFocusHintScan;
-    final blinkLeft = _settings.blinkSelects && !_blinkDone;
-    if (_done.length == _kTargets.length && blinkLeft) return t.gzBlink;
+    if (_scanning) return GazeHints.scan(t, _settings);
+    final pickLeft = _hasPickGesture && !_blinkDone;
+    if (_done.length == _kTargets.length && pickLeft) {
+      return _settings.blinkSelects
+          ? t.gzBlink
+          : _settings.switchSelects
+          ? t.gzPracticeSwitch
+          : t.gzPracticeRest;
+    }
     return t.gzPracticeIntro;
   }
 

@@ -19886,18 +19886,6 @@ abstract class AppLocalizations {
   /// **'Rounds per Player'**
   String get mqRoundsPerPlayer;
 
-  /// No description provided for @gzFocusHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Look ◀ ▶ ▲ ▼ to move · blink to press'**
-  String get gzFocusHint;
-
-  /// No description provided for @gzFocusHintLookUp.
-  ///
-  /// In en, this message translates to:
-  /// **'Look ◀ ▶ ▼ to move · look up to press'**
-  String get gzFocusHintLookUp;
-
   /// No description provided for @gzFocusHintScan.
   ///
   /// In en, this message translates to:
@@ -19915,30 +19903,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Look at the screen'**
   String get gzNavHintLook;
-
-  /// No description provided for @gzNavHintTabs.
-  ///
-  /// In en, this message translates to:
-  /// **'Look ◀ ▶ to choose · blink to open'**
-  String get gzNavHintTabs;
-
-  /// No description provided for @gzNavHintTiles.
-  ///
-  /// In en, this message translates to:
-  /// **'Look ◀ ▶ ▲ ▼ to choose · blink to open'**
-  String get gzNavHintTiles;
-
-  /// No description provided for @gzNavHintTabsLookUp.
-  ///
-  /// In en, this message translates to:
-  /// **'Look ◀ ▶ to choose · look up to open'**
-  String get gzNavHintTabsLookUp;
-
-  /// No description provided for @gzNavHintTilesLookUp.
-  ///
-  /// In en, this message translates to:
-  /// **'Look ◀ ▶ ▼ to choose · look up to open'**
-  String get gzNavHintTilesLookUp;
 
   /// No description provided for @gzPracticeIntro.
   ///
@@ -19981,6 +19945,450 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Increase {setting}'**
   String gzsStepUp(String setting);
+
+  /// No description provided for @gzHintMoveTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Look ◀ ▶ to move'**
+  String get gzHintMoveTabs;
+
+  /// No description provided for @gzHintMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Look ◀ ▶ ▲ ▼ to move'**
+  String get gzHintMove;
+
+  /// No description provided for @gzHintMoveNoUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Look ◀ ▶ ▼ to move'**
+  String get gzHintMoveNoUp;
+
+  /// No description provided for @gzHintPickBlink.
+  ///
+  /// In en, this message translates to:
+  /// **'blink to choose'**
+  String get gzHintPickBlink;
+
+  /// No description provided for @gzHintPickLookUp.
+  ///
+  /// In en, this message translates to:
+  /// **'look up to choose'**
+  String get gzHintPickLookUp;
+
+  /// No description provided for @gzHintPickSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'press your switch to choose'**
+  String get gzHintPickSwitch;
+
+  /// No description provided for @gzHintPickEither.
+  ///
+  /// In en, this message translates to:
+  /// **'blink or press your switch to choose'**
+  String get gzHintPickEither;
+
+  /// No description provided for @gzHintPickRest.
+  ///
+  /// In en, this message translates to:
+  /// **'keep still to choose'**
+  String get gzHintPickRest;
+
+  /// No description provided for @gzHintScanSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Press your switch when the one you want lights up'**
+  String get gzHintScanSwitch;
+
+  /// No description provided for @gzHintScanEither.
+  ///
+  /// In en, this message translates to:
+  /// **'Blink or press your switch when the one you want lights up'**
+  String get gzHintScanEither;
+
+  /// No description provided for @gzLeaveSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Press your switch to go back'**
+  String get gzLeaveSwitch;
+
+  /// No description provided for @gzLeaveRest.
+  ///
+  /// In en, this message translates to:
+  /// **'Look at a target, then keep still to go back'**
+  String get gzLeaveRest;
+
+  /// No description provided for @gzPracticeSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Now press your switch'**
+  String get gzPracticeSwitch;
+
+  /// No description provided for @gzPracticeRest.
+  ///
+  /// In en, this message translates to:
+  /// **'Now look at a target, then keep still'**
+  String get gzPracticeRest;
+
+  /// No description provided for @gzkShift.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift'**
+  String get gzkShift;
+
+  /// No description provided for @gzkSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Space'**
+  String get gzkSpace;
+
+  /// No description provided for @gzkDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get gzkDelete;
+
+  /// No description provided for @gzkDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get gzkDone;
+
+  /// No description provided for @gzcTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resting position'**
+  String get gzcTitle;
+
+  /// No description provided for @gzcGetReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Sit the way you usually do and look at the dot.'**
+  String get gzcGetReady;
+
+  /// No description provided for @gzcHold.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep still…'**
+  String get gzcHold;
+
+  /// No description provided for @gzcSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved! Movements are now measured from here.'**
+  String get gzcSaved;
+
+  /// No description provided for @gzcFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your head moved, or your face was not seen. Let’s try again.'**
+  String get gzcFailed;
+
+  /// No description provided for @gzsChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'How to choose'**
+  String get gzsChoose;
+
+  /// No description provided for @gzsPickBlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Blink'**
+  String get gzsPickBlink;
+
+  /// No description provided for @gzsPickBlinkSub.
+  ///
+  /// In en, this message translates to:
+  /// **'A long, deliberate blink chooses. With “Blink to confirm” off, looking up chooses instead.'**
+  String get gzsPickBlinkSub;
+
+  /// No description provided for @gzsPickSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'A switch or controller button'**
+  String get gzsPickSwitch;
+
+  /// No description provided for @gzsPickSwitchSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Any button on a Bluetooth controller or switch chooses. With Scanning mode on, the camera stays off.'**
+  String get gzsPickSwitchSub;
+
+  /// No description provided for @gzsPickEither.
+  ///
+  /// In en, this message translates to:
+  /// **'Blink or switch'**
+  String get gzsPickEither;
+
+  /// No description provided for @gzsPickEitherSub.
+  ///
+  /// In en, this message translates to:
+  /// **'A blink or a button press chooses — whichever is easier at the moment.'**
+  String get gzsPickEitherSub;
+
+  /// No description provided for @gzsDwellSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Look and hold to choose'**
+  String get gzsDwellSelect;
+
+  /// No description provided for @gzsDwellSelectSub.
+  ///
+  /// In en, this message translates to:
+  /// **'After moving the highlight, keep your head still and it is chosen — for learners who can’t blink on purpose.'**
+  String get gzsDwellSelectSub;
+
+  /// No description provided for @gzsDwellSelectScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Not used in Scanning mode — the highlight moves by itself there.'**
+  String get gzsDwellSelectScan;
+
+  /// No description provided for @gzsDwellSelectMs.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep still for'**
+  String get gzsDwellSelectMs;
+
+  /// No description provided for @gzsDwellSelectHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'How long to keep still on a button before it is chosen.'**
+  String get gzsDwellSelectHelp;
+
+  /// No description provided for @gzsSpeak.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the highlight aloud'**
+  String get gzsSpeak;
+
+  /// No description provided for @gzsSpeakSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Says the name of each button as the highlight reaches it — helpful with scanning.'**
+  String get gzsSpeakSub;
+
+  /// No description provided for @gzsCameraOff.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera stays off: Scanning mode moves the highlight and your switch chooses, so these settings are not needed.'**
+  String get gzsCameraOff;
+
+  /// No description provided for @gzsSmoothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Smoothing'**
+  String get gzsSmoothing;
+
+  /// No description provided for @gzsSmoothingHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Smoothing ignores small shakes and tremors, so the highlight moves only when you mean it to.'**
+  String get gzsSmoothingHelp;
+
+  /// No description provided for @gzsSmoothOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get gzsSmoothOff;
+
+  /// No description provided for @gzsSmoothOffSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Follows every movement straight away.'**
+  String get gzsSmoothOffSub;
+
+  /// No description provided for @gzsSmoothLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get gzsSmoothLight;
+
+  /// No description provided for @gzsSmoothLightSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignores small shakes. Best for most learners.'**
+  String get gzsSmoothLightSub;
+
+  /// No description provided for @gzsSmoothStrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Strong'**
+  String get gzsSmoothStrong;
+
+  /// No description provided for @gzsSmoothStrongSub.
+  ///
+  /// In en, this message translates to:
+  /// **'For tremors or jerky movements. Responds a little more slowly.'**
+  String get gzsSmoothStrongSub;
+
+  /// No description provided for @gzsRest.
+  ///
+  /// In en, this message translates to:
+  /// **'Resting position'**
+  String get gzsRest;
+
+  /// No description provided for @gzsRestNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set — movements are measured from looking straight at the screen.'**
+  String get gzsRestNotSet;
+
+  /// No description provided for @gzsRestSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Set — movements are measured from your own comfortable position.'**
+  String get gzsRestSet;
+
+  /// No description provided for @gzsRestHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Helpful when the head usually rests turned or tilted, for example in a wheelchair.'**
+  String get gzsRestHelp;
+
+  /// No description provided for @gzsRestButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Set resting position'**
+  String get gzsRestButton;
+
+  /// No description provided for @gzsRestReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get gzsRestReset;
+
+  /// No description provided for @gzsForLearner.
+  ///
+  /// In en, this message translates to:
+  /// **'Gaze Control for {name}'**
+  String gzsForLearner(String name);
+
+  /// No description provided for @gzsForLearnerNote.
+  ///
+  /// In en, this message translates to:
+  /// **'You are changing {name}’s settings. They are saved on this tablet and used the next time {name} signs in here.'**
+  String gzsForLearnerNote(String name);
+
+  /// No description provided for @gzsNotOnTablet.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}’s profile is on another tablet. Set up Gaze Control there.'**
+  String gzsNotOnTablet(String name);
+
+  /// No description provided for @cdsGazeControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Gaze Control'**
+  String get cdsGazeControl;
+
+  /// No description provided for @gzmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Gaze use this week'**
+  String get gzmTitle;
+
+  /// No description provided for @gzmNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No gaze use in the last 7 days.'**
+  String get gzmNone;
+
+  /// No description provided for @gzmActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Time used'**
+  String get gzmActive;
+
+  /// No description provided for @gzmMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String gzmMinutes(int minutes);
+
+  /// No description provided for @gzmSelections.
+  ///
+  /// In en, this message translates to:
+  /// **'Choices made'**
+  String get gzmSelections;
+
+  /// No description provided for @gzmPerMinute.
+  ///
+  /// In en, this message translates to:
+  /// **'Choices per minute'**
+  String get gzmPerMinute;
+
+  /// No description provided for @gzmSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds per choice'**
+  String get gzmSeconds;
+
+  /// No description provided for @gzmMistakes.
+  ///
+  /// In en, this message translates to:
+  /// **'Undone straight away'**
+  String get gzmMistakes;
+
+  /// No description provided for @gzmKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'Keys typed'**
+  String get gzmKeys;
+
+  /// No description provided for @gzmCalibrations.
+  ///
+  /// In en, this message translates to:
+  /// **'Resting position set'**
+  String get gzmCalibrations;
+
+  /// No description provided for @gzmHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Counted on this tablet. “Time used” leaves out pauses of more than two minutes; “Undone straight away” is a choice followed by Back within a few seconds.'**
+  String get gzmHelp;
+
+  /// No description provided for @gzmExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export (CSV)'**
+  String get gzmExport;
+
+  /// No description provided for @gzsKeepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep this change?'**
+  String get gzsKeepTitle;
+
+  /// No description provided for @gzsKeepOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Gaze Control is now off. If you can’t use touch, just wait — it turns back on by itself.'**
+  String get gzsKeepOff;
+
+  /// No description provided for @gzsKeepSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Your switch now chooses, not a blink. Press your switch to keep this. If you don’t have one, just wait — blinking comes back by itself.'**
+  String get gzsKeepSwitch;
+
+  /// No description provided for @gzsKeepCountdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Going back in {seconds} s'**
+  String gzsKeepCountdown(int seconds);
+
+  /// No description provided for @gzsKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep'**
+  String get gzsKeep;
+
+  /// No description provided for @gzsUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get gzsUndo;
 
   /// No description provided for @spdSupport.
   ///

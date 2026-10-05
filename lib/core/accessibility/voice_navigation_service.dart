@@ -907,6 +907,16 @@ class VoiceNavigationService {
         description: 'Kontrolin ang app sa pamamagitan ng tingin at kurap.',
       ),
     ),
+    '/gaze-calibrate': (
+      en: (
+        name: 'Resting Position',
+        description: 'Sit the way you usually do and look at the dot.',
+      ),
+      fil: (
+        name: 'Posisyon ng Pahinga',
+        description: 'Umupo gaya ng dati at tumingin sa tuldok.',
+      ),
+    ),
     '/gaze-settings': (
       en: (
         name: 'Gaze Settings',

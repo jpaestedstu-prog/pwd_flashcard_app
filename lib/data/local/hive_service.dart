@@ -301,6 +301,15 @@ class HiveService {
     await removeMembershipsLocal(profileId);
     await removeCachedDirectoryEntry(profileId);
     await removeMessagingCachesLocal(profileId);
+    // The learner's Gaze Control settings and usage measurements. A deleted
+    // gaze learner's settings used to stay behind, and the profile picker —
+    // which runs on the first profile that has gaze switched on — kept
+    // turning the camera on for a learner who was no longer there.
+    if (Hive.isBoxOpen(_settingsBox)) {
+      for (final key in const ['gazeSettings', 'gazeMetrics']) {
+        await _settBox.delete(_settKey(key, profileId));
+      }
+    }
   }
 
   /// Drops this device's Messages caches for [profileId]: its message list,

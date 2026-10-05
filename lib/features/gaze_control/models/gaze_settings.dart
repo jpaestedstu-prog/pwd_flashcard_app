@@ -11,6 +11,20 @@
 /// compatibility.)
 enum GazeNavScope { bottomNav, bottomNavAndHomeTiles }
 
+/// What picks the highlighted control.
+///
+/// [blink] — a long, deliberate blink (the camera's eye detector).
+/// [switchButton] — any press on a Bluetooth switch or game controller. In
+/// scanning mode this needs no camera at all: the highlight moves by itself
+/// and the press picks.
+/// [either] — whichever comes first.
+enum GazePick { blink, switchButton, either }
+
+/// How much the head angle is steadied before it is read (see
+/// `OneEuroFilter`). [off] reads the raw angle; [strong] suits a learner whose
+/// head trembles.
+enum GazeSmoothing { off, light, strong }
+
 /// User-tunable configuration for the Gaze (head + blink) accessibility
 /// control, persisted in the Hive `settings` box (see `gazeSettingsProvider`).
 ///
@@ -60,6 +74,32 @@ class GazeSettings {
   /// choice is always kept — this only decides where a learner starts.
   final GazeNavScope navScope;
 
+  /// The learner's **resting head position**, as the raw camera angles (yaw,
+  /// pitch, in degrees) captured by "Set my resting position". Every reading
+  /// is measured from here instead of from straight ahead, so a learner whose
+  /// head naturally rests turned or tilted — common for a wheelchair user — is
+  /// not permanently "looking left". Zero = not calibrated.
+  final double restYaw;
+  final double restPitch;
+
+  /// How much the head angle is steadied before it is read.
+  final GazeSmoothing smoothing;
+
+  /// What picks the highlighted control.
+  final GazePick pickWith;
+
+  /// **Look and hold to select**: in head mode, keeping still on a highlighted
+  /// control for [dwellSelectMs] opens it — for learners who cannot blink on
+  /// purpose. Off by default.
+  final bool dwellSelect;
+
+  /// How long to keep still before a highlighted control opens.
+  final int dwellSelectMs;
+
+  /// Say the highlighted control's name aloud each time the highlight moves —
+  /// head moves and scanning alike — for learners who cannot see it well.
+  final bool speakHighlight;
+
   const GazeSettings({
     this.enabled = false,
     this.sensitivity = 3,
@@ -71,18 +111,49 @@ class GazeSettings {
     this.scanStepMs = 2000,
     this.voiceCommands = false,
     this.navScope = GazeNavScope.bottomNavAndHomeTiles,
+    this.restYaw = 0,
+    this.restPitch = 0,
+    this.smoothing = GazeSmoothing.light,
+    this.pickWith = GazePick.blink,
+    this.dwellSelect = false,
+    this.dwellSelectMs = 2000,
+    this.speakHighlight = false,
   });
 
   /// Whether the D-pad should also drive the foreground hub's feature tiles
   /// (Home, Cards, Games, Stories, Progress).
   bool get navHomeTiles => navScope == GazeNavScope.bottomNavAndHomeTiles;
 
-  /// Whether a long blink picks things. Scanning is *driven* by blinks — the
-  /// highlight moves by itself and a blink is the only way to choose — so a
-  /// scanning learner always has it, even if "Blink to confirm" was switched
-  /// off before scanning was switched on. Without this the two switches
-  /// together left a learner watching a highlight they could never stop.
-  bool get blinkSelects => blinkEnabled || scanMode;
+  /// Whether the camera runs at all. Only switch scanning needs none: the
+  /// highlight moves by itself and the switch picks. Head movement and blinks
+  /// both come from the camera.
+  bool get usesCamera => !(scanMode && pickWith == GazePick.switchButton);
+
+  /// Whether a long blink picks things. Scanning is *driven* by picks — the
+  /// highlight moves by itself — so a scanning learner who picks by blink
+  /// always has it, even if "Blink to confirm" was switched off before
+  /// scanning was switched on. Without this the two switches together left a
+  /// learner watching a highlight they could never stop.
+  bool get blinkSelects =>
+      usesCamera &&
+      pickWith != GazePick.switchButton &&
+      (blinkEnabled || scanMode);
+
+  /// Whether a press on a Bluetooth switch or controller picks things.
+  bool get switchSelects => pickWith != GazePick.blink;
+
+  /// Whether keeping still on a highlighted control opens it. Head mode only:
+  /// while scanning the head is still anyway, so it would open everything.
+  bool get restSelects => dwellSelect && !scanMode && usesCamera;
+
+  /// Whether looking **up** has to double as "open it" — the last resort when
+  /// nothing else picks, so a head-only learner always has a way to press.
+  /// With any other way to pick, look-up moves up like every other direction.
+  bool get lookUpSelects =>
+      !scanMode && !blinkSelects && !switchSelects && !restSelects;
+
+  /// Whether a resting position has been captured.
+  bool get hasRestPosition => restYaw != 0 || restPitch != 0;
 
   /// Lowest/highest values the UI sliders allow.
   static const int minSensitivity = 1;
@@ -91,12 +162,21 @@ class GazeSettings {
   static const int maxDwellMs = 3000;
   static const int minScanStepMs = 1000;
   static const int maxScanStepMs = 4000;
+  static const int minDwellSelectMs = 1000;
+  static const int maxDwellSelectMs = 4000;
+
+  /// A captured resting position further than this from straight ahead is
+  /// almost certainly a learner who was looking away, not resting.
+  static const double maxRestDeg = 30;
 
   /// Dwell time as a [Duration] for `DwellTracker`.
   Duration get dwellDuration => Duration(milliseconds: dwellMs);
 
   /// Scanning step as a [Duration] for the scan timer.
   Duration get scanStepDuration => Duration(milliseconds: scanStepMs);
+
+  /// Keep-still time as a [Duration] for look-and-hold selection.
+  Duration get dwellSelectDuration => Duration(milliseconds: dwellSelectMs);
 
   /// Head-turn (yaw) threshold in degrees, derived from [sensitivity]:
   /// sensitivity 1 → 20° (big movement), sensitivity 5 → 8° (small movement).
@@ -112,6 +192,8 @@ class GazeSettings {
     return atMin + (atMax - atMin) * t;
   }
 
+  static double _clampRest(double v) => v.clamp(-maxRestDeg, maxRestDeg);
+
   GazeSettings copyWith({
     bool? enabled,
     int? sensitivity,
@@ -123,6 +205,13 @@ class GazeSettings {
     int? scanStepMs,
     bool? voiceCommands,
     GazeNavScope? navScope,
+    double? restYaw,
+    double? restPitch,
+    GazeSmoothing? smoothing,
+    GazePick? pickWith,
+    bool? dwellSelect,
+    int? dwellSelectMs,
+    bool? speakHighlight,
   }) {
     return GazeSettings(
       enabled: enabled ?? this.enabled,
@@ -137,6 +226,14 @@ class GazeSettings {
           (scanStepMs ?? this.scanStepMs).clamp(minScanStepMs, maxScanStepMs),
       voiceCommands: voiceCommands ?? this.voiceCommands,
       navScope: navScope ?? this.navScope,
+      restYaw: _clampRest(restYaw ?? this.restYaw),
+      restPitch: _clampRest(restPitch ?? this.restPitch),
+      smoothing: smoothing ?? this.smoothing,
+      pickWith: pickWith ?? this.pickWith,
+      dwellSelect: dwellSelect ?? this.dwellSelect,
+      dwellSelectMs: (dwellSelectMs ?? this.dwellSelectMs)
+          .clamp(minDwellSelectMs, maxDwellSelectMs),
+      speakHighlight: speakHighlight ?? this.speakHighlight,
     );
   }
 
@@ -153,6 +250,13 @@ class GazeSettings {
         'scanStepMs': scanStepMs,
         'voiceCommands': voiceCommands,
         'navScope': navScope.name,
+        'restYaw': restYaw,
+        'restPitch': restPitch,
+        'smoothing': smoothing.name,
+        'pickWith': pickWith.name,
+        'dwellSelect': dwellSelect,
+        'dwellSelectMs': dwellSelectMs,
+        'speakHighlight': speakHighlight,
       };
 
   /// Rebuilds from a Hive map, tolerating missing/typo'd keys by falling back
@@ -161,9 +265,11 @@ class GazeSettings {
     const d = GazeSettings();
     if (map == null) return d;
     int asInt(Object? v, int fallback) => v is int ? v : (v is num ? v.toInt() : fallback);
+    double asDouble(Object? v, double fallback) =>
+        v is num ? v.toDouble() : fallback;
     bool asBool(Object? v, bool fallback) => v is bool ? v : fallback;
-    GazeNavScope asNavScope(Object? v) => GazeNavScope.values
-        .firstWhere((s) => s.name == v, orElse: () => d.navScope);
+    T asEnum<T extends Enum>(List<T> values, Object? v, T fallback) =>
+        values.firstWhere((e) => e.name == v, orElse: () => fallback);
     return GazeSettings(
       enabled: asBool(map['enabled'], d.enabled),
       sensitivity: asInt(map['sensitivity'], d.sensitivity)
@@ -176,7 +282,57 @@ class GazeSettings {
       scanStepMs: asInt(map['scanStepMs'], d.scanStepMs)
           .clamp(minScanStepMs, maxScanStepMs),
       voiceCommands: asBool(map['voiceCommands'], d.voiceCommands),
-      navScope: asNavScope(map['navScope']),
+      navScope: asEnum(GazeNavScope.values, map['navScope'], d.navScope),
+      restYaw: _clampRest(asDouble(map['restYaw'], d.restYaw)),
+      restPitch: _clampRest(asDouble(map['restPitch'], d.restPitch)),
+      smoothing: asEnum(GazeSmoothing.values, map['smoothing'], d.smoothing),
+      pickWith: asEnum(GazePick.values, map['pickWith'], d.pickWith),
+      dwellSelect: asBool(map['dwellSelect'], d.dwellSelect),
+      dwellSelectMs: asInt(map['dwellSelectMs'], d.dwellSelectMs)
+          .clamp(minDwellSelectMs, maxDwellSelectMs),
+      speakHighlight: asBool(map['speakHighlight'], d.speakHighlight),
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      other is GazeSettings &&
+      other.enabled == enabled &&
+      other.sensitivity == sensitivity &&
+      other.dwellMs == dwellMs &&
+      other.blinkEnabled == blinkEnabled &&
+      other.mirrorHorizontal == mirrorHorizontal &&
+      other.invertVertical == invertVertical &&
+      other.scanMode == scanMode &&
+      other.scanStepMs == scanStepMs &&
+      other.voiceCommands == voiceCommands &&
+      other.navScope == navScope &&
+      other.restYaw == restYaw &&
+      other.restPitch == restPitch &&
+      other.smoothing == smoothing &&
+      other.pickWith == pickWith &&
+      other.dwellSelect == dwellSelect &&
+      other.dwellSelectMs == dwellSelectMs &&
+      other.speakHighlight == speakHighlight;
+
+  @override
+  int get hashCode => Object.hashAll([
+        enabled,
+        sensitivity,
+        dwellMs,
+        blinkEnabled,
+        mirrorHorizontal,
+        invertVertical,
+        scanMode,
+        scanStepMs,
+        voiceCommands,
+        navScope,
+        restYaw,
+        restPitch,
+        smoothing,
+        pickWith,
+        dwellSelect,
+        dwellSelectMs,
+        speakHighlight,
+      ]);
 }

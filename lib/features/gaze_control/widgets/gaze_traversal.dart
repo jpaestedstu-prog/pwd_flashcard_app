@@ -3,7 +3,9 @@ import 'package:flutter/widgets.dart';
 import '../logic/gaze_focus_driver.dart';
 import '../logic/voice_commands.dart';
 import '../models/gaze_models.dart';
+import '../services/gaze_metrics.dart';
 import 'gaze_focus_overlay.dart';
+import 'gaze_keyboard.dart';
 
 /// The **focus-traversal fallback**, shared by every gaze scope.
 ///
@@ -31,17 +33,28 @@ import 'gaze_focus_overlay.dart';
 /// blink there closes the dialog, sheet or page — the same rule as the Back
 /// pill on the D-pad screens.
 class GazeTraversal {
-  GazeTraversal({required this.onMoved, required this.onPressed});
+  GazeTraversal({
+    required this.onMoved,
+    required this.onPressed,
+    this.onLeft,
+    this.onScanned,
+  });
 
-  /// Feedback for a focus move (a light haptic tick).
+  /// A focus move happened (haptic tick, measurement, spoken name…).
   final VoidCallback onMoved;
 
-  /// Feedback for a press (a success haptic).
-  final VoidCallback onPressed;
+  /// A scanning step moved the focus; [onMoved] when not given.
+  final VoidCallback? onScanned;
+
+  /// A control was pressed, and what pressed it.
+  final void Function(GazeSelectBy by) onPressed;
+
+  /// The learner took the Back pill / said "go back".
+  final VoidCallback? onLeft;
 
   final GazeFocusOverlay _ring = GazeFocusOverlay();
   BuildContext? _ringContext;
-  GazeRingHint _hint = GazeRingHint.move;
+  String? _hint;
 
   /// The highlight is on the Back pill rather than on a control.
   bool _onExit = false;
@@ -56,7 +69,7 @@ class GazeTraversal {
   void syncRing(
     BuildContext context, {
     required bool wanted,
-    GazeRingHint hint = GazeRingHint.move,
+    String? hint,
   }) {
     if (!wanted) {
       _onExit = false;
@@ -83,15 +96,6 @@ class GazeTraversal {
     }
   }
 
-  /// The ring hint for a learner's settings.
-  static GazeRingHint hintFor({
-    required bool scanning,
-    required bool blinkSelects,
-  }) {
-    if (scanning) return GazeRingHint.scan;
-    return blinkSelects ? GazeRingHint.move : GazeRingHint.moveLookUp;
-  }
-
   /// One step in [direction]. When the surface has nothing focusable that way
   /// the focus is probably still on its bare scope node, so pull it onto the
   /// first control and the next gesture has somewhere to go. Backwards from
@@ -113,7 +117,9 @@ class GazeTraversal {
     }
     if (_onExit) {
       if (backward) return false;
-      if (GazeFocusDriver.moveFirst() || GazeFocusDriver.scanNext()) {
+      // Off the Back pill: the first control — not the one below it, which is
+      // where a step from the (still focused) first control used to land.
+      if (GazeFocusDriver.moveToStart()) {
         _setExit(false);
         onMoved();
         return true;
@@ -127,18 +133,33 @@ class GazeTraversal {
     }
     final moved =
         GazeFocusDriver.move(direction) || GazeFocusDriver.moveFirst();
-    if (moved) onMoved();
+    if (moved) {
+      onMoved();
+      _keepSystemKeyboardDown();
+    }
     return moved;
+  }
+
+  /// Focus landing on a text field raises the system keyboard by itself —
+  /// half the screen, none of it reachable by gaze. Put it away; a blink on
+  /// the field opens the gaze keyboard instead.
+  void _keepSystemKeyboardDown() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = GazeFocusDriver.focused?.context;
+      if (context != null && GazeKeyboard.editableFor(context) != null) {
+        GazeKeyboard.hideSystemKeyboard();
+      }
+    });
   }
 
   /// Presses whatever the ring is on. A freshly opened dialog often still has
   /// focus on its scope node with nothing to press, so pull focus onto its
   /// first control instead and the learner's first blink is never swallowed.
   /// On the Back pill, closes the surface.
-  bool commit() {
+  bool commit({GazeSelectBy by = GazeSelectBy.blink}) {
     if (_onExit) {
       _setExit(false);
-      onPressed();
+      onLeft?.call();
       return GazeFocusDriver.popTop();
     }
     if (!GazeFocusDriver.hasFocusable()) {
@@ -148,8 +169,13 @@ class GazeTraversal {
       onMoved();
       return true;
     }
+    // A text field: the gaze keyboard, since nothing else can type into it.
+    if (GazeKeyboard.openForFocus()) {
+      onPressed(by);
+      return true;
+    }
     if (GazeFocusDriver.activate()) {
-      onPressed();
+      onPressed(by);
       return true;
     }
     if (GazeFocusDriver.moveFirst()) {
@@ -159,17 +185,20 @@ class GazeTraversal {
     return false;
   }
 
-  /// A completed head hold. Look-up doubles as "press it" when blinks don't
-  /// select, mirroring the D-pad's rule so a head-only learner always has a
-  /// way to press; ▼ still reaches everything, so nothing is stranded.
-  void zone(GazeZone zone, {required bool blinkSelects}) {
+  /// A completed head hold. Look-up doubles as "press it" when nothing else
+  /// picks ([GazeSettings.lookUpSelects]), mirroring the D-pad's rule so a
+  /// head-only learner always has a way to press; ▼ still reaches everything,
+  /// so nothing is stranded.
+  void zone(GazeZone zone, {required bool lookUpSelects}) {
     switch (zone) {
       case GazeZone.left:
         move(TraversalDirection.left);
       case GazeZone.right:
         move(TraversalDirection.right);
       case GazeZone.up:
-        blinkSelects ? move(TraversalDirection.up) : commit();
+        lookUpSelects
+            ? commit(by: GazeSelectBy.headHold)
+            : move(TraversalDirection.up);
       case GazeZone.down:
         move(TraversalDirection.down);
       case GazeZone.none:
@@ -180,24 +209,26 @@ class GazeTraversal {
   /// Scanning mode: the next control in reading order lights up, and after
   /// the last one, the Back pill.
   bool scanStep() {
+    final stepped = onScanned ?? onMoved;
     if (!GazeFocusDriver.hasFocusable()) {
       // Only the way out to offer: keep it lit.
       _setExit(true);
       return true;
     }
     if (_onExit) {
-      final moved = GazeFocusDriver.moveFirst() || GazeFocusDriver.scanNext();
+      // Round again from the top of the page.
+      final moved = GazeFocusDriver.moveToStart();
       _setExit(false);
-      if (moved) onMoved();
+      if (moved) stepped();
       return moved;
     }
     if (GazeFocusDriver.isLast()) {
       _setExit(true);
-      onMoved();
+      stepped();
       return true;
     }
     final moved = GazeFocusDriver.scanNext();
-    if (moved) onMoved();
+    if (moved) stepped();
     return moved;
   }
 
@@ -220,9 +251,10 @@ class GazeTraversal {
         move(TraversalDirection.down);
       case DpadVoiceIntent.select:
       case DpadVoiceIntent.activate:
-        commit();
+        commit(by: GazeSelectBy.voice);
       case DpadVoiceIntent.goBack:
         _setExit(false);
+        onLeft?.call();
         GazeFocusDriver.popTop();
       case DpadVoiceIntent.scrollUp:
       case DpadVoiceIntent.scrollDown:

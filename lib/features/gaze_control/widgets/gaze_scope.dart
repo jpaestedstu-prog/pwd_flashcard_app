@@ -16,8 +16,11 @@ import '../models/gaze_models.dart';
 import '../models/gaze_settings.dart';
 import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_settings_provider.dart';
+import '../services/gaze_metrics.dart';
+import 'gaze_hints.dart';
 import 'gaze_overlay.dart';
 import 'gaze_route_guard.dart';
+import 'gaze_session.dart';
 import 'gaze_traversal.dart';
 import 'voice_control_mixin.dart';
 
@@ -69,7 +72,7 @@ class GazeScope extends ConsumerStatefulWidget {
 }
 
 class _GazeScopeState extends ConsumerState<GazeScope>
-    with VoiceControlMixin, GazeRouteGuard {
+    with VoiceControlMixin, GazeRouteGuard, GazeSessionMixin {
   GazeController? _gaze;
   GazeSettings? _settings;
   ScanCycler? _scanner;
@@ -84,8 +87,22 @@ class _GazeScopeState extends ConsumerState<GazeScope>
   /// Head moves, blinks, scan steps and voice while something covers this
   /// screen — plus the ring that shows where that is.
   late final GazeTraversal _traversal = GazeTraversal(
-    onMoved: () => ref.read(hapticServiceProvider).selectionClick(),
-    onPressed: () => ref.read(hapticServiceProvider).success(),
+    onMoved: () {
+      ref.read(hapticServiceProvider).selectionClick();
+      GazeMetrics.instance.moved();
+      _gaze?.armRestSelect();
+      sayFocusedSoon();
+    },
+    onScanned: () {
+      ref.read(hapticServiceProvider).selectionClick();
+      GazeMetrics.instance.scanned();
+      sayFocusedSoon();
+    },
+    onPressed: (by) {
+      ref.read(hapticServiceProvider).success();
+      gazePicked(_gaze, by);
+    },
+    onLeft: GazeMetrics.instance.backed,
   );
 
   /// True while items auto-highlight (camera blink-scan).
@@ -104,11 +121,13 @@ class _GazeScopeState extends ConsumerState<GazeScope>
     );
     controller.onSelect = _onSelect;
     controller.onBlink = _onBlink;
+    controller.onRest = () => _onBlink(by: GazeSelectBy.rest);
     _gaze = controller;
     // Claim the single camera so the shell's background nav-gaze stands down.
     _cameraToken = gazeCameraOwners.acquire();
     gazeCameraOwners.addListener(_onCameraOwnersChanged);
     controller.start();
+    beginGazeSession(settings, onSwitch: _onSwitch);
     if (settings.scanMode) _startScanning(settings);
     // Voice is additive — it layers on top of the targets.
     if (settings.voiceCommands) startVoiceControl();
@@ -148,12 +167,13 @@ class _GazeScopeState extends ConsumerState<GazeScope>
       case VoiceIntent.action:
         _fireActionAt(result.actionIndex);
       case VoiceIntent.select:
-        _onBlink();
+        _onBlink(by: GazeSelectBy.voice);
       case VoiceIntent.scrollUp:
         voiceScroll(-1);
       case VoiceIntent.scrollDown:
         voiceScroll(1);
       case VoiceIntent.goBack:
+        GazeMetrics.instance.backed();
         Navigator.of(context).maybePop();
       case VoiceIntent.none:
         break;
@@ -165,7 +185,21 @@ class _GazeScopeState extends ConsumerState<GazeScope>
     final action = widget.actions[index];
     if (action.enabled) {
       ref.read(hapticServiceProvider).success();
+      _record(action, GazeSelectBy.voice);
       action.onSelect();
+    }
+  }
+
+  /// A press on the learner's switch or controller.
+  void _onSwitch() => _onBlink(by: GazeSelectBy.switchButton);
+
+  /// Measures an edge action: a "Choose" is a selection, anything else moves
+  /// a highlight.
+  void _record(GazeAction action, GazeSelectBy by) {
+    if (action.selects) {
+      gazePicked(_gaze, by);
+    } else {
+      GazeMetrics.instance.moved();
     }
   }
 
@@ -183,11 +217,16 @@ class _GazeScopeState extends ConsumerState<GazeScope>
       }
       _scanner!.count = widget.actions.length;
       setState(() => _scanIndex = _scanner!.advance());
+      GazeMetrics.instance.scanned();
+      if (_scanIndex >= 0 && _scanIndex < widget.actions.length) {
+        sayHighlight(widget.actions[_scanIndex].label);
+      }
     });
   }
 
   @override
   void dispose() {
+    endGazeSession();
     _scanTimer?.cancel();
     stopGazeCoverageWatch();
     _traversal.hideRing();
@@ -216,11 +255,14 @@ class _GazeScopeState extends ConsumerState<GazeScope>
       if (!mounted || gaze == null) return;
       if (!_isTopOwner && !gaze.suspended) {
         gaze.suspendCamera();
+        endGazeSession();
         disposeVoiceControl();
         _traversal.hideRing();
         setState(() {});
       } else if (_isTopOwner && gaze.suspended) {
         gaze.resumeCamera();
+        final settings = _settings;
+        if (settings != null) beginGazeSession(settings, onSwitch: _onSwitch);
         if (_settings?.voiceCommands ?? false) startVoiceControl();
         onGazeCoverageChanged(gazeCovered);
         setState(() {});
@@ -235,7 +277,10 @@ class _GazeScopeState extends ConsumerState<GazeScope>
   void _onSelect(GazeZone zone) {
     if (!mounted || _scanning) return;
     if (gazeCovered) {
-      _traversal.zone(zone, blinkSelects: _settings?.blinkSelects ?? true);
+      _traversal.zone(
+        zone,
+        lookUpSelects: _settings?.lookUpSelects ?? false,
+      );
       return;
     }
     final action = widget.actions
@@ -243,32 +288,37 @@ class _GazeScopeState extends ConsumerState<GazeScope>
         .firstOrNull;
     if (action != null) {
       ref.read(hapticServiceProvider).success();
+      _record(action, GazeSelectBy.headHold);
       action.onSelect();
+      // Moving a game's own cursor arms look-and-hold for what it now rests on.
+      if (!action.selects) _gaze?.armRestSelect();
     }
   }
 
-  void _onBlink() {
+  void _onBlink({GazeSelectBy by = GazeSelectBy.blink}) {
     if (!mounted) return;
     if (gazeCovered) {
-      _traversal.commit();
+      _traversal.commit(by: by);
       return;
     }
     if (_scanning) {
-      _selectScanned();
+      _selectScanned(by);
     } else {
       ref.read(hapticServiceProvider).success();
+      if (widget.onBlink != null) gazePicked(_gaze, by);
       widget.onBlink?.call();
     }
   }
 
   /// Activates whichever action is currently highlighted by the scanner — fired
   /// by a blink (camera scan) or a tap / switch press (switch scan).
-  void _selectScanned() {
+  void _selectScanned(GazeSelectBy by) {
     if (!mounted) return;
     if (_scanIndex < 0 || _scanIndex >= widget.actions.length) return;
     final action = widget.actions[_scanIndex];
     if (action.enabled) {
       ref.read(hapticServiceProvider).success();
+      _record(action, by);
       action.onSelect();
     }
   }
@@ -281,9 +331,10 @@ class _GazeScopeState extends ConsumerState<GazeScope>
       // Covered by a screen with its own gaze, that screen draws its own
       // highlight; the ring belongs to whoever is driving.
       wanted: covered && _isTopOwner,
-      hint: GazeTraversal.hintFor(
-        scanning: _scanning,
-        blinkSelects: _settings?.blinkSelects ?? true,
+      hint: GazeHints.forSettings(
+        context,
+        _settings ?? const GazeSettings(),
+        rowsReachable: true,
       ),
     );
   }

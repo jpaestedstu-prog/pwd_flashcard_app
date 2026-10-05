@@ -414,6 +414,16 @@ class ChildDetailSheet extends ConsumerWidget {
                 ),
               ).animate().fadeIn(duration: 400.ms, delay: 520.ms),
 
+              // ─── Gaze Control ─────────────────────
+              // The learner who needs gaze is the one least able to set it
+              // up, and a Child has no Settings at all — so their grown-up
+              // sets it here. Gaze settings live on the tablet the learner
+              // uses, so a learner whose profile is on another tablet gets a
+              // note saying where, not a screen whose changes go nowhere.
+              _GazeControlButton(child: child)
+                  .animate()
+                  .fadeIn(duration: 400.ms, delay: 535.ms),
+
               // ─── View Full Dashboard Button ───────
               if (onViewFullDashboard != null)
                 Padding(
@@ -445,6 +455,62 @@ class ChildDetailSheet extends ConsumerWidget {
     if (diff.inDays == 1) return _t(context).cdsYesterday;
     if (diff.inDays < 7) return _t(context).cdsDaysAgo(diff.inDays);
     return _t(context).cdsWeeksAgo((diff.inDays / 7).round());
+  }
+}
+
+// ─── Gaze Control ────────────────────────────────────
+
+class _GazeControlButton extends StatelessWidget {
+  final ChildSummary child;
+
+  const _GazeControlButton({required this.child});
+
+  bool get _onThisTablet {
+    try {
+      return HiveService.getProfileById(child.profileId) != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = _t(context);
+    final here = _onThisTablet;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OutlinedButton.icon(
+            onPressed: !here
+                ? null
+                : () {
+                    Navigator.of(context).pop();
+                    GoRouter.of(context).push(
+                      '/gaze-settings?profile='
+                      '${Uri.encodeQueryComponent(child.profileId)}'
+                      '&name=${Uri.encodeQueryComponent(child.name)}',
+                    );
+                  },
+            icon: const Icon(Icons.visibility_rounded),
+            label: Text(t.cdsGazeControl),
+          ),
+          if (!here)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                t.gzsNotOnTablet(child.name),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: HCColor.of(context).textSecondary,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 

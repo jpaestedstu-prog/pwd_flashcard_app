@@ -11844,14 +11844,6 @@ class AppLocalizationsFil extends AppLocalizations {
   String get mqRoundsPerPlayer => 'Round bawat Manlalaro';
 
   @override
-  String get gzFocusHint =>
-      'Tumingin ◀ ▶ ▲ ▼ para gumalaw · kumurap para pumindot';
-
-  @override
-  String get gzFocusHintLookUp =>
-      'Tumingin ◀ ▶ ▼ para gumalaw · tumingala para pumindot';
-
-  @override
   String get gzFocusHintScan => 'Kumurap kapag umilaw ang gusto mo';
 
   @override
@@ -11859,21 +11851,6 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get gzNavHintLook => 'Tumingin sa screen';
-
-  @override
-  String get gzNavHintTabs => 'Tumingin ◀ ▶ para pumili · kumurap para buksan';
-
-  @override
-  String get gzNavHintTiles =>
-      'Tumingin ◀ ▶ ▲ ▼ para pumili · kumurap para buksan';
-
-  @override
-  String get gzNavHintTabsLookUp =>
-      'Tumingin ◀ ▶ para pumili · tumingala para buksan';
-
-  @override
-  String get gzNavHintTilesLookUp =>
-      'Tumingin ◀ ▶ ▼ para pumili · tumingala para buksan';
 
   @override
   String get gzPracticeIntro =>
@@ -11901,6 +11878,260 @@ class AppLocalizationsFil extends AppLocalizations {
   String gzsStepUp(String setting) {
     return 'Dagdagan ang $setting';
   }
+
+  @override
+  String get gzHintMoveTabs => 'Tumingin ◀ ▶ para gumalaw';
+
+  @override
+  String get gzHintMove => 'Tumingin ◀ ▶ ▲ ▼ para gumalaw';
+
+  @override
+  String get gzHintMoveNoUp => 'Tumingin ◀ ▶ ▼ para gumalaw';
+
+  @override
+  String get gzHintPickBlink => 'kumurap para pumili';
+
+  @override
+  String get gzHintPickLookUp => 'tumingala para pumili';
+
+  @override
+  String get gzHintPickSwitch => 'pindutin ang switch para pumili';
+
+  @override
+  String get gzHintPickEither => 'kumurap o pindutin ang switch para pumili';
+
+  @override
+  String get gzHintPickRest => 'manatiling nakatigil para pumili';
+
+  @override
+  String get gzHintScanSwitch =>
+      'Pindutin ang switch kapag umilaw ang gusto mo';
+
+  @override
+  String get gzHintScanEither =>
+      'Kumurap o pindutin ang switch kapag umilaw ang gusto mo';
+
+  @override
+  String get gzLeaveSwitch => 'Pindutin ang switch para bumalik';
+
+  @override
+  String get gzLeaveRest =>
+      'Tumingin sa isang target, saka manatiling nakatigil para bumalik';
+
+  @override
+  String get gzPracticeSwitch => 'Ngayon, pindutin ang switch';
+
+  @override
+  String get gzPracticeRest =>
+      'Ngayon, tumingin sa isang target at manatiling nakatigil';
+
+  @override
+  String get gzkShift => 'Shift';
+
+  @override
+  String get gzkSpace => 'Espasyo';
+
+  @override
+  String get gzkDelete => 'Burahin';
+
+  @override
+  String get gzkDone => 'Tapos';
+
+  @override
+  String get gzcTitle => 'Posisyon ng pahinga';
+
+  @override
+  String get gzcGetReady => 'Umupo gaya ng dati at tumingin sa tuldok.';
+
+  @override
+  String get gzcHold => 'Manatiling nakatigil…';
+
+  @override
+  String get gzcSaved => 'Nai-save! Dito na susukatin ang mga galaw.';
+
+  @override
+  String get gzcFailed =>
+      'Gumalaw ang ulo, o hindi nakita ang mukha. Subukan natin ulit.';
+
+  @override
+  String get gzsChoose => 'Paano pumili';
+
+  @override
+  String get gzsPickBlink => 'Pagkurap';
+
+  @override
+  String get gzsPickBlinkSub =>
+      'Pumipili ang mahaba at sinadyang pagkurap. Kapag sarado ang “Kumurap para kumpirmahin”, ang pagtingala ang pipili.';
+
+  @override
+  String get gzsPickSwitch => 'Switch o button ng controller';
+
+  @override
+  String get gzsPickSwitchSub =>
+      'Pumipili ang kahit anong button ng Bluetooth controller o switch. Kapag naka-Scanning mode, sarado ang camera.';
+
+  @override
+  String get gzsPickEither => 'Pagkurap o switch';
+
+  @override
+  String get gzsPickEitherSub =>
+      'Pumipili ang pagkurap o ang pagpindot ng button — alinman ang mas madali.';
+
+  @override
+  String get gzsDwellSelect => 'Tumingin at huminto para pumili';
+
+  @override
+  String get gzsDwellSelectSub =>
+      'Pagkatapos ilipat ang highlight, manatiling nakatigil at mapipili ito — para sa mga mag-aaral na hindi makakurap nang sinasadya.';
+
+  @override
+  String get gzsDwellSelectScan =>
+      'Hindi ginagamit sa Scanning mode — kusang gumagalaw ang highlight doon.';
+
+  @override
+  String get gzsDwellSelectMs => 'Tagal ng pagtigil';
+
+  @override
+  String get gzsDwellSelectHelp =>
+      'Gaano katagal mananatiling nakatigil sa isang button bago ito mapili.';
+
+  @override
+  String get gzsSpeak => 'Basahin nang malakas ang highlight';
+
+  @override
+  String get gzsSpeakSub =>
+      'Binibigkas ang pangalan ng bawat button pagdating ng highlight — nakatutulong sa scanning.';
+
+  @override
+  String get gzsCameraOff =>
+      'Sarado ang camera: ang Scanning mode ang naglilipat ng highlight at ang switch ang pumipili, kaya hindi kailangan ang mga setting na ito.';
+
+  @override
+  String get gzsSmoothing => 'Pagpapakinis ng galaw';
+
+  @override
+  String get gzsSmoothingHelp =>
+      'Hindi pinapansin ang maliliit na panginginig, kaya gumagalaw lang ang highlight kapag sinadya mo.';
+
+  @override
+  String get gzsSmoothOff => 'Sarado';
+
+  @override
+  String get gzsSmoothOffSub => 'Sinusundan agad ang bawat galaw.';
+
+  @override
+  String get gzsSmoothLight => 'Magaan';
+
+  @override
+  String get gzsSmoothLightSub =>
+      'Hindi pinapansin ang maliliit na panginginig. Pinakamainam sa karamihan.';
+
+  @override
+  String get gzsSmoothStrong => 'Malakas';
+
+  @override
+  String get gzsSmoothStrongSub =>
+      'Para sa panginginig o biglaang galaw. Medyo mas mabagal tumugon.';
+
+  @override
+  String get gzsRest => 'Posisyon ng pahinga';
+
+  @override
+  String get gzsRestNotSet =>
+      'Hindi pa naitatakda — sinusukat ang galaw mula sa diretsong pagtingin sa screen.';
+
+  @override
+  String get gzsRestSet =>
+      'Naitakda na — sinusukat ang galaw mula sa sarili mong komportableng posisyon.';
+
+  @override
+  String get gzsRestHelp =>
+      'Nakatutulong kapag karaniwang nakabaling o nakatagilid ang ulo, halimbawa sa wheelchair.';
+
+  @override
+  String get gzsRestButton => 'Itakda ang posisyon';
+
+  @override
+  String get gzsRestReset => 'I-reset';
+
+  @override
+  String gzsForLearner(String name) {
+    return 'Gaze Control ni $name';
+  }
+
+  @override
+  String gzsForLearnerNote(String name) {
+    return 'Binabago mo ang mga setting ni $name. Nai-save ito sa tablet na ito at gagamitin sa susunod na pag-sign in ni $name dito.';
+  }
+
+  @override
+  String gzsNotOnTablet(String name) {
+    return 'Nasa ibang tablet ang profile ni $name. Doon i-set up ang Gaze Control.';
+  }
+
+  @override
+  String get cdsGazeControl => 'Gaze Control';
+
+  @override
+  String get gzmTitle => 'Paggamit ng gaze ngayong linggo';
+
+  @override
+  String get gzmNone => 'Walang paggamit ng gaze sa nakaraang 7 araw.';
+
+  @override
+  String get gzmActive => 'Oras na nagamit';
+
+  @override
+  String gzmMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get gzmSelections => 'Mga napili';
+
+  @override
+  String get gzmPerMinute => 'Napili bawat minuto';
+
+  @override
+  String get gzmSeconds => 'Segundo bawat pili';
+
+  @override
+  String get gzmMistakes => 'Agad na binawi';
+
+  @override
+  String get gzmKeys => 'Mga key na na-type';
+
+  @override
+  String get gzmCalibrations => 'Pagtakda ng posisyon';
+
+  @override
+  String get gzmHelp =>
+      'Binibilang sa tablet na ito. Hindi kasama sa “Oras na nagamit” ang paghinto nang higit sa dalawang minuto; ang “Agad na binawi” ay pagpili na sinundan ng Bumalik sa loob ng ilang segundo.';
+
+  @override
+  String get gzmExport => 'I-export (CSV)';
+
+  @override
+  String get gzsKeepTitle => 'Panatilihin ang pagbabagong ito?';
+
+  @override
+  String get gzsKeepOff =>
+      'Sarado na ang Gaze Control. Kung hindi ka makagamit ng pindot, maghintay lang — kusa itong magbubukas ulit.';
+
+  @override
+  String get gzsKeepSwitch =>
+      'Ang switch mo na ang pumipili, hindi ang pagkurap. Pindutin ang switch para panatilihin ito. Kung wala kang switch, maghintay lang — kusang babalik ang pagkurap.';
+
+  @override
+  String gzsKeepCountdown(int seconds) {
+    return 'Babalik sa dati sa loob ng $seconds s';
+  }
+
+  @override
+  String get gzsKeep => 'Panatilihin';
+
+  @override
+  String get gzsUndo => 'Ibalik';
 
   @override
   String get spdSupport => 'Suporta';

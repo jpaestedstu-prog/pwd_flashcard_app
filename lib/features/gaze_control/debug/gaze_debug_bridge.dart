@@ -16,6 +16,9 @@ import '../models/gaze_settings.dart';
 import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_home_grid.dart';
 import '../providers/gaze_settings_provider.dart';
+import '../services/gaze_metrics.dart';
+import '../services/gaze_switch_input.dart';
+import '../widgets/gaze_session.dart';
 import '../widgets/voice_control_mixin.dart';
 
 /// **Debug-only** remote control for Gaze Control, so the whole feature can be
@@ -190,6 +193,36 @@ abstract final class GazeDebugBridge {
           default:
             return {'ok': false, 'error': 'kind = levelup | achievement'};
         }
+      case 'switch':
+        // One press of the learner's switch, as a controller button or a
+        // switch interface's key would deliver it.
+        final claimed = GazeSwitchInput.instance.claiming.value;
+        GazeSwitchInput.instance.press();
+        return {
+          'ok': claimed,
+          'claiming': claimed,
+          'presses': GazeSwitchInput.instance.debugPresses,
+        };
+      case 'metrics':
+        String? id = p['profile'];
+        if (id == null && context != null) {
+          id = ProviderScope.containerOf(context, listen: false)
+              .read(profileProvider)
+              ?.id;
+        }
+        if (id == null) return {'ok': false, 'error': 'no profile'};
+        if (p['clear'] == '1') {
+          GazeMetrics.instance.forget(id);
+          return {'ok': true, 'profile': id, 'cleared': true};
+        }
+        if (p['flush'] == '1') GazeMetrics.instance.flush();
+        final days = int.tryParse(p['days'] ?? '') ?? 1;
+        return {
+          'ok': true,
+          'profile': id,
+          'total': GazeMetrics.instance.total(id, days: days).toMap(),
+          'recorded': GazeMetrics.instance.allDays(id).length,
+        };
       case 'settings':
         if (context == null) return {'ok': false, 'error': 'no context'};
         final container = ProviderScope.containerOf(context, listen: false);
@@ -255,6 +288,11 @@ abstract final class GazeDebugBridge {
       'profile': profile,
       'settings': settings,
       'cameraOwners': gazeCameraOwners.count,
+      'switch': {
+        'claiming': GazeSwitchInput.instance.claiming.value,
+        'presses': GazeSwitchInput.instance.debugPresses,
+      },
+      'spoken': [...gazeDebugSpoken],
       'controllers': [
         for (final c in GazeController.debugLive) c.debugDescribe(),
       ],

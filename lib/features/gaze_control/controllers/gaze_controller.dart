@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show kReleaseMode;
@@ -9,6 +10,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import '../logic/blink_detector.dart';
 import '../logic/dwell_tracker.dart';
 import '../logic/gaze_zone_resolver.dart';
+import '../logic/one_euro_filter.dart';
 import '../models/gaze_models.dart';
 import '../models/gaze_settings.dart';
 import '../services/gaze_detector.dart';
@@ -46,6 +48,12 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
        _blinkEnabled = settings.blinkSelects,
        _mirrorHorizontal = settings.mirrorHorizontal,
        _invertVertical = settings.invertVertical,
+       _usesCamera = settings.usesCamera,
+       _restYaw = settings.restYaw,
+       _restPitch = settings.restPitch,
+       _restSelectEnabled = settings.restSelects,
+       _restSelectDuration = settings.dwellSelectDuration,
+       _smoothing = settings.smoothing,
        _dwell = DwellTracker(dwellDuration: settings.dwellDuration),
        _detector =
            detectorFactory?.call() ??
@@ -64,6 +72,26 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   bool _mirrorHorizontal;
   bool _invertVertical;
 
+  /// False for switch scanning: no camera at all, the highlight moves by
+  /// itself and a switch press picks.
+  final bool _usesCamera;
+
+  /// The learner's resting head position (raw camera angles); readings are
+  /// measured from here instead of from straight ahead.
+  double _restYaw;
+  double _restPitch;
+
+  /// Look and hold to select.
+  bool _restSelectEnabled;
+  Duration _restSelectDuration;
+
+  GazeSmoothing _smoothing;
+  OneEuroFilter? _turnFilter;
+  OneEuroFilter? _tiltFilter;
+
+  /// Whether this controller opens the camera (see [GazeSettings.usesCamera]).
+  bool get usesCamera => _usesCamera;
+
   /// Re-tunes a running controller in place: sensitivity, hold time, blink
   /// and the left/right · up/down calibration all take effect on the next
   /// frame, with no camera restart.
@@ -72,12 +100,27 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   /// without this a teacher who changed a learner's sensitivity saw nothing
   /// happen — the shell kept the values it was started with until something
   /// happened to bounce its camera.
+  ///
+  /// Switching the camera on or off ([GazeSettings.usesCamera]) is the one
+  /// change this cannot make in place — the owner restarts the controller.
   void applySettings(GazeSettings settings) {
     _turnThreshold = settings.turnThresholdDeg;
     _tiltThreshold = settings.tiltThresholdDeg;
     _blinkEnabled = settings.blinkSelects;
     _mirrorHorizontal = settings.mirrorHorizontal;
     _invertVertical = settings.invertVertical;
+    _restYaw = settings.restYaw;
+    _restPitch = settings.restPitch;
+    _restSelectDuration = settings.dwellSelectDuration;
+    if (_restSelectEnabled != settings.restSelects) {
+      _restSelectEnabled = settings.restSelects;
+      disarmRestSelect();
+    }
+    if (_smoothing != settings.smoothing) {
+      _smoothing = settings.smoothing;
+      _turnFilter = null;
+      _tiltFilter = null;
+    }
     final detector = _detector;
     if (detector is MlKitGazeDetector) {
       detector.calibrate(
@@ -126,6 +169,12 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     'dwellMs': _dwell.dwellDuration.inMilliseconds,
     'mirrorHorizontal': _mirrorHorizontal,
     'invertVertical': _invertVertical,
+    'usesCamera': _usesCamera,
+    'rest': [_restYaw, _restPitch],
+    'smoothing': _smoothing.name,
+    'restSelect': _restSelectEnabled,
+    'restArmed': _restArmed,
+    'restProgress': double.parse(_restProgress.toStringAsFixed(2)),
     'framesProcessed': _debugFrames,
   };
 
@@ -133,6 +182,14 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   void debugSelect(GazeZone zone) {
     if (kReleaseMode || _disposed) return;
     onSelect?.call(zone);
+  }
+
+  /// Feeds one camera reading through the whole pipeline (resting position,
+  /// smoothing, dwell, blink, keep-still) as if it had come from a frame.
+  @visibleForTesting
+  void debugFeed(FaceSignal signal, Duration now) {
+    if (kReleaseMode || _disposed) return;
+    _applySignal(signal, now);
   }
 
   /// Fires a deliberate blink — ignored when blink isn't a selector here,
@@ -178,6 +235,14 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> start() {
     WidgetsBinding.instance.addObserver(this);
     if (!kReleaseMode && !debugLive.contains(this)) debugLive.add(this);
+    if (!_usesCamera) {
+      // Switch scanning: nothing to start. Report ready (and a "face", so no
+      // affordance asks the learner to look at a camera that is not on).
+      _status = GazeStatus.ready;
+      _faceVisible = true;
+      _notify();
+      return Future.value();
+    }
     return _initCamera();
   }
 
@@ -210,9 +275,11 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   /// the hardware runs one session at a time. The controller stays alive and
   /// keeps its tuning; [resumeCamera] brings the camera back.
   void suspendCamera() {
-    if (_suspended || _disposed) return;
+    if (_suspended || _disposed || !_usesCamera) return;
     _suspended = true;
     _restartAfterInit = false;
+    // A keep-still pending on this screen must not fire when it comes back.
+    disarmRestSelect();
     _teardownController();
     _status = GazeStatus.initializing;
     _notify();
@@ -220,13 +287,14 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Re-acquires the camera after [suspendCamera].
   void resumeCamera() {
-    if (!_suspended || _disposed) return;
+    if (!_suspended || _disposed || !_usesCamera) return;
     _suspended = false;
     _initCamera();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_usesCamera) return;
     final controller = _controller;
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
@@ -418,9 +486,14 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  void _applySignal(FaceSignal signal, Duration now) {
-    _faceVisible = signal.hasFace;
+  void _applySignal(FaceSignal raw, Duration now) {
+    _faceVisible = raw.hasFace;
+    final samples = _restSamples;
+    if (samples != null && raw.hasFace) {
+      samples.add((raw.headTurn, raw.headTilt));
+    }
 
+    final signal = _steadied(raw, now);
     final zone = resolveGazeZone(
       signal,
       turnThresholdDeg: _turnThreshold,
@@ -431,6 +504,7 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
         _blinkEnabled &&
         signal.hasFace &&
         _blink.update(signal.leftEyeOpen, signal.rightEyeOpen, now);
+    final rested = _updateRest(reading.zone, signal.hasFace, now);
 
     _zone = reading.zone;
     _progress = reading.progress;
@@ -440,7 +514,119 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
       onSelect?.call(reading.zone);
     } else if (blinked) {
       onBlink?.call();
+    } else if (rested) {
+      onRest?.call();
     }
+  }
+
+  /// The head angle measured from the learner's resting position and
+  /// steadied by the One Euro filter — what the zone is decided on.
+  FaceSignal _steadied(FaceSignal raw, Duration now) {
+    if (!raw.hasFace) {
+      // A lost face must not leave the filter remembering the old angle.
+      _turnFilter?.reset();
+      _tiltFilter?.reset();
+      return raw;
+    }
+    var turn = raw.headTurn - _restYaw * (_mirrorHorizontal ? -1 : 1);
+    var tilt = raw.headTilt - _restPitch * (_invertVertical ? -1 : 1);
+    final params = switch (_smoothing) {
+      GazeSmoothing.off => null,
+      GazeSmoothing.light => (minCutoff: 1.2, beta: 0.04),
+      GazeSmoothing.strong => (minCutoff: 0.5, beta: 0.02),
+    };
+    if (params != null) {
+      _turnFilter ??= OneEuroFilter(
+        minCutoff: params.minCutoff,
+        beta: params.beta,
+      );
+      _tiltFilter ??= OneEuroFilter(
+        minCutoff: params.minCutoff,
+        beta: params.beta,
+      );
+      turn = _turnFilter!.filter(turn, now);
+      tilt = _tiltFilter!.filter(tilt, now);
+    }
+    return FaceSignal(
+      hasFace: true,
+      headTurn: turn,
+      headTilt: tilt,
+      leftEyeOpen: raw.leftEyeOpen,
+      rightEyeOpen: raw.rightEyeOpen,
+    );
+  }
+
+  // ── Look and hold to select ────────────────────────────────────────────
+
+  /// Fired once when the learner has kept still on an armed highlight for the
+  /// keep-still time (see [armRestSelect]).
+  VoidCallback? onRest;
+
+  bool _restArmed = false;
+  Duration? _restSince;
+  double _restProgress = 0;
+
+  /// How far the keep-still timer has filled, 0 … 1 — for a progress ring.
+  double get restProgress => _restProgress;
+
+  /// Whether a keep-still is currently counting toward a selection.
+  bool get restArmed => _restArmed;
+
+  /// Arms look-and-hold for the control that has just been highlighted: once
+  /// the head comes back to rest and stays there for the keep-still time, it
+  /// opens. Armed again by every move, so resting where you already are does
+  /// nothing — only a highlight you moved to can be picked this way.
+  void armRestSelect() {
+    if (!_restSelectEnabled) return;
+    _restArmed = true;
+    _restSince = null;
+    _restProgress = 0;
+  }
+
+  /// Stops a pending keep-still (the screen changed, something covers it).
+  void disarmRestSelect() {
+    _restArmed = false;
+    _restSince = null;
+    _restProgress = 0;
+  }
+
+  /// Advances the keep-still timer; true on the frame it completes.
+  bool _updateRest(GazeZone zone, bool face, Duration now) {
+    if (!_restArmed) return false;
+    if (!face || zone != GazeZone.none) {
+      _restSince = null;
+      _restProgress = 0;
+      return false;
+    }
+    final since = _restSince ??= now;
+    final total = _restSelectDuration.inMicroseconds;
+    final elapsed = (now - since).inMicroseconds;
+    _restProgress = total <= 0 ? 1 : (elapsed / total).clamp(0.0, 1.0);
+    if (_restProgress < 1) return false;
+    disarmRestSelect();
+    return true;
+  }
+
+  // ── Resting position ───────────────────────────────────────────────────
+
+  List<(double, double)>? _restSamples;
+
+  /// Watches the learner hold still for [window] and returns their resting
+  /// head position as raw camera angles (for [GazeSettings.restYaw] /
+  /// [GazeSettings.restPitch]), or null when it could not tell — the face was
+  /// not seen in enough frames, or the head was moving.
+  Future<({double yaw, double pitch})?> captureRestPosition({
+    Duration window = const Duration(seconds: 2),
+  }) async {
+    final samples = <(double, double)>[];
+    _restSamples = samples;
+    await Future<void>.delayed(window);
+    if (identical(_restSamples, samples)) _restSamples = null;
+    return restFromSamples(
+      samples,
+      mirrorHorizontal: _mirrorHorizontal,
+      invertVertical: _invertVertical,
+    );
   }
 
   /// Builds an ML Kit [InputImage] from a [CameraImage], handling rotation and
@@ -486,4 +672,41 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
       ),
     );
   }
+}
+
+/// The resting head position from the readings taken while a learner held
+/// still, as raw camera angles — or null when there is not enough to go on.
+///
+/// [samples] are head angles in the learner's frame (after left/right and
+/// up/down calibration); the result is converted back to the raw camera frame
+/// so a later change to those calibration switches still measures from the
+/// same physical position. Rejects fewer than eight readings (the face was not
+/// seen), a spread wider than 6° (the head was moving), and anything further
+/// than [GazeSettings.maxRestDeg] from straight ahead (looking away, not
+/// resting). Pure, so the arithmetic is unit-tested without a camera.
+({double yaw, double pitch})? restFromSamples(
+  List<(double, double)> samples, {
+  required bool mirrorHorizontal,
+  required bool invertVertical,
+}) {
+  if (samples.length < 8) return null;
+  double mean(Iterable<double> v) => v.reduce((a, b) => a + b) / v.length;
+  final turns = samples.map((s) => s.$1);
+  final tilts = samples.map((s) => s.$2);
+  final turn = mean(turns);
+  final tilt = mean(tilts);
+  double spread(Iterable<double> v, double m) {
+    final variance = mean(v.map((x) => (x - m) * (x - m)));
+    return variance <= 0 ? 0 : math.sqrt(variance);
+  }
+
+  if (spread(turns, turn) > 6 || spread(tilts, tilt) > 6) return null;
+  if (turn.abs() > GazeSettings.maxRestDeg ||
+      tilt.abs() > GazeSettings.maxRestDeg) {
+    return null;
+  }
+  return (
+    yaw: turn * (mirrorHorizontal ? -1 : 1),
+    pitch: tilt * (invertVertical ? -1 : 1),
+  );
 }

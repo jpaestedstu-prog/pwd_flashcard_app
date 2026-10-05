@@ -339,7 +339,7 @@ void main() {
         'fsl_engagement.csv',
         'summary_stats.json',
       ]));
-      expect(files, hasLength(16));
+      expect(files, hasLength(17));
     });
   });
 }

@@ -511,6 +511,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
       GazeAction(
         zone: GazeZone.down,
         label: l10n.gazeChoose,
+        selects: true,
         icon: Icons.check_circle_rounded,
         color: AppColors.success,
         enabled: canMove,

@@ -110,6 +110,8 @@ import '../widgets/voice_navigation_observer.dart';
 import '../features/gaze_control/widgets/shell_modal_observer.dart';
 import '../features/gaze_control/widgets/gaze_traversal_scope.dart';
 import '../features/object_scan/screens/word_hunt_collection_screen.dart';
+import '../features/gaze_control/models/gaze_settings.dart';
+import '../features/gaze_control/screens/gaze_calibration_screen.dart';
 import '../features/gaze_control/screens/gaze_control_screen.dart';
 import '../features/gamepad/screens/gamepad_practice_screen.dart';
 import '../features/gamepad/screens/gamepad_settings_screen.dart';
@@ -1814,18 +1816,40 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Settings → Accessibility opens the config screen (`/gaze-settings`),
       // which launches the full-screen live preview (`/gaze-control`). Both
       // sit outside the bottom-nav shell.
+      // `?profile=<id>&name=<name>` opens a learner's settings for their
+      // teacher or parent (from the learner's card), instead of the
+      // signed-in profile's.
       GoRoute(
         path: '/gaze-settings',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
-          child: const GazeSettingsScreen(),
+          child: GazeSettingsScreen(
+            profileId: state.uri.queryParameters['profile'],
+            learnerName: state.uri.queryParameters['name'],
+          ),
         ),
       ),
+      // `extra`: a learner's settings, when a grown-up tries them out.
       GoRoute(
         path: '/gaze-control',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
-          child: const GazeControlScreen(),
+          child: GazeControlScreen(
+            settingsOverride: state.extra is GazeSettings
+                ? state.extra as GazeSettings
+                : null,
+          ),
+        ),
+      ),
+      // Set my resting position (`?profile=<id>` for a learner's, run by
+      // their teacher or parent).
+      GoRoute(
+        path: '/gaze-calibrate',
+        pageBuilder: (context, state) => AppPageTransitions.slideUp(
+          key: state.pageKey,
+          child: GazeCalibrationScreen(
+            profileId: state.uri.queryParameters['profile'],
+          ),
         ),
       ),
       // ─── Bluetooth game controller ──────────────────

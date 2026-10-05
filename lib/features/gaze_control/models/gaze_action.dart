@@ -16,6 +16,10 @@ class GazeAction {
   final VoidCallback onSelect;
   final bool enabled;
 
+  /// This action *picks* (a game's "Choose") rather than moving a highlight
+  /// — so the usage measurements count it as a selection.
+  final bool selects;
+
   const GazeAction({
     required this.zone,
     required this.label,
@@ -23,5 +27,6 @@ class GazeAction {
     required this.color,
     required this.onSelect,
     this.enabled = true,
+    this.selects = false,
   });
 }

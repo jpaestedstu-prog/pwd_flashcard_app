@@ -19,6 +19,8 @@ import '../features/experiment/models/experiment_models.dart';
 import '../features/gaze_control/controllers/gaze_controller.dart'
     show GazeStatus;
 import '../features/gamepad/providers/gamepad_sections.dart';
+import '../features/gaze_control/models/gaze_settings.dart';
+import '../features/gaze_control/widgets/gaze_hints.dart';
 import '../features/gaze_control/widgets/nav_gaze_scope.dart';
 import '../widgets/level_up_celebration_screen.dart';
 import '../features/assessment/widgets/learner_assignment_sync.dart';
@@ -512,8 +514,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
               faceVisible: gaze.faceVisible,
               status: gaze.status,
               featureTilesActive: gaze.featureTilesActive,
-              scanning: gaze.scanning,
-              blinkSelects: gaze.blinkSelects,
+              settings: gaze.settings,
               bottomOffset:
                   _computeMetrics(context).bar +
                   MediaQuery.paddingOf(context).bottom,
@@ -991,13 +992,10 @@ class _GazeNavHint extends StatelessWidget {
   /// camera" wording instead of an endless "Starting gaze…".
   final GazeStatus status;
 
-  /// Scanning mode: the highlight moves by itself, so the hint says to blink
-  /// when the wanted control lights up rather than to look anywhere.
-  final bool scanning;
-
-  /// Whether a blink picks; when it doesn't, looking up does, and the hint
-  /// must not tell a learner to blink at something that will not answer.
-  final bool blinkSelects;
+  /// The learner's gaze settings: the hint must name the moves that steer
+  /// and the gesture that picks for *this* learner — a learner whose blinks
+  /// don't pick must not be told to blink, a switch user to look anywhere.
+  final GazeSettings settings;
 
   const _GazeNavHint({
     required this.ready,
@@ -1005,27 +1003,8 @@ class _GazeNavHint extends StatelessWidget {
     required this.bottomOffset,
     required this.status,
     this.featureTilesActive = false,
-    this.scanning = false,
-    this.blinkSelects = true,
+    this.settings = const GazeSettings(),
   });
-
-  /// What to do once the camera can see the learner: the moves that steer and
-  /// the gesture that opens, which depend on the reach, on scanning, and on
-  /// whether a blink picks at all.
-  String _readyHint(AppLocalizations? l10n) {
-    if (scanning) {
-      return l10n?.gzFocusHintScan ?? 'Blink when the one you want lights up';
-    }
-    if (blinkSelects) {
-      return featureTilesActive
-          ? (l10n?.gzNavHintTiles ?? 'Look ◀ ▶ ▲ ▼ to choose · blink to open')
-          : (l10n?.gzNavHintTabs ?? 'Look ◀ ▶ to choose · blink to open');
-    }
-    return featureTilesActive
-        ? (l10n?.gzNavHintTilesLookUp ??
-              'Look ◀ ▶ ▼ to choose · look up to open')
-        : (l10n?.gzNavHintTabsLookUp ?? 'Look ◀ ▶ to choose · look up to open');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1057,7 +1036,14 @@ class _GazeNavHint extends StatelessWidget {
                 Icons.face_retouching_natural_rounded,
                 l10n?.gzNavHintLook ?? 'Look at the screen',
               )
-            : (Icons.visibility_rounded, _readyHint(l10n)),
+            : (
+                Icons.visibility_rounded,
+                GazeHints.forSettings(
+                  context,
+                  settings,
+                  rowsReachable: featureTilesActive,
+                ),
+              ),
     };
     return Positioned(
       left: 16,

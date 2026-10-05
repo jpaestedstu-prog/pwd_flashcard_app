@@ -16,6 +16,7 @@ import '../../features/survey/models/survey_models.dart';
 import '../../features/survey/services/smileyometer_service.dart';
 import '../../features/experiment/models/experiment_models.dart';
 import '../../features/experiment/services/experiment_service.dart';
+import '../../features/gaze_control/services/gaze_metrics.dart';
 import '../services/adaptive_difficulty_service.dart';
 import '../services/engagement_tracker.dart';
 import 'research_export_rows.dart';
@@ -41,6 +42,8 @@ import '../accessibility/learner_support.dart';
 /// 10. `fsl_engagement.csv`    – per-view sign-language log + distinct signs
 /// 10b. `fsl_mastery.csv`     – self-claimed vs educator-verified production
 ///     (the calibration measure: does a learner know what they can sign?)
+/// 11. `gaze_usage.csv`        – per-day Gaze Control use: time, choices,
+///     speed, how each choice was made, and choices undone straight away
 /// 10. `summary_stats.json`    – high-level aggregates for quick analysis
 class ResearchExportService {
   const ResearchExportService._();
@@ -138,6 +141,7 @@ class ResearchExportService {
       'engagement_metrics.csv': _buildEngagementMetrics(learners, idMap),
       'fsl_engagement.csv': _buildFslEngagement(learners, idMap),
       'fsl_mastery.csv': _buildFslMastery(learners, idMap),
+      'gaze_usage.csv': _buildGazeUsage(learners, idMap),
       'summary_stats.json': _buildSummaryJson(learners, idMap),
     };
   }
@@ -720,6 +724,59 @@ class ResearchExportService {
           '${view['date'] ?? ''},'
           '${repeat ? 1 : 0},'
           '${progress.signsLearned}',
+        );
+      }
+    }
+    return buf.toString();
+  }
+
+  // ─── File 14: Gaze Control usage ───────────────────────
+
+  /// One row per learner per day of Gaze Control use, from the counters the
+  /// gaze screens keep on this tablet ([GazeMetrics]): time used
+  /// (`active_minutes` — the time between the learner's own inputs, pauses
+  /// over two minutes left out), how many choices were made and how fast, what made each choice (blink,
+  /// switch, keeping still, a held head turn, voice), and how many were undone
+  /// straight away — a Back within a few seconds of a choice, the study's
+  /// mis-selection measure. Days without use are left out.
+  static String _buildGazeUsage(
+    List<(UserProfile, LearningProgress)> students,
+    Map<String, String> idMap,
+  ) {
+    final buf = StringBuffer();
+    buf.writeln(
+      'student_id,disability_type,date,active_minutes,moves,scan_steps,'
+      'selections,selections_per_minute,avg_seconds_to_select,backs,'
+      'mis_selections,blink,switch,hold_still,head_hold,voice,keyboard_keys,'
+      'calibrations',
+    );
+    String n(double? v, [int digits = 2]) =>
+        v == null ? '' : v.toStringAsFixed(digits);
+    for (final (profile, _) in students) {
+      final sid = idMap[profile.id]!;
+      for (final d in GazeMetrics.instance.allDays(profile.id)) {
+        if (d.isEmpty && d.calibrations == 0) continue;
+        buf.writeln(
+          [
+            sid,
+            profile.disabilityType.name,
+            d.date,
+            n(d.activeMs / 60000, 1),
+            d.moves,
+            d.scanSteps,
+            d.selections,
+            n(d.selectionsPerMinute),
+            n(d.avgSecondsToSelect),
+            d.backs,
+            d.misSelections,
+            d.blinkSelects,
+            d.switchSelects,
+            d.restSelects,
+            d.headHoldSelects,
+            d.voiceSelects,
+            d.keyboardKeys,
+            d.calibrations,
+          ].join(','),
         );
       }
     }

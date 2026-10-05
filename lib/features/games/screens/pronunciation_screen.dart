@@ -340,6 +340,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
       GazeAction(
         zone: GazeZone.down,
         label: l10n.gazeChoose,
+        selects: true,
         icon: Icons.check_circle_rounded,
         color: AppColors.success,
         enabled: canMove,

@@ -17,7 +17,10 @@ import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_home_grid.dart';
 import '../providers/gaze_settings_provider.dart';
 import '../services/gaze_detector.dart';
+import '../services/gaze_metrics.dart';
+import 'gaze_hints.dart';
 import 'gaze_route_guard.dart';
+import 'gaze_session.dart';
 import 'gaze_traversal.dart';
 import 'shell_modal_observer.dart';
 import 'voice_control_mixin.dart';
@@ -60,9 +63,8 @@ class NavGazeState {
   /// Scanning mode is on: the highlight moves by itself and a blink picks.
   final bool scanning;
 
-  /// A blink picks things. When false, looking up does (see
-  /// [GazeSettings.blinkSelects]) — the hint has to say which.
-  final bool blinkSelects;
+  /// The learner's settings, so the hint can say what steers and what picks.
+  final GazeSettings settings;
 
   const NavGazeState({
     required this.active,
@@ -73,7 +75,7 @@ class NavGazeState {
     this.status = GazeStatus.initializing,
     this.wholeNavRow = false,
     this.scanning = false,
-    this.blinkSelects = true,
+    this.settings = const GazeSettings(),
   });
 
   static const NavGazeState inactive = NavGazeState(
@@ -174,7 +176,7 @@ class NavGazeScope extends ConsumerStatefulWidget {
 }
 
 class _NavGazeScopeState extends ConsumerState<NavGazeScope>
-    with VoiceControlMixin, GazeRouteGuard {
+    with VoiceControlMixin, GazeRouteGuard, GazeSessionMixin {
   GazeController? _gaze;
   late GazeGridCursor _cursor;
 
@@ -200,8 +202,22 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// Head moves, blinks, scan steps and voice while a route or an in-screen
   /// modal covers the hubs — plus the ring that shows where that is.
   late final GazeTraversal _traversal = GazeTraversal(
-    onMoved: () => ref.read(hapticServiceProvider).selectionClick(),
-    onPressed: () => ref.read(hapticServiceProvider).success(),
+    onMoved: () {
+      ref.read(hapticServiceProvider).selectionClick();
+      GazeMetrics.instance.moved();
+      _gaze?.armRestSelect();
+      sayFocusedSoon();
+    },
+    onScanned: () {
+      ref.read(hapticServiceProvider).selectionClick();
+      GazeMetrics.instance.scanned();
+      sayFocusedSoon();
+    },
+    onPressed: (by) {
+      ref.read(hapticServiceProvider).success();
+      gazePicked(_gaze, by);
+    },
+    onLeft: GazeMetrics.instance.backed,
   );
 
   bool get _scanning => _scanner != null;
@@ -370,8 +386,10 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     );
     controller.onSelect = _onZone;
     controller.onBlink = _commit;
+    controller.onRest = () => _commit(by: GazeSelectBy.rest);
     controller.addListener(_onControllerUpdate);
     _gaze = controller;
+    beginGazeSession(settings, onSwitch: _onSwitch);
     if (settings.scanMode) _startScanning();
     // Begin where the learner actually is (on the live tab).
     _syncCursor();
@@ -386,7 +404,11 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     setState(() {});
   }
 
+  /// A press on the learner's switch or controller.
+  void _onSwitch() => _commit(by: GazeSelectBy.switchButton);
+
   void _teardown() {
+    endGazeSession();
     _stopScanning();
     stopGazeCoverageWatch();
     _traversal.hideRing();
@@ -410,7 +432,16 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     _settings = next;
     final controller = _gaze;
     if (controller == null) return;
+    if (previous.usesCamera != next.usesCamera) {
+      // Camera on ↔ off (switch scanning) is the one change that cannot be
+      // made in place.
+      _teardown();
+      if (_shouldRun) _start();
+      setState(() {});
+      return;
+    }
     controller.applySettings(next);
+    reconfigureGazeSession(next, onSwitch: _onSwitch);
     if (previous.scanMode != next.scanMode ||
         previous.scanStepMs != next.scanStepMs) {
       _stopScanning();
@@ -453,13 +484,43 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     if (scanner.isEmpty) return;
     ref.read(hapticServiceProvider).selectionClick();
     scanner.step();
+    GazeMetrics.instance.scanned();
+    _sayScanned();
     _publishFocus();
     setState(() {});
   }
 
+  /// The name of what scanning has just lit: a whole row's names, a control,
+  /// a tab.
+  void _sayScanned() {
+    final scanner = _scanner;
+    if (scanner == null || scanner.isEmpty) return;
+    final labels = _rowLabels(scanner.row);
+    final col = scanner.col;
+    if (col == null) {
+      sayHighlight(labels.join(', '));
+    } else if (col < labels.length) {
+      sayHighlight(labels[col]);
+    }
+  }
+
+  /// The names of the controls in combined-grid row [row].
+  List<String> _rowLabels(int row) {
+    if (row < _tileRowCount) {
+      return [for (final c in gazeHomeGrid.rows[row]) c.label];
+    }
+    return widget.navLabels;
+  }
+
+  /// The name of the control the D-pad cursor rests on.
+  void _sayCursor() {
+    final labels = _rowLabels(_onTileRow ? _cursor.row : _tileRowCount);
+    if (_cursor.col < labels.length) sayHighlight(labels[_cursor.col]);
+  }
+
   /// A blink while scanning the hubs: step into the lit row, or open the lit
   /// control.
-  void _scanSelect() {
+  void _scanSelect(GazeSelectBy by) {
     final scanner = _scanner;
     if (scanner == null) return;
     scanner.setRows(_rowLengths());
@@ -467,26 +528,29 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     if (pick == null) {
       if (scanner.isEmpty) return;
       ref.read(hapticServiceProvider).selectionClick();
+      _sayScanned();
       _restartScanTimer();
       _publishFocus();
       setState(() {});
       return;
     }
     _restartScanTimer();
-    _activate(pick.row, pick.col);
+    _activate(pick.row, pick.col, by: by);
   }
 
   /// Opens the cell at a combined-grid position: a feature tile on the hub, or
   /// a bottom-nav tab.
-  void _activate(int row, int col) {
+  void _activate(int row, int col, {required GazeSelectBy by}) {
     if (row < _tileRowCount) {
       final cell = gazeHomeGrid.cellAt(row, col);
       if (cell == null) return;
       ref.read(hapticServiceProvider).success();
+      gazePicked(_gaze, by);
       cell.onActivate();
     } else {
       if (!_hasNavRow || col < 0 || col >= widget.itemCount) return;
       ref.read(hapticServiceProvider).success();
+      gazePicked(_gaze, by);
       widget.onCommit(col);
     }
   }
@@ -530,10 +594,12 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
           final cell = gazeHomeGrid.cellAt(result.row, result.col);
           if (cell == null) return;
           ref.read(hapticServiceProvider).success();
+          gazePicked(_gaze, GazeSelectBy.voice);
           cell.onActivate();
         } else {
           if (result.col < 0 || result.col >= widget.itemCount) return;
           ref.read(hapticServiceProvider).success();
+          gazePicked(_gaze, GazeSelectBy.voice);
           widget.onCommit(result.col);
         }
       // Scanning moves the highlight by itself; a spoken direction has no
@@ -547,7 +613,7 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
       case DpadVoiceIntent.moveDown:
         if (!_scanning) _moveVert(1);
       case DpadVoiceIntent.select:
-        _commit();
+        _commit(by: GazeSelectBy.voice);
       case DpadVoiceIntent.scrollUp:
       case DpadVoiceIntent.scrollDown:
       case DpadVoiceIntent.goBack:
@@ -564,6 +630,7 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
       case DpadVoiceIntent.scrollDown:
         voiceScroll(1);
       case DpadVoiceIntent.goBack:
+        GazeMetrics.instance.backed();
         Navigator.of(context).maybePop();
       default:
         break;
@@ -617,21 +684,20 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     // bar hidden. Hand the same head gesture to Flutter's focus traversal and
     // drive whatever *is* on screen instead of doing nothing.
     if (_useTraversal) {
-      _traversal.zone(zone, blinkSelects: _settings.blinkSelects);
+      _traversal.zone(zone, lookUpSelects: _settings.lookUpSelects);
       return;
     }
     final multiRow = _cursor.rowCount > 1;
-    final blink = _settings.blinkSelects;
     switch (zone) {
       case GazeZone.left:
         _moveHoriz(-1);
       case GazeZone.right:
         _moveHoriz(1);
       case GazeZone.up:
-        if (multiRow && blink) {
+        if (multiRow && !_settings.lookUpSelects) {
           _moveVert(-1);
         } else {
-          _commit();
+          _commit(by: GazeSelectBy.headHold);
         }
       case GazeZone.down:
         if (multiRow) _moveVert(1);
@@ -644,30 +710,39 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     if (!mounted || _cursor.currentRowLength <= 0) return;
     ref.read(hapticServiceProvider).selectionClick();
     setState(() => _cursor.moveHoriz(delta));
-    _publishFocus();
+    _afterMove();
   }
 
   void _moveVert(int delta) {
     if (!mounted || _cursor.rowCount <= 1) return;
     ref.read(hapticServiceProvider).selectionClick();
     setState(() => _cursor.moveVert(delta));
-    _publishFocus();
+    _afterMove();
   }
 
-  void _commit() {
+  /// Everything a D-pad move sets off: the highlight, the measurement, the
+  /// spoken name, and the look-and-hold timer for the new highlight.
+  void _afterMove() {
+    _publishFocus();
+    GazeMetrics.instance.moved();
+    _gaze?.armRestSelect();
+    _sayCursor();
+  }
+
+  void _commit({GazeSelectBy by = GazeSelectBy.blink}) {
     if (!mounted) return;
     // Traversal first: it works even when this shell has no grid of its own
     // (the nav-less guest Player shell).
     if (_useTraversal) {
-      _traversal.commit();
+      _traversal.commit(by: by);
       return;
     }
     if (_scanning) {
-      _scanSelect();
+      _scanSelect(by);
       return;
     }
     if (_cursor.rowCount == 0) return;
-    _activate(_onTileRow ? _cursor.row : _tileRowCount, _cursor.col);
+    _activate(_onTileRow ? _cursor.row : _tileRowCount, _cursor.col, by: by);
   }
 
   /// Publishes the focused cell to [gazeHomeGrid]: a (row, col) while up in the
@@ -722,10 +797,7 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     _traversal.syncRing(
       context,
       wanted: _gaze != null && _useTraversalForUi,
-      hint: GazeTraversal.hintFor(
-        scanning: _scanning,
-        blinkSelects: _settings.blinkSelects,
-      ),
+      hint: GazeHints.forSettings(context, _settings, rowsReachable: true),
     );
   }
 
@@ -813,7 +885,7 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
       featureTilesActive: gaze != null && _useFeatureGrid,
       status: gaze?.status ?? GazeStatus.initializing,
       scanning: _scanning,
-      blinkSelects: _settings.blinkSelects,
+      settings: _settings,
     );
     final content = widget.builder(context, state);
 

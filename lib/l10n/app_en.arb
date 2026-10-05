@@ -8200,15 +8200,9 @@
   "scmpStrengths": "Strengths & Weaknesses",
   "cmSignIn": "Please sign in to manage classes.",
   "mqRoundsPerPlayer": "Rounds per Player",
-  "gzFocusHint": "Look ◀ ▶ ▲ ▼ to move · blink to press",
-  "gzFocusHintLookUp": "Look ◀ ▶ ▼ to move · look up to press",
   "gzFocusHintScan": "Blink when the one you want lights up",
   "gzStarting": "Starting gaze…",
   "gzNavHintLook": "Look at the screen",
-  "gzNavHintTabs": "Look ◀ ▶ to choose · blink to open",
-  "gzNavHintTiles": "Look ◀ ▶ ▲ ▼ to choose · blink to open",
-  "gzNavHintTabsLookUp": "Look ◀ ▶ to choose · look up to open",
-  "gzNavHintTilesLookUp": "Look ◀ ▶ ▼ to choose · look up to open",
   "gzPracticeIntro": "Try each one: turn your head toward a target and hold it until the ring fills",
   "gzPracticeDone": "🎉 All done!",
   "gzLeaveBlink": "Blink to go back",
@@ -8230,6 +8224,115 @@
       }
     }
   },
+  "gzHintMoveTabs": "Look ◀ ▶ to move",
+  "gzHintMove": "Look ◀ ▶ ▲ ▼ to move",
+  "gzHintMoveNoUp": "Look ◀ ▶ ▼ to move",
+  "gzHintPickBlink": "blink to choose",
+  "gzHintPickLookUp": "look up to choose",
+  "gzHintPickSwitch": "press your switch to choose",
+  "gzHintPickEither": "blink or press your switch to choose",
+  "gzHintPickRest": "keep still to choose",
+  "gzHintScanSwitch": "Press your switch when the one you want lights up",
+  "gzHintScanEither": "Blink or press your switch when the one you want lights up",
+  "gzLeaveSwitch": "Press your switch to go back",
+  "gzLeaveRest": "Look at a target, then keep still to go back",
+  "gzPracticeSwitch": "Now press your switch",
+  "gzPracticeRest": "Now look at a target, then keep still",
+  "gzkShift": "Shift",
+  "gzkSpace": "Space",
+  "gzkDelete": "Delete",
+  "gzkDone": "Done",
+  "gzcTitle": "Resting position",
+  "gzcGetReady": "Sit the way you usually do and look at the dot.",
+  "gzcHold": "Keep still…",
+  "gzcSaved": "Saved! Movements are now measured from here.",
+  "gzcFailed": "Your head moved, or your face was not seen. Let’s try again.",
+  "gzsChoose": "How to choose",
+  "gzsPickBlink": "Blink",
+  "gzsPickBlinkSub": "A long, deliberate blink chooses. With “Blink to confirm” off, looking up chooses instead.",
+  "gzsPickSwitch": "A switch or controller button",
+  "gzsPickSwitchSub": "Any button on a Bluetooth controller or switch chooses. With Scanning mode on, the camera stays off.",
+  "gzsPickEither": "Blink or switch",
+  "gzsPickEitherSub": "A blink or a button press chooses — whichever is easier at the moment.",
+  "gzsDwellSelect": "Look and hold to choose",
+  "gzsDwellSelectSub": "After moving the highlight, keep your head still and it is chosen — for learners who can’t blink on purpose.",
+  "gzsDwellSelectScan": "Not used in Scanning mode — the highlight moves by itself there.",
+  "gzsDwellSelectMs": "Keep still for",
+  "gzsDwellSelectHelp": "How long to keep still on a button before it is chosen.",
+  "gzsSpeak": "Read the highlight aloud",
+  "gzsSpeakSub": "Says the name of each button as the highlight reaches it — helpful with scanning.",
+  "gzsCameraOff": "The camera stays off: Scanning mode moves the highlight and your switch chooses, so these settings are not needed.",
+  "gzsSmoothing": "Smoothing",
+  "gzsSmoothingHelp": "Smoothing ignores small shakes and tremors, so the highlight moves only when you mean it to.",
+  "gzsSmoothOff": "Off",
+  "gzsSmoothOffSub": "Follows every movement straight away.",
+  "gzsSmoothLight": "Light",
+  "gzsSmoothLightSub": "Ignores small shakes. Best for most learners.",
+  "gzsSmoothStrong": "Strong",
+  "gzsSmoothStrongSub": "For tremors or jerky movements. Responds a little more slowly.",
+  "gzsRest": "Resting position",
+  "gzsRestNotSet": "Not set — movements are measured from looking straight at the screen.",
+  "gzsRestSet": "Set — movements are measured from your own comfortable position.",
+  "gzsRestHelp": "Helpful when the head usually rests turned or tilted, for example in a wheelchair.",
+  "gzsRestButton": "Set resting position",
+  "gzsRestReset": "Reset",
+  "gzsForLearner": "Gaze Control for {name}",
+  "@gzsForLearner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gzsForLearnerNote": "You are changing {name}’s settings. They are saved on this tablet and used the next time {name} signs in here.",
+  "@gzsForLearnerNote": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gzsNotOnTablet": "{name}’s profile is on another tablet. Set up Gaze Control there.",
+  "@gzsNotOnTablet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "cdsGazeControl": "Gaze Control",
+  "gzmTitle": "Gaze use this week",
+  "gzmNone": "No gaze use in the last 7 days.",
+  "gzmActive": "Time used",
+  "gzmMinutes": "{minutes} min",
+  "@gzmMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "gzmSelections": "Choices made",
+  "gzmPerMinute": "Choices per minute",
+  "gzmSeconds": "Seconds per choice",
+  "gzmMistakes": "Undone straight away",
+  "gzmKeys": "Keys typed",
+  "gzmCalibrations": "Resting position set",
+  "gzmHelp": "Counted on this tablet. “Time used” leaves out pauses of more than two minutes; “Undone straight away” is a choice followed by Back within a few seconds.",
+  "gzmExport": "Export (CSV)",
+  "gzsKeepTitle": "Keep this change?",
+  "gzsKeepOff": "Gaze Control is now off. If you can’t use touch, just wait — it turns back on by itself.",
+  "gzsKeepSwitch": "Your switch now chooses, not a blink. Press your switch to keep this. If you don’t have one, just wait — blinking comes back by itself.",
+  "gzsKeepCountdown": "Going back in {seconds} s",
+  "@gzsKeepCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "gzsKeep": "Keep",
+  "gzsUndo": "Undo",
   "spdSupport": "Support",
   "lgcPerCategory": "Per-Category Breakdown",
   "rsTimer": "Timer",

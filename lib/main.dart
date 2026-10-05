@@ -38,6 +38,7 @@ import 'features/classroom/widgets/lock_warning_gate.dart';
 import 'features/companion/widgets/companion_overlay.dart';
 import 'features/gamepad/widgets/gamepad_host.dart';
 import 'features/gaze_control/debug/gaze_debug_bridge.dart';
+import 'features/gaze_control/services/gaze_metrics.dart';
 import 'features/gaze_control/widgets/gaze_focus_overlay.dart';
 import 'features/tv_cast/widgets/cast_status_pill.dart';
 import 'features/onboarding/widgets/membership_eviction_gate.dart';
@@ -72,6 +73,11 @@ SystemUiOverlayStyle _systemUiStyleFor({required bool isDark}) {
     systemStatusBarContrastEnforced: false,
   );
 }
+
+/// Saves the Gaze Control usage measurements when the app is backgrounded.
+/// Held here for the life of the app.
+// ignore: unused_element
+AppLifecycleListener? _gazeMetricsLifecycle;
 
 void main() {
   // Wrap the entire startup in a guarded zone so that
@@ -160,6 +166,16 @@ void main() {
 
     // Open the error logs box (after Hive.init)
     await Hive.openBox('error_logs');
+
+    // Gaze Control usage measurements are kept per learner between launches,
+    // and saved whenever the app goes to the background (a learner's session
+    // can end with the tablet simply being put down) — which also stops the
+    // clock, so time away is never counted as use.
+    GazeMetrics.instance.store = const HiveGazeMetricsStore();
+    _gazeMetricsLifecycle = AppLifecycleListener(
+      onPause: GazeMetrics.instance.pause,
+      onDetach: GazeMetrics.instance.flush,
+    );
 
     // Migrate any plaintext PINs to salted PBKDF2 hashes before the first
     // PIN-gated screen can be reached. Local-only and idempotent — a

@@ -1049,7 +1049,7 @@ void main() {
       expect(camera.debugDescribe()['turnThresholdDeg'], 8.0);
       expect(camera.debugDescribe()['dwellMs'], 2500);
       expect(camera.debugBlink(), isFalse, reason: 'blink switched off');
-      expect(last.blinkSelects, isFalse);
+      expect(last.settings.blinkSelects, isFalse);
 
       notifier.setScanMode(true);
       await tester.pump();

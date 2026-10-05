@@ -9,6 +9,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/models/achievements.dart';
 import '../../../data/local/daily_challenge.dart';
+import '../../../data/local/hive_service.dart';
 import '../../../core/utils/report_generator.dart';
 import '../../../widgets/shared_widgets.dart';
 import '../../../core/utils/csv_export_service.dart';
@@ -24,6 +25,14 @@ import '../../../l10n/app_localizations_en.dart';
 /// student's learning progress, weak areas, and recommendations.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
+
+  static bool _onThisTablet(String profileId) {
+    try {
+      return HiveService.getProfileById(profileId) != null;
+    } catch (_) {
+      return false;
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -147,6 +156,28 @@ class DashboardScreen extends ConsumerWidget {
               profile: profile,
               streak: streak,
             ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
+
+            // A teacher or parent looking at a learner can set up the
+            // learner's Gaze Control from here too, as from the learner's card
+            // on their dashboard — only for a learner whose profile is on this
+            // tablet, where gaze settings live.
+            if (isViewingAsStudent &&
+                profile != null &&
+                _onThisTablet(profile.id)) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push(
+                    '/gaze-settings?profile='
+                    '${Uri.encodeQueryComponent(profile.id)}'
+                    '&name=${Uri.encodeQueryComponent(profile.name)}',
+                  ),
+                  icon: const Icon(Icons.visibility_rounded),
+                  label: Text(_t(context).cdsGazeControl),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 24),
 

@@ -497,6 +497,7 @@ class _PeerCollaborationScreenState
         GazeAction(
           zone: GazeZone.down,
           label: session == null ? l10n.gazeChoose : l10n.playAgain,
+          selects: true,
           icon: session == null
               ? Icons.check_circle_rounded
               : Icons.replay_rounded,
@@ -527,6 +528,7 @@ class _PeerCollaborationScreenState
       GazeAction(
         zone: GazeZone.down,
         label: l10n.gazeChoose,
+        selects: true,
         icon: Icons.check_circle_rounded,
         color: AppColors.success,
         enabled: live && _cursor.canChoose,

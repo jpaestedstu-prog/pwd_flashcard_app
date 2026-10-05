@@ -35,6 +35,12 @@ abstract final class GazeFocusDriver {
     if (node == null) return false;
     // Geometry first: for a D-pad, "the control below this one" is what the
     // learner means.
+    final row = _skippedRow(node, direction);
+    if (row != null) {
+      row.requestFocus();
+      _revealFocused();
+      return true;
+    }
     if (node.focusInDirection(direction)) {
       _revealFocused();
       return true;
@@ -48,12 +54,82 @@ abstract final class GazeFocusDriver {
     final forward =
         direction == TraversalDirection.down ||
         direction == TraversalDirection.right;
+    // Past the last control, going on wraps round to the start of the page —
+    // the real start, which reading order alone would not find (see
+    // [moveToStart]).
+    if (forward && isLast()) return moveToStart();
     if (forward ? node.nextFocus() : node.previousFocus()) {
       _revealFocused();
       return true;
     }
     return false;
   }
+
+  /// The nearest row of controls that Flutter's own ▲ ▼ would jump over, or
+  /// null when it would not skip one.
+  ///
+  /// Flutter's directional traversal looks first in the current control's
+  /// column. From a small button at the far left of an app bar, ▼ therefore
+  /// went past a text field whose box starts a little further right — its
+  /// own padding insets it — and landed on the full-width button under it.
+  /// On the Join Home Group screen the code field could not be reached going
+  /// down at all, and every form under a back button had the same gap.
+  ///
+  /// Flutter's pick is kept except for exactly that: a row of controls lying
+  /// wholly between this control and the one it would choose. Side-by-side
+  /// layouts (a tall card beside short ones) are left alone, because their
+  /// controls overlap vertically rather than forming a row in between.
+  static FocusNode? _skippedRow(FocusNode node, TraversalDirection direction) {
+    final down = direction == TraversalDirection.down;
+    if (!down && direction != TraversalDirection.up) return null;
+    if (node is FocusScopeNode) return null; // nothing focused yet
+    final Rect from;
+    try {
+      from = node.rect;
+    } catch (_) {
+      return null;
+    }
+    final ahead = <({FocusNode node, Rect rect})>[];
+    for (final n in _readingOrder(node)) {
+      if (identical(n, node)) continue;
+      final Rect r;
+      try {
+        r = n.rect;
+      } catch (_) {
+        continue;
+      }
+      final dy = r.center.dy - from.center.dy;
+      if (down ? dy > _rowSlack : dy < -_rowSlack) ahead.add((node: n, rect: r));
+    }
+    if (ahead.isEmpty) return null;
+    // What Flutter would choose: the nearest control in this column.
+    final inColumn = [
+      for (final c in ahead)
+        if (c.rect.right > from.left && c.rect.left < from.right) c,
+    ];
+    if (inColumn.isEmpty) return null;
+    double gap(Rect r) => (r.center.dy - from.center.dy).abs();
+    final pick = inColumn.reduce((a, b) => gap(a.rect) <= gap(b.rect) ? a : b);
+    // Rows wholly between here and there.
+    final between = [
+      for (final c in ahead)
+        if (down
+            ? c.rect.bottom <= pick.rect.top + _rowSlack
+            : c.rect.top >= pick.rect.bottom - _rowSlack)
+          if (!identical(c.node, pick.node)) c,
+    ];
+    if (between.isEmpty) return null;
+    final nearest = between.map((c) => gap(c.rect)).reduce((a, b) => a < b ? a : b);
+    final row = [
+      for (final c in between)
+        if (gap(c.rect) - nearest <= _rowSlack) c,
+    ];
+    double across(Rect r) => (r.center.dx - from.center.dx).abs();
+    return row.reduce((a, b) => across(a.rect) <= across(b.rect) ? a : b).node;
+  }
+
+  /// Controls whose centres are this close share a row.
+  static const double _rowSlack = 8;
 
   /// Scrolls the newly focused control into view.
   ///
@@ -187,6 +263,51 @@ abstract final class GazeFocusDriver {
     // finds a node first wins.
     return node.focusInDirection(TraversalDirection.down) ||
         node.focusInDirection(TraversalDirection.right);
+  }
+
+  /// Focuses the very first control of the focused surface, scrolling back up
+  /// to it first.
+  ///
+  /// "First" has to mean the top of the page. A long page is a lazy list —
+  /// only the controls near the screen exist — so the first control found
+  /// from the bottom of the Gaze Control settings was mid-page ("Off", under
+  /// Smoothing): a scanning learner went round the lower half for ever and
+  /// never reached "Enable Gaze Control" or "Try it now" again, and a head
+  /// learner wrapping off the bottom landed somewhere in the middle.
+  static bool moveToStart() {
+    final node = focused;
+    final context = node?.context;
+    if (node == null || context == null) return false;
+    var scrolled = false;
+    var scrollable = context.findAncestorStateOfType<ScrollableState>();
+    while (scrollable != null) {
+      final position = scrollable.position;
+      if (position.hasPixels && position.pixels > position.minScrollExtent) {
+        position.jumpTo(position.minScrollExtent);
+        scrolled = true;
+      }
+      scrollable = scrollable.context.findAncestorStateOfType<ScrollableState>();
+    }
+    if (!scrolled) return _focusFirst(node);
+    // The top of the page is laid out on the next frame. The control that had
+    // focus may be gone by then (scrolled out of a lazy list), so fall back to
+    // its surface.
+    final scope = node.nearestScope;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final now = focused ?? (scope?.context == null ? null : scope);
+      if (now != null) _focusFirst(now);
+    });
+    WidgetsBinding.instance.scheduleFrame();
+    return true;
+  }
+
+  static bool _focusFirst(FocusNode node) {
+    final order = _readingOrder(node);
+    if (order.isEmpty) return false;
+    final first = order.first;
+    if (!identical(first, node)) first.requestFocus();
+    _revealFocused();
+    return true;
   }
 
   /// Global-coordinate rectangle of the focused control, for drawing a

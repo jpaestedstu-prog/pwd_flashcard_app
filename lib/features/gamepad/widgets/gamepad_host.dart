@@ -7,11 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
+import '../../../core/accessibility/focused_label.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../navigation/app_router.dart' show rootNavigatorKey;
 import '../../../providers/app_providers.dart' show settingsProvider;
 import '../../gaze_control/logic/gaze_focus_driver.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
+import '../../gaze_control/services/gaze_switch_input.dart';
 import '../../gaze_control/widgets/shell_modal_observer.dart';
 import '../logic/gamepad_actions.dart';
 import '../logic/gamepad_cursor.dart';
@@ -61,13 +63,6 @@ class GamepadHost extends ConsumerStatefulWidget {
   @override
   ConsumerState<GamepadHost> createState() => _GamepadHostState();
 }
-
-/// Zero-width and byte-order characters, which `trim` leaves behind.
-final RegExp _invisible = RegExp('[\u200B-\u200D\u2060\uFEFF]');
-
-/// At least one letter or digit, in any script — the test for whether a label
-/// will actually be heard when spoken.
-final RegExp _pronounceable = RegExp(r'[\p{L}\p{N}]', unicode: true);
 
 class _GamepadHostState extends ConsumerState<GamepadHost> {
   final GamepadDebouncer _debouncer = GamepadDebouncer();
@@ -356,6 +351,10 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
 
   void _onButton(GamepadEvent event) {
     if (!mounted) return;
+    // A learner scanning with Gaze Control is using the controller as a
+    // switch: that press picks the lit item, and must not also move this
+    // host's own cursor.
+    if (GazeSwitchInput.instance.claiming.value) return;
 
     // Releases are read *before* the debouncer, which reports them as "no
     // action". Hold-to-repeat needs to see them: the release is the only signal
@@ -898,120 +897,9 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
     WidgetsBinding.instance.scheduleFrame();
   }
 
-  /// Best-effort name for the focused control.
-  ///
-  /// Prefers an explicit [Semantics] label (what a screen reader would say),
-  /// then falls back to the first piece of visible text inside it — which for
-  /// a Material button, list tile or dialog action is exactly its caption.
-  String? _labelOfFocused() {
-    final context = GazeFocusDriver.focused?.context;
-    if (context is! Element) return null;
-
-    // The focused widget itself is the best answer when it has one. Searched
-    // deep: a Material control's subtree (InkWell → Semantics → Padding → Row →
-    // Text …) routinely runs fifteen elements or more before reaching its
-    // caption, and a shallow cap silently reported every button as unnamed.
-    final own = _labelWithin(context, maxDepth: 30);
-    if (own != null) return own;
-
-    // Focus often lands on a bare `Focus`/`InkWell` node whose label lives on a
-    // wrapper just above it — a `Semantics` around the whole tile, say. Walking
-    // a few levels up recovers those. Strictly bounded: hop far enough and the
-    // search escapes into the page scaffold and starts confidently reading out
-    // the app-bar title for every control on the screen, which is worse than
-    // admitting the control is unnamed.
-    // Walking up, two different kinds of evidence get two different budgets.
-    //
-    // An **explicit** `Semantics(label:)` is a deliberate statement about the
-    // whole subtree, so it is trusted a long way up: a settings row wraps its
-    // icon, title, subtitle *and* its Switch in one label, and the Switch that
-    // takes focus sits a dozen elements below it. At six hops those rows all
-    // announced "Unnamed item" while a screen reader read them perfectly.
-    //
-    // **Scraped text** is a guess, so it stays close: hop far enough and the
-    // search escapes into the page scaffold and reads the app-bar title out
-    // for every control on the screen.
-    String? found;
-    var hops = 0;
-    context.visitAncestorElements((ancestor) {
-      hops++;
-      if (hops > _labelAncestorHops) return false;
-      final own = _labelOfWidget(ancestor.widget);
-      if (own != null) {
-        found = own;
-        return false;
-      }
-      if (hops <= _labelTextHops) {
-        found = _labelWithin(ancestor, maxDepth: 12);
-        if (found != null) return false;
-      }
-      return true;
-    });
-    return found;
-  }
-
-  /// First readable name inside [root]'s subtree: an explicit [Semantics] label
-  /// (what a screen reader would say) or the first visible [Text], which for a
-  /// Material button, list tile or dialog action is exactly its caption.
-  ///
-  /// Depth-bounded so a search that starts high in the tree cannot walk the
-  /// entire page.
-  /// How far up to look for an explicit `Semantics` / `Tooltip` label.
-  static const int _labelAncestorHops = 14;
-
-  /// How far up to look for *scraped* text — deliberately much shorter.
-  static const int _labelTextHops = 3;
-
-  /// A label carried by the widget itself, if it declares one.
-  String? _labelOfWidget(Widget widget) {
-    String? candidate;
-    if (widget is Semantics) candidate = widget.properties.label;
-    if (widget is Tooltip) candidate = widget.message;
-    if (candidate == null) return null;
-    final text = candidate.replaceAll(_invisible, '').trim();
-    if (text.isEmpty || !_pronounceable.hasMatch(text)) return null;
-    return text;
-  }
-
-  String? _labelWithin(Element root, {required int maxDepth}) {
-    String? found;
-
-    void take(String? value) {
-      if (found != null) return;
-      if (value == null) return;
-      // Zero-width characters survive `trim`, so a spacer `Text` reads as a
-      // perfectly valid label and then announces absolutely nothing.
-      final text = value.replaceAll(_invisible, '').trim();
-      if (text.isEmpty) return;
-      // Must contain something a voice can pronounce. Plenty of captions are
-      // decorative — a flag emoji on a banner, a bare chevron — and speaking
-      // one is indistinguishable from silence to the learner it matters to.
-      // Falling through to the next candidate (or to "Unnamed item") at least
-      // tells them the press registered.
-      if (!_pronounceable.hasMatch(text)) return;
-      found = text;
-    }
-
-    void visit(Element element, int depth) {
-      if (found != null || depth > maxDepth) return;
-      final widget = element.widget;
-      // In preference order: what a screen reader would say, then a tooltip,
-      // then whatever is actually written on the control.
-      if (widget is Semantics) take(widget.properties.label);
-      if (widget is Tooltip) take(widget.message);
-      if (widget is Text) take(widget.data ?? widget.textSpan?.toPlainText());
-      // Text ultimately builds a RichText; screens that style a caption with
-      // spans have no plain `Text` widget to find at all.
-      if (widget is RichText) take(widget.text.toPlainText());
-      if (widget is Icon) take(widget.semanticLabel);
-      if (widget is Image) take(widget.semanticLabel);
-      if (found != null) return;
-      element.visitChildren((child) => visit(child, depth + 1));
-    }
-
-    root.visitChildren((child) => visit(child, 1));
-    return found;
-  }
+  /// Best-effort name for the focused control — shared with Gaze Control's
+  /// spoken highlight (see [FocusedLabel]).
+  String? _labelOfFocused() => FocusedLabel.of(GazeFocusDriver.focused?.context);
 
   // ── Acting ──────────────────────────────────────────────────────────────
 

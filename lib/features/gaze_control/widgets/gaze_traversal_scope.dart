@@ -13,7 +13,10 @@ import '../models/gaze_settings.dart';
 import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_settings_provider.dart';
 import '../services/gaze_detector.dart';
+import '../services/gaze_metrics.dart';
+import 'gaze_hints.dart';
 import 'gaze_route_guard.dart';
+import 'gaze_session.dart';
 import 'gaze_traversal.dart';
 import 'voice_control_mixin.dart';
 
@@ -34,11 +37,23 @@ class GazeTraversalScope extends ConsumerStatefulWidget {
   const GazeTraversalScope({
     super.key,
     required this.child,
+    this.settingsOverride,
+    this.onController,
     this.camerasLoader,
     this.detectorFactory,
   });
 
   final Widget child;
+
+  /// Run on these settings instead of the signed-in profile's — a grown-up
+  /// calibrating a learner's resting position from their own profile. They
+  /// are used even when the learner's Gaze Control is switched off, because
+  /// the screen that passes them needs the camera regardless.
+  final GazeSettings? settingsOverride;
+
+  /// Hands the running controller to the screen (the calibration screen reads
+  /// the resting position through it).
+  final void Function(GazeController controller)? onController;
 
   /// Injection seams for tests; production uses the real camera + ML Kit.
   final Future<List<CameraDescription>> Function()? camerasLoader;
@@ -49,15 +64,29 @@ class GazeTraversalScope extends ConsumerStatefulWidget {
 }
 
 class _GazeTraversalScopeState extends ConsumerState<GazeTraversalScope>
-    with VoiceControlMixin, GazeRouteGuard {
+    with VoiceControlMixin, GazeRouteGuard, GazeSessionMixin {
   GazeController? _gaze;
   GazeSettings _settings = const GazeSettings();
   Object? _cameraToken;
   Timer? _scanTimer;
 
   late final GazeTraversal _traversal = GazeTraversal(
-    onMoved: () => ref.read(hapticServiceProvider).selectionClick(),
-    onPressed: () => ref.read(hapticServiceProvider).success(),
+    onMoved: () {
+      ref.read(hapticServiceProvider).selectionClick();
+      GazeMetrics.instance.moved();
+      _gaze?.armRestSelect();
+      sayFocusedSoon();
+    },
+    onScanned: () {
+      ref.read(hapticServiceProvider).selectionClick();
+      GazeMetrics.instance.scanned();
+      sayFocusedSoon();
+    },
+    onPressed: (by) {
+      ref.read(hapticServiceProvider).success();
+      gazePicked(_gaze, by);
+    },
+    onLeft: GazeMetrics.instance.backed,
   );
 
   bool get _isTopOwner {
@@ -68,8 +97,9 @@ class _GazeTraversalScopeState extends ConsumerState<GazeTraversalScope>
   @override
   void initState() {
     super.initState();
-    final settings = ref.read(gazeSettingsProvider);
-    if (!settings.enabled) return;
+    final override = widget.settingsOverride;
+    final GazeSettings settings = override ?? ref.read(gazeSettingsProvider);
+    if (override == null && !settings.enabled) return;
     _settings = settings;
     final controller = GazeController(
       settings: settings,
@@ -78,15 +108,20 @@ class _GazeTraversalScopeState extends ConsumerState<GazeTraversalScope>
     );
     controller.onSelect = (zone) {
       if (!mounted || _settings.scanMode) return;
-      _traversal.zone(zone, blinkSelects: _settings.blinkSelects);
+      _traversal.zone(zone, lookUpSelects: _settings.lookUpSelects);
     };
     controller.onBlink = () {
       if (mounted) _traversal.commit();
     };
+    controller.onRest = () {
+      if (mounted) _traversal.commit(by: GazeSelectBy.rest);
+    };
     _gaze = controller;
+    widget.onController?.call(controller);
     _cameraToken = gazeCameraOwners.acquire();
     gazeCameraOwners.addListener(_onCameraOwnersChanged);
     controller.start();
+    beginGazeSession(settings, onSwitch: _onSwitch);
     if (settings.scanMode) {
       _scanTimer = Timer.periodic(settings.scanStepDuration, (_) {
         if (!mounted || (_gaze?.suspended ?? true)) return;
@@ -98,8 +133,13 @@ class _GazeTraversalScopeState extends ConsumerState<GazeTraversalScope>
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncRing());
   }
 
+  void _onSwitch() {
+    if (mounted) _traversal.commit(by: GazeSelectBy.switchButton);
+  }
+
   @override
   void dispose() {
+    endGazeSession();
     _scanTimer?.cancel();
     _traversal.hideRing();
     disposeVoiceControl();
@@ -115,10 +155,7 @@ class _GazeTraversalScopeState extends ConsumerState<GazeTraversalScope>
     _traversal.syncRing(
       context,
       wanted: _isTopOwner,
-      hint: GazeTraversal.hintFor(
-        scanning: _settings.scanMode,
-        blinkSelects: _settings.blinkSelects,
-      ),
+      hint: GazeHints.forSettings(context, _settings, rowsReachable: true),
     );
   }
 
@@ -130,9 +167,11 @@ class _GazeTraversalScopeState extends ConsumerState<GazeTraversalScope>
       if (!mounted || gaze == null) return;
       if (!_isTopOwner && !gaze.suspended) {
         gaze.suspendCamera();
+        endGazeSession();
         disposeVoiceControl();
       } else if (_isTopOwner && gaze.suspended) {
         gaze.resumeCamera();
+        beginGazeSession(_settings, onSwitch: _onSwitch);
         if (_settings.voiceCommands) startVoiceControl();
       }
       _syncRing();

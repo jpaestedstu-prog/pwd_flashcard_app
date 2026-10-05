@@ -11938,12 +11938,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mqRoundsPerPlayer => 'Rounds per Player';
 
   @override
-  String get gzFocusHint => 'Look ◀ ▶ ▲ ▼ to move · blink to press';
-
-  @override
-  String get gzFocusHintLookUp => 'Look ◀ ▶ ▼ to move · look up to press';
-
-  @override
   String get gzFocusHintScan => 'Blink when the one you want lights up';
 
   @override
@@ -11951,18 +11945,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gzNavHintLook => 'Look at the screen';
-
-  @override
-  String get gzNavHintTabs => 'Look ◀ ▶ to choose · blink to open';
-
-  @override
-  String get gzNavHintTiles => 'Look ◀ ▶ ▲ ▼ to choose · blink to open';
-
-  @override
-  String get gzNavHintTabsLookUp => 'Look ◀ ▶ to choose · look up to open';
-
-  @override
-  String get gzNavHintTilesLookUp => 'Look ◀ ▶ ▼ to choose · look up to open';
 
   @override
   String get gzPracticeIntro =>
@@ -11990,6 +11972,258 @@ class AppLocalizationsEn extends AppLocalizations {
   String gzsStepUp(String setting) {
     return 'Increase $setting';
   }
+
+  @override
+  String get gzHintMoveTabs => 'Look ◀ ▶ to move';
+
+  @override
+  String get gzHintMove => 'Look ◀ ▶ ▲ ▼ to move';
+
+  @override
+  String get gzHintMoveNoUp => 'Look ◀ ▶ ▼ to move';
+
+  @override
+  String get gzHintPickBlink => 'blink to choose';
+
+  @override
+  String get gzHintPickLookUp => 'look up to choose';
+
+  @override
+  String get gzHintPickSwitch => 'press your switch to choose';
+
+  @override
+  String get gzHintPickEither => 'blink or press your switch to choose';
+
+  @override
+  String get gzHintPickRest => 'keep still to choose';
+
+  @override
+  String get gzHintScanSwitch =>
+      'Press your switch when the one you want lights up';
+
+  @override
+  String get gzHintScanEither =>
+      'Blink or press your switch when the one you want lights up';
+
+  @override
+  String get gzLeaveSwitch => 'Press your switch to go back';
+
+  @override
+  String get gzLeaveRest => 'Look at a target, then keep still to go back';
+
+  @override
+  String get gzPracticeSwitch => 'Now press your switch';
+
+  @override
+  String get gzPracticeRest => 'Now look at a target, then keep still';
+
+  @override
+  String get gzkShift => 'Shift';
+
+  @override
+  String get gzkSpace => 'Space';
+
+  @override
+  String get gzkDelete => 'Delete';
+
+  @override
+  String get gzkDone => 'Done';
+
+  @override
+  String get gzcTitle => 'Resting position';
+
+  @override
+  String get gzcGetReady => 'Sit the way you usually do and look at the dot.';
+
+  @override
+  String get gzcHold => 'Keep still…';
+
+  @override
+  String get gzcSaved => 'Saved! Movements are now measured from here.';
+
+  @override
+  String get gzcFailed =>
+      'Your head moved, or your face was not seen. Let’s try again.';
+
+  @override
+  String get gzsChoose => 'How to choose';
+
+  @override
+  String get gzsPickBlink => 'Blink';
+
+  @override
+  String get gzsPickBlinkSub =>
+      'A long, deliberate blink chooses. With “Blink to confirm” off, looking up chooses instead.';
+
+  @override
+  String get gzsPickSwitch => 'A switch or controller button';
+
+  @override
+  String get gzsPickSwitchSub =>
+      'Any button on a Bluetooth controller or switch chooses. With Scanning mode on, the camera stays off.';
+
+  @override
+  String get gzsPickEither => 'Blink or switch';
+
+  @override
+  String get gzsPickEitherSub =>
+      'A blink or a button press chooses — whichever is easier at the moment.';
+
+  @override
+  String get gzsDwellSelect => 'Look and hold to choose';
+
+  @override
+  String get gzsDwellSelectSub =>
+      'After moving the highlight, keep your head still and it is chosen — for learners who can’t blink on purpose.';
+
+  @override
+  String get gzsDwellSelectScan =>
+      'Not used in Scanning mode — the highlight moves by itself there.';
+
+  @override
+  String get gzsDwellSelectMs => 'Keep still for';
+
+  @override
+  String get gzsDwellSelectHelp =>
+      'How long to keep still on a button before it is chosen.';
+
+  @override
+  String get gzsSpeak => 'Read the highlight aloud';
+
+  @override
+  String get gzsSpeakSub =>
+      'Says the name of each button as the highlight reaches it — helpful with scanning.';
+
+  @override
+  String get gzsCameraOff =>
+      'The camera stays off: Scanning mode moves the highlight and your switch chooses, so these settings are not needed.';
+
+  @override
+  String get gzsSmoothing => 'Smoothing';
+
+  @override
+  String get gzsSmoothingHelp =>
+      'Smoothing ignores small shakes and tremors, so the highlight moves only when you mean it to.';
+
+  @override
+  String get gzsSmoothOff => 'Off';
+
+  @override
+  String get gzsSmoothOffSub => 'Follows every movement straight away.';
+
+  @override
+  String get gzsSmoothLight => 'Light';
+
+  @override
+  String get gzsSmoothLightSub =>
+      'Ignores small shakes. Best for most learners.';
+
+  @override
+  String get gzsSmoothStrong => 'Strong';
+
+  @override
+  String get gzsSmoothStrongSub =>
+      'For tremors or jerky movements. Responds a little more slowly.';
+
+  @override
+  String get gzsRest => 'Resting position';
+
+  @override
+  String get gzsRestNotSet =>
+      'Not set — movements are measured from looking straight at the screen.';
+
+  @override
+  String get gzsRestSet =>
+      'Set — movements are measured from your own comfortable position.';
+
+  @override
+  String get gzsRestHelp =>
+      'Helpful when the head usually rests turned or tilted, for example in a wheelchair.';
+
+  @override
+  String get gzsRestButton => 'Set resting position';
+
+  @override
+  String get gzsRestReset => 'Reset';
+
+  @override
+  String gzsForLearner(String name) {
+    return 'Gaze Control for $name';
+  }
+
+  @override
+  String gzsForLearnerNote(String name) {
+    return 'You are changing $name’s settings. They are saved on this tablet and used the next time $name signs in here.';
+  }
+
+  @override
+  String gzsNotOnTablet(String name) {
+    return '$name’s profile is on another tablet. Set up Gaze Control there.';
+  }
+
+  @override
+  String get cdsGazeControl => 'Gaze Control';
+
+  @override
+  String get gzmTitle => 'Gaze use this week';
+
+  @override
+  String get gzmNone => 'No gaze use in the last 7 days.';
+
+  @override
+  String get gzmActive => 'Time used';
+
+  @override
+  String gzmMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get gzmSelections => 'Choices made';
+
+  @override
+  String get gzmPerMinute => 'Choices per minute';
+
+  @override
+  String get gzmSeconds => 'Seconds per choice';
+
+  @override
+  String get gzmMistakes => 'Undone straight away';
+
+  @override
+  String get gzmKeys => 'Keys typed';
+
+  @override
+  String get gzmCalibrations => 'Resting position set';
+
+  @override
+  String get gzmHelp =>
+      'Counted on this tablet. “Time used” leaves out pauses of more than two minutes; “Undone straight away” is a choice followed by Back within a few seconds.';
+
+  @override
+  String get gzmExport => 'Export (CSV)';
+
+  @override
+  String get gzsKeepTitle => 'Keep this change?';
+
+  @override
+  String get gzsKeepOff =>
+      'Gaze Control is now off. If you can’t use touch, just wait — it turns back on by itself.';
+
+  @override
+  String get gzsKeepSwitch =>
+      'Your switch now chooses, not a blink. Press your switch to keep this. If you don’t have one, just wait — blinking comes back by itself.';
+
+  @override
+  String gzsKeepCountdown(int seconds) {
+    return 'Going back in $seconds s';
+  }
+
+  @override
+  String get gzsKeep => 'Keep';
+
+  @override
+  String get gzsUndo => 'Undo';
 
   @override
   String get spdSupport => 'Support';

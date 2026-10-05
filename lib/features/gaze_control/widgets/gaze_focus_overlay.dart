@@ -7,18 +7,6 @@ import '../logic/gaze_focus_driver.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 
-/// What the traversal ring's hint chip should tell the learner.
-enum GazeRingHint {
-  /// Head moves steer, a blink presses.
-  move,
-
-  /// Head moves steer, look-up presses (blinks don't select).
-  moveLookUp,
-
-  /// Scanning: the controls light up in turn, a blink presses.
-  scan,
-}
-
 /// Shows a hands-free learner where the focus traversal fallback currently is.
 ///
 /// Material's own focus highlight is a faint overlay tint designed for a
@@ -42,7 +30,7 @@ class GazeFocusOverlay {
   /// a control. Safe to call repeatedly; the newest call wins.
   void show(
     BuildContext context, {
-    GazeRingHint hint = GazeRingHint.move,
+    String? hint,
     bool exitFocused = false,
   }) {
     final state = _RingState(hint, exitFocused);
@@ -72,7 +60,7 @@ class _GazeRingRequests {
   static final _GazeRingRequests instance = _GazeRingRequests._();
 
   int _count = 0;
-  _RingState _state = const _RingState(GazeRingHint.move, false);
+  _RingState _state = const _RingState(null, false);
   bool _publishScheduled = false;
 
   /// Null while no scope wants the ring; otherwise what it should show.
@@ -108,7 +96,9 @@ class _GazeRingRequests {
 @immutable
 class _RingState {
   const _RingState(this.hint, this.exitFocused);
-  final GazeRingHint hint;
+
+  /// What the chip says (see `GazeHints`); null for the plain default.
+  final String? hint;
   final bool exitFocused;
 
   @override
@@ -158,7 +148,7 @@ class GazeFocusRingLayer extends StatelessWidget {
 class _GazeFocusRing extends StatefulWidget {
   const _GazeFocusRing({required this.hint, required this.exitFocused});
 
-  final GazeRingHint hint;
+  final String? hint;
 
   /// The highlight is on the Back pill, not on a control.
   final bool exitFocused;
@@ -211,11 +201,7 @@ class _GazeFocusRingState extends State<_GazeFocusRing> {
 
   String _hintText(BuildContext context) {
     final t = _t(context);
-    return switch (widget.hint) {
-      GazeRingHint.move => t.gzFocusHint,
-      GazeRingHint.moveLookUp => t.gzFocusHintLookUp,
-      GazeRingHint.scan => t.gzFocusHintScan,
-    };
+    return widget.hint ?? '${t.gzHintMove} · ${t.gzHintPickBlink}';
   }
 
   @override
