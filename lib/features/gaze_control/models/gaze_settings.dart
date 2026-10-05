@@ -1,13 +1,14 @@
 /// How far the hands-free **bottom-nav D-pad** reaches.
 ///
-/// [bottomNav] (default) — the head D-pad only moves the highlight across the
-/// bottom navigation tabs, exactly as before.
+/// [bottomNav] — the head D-pad only moves the highlight across the bottom
+/// navigation tabs.
 ///
-/// [bottomNavAndHomeTiles] — on the foreground hub (Home, Cards, Games, Stories
-/// or Progress) the same D-pad also reaches the feature tiles: look ▲ ▼ moves
-/// between tile rows, ◀ ▶ within a row, and the bottom-nav bar is the grid's
-/// bottom row. A blink (or, when blink is off, look-up) opens the focused tile.
-/// (The enum value name is kept for persisted-settings compatibility.)
+/// [bottomNavAndHomeTiles] (default) — on the foreground hub (Home, Cards,
+/// Games, Stories or Progress) the same D-pad also reaches the feature tiles:
+/// look ▲ ▼ moves between tile rows, ◀ ▶ within a row, and the bottom-nav bar
+/// is the grid's bottom row. A blink (or, when blink is off, look-up) opens the
+/// focused tile. (The enum value name is kept for persisted-settings
+/// compatibility.)
 enum GazeNavScope { bottomNav, bottomNavAndHomeTiles }
 
 /// User-tunable configuration for the Gaze (head + blink) accessibility
@@ -53,8 +54,10 @@ class GazeSettings {
   final bool voiceCommands;
 
   /// How far the hands-free bottom-nav D-pad reaches. Defaults to
-  /// [GazeNavScope.bottomNav] so existing behaviour is unchanged until the
-  /// learner opts into the Home-tiles reach.
+  /// [GazeNavScope.bottomNavAndHomeTiles]: a learner who turns Gaze Control on
+  /// because they cannot touch the screen has to be able to *open* things, and
+  /// the bottom-nav-only reach could only switch between five hubs. A saved
+  /// choice is always kept — this only decides where a learner starts.
   final GazeNavScope navScope;
 
   const GazeSettings({
@@ -67,12 +70,19 @@ class GazeSettings {
     this.scanMode = false,
     this.scanStepMs = 2000,
     this.voiceCommands = false,
-    this.navScope = GazeNavScope.bottomNav,
+    this.navScope = GazeNavScope.bottomNavAndHomeTiles,
   });
 
   /// Whether the D-pad should also drive the foreground hub's feature tiles
   /// (Home, Cards, Games, Stories, Progress).
   bool get navHomeTiles => navScope == GazeNavScope.bottomNavAndHomeTiles;
+
+  /// Whether a long blink picks things. Scanning is *driven* by blinks — the
+  /// highlight moves by itself and a blink is the only way to choose — so a
+  /// scanning learner always has it, even if "Blink to confirm" was switched
+  /// off before scanning was switched on. Without this the two switches
+  /// together left a learner watching a highlight they could never stop.
+  bool get blinkSelects => blinkEnabled || scanMode;
 
   /// Lowest/highest values the UI sliders allow.
   static const int minSensitivity = 1;

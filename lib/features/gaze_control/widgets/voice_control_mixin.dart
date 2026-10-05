@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/gestures.dart' show PointerScrollEvent;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,27 @@ mixin VoiceControlMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   /// Logical pixels a spoken "scroll up/down" moves the list — matches the
   /// gaze step so voice and head scrolling feel the same.
   static const double _voiceScrollStep = 320;
+
+  /// Every mounted gaze scope, oldest first — debug and profile builds only,
+  /// for the gaze debug bridge (which can speak a phrase into the one that is
+  /// listening, and describe what each scope is doing).
+  static final List<VoiceControlMixin> debugScopes = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (!kReleaseMode) debugScopes.add(this);
+  }
+
+  @override
+  void dispose() {
+    if (!kReleaseMode) debugScopes.remove(this);
+    super.dispose();
+  }
+
+  /// What this scope is doing right now, for the debug bridge. Scopes add
+  /// their own cursor / scanning / traversal state.
+  Map<String, Object?> debugDescribe() => {'scope': '$runtimeType'};
 
   /// True once [startVoiceControl] has armed the microphone.
   bool get voiceActive => _voice != null;
@@ -79,30 +101,37 @@ mixin VoiceControlMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         : voice.lastHeard.isNotEmpty
             ? voice.lastHeard
             : (voice.isListening ? 'Listening…' : 'Voice ready');
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            voice.isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
-            color: Colors.white,
-            size: 16,
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+    // A transparent Material gives the text the app's own style. This floats
+    // beside a screen's Scaffold, not inside it, so without one the text fell
+    // back to Flutter's "missing Material" style — red-yellow double
+    // underlines in a monospace font — on every gaze learner's screen.
+    return Material(
+      type: MaterialType.transparency,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              voice.isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+              color: Colors.white,
+              size: 16,
             ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
+import '../features/gaze_control/debug/gaze_debug_bridge.dart';
 import '../features/routine/widgets/routine_popup_watcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -155,6 +157,17 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
   @override
   void initState() {
     super.initState();
+    // Debug builds: let the gaze debug bridge show this shell's real level-up
+    // celebration without awarding anyone XP.
+    if (!kReleaseMode) {
+      GazeDebugBridge.levelUpHook = (level) {
+        if (!mounted) return;
+        const levels = XpService.levels;
+        setState(
+          () => _celebratingLevel = levels[(level - 1).clamp(0, levels.length - 1)],
+        );
+      };
+    }
     // `GoRouter.of` needs an inherited-widget lookup, which initState can't do
     // — but the first location is always reached with `go()`, so the shell's
     // own match is the full location here.
@@ -208,6 +221,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
 
   @override
   void dispose() {
+    if (!kReleaseMode) GazeDebugBridge.levelUpHook = null;
     gamepadSections.clear(owner: _sectionsToken);
     _animController.dispose();
     for (final c in _bounceControllers.values) {
@@ -281,6 +295,11 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
 
     final location = _location;
     final currentIndex = _currentIndex(location);
+    // A learner hub publishes its own gaze grid; any other page shown inside
+    // the shell (Settings) is driven by gaze focus traversal instead. The
+    // educator hubs keep the tab-bar D-pad they have always had.
+    final hubPage =
+        _isEducator || _studentPaths.contains(location.split('?').first);
     // Educator fullscreen hides the tab bar the same way an immersive route
     // does. Watched (not read) so toggling the mode reaches the bar
     // immediately — `_syncVisibility` only runs on navigation.
@@ -316,6 +335,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
           currentIndex: 0,
           itemCount: 0,
           enabled: navShown,
+          hubPage: hubPage,
           onCommit: (_) {},
           builder: (context, gaze) => Stack(
             children: [
@@ -392,6 +412,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       itemCount: items.length,
       navLabels: [for (final item in items) item.label],
       enabled: navShown,
+      hubPage: hubPage,
       onCommit: (index) => _onTap(context, index),
       builder: (context, gaze) => Stack(
         children: [
@@ -468,6 +489,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
                             gazeTargetIndex: gaze.active
                                 ? gaze.targetIndex
                                 : null,
+                            gazeWholeBar: gaze.active && gaze.wholeNavRow,
                             items: items,
                             onTap: (index) => _onTap(context, index),
                             bounceControllers: _bounceControllers,
@@ -490,6 +512,8 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
               faceVisible: gaze.faceVisible,
               status: gaze.status,
               featureTilesActive: gaze.featureTilesActive,
+              scanning: gaze.scanning,
+              blinkSelects: gaze.blinkSelects,
               bottomOffset:
                   _computeMetrics(context).bar +
                   MediaQuery.paddingOf(context).bottom,
@@ -654,6 +678,10 @@ class _AnimatedNavBar extends StatelessWidget {
   /// The tab the gaze cursor is resting on, drawn as a bright ring. Null when
   /// gaze navigation isn't active.
   final int? gazeTargetIndex;
+
+  /// Scanning mode is lighting the whole bar (its row phase): one ring around
+  /// every tab, so a blink-only learner can see the bar is the choice.
+  final bool gazeWholeBar;
   final List<_NavItem> items;
   final ValueChanged<int> onTap;
   final Map<int, AnimationController> bounceControllers;
@@ -668,6 +696,7 @@ class _AnimatedNavBar extends StatelessWidget {
     required this.vsync,
     required this.metrics,
     this.gazeTargetIndex,
+    this.gazeWholeBar = false,
   });
 
   @override
@@ -697,11 +726,11 @@ class _AnimatedNavBar extends StatelessWidget {
               // Bright gaze-cursor ring framing the highlighted tab — distinct
               // from the soft selection pill, so a learner can see where the
               // head-driven highlight is before blinking to open it.
-              if (gazeTargetIndex != null)
+              if (gazeTargetIndex != null || gazeWholeBar)
                 AnimatedPositioned(
-                  left: gazeTargetIndex! * itemWidth + 4,
+                  left: gazeWholeBar ? 4 : gazeTargetIndex! * itemWidth + 4,
                   top: 4,
-                  width: itemWidth - 8,
+                  width: gazeWholeBar ? totalWidth - 8 : itemWidth - 8,
                   height: barHeight - 8,
                   duration: const Duration(milliseconds: 260),
                   curve: Curves.easeOutCubic,
@@ -962,13 +991,41 @@ class _GazeNavHint extends StatelessWidget {
   /// camera" wording instead of an endless "Starting gaze…".
   final GazeStatus status;
 
+  /// Scanning mode: the highlight moves by itself, so the hint says to blink
+  /// when the wanted control lights up rather than to look anywhere.
+  final bool scanning;
+
+  /// Whether a blink picks; when it doesn't, looking up does, and the hint
+  /// must not tell a learner to blink at something that will not answer.
+  final bool blinkSelects;
+
   const _GazeNavHint({
     required this.ready,
     required this.faceVisible,
     required this.bottomOffset,
     required this.status,
     this.featureTilesActive = false,
+    this.scanning = false,
+    this.blinkSelects = true,
   });
+
+  /// What to do once the camera can see the learner: the moves that steer and
+  /// the gesture that opens, which depend on the reach, on scanning, and on
+  /// whether a blink picks at all.
+  String _readyHint(AppLocalizations? l10n) {
+    if (scanning) {
+      return l10n?.gzFocusHintScan ?? 'Blink when the one you want lights up';
+    }
+    if (blinkSelects) {
+      return featureTilesActive
+          ? (l10n?.gzNavHintTiles ?? 'Look ◀ ▶ ▲ ▼ to choose · blink to open')
+          : (l10n?.gzNavHintTabs ?? 'Look ◀ ▶ to choose · blink to open');
+    }
+    return featureTilesActive
+        ? (l10n?.gzNavHintTilesLookUp ??
+              'Look ◀ ▶ ▼ to choose · look up to open')
+        : (l10n?.gzNavHintTabsLookUp ?? 'Look ◀ ▶ to choose · look up to open');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -976,56 +1033,69 @@ class _GazeNavHint extends StatelessWidget {
     // for a denied permission or a missing front lens leaves a hands-free
     // learner waiting on something that is never going to happen — the one
     // person who can least afford to guess. Same wording as `GazeOverlay`.
+    final l10n = AppLocalizations.of(context);
     final (IconData icon, String text) = switch (status) {
       GazeStatus.permissionDenied => (
         Icons.lock_rounded,
-        'Gaze: camera permission needed',
+        l10n?.gzStatusPermission ?? 'Gaze: camera permission needed',
       ),
       GazeStatus.noCamera => (
         Icons.videocam_off_rounded,
-        'Gaze: no front camera',
+        l10n?.gzStatusNoCamera ?? 'Gaze: no front camera',
       ),
-      GazeStatus.failed => (Icons.error_outline_rounded, 'Gaze unavailable'),
+      GazeStatus.failed => (
+        Icons.error_outline_rounded,
+        l10n?.gzUnavailable ?? 'Gaze unavailable',
+      ),
       GazeStatus.initializing => (
         Icons.hourglass_top_rounded,
-        'Starting gaze…',
+        l10n?.gzStarting ?? 'Starting gaze…',
       ),
       GazeStatus.ready =>
         !faceVisible
-            ? (Icons.face_retouching_natural_rounded, 'Look at the screen')
-            : (
-                Icons.visibility_rounded,
-                featureTilesActive
-                    ? 'Look ◀ ▶ ▲ ▼ to choose · blink to open'
-                    : 'Look ◀ ▶ to choose · blink to open',
-              ),
+            ? (
+                Icons.face_retouching_natural_rounded,
+                l10n?.gzNavHintLook ?? 'Look at the screen',
+              )
+            : (Icons.visibility_rounded, _readyHint(l10n)),
     };
     return Positioned(
-      left: 0,
-      right: 0,
+      left: 16,
+      right: 16,
       bottom: bottomOffset + 8,
+      // A transparent Material gives the chip the app's own text style: it
+      // sits beside the shell's Scaffold, not inside it, and without one it
+      // was drawn in Flutter's red-yellow "missing Material" style.
       child: IgnorePointer(
-        child: Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: Colors.white, size: 16),
-                const SizedBox(width: 6),
-                Text(
-                  text,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+        child: Material(
+          type: MaterialType.transparency,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: Colors.white, size: 16),
+                  const SizedBox(width: 6),
+                  // Flexible so the longest wording still wraps rather than
+                  // overflowing on a phone at the largest font size.
+                  Flexible(
+                    child: Text(
+                      text,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

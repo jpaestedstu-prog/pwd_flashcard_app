@@ -105,6 +105,8 @@ enum _Phase { starting, ready, countdown, recording, review, noCamera, denied, f
 
 class _MediaCaptureScreenState extends State<MediaCaptureScreen>
     with WidgetsBindingObserver {
+  /// This screen's place in the gaze camera-owner stack.
+  Object? _cameraToken;
   List<CameraDescription> _cameras = const [];
   int _cameraIndex = 0;
   CameraController? _camera;
@@ -132,14 +134,16 @@ class _MediaCaptureScreenState extends State<MediaCaptureScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    gazeCameraOwners.acquire();
+    // On top of the camera-owner stack: a gaze screen beneath (a message
+    // thread) stands its own camera and microphone down while this records.
+    _cameraToken = gazeCameraOwners.acquire();
     _start();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    gazeCameraOwners.release();
+    gazeCameraOwners.release(_cameraToken);
     _ticker?.cancel();
     _camera?.dispose();
     _review?.dispose();

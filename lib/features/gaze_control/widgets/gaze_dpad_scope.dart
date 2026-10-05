@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, listEquals;
 import 'package:flutter/material.dart';
@@ -8,6 +10,7 @@ import '../../../core/accessibility/haptic_service.dart'
 import '../../../core/theme/app_colors.dart' show AppColors;
 import '../controllers/gaze_controller.dart';
 import '../logic/gaze_grid_cursor.dart';
+import '../logic/grid_scanner.dart';
 import '../logic/voice_commands.dart';
 import '../models/gaze_models.dart';
 import '../models/gaze_settings.dart';
@@ -15,6 +18,7 @@ import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_settings_provider.dart';
 import '../services/gaze_detector.dart';
 import 'gaze_route_guard.dart';
+import 'gaze_traversal.dart';
 import 'voice_control_mixin.dart';
 
 /// One gaze-navigable control in a [GazeDpadScope] row: a [label] (for the hint
@@ -45,6 +49,10 @@ class GazeDpadCell implements VoiceTarget {
 /// **own** row indices — the exit row [GazeDpadScope.onExit] adds is invisible
 /// here, so adopting it never renumbers a screen's cells. When the highlight is
 /// resting on that exit row, [focusRow] is null and [exitFocused] is true.
+///
+/// In scanning mode's row phase a whole row is lit: [focusRow] is set and
+/// [focusCol] is null, and [isFocused] is true for every cell in that row — so
+/// a screen that rings `isFocused` cells lights the row with no extra code.
 class GazeDpadState {
   /// Gaze is enabled and this scope's camera is running.
   final bool active;
@@ -63,6 +71,9 @@ class GazeDpadState {
   /// The highlight is resting on the hands-free "Back" control the scope draws.
   final bool exitFocused;
 
+  /// Scanning mode is on: the highlight moves by itself and a blink picks.
+  final bool scanning;
+
   const GazeDpadState({
     required this.active,
     required this.ready,
@@ -70,11 +81,13 @@ class GazeDpadState {
     this.focusRow,
     this.focusCol,
     this.exitFocused = false,
+    this.scanning = false,
   });
 
-  /// True when [row]/[col] is the currently focused cell (and gaze is active).
+  /// True when [row]/[col] is the currently focused cell (and gaze is active),
+  /// or sits in the whole row scanning has lit.
   bool isFocused(int row, int col) =>
-      active && focusRow == row && focusCol == col;
+      active && focusRow == row && (focusCol == null || focusCol == col);
 
   static const GazeDpadState inactive = GazeDpadState(
     active: false,
@@ -93,6 +106,15 @@ class GazeDpadState {
 /// within a row, **▲ ▼** between rows, and a **blink** opens the focused control
 /// (when blink is off, **look-up** opens it, mirroring the shell). The [builder]
 /// receives the live [GazeDpadState] so the screen can ring the focused control.
+///
+/// In **scanning mode** the controls light up by themselves — a row at a time
+/// when there are several, then the controls of the chosen row (see
+/// [GridScanner]) — and a blink picks.
+///
+/// When something covers the screen — one of its own sheets ("Show Me",
+/// "Examples", the FSL clip), a dialog, an in-screen modal — head, blink,
+/// scanning and voice all hand over to focus traversal on what is showing
+/// (see [GazeTraversal]), so the learner can operate it and close it.
 ///
 /// It is **inert unless Gaze Control is enabled** — then it simply runs
 /// [builder] with [GazeDpadState.inactive] and opens no camera. Touch always
@@ -167,9 +189,24 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
   /// controller that is running.
   GazeSettings _settings = const GazeSettings();
 
-  /// True once this scope has claimed the shared camera owner count, so the
-  /// shell's nav-gaze stands its camera down. Released exactly once on dispose.
-  bool _ownsCamera = false;
+  /// This scope's place in the camera-owner stack, so the shell's nav-gaze
+  /// stands down — and so this scope can tell when another camera surface has
+  /// opened on top of it. Released exactly once on dispose.
+  Object? _cameraToken;
+
+  /// Scanning mode: the row–column scanner over the same grid the D-pad
+  /// walks (exit row included), and the timer that steps it.
+  GridScanner? _scanner;
+  Timer? _scanTimer;
+
+  /// Head moves, blinks, scan steps and voice while something covers this
+  /// screen — plus the ring that shows where that is.
+  late final GazeTraversal _traversal = GazeTraversal(
+    onMoved: () => ref.read(hapticServiceProvider).selectionClick(),
+    onPressed: () => ref.read(hapticServiceProvider).success(),
+  );
+
+  bool get _scanning => _scanner != null;
 
   @override
   void initState() {
@@ -194,14 +231,21 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
     controller.addListener(_onControllerUpdate);
     _gaze = controller;
     // Claim the single camera so the shell's background nav-gaze stands down.
-    _ownsCamera = true;
-    gazeCameraOwners.acquire();
+    _cameraToken = gazeCameraOwners.acquire();
+    gazeCameraOwners.addListener(_onCameraOwnersChanged);
     controller.start();
+    if (settings.scanMode) {
+      // Like the D-pad, the scan begins on the screen's own controls rather
+      // than on the Back row above them.
+      _scanner = GridScanner(_appliedLengths);
+      _skipExitRowOnStart();
+      _restartScanTimer();
+    }
     // Voice is additive — it addresses the same cells by their label.
     if (settings.voiceCommands) startVoiceControl();
     // This screen's own sheets ("Show Me", "Examples") cover the action bar
     // the D-pad drives; watch for that so the ring stops following a hidden
-    // control.
+    // control and traversal takes over.
     startGazeCoverageWatch();
   }
 
@@ -216,13 +260,21 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
     if (!listEquals(want, _appliedLengths)) {
       _cursor.setRows(want);
       _appliedLengths = want;
+      final scanner = _scanner;
+      if (scanner != null) {
+        scanner.setRows(want);
+        _skipExitRowOnStart();
+        _restartScanTimer();
+      }
       setState(() {});
     }
   }
 
   @override
   void dispose() {
+    _scanTimer?.cancel();
     stopGazeCoverageWatch();
+    _traversal.hideRing();
     disposeVoiceControl();
     final controller = _gaze;
     _gaze = null;
@@ -230,19 +282,59 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
       controller.removeListener(_onControllerUpdate);
       controller.dispose();
     }
-    if (_ownsCamera) gazeCameraOwners.release();
+    gazeCameraOwners.removeListener(_onCameraOwnersChanged);
+    final token = _cameraToken;
+    if (token != null) gazeCameraOwners.release(token);
     super.dispose();
+  }
+
+  /// Whether this screen is the newest camera owner — the one the learner is
+  /// looking at. Only then may it run its camera and microphone.
+  bool get _isTopOwner {
+    final token = _cameraToken;
+    return token != null && gazeCameraOwners.isTop(token);
+  }
+
+  /// Another camera surface opened over this screen (the race the Play
+  /// Together lobby starts, the media camera a message thread opens): stand
+  /// the camera, the microphone and the traversal ring down until it closes.
+  /// Deferred because owners change from `initState` / `dispose`.
+  void _onCameraOwnersChanged() {
+    scheduleMicrotask(() {
+      final gaze = _gaze;
+      if (!mounted || gaze == null) return;
+      if (!_isTopOwner && !gaze.suspended) {
+        gaze.suspendCamera();
+        disposeVoiceControl();
+        _traversal.hideRing();
+        setState(() {});
+      } else if (_isTopOwner && gaze.suspended) {
+        gaze.resumeCamera();
+        if (_settings.voiceCommands) startVoiceControl();
+        if (_scanning) _restartScanTimer();
+        onGazeCoverageChanged(gazeCovered);
+        setState(() {});
+      }
+    });
   }
 
   /// A spoken phrase → the same cell its label names (fired like a blink), a
   /// D-pad cursor move ("left" / "up" / "kanan"…) identical to the matching
   /// head gesture, a "select" that commits the focused cell like a blink, or a
   /// global scroll / leave-screen action. Reads the live [widget.rows] so the
-  /// enabled flags and callbacks are always current. Ignored while another
-  /// route covers this screen, exactly like the head D-pad.
+  /// enabled flags and callbacks are always current. While something covers
+  /// this screen, the same phrases drive focus traversal on what is showing.
   @override
   void onVoiceCommand(String text) {
-    if (!mounted || gazeCovered) return;
+    if (!mounted) return;
+    if (gazeCovered) {
+      final intent = _traversal.voice(text);
+      if (kDebugMode) debugPrint('VoiceCmd dpad(covered) "$text" → $intent');
+      // Traversal already closed the surface on "go back"; only the scroll
+      // gesture is left to this scope.
+      if (intent != DpadVoiceIntent.goBack) _globalVoice(intent);
+      return;
+    }
     // Resolve against the same grid the cursor walks, so "back" reaches the
     // exit row by name and the returned coordinates need no translation.
     final result = resolveDpadVoiceCommand(text, _grid());
@@ -258,23 +350,35 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
           ref.read(hapticServiceProvider).success();
           cell.onActivate();
         }
+      // Scanning moves the highlight by itself; a spoken direction has no
+      // cursor to move there, so only naming a control or "select" act.
       case DpadVoiceIntent.moveLeft:
-        _move(() => _cursor.moveHoriz(-1));
+        if (!_scanning) _move(() => _cursor.moveHoriz(-1));
       case DpadVoiceIntent.moveRight:
-        _move(() => _cursor.moveHoriz(1));
+        if (!_scanning) _move(() => _cursor.moveHoriz(1));
       case DpadVoiceIntent.moveUp:
-        _move(() => _cursor.moveVert(-1));
+        if (!_scanning) _move(() => _cursor.moveVert(-1));
       case DpadVoiceIntent.moveDown:
-        _move(() => _cursor.moveVert(1));
+        if (!_scanning) _move(() => _cursor.moveVert(1));
       case DpadVoiceIntent.select:
         _commit();
+      case DpadVoiceIntent.scrollUp:
+      case DpadVoiceIntent.scrollDown:
+      case DpadVoiceIntent.goBack:
+      case DpadVoiceIntent.none:
+        _globalVoice(result.intent);
+    }
+  }
+
+  void _globalVoice(DpadVoiceIntent intent) {
+    switch (intent) {
       case DpadVoiceIntent.scrollUp:
         voiceScroll(-1);
       case DpadVoiceIntent.scrollDown:
         voiceScroll(1);
       case DpadVoiceIntent.goBack:
         Navigator.of(context).maybePop();
-      case DpadVoiceIntent.none:
+      default:
         break;
     }
   }
@@ -288,7 +392,12 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
   int get _rowOffset => _hasExitRow ? 1 : 0;
 
   /// True while the highlight rests on the exit row.
-  bool get _onExitRow => _hasExitRow && _cursor.row == 0;
+  bool get _onExitRow {
+    if (!_hasExitRow) return false;
+    final scanner = _scanner;
+    if (scanner != null) return !scanner.isEmpty && scanner.row == 0;
+    return _cursor.row == 0;
+  }
 
   /// The screen's rows with the scope's exit row (when present) stacked on top
   /// — the single grid the cursor, the commit and the voice resolver all
@@ -305,17 +414,72 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
     if (mounted) setState(() {});
   }
 
+  // ── Scanning ──────────────────────────────────────────────────────────
+
+  /// Starts the scan on the screen's first row rather than on Back.
+  void _skipExitRowOnStart() {
+    final scanner = _scanner;
+    if (scanner == null || !_hasExitRow || scanner.isEmpty) return;
+    if (scanner.row == 0 && scanner.onWholeRow) scanner.step();
+  }
+
+  void _restartScanTimer() {
+    _scanTimer?.cancel();
+    _scanTimer = Timer.periodic(_settings.scanStepDuration, (_) => _scanTick());
+  }
+
+  void _scanTick() {
+    final scanner = _scanner;
+    if (!mounted || _gaze == null || scanner == null) return;
+    // Stood down under another camera surface: that one is scanning now.
+    if (_gaze!.suspended) return;
+    if (gazeCovered) {
+      // A sheet or dialog is up: light up *its* controls in turn instead.
+      _traversal.scanStep();
+      return;
+    }
+    if (scanner.isEmpty) return;
+    ref.read(hapticServiceProvider).selectionClick();
+    setState(scanner.step);
+  }
+
+  void _scanSelect() {
+    final scanner = _scanner;
+    if (scanner == null) return;
+    final pick = scanner.select();
+    _restartScanTimer();
+    if (pick == null) {
+      if (scanner.isEmpty) return;
+      ref.read(hapticServiceProvider).selectionClick();
+      setState(() {});
+      return;
+    }
+    final cell = _cellAt(pick.row, pick.col);
+    if (cell == null || !cell.enabled) return;
+    ref.read(hapticServiceProvider).success();
+    cell.onActivate();
+    setState(() {});
+  }
+
+  // ── Head D-pad ────────────────────────────────────────────────────────
+
   /// Head-zone → D-pad, identical to the shell: ◀ ▶ scrub within the row, ▲ ▼
   /// move between rows when there's more than one; otherwise up commits and down
   /// is ignored. When blink is disabled, up always commits so a head-only
   /// learner keeps an open gesture (rows stay reachable by looking down).
   void _onZone(GazeZone zone) {
-    if (gazeCovered) return;
-    final multiRow = _cursor.rowCount > 1;
+    // Scanning is for learners who cannot move their head; a head move —
+    // likely involuntary — must not steer anything.
+    if (_scanning) return;
     // From the armed snapshot, not the ambient provider — otherwise a scope
     // running on a `settingsOverride` (the profile picker) would take its
     // commit rule from a different learner's configuration.
-    final blink = _settings.blinkEnabled;
+    final blink = _settings.blinkSelects;
+    if (gazeCovered) {
+      _traversal.zone(zone, blinkSelects: blink);
+      return;
+    }
+    final multiRow = _cursor.rowCount > 1;
     switch (zone) {
       case GazeZone.left:
         _move(() => _cursor.moveHoriz(-1));
@@ -341,7 +505,16 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
   }
 
   void _commit() {
-    if (!mounted || gazeCovered || _cursor.rowCount == 0) return;
+    if (!mounted) return;
+    if (gazeCovered) {
+      _traversal.commit();
+      return;
+    }
+    if (_scanning) {
+      _scanSelect();
+      return;
+    }
+    if (_cursor.rowCount == 0) return;
     final cell = _cellAt(_cursor.row, _cursor.col);
     if (cell == null || !cell.enabled) return;
     ref.read(hapticServiceProvider).success();
@@ -358,6 +531,36 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
   }
 
   @override
+  void onGazeCoverageChanged(bool covered) {
+    if (!mounted || _gaze == null) return;
+    _traversal.syncRing(
+      context,
+      // Covered by a screen with its own gaze, that screen draws its own
+      // highlight; the ring belongs to whoever is driving.
+      wanted: covered && _isTopOwner,
+      hint: GazeTraversal.hintFor(
+        scanning: _scanning,
+        blinkSelects: _settings.blinkSelects,
+      ),
+    );
+  }
+
+  @override
+  Map<String, Object?> debugDescribe() => {
+    'scope': 'dpad',
+    'running': _gaze != null,
+    'topOwner': _isTopOwner,
+    'covered': _gaze != null && gazeCovered,
+    'scanning': _scanning,
+    'cursor': [_cursor.row, _cursor.col],
+    if (_scanner != null) 'scan': [_scanner!.row, _scanner!.col],
+    'exitRow': _hasExitRow,
+    'rows': [
+      for (final row in _grid()) [for (final c in row) c.label],
+    ],
+  };
+
+  @override
   Widget build(BuildContext context) {
     // Settings are snapshotted on mount (like GazeScope): re-enter the screen to
     // apply a Gaze Control toggle. When off, this is a pure pass-through.
@@ -371,6 +574,16 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
       content = widget.builder(context, GazeDpadState.inactive);
     } else {
       final ready = gaze.status == GazeStatus.ready;
+      final scanner = _scanner;
+      final int focusRow;
+      final int? focusCol;
+      if (scanner != null && !scanner.isEmpty) {
+        focusRow = scanner.row;
+        focusCol = scanner.col;
+      } else {
+        focusRow = _cursor.row;
+        focusCol = _cursor.col;
+      }
       content = widget.builder(
         context,
         GazeDpadState(
@@ -380,51 +593,56 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
           // Reported in the screen's own row numbering — null while the
           // highlight is up on the scope's exit row, which the screen knows
           // nothing about.
-          focusRow: onExitRow ? null : _cursor.row - _rowOffset,
-          focusCol: onExitRow ? null : _cursor.col,
+          focusRow: onExitRow ? null : focusRow - _rowOffset,
+          focusCol: onExitRow ? null : focusCol,
           exitFocused: onExitRow,
+          scanning: _scanning,
         ),
       );
     }
 
     // While voice is listening, float a small mic status chip near the top so it
     // never collides with the screen's bottom action bar. Informational only —
-    // and hidden while covered, since spoken commands are gated off too.
+    // and hidden while covered, since the covering surface has the stage.
     final chip = gazeCoveredForUi ? null : voiceChip();
     // The hands-free way out, drawn top-left where a back button belongs so
     // "look up to leave" matches what the learner sees.
     final exitPill = gaze != null && _hasExitRow
         ? _GazeExitPill(label: widget.exitLabel, focused: onExitRow)
         : null;
-    if (chip == null && exitPill == null) return content;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        content,
-        if (exitPill != null)
-          Positioned(
-            top: 0,
-            left: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: IgnorePointer(child: exitPill),
+    // Always the same Stack, so the screen beneath never remounts as the chip
+    // or the pill come and go (a sheet opening over the viewer used to rebuild
+    // the whole viewer from scratch).
+    return hostGazeModals(
+      Stack(
+        fit: StackFit.expand,
+        children: [
+          content,
+          if (exitPill != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: IgnorePointer(child: exitPill),
+                ),
               ),
             ),
-          ),
-        if (chip != null)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: IgnorePointer(child: Center(child: chip)),
+          if (chip != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: IgnorePointer(child: Center(child: chip)),
+                ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -439,40 +657,47 @@ class _GazeExitPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: focused ? AppColors.accent : Colors.black54,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: focused ? AppColors.accent : Colors.white24,
-          width: focused ? 3 : 1,
-        ),
-        boxShadow: focused
-            ? [
-                BoxShadow(
-                  color: AppColors.accent.withValues(alpha: 0.5),
-                  blurRadius: 14,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 18),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
+    // A transparent Material gives the text the app's own style. This floats
+    // beside a screen's Scaffold, not inside it, so without one the text fell
+    // back to Flutter's "missing Material" style — red-yellow double
+    // underlines in a monospace font — on every gaze learner's screen.
+    return Material(
+      type: MaterialType.transparency,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: focused ? AppColors.accent : Colors.black54,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: focused ? AppColors.accent : Colors.white24,
+            width: focused ? 3 : 1,
           ),
-        ],
+          boxShadow: focused
+              ? [
+                  BoxShadow(
+                    color: AppColors.accent.withValues(alpha: 0.5),
+                    blurRadius: 14,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

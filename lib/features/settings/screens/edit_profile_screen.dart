@@ -247,7 +247,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           );
       switch (LearnerSupportCatalog.inputModeIn(newSupports)) {
         case LearnerSupportOption.inputGaze:
-          ref.read(gazeSettingsProvider.notifier).setEnabled(true);
+          // Newly choosing gaze gets the full reach, like setup does; saving
+          // some other support must not override a reach already chosen.
+          final wasGaze =
+              LearnerSupportCatalog.inputModeIn(profile.supports) ==
+              LearnerSupportOption.inputGaze;
+          final gaze = ref.read(gazeSettingsProvider.notifier);
+          wasGaze ? gaze.setEnabled(true) : gaze.enableForGazeLearner();
         case LearnerSupportOption.inputSwitch:
           ref.read(gamepadSettingsProvider.notifier).setEnabled(true);
         default:

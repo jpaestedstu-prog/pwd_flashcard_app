@@ -14615,7 +14615,7 @@ abstract class AppLocalizations {
   /// No description provided for @gzsHoldHelp.
   ///
   /// In en, this message translates to:
-  /// **'How long to look at a button before it activates.'**
+  /// **'How long to hold a head movement before it counts.'**
   String get gzsHoldHelp;
 
   /// No description provided for @gzsBlink.
@@ -14645,7 +14645,7 @@ abstract class AppLocalizations {
   /// No description provided for @gzsScanSub.
   ///
   /// In en, this message translates to:
-  /// **'Buttons highlight one by one — blink to pick. For learners who can’t move their head.'**
+  /// **'Buttons light up in turn — on big screens a whole row first, then each button in it — and a blink picks the lit one. For learners who can’t move their head.'**
   String get gzsScanSub;
 
   /// No description provided for @gzsScanSpeed.
@@ -19891,6 +19891,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Look ◀ ▶ ▲ ▼ to move · blink to press'**
   String get gzFocusHint;
+
+  /// No description provided for @gzFocusHintLookUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Look ◀ ▶ ▼ to move · look up to press'**
+  String get gzFocusHintLookUp;
+
+  /// No description provided for @gzFocusHintScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Blink when the one you want lights up'**
+  String get gzFocusHintScan;
+
+  /// No description provided for @gzStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting gaze…'**
+  String get gzStarting;
+
+  /// No description provided for @gzNavHintLook.
+  ///
+  /// In en, this message translates to:
+  /// **'Look at the screen'**
+  String get gzNavHintLook;
+
+  /// No description provided for @gzNavHintTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Look ◀ ▶ to choose · blink to open'**
+  String get gzNavHintTabs;
+
+  /// No description provided for @gzNavHintTiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Look ◀ ▶ ▲ ▼ to choose · blink to open'**
+  String get gzNavHintTiles;
+
+  /// No description provided for @gzNavHintTabsLookUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Look ◀ ▶ to choose · look up to open'**
+  String get gzNavHintTabsLookUp;
+
+  /// No description provided for @gzNavHintTilesLookUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Look ◀ ▶ ▼ to choose · look up to open'**
+  String get gzNavHintTilesLookUp;
+
+  /// No description provided for @gzPracticeIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Try each one: turn your head toward a target and hold it until the ring fills'**
+  String get gzPracticeIntro;
+
+  /// No description provided for @gzPracticeDone.
+  ///
+  /// In en, this message translates to:
+  /// **'🎉 All done!'**
+  String get gzPracticeDone;
+
+  /// No description provided for @gzLeaveBlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Blink to go back'**
+  String get gzLeaveBlink;
+
+  /// No description provided for @gzLeaveLookUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Look up to go back'**
+  String get gzLeaveLookUp;
+
+  /// No description provided for @gzsBlinkScanOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Always on while Scanning mode is on — a blink is how scanning picks'**
+  String get gzsBlinkScanOn;
+
+  /// No description provided for @gzsStepDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease {setting}'**
+  String gzsStepDown(String setting);
+
+  /// No description provided for @gzsStepUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase {setting}'**
+  String gzsStepUp(String setting);
 
   /// No description provided for @spdSupport.
   ///

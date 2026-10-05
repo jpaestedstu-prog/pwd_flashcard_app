@@ -42,10 +42,7 @@ class _StubProfileNotifier extends ProfileNotifier {
 /// roster, which `find.text` could not give us.
 class _GazeTilesOnNotifier extends GazeSettingsNotifier {
   @override
-  GazeSettings build() => const GazeSettings(
-        enabled: true,
-        navScope: GazeNavScope.bottomNavAndHomeTiles,
-      );
+  GazeSettings build() => const GazeSettings(enabled: true);
 }
 
 Future<List<String>> _pumpHubLabels(

@@ -247,7 +247,7 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
       // input method they just chose switches the right one on.
       switch (LearnerSupportCatalog.inputModeIn(profile.supports)) {
         case LearnerSupportOption.inputGaze:
-          ref.read(gazeSettingsProvider.notifier).setEnabled(true);
+          ref.read(gazeSettingsProvider.notifier).enableForGazeLearner();
         case LearnerSupportOption.inputSwitch:
           ref.read(gamepadSettingsProvider.notifier).setEnabled(true);
         default:

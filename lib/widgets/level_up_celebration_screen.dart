@@ -12,6 +12,7 @@ import 'animated_gradient_background.dart';
 import '../core/utils/reduced_motion.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
+import '../features/gaze_control/widgets/gaze_modal_region.dart';
 
 /// A full-screen celebration overlay that displays when the user levels up.
 ///
@@ -169,8 +170,15 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
     return colors[idx];
   }
 
+  /// Drawn over the hubs inside the navigation shell, not as a route. The
+  /// region makes the shell's gaze D-pad stand down while it shows — before,
+  /// a blink during the celebration opened whichever tab was highlighted
+  /// beneath it — and puts the learner's focus on the dismiss button.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      GazeModalRegion(child: _celebration(context));
+
+  Widget _celebration(BuildContext context) {
     // `widget.reducedMotion` is passed down by the shell, and the scope covers
     // the case where it is not — either way this is re-evaluated every build.
     final reduced = widget.reducedMotion || ReducedMotionScope.of(context);

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -42,7 +43,9 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     GazeDetector Function()? detectorFactory,
   }) : _turnThreshold = settings.turnThresholdDeg,
        _tiltThreshold = settings.tiltThresholdDeg,
-       _blinkEnabled = settings.blinkEnabled,
+       _blinkEnabled = settings.blinkSelects,
+       _mirrorHorizontal = settings.mirrorHorizontal,
+       _invertVertical = settings.invertVertical,
        _dwell = DwellTracker(dwellDuration: settings.dwellDuration),
        _detector =
            detectorFactory?.call() ??
@@ -52,12 +55,93 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
            );
   final Future<List<CameraDescription>> Function() camerasLoader;
   final GazeDetector _detector;
-  final DwellTracker _dwell;
+  DwellTracker _dwell;
   final BlinkDetector _blink = BlinkDetector();
   final Stopwatch _clock = Stopwatch();
-  final double _turnThreshold;
-  final double _tiltThreshold;
-  final bool _blinkEnabled;
+  double _turnThreshold;
+  double _tiltThreshold;
+  bool _blinkEnabled;
+  bool _mirrorHorizontal;
+  bool _invertVertical;
+
+  /// Re-tunes a running controller in place: sensitivity, hold time, blink
+  /// and the left/right · up/down calibration all take effect on the next
+  /// frame, with no camera restart.
+  ///
+  /// The navigation shell's controller lives for the whole session, so
+  /// without this a teacher who changed a learner's sensitivity saw nothing
+  /// happen — the shell kept the values it was started with until something
+  /// happened to bounce its camera.
+  void applySettings(GazeSettings settings) {
+    _turnThreshold = settings.turnThresholdDeg;
+    _tiltThreshold = settings.tiltThresholdDeg;
+    _blinkEnabled = settings.blinkSelects;
+    _mirrorHorizontal = settings.mirrorHorizontal;
+    _invertVertical = settings.invertVertical;
+    final detector = _detector;
+    if (detector is MlKitGazeDetector) {
+      detector.calibrate(
+        mirrorHorizontal: settings.mirrorHorizontal,
+        invertVertical: settings.invertVertical,
+      );
+    }
+    if (_dwell.dwellDuration != settings.dwellDuration) {
+      // A half-filled hold measured against the old duration would fire at
+      // the wrong moment, so start the hold over on the new one.
+      _dwell = DwellTracker(dwellDuration: settings.dwellDuration);
+    }
+    _blink.reset();
+  }
+
+  // ── Debug-only remote input ────────────────────────────────────────────
+  //
+  // A real device cannot be tested end-to-end without a person moving their
+  // head in front of it. In debug and profile builds the gaze debug bridge
+  // (`gaze_debug_bridge.dart`) can stand in for that person: it lists the live
+  // controllers here and can replace the camera's head pose for a while, so
+  // the dwell, sensitivity, blink and calibration logic all run exactly as
+  // they would for a learner. Compiled out of release builds (`kReleaseMode`).
+
+  /// Live controllers, oldest first. Debug and profile builds only.
+  static final List<GazeController> debugLive = [];
+
+  /// When non-null and returning a pose, that pose replaces what the camera
+  /// saw — raw head angles in ML Kit's frame, before calibration.
+  static ({double yaw, double pitch, double leftEye, double rightEye})?
+  Function()?
+  debugPoseSource;
+
+  int _debugFrames = 0;
+
+  /// A snapshot for the debug bridge.
+  Map<String, Object?> debugDescribe() => {
+    'status': _status.name,
+    'suspended': _suspended,
+    'faceVisible': _faceVisible,
+    'zone': _zone.name,
+    'progress': double.parse(_progress.toStringAsFixed(2)),
+    'blinkSelects': _blinkEnabled,
+    'turnThresholdDeg': _turnThreshold,
+    'tiltThresholdDeg': _tiltThreshold,
+    'dwellMs': _dwell.dwellDuration.inMilliseconds,
+    'mirrorHorizontal': _mirrorHorizontal,
+    'invertVertical': _invertVertical,
+    'framesProcessed': _debugFrames,
+  };
+
+  /// Fires a completed hold on [zone], as if the learner had held it.
+  void debugSelect(GazeZone zone) {
+    if (kReleaseMode || _disposed) return;
+    onSelect?.call(zone);
+  }
+
+  /// Fires a deliberate blink — ignored when blink isn't a selector here,
+  /// exactly as a real blink would be.
+  bool debugBlink() {
+    if (kReleaseMode || _disposed || !_blinkEnabled) return false;
+    onBlink?.call();
+    return true;
+  }
 
   /// Fired once when a dwell completes on a (non-none) zone.
   void Function(GazeZone zone)? onSelect;
@@ -93,12 +177,14 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   /// Begins observing the app lifecycle and acquires the front camera.
   Future<void> start() {
     WidgetsBinding.instance.addObserver(this);
+    if (!kReleaseMode && !debugLive.contains(this)) debugLive.add(this);
     return _initCamera();
   }
 
   @override
   void dispose() {
     _disposed = true;
+    if (!kReleaseMode) debugLive.remove(this);
     WidgetsBinding.instance.removeObserver(this);
     _teardownController();
     _detector.close();
@@ -107,6 +193,36 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
 
   void _notify() {
     if (!_disposed) notifyListeners();
+  }
+
+  /// Another camera surface is on top of this one's screen (see
+  /// `GazeCameraOwners.isTop`).
+  bool _suspended = false;
+
+  /// A resume arrived while a start was still in flight; start again once it
+  /// settles, so the camera can never be left down.
+  bool _restartAfterInit = false;
+
+  /// Whether the camera is stood down for another camera surface.
+  bool get suspended => _suspended;
+
+  /// Stands the camera down because another camera surface is now on top —
+  /// the hardware runs one session at a time. The controller stays alive and
+  /// keeps its tuning; [resumeCamera] brings the camera back.
+  void suspendCamera() {
+    if (_suspended || _disposed) return;
+    _suspended = true;
+    _restartAfterInit = false;
+    _teardownController();
+    _status = GazeStatus.initializing;
+    _notify();
+  }
+
+  /// Re-acquires the camera after [suspendCamera].
+  void resumeCamera() {
+    if (!_suspended || _disposed) return;
+    _suspended = false;
+    _initCamera();
   }
 
   @override
@@ -125,6 +241,7 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     } else if (state == AppLifecycleState.resumed &&
         controller == null &&
         !_initInFlight &&
+        !_suspended &&
         _status != GazeStatus.noCamera) {
       _initCamera();
     }
@@ -167,12 +284,21 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _initCamera() async {
-    if (_initInFlight || _disposed) return;
+    if (_disposed || _suspended) return;
+    if (_initInFlight) {
+      _restartAfterInit = true;
+      return;
+    }
     _initInFlight = true;
     try {
       await _initCameraInner();
     } finally {
       _initInFlight = false;
+      final again = _restartAfterInit;
+      _restartAfterInit = false;
+      if (again && !_disposed && !_suspended && _controller == null) {
+        _initCamera();
+      }
     }
   }
 
@@ -262,6 +388,24 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
       final controller = _controller;
       final camera = _frontCamera;
       if (controller == null || camera == null) return;
+      if (!kReleaseMode) {
+        _debugFrames++;
+        final pose = debugPoseSource?.call();
+        if (pose != null) {
+          _applySignal(
+            faceSignalFromAngles(
+              rawEulerY: pose.yaw,
+              rawEulerX: pose.pitch,
+              leftEyeOpen: pose.leftEye,
+              rightEyeOpen: pose.rightEye,
+              mirrorHorizontal: _mirrorHorizontal,
+              invertVertical: _invertVertical,
+            ),
+            now,
+          );
+          return;
+        }
+      }
       final input = _inputImageFromCameraImage(image, controller, camera);
       if (input == null) return;
       final signal = await _detector.detect(input);

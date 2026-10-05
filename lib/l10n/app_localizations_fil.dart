@@ -8721,7 +8721,8 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
-  String get gzsHoldHelp => 'Gaano katagal titingin sa button bago ito gumana.';
+  String get gzsHoldHelp =>
+      'Gaano katagal hahawakan ang galaw ng ulo bago ito mabilang.';
 
   @override
   String get gzsBlink => 'Kumurap para kumpirmahin';
@@ -8738,7 +8739,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get gzsScanSub =>
-      'Isa-isang naiilawan ang mga button — kumurap para pumili. Para sa mga mag-aaral na hindi maigalaw ang ulo.';
+      'Sunud-sunod na umiilaw ang mga button — sa malalaking screen, buong hanay muna, saka bawat button dito — at kumurap para piliin ang nakailaw. Para sa mga mag-aaral na hindi maigalaw ang ulo.';
 
   @override
   String get gzsScanSpeed => 'Bilis ng pag-scan';
@@ -11845,6 +11846,61 @@ class AppLocalizationsFil extends AppLocalizations {
   @override
   String get gzFocusHint =>
       'Tumingin ◀ ▶ ▲ ▼ para gumalaw · kumurap para pumindot';
+
+  @override
+  String get gzFocusHintLookUp =>
+      'Tumingin ◀ ▶ ▼ para gumalaw · tumingala para pumindot';
+
+  @override
+  String get gzFocusHintScan => 'Kumurap kapag umilaw ang gusto mo';
+
+  @override
+  String get gzStarting => 'Sinisimulan ang gaze…';
+
+  @override
+  String get gzNavHintLook => 'Tumingin sa screen';
+
+  @override
+  String get gzNavHintTabs => 'Tumingin ◀ ▶ para pumili · kumurap para buksan';
+
+  @override
+  String get gzNavHintTiles =>
+      'Tumingin ◀ ▶ ▲ ▼ para pumili · kumurap para buksan';
+
+  @override
+  String get gzNavHintTabsLookUp =>
+      'Tumingin ◀ ▶ para pumili · tumingala para buksan';
+
+  @override
+  String get gzNavHintTilesLookUp =>
+      'Tumingin ◀ ▶ ▼ para pumili · tumingala para buksan';
+
+  @override
+  String get gzPracticeIntro =>
+      'Subukan ang bawat isa: ibaling ang ulo sa isang target at hawakan hanggang mapuno ang bilog';
+
+  @override
+  String get gzPracticeDone => '🎉 Tapos na lahat!';
+
+  @override
+  String get gzLeaveBlink => 'Kumurap para bumalik';
+
+  @override
+  String get gzLeaveLookUp => 'Tumingala para bumalik';
+
+  @override
+  String get gzsBlinkScanOn =>
+      'Laging nakabukas habang naka-Scanning mode — sa pagkurap pumipili ang scanning';
+
+  @override
+  String gzsStepDown(String setting) {
+    return 'Bawasan ang $setting';
+  }
+
+  @override
+  String gzsStepUp(String setting) {
+    return 'Dagdagan ang $setting';
+  }
 
   @override
   String get spdSupport => 'Suporta';

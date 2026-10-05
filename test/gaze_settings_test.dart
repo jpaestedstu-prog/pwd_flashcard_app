@@ -15,30 +15,32 @@ void main() {
       expect(s.scanMode, isFalse);
       expect(s.scanStepMs, 2000);
       expect(s.scanStepDuration, const Duration(milliseconds: 2000));
-      // D-pad reach defaults to bottom-nav only, so existing behaviour is
-      // unchanged until the learner opts into the Home tiles.
-      expect(s.navScope, GazeNavScope.bottomNav);
-      expect(s.navHomeTiles, isFalse);
+      // D-pad reach defaults to the full "Bottom nav + feature tiles": a
+      // learner who turns gaze on has to be able to open things, not only
+      // switch hubs.
+      expect(s.navScope, GazeNavScope.bottomNavAndHomeTiles);
+      expect(s.navHomeTiles, isTrue);
     });
   });
 
   group('nav scope (Bottom nav + Home tiles)', () {
     test('navHomeTiles reflects the chosen scope', () {
-      const combined =
-          GazeSettings(navScope: GazeNavScope.bottomNavAndHomeTiles);
-      expect(combined.navHomeTiles, isTrue);
+      const navOnly = GazeSettings(navScope: GazeNavScope.bottomNav);
+      expect(navOnly.navHomeTiles, isFalse);
+      expect(const GazeSettings().navHomeTiles, isTrue);
     });
 
-    test('round-trips and unknown / missing values fall back to bottom-nav', () {
-      const s = GazeSettings(navScope: GazeNavScope.bottomNavAndHomeTiles);
+    test('round-trips; a saved choice is kept, missing / unknown → default', () {
+      const s = GazeSettings(navScope: GazeNavScope.bottomNav);
       final restored = GazeSettings.fromMap(s.toMap());
-      expect(restored.navScope, GazeNavScope.bottomNavAndHomeTiles);
+      expect(restored.navScope, GazeNavScope.bottomNav,
+          reason: 'a learner who chose nav-only keeps it');
 
       // Older blob without the key, and a corrupt value → default.
       expect(GazeSettings.fromMap({'enabled': true}).navScope,
-          GazeNavScope.bottomNav);
+          GazeNavScope.bottomNavAndHomeTiles);
       expect(GazeSettings.fromMap({'navScope': 'nonsense'}).navScope,
-          GazeNavScope.bottomNav);
+          GazeNavScope.bottomNavAndHomeTiles);
     });
   });
 

@@ -89,6 +89,10 @@ class GazeHomeGrid extends ChangeNotifier {
 
   /// Publishes which cell is focused (shell → Home). Pass nulls when the cursor
   /// leaves the grid (onto the bottom-nav bar).
+  ///
+  /// A [row] with a null [col] lights the **whole row** — scanning mode's row
+  /// phase, where a learner picks a row before a control in it. The gamepad
+  /// only follows a focus with both halves, so it ignores that state.
   void setFocus(int? row, int? col) {
     if (_focusRow == row && _focusCol == col) return;
     _focusRow = row;
@@ -105,8 +109,10 @@ class GazeHomeGrid extends ChangeNotifier {
     return r[col];
   }
 
-  /// True when [row]/[col] is the currently focused cell.
-  bool isFocused(int row, int col) => _focusRow == row && _focusCol == col;
+  /// True when [row]/[col] is the currently focused cell — or sits in the
+  /// whole row that is lit (see [setFocus]).
+  bool isFocused(int row, int col) =>
+      _focusRow == row && (_focusCol == null || _focusCol == col);
 
   bool _sameShape(List<List<GazeTileCell>> rows) {
     if (rows.length != _rows.length) return false;

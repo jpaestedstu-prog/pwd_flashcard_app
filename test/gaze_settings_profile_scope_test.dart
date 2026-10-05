@@ -88,7 +88,8 @@ void main() {
       final deaf = _containerFor('p-deaf');
       addTearDown(deaf.dispose);
       expect(deaf.read(gazeSettingsProvider).enabled, isFalse);
-      expect(deaf.read(gazeSettingsProvider).navScope, GazeNavScope.bottomNav);
+      expect(deaf.read(gazeSettingsProvider).navScope,
+          GazeNavScope.bottomNavAndHomeTiles);
     });
 
     test('each learner reads back their own saved config', () async {

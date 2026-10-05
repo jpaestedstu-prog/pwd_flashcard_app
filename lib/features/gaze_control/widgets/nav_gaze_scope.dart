@@ -8,16 +8,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
 import '../controllers/gaze_controller.dart';
-import '../logic/gaze_focus_driver.dart';
 import '../logic/gaze_grid_cursor.dart';
+import '../logic/grid_scanner.dart';
 import '../logic/voice_commands.dart';
 import '../models/gaze_models.dart';
+import '../models/gaze_settings.dart';
 import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_home_grid.dart';
 import '../providers/gaze_settings_provider.dart';
 import '../services/gaze_detector.dart';
-import 'gaze_focus_overlay.dart';
 import 'gaze_route_guard.dart';
+import 'gaze_traversal.dart';
 import 'shell_modal_observer.dart';
 import 'voice_control_mixin.dart';
 
@@ -47,10 +48,21 @@ class NavGazeState {
   /// while a feature tile is highlighted instead).
   final int? targetIndex;
 
+  /// Scanning mode's row phase is lighting the **whole** tab bar (the learner
+  /// blinks to step into it, then picks a tab).
+  final bool wholeNavRow;
+
   /// The D-pad is currently extended over the foreground hub's feature tiles
   /// (the "Bottom nav + feature tiles" reach, on any of Home / Cards / Games /
   /// Stories / Progress). Drives the richer hint chip.
   final bool featureTilesActive;
+
+  /// Scanning mode is on: the highlight moves by itself and a blink picks.
+  final bool scanning;
+
+  /// A blink picks things. When false, looking up does (see
+  /// [GazeSettings.blinkSelects]) — the hint has to say which.
+  final bool blinkSelects;
 
   const NavGazeState({
     required this.active,
@@ -59,6 +71,9 @@ class NavGazeState {
     required this.targetIndex,
     this.featureTilesActive = false,
     this.status = GazeStatus.initializing,
+    this.wholeNavRow = false,
+    this.scanning = false,
+    this.blinkSelects = true,
   });
 
   static const NavGazeState inactive = NavGazeState(
@@ -83,6 +98,14 @@ class NavGazeState {
 /// while **◀ ▶** moves within a row. A blink opens the focused tile (or, when
 /// blink is off, look-up commits so head-only learners still have an open
 /// gesture).
+///
+/// In **scanning mode** the head is not used at all: the same grid lights up
+/// by itself — a row at a time, then the controls of a chosen row (see
+/// [GridScanner]) — and a blink picks.
+///
+/// When something covers the hubs — a dialog, a sheet, a pushed page, an
+/// in-screen celebration — every input hands over to focus traversal on what
+/// is showing (see [GazeTraversal]).
 ///
 /// It is **inert unless Gaze Control is enabled**, in which case it simply runs
 /// [builder] with [NavGazeState.inactive] and opens no camera. Touch always
@@ -114,6 +137,15 @@ class NavGazeScope extends ConsumerStatefulWidget {
   /// global "Enable Gaze Control" setting and the single-camera owner count.
   final bool enabled;
 
+  /// The visible page is a hub that publishes its own gaze grid (Home,
+  /// Cards, Games, Stories, Progress). Any other page shown inside the shell —
+  /// Settings above all — publishes nothing, so the grid D-pad could reach
+  /// only the tab bar there: a hands-free learner who opened Settings could
+  /// not reach a single setting, including Gaze Control itself. With the full
+  /// reach on, such a page is driven by focus traversal instead, like a pushed
+  /// screen; the nav-only reach keeps the tab-bar D-pad the learner chose.
+  final bool hubPage;
+
   /// Invoked when the learner commits (blink / look-up) on a tab.
   final void Function(int index) onCommit;
 
@@ -132,6 +164,7 @@ class NavGazeScope extends ConsumerStatefulWidget {
     required this.builder,
     this.navLabels = const [],
     this.enabled = true,
+    this.hubPage = true,
     this.camerasLoader,
     this.detectorFactory,
   });
@@ -145,6 +178,11 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   GazeController? _gaze;
   late GazeGridCursor _cursor;
 
+  /// The settings the running camera was armed with, kept current by a
+  /// listener in [build] — the shell never remounts, so it has to follow
+  /// changes live rather than snapshot them.
+  GazeSettings _settings = const GazeSettings();
+
   /// The row shape currently applied to [_cursor], so we only rebuild it (and
   /// reset the highlight) when the grid actually changes shape.
   List<int> _appliedRows = const [];
@@ -154,9 +192,19 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   bool _evalScheduled = false;
   bool _syncScheduled = false;
 
-  /// The bright ring drawn over whatever the focus-traversal fallback is
-  /// pointing at, while a route covers the shell.
-  final GazeFocusOverlay _focusRing = GazeFocusOverlay();
+  /// Scanning mode: the row–column scanner over the same grid the D-pad
+  /// walks, and the timer that steps it.
+  GridScanner? _scanner;
+  Timer? _scanTimer;
+
+  /// Head moves, blinks, scan steps and voice while a route or an in-screen
+  /// modal covers the hubs — plus the ring that shows where that is.
+  late final GazeTraversal _traversal = GazeTraversal(
+    onMoved: () => ref.read(hapticServiceProvider).selectionClick(),
+    onPressed: () => ref.read(hapticServiceProvider).success(),
+  );
+
+  bool get _scanning => _scanner != null;
 
   @override
   void initState() {
@@ -186,7 +234,8 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     // Entering / leaving an immersive activity switches this scope between the
     // grid D-pad and focus traversal. The coverage ticker won't notice — the
     // shell's route is still "current" — so swap the affordances here.
-    if (widget.enabled != oldWidget.enabled) {
+    if (widget.enabled != oldWidget.enabled ||
+        widget.hubPage != oldWidget.hubPage) {
       _scheduleEvaluate();
       scheduleMicrotask(() {
         if (!mounted) return;
@@ -236,10 +285,16 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// so the same head gesture should steer whatever is.
   ///
   /// Read live at event time, like [_shellCovered].
-  bool get _useTraversal => !widget.enabled || _shellCovered;
+  bool get _useTraversal =>
+      !widget.enabled || _shellCovered || _pageWithoutGrid;
 
   /// Cached counterpart of [_useTraversal] for `build` — see [GazeRouteGuard].
-  bool get _useTraversalForUi => !widget.enabled || gazeCoveredForUi;
+  bool get _useTraversalForUi =>
+      !widget.enabled || gazeCoveredForUi || _pageWithoutGrid;
+
+  /// A page inside the shell that is not a hub, under the full reach — see
+  /// [NavGazeScope.hubPage].
+  bool get _pageWithoutGrid => !widget.hubPage && _settings.navHomeTiles;
 
   /// Whether the D-pad should currently extend over the foreground hub's feature
   /// tiles: the visible hub screen has published a grid (it only does so under
@@ -256,6 +311,9 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     if (_useFeatureGrid) ...gazeHomeGrid.rowLengths,
     if (_hasNavRow) widget.itemCount,
   ];
+
+  /// How many of the combined rows are feature-tile rows.
+  int get _tileRowCount => _useFeatureGrid ? gazeHomeGrid.rows.length : 0;
 
   /// Index of the bottom-nav row within the cursor (always the last row).
   /// Without a nav row this is one past the end, so no cursor row matches it.
@@ -304,6 +362,7 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
 
   void _start() {
     final settings = ref.read(gazeSettingsProvider);
+    _settings = settings;
     final controller = GazeController(
       settings: settings,
       camerasLoader: widget.camerasLoader ?? availableCameras,
@@ -313,6 +372,7 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     controller.onBlink = _commit;
     controller.addListener(_onControllerUpdate);
     _gaze = controller;
+    if (settings.scanMode) _startScanning();
     // Begin where the learner actually is (on the live tab).
     _syncCursor();
     controller.start();
@@ -327,8 +387,9 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   }
 
   void _teardown() {
+    _stopScanning();
     stopGazeCoverageWatch();
-    _focusRing.hide();
+    _traversal.hideRing();
     disposeVoiceControl();
     final controller = _gaze;
     _gaze = null;
@@ -340,12 +401,104 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     gazeHomeGrid.setFocus(null, null);
   }
 
+  /// A setting changed while the camera is running — a teacher adjusting the
+  /// learner's tuning, or a profile switch that kept the shell. Applied in
+  /// place: the controller re-tunes itself and scanning starts or stops,
+  /// without a camera restart.
+  void _onSettingsChanged(GazeSettings next) {
+    final previous = _settings;
+    _settings = next;
+    final controller = _gaze;
+    if (controller == null) return;
+    controller.applySettings(next);
+    if (previous.scanMode != next.scanMode ||
+        previous.scanStepMs != next.scanStepMs) {
+      _stopScanning();
+      if (next.scanMode) _startScanning();
+      _publishFocus();
+    }
+    _syncFocusRing();
+    setState(() {});
+  }
+
+  // ── Scanning ──────────────────────────────────────────────────────────
+
+  void _startScanning() {
+    _scanner = GridScanner(_rowLengths());
+    _restartScanTimer();
+  }
+
+  void _stopScanning() {
+    _scanTimer?.cancel();
+    _scanTimer = null;
+    _scanner = null;
+  }
+
+  /// (Re)starts the step timer, so a highlight that has just moved — or a row
+  /// just stepped into — always gets a full step before moving on.
+  void _restartScanTimer() {
+    _scanTimer?.cancel();
+    _scanTimer = Timer.periodic(_settings.scanStepDuration, (_) => _scanTick());
+  }
+
+  void _scanTick() {
+    final scanner = _scanner;
+    if (!mounted || _gaze == null || scanner == null) return;
+    if (_useTraversal) {
+      // Something covers the hubs: light up its controls in turn instead.
+      _traversal.scanStep();
+      return;
+    }
+    scanner.setRows(_rowLengths());
+    if (scanner.isEmpty) return;
+    ref.read(hapticServiceProvider).selectionClick();
+    scanner.step();
+    _publishFocus();
+    setState(() {});
+  }
+
+  /// A blink while scanning the hubs: step into the lit row, or open the lit
+  /// control.
+  void _scanSelect() {
+    final scanner = _scanner;
+    if (scanner == null) return;
+    scanner.setRows(_rowLengths());
+    final pick = scanner.select();
+    if (pick == null) {
+      if (scanner.isEmpty) return;
+      ref.read(hapticServiceProvider).selectionClick();
+      _restartScanTimer();
+      _publishFocus();
+      setState(() {});
+      return;
+    }
+    _restartScanTimer();
+    _activate(pick.row, pick.col);
+  }
+
+  /// Opens the cell at a combined-grid position: a feature tile on the hub, or
+  /// a bottom-nav tab.
+  void _activate(int row, int col) {
+    if (row < _tileRowCount) {
+      final cell = gazeHomeGrid.cellAt(row, col);
+      if (cell == null) return;
+      ref.read(hapticServiceProvider).success();
+      cell.onActivate();
+    } else {
+      if (!_hasNavRow || col < 0 || col >= widget.itemCount) return;
+      ref.read(hapticServiceProvider).success();
+      widget.onCommit(col);
+    }
+  }
+
+  // ── Voice ─────────────────────────────────────────────────────────────
+
   /// A spoken phrase → a feature tile or nav tab by its label, a D-pad cursor
   /// move ("left" / "up" / "kanan"…) identical to the matching head gesture, a
   /// "select" that commits the focused cell like a blink, or a global scroll /
   /// leave-screen action. Reads the live grid + labels at event time, mirroring
-  /// [_commit]. Ignored while another route covers the shell (a dialog / pushed
-  /// screen), exactly like the head D-pad.
+  /// [_commit]. While another route covers the shell, the same phrases drive
+  /// focus traversal on whatever is showing.
   @override
   void onVoiceCommand(String text) {
     if (!mounted || _gaze == null) return;
@@ -353,7 +506,11 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     // traversal the head gestures do, keeping voice at D-pad parity in this
     // mode too. "go back" still pops, which is often the whole point.
     if (_useTraversal) {
-      _voiceTraverse(text);
+      final intent = _traversal.voice(text);
+      if (kDebugMode) debugPrint('VoiceCmd nav(covered) "$text" → $intent');
+      // Traversal already closed the surface on "go back"; only the scroll
+      // gesture is left to this scope.
+      if (intent != DpadVoiceIntent.goBack) _globalVoice(intent);
       return;
     }
     final tileRows = gazeHomeGrid.rows;
@@ -379,23 +536,36 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
           ref.read(hapticServiceProvider).success();
           widget.onCommit(result.col);
         }
+      // Scanning moves the highlight by itself; a spoken direction has no
+      // cursor to move there, so only naming a control or "select" act.
       case DpadVoiceIntent.moveLeft:
-        _moveHoriz(-1);
+        if (!_scanning) _moveHoriz(-1);
       case DpadVoiceIntent.moveRight:
-        _moveHoriz(1);
+        if (!_scanning) _moveHoriz(1);
       case DpadVoiceIntent.moveUp:
-        _moveVert(-1);
+        if (!_scanning) _moveVert(-1);
       case DpadVoiceIntent.moveDown:
-        _moveVert(1);
+        if (!_scanning) _moveVert(1);
       case DpadVoiceIntent.select:
         _commit();
+      case DpadVoiceIntent.scrollUp:
+      case DpadVoiceIntent.scrollDown:
+      case DpadVoiceIntent.goBack:
+      case DpadVoiceIntent.none:
+        _globalVoice(result.intent);
+    }
+  }
+
+  /// The intents that mean the same thing on every screen.
+  void _globalVoice(DpadVoiceIntent intent) {
+    switch (intent) {
       case DpadVoiceIntent.scrollUp:
         voiceScroll(-1);
       case DpadVoiceIntent.scrollDown:
         voiceScroll(1);
       case DpadVoiceIntent.goBack:
         Navigator.of(context).maybePop();
-      case DpadVoiceIntent.none:
+      default:
         break;
     }
   }
@@ -422,6 +592,14 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     } else if (_hasNavRow && _cursor.row == _navRow) {
       _cursor.moveTo(_navRow, widget.currentIndex);
     }
+    // A new hub's grid starts the scan over from its top; the same shape
+    // re-published leaves it where it is.
+    final scanner = _scanner;
+    if (scanner != null) {
+      final before = scanner.rowLengths;
+      scanner.setRows(want);
+      if (!listEquals(before, scanner.rowLengths)) _restartScanTimer();
+    }
     _publishFocus();
   }
 
@@ -431,16 +609,19 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// a head-only learner keeps an open gesture (rows are still reachable by
   /// looking down, which wraps).
   void _onZone(GazeZone zone) {
+    // Scanning is for learners who cannot move their head, so a head move —
+    // likely involuntary — must not steer anything.
+    if (_scanning) return;
     // The grid isn't on screen — either something is layered over the shell (a
     // dialog, a pushed screen) or this is an immersive activity with the nav
     // bar hidden. Hand the same head gesture to Flutter's focus traversal and
     // drive whatever *is* on screen instead of doing nothing.
     if (_useTraversal) {
-      _traverse(zone);
+      _traversal.zone(zone, blinkSelects: _settings.blinkSelects);
       return;
     }
     final multiRow = _cursor.rowCount > 1;
-    final blink = ref.read(gazeSettingsProvider).blinkEnabled;
+    final blink = _settings.blinkSelects;
     switch (zone) {
       case GazeZone.left:
         _moveHoriz(-1);
@@ -473,112 +654,20 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     _publishFocus();
   }
 
-  /// A spoken phrase while a route covers the shell. Movement and select map
-  /// onto focus traversal; scroll and go-back keep working as they always did.
-  /// Resolved against an empty grid so only the global intents can match — a
-  /// dialog publishes no cells to address by name.
-  void _voiceTraverse(String text) {
-    final result = resolveDpadVoiceCommand(text, const []);
-    if (kDebugMode) {
-      debugPrint('VoiceCmd nav(covered) "$text" → ${result.intent}');
-    }
-    switch (result.intent) {
-      case DpadVoiceIntent.moveLeft:
-        _traverseMove(TraversalDirection.left);
-      case DpadVoiceIntent.moveRight:
-        _traverseMove(TraversalDirection.right);
-      case DpadVoiceIntent.moveUp:
-        _traverseMove(TraversalDirection.up);
-      case DpadVoiceIntent.moveDown:
-        _traverseMove(TraversalDirection.down);
-      case DpadVoiceIntent.select:
-      case DpadVoiceIntent.activate:
-        _traverseCommit();
-      case DpadVoiceIntent.scrollUp:
-        voiceScroll(-1);
-      case DpadVoiceIntent.scrollDown:
-        voiceScroll(1);
-      case DpadVoiceIntent.goBack:
-        Navigator.of(context).maybePop();
-      case DpadVoiceIntent.none:
-        break;
-    }
-  }
-
-  /// Head zone → directional focus traversal on the covering route. Look-up
-  /// doubles as "open it" when blink is off, mirroring the grid D-pad's rule so
-  /// a head-only learner always has a commit gesture.
-  void _traverse(GazeZone zone) {
-    if (!mounted) return;
-    final blink = ref.read(gazeSettingsProvider).blinkEnabled;
-    switch (zone) {
-      case GazeZone.left:
-        _traverseMove(TraversalDirection.left);
-      case GazeZone.right:
-        _traverseMove(TraversalDirection.right);
-      case GazeZone.up:
-        // With blink off, look-up is the only commit gesture a head-only
-        // learner has; ▼ still reaches everything, so nothing is stranded.
-        blink ? _traverseMove(TraversalDirection.up) : _traverseCommit();
-      case GazeZone.down:
-        _traverseMove(TraversalDirection.down);
-      case GazeZone.none:
-        break;
-    }
-  }
-
-  /// One traversal step. When the route has nothing focusable that way, the
-  /// focus is probably still on its bare scope node — pull it onto the first
-  /// control so the next gesture has somewhere to go.
-  ///
-  /// Returns whether focus actually moved, so a remote press that landed
-  /// nowhere can be reported as unhandled rather than silently swallowed.
-  bool _traverseMove(TraversalDirection direction) {
-    if (!mounted) return false;
-    final moved =
-        GazeFocusDriver.move(direction) || GazeFocusDriver.moveFirst();
-    if (moved) ref.read(hapticServiceProvider).selectionClick();
-    return moved;
-  }
-
-  /// Blink (or look-up with blink off) while covered: press whatever the
-  /// traversal ring is on. A freshly-opened dialog often has focus still
-  /// resting on its bare scope node with nothing to press — pull focus onto its
-  /// first control instead, so the learner's first blink is never swallowed.
-  bool _traverseCommit() {
-    if (!mounted) return false;
-    if (GazeFocusDriver.activate()) {
-      ref.read(hapticServiceProvider).success();
-      return true;
-    }
-    if (GazeFocusDriver.moveFirst()) {
-      ref.read(hapticServiceProvider).selectionClick();
-      return true;
-    }
-    return false;
-  }
-
   void _commit() {
     if (!mounted) return;
     // Traversal first: it works even when this shell has no grid of its own
     // (the nav-less guest Player shell).
     if (_useTraversal) {
-      _traverseCommit();
+      _traversal.commit();
+      return;
+    }
+    if (_scanning) {
+      _scanSelect();
       return;
     }
     if (_cursor.rowCount == 0) return;
-    if (_onTileRow) {
-      // Opening a feature tile on the foreground hub.
-      final cell = gazeHomeGrid.cellAt(_cursor.row, _cursor.col);
-      if (cell == null) return;
-      ref.read(hapticServiceProvider).success();
-      cell.onActivate();
-    } else {
-      // Opening a bottom-nav tab.
-      if (widget.itemCount <= 0) return;
-      ref.read(hapticServiceProvider).success();
-      widget.onCommit(_cursor.col);
-    }
+    _activate(_onTileRow ? _cursor.row : _tileRowCount, _cursor.col);
   }
 
   /// Publishes the focused cell to [gazeHomeGrid]: a (row, col) while up in the
@@ -595,7 +684,21 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     // gamepad learner was steering by. Teardown clears the focus itself, so
     // stopping gaze still drops its own highlight.
     if (_gaze == null) return;
-    if (_onTileRow && !_useTraversalForUi) {
+    if (_useTraversalForUi) {
+      gazeHomeGrid.setFocus(null, null);
+      return;
+    }
+    final scanner = _scanner;
+    if (scanner != null) {
+      if (!scanner.isEmpty && scanner.row < _tileRowCount) {
+        // A null column lights the whole row (the scanner's row phase).
+        gazeHomeGrid.setFocus(scanner.row, scanner.col);
+      } else {
+        gazeHomeGrid.setFocus(null, null);
+      }
+      return;
+    }
+    if (_onTileRow) {
       gazeHomeGrid.setFocus(_cursor.row, _cursor.col);
     } else {
       gazeHomeGrid.setFocus(null, null);
@@ -616,10 +719,51 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// draws its own highlight.
   void _syncFocusRing() {
     if (!mounted) return;
-    final wanted = _gaze != null && _useTraversalForUi;
-    if (wanted == _focusRing.isShowing) return;
-    wanted ? _focusRing.show(context) : _focusRing.hide();
+    _traversal.syncRing(
+      context,
+      wanted: _gaze != null && _useTraversalForUi,
+      hint: GazeTraversal.hintFor(
+        scanning: _scanning,
+        blinkSelects: _settings.blinkSelects,
+      ),
+    );
   }
+
+  /// Where the bottom-nav ring sits: the scanner's tab while scanning the tab
+  /// bar, the cursor's tab while the D-pad rests on it, nowhere otherwise.
+  int? _navTarget() {
+    final scanner = _scanner;
+    if (scanner != null) {
+      if (scanner.isEmpty || scanner.row != _tileRowCount || !_hasNavRow) {
+        return null;
+      }
+      return scanner.col;
+    }
+    return _onTileRow ? null : _cursor.col;
+  }
+
+  bool get _wholeNavRowLit {
+    final scanner = _scanner;
+    return scanner != null &&
+        _hasNavRow &&
+        !scanner.isEmpty &&
+        scanner.row == _tileRowCount &&
+        scanner.onWholeRow;
+  }
+
+  /// Debug bridge: what this scope is doing right now.
+  @override
+  Map<String, Object?> debugDescribe() => {
+    'scope': 'nav',
+    'running': _gaze != null,
+    'traversal': _gaze != null && _useTraversal,
+    'scanning': _scanning,
+    'cursor': [_cursor.row, _cursor.col],
+    if (_scanner != null) 'scan': [_scanner!.row, _scanner!.col],
+    'navTarget': _navTarget(),
+    'wholeNavRow': _wholeNavRowLit,
+    'rows': _rowLengths(),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -628,6 +772,16 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     ref.listen<bool>(
       gazeSettingsProvider.select((s) => s.enabled),
       (_, _) => _scheduleEvaluate(),
+    );
+    // Everything else applies live: the shell never remounts, so a teacher
+    // tuning sensitivity or switching scanning on must not have to wait for
+    // the camera to bounce. Deferred because provider listeners can fire
+    // mid-build.
+    ref.listen<GazeSettings>(
+      gazeSettingsProvider,
+      (_, next) => scheduleMicrotask(() {
+        if (mounted) _onSettingsChanged(next);
+      }),
     );
     // Unlike the per-screen scopes (which re-snapshot on every mount), the
     // shell lives forever — so the voice toggle must take effect live, without
@@ -645,43 +799,51 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     // so present the shell as inactive for the duration: no tab ring, no hint
     // chip. Leaving them lit is the one thing worse than no affordance — it
     // tells a hands-free learner to aim at a control that will not answer.
-    // (The traversal ring in the root overlay is the live affordance instead.)
+    // (The traversal ring above the router is the live affordance instead.)
     final gaze = _useTraversalForUi ? null : _gaze;
     final ready = gaze != null && gaze.status == GazeStatus.ready;
-    final onTileRow = gaze != null && _onTileRow;
     final state = NavGazeState(
       active: gaze != null,
       ready: ready,
       faceVisible: ready && gaze.faceVisible,
       // The nav ring shows only while the cursor is on the nav row; up in the
       // tiles the hub screen draws the highlight instead.
-      targetIndex: gaze != null && !onTileRow ? _cursor.col : null,
+      targetIndex: gaze != null ? _navTarget() : null,
+      wholeNavRow: gaze != null && _wholeNavRowLit,
       featureTilesActive: gaze != null && _useFeatureGrid,
       status: gaze?.status ?? GazeStatus.initializing,
+      scanning: _scanning,
+      blinkSelects: _settings.blinkSelects,
     );
     final content = widget.builder(context, state);
 
     // While voice is listening, float the small mic status chip near the top
     // (the bottom belongs to the nav bar). Informational only. Shown even while
     // covered — spoken commands still work there, via focus traversal.
+    //
+    // Always the same Stack, chip or not: returning the bare content when the
+    // chip went away (voice stops whenever a foreground screen takes the
+    // camera) re-created the whole shell beneath it on every such change.
     final chip = voiceChip();
-    if (chip == null) return content;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        content,
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: IgnorePointer(child: Center(child: chip)),
+    return hostGazeModals(
+      Stack(
+        fit: StackFit.expand,
+        children: [
+          content,
+          if (chip != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: IgnorePointer(child: Center(child: chip)),
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

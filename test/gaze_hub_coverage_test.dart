@@ -43,10 +43,7 @@ class _StubProfileNotifier extends ProfileNotifier {
 /// bypassing Hive persistence.
 class _GazeTilesOnNotifier extends GazeSettingsNotifier {
   @override
-  GazeSettings build() => const GazeSettings(
-        enabled: true,
-        navScope: GazeNavScope.bottomNavAndHomeTiles,
-      );
+  GazeSettings build() => const GazeSettings(enabled: true);
 }
 
 List<Override> _overrides(UserRole role, {bool guest = false}) => [

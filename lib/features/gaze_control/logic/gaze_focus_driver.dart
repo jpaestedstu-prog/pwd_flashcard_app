@@ -102,6 +102,80 @@ abstract final class GazeFocusDriver {
     return true;
   }
 
+  /// Scanning mode's step over a covering route: moves focus to the next
+  /// control in reading order, wrapping from the last back to the first, so a
+  /// blink-only learner sees each control of a dialog or pushed page light up
+  /// in turn. From a bare scope node (a route that has only just appeared)
+  /// this lands on its first control.
+  static bool scanNext() {
+    final node = focused;
+    if (node == null) return false;
+    if (node.nextFocus()) {
+      _revealFocused();
+      return true;
+    }
+    return false;
+  }
+
+  /// The controls focus can move among on the focused surface, in reading
+  /// order (top to bottom, then left to right within a row).
+  static List<FocusNode> _readingOrder(FocusNode node) {
+    final scope = node.nearestScope;
+    if (scope == null) return const [];
+    final nodes = <({FocusNode node, Rect rect})>[];
+    for (final n in scope.traversalDescendants) {
+      if (n is FocusScopeNode || n.context == null) continue;
+      try {
+        nodes.add((node: n, rect: n.rect));
+      } catch (_) {
+        // Not laid out yet — not somewhere the learner can be.
+      }
+    }
+    nodes.sort((a, b) {
+      final dy = a.rect.center.dy - b.rect.center.dy;
+      // Controls whose centres are this close share a row.
+      if (dy.abs() > 8) return dy < 0 ? -1 : 1;
+      return a.rect.center.dx.compareTo(b.rect.center.dx);
+    });
+    return [for (final n in nodes) n.node];
+  }
+
+  /// Whether the focused control is the first one on its surface — the place
+  /// from which looking up reaches the surface's way out.
+  static bool isFirst() {
+    final node = focused;
+    if (node == null || node is FocusScopeNode) return false;
+    final order = _readingOrder(node);
+    return order.isNotEmpty && identical(order.first, node);
+  }
+
+  /// Whether the focused control is the last one on its surface.
+  static bool isLast() {
+    final node = focused;
+    if (node == null || node is FocusScopeNode) return false;
+    final order = _readingOrder(node);
+    return order.isNotEmpty && identical(order.last, node);
+  }
+
+  /// Whether the focused surface has any control to move to at all.
+  static bool hasFocusable() {
+    final node = focused;
+    return node != null && _readingOrder(node).isNotEmpty;
+  }
+
+  /// Closes whatever holds the focus — the dialog, the sheet or the page —
+  /// exactly as the system Back button would. It asks the navigator the
+  /// focused control lives in, so a sheet opened on the navigation shell's own
+  /// navigator closes too (the gaze scope's own navigator is a different one).
+  static bool popTop() {
+    final context = focused?.context;
+    if (context == null) return false;
+    final navigator = Navigator.maybeOf(context);
+    if (navigator == null) return false;
+    navigator.maybePop();
+    return true;
+  }
+
   /// Pulls focus onto the first focusable control of the current scope. Used
   /// when a route has just appeared and focus is still resting on its scope
   /// node, so the learner's first head move lands somewhere visible instead of

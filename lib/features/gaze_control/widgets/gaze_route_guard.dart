@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'gaze_modal_region.dart';
+
 /// Shared "is something layered over me?" plumbing for the gaze scopes.
 ///
 /// A gaze scope drives the controls of *its* screen. The moment another route
@@ -25,18 +27,29 @@ mixin GazeRouteGuard<T extends StatefulWidget> on State<T> {
   Timer? _coverageTimer;
   bool _coveredForUi = false;
 
+  /// In-screen modals (a game's pause card, a celebration) open inside this
+  /// scope's content — see [GazeModalRegion]. They have no route of their
+  /// own, so the route check below cannot see them.
+  final GazeModalCount gazeModals = GazeModalCount();
+
   /// How often the cached [gazeCoveredForUi] is re-checked. Slow enough to be
   /// free, fast enough that a ring never lingers visibly under a dialog.
   static const Duration _coveragePollInterval = Duration(milliseconds: 400);
 
-  /// Live read: another route is currently layered over this scope's screen.
-  /// Gate every input path on this at event time.
+  /// Live read: another route — or an in-screen modal — is currently layered
+  /// over this scope's screen. Gate every input path on this at event time.
   bool get gazeCovered {
     if (!mounted) return true;
-    if (extraCovered) return true;
+    if (gazeModals.isBusy || extraCovered) return true;
     final route = ModalRoute.of(context);
     return route != null && !route.isCurrent;
   }
+
+  /// Wraps the scope's content so the [GazeModalRegion]s inside it register
+  /// here. Every scope builds through this — and always the same way, so the
+  /// content never remounts when coverage or the voice chip changes.
+  Widget hostGazeModals(Widget child) =>
+      GazeModalHost(count: gazeModals, child: child);
 
   /// An additional "something is on top of me" signal, for scopes whose own
   /// [ModalRoute] cannot answer the question.

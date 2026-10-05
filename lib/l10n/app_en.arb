@@ -6031,12 +6031,12 @@
       }
     }
   },
-  "gzsHoldHelp": "How long to look at a button before it activates.",
+  "gzsHoldHelp": "How long to hold a head movement before it counts.",
   "gzsBlink": "Blink to confirm",
   "gzsBlinkSub": "A long, deliberate blink acts as “select”",
   "gzsScanning": "Scanning (no head movement)",
   "gzsScanMode": "Scanning mode",
-  "gzsScanSub": "Buttons highlight one by one — blink to pick. For learners who can’t move their head.",
+  "gzsScanSub": "Buttons light up in turn — on big screens a whole row first, then each button in it — and a blink picks the lit one. For learners who can’t move their head.",
   "gzsScanSpeed": "Scan speed",
   "gzsScanHelp": "How long each button stays highlighted before moving on.",
   "gzsCalibration": "Device calibration",
@@ -8201,6 +8201,35 @@
   "cmSignIn": "Please sign in to manage classes.",
   "mqRoundsPerPlayer": "Rounds per Player",
   "gzFocusHint": "Look ◀ ▶ ▲ ▼ to move · blink to press",
+  "gzFocusHintLookUp": "Look ◀ ▶ ▼ to move · look up to press",
+  "gzFocusHintScan": "Blink when the one you want lights up",
+  "gzStarting": "Starting gaze…",
+  "gzNavHintLook": "Look at the screen",
+  "gzNavHintTabs": "Look ◀ ▶ to choose · blink to open",
+  "gzNavHintTiles": "Look ◀ ▶ ▲ ▼ to choose · blink to open",
+  "gzNavHintTabsLookUp": "Look ◀ ▶ to choose · look up to open",
+  "gzNavHintTilesLookUp": "Look ◀ ▶ ▼ to choose · look up to open",
+  "gzPracticeIntro": "Try each one: turn your head toward a target and hold it until the ring fills",
+  "gzPracticeDone": "🎉 All done!",
+  "gzLeaveBlink": "Blink to go back",
+  "gzLeaveLookUp": "Look up to go back",
+  "gzsBlinkScanOn": "Always on while Scanning mode is on — a blink is how scanning picks",
+  "gzsStepDown": "Decrease {setting}",
+  "@gzsStepDown": {
+    "placeholders": {
+      "setting": {
+        "type": "String"
+      }
+    }
+  },
+  "gzsStepUp": "Increase {setting}",
+  "@gzsStepUp": {
+    "placeholders": {
+      "setting": {
+        "type": "String"
+      }
+    }
+  },
   "spdSupport": "Support",
   "lgcPerCategory": "Per-Category Breakdown",
   "rsTimer": "Timer",

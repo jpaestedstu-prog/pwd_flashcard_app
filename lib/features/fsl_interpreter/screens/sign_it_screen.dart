@@ -84,6 +84,9 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     with WidgetsBindingObserver, VoiceControlMixin {
   static const int _maxRounds = 10;
 
+  /// This screen's place in the gaze camera-owner stack.
+  Object? _cameraToken;
+
   final _random = contentRandom();
   List<Flashcard> _cards = const [];
   int _currentRound = 0;
@@ -119,7 +122,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     WidgetsBinding.instance.addObserver(this);
     // One camera at a time: stand the background nav-gaze camera down while
     // the practice mirror is open (mirrors Word Hunt / gaze control).
-    gazeCameraOwners.acquire();
+    _cameraToken = gazeCameraOwners.acquire();
     // …which means head control cannot run here — recording and the gaze image
     // stream can't share a controller. The **microphone** is a separate
     // resource though, so if the learner has voice commands on, keep them
@@ -152,7 +155,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     _deleteRecording();
     _videoController?.dispose();
     _cameraController?.dispose();
-    gazeCameraOwners.release();
+    gazeCameraOwners.release(_cameraToken);
     super.dispose();
   }
 

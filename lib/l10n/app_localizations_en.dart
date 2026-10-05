@@ -8796,7 +8796,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get gzsHoldHelp => 'How long to look at a button before it activates.';
+  String get gzsHoldHelp =>
+      'How long to hold a head movement before it counts.';
 
   @override
   String get gzsBlink => 'Blink to confirm';
@@ -8812,7 +8813,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gzsScanSub =>
-      'Buttons highlight one by one — blink to pick. For learners who can’t move their head.';
+      'Buttons light up in turn — on big screens a whole row first, then each button in it — and a blink picks the lit one. For learners who can’t move their head.';
 
   @override
   String get gzsScanSpeed => 'Scan speed';
@@ -11938,6 +11939,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gzFocusHint => 'Look ◀ ▶ ▲ ▼ to move · blink to press';
+
+  @override
+  String get gzFocusHintLookUp => 'Look ◀ ▶ ▼ to move · look up to press';
+
+  @override
+  String get gzFocusHintScan => 'Blink when the one you want lights up';
+
+  @override
+  String get gzStarting => 'Starting gaze…';
+
+  @override
+  String get gzNavHintLook => 'Look at the screen';
+
+  @override
+  String get gzNavHintTabs => 'Look ◀ ▶ to choose · blink to open';
+
+  @override
+  String get gzNavHintTiles => 'Look ◀ ▶ ▲ ▼ to choose · blink to open';
+
+  @override
+  String get gzNavHintTabsLookUp => 'Look ◀ ▶ to choose · look up to open';
+
+  @override
+  String get gzNavHintTilesLookUp => 'Look ◀ ▶ ▼ to choose · look up to open';
+
+  @override
+  String get gzPracticeIntro =>
+      'Try each one: turn your head toward a target and hold it until the ring fills';
+
+  @override
+  String get gzPracticeDone => '🎉 All done!';
+
+  @override
+  String get gzLeaveBlink => 'Blink to go back';
+
+  @override
+  String get gzLeaveLookUp => 'Look up to go back';
+
+  @override
+  String get gzsBlinkScanOn =>
+      'Always on while Scanning mode is on — a blink is how scanning picks';
+
+  @override
+  String gzsStepDown(String setting) {
+    return 'Decrease $setting';
+  }
+
+  @override
+  String gzsStepUp(String setting) {
+    return 'Increase $setting';
+  }
 
   @override
   String get spdSupport => 'Support';

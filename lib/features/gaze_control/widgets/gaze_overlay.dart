@@ -35,17 +35,24 @@ class GazeOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A transparent Material gives the text the app's own style. This floats
+    // beside a screen's Scaffold, not inside it, so without one the text fell
+    // back to Flutter's "missing Material" style — red-yellow double
+    // underlines in a monospace font — on every gaze learner's screen.
     return IgnorePointer(
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (context, _) {
-          if (controller.status != GazeStatus.ready) {
-            return SafeArea(child: _statusChip(context, controller.status));
-          }
-          return SafeArea(
-            child: _content(context, faceVisible: controller.faceVisible),
-          );
-        },
+      child: Material(
+        type: MaterialType.transparency,
+        child: AnimatedBuilder(
+          animation: controller,
+          builder: (context, _) {
+            if (controller.status != GazeStatus.ready) {
+              return SafeArea(child: _statusChip(context, controller.status));
+            }
+            return SafeArea(
+              child: _content(context, faceVisible: controller.faceVisible),
+            );
+          },
+        ),
       ),
     );
   }

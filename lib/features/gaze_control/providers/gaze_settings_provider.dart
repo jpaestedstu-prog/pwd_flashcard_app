@@ -80,6 +80,18 @@ class GazeSettingsNotifier extends Notifier<GazeSettings> {
   }
 
   void setEnabled(bool v) => update(state.copyWith(enabled: v));
+
+  /// Switches gaze on for a learner whose chosen way of using the app *is*
+  /// gaze (their setup answer), with the full "Bottom nav + feature tiles"
+  /// reach. Setup used to switch on the camera alone, which left such a
+  /// learner on the bottom-nav-only reach: they could move between the five
+  /// hubs but open nothing on any of them.
+  void enableForGazeLearner() => update(
+    state.copyWith(
+      enabled: true,
+      navScope: GazeNavScope.bottomNavAndHomeTiles,
+    ),
+  );
   void setSensitivity(int v) => update(state.copyWith(sensitivity: v));
   void setDwellMs(int v) => update(state.copyWith(dwellMs: v));
   void setBlinkEnabled(bool v) => update(state.copyWith(blinkEnabled: v));

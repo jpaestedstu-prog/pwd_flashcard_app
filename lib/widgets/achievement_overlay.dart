@@ -8,6 +8,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/utils/responsive_utils.dart';
 import '../../data/models/achievements.dart';
 import '../core/utils/reduced_motion.dart';
+import '../features/gaze_control/widgets/gaze_modal_region.dart';
 
 /// A full-screen overlay that announces a newly unlocked achievement
 /// with a glow effect, scale animation, and confetti.
@@ -61,8 +62,15 @@ class _AchievementUnlockedOverlayState
     }
   }
 
+  /// Drawn inside the screen, not pushed as a route — the region makes gaze
+  /// treat the screen as covered and keeps focus on this card's button, so a
+  /// hands-free learner can press Continue instead of the dimmed controls
+  /// behind it.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      GazeModalRegion(child: _overlay(context));
+
+  Widget _overlay(BuildContext context) {
     final achievement = widget.achievements[_currentIndex];
     final hasMore = _currentIndex < widget.achievements.length - 1;
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_spacing.dart';
+import '../../gaze_control/widgets/gaze_modal_region.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
@@ -44,8 +45,15 @@ class PauseOverlay extends ConsumerWidget {
     return w > cap ? cap : w;
   }
 
+  /// An in-screen modal with no route of its own: the region tells the
+  /// game's gaze scope it is covered, so head, blink, scanning and voice reach
+  /// these buttons — every edge target is disabled while paused, and a
+  /// learner who paused by saying "go back" had no way to resume or quit.
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) =>
+      GazeModalRegion(child: _overlay(context, ref));
+
+  Widget _overlay(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final soundOn = ref.watch(settingsProvider.select((s) => s.soundEffects));
     final width = _cardWidth(context);

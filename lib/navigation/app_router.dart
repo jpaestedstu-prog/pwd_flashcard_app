@@ -108,6 +108,7 @@ import '../features/messaging/screens/messaging_screen.dart';
 import '../features/object_scan/screens/object_scan_screen.dart';
 import '../widgets/voice_navigation_observer.dart';
 import '../features/gaze_control/widgets/shell_modal_observer.dart';
+import '../features/gaze_control/widgets/gaze_traversal_scope.dart';
 import '../features/object_scan/screens/word_hunt_collection_screen.dart';
 import '../features/gaze_control/screens/gaze_control_screen.dart';
 import '../features/gamepad/screens/gamepad_practice_screen.dart';
@@ -682,12 +683,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const PwdAwarenessScreen(),
         ),
       ),
-      // Onboarding Tutorial (first-time walkthrough)
+      // Onboarding Tutorial (first-time walkthrough). Outside the shell, so it
+      // carries its own gaze: it is the first screen a learner sees after the
+      // setup step that switched gaze on for them.
       GoRoute(
         path: '/onboarding-tutorial',
         pageBuilder: (context, state) => AppPageTransitions.fade(
           key: state.pageKey,
-          child: const OnboardingTutorialScreen(),
+          child: const GazeTraversalScope(child: OnboardingTutorialScreen()),
         ),
       ),
       // Profile Import/Export
@@ -1249,12 +1252,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const JoinClassScreen(),
         ),
       ),
-      // Join Home Group by code (child-side, no auth required)
+      // Join Home Group by code (child-side, no auth required). Outside the
+      // shell, so it carries its own gaze — at least "Switch profile" has to
+      // be reachable hands-free.
       GoRoute(
         path: '/join-home-group',
         pageBuilder: (context, state) => AppPageTransitions.fade(
           key: state.pageKey,
-          child: const JoinHomeGroupScreen(),
+          child: const GazeTraversalScope(child: JoinHomeGroupScreen()),
         ),
       ),
       // Home Group Management (parent-only: list groups, codes, members)

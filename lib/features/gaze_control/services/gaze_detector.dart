@@ -77,8 +77,19 @@ class MlKitGazeDetector implements GazeDetector {
         );
 
   final FaceDetector _detector;
-  final bool _mirrorHorizontal;
-  final bool _invertVertical;
+  bool _mirrorHorizontal;
+  bool _invertVertical;
+
+  /// Re-applies the learner's left/right and up/down calibration to a detector
+  /// that is already running, so flipping either switch in Settings takes
+  /// effect on the next frame instead of the next time the camera restarts.
+  void calibrate({
+    required bool mirrorHorizontal,
+    required bool invertVertical,
+  }) {
+    _mirrorHorizontal = mirrorHorizontal;
+    _invertVertical = invertVertical;
+  }
 
   @override
   Future<FaceSignal> detect(InputImage image) async {

@@ -72,6 +72,8 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
 
   late final ObjectLabeler _labeler;
   CameraController? _controller;
+  /// This screen's place in the gaze camera-owner stack.
+  Object? _cameraToken;
   _ScanStatus _status = _ScanStatus.initializing;
   bool _initInFlight = false;
 
@@ -109,7 +111,7 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     WidgetsBinding.instance.addObserver(this);
     // Claim the single camera so the shell's background nav-gaze stands its
     // camera down while Word Hunt's scanner is open (one camera at a time).
-    gazeCameraOwners.acquire();
+    _cameraToken = gazeCameraOwners.acquire();
     // …so head control cannot run here: the gaze detector needs the front lens
     // and its own image stream. The **microphone** is free, though, so if the
     // learner drives the app hands-free, keep voice listening — it is their
@@ -129,7 +131,7 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     _controller = null;
     _labeler.close();
     _deletePhoto();
-    gazeCameraOwners.release();
+    gazeCameraOwners.release(_cameraToken);
     super.dispose();
   }
 

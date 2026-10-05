@@ -349,10 +349,7 @@ void main() {
 
       final container = ProviderContainer(overrides: [
         gazeSettingsProvider.overrideWith(() => _FixedSettings(
-              const GazeSettings(
-                enabled: true,
-                navScope: GazeNavScope.bottomNavAndHomeTiles,
-              ),
+              const GazeSettings(enabled: true),
             )),
         settingsProvider.overrideWith(_StubAppSettings.new),
       ]);
@@ -445,10 +442,7 @@ void main() {
 
       final container = ProviderContainer(overrides: [
         gazeSettingsProvider.overrideWith(() => _FixedSettings(
-              const GazeSettings(
-                enabled: true,
-                navScope: GazeNavScope.bottomNavAndHomeTiles,
-              ),
+              const GazeSettings(enabled: true),
             )),
         settingsProvider.overrideWith(_StubAppSettings.new),
       ]);

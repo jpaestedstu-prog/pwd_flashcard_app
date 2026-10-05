@@ -169,7 +169,7 @@ class _AccessibilitySetupScreenState
   void _applyInputMode(Set<LearnerSupportOption> supports) {
     switch (LearnerSupportCatalog.inputModeIn(supports)) {
       case LearnerSupportOption.inputGaze:
-        ref.read(gazeSettingsProvider.notifier).setEnabled(true);
+        ref.read(gazeSettingsProvider.notifier).enableForGazeLearner();
       case LearnerSupportOption.inputSwitch:
         ref.read(gamepadSettingsProvider.notifier).setEnabled(true);
       default:

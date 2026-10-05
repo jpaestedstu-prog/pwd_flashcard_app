@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../providers/app_providers.dart';
 import '../l10n/app_localizations.dart';
@@ -160,6 +161,24 @@ class _AccessibilityQuickSheet extends ConsumerWidget {
               subtitle: _t(context).aqReduceMotionSub,
               value: settings.reducedMotion,
               onChanged: (_) => notifier.toggleReducedMotion(),
+            ),
+
+            // ── Hands-free ──
+            // Gaze Control used to open only from Settings, which these homes
+            // deliberately leave out — so once a child's gaze was switched on
+            // at setup, nobody could ever change its sensitivity, hold time,
+            // scanning, voice commands or calibration. It is an accessibility
+            // essential like the switches above, so it opens from here too.
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.remove_red_eye_rounded, color: colors.primary),
+              title: Text(
+                _t(context).settingGazeControlTitle,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(_t(context).settingGazeControlDesc),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.push('/gaze-settings'),
             ),
           ],
         ),

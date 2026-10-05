@@ -114,14 +114,22 @@ class GazeSettingsScreen extends ConsumerWidget {
             help: _t(context).gzsHoldHelp,
           ),
 
+          // Scanning picks with a blink and nothing else, so while it is on the
+          // switch shows what is really happening (on) and cannot be turned
+          // off — the two together used to leave the highlight moving with no
+          // way to pick anything.
           SwitchListTile.adaptive(
-            value: settings.blinkEnabled,
+            value: settings.blinkSelects,
             activeTrackColor: AppColors.primary,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.visibility_off_rounded),
             title: Text(_t(context).gzsBlink),
-            subtitle: Text(_t(context).gzsBlinkSub),
-            onChanged: notifier.setBlinkEnabled,
+            subtitle: Text(
+              settings.scanMode
+                  ? _t(context).gzsBlinkScanOn
+                  : _t(context).gzsBlinkSub,
+            ),
+            onChanged: settings.scanMode ? null : notifier.setBlinkEnabled,
           ),
 
           const SizedBox(height: 24),
@@ -389,8 +397,13 @@ class _SliderTile extends StatelessWidget {
     required this.help,
   });
 
+  /// One notch of the slider.
+  double get _step => (max - min) / divisions;
+
   @override
   Widget build(BuildContext context) {
+    final current = value.clamp(min, max);
+    final t = _t(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
@@ -414,14 +427,38 @@ class _SliderTile extends StatelessWidget {
                       ))),
             ],
           ),
-          Slider(
-            value: value.clamp(min, max),
-            min: min,
-            max: max,
-            divisions: divisions,
-            label: valueLabel,
-            activeColor: AppColors.primary,
-            onChanged: onChanged,
+          // − / + beside the slider: a hands-free learner reaches these by
+          // gaze (a slider can be focused but not moved by a head gesture),
+          // and they are easier than a drag for anyone with limited hand
+          // control.
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline_rounded),
+                tooltip: t.gzsStepDown(title),
+                onPressed: current <= min
+                    ? null
+                    : () => onChanged((current - _step).clamp(min, max)),
+              ),
+              Expanded(
+                child: Slider(
+                  value: current,
+                  min: min,
+                  max: max,
+                  divisions: divisions,
+                  label: valueLabel,
+                  activeColor: AppColors.primary,
+                  onChanged: onChanged,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline_rounded),
+                tooltip: t.gzsStepUp(title),
+                onPressed: current >= max
+                    ? null
+                    : () => onChanged((current + _step).clamp(min, max)),
+              ),
+            ],
           ),
           Padding(
             padding: const EdgeInsets.only(left: 34, bottom: 4),
