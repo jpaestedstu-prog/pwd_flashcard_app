@@ -2,6 +2,22 @@
   "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
   "releases": [
     {
+      "version": "1.2.4",
+      "build": 8,
+      "date": "2026-10-05",
+      "summary_en": "Gaze Control works everywhere. A learner who uses head movements and blinks can now operate every screen — sheets, dialogs, a game's pause card and celebrations included — and leave any of them with the new <strong>Back</strong> button. Scanning mode works on every screen, Settings and Gaze Control can be reached hands-free, a child's Gaze Control opens from their accessibility panel, and changes to sensitivity or hold time take effect straight away. Installs over v1.2.3 and keeps your profiles.",
+      "summary_fil": "Gumagana na ang Gaze Control kahit saan. Ang mag-aaral na gumagamit ng galaw ng ulo at pagkurap ay makakagamit na ng bawat screen — kasama ang mga sheet, dialog, pause card ng laro at mga pagdiriwang — at makakaalis sa alinman sa mga ito gamit ang bagong <strong>Back</strong> button. Gumagana na ang Scanning mode sa bawat screen, naaabot na nang walang kamay ang Settings at Gaze Control, nabubuksan na ang Gaze Control ng bata mula sa kanyang accessibility panel, at agad nang gumagana ang mga pagbabago sa sensitivity o hold time. Nai-i-install sa ibabaw ng v1.2.3 at nananatili ang inyong mga profile.",
+      "notes_en": "Gaze Control now works on every screen, scanning included, with a hands-free way out of every sheet and dialog.",
+      "notes_fil": "Gumagana na ang Gaze Control sa bawat screen, kasama ang scanning, at may paraan nang lumabas nang walang kamay sa bawat sheet at dialog.",
+      "bullets_en": [
+        "Every sheet, dialog, pause card and celebration can be used and closed by gaze",
+        "Scanning mode lights up rows, then buttons, on every screen",
+        "Settings and Gaze Control are reachable hands-free; children open Gaze Control from their accessibility panel",
+        "Sensitivity, hold time and blink changes take effect immediately",
+        "Learners who choose gaze at setup can open every tile, not only the tabs"
+      ]
+    },
+    {
       "version": "1.2.3",
       "build": 7,
       "date": "2026-10-04",
